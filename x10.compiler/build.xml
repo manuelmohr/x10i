@@ -3,7 +3,6 @@
 <project name="x10.compiler" default="dist" basedir=".">
     &buildfile;
     <property name="x10.home" value="${basedir}/.."/>
-    <property name="jfirm" location="${x10home}/JFirm/release/JFirm.jar"/>
     <property name="x10.dist.location" location="${x10.home}/x10.dist"/>
     <property name="lpg.location" location="${x10.home}/lpg.generator"/>
     <property name="x10.constraints.location" location="${x10.home}/x10.constraints"/>
@@ -20,9 +19,13 @@
         <path refid="lpg.classpath"/>
         <path refid="x10.constraints.classpath"/>
         <path refid="x10.common.classpath"/>
+        <path refid="jfirm.classpath"/>
     </path>
     <path id="mainproject.classpath">
         <pathelement location="${build}"/>
+    </path>
+    <path id="jfirm.classpath">
+    	<pathelement location="${basedir}/lib/JFirm.jar"/>
     </path>
     <path id="lpg.classpath">
         <pathelement location="${lib}/${lpg.jar}"/>

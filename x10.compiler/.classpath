@@ -3,7 +3,7 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
-	<classpathentry kind="lib" path="/home/tux/Downloads/MatzeB-jFirm-3a35201/lib/jna.jar"/>
-	<classpathentry kind="lib" path="/home/tux/workspace/JFirm/build/jar/JFirm.jar"/>
+	<classpathentry kind="lib" path="/x10.dist/lib/lpg.jar"/>
+	<classpathentry kind="lib" path="/home/tux/workspace/x10.compiler/lib/JFirm.jar"/>
 	<classpathentry kind="output" path="classes"/>
 </classpath>

@@ -6,6 +6,8 @@ import static x10cpp.visit.SharedVarsMethods.*;
 
 import java.util.*;
 
+import firm.Firm;
+
 import polyglot.ast.*;
 import polyglot.types.*;
 import polyglot.util.*;
@@ -78,7 +80,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
         
         // visit the node children (class body) 
         n.print(n.body(), sw, tr);
-        
 	}
 	
 	public void visit(LocalClassDecl_c n) {
