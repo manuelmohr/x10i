@@ -48,6 +48,13 @@ public class X10FirmTranslator extends Translator {
 		super(job, ts, nf, tf);
 	}
 	
+	/** Return the dir where classes in the given package will be generated. Does not include 
+	 * output directory prefix. Accepts null input. 
+	 */
+	public static String packagePath (String pkg) {
+		return (pkg==null ? "" : pkg.replace('.', '/') + '/');
+	}
+	
 	// delegate the print to the pretty printer
 	public void print(Node parent, Node n, CodeWriter w) {
 		assert (n != null);

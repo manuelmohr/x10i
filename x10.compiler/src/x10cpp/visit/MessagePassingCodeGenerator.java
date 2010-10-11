@@ -682,6 +682,7 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
 
         // Write the header for the class
         String cheader = getHeader(def.asType());
+        
         String cguard = getHeaderGuard(cheader);
         h.write("#ifndef __"+cguard); h.newline();
         h.write("#define __"+cguard); h.newline();

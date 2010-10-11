@@ -75,7 +75,7 @@ public class ExtensionInfo extends x10cpp.ExtensionInfo {
 		protected X10FirmScheduler(ExtensionInfo extInfo) {
 			super(extInfo);
 		}
-		// TODO: Add post compilation
+		// TODO: Add post compilation -> gen machine code from firm graph
 		@Override
 		protected Goal PostCompiled() {
 		    return new PostCompiled(extInfo) {

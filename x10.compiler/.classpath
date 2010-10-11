@@ -5,5 +5,6 @@
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
 	<classpathentry kind="lib" path="/x10.dist/lib/lpg.jar"/>
 	<classpathentry kind="lib" path="/home/tux/workspace/x10.compiler/lib/JFirm.jar"/>
+	<classpathentry kind="lib" path="/home/tux/workspace/x10.compiler/lib/jna.jar"/>
 	<classpathentry kind="output" path="classes"/>
 </classpath>

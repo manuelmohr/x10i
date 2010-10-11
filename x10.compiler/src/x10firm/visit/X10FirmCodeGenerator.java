@@ -7,7 +7,7 @@ import static x10cpp.visit.SharedVarsMethods.*;
 import java.util.*;
 
 import firm.Firm;
-
+import x10firm.types.*;
 import polyglot.ast.*;
 import polyglot.types.*;
 import polyglot.util.*;
@@ -25,6 +25,7 @@ import x10cpp.visit.ASTQuery;
 import x10cpp.visit.Emitter;
 import x10cpp.visit.SharedVarsMethods;
 import x10cpp.visit.StructMethodAnalyzer;
+import x10cpp.visit.X10CPPTranslator;
 import x10firm.NullCodeWriter;
 import x10firm.types.X10FirmContext_c;
 
@@ -66,17 +67,28 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(X10ClassDecl_c n) {
 		processClass(n);
 	}
+	
+    private String getFullClassName(ClassType ct) {
+        String pkg = null;
+        if (ct.package_() != null)
+            pkg = ct.package_().fullName().toString();
+        // Remove static nested classes in the AST.
+        Name name = StaticNestedClassRemover.mangleName(ct.def());
+        return X10FirmTranslator.packagePath(pkg) + name.toString(); 
+    }
 
 	void processClass(X10ClassDecl_c n) {
 		X10FirmContext_c context 	= (X10FirmContext_c) tr.context();
 		X10ClassDef def 			= (X10ClassDef) n.classDef();
-        X10TypeSystem_c xts 		= (X10TypeSystem_c) tr.typeSystem();
+		X10FirmTypeSystem_c xts 	= (X10FirmTypeSystem_c) tr.typeSystem();
         boolean isStruct 			= xts.isStructType(def.asType());
         X10Ext ext 					= (X10Ext) n.ext();
         
         // TODO: how do we treat native rep classes ?
         
         assert (!def.isNested()) : ("Nested class alert!");
+        
+        String className = getFullClassName(def.asType());
         
         // visit the node children (class body) 
         n.print(n.body(), sw, tr);
@@ -140,12 +152,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
     }
     
     protected void processMain(X10ClassType container) {
-        X10TypeSystem_c xts = (X10TypeSystem_c) container.typeSystem();
+    	X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) container.typeSystem();
     }
     
 	public void visit(MethodDecl_c dec) {
 		X10FirmContext_c ctx 	= (X10FirmContext_c) tr.context();
-		X10TypeSystem_c xts 	= (X10TypeSystem_c) tr.typeSystem();
+		X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) tr.typeSystem();
 		X10Flags flags 			= X10Flags.toX10Flags(dec.flags().flags());
 		
 		if (flags.isNative())
@@ -342,7 +354,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	    boolean unsigned_op 	= false;
 	    String opString 		= asgn.operator().toString();
 	    NodeFactory nf 			= tr.nodeFactory();
-	    X10TypeSystem_c xts 	= (X10TypeSystem_c) tr.typeSystem();
+	    X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) tr.typeSystem();
 	    Context context 		= tr.context();
 
 	    if (opString.equals(">>>=")) {
@@ -381,7 +393,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		} else {
 			assert (ctx.currentCode() instanceof FunctionDef);
 			
-			X10TypeSystem_c xts = (X10TypeSystem_c) tr.typeSystem();
+			X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) tr.typeSystem();
 			FunctionDef container = (FunctionDef)ctx.currentCode();
 			Type rType = container.returnType().get();
 			boolean rhsNeedsCast = !xts.typeDeepBaseEquals(rType, e.type(), ctx);
@@ -541,7 +553,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	
 	public void visit(X10Call_c n) {
 		X10FirmContext_c ctx 		= (X10FirmContext_c) tr.context();
-		X10TypeSystem_c xts 		= (X10TypeSystem_c) tr.typeSystem();
+		X10FirmTypeSystem_c xts 	= (X10FirmTypeSystem_c) tr.typeSystem();
 		X10MethodInstance mi 		= (X10MethodInstance) n.methodInstance();
 		Receiver target 			= n.target();
 		Type t 						= target.type();
@@ -651,7 +663,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	public void visit(StringLit_c n) {
 		X10FirmContext_c ctx 	= (X10FirmContext_c) tr.context();
-        X10TypeSystem_c xts 	= (X10TypeSystem_c) tr.typeSystem();
+		X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) tr.typeSystem();
         String str              = n.stringValue();
 	}
 
@@ -853,7 +865,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	public void visit(Binary_c n) {
 		X10FirmContext_c ctx 	= (X10FirmContext_c) tr.context();
-		X10TypeSystem_c xts 	= (X10TypeSystem_c) tr.typeSystem();
+		X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) tr.typeSystem();
 		String opString 		= n.operator().toString();
 		
 		// Boolean short-circuiting operators are ok
