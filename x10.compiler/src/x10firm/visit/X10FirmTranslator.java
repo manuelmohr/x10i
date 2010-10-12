@@ -28,7 +28,9 @@ import polyglot.frontend.Job;
 import polyglot.frontend.TargetFactory;
 import polyglot.main.Options;
 import polyglot.main.Report;
+import polyglot.types.ClassType;
 import polyglot.types.MemberDef;
+import polyglot.types.Name;
 import polyglot.types.TypeSystem;
 import polyglot.util.CodeWriter;
 import polyglot.util.ErrorInfo;
@@ -38,6 +40,7 @@ import polyglot.util.StdErrorQueue;
 import polyglot.visit.Translator;
 import x10.util.ClassifiedStream;
 import x10.util.StreamWrapper;
+import x10.visit.StaticNestedClassRemover;
 import x10cpp.X10CPPCompilerOptions;
 import x10cpp.debug.LineNumberMap;
 import x10cpp.postcompiler.CXXCommandBuilder;
@@ -60,6 +63,16 @@ public class X10FirmTranslator extends Translator {
 		assert (n != null);
 		super.print(parent, n, w);
 	}
+	
+	// returns the full class name of the given class type (with package name etc.) 
+    public static String getFullClassName(ClassType ct) {
+        String pkg = null;
+        if (ct.package_() != null)
+            pkg = ct.package_().fullName().toString();
+        // Remove static nested classes in the AST.
+        Name name = StaticNestedClassRemover.mangleName(ct.def());
+        return X10FirmTranslator.packagePath(pkg) + name.toString(); 
+    }
 	
 	public static final String postcompile = "postcompile";
 	

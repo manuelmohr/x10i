@@ -282,8 +282,6 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
 		//n.translate(w, tr);
 	}
 
-
-
     public void visit(TypeDecl_c n) {
         // do nothing
         sw.write(" /* " + n + " *" + "/ ");
@@ -1643,8 +1641,6 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
 		}
 	}
 
-
-
     public void visit(PackageNode_c n) {
         assert (false);
         sw.write(mangled_non_method_name(translateFQN(n.package_().get().fullName().toString())));
@@ -1653,7 +1649,6 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
     public void visit(Import_c n) {
         assert (false);
     }
-
 
     protected void processMain(X10ClassType container) {
         X10TypeSystem_c xts = (X10TypeSystem_c) container.typeSystem();
@@ -2810,6 +2805,16 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
 		Type t = target.type();
 		
 		X10MethodDef md = mi.x10Def();
+		
+		System.out.print(md.name().toString() + "  ");
+		List<LocalDef> formals = md.formalNames();
+		System.out.print("Formals size: " + formals.size()); 
+		for(LocalDef d : formals) {
+			System.out.print(d.name().toString() + " ");
+		}
+		System.out.println("");
+		
+		
 		if (mi.flags().isStatic()) {
 		    TypeNode tn =
 		        target instanceof TypeNode ?
@@ -4600,6 +4605,7 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Unary_c n) {
 		Unary_c.Operator operator = n.operator();
 		Expr expr = n.expr();
+		
 		if (operator == Unary_c.NEG && expr instanceof IntLit) {
 		    IntLit_c lit = (IntLit_c) expr;
 		    IntLit.Kind kind = (lit.kind() == X10IntLit_c.UINT) ? IntLit.INT : ((lit.kind() == X10IntLit_c.ULONG) ? IntLit.LONG : lit.kind());
@@ -4720,12 +4726,12 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
             String[] our_langs = getCurrentNativeStrings();
             for (String our_lang : our_langs) {
     	        List<Type> as = o.annotationsMatching(annotation);
-    	        System.out.println("CPP IMPL " + as); 
     	        for (Type at : as) {
     	            assertNumberOfInitializers(at, 2);
     	            String lang = getStringPropertyInit(at, 0);
     	            if (lang != null && lang.equals(our_lang)) {
     	                String lit = getStringPropertyInit(at, 1);
+    	                System.out.println("CPP IMPL " + lit); 
     	                return lit;
     	            }
     	        }
