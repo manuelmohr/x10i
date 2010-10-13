@@ -2,3 +2,6 @@
 *.o
 *.so
 *~
+.metadata/.plugins
+.metadata/.log
+.metadata/.lock
