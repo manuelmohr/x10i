@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<map>
-	<bundle bundleID="490" localization="OSGI-INF/l10n/bundle" name="X10 Common components" project="x10.common"/>
-	<bundle bundleID="491" localization="plugin" name="X10 compiler" project="x10.compiler" provider="rfuhrer@watson.ibm.com"/>
-	<bundle bundleID="492" localization="OSGI-INF/l10n/bundle" name="X10 runtime" project="x10.runtime" provider="rfuhrer@watson.ibm.com"/>
-	<bundle bundleID="493" localization="OSGI-INF/l10n/bundle" name="X10 Constraints" project="x10.constraints"/>
-</map>

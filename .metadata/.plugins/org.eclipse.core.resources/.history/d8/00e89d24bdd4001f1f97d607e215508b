@@ -1,9 +1,0 @@
-#include <iostream>
-
-using namespace std;
-
-int main(int argc, char **argv[])
-{
-	cout << "Dies ist ein Test" << endl;
-	return 0;
-}

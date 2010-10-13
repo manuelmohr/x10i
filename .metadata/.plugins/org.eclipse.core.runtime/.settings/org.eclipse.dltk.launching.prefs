@@ -1,3 +1,0 @@
-#Sun Oct 10 20:16:10 CEST 2010
-eclipse.preferences.version=1
-org.eclipse.dltk.launching.PREF_INTERPRETER_XML=<?xml version\="1.0" encoding\="UTF-8" standalone\="no"?>\n<interpreterSettings>\n<defaultInterpreter environment\="org.eclipse.dltk.core.environment.localEnvironment" id\="66,org.eclipse.dltk.internal.debug.ui.launcher.GenericRubyInstallType13,1286734569098" nature\="org.eclipse.dltk.ruby.core.nature"/>\n<interpreterType id\="org.eclipse.dltk.internal.debug.ui.launcher.GenericRubyInstallType">\n<interpreter environmentId\="org.eclipse.dltk.core.environment.localEnvironment" id\="1286734569098" name\="ruby1.9.1" path\="/usr/bin/ruby1.9.1"/>\n</interpreterType>\n</interpreterSettings>\n
