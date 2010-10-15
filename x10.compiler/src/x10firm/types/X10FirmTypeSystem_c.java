@@ -66,29 +66,16 @@ public class X10FirmTypeSystem_c extends X10TypeSystem_c {
     	assert(tcache.containsKey(tname)); 
     	return tcache.get(tname); 
     }
-    
-    private static firm.Type createPrimitiveType(firm.Mode mode) {
-    	return new firm.PrimitiveType(mode); 
-    }
 
     private void initPrimitiveType() {
-    	
-    	firm.Type x10_boolean = createPrimitiveType(getFirmMode(X10_BOOLEAN));
-    	firm.Type x10_char    = createPrimitiveType(getFirmMode(X10_CHAR));
-    	firm.Type x10_uint    = createPrimitiveType(getFirmMode(X10_UINT));
-    	firm.Type x10_int     = createPrimitiveType(getFirmMode(X10_INT));
-    	firm.Type x10_ulong   = createPrimitiveType(getFirmMode(X10_ULONG));
-    	firm.Type x10_long    = createPrimitiveType(getFirmMode(X10_LONG));
-    	firm.Type x10_float   = createPrimitiveType(getFirmMode(X10_FLOAT));
-    	firm.Type x10_double  = createPrimitiveType(getFirmMode(X10_DOUBLE));
-    	
-    	addType(X10_BOOLEAN, x10_boolean);
-    	addType(X10_UINT,    x10_uint);
-    	addType(X10_INT,     x10_int);
-    	addType(X10_ULONG,   x10_ulong);
-    	addType(X10_LONG,    x10_long);
-    	addType(X10_FLOAT,   x10_float);
-    	addType(X10_DOUBLE,  x10_double);
+    	addType(X10_BOOLEAN, new firm.PrimitiveType(getFirmMode(X10_BOOLEAN)));
+    	addType(X10_UINT,    new firm.PrimitiveType(getFirmMode(X10_UINT)));
+    	addType(X10_INT,     new firm.PrimitiveType(getFirmMode(X10_INT)));
+    	addType(X10_ULONG,   new firm.PrimitiveType(getFirmMode(X10_ULONG)));
+    	addType(X10_LONG,    new firm.PrimitiveType(getFirmMode(X10_LONG)));
+    	addType(X10_FLOAT,   new firm.PrimitiveType(getFirmMode(X10_FLOAT)));
+    	addType(X10_DOUBLE,  new firm.PrimitiveType(getFirmMode(X10_DOUBLE)));
+    	// TODO why is X10_CHAR missing?
     }
     
     public void declFirmClass(X10ClassDef cDef) {
