@@ -208,7 +208,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		if (dec.body() != null) {
 			if (!flags.isStatic()) {
 				// add local vars for closure realisation.
-				VarInstance ti = xts.localDef(Position.COMPILER_GENERATED, Flags.FINAL,
+				VarInstance<?> ti = xts.localDef(Position.COMPILER_GENERATED, Flags.FINAL,
 						Types.ref(container), Name.make(THIS)).asInstance();
 				ctx.addVariable(ti);
 			}
@@ -246,7 +246,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	    TypeSystem ts = tr.typeSystem();
 
 	    // add local vars for closure realisation.
-	    VarInstance ti = ts.localDef(Position.COMPILER_GENERATED, Flags.FINAL,
+	    VarInstance<?> ti = ts.localDef(Position.COMPILER_GENERATED, Flags.FINAL,
 	                                 Types.ref(container), Name.make(THIS)).asInstance();
 	    ctx.addVariable(ti);
 
