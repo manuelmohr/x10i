@@ -2,49 +2,27 @@ package x10firm.visit;
 
 import java.io.InputStreamReader;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
-import polyglot.ast.Assert;
-import polyglot.ast.Block;
-import polyglot.ast.Catch;
-import polyglot.ast.ClassDecl;
-import polyglot.ast.ClassMember;
-import polyglot.ast.ConstructorDecl;
-import polyglot.ast.FieldDecl;
-import polyglot.ast.For;
-import polyglot.ast.MethodDecl;
 import polyglot.ast.Node;
 import polyglot.ast.NodeFactory;
-import polyglot.ast.SourceCollection;
-import polyglot.ast.SourceFile;
-import polyglot.ast.Stmt;
-import polyglot.ast.SwitchBlock;
 import polyglot.frontend.Compiler;
-import polyglot.frontend.ExtensionInfo;
 import polyglot.frontend.Job;
 import polyglot.frontend.TargetFactory;
 import polyglot.main.Options;
 import polyglot.main.Report;
 import polyglot.types.ClassType;
-import polyglot.types.MemberDef;
 import polyglot.types.Name;
 import polyglot.types.TypeSystem;
 import polyglot.util.CodeWriter;
 import polyglot.util.ErrorInfo;
 import polyglot.util.ErrorQueue;
-import polyglot.util.InternalCompilerError;
-import polyglot.util.StdErrorQueue;
 import polyglot.visit.Translator;
-import x10.util.ClassifiedStream;
-import x10.util.StreamWrapper;
 import x10.visit.StaticNestedClassRemover;
 import x10cpp.X10CPPCompilerOptions;
-import x10cpp.debug.LineNumberMap;
 import x10cpp.postcompiler.CXXCommandBuilder;
-import x10cpp.types.X10CPPContext_c;
 
 public class X10FirmTranslator extends Translator {
 	public X10FirmTranslator(Job job, TypeSystem ts, NodeFactory nf, TargetFactory tf) {

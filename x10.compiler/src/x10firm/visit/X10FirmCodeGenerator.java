@@ -1,32 +1,24 @@
 package x10firm.visit;
 
 import static x10cpp.visit.ASTQuery.*;
-import static x10cpp.visit.Emitter.*;
 import static x10cpp.visit.SharedVarsMethods.*;
 
 import java.util.*;
 
-import firm.Firm;
 import firm.TargetValue;
 import x10firm.types.*;
 import polyglot.ast.*;
 import polyglot.types.*;
 import polyglot.util.*;
 import polyglot.visit.Translator;
-import x10.Configuration;
 import x10.ast.*;
 import x10.extension.*;
 import x10.types.*;
 import x10.types.checker.Converter;
-import x10.types.checker.PlaceChecker;
-import x10.util.*;
 import x10.visit.*;
 import x10cpp.types.X10CPPContext_c;
 import x10cpp.visit.ASTQuery;
 import x10cpp.visit.Emitter;
-import x10cpp.visit.SharedVarsMethods;
-import x10cpp.visit.StructMethodAnalyzer;
-import x10cpp.visit.X10CPPTranslator;
 import x10firm.NullCodeWriter;
 import x10firm.types.X10FirmContext_c;
 
@@ -281,7 +273,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	                }
 	            }
 	            if (call.arguments().size() > 0) {
-	                for(Expr e : (List<Expr>) call.arguments() )
+	                for(Expr e : call.arguments() )
 	                    dec.print(e, sw, tr);
 	            }
 	        } else if (query.isSyntheticOuterAccessor(s)) {
@@ -541,7 +533,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			if (alternative instanceof Block_c) {
 				Block_c block = (Block_c) alternative;
 				if (block.statements().size() == 1 && block.statements().get(0) instanceof If_c)
-					alternative = (Stmt) block.statements().get(0);
+					alternative = block.statements().get(0);
 			}
 			n.print(alternative, sw, tr);
 		}

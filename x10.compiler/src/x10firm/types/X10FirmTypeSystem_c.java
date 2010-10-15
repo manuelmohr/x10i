@@ -3,19 +3,13 @@ package x10firm.types;
 import java.util.HashMap;
 import java.util.Map;
 
-import firm.ClassType;
 import firm.Firm;
-import firm.Ident;
 import firm.Mode;
 
 import polyglot.types.Context;
-import polyglot.types.Name;
-import polyglot.types.PrimitiveType;
-import polyglot.types.Type;
 import x10.types.X10ClassDef;
 import x10.types.X10MethodDef;
 import x10.types.X10TypeSystem_c;
-import x10.visit.StaticNestedClassRemover;
 import x10firm.visit.X10FirmTranslator;
 
 public class X10FirmTypeSystem_c extends X10TypeSystem_c {
