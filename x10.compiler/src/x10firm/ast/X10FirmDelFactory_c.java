@@ -7,7 +7,8 @@ import x10firm.visit.X10FirmCodeGenerator;
 
 public class X10FirmDelFactory_c extends x10.ast.X10DelFactory_c {
 
-    protected X10DelegatingVisitor makeCodeGenerator(CodeWriter w, Translator tr) {
+    @Override
+	protected X10DelegatingVisitor makeCodeGenerator(CodeWriter w, Translator tr) {
     	// We don`t need the CodeWriter 
         return new X10FirmCodeGenerator(tr);
     }

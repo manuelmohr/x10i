@@ -18,27 +18,33 @@ import x10firm.visit.X10FirmTranslator;
 
 public class ExtensionInfo extends x10cpp.ExtensionInfo {
 	
+	@Override
 	public String compilerName() {
 		return "x10firm";
 	}
 
+	@Override
 	public polyglot.main.Version version() {
 		return new Version();
 	}
 
+	@Override
 	protected Options createOptions() {
 		return new X10FirmCompilerOptions(this);
 	}
 	
+	@Override
 	protected NodeFactory createNodeFactory() {
 		return new X10NodeFactory_c(this, new X10FirmExtFactory_c(), new X10FirmDelFactory_c()) { };
 	}
 	
 	// X10Firm-specific goals and scheduling
+	@Override
 	protected Scheduler createScheduler() {
 		return new X10FirmScheduler(this);
 	}
 	
+	@Override
 	protected TypeSystem createTypeSystem() {
 		return new X10FirmTypeSystem_c();
 	}
@@ -52,7 +58,8 @@ public class ExtensionInfo extends x10cpp.ExtensionInfo {
 		@Override
 		protected Goal PostCompiled() {
 		    return new PostCompiled(extInfo) {
-		        protected boolean invokePostCompiler(Options options, Compiler compiler, ErrorQueue eq) {
+		        @Override
+				protected boolean invokePostCompiler(Options options, Compiler compiler, ErrorQueue eq) {
 		        	return true;
 		        }
 		    }.intern(this);

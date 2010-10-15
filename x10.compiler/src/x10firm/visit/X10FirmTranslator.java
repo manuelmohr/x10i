@@ -37,6 +37,7 @@ public class X10FirmTranslator extends Translator {
 	}
 	
 	// delegate the print to the pretty printer
+	@Override
 	public void print(Node parent, Node n, CodeWriter w) {
 		assert (n != null);
 		super.print(parent, n, w);

@@ -93,6 +93,7 @@ public class X10FirmTypeSystem_c extends X10TypeSystem_c {
     	
     }
 	
+	@Override
 	public Context emptyContext() {
 		return new X10FirmContext_c(this);
 	}
