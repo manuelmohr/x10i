@@ -51,8 +51,8 @@ public class ExtensionInfo extends x10cpp.ExtensionInfo {
 	
 	// X10Firm job scheduler
 	public static class X10FirmScheduler extends x10cpp.ExtensionInfo.X10CPPScheduler {
-		protected X10FirmScheduler(ExtensionInfo extInfo) {
-			super(extInfo);
+		protected X10FirmScheduler(ExtensionInfo info) {
+			super(info);
 		}
 		// TODO: Add post compilation -> gen machine code from firm graph
 		@Override
