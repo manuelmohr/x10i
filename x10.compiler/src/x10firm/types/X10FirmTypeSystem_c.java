@@ -86,11 +86,11 @@ public class X10FirmTypeSystem_c extends X10TypeSystem_c {
     }
     
     public void declFirmMethod(X10MethodDef mDef) {
-    	
+    	// TODO: Implement me
     }
     
     public X10FirmTypeSystem_c() {
-    	
+    	// TODO: Implement me
     }
 	
 	@Override

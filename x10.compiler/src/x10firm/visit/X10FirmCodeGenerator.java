@@ -97,7 +97,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				}
 			}
 		}
-		catch (SemanticException e) {}
+		catch (SemanticException e) {
+			// TODO what now?
+		}
 		return null;
 	}
 
@@ -129,13 +131,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
     private void visitInterfaceBody(ClassBody_c n, X10FirmContext_c context,
             X10ClassType currentClass, X10ClassType superClass,
             X10TypeSystem xts) {
-    
+    	// TODO: Implement me
     }
     
     private void visitStructBody(ClassBody_c n, X10FirmContext_c context,
             X10ClassType currentClass, X10ClassType superClass,
             X10TypeSystem xts) {
-    	
+    	// TODO: Implement me
     }
     
     private void visitClassBody(ClassBody_c n, X10FirmContext_c context,
@@ -610,13 +612,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
     	            assertNumberOfInitializers(at, 2);
     	            String lang = getStringPropertyInit(at, 0);
     	            if (lang != null && lang.equals(our_lang)) {
-    	                String lit = getStringPropertyInit(at, 1);
+    	                assert(null != getStringPropertyInit(at, 1));
     	                return true;
     	            }
     	        }
             }
 	    }
-	    catch (SemanticException e) {}
+	    catch (SemanticException e) {
+	    	// TODO what now?
+	    }
 	    return false; 
 	}
 	
@@ -892,10 +896,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
+	@Override
 	public void visit(X10CanonicalTypeNode_c n) {
 		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
+	@Override
 	public void visit(X10Unary_c n) {
 		X10FirmContext_c ctx 	= (X10FirmContext_c) tr.context();
 	    Expr left 				= n.expr();
@@ -919,6 +925,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	    assert (false) : ("User-defined unary operators should have been desugared earier");
 	}
 
+	@Override
 	public void visit(Unary_c n) {
 		X10FirmContext_c ctx 		= (X10FirmContext_c) tr.context();
 		Unary_c.Operator operator 	= n.operator();

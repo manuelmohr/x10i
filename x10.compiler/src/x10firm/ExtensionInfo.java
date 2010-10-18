@@ -35,7 +35,9 @@ public class ExtensionInfo extends x10cpp.ExtensionInfo {
 	
 	@Override
 	protected NodeFactory createNodeFactory() {
-		return new X10NodeFactory_c(this, new X10FirmExtFactory_c(), new X10FirmDelFactory_c()) { };
+		return new X10NodeFactory_c(this, new X10FirmExtFactory_c(), new X10FirmDelFactory_c()) {
+			/* the constructor is protected, so we use this anonymous subclass */
+		};
 	}
 	
 	// X10Firm-specific goals and scheduling
