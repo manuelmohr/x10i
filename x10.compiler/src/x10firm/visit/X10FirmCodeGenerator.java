@@ -28,16 +28,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	protected final Translator tr;
 	
 	private firm.Construction con = null;
-	private firm.Graph graph 	  = null;
 
 	protected Emitter emitter;
 	protected ASTQuery query;
 	
-	public X10FirmCodeGenerator(Translator tr) {
+	public X10FirmCodeGenerator(Translator translator) {
 		this.sw 	 = new NullCodeWriter();
-		this.tr 	 = tr;
-		this.emitter = new Emitter(tr);
-		this.query   = new ASTQuery(tr);
+		this.tr 	 = translator;
+		this.emitter = new Emitter(translator);
+		this.query   = new ASTQuery(translator);
 	}
 	
 	private void output(String s) {
@@ -412,7 +411,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	    }
 	    
 	    asgn.printSubExpr(lhs, false, sw, tr);
-	    if (asgn.operator() != Assign_c.ASSIGN) {
+	    if (asgn.operator() != Assign.ASSIGN) {
 	        assert (false);
 	    }
 
@@ -595,16 +594,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return a;
 	}
 	
-	private static boolean needsNullCheck(Receiver e) {
-	    if (e instanceof X10CanonicalTypeNode_c)
-	        return false;
-	    if (e instanceof X10Special_c)
-	        return ((X10Special_c) e).qualifier() != null;
-	    if (e instanceof X10Cast_c)
-	        return needsNullCheck(((X10Cast_c) e).expr());
-	    return !X10TypeMixin.isNonNull(e.type());
-	}
-	
 	// possible native language annotations -> c++, java, cuda
 	private static String JAVA_NATIVE_STRING = "java"; 
     protected String[] getCurrentNativeStrings() { return new String[] {CPP_NATIVE_STRING, JAVA_NATIVE_STRING, CUDA_NATIVE_STRING}; }
@@ -733,9 +722,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(FloatLit_c n) {
 		firm.Mode mode = null;
 		
-		if (n.kind() == FloatLit_c.FLOAT)
+		if (n.kind() == FloatLit.FLOAT)
 			mode = X10FirmTypeSystem_c.getFirmMode(X10FirmTypeSystem_c.X10_FLOAT);
-		else if (n.kind() == FloatLit_c.DOUBLE)
+		else if (n.kind() == FloatLit.DOUBLE)
 			mode = X10FirmTypeSystem_c.getFirmMode(X10FirmTypeSystem_c.X10_DOUBLE);
 		else
 			throw new InternalCompilerError("Unrecognized FloatLit kind " + n.kind());
@@ -751,9 +740,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	    	mode = X10FirmTypeSystem_c.getFirmMode(X10FirmTypeSystem_c.X10_ULONG);
 	    } else if (n.kind() == X10IntLit_c.UINT) {
 	    	mode = X10FirmTypeSystem_c.getFirmMode(X10FirmTypeSystem_c.X10_UINT);
-	    } else if (n.kind() == IntLit_c.LONG) {
+	    } else if (n.kind() == IntLit.LONG) {
 	    	mode = X10FirmTypeSystem_c.getFirmMode(X10FirmTypeSystem_c.X10_LONG);
-	    } else if (n.kind() == IntLit_c.INT) {
+	    } else if (n.kind() == IntLit.INT) {
 	    	mode = X10FirmTypeSystem_c.getFirmMode(X10FirmTypeSystem_c.X10_INT);
 	    } else
 	        throw new InternalCompilerError("Unrecognized IntLit kind " + n.kind());
@@ -888,14 +877,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
     }
 
-    public void visit(X10Special_c n) {
+    @Override
+	public void visit(X10Special_c n) {
 		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
     }
 
-    public void visit(Closure_c n) {
+    @Override
+	public void visit(Closure_c n) {
 		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
     }
     
+	@Override
 	public void visit(ClosureCall_c c) {
 		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
