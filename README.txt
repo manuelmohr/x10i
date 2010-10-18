@@ -12,4 +12,14 @@ This repository tracks a whole Eclipse workspace, since we need to track five pr
 Now all projects should be imported into your Eclipse workspace.
 The inter-project relationships should already be set correctly.
 
+== Complete Build ==
+
+cd x10.dist
+ant
+
+== Usage ==
+
+After the build the x10.dist directory should hold a working x10 distribution.
+This means executables in bin/ and library files in lib/.
+For our Firm backend use bin/x10firm instead of bin/x10c or bin/x10c++.
 
