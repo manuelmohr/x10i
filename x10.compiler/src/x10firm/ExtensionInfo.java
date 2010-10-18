@@ -58,6 +58,7 @@ public class ExtensionInfo extends x10cpp.ExtensionInfo {
 		@Override
 		protected Goal PostCompiled() {
 		    return new PostCompiled(extInfo) {
+		    	private static final long serialVersionUID = 6627554599276926259L;
 		        @Override
 				protected boolean invokePostCompiler(Options options, Compiler compiler, ErrorQueue eq) {
 		        	return true;
