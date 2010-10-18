@@ -2,6 +2,7 @@
 *.o
 *.a
 *.so
+!x10.dist/lib/libfirm.so
 *~
 .metadata/.plugins
 .metadata/.log
