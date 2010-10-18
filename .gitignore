@@ -7,6 +7,16 @@
 .metadata/.log
 .metadata/.lock
 .metadata/.mylyn/
+
+x10.runtime/src-cpp/gen/x10/*/*.h
+x10.runtime/src-cpp/gen/x10/*/*.cc
+x10.runtime/src-cpp/gen/x10/util/concurrent/atomic/Fences.cc
+x10.runtime/src-cpp/gen/x10/*/*.inc
+x10.dist/include/x10/*/*.h
+x10.dist/include/x10/*/*.cc
+x10.dist/include/x10/*/*.inc
+x10.dist/lib/libx10.mft
+
 x10.compiler/classes/
 x10.dist/include/x10_x10rt_ActiveMessage.h
 x10.dist/include/x10_x10rt_X10RT.h
