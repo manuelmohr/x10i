@@ -22,6 +22,7 @@
 /x10.runtime/src-java/gen
 /x10.runtime/src-cpp/libx10.mft
 /x10.runtime/src-cpp/libx10.so
+/x10.runtime/src-cpp/bdwgc
 /x10.runtime/x10rt/lib/
 /x10.runtime/x10rt/include/pgasrt.h
 /x10.runtime/x10rt/include/pgasrt_config.h
