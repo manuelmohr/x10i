@@ -177,18 +177,16 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
     	assert false; 
     }
     
-    protected void processMain(X10ClassType container) {
-    	X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) container.typeSystem();
-    }
-    
 	@Override
 	public void visit(MethodDecl_c dec) {
 		X10FirmContext_c ctx 	= (X10FirmContext_c) tr.context();
 		X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) tr.typeSystem();
 		X10Flags flags 			= X10Flags.toX10Flags(dec.flags().flags());
 		
-		if (flags.isNative())
+		if (flags.isNative()) {
+			// TODO Firm must handle this!
 			return;
+		}
 		
 		X10MethodDef def 		= (X10MethodDef) dec.methodDef();
 		X10MethodInstance mi 	= (X10MethodInstance) def.asInstance();
@@ -196,16 +194,23 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		xts.declFirmMethod(def);
 		
+		String methodName = mi.name().toString();
+		
+		assert (con == null);
+		final int nResults = def.returnType() == null ? 0 : 1;
+		final int nParameters = def.typeParameters().size();
+		firm.MethodType type = new firm.MethodType(nParameters, nResults);
+		firm.Type global = firm.Program.getGlobalType();
+		firm.Entity mainEnt = new firm.Entity(global, methodName, type);
+		int n_vars = 1;
+		firm.Graph graph = new firm.Graph(mainEnt, n_vars);
+		con = new firm.Construction(graph);
+		
 		if ((container.x10Def().typeParameters().size() != 0) && flags.isStatic()) {
 			// handle static method decl. 
 			assert false; 
 			return;
 		}
-		
-		//if (query.isMainMethod(dec))
-		//    processMain(container);
-		
-		String methodName = mi.name().toString();
 
 		if (dec.body() != null) {
 			if (!flags.isStatic()) {
@@ -748,10 +753,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	    	mode = X10FirmTypeSystem_c.getFirmMode(X10FirmTypeSystem_c.X10_LONG);
 	    } else if (n.kind() == IntLit.INT) {
 	    	mode = X10FirmTypeSystem_c.getFirmMode(X10FirmTypeSystem_c.X10_INT);
-	    } else
+	    } else {
 	        throw new InternalCompilerError("Unrecognized IntLit kind " + n.kind());
+	    }
 	    
-	    con.newConst(new TargetValue(n.value(), mode)); 
+	    con.newConst(new TargetValue(n.value(), mode));
 	}
 
 	@Override
