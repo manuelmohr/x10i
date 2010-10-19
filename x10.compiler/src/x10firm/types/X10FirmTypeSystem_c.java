@@ -52,7 +52,7 @@ public class X10FirmTypeSystem_c extends X10TypeSystem_c {
     private static Map<String, firm.Type> tcache = new HashMap<String, firm.Type>();
     
     private void addType(String tname, firm.Type type) {
-    	assert(tcache.containsKey(tname));
+    	assert(!tcache.containsKey(tname));
     	tcache.put(tname, type); 
     }
     
