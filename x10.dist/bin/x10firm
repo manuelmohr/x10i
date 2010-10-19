@@ -1,26 +1,29 @@
 #!/usr/bin/env bash
 
-# If X10_FROM_SRC is set in your environment, then
-# this script will default to using paths that assume
-# the standard X10 developer setup and a desire to build from source.
-# If it is not set, then the script will use paths that are
-# appropriate for a pre-built distribution of x10.
+# determine toplevel directory of x10 installation
+ME=`readlink -f "$0"`
+MYDIR=`dirname "$ME"`
+X10_TOP="${MYDIR}/../.."
 
-UNAME=`uname -s`
-FILE_SEP='/'; if [[ "$UNAME" = CYGWIN* ]]; then FILE_SEP='\\'; fi
-PATH_SEP=':'; if [[ "$UNAME" = CYGWIN* ]]; then PATH_SEP=';'; fi
+# prepare classpath
+classpath=""
+append_classpath() {
+	if [ -n "${classpath}" ]; then
+		classpath="${classpath}:$1"
+	else
+		classpath="$1"
+	fi
+}
+append_classpath "${X10_TOP}/x10.compiler/classes"
+append_classpath "${X10_TOP}/x10.runtime/classes/"
+append_classpath "${X10_TOP}/x10.common/classes"
+append_classpath "${X10_TOP}/x10.constraints/classes"
+append_classpath "${X10_TOP}/x10.dist/lib/lpg.jar"
+append_classpath "${X10_TOP}/x10.compiler/lib/jna.jar"
+append_classpath "${X10_TOP}/x10.compiler/lib/JFirm.jar"
 
-prog=$(readlink "$0" 2>&1)
-[ $? -eq 127 -o "$prog" = "" ] && prog="$0"
-export X10_DIST="$(cd "$(dirname "$prog")/.." && pwd)"
-if [[ "$UNAME" = CYGWIN* ]]; then X10_DIST="$(cygpath -aw "$X10_DIST")"; fi
-
-[ -z "$X10SOURCES" ] && export X10SOURCES="${X10_DIST}/lib/x10.jar"
-
-export CP_OVERRIDE="${X10_DIST}${FILE_SEP}lib${FILE_SEP}x10c.jar${PATH_SEP}${X10_DIST}${FILE_SEP}classes${PATH_SEP}"
-export DEXT="x10firm.ExtensionInfo"
-
-JAVACFLAGS="-J'-ea' -J'-Djna.library.path=${X10_DIST}${FILE_SEP}lib'"
-
-exec "${X10_DIST}/bin/x10c" ${JAVACFLAGS} "$@"
-
+# Execute compiler
+java_args="$java_args -Djna.library.path=${X10_TOP}/x10.dist/lib"
+args="-extclass x10firm.ExtensionInfo -sourcepath ${X10_TOP}/x10.dist/lib/x10.jar"
+command="java -Xmx512m -ea -classpath ${classpath} ${java_args} polyglot.main.Main"
+$command $args "$@"
