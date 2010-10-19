@@ -16,7 +16,6 @@ import x10.extension.*;
 import x10.types.*;
 import x10.types.checker.Converter;
 import x10.visit.*;
-import x10cpp.types.X10CPPContext_c;
 import x10cpp.visit.ASTQuery;
 import x10cpp.visit.Emitter;
 import x10firm.NullCodeWriter;
@@ -45,8 +44,19 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	
 	@Override
 	public void visit(Node n) {
-		X10CPPContext_c context = (X10CPPContext_c) tr.context();
-
+		/* X10DelegatingVisitor does not handle all node types,
+		 * thus we need to dispatch the rest here. */
+		if (n instanceof X10ClassDecl_c) {
+			visit((X10ClassDecl_c) n);
+			return;
+		} else if (n instanceof X10SourceFile_c) {
+			X10SourceFile_c sf = (X10SourceFile_c) n;
+			for(TopLevelDecl top_level_declaration : sf.decls()) {
+				visit(top_level_declaration);
+			}
+			return;
+		}
+		
 		tr.job().compiler().errorQueue().enqueue(ErrorInfo.SEMANTIC_ERROR,
 				"Unhandled node type: "+n.getClass(), n.position());
 	}
