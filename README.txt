@@ -1,8 +1,12 @@
 This repository tracks a whole Eclipse workspace, since we need to track five projects at once.
 
+== Prerequesties ==
+
+* You should have eclipse 3.6.X (later is probably ok too)
+
 == Eclipse Import ==
 
-1. point your Eclipse workspace to this directory
+1. It's probably best to create a new empty workspace for this.
 2. click "File" -> "Import ..."
 3. select "General" -> "Existing projects into workspace"
 4. select current workspace as root directory (click "browse" and "ok" should be enough)
