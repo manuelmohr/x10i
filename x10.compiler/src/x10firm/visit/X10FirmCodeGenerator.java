@@ -146,7 +146,6 @@ import x10firm.types.X10FirmTypeSystem_c;
 import firm.TargetValue;
 
 public class X10FirmCodeGenerator extends X10DelegatingVisitor {
-	
 	protected final CodeWriter sw;
 	protected final Translator tr;
 	
@@ -154,6 +153,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	protected Emitter emitter;
 	protected ASTQuery query;
+	
+	/** The method the current Firm graph is constructed for */
+	private X10MethodDef current_method;
 	
 	public X10FirmCodeGenerator(Translator translator) {
 		this.sw 	 = new NullCodeWriter();
@@ -308,7 +310,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
     
 	@Override
 	public void visit(MethodDecl_c dec) {
-		X10FirmContext_c ctx 	= (X10FirmContext_c) tr.context();
+		X10FirmContext_c context 	= (X10FirmContext_c) tr.context();
 		X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) tr.typeSystem();
 		X10Flags flags 			= X10Flags.toX10Flags(dec.flags().flags());
 		
@@ -321,6 +323,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		X10MethodInstance mi 	= (X10MethodInstance) def.asInstance();
 		X10ClassType container 	= (X10ClassType) mi.container();
 		
+		current_method = def; // remember globally
+
 		xts.declFirmMethod(def);
 		
 		String methodName = mi.name().toString();
@@ -346,7 +350,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				// add local vars for closure realisation.
 				VarInstance<?> ti = xts.localDef(Position.COMPILER_GENERATED, Flags.FINAL,
 						Types.ref(container), Name.make(THIS)).asInstance();
-				ctx.addVariable(ti);
+				context.addVariable(ti);
 			}
 			visitAppropriate(dec.body());
 		} else {
@@ -555,11 +559,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Expr e = ret.expr();
 		if (e == null) {
 			return;
-		} else {
-			assert (ctx.currentCode() instanceof FunctionDef);
-			
+		} else {			
 			X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) tr.typeSystem();
-			FunctionDef container = (FunctionDef)ctx.currentCode();
+			FunctionDef container = current_method;
 			Type rType = container.returnType().get();
 			boolean rhsNeedsCast = !xts.typeDeepBaseEquals(rType, e.type(), ctx);
 			
