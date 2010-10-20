@@ -865,7 +865,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			throw new InternalCompilerError("Unrecognized IntLit kind " + n.kind());
 		}
 
-		con.newConst(new TargetValue(n.value(), mode));
+		return_node = con.newConst(new TargetValue(n.value(), mode));
 	}
 
 	@Override
