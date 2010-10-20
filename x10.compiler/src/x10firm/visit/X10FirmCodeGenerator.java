@@ -72,7 +72,6 @@ import polyglot.ast.Unary_c;
 import polyglot.ast.While_c;
 import polyglot.types.Context;
 import polyglot.types.Flags;
-import polyglot.types.FunctionDef;
 import polyglot.types.LocalInstance;
 import polyglot.types.Name;
 import polyglot.types.QName;
@@ -150,12 +149,16 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	protected final Translator tr;
 	
 	private firm.Construction con = null;
+	private firm.Graph current_graph;
 
 	protected Emitter emitter;
 	protected ASTQuery query;
 	
 	/** The method the current Firm graph is constructed for */
 	private X10MethodDef current_method;
+	
+	/** To return Firm nodes for constructing expressions */
+	private firm.nodes.Node return_node;
 	
 	public X10FirmCodeGenerator(Translator translator) {
 		this.sw 	 = new NullCodeWriter();
@@ -336,8 +339,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		firm.Type global = firm.Program.getGlobalType();
 		firm.Entity mainEnt = new firm.Entity(global, methodName, type);
 		int n_vars = 1;
-		firm.Graph graph = new firm.Graph(mainEnt, n_vars);
-		con = new firm.Construction(graph);
+		current_graph = new firm.Graph(mainEnt, n_vars);
+		con = new firm.Construction(current_graph);
 		
 		if ((container.x10Def().typeParameters().size() != 0) && flags.isStatic()) {
 			// handle static method decl. 
@@ -363,7 +366,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			}
 		}
 		
-		firm.Dump.dumpGraph(graph, methodName);
+		firm.Dump.dumpGraph(current_graph, methodName);
 		current_method = null; // un-remember globally
 	}
 
@@ -557,24 +560,26 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Return_c ret) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
-		
+		firm.nodes.Node[] returned_values = new firm.nodes.Node[1];
 		Expr e = ret.expr();
-		if (e == null) {
-			return;
-		} else {			
+		if (e != null) { /** return an expression value */
+			/* TODO cast?
 			X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) tr.typeSystem();
 			FunctionDef container = current_method;
 			Type rType = container.returnType().get();
 			boolean rhsNeedsCast = !xts.typeDeepBaseEquals(rType, e.type(), ctx);
+			*/
 			
-			if (rhsNeedsCast) {
-				String toCast = chevrons(Emitter.translateType(rType, true));
-			    // Cast is needed to ensure conversion/autoboxing.
-			}
-
 			visitAppropriate(e);
+			assert (return_node != null);
+			returned_values[0] = return_node;
 		}
+		
+		firm.nodes.Node retn = con.newReturn(con.getCurrentMem(), returned_values);
+		
+		/* for error detection */
+		current_graph.getEndBlock().addPred(retn);
+		con.setCurrentBlock(null);
 	}
 
 	@Override
