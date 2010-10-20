@@ -163,10 +163,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		this.query   = new ASTQuery(translator);
 	}
 	
-	private void output(String s) {
-		System.out.println(s);
-	}
-	
 	@Override
 	public void visit(Node n) {
 		/* X10DelegatingVisitor does not handle all node types,
@@ -188,19 +184,35 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
     @Override
 	public void visit(TypeDecl_c n) {
-        // do nothing
-        output(" /* " + n + " *" + "/ ");
     }
 
     @Override
 	public void visit(LocalTypeDef_c n) {
-        // do nothing
-        output(" /* " + n + " *" + "/ ");
     }
 
 	@Override
 	public void visit(X10ClassDecl_c n) {
-		processClass(n);
+		X10ClassDef def 			= (X10ClassDef) n.classDef();
+		X10FirmTypeSystem_c xts 	= (X10FirmTypeSystem_c) tr.typeSystem();
+		boolean isStruct 			= xts.isStructType(def.asType());
+		//X10Ext ext 					= (X10Ext) n.ext();
+		ClassBody_c body            = (ClassBody_c) n.body();
+		
+		// TODO: how do we treat native rep classes ?
+		assert (!def.isNested()) : ("Nested class alert!");
+		
+		// decl a new FirmClassType
+		if(!isStruct)
+			xts.declFirmClass(def);
+		else
+			xts.declFirmStruct(def); 
+		
+		// visit the node children (class body)
+		List<ClassMember> members 	= body.members();
+		
+		for (ClassMember member : members) {
+			visitAppropriate(member);
+		}
 	}
 	
 	// returns the first argument in a native rep
@@ -239,11 +251,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	void processClass(X10ClassDecl_c n) {
-		X10FirmContext_c context 	= (X10FirmContext_c) tr.context();
 		X10ClassDef def 			= (X10ClassDef) n.classDef();
 		X10FirmTypeSystem_c xts 	= (X10FirmTypeSystem_c) tr.typeSystem();
         boolean isStruct 			= xts.isStructType(def.asType());
-        X10Ext ext 					= (X10Ext) n.ext();
+        //X10Ext ext 					= (X10Ext) n.ext();
+        ClassBody_c body            = (ClassBody_c) n.body();
         
         // TODO: how do we treat native rep classes ?
         assert (!def.isNested()) : ("Nested class alert!");
@@ -254,8 +266,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
         else
         	xts.declFirmStruct(def); 
         
-        // visit the node children (class body) 
-        n.print(n.body(), sw, tr);
+        // visit the node children (class body)
+		List<ClassMember> members 	= body.members();
+		
+		for (ClassMember member : members) {
+			visitAppropriate(member);
+		}
 	}
 	
 	@Override
@@ -263,42 +279,21 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		assert (false) : ("Local classes should have been removed by a separate pass");
 	}
 	
-    private void visitInterfaceBody(ClassBody_c n, X10FirmContext_c context,
-            X10ClassType currentClass, X10ClassType superClass,
-            X10TypeSystem xts) {
-    	// TODO: Implement me
-    }
-    
-    private void visitStructBody(ClassBody_c n, X10FirmContext_c context,
-            X10ClassType currentClass, X10ClassType superClass,
-            X10TypeSystem xts) {
-    	// TODO: Implement me
-    }
-    
-    private void visitClassBody(ClassBody_c n, X10FirmContext_c context,
-            X10ClassType currentClass, X10ClassType superClass,
-            X10TypeSystem xts) {
-
-    	X10FirmContext_c ctx 		= (X10FirmContext_c)tr.context();
-        List<ClassMember> members 	= n.members();
-
-        for (ClassMember member : members)
-           n.printBlock(member, sw, tr);
-    }
-	
     @Override
 	public void visit(ClassBody_c n) {
         X10FirmContext_c ctx	 	= (X10FirmContext_c) tr.context();
         X10ClassType currentClass 	= (X10ClassType) ctx.currentClass();
-        X10ClassType superClass 	= (X10ClassType) X10TypeMixin.baseType(currentClass.superClass());
-        X10TypeSystem xts 			= (X10TypeSystem) tr.typeSystem();
+        //X10ClassType superClass 	= (X10ClassType) X10TypeMixin.baseType(currentClass.superClass());
+        //X10TypeSystem xts 			= (X10TypeSystem) tr.typeSystem();
         
         if (currentClass.flags().isInterface()) {
-            visitInterfaceBody(n, ctx, currentClass, superClass, xts);
+        	// TODO
         } else if (currentClass.isX10Struct()) {
-            visitStructBody(n, ctx, currentClass, superClass, xts);
-        } else {
-            visitClassBody(n, ctx, currentClass, superClass, xts);
+        	// TODO
+        } else {			
+			for (ClassMember member : n.members()) {
+				visitAppropriate(member);
+			}
         }
     }
 
@@ -354,7 +349,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 						Types.ref(container), Name.make(THIS)).asInstance();
 				ctx.addVariable(ti);
 			}
-			dec.printSubStmt(dec.body(), sw, tr);
+			visitAppropriate(dec.body());
 		} else {
 			// Define property getter methods.
 			if (flags.isProperty() && flags.isAbstract() && mi.formalTypes().size() == 0 && mi.typeParameters().size() == 0) {
@@ -398,7 +393,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	    // Synthetic fields must be initialized before everything else
 	    for (Stmt s : body.statements()) {
 	        if (query.isSyntheticOuterAccessor(s)) {
-	            dec.print(s, sw, tr); 
+	        	visitAppropriate(s); 
 	        }
 	    }
 
@@ -425,7 +420,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	            }
 	            if (call.arguments().size() > 0) {
 	                for(Expr e : call.arguments() )
-	                    dec.print(e, sw, tr);
+	                	visitAppropriate(e);
 	            }
 	        } else if (query.isSyntheticOuterAccessor(s)) {
 	            // we did synthetic field initialisation earlier
@@ -461,7 +456,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	    // Ignore the initializer -- this will have been done in extractInits/extractStaticInits
 	    // FIXME: the above breaks switch constants!
 	    if (isStatic) {
-	    	dec.print(dec.init(), sw, tr);
+	    	visitAppropriate(dec.init());
 	    }
 	    String container = declaringClass.isX10Struct() ? Emitter.structMethodClass(declaringClass, true, true) : 
 	    	Emitter.translateType(dec.fieldDef().asInstance().container());
@@ -491,17 +486,19 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Switch_c n) {
 		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 		
-	    n.print(n.expr(), sw, tr);
-	    for(SwitchElement s : n.elements())
-	    	n.print(s, sw, tr);
+		visitAppropriate(n.expr());
+	    for(SwitchElement s : n.elements()) {
+	    	visitAppropriate(s);
+	    }
 	}
 
 	@Override
 	public void visit(SwitchBlock_c n) {
 		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 		
-		for(Stmt s : n.statements())
-			n.print(s, sw, tr);
+		for(Stmt s : n.statements()) {
+			visitAppropriate(s);
+		}
 	}
 
 	@Override
@@ -515,7 +512,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			if (n.expr() instanceof Field_c && n.expr().isConstant()) {
 				// handle constant case expr. 
 			} else {
-				n.print(n.expr(), sw, tr);
+				visitAppropriate(n.expr());
 			}
 		}
 	}
@@ -587,7 +584,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			    // Cast is needed to ensure conversion/autoboxing.
 			}
 
-			ret.print(e, sw, tr);
+			visitAppropriate(e);
 		}
 	}
 
@@ -626,7 +623,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	        	String toCast = chevrons(Emitter.translateType(aType, true));
 	            // Cast is needed to ensure conversion/autoboxing.
 	        }
-	        dec.print(initexpr, sw, tr);
+	        visitAppropriate(initexpr);
 	    }
 	}
 
@@ -635,7 +632,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		List<Stmt> stmts = b.statements();
 		
 		for(Stmt s : stmts) {
-			b.printBlock(s, sw, tr);
+			visitAppropriate(s);
 		}
 	}
 
@@ -643,9 +640,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(StmtSeq_c n) {
 	    List<Stmt> stmts = n.statements();
 
-	    output("In StmtSeq_c"); 
 	    for (Stmt s : stmts)
-	        n.printBlock(s, sw, tr);
+	    	visitAppropriate(s);
 	}
 
 	@Override
@@ -654,12 +650,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	    List<Stmt> stmts = n.statements();
 	    
 	    for (Stmt stmt : stmts)
-	        n.printBlock(stmt, sw, tr);
+	    	visitAppropriate(stmt);
 	    
 	    // evaluate the stmt expr
 	    Expr e = n.result();
 	    if (e != null)
-	        n.print(e, sw, tr);
+	    	visitAppropriate(e);
 	}
 
 	@Override
@@ -676,28 +672,28 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	    if (!(body instanceof Block_c))
 	        body = tr.nodeFactory().Block(body.position(), body);
 
-	    n.print(body, sw, tr);
-	    n.printBlock(n.cond(), sw, tr);
+	    visitAppropriate(body);
+	    visitAppropriate(n.cond());
 	}
 
 	@Override
 	public void visit(While_c n) {
 		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 		
-	    n.printBlock(n.cond(), sw, tr);
+		visitAppropriate(n.cond());
 	    Stmt body = n.body();
 	    if (!(body instanceof Block_c))
 	        body = tr.nodeFactory().Block(body.position(), body);
 
-	    n.print(body, sw, tr);
+	    visitAppropriate(body);
 	}
 
 	@Override
 	public void visit(If_c n) {
 		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 
-		n.printBlock(n.cond(), sw, tr);
-		n.print(n.consequent(), sw, tr);
+		visitAppropriate(n.cond());
+		visitAppropriate(n.consequent());
 		
 		if (n.alternative() != null) {
 			// else block 
@@ -707,7 +703,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				if (block.statements().size() == 1 && block.statements().get(0) instanceof If_c)
 					alternative = block.statements().get(0);
 			}
-			n.print(alternative, sw, tr);
+			visitAppropriate(alternative);
 		}
 	}
 
@@ -720,7 +716,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Eval_c n) {
 		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 		
-		n.print(n.expr(), sw, tr);
+		visitAppropriate(n.expr());
 	}
 	
 	private Expr cast(Expr a, Type fType) {
