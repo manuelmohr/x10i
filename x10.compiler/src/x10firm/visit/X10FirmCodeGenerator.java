@@ -362,6 +362,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				}
 			}
 		}
+		
+		firm.Dump.dumpGraph(graph, methodName);
+		current_method = null; // un-remember globally
 	}
 
 	@Override
