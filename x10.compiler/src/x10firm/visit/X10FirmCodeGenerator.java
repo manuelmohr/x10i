@@ -135,7 +135,6 @@ import x10.types.X10FieldInstance;
 import x10.types.X10Flags;
 import x10.types.X10MethodDef;
 import x10.types.X10MethodInstance;
-import x10.types.X10TypeMixin;
 import x10.types.X10TypeSystem;
 import x10.types.checker.Converter;
 import x10.visit.X10DelegatingVisitor;
@@ -443,7 +442,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(FieldDecl_c dec) {
-		X10FirmContext_c ctx 			= (X10FirmContext_c) tr.context();
 	    X10ClassType declaringClass 	= (X10ClassType)dec.fieldDef().asInstance().container();
 	    
 	    boolean isStatic = dec.flags().flags().isStatic();
@@ -464,28 +462,22 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	
 	@Override
 	public void visit(PropertyDecl_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
 	@Override
 	public void visit(Initializer_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 	
     @Override
 	public void visit(AssignPropertyBody_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
     }
 
 	@Override
 	public void visit(Assert_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
 	@Override
 	public void visit(Switch_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
-		
 		visitAppropriate(n.expr());
 	    for(SwitchElement s : n.elements()) {
 	    	visitAppropriate(s);
@@ -493,9 +485,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	@Override
-	public void visit(SwitchBlock_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
-		
+	public void visit(SwitchBlock_c n) {		
 		for(Stmt s : n.statements()) {
 			visitAppropriate(s);
 		}
@@ -503,8 +493,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Case_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
-		
 		if (n.expr() == null) {
 			// default case: 
 			
@@ -519,18 +507,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Branch_c br) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 	
 	@Override
 	public void visit(Labeled_c label) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
 	@Override
 	public void visit(Assign_c asgn) {
-		X10FirmContext_c ctx 	= (X10FirmContext_c) tr.context();
-		
 	    boolean unsigned_op 	= false;
 	    String opString 		= asgn.operator().toString();
 	    NodeFactory nf 			= tr.nodeFactory();
@@ -590,7 +574,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Formal_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
 	@Override
@@ -660,14 +643,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(For_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 		assert false;
 	}
 
 	@Override
 	public void visit(Do_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
-		
 	    Stmt body = n.body();
 	    if (!(body instanceof Block_c))
 	        body = tr.nodeFactory().Block(body.position(), body);
@@ -678,8 +658,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(While_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
-		
 		visitAppropriate(n.cond());
 	    Stmt body = n.body();
 	    if (!(body instanceof Block_c))
@@ -690,8 +668,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(If_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
-
 		visitAppropriate(n.cond());
 		visitAppropriate(n.consequent());
 		
@@ -709,13 +685,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Empty_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
 	@Override
 	public void visit(Eval_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
-		
 		visitAppropriate(n.expr());
 	}
 	
@@ -825,17 +798,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(RegionMaker_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
 	@Override
 	public void visit(ConstantDistMaker_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
 	@Override
 	public void visit(Field_c n) {
-		X10FirmContext_c ctx 	= (X10FirmContext_c) tr.context();
 		Receiver target 		= n.target();
 		Type t 					= target.type();
 		X10TypeSystem xts 		= (X10TypeSystem) t.typeSystem();
@@ -847,7 +817,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Local_c n) {
-		X10FirmContext_c ctx 	= (X10FirmContext_c) tr.context();
 		LocalInstance var 		= n.localInstance();
 		
 		String name = var.name().toString();
@@ -855,7 +824,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(New_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
 	@Override
@@ -874,7 +842,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(IntLit_c n) {
-		
 	    firm.Mode mode = null; 
 	    if (n.kind() == X10IntLit_c.ULONG) {
 	    	mode = X10FirmTypeSystem_c.getFirmMode(X10FirmTypeSystem_c.X10_ULONG);
@@ -893,19 +860,16 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(NullLit_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
 	@Override
 	public void visit(StringLit_c n) {
-		X10FirmContext_c ctx 	= (X10FirmContext_c) tr.context();
 		X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) tr.typeSystem();
         String str              = n.stringValue();
 	}
 
 	@Override
 	public void visit(CharLit_c lit) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 		char val 			 = lit.charValue(); 
 	}
 
@@ -918,89 +882,71 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Id_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 		String name          = n.id().toString();
 	}
 
 	@Override
 	public void visit(X10Cast_c c) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
 	@Override
 	public void visit(SubtypeTest_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
 	@Override
 	public void visit(X10Instanceof_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
 	@Override
 	public void visit(Throw_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
 	@Override
 	public void visit(Try_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
 	@Override
 	public void visit(Catch_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
 	@Override
 	public void visit(Atomic_c a) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
 	@Override
 	public void visit(Await_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
 	@Override
 	public void visit(Next_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
 	@Override
 	public void visit(ForLoop_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 	
     @Override
 	public void visit(ForEach_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
     }
 
     @Override
 	public void visit(AtEach_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
     }
 
     @Override
 	public void visit(Finish_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
     }
 
     @Override
 	public void visit(ArrayAccess_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
     }
 
     @Override
 	public void visit(ParExpr_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
     }
 
     @Override
-	public void visit(Conditional_c n) {
-        X10FirmContext_c context = (X10FirmContext_c) tr.context();
-    
+	public void visit(Conditional_c n) {    
         n.printSubExpr(n.cond(), false, sw, tr);
         String type = Emitter.translateType(n.type(), true);
         
@@ -1010,37 +956,36 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
     @Override
 	public void visit(Here_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
+		
     }
 
     @Override
 	public void visit(Async_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
+		
     }
 
     @Override
 	public void visit(X10Special_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
+		
     }
 
     @Override
 	public void visit(Closure_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
+		
     }
     
 	@Override
 	public void visit(ClosureCall_c c) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
+		
 	}
 
 	@Override
 	public void visit(X10CanonicalTypeNode_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
+		
 	}
 
 	@Override
 	public void visit(X10Unary_c n) {
-		X10FirmContext_c ctx 	= (X10FirmContext_c) tr.context();
 	    Expr left 				= n.expr();
 	    Type l 					= left.type();
 	    X10TypeSystem xts 		= (X10TypeSystem) tr.typeSystem();
@@ -1064,11 +1009,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Unary_c n) {
-		X10FirmContext_c ctx 		= (X10FirmContext_c) tr.context();
 		Unary_c.Operator operator 	= n.operator();
 		Expr expr 					= n.expr();
 		
-		if (operator == Unary_c.NEG && expr instanceof IntLit) {
+		if (operator == Unary.NEG && expr instanceof IntLit) {
 		    IntLit_c lit = (IntLit_c) expr;
 		    IntLit.Kind kind = (lit.kind() == X10IntLit_c.UINT) ? IntLit.INT : ((lit.kind() == X10IntLit_c.ULONG) ? IntLit.LONG : lit.kind());
 		    n.printSubExpr(lit.value(-lit.longValue()).kind(kind), true, sw, tr);
@@ -1081,6 +1025,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 	}
 
+	@Override
 	public void visit(X10Binary_c n) {
 		X10FirmContext_c ctx 	= (X10FirmContext_c) tr.context();
 	    Expr left 				= n.left();
@@ -1124,8 +1069,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	    assert (false) : ("User-defined binary operators should have been desugared earier");
 	}
 
+	@Override
 	public void visit(Binary_c n) {
-		X10FirmContext_c ctx 	= (X10FirmContext_c) tr.context();
 		X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) tr.typeSystem();
 		String opString 		= n.operator().toString();
 		
@@ -1137,31 +1082,37 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		n.printSubExpr(n.right(), false, sw, tr);
 	}
 
+	@Override
 	public void visit(ArrayInit_c n) {
 		throw new InternalCompilerError("Should not be invoked");
 	}
 
+	@Override
 	public void visit(SettableAssign_c n) {
 		assert (false) : ("Function assign should have been desugared earlier");
 	}
 	
+	@Override
 	public void visit(Tuple_c c) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 	}
 
+	@Override
 	public void visit(When_c n) {
         assert (false) : ("When should have been desugared earlier");
 	}
 
-    public void visit(Future_c n) {
+    @Override
+	public void visit(Future_c n) {
         assert (false) : ("Future should have been desugared earlier");
     }
 
-    public void visit(AtStmt_c n) {
+    @Override
+	public void visit(AtStmt_c n) {
         assert (false) : ("At statements are deprecated");
     }
 
-    public void visit(AtExpr_c n) {
+    @Override
+	public void visit(AtExpr_c n) {
         assert (false) : ("At expression should have been desugared earlier");
     }
 }
