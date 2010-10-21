@@ -75,6 +75,7 @@ import polyglot.types.Flags;
 import polyglot.types.LocalInstance;
 import polyglot.types.Name;
 import polyglot.types.QName;
+import polyglot.types.Ref;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.types.TypeSystem;
@@ -124,6 +125,7 @@ import x10.ast.X10SourceFile_c;
 import x10.ast.X10Special_c;
 import x10.ast.X10Unary_c;
 import x10.extension.X10Ext;
+import x10.types.FunctionType;
 import x10.types.ParameterType;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
@@ -134,6 +136,10 @@ import x10.types.X10FieldInstance;
 import x10.types.X10Flags;
 import x10.types.X10MethodDef;
 import x10.types.X10MethodInstance;
+import x10.types.X10NamedType;
+import x10.types.X10NullType;
+import x10.types.X10PrimitiveType;
+import x10.types.X10Struct;
 import x10.types.X10TypeSystem;
 import x10.types.checker.Converter;
 import x10.visit.X10DelegatingVisitor;
@@ -153,9 +159,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	protected Emitter emitter;
 	protected ASTQuery query;
-
-	/** The method the current Firm graph is constructed for */
-	private X10MethodDef current_method;
 
 	/** To return Firm nodes for constructing expressions */
 	private firm.nodes.Node return_node;
@@ -326,16 +329,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		X10MethodInstance mi		= (X10MethodInstance) def.asInstance();
 		X10ClassType container	= (X10ClassType) mi.container();
 
-		current_method = def; // remember globally
-
 		xts.declFirmMethod(def);
 
 		String methodName = mi.name().toString();
 
 		assert (con == null);
-		final int nResults = def.returnType() == null ? 0 : 1;
-		final int nParameters = def.typeParameters().size();
-		firm.MethodType type = new firm.MethodType(nParameters, nResults);
+		firm.MethodType type = createMethodType(def);
 		firm.Type global = firm.Program.getGlobalType();
 		firm.Entity mainEnt = new firm.Entity(global, methodName, type);
 		int n_vars = 1;
@@ -366,8 +365,55 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			}
 		}
 
-		firm.Dump.dumpGraph(current_graph, methodName);
-		current_method = null; // un-remember globally
+		firm.Dump.dumpGraph(current_graph, "-fresh");
+	}
+
+	/**
+	 * @param def X10 Method Definition
+	 * @return corresponding Firm method type
+	 */
+	private firm.MethodType createMethodType(X10MethodDef def) {
+		List<Ref<? extends Type>> params = def.typeParameters();
+		final int nResults = def.returnType() == null ? 0 : 1;
+		final int nParameters = params.size();
+		// TODO 'this' parameter already included?
+		firm.MethodType type = new firm.MethodType(nParameters, nResults);
+		
+		/* set parameter types */
+		for (int i=0; i<nParameters; i++) {
+			Ref<? extends Type> p = params.get(i);
+			type.setParamType(i, asFirmType(p.get()));
+		}
+		
+		if (nResults == 1) {
+			type.setResType(0, asFirmType(def.returnType().get()));
+		}
+		return type;
+	}
+
+	private firm.Type asFirmType(polyglot.types.Type t) {
+		if        (t instanceof FunctionType) {
+			assert false : "Cannot convert FunctionType to Firm type: "+t;
+		} else if (t instanceof X10NamedType) {
+			/* this includes builtin types like x10.lang.Int */
+			final String typename = ((X10NamedType) t).name().toString();
+			if (typename.equals("Int")) {
+				return new firm.PrimitiveType(firm.Mode.getIs());
+			}
+			assert false : "Cannot convert X10NamedType to Firm type: "+typename;
+		} else if (t instanceof X10PrimitiveType) {
+			assert false : "Cannot convert X10PrimitiveType to Firm type: "+t;
+		} else if (t instanceof X10Struct) {
+			assert false : "Cannot convert X10Struct to Firm type: "+t;
+		} else if (t instanceof X10NullType) {
+			assert false : "Cannot convert X10NullType to Firm type: "+t;
+		} else if (t instanceof X10ClassType) {
+			X10ClassType ct = (X10ClassType) t;
+			firm.Type cType = new firm.ClassType(new firm.Ident(ct.name().toString()));
+			return new firm.PointerType(cType);
+		}
+		assert false : "Cannot convert to Firm type: "+t;
+		return null;
 	}
 
 	@Override
@@ -579,7 +625,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		/* for error detection */
 		current_graph.getEndBlock().addPred(retn);
-		con.setCurrentBlock(null);
+		con.getCurrentBlock().mature();
+		con.setCurrentBlockBad();
 	}
 
 	@Override
