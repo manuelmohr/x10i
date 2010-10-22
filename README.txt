@@ -11,6 +11,12 @@ submodules. Usually the following is enough:
 
 	git submodule update --init
 
+== jfirm ==
+
+You need a firm C-library to get jfirm running. Either copy it some prebuilt
+ones (TODO: document from where) or use the jFirm/binding_creator/create_lib.sh
+scritp to produce your own if you have a firm checkout.
+
 == Complete Build ==
 
 cd x10.dist
