@@ -14,22 +14,15 @@
     <property name="etc" location="${x10.dist.location}/etc"/>
     <property name="config" value="*.cfg"/>
     <property name="lpg.jar" value="lpg.jar"/>
-    <property name="jfirm.jar" value="JFirm.jar" />
-    <property name="jna.jar" value="jna.jar" />
     <property name="compiler.x10.lib" location="${basedir}/lib" />
     <path id="project.classpath">
         <path refid="mainproject.classpath"/>
         <path refid="lpg.classpath"/>
         <path refid="x10.constraints.classpath"/>
         <path refid="x10.common.classpath"/>
-        <path refid="jfirm.classpath"/>
     </path>
     <path id="mainproject.classpath">
         <pathelement location="${build}"/>
-    </path>
-    <path id="jfirm.classpath">
-    	  <pathelement location="${compiler.x10.lib}/${jfirm.jar}" />
-    	  <pathelement location="${compiler.x10.lib}/${jna.jar}" />
     </path>
     <path id="lpg.classpath">
         <pathelement location="${lib}/${lpg.jar}"/>
@@ -44,7 +37,7 @@
     <property environment="env"/>
     <target name="init">
         <tstamp/>
-        <mkdir dir="${build}"/>
+				<mkdir dir="${build}"/>
     </target>
     <target name="clean">
         <delete dir="${build}" failonerror="false"/>
@@ -75,8 +68,6 @@
             <fileset refid="compiler.classes"/>
             <fileset refid="constraints.classes"/>
             <fileset refid="common.classes"/>
-            <zipgroupfileset dir="${compiler.x10.lib}" includes="*.jar" 
-              excludes="*.properties" />
         </jar>
     </target>
     <target name="prereq-jars">
@@ -84,16 +75,6 @@
             <available file="${lib}/${lpg.jar}"/>
         </condition>
         <fail message="Unable to find required file ${lib}/${lpg.jar}" unless="lpg.jar.present"/>
-        
-        <condition property="jfirm.jar.present">
-            <available file="${compiler.x10.lib}/${jfirm.jar}" />
-        </condition>
-        <fail message="Unable to find required file ${compiler.x10.lib}/${jfirm.jar}" unless="jfirm.jar.present"/>
-        
-        <condition property="jna.jar.present">
-            <available file="${compiler.x10.lib}/${jna.jar}" />
-        </condition>
-        <fail message="Unable to find required file ${compiler.x10.lib}/${jna.jar}" unless="jna.jar.present"/>
     </target>
     <target name="build" depends="init,prereq-jars">
         <echo message="${ant.project.name}: ${ant.file}"/>
