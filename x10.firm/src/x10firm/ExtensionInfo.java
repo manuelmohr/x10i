@@ -17,7 +17,7 @@ import x10firm.types.X10FirmTypeSystem_c;
 import x10firm.visit.X10FirmTranslator;
 
 public class ExtensionInfo extends x10cpp.ExtensionInfo {
-	
+
 	@Override
 	public String compilerName() {
 		return "x10firm";
@@ -32,47 +32,54 @@ public class ExtensionInfo extends x10cpp.ExtensionInfo {
 	protected Options createOptions() {
 		return new X10FirmCompilerOptions(this);
 	}
-	
+
 	@Override
 	protected NodeFactory createNodeFactory() {
-		return new X10NodeFactory_c(this, new X10FirmExtFactory_c(), new X10FirmDelFactory_c()) {
+		return new X10NodeFactory_c(this, new X10FirmExtFactory_c(),
+				new X10FirmDelFactory_c()) {
 			/* the constructor is protected, so we use this anonymous subclass */
 		};
 	}
-	
+
 	// X10Firm-specific goals and scheduling
 	@Override
 	protected Scheduler createScheduler() {
 		return new X10FirmScheduler(this);
 	}
-	
+
 	@Override
 	protected TypeSystem createTypeSystem() {
 		return new X10FirmTypeSystem_c();
 	}
-	
+
 	// X10Firm job scheduler
-	public static class X10FirmScheduler extends x10cpp.ExtensionInfo.X10CPPScheduler {
+	public static class X10FirmScheduler extends
+			x10cpp.ExtensionInfo.X10CPPScheduler {
 		protected X10FirmScheduler(ExtensionInfo info) {
 			super(info);
 		}
+
 		// TODO: Add post compilation -> gen machine code from firm graph
 		@Override
 		protected Goal PostCompiled() {
-		    return new PostCompiled(extInfo) {
-		    	private static final long serialVersionUID = 6627554599276926259L;
-		        @Override
-				protected boolean invokePostCompiler(Options options, Compiler compiler, ErrorQueue eq) {
-		        	return true;
-		        }
-		    }.intern(this);
+			return new PostCompiled(extInfo) {
+				private static final long serialVersionUID = 6627554599276926259L;
+
+				@Override
+				protected boolean invokePostCompiler(Options options,
+						Compiler compiler, ErrorQueue eq) {
+					return true;
+				}
+			}.intern(this);
 		}
+
 		// pack the x10 firm translator into the X10 firm scheduler
 		@Override
 		public Goal CodeGenerated(Job job) {
 			TypeSystem ts = extInfo.typeSystem();
 			NodeFactory nf = extInfo.nodeFactory();
-			return new ValidatingOutputGoal(job, new X10FirmTranslator(job, ts, nf, extInfo.targetFactory())).intern(this);
+			return new ValidatingOutputGoal(job, new X10FirmTranslator(job, ts,
+					nf, extInfo.targetFactory())).intern(this);
 		}
 	}
 }
