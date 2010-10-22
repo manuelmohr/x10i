@@ -1,0 +1,3 @@
+[submodule "jFirm"]
+	path = jFirm
+	url = git://github.com/MatzeB/jFirm.git
