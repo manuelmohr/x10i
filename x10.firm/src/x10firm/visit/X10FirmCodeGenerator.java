@@ -4,7 +4,6 @@ import static x10cpp.visit.ASTQuery.assertNumberOfInitializers;
 import static x10cpp.visit.ASTQuery.getStringPropertyInit;
 import static x10cpp.visit.SharedVarsMethods.CPP_NATIVE_STRING;
 import static x10cpp.visit.SharedVarsMethods.CUDA_NATIVE_STRING;
-import static x10cpp.visit.SharedVarsMethods.THIS;
 import static x10cpp.visit.SharedVarsMethods.chevrons;
 
 import java.util.ArrayList;
@@ -53,7 +52,6 @@ import polyglot.ast.Local_c;
 import polyglot.ast.MethodDecl_c;
 import polyglot.ast.New_c;
 import polyglot.ast.Node;
-import polyglot.ast.NodeFactory;
 import polyglot.ast.NullLit_c;
 import polyglot.ast.PackageNode_c;
 import polyglot.ast.Receiver;
@@ -70,22 +68,15 @@ import polyglot.ast.TypeNode;
 import polyglot.ast.Unary;
 import polyglot.ast.Unary_c;
 import polyglot.ast.While_c;
-import polyglot.types.Context;
-import polyglot.types.Flags;
 import polyglot.types.LocalInstance;
-import polyglot.types.Name;
 import polyglot.types.QName;
 import polyglot.types.Ref;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
-import polyglot.types.TypeSystem;
-import polyglot.types.Types;
-import polyglot.types.VarInstance;
-import polyglot.util.CodeWriter;
 import polyglot.util.ErrorInfo;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
-import polyglot.visit.Translator;
+import polyglot.frontend.Compiler;
 import x10.ast.AssignPropertyBody_c;
 import x10.ast.Async_c;
 import x10.ast.AtEach_c;
@@ -130,8 +121,9 @@ import x10.types.ParameterType;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
+import x10.types.X10Context;
+import x10.types.X10Context_c;
 import x10.types.X10Def;
-import x10.types.X10FieldDef;
 import x10.types.X10FieldInstance;
 import x10.types.X10Flags;
 import x10.types.X10MethodDef;
@@ -145,28 +137,34 @@ import x10.types.checker.Converter;
 import x10.visit.X10DelegatingVisitor;
 import x10cpp.visit.ASTQuery;
 import x10cpp.visit.Emitter;
-import x10firm.NullCodeWriter;
-import x10firm.types.X10FirmContext_c;
-import x10firm.types.X10FirmTypeSystem_c;
+import x10firm.types.TypeSystem;
 import firm.TargetValue;
 
+/**
+ * TODO:
+ *  - keep Context up-to-date while traversing the AST 
+ */
 public class X10FirmCodeGenerator extends X10DelegatingVisitor {
-	protected final CodeWriter sw;
-	protected final Translator tr;
-
-	private firm.Construction con = null;
-	private firm.Graph current_graph;
-
-	protected Emitter emitter;
-	protected ASTQuery query;
+	private firm.Construction con;
+	private firm.Graph currentGraph;
+	private X10ClassType currentClass;
 
 	/** To return Firm nodes for constructing expressions */
 	private firm.nodes.Node return_node;
+	
+	private final Compiler compiler;
+	private final TypeSystem typeSystem;
+	private final X10NodeFactory nodeFactory;
+	private final X10Context context;
+	private final ASTQuery query;
 
-	public X10FirmCodeGenerator(Translator translator) {
-		this.sw = new NullCodeWriter();
-		this.tr = translator;
-		this.emitter = new Emitter(translator);
+	public X10FirmCodeGenerator(Compiler compiler, TypeSystem typeSystem, X10NodeFactory nodeFactory) {
+		this.compiler = compiler;
+		this.typeSystem = typeSystem;
+		this.nodeFactory = nodeFactory;
+		this.context = new X10Context_c(typeSystem);
+		
+		NoTranslator translator = new NoTranslator(typeSystem, nodeFactory);
 		this.query = new ASTQuery(translator);
 	}
 
@@ -187,11 +185,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			return;
 		}
 
-		tr.job()
-				.compiler()
-				.errorQueue()
-				.enqueue(ErrorInfo.SEMANTIC_ERROR,
-						"Unhandled node type: " + n.getClass(), n.position());
+		compiler.errorQueue().enqueue(ErrorInfo.SEMANTIC_ERROR,
+				"Unhandled node type: " + n.getClass(), n.position());
 	}
 
 	@Override
@@ -205,8 +200,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(X10ClassDecl_c n) {
 		X10ClassDef def = (X10ClassDef) n.classDef();
-		X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) tr.typeSystem();
-		boolean isStruct = xts.isStructType(def.asType());
+		boolean isStruct = typeSystem.isStructType(def.asType());
 		// X10Ext ext = (X10Ext) n.ext();
 		ClassBody_c body = (ClassBody_c) n.body();
 
@@ -215,9 +209,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		// decl a new FirmClassType
 		if (!isStruct)
-			xts.declFirmClass(def);
+			typeSystem.declFirmClass(def);
 		else
-			xts.declFirmStruct(def);
+			typeSystem.declFirmStruct(def);
 
 		// visit the node children (class body)
 		List<ClassMember> members = body.members();
@@ -264,8 +258,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	void processClass(X10ClassDecl_c n) {
 		X10ClassDef def = (X10ClassDef) n.classDef();
-		X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) tr.typeSystem();
-		boolean isStruct = xts.isStructType(def.asType());
+		boolean isStruct = typeSystem.isStructType(def.asType());
 		// X10Ext ext = (X10Ext) n.ext();
 		ClassBody_c body = (ClassBody_c) n.body();
 
@@ -274,9 +267,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		// decl a new FirmClassType
 		if (!isStruct)
-			xts.declFirmClass(def);
+			typeSystem.declFirmClass(def);
 		else
-			xts.declFirmStruct(def);
+			typeSystem.declFirmStruct(def);
 
 		// visit the node children (class body)
 		List<ClassMember> members = body.members();
@@ -293,8 +286,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(ClassBody_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
-		X10ClassType currentClass = (X10ClassType) ctx.currentClass();
 		// X10ClassType superClass = (X10ClassType)
 		// X10TypeMixin.baseType(currentClass.superClass());
 		// X10TypeSystem xts = (X10TypeSystem) tr.typeSystem();
@@ -322,8 +313,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(MethodDecl_c dec) {
-		X10FirmContext_c context = (X10FirmContext_c) tr.context();
-		X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) tr.typeSystem();
 		X10Flags flags = X10Flags.toX10Flags(dec.flags().flags());
 
 		if (flags.isNative()) {
@@ -335,7 +324,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		X10MethodInstance mi = (X10MethodInstance) def.asInstance();
 		X10ClassType container = (X10ClassType) mi.container();
 
-		xts.declFirmMethod(def);
+		typeSystem.declFirmMethod(def);
 
 		String methodName = mi.name().toString();
 
@@ -344,8 +333,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		firm.Type global = firm.Program.getGlobalType();
 		firm.Entity mainEnt = new firm.Entity(global, methodName, type);
 		int n_vars = 1;
-		current_graph = new firm.Graph(mainEnt, n_vars);
-		con = new firm.Construction(current_graph);
+		currentGraph = new firm.Graph(mainEnt, n_vars);
+		con = new firm.Construction(currentGraph);
 
 		if ((container.x10Def().typeParameters().size() != 0)
 				&& flags.isStatic()) {
@@ -357,10 +346,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		if (dec.body() != null) {
 			if (!flags.isStatic()) {
 				// add local vars for closure realisation.
-				VarInstance<?> ti = xts.localDef(Position.COMPILER_GENERATED,
+				/*
+				VarInstance<?> ti = typeSystem.localDef(Position.COMPILER_GENERATED,
 						Flags.FINAL, Types.ref(container), Name.make(THIS))
 						.asInstance();
 				context.addVariable(ti);
+				*/
 			}
 			visitAppropriate(dec.body());
 		} else {
@@ -376,7 +367,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			}
 		}
 
-		firm.Dump.dumpGraph(current_graph, "-fresh");
+		firm.Dump.dumpGraph(currentGraph, "-fresh");
 	}
 
 	/**
@@ -432,14 +423,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(ConstructorDecl_c dec) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 		if (dec.flags().flags().isNative())
 			return;
 
 		X10ClassType container = (X10ClassType) dec.constructorDef()
 				.container().get();
 		String typeName = Emitter.translateType(container.def().asType());
-		X10TypeSystem xts = (X10TypeSystem) ctx.typeSystem();
 
 		X10ConstructorInstance ci = (X10ConstructorInstance) dec
 				.constructorDef().asInstance();
@@ -452,22 +441,24 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		// no static constructors allowed
 		assert (!dec.flags().flags().isStatic());
 
-		TypeSystem ts = tr.typeSystem();
-
+		/*
 		// add local vars for closure realisation.
-		VarInstance<?> ti = ts.localDef(Position.COMPILER_GENERATED,
+		VarInstance<?> ti = typeSystem.localDef(Position.COMPILER_GENERATED,
 				Flags.FINAL, Types.ref(container), Name.make(THIS))
 				.asInstance();
 		ctx.addVariable(ti);
+		*/
 
 		Block_c body = (Block_c) dec.body();
 
 		// Synthetic fields must be initialized before everything else
+		/*
 		for (Stmt s : body.statements()) {
 			if (query.isSyntheticOuterAccessor(s)) {
 				visitAppropriate(s);
 			}
 		}
+		*/
 
 		for (Stmt s : body.statements()) {
 			// handle constructor calls -> super etc.
@@ -487,8 +478,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				} else if (call.kind() == ConstructorCall.THIS) {
 					if (container.isX10Struct()) {
 						// TODO:
-						if (call.arguments().size() > 0)
+						/* if (call.arguments().size() > 0)
 							sw.write(", ");
+						*/
 					} else {
 						// TODO:
 					}
@@ -500,7 +492,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			} else if (query.isSyntheticOuterAccessor(s)) {
 				// we did synthetic field initialisation earlier
 			} else {
-				dec.printBlock(s, sw, tr);
+				//dec.printBlock(s, sw, tr);
 			}
 		}
 
@@ -597,9 +589,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Assign_c asgn) {
 		boolean unsigned_op = false;
 		String opString = asgn.operator().toString();
-		NodeFactory nf = tr.nodeFactory();
-		X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) tr.typeSystem();
-		Context context = tr.context();
 
 		if (opString.equals(">>>=")) {
 			unsigned_op = true;
@@ -610,23 +599,22 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Expr rhs = asgn.right();
 		if (unsigned_op) {
 			String type = Emitter.translateType(asgn.type());
-			String utype = emitter.makeUnsignedType(lhs.type());
+			//String utype = emitter.makeUnsignedType(lhs.type());
 		}
 
-		asgn.printSubExpr(lhs, false, sw, tr);
+		//asgn.printSubExpr(lhs, false, sw, tr);
 		if (asgn.operator() != Assign.ASSIGN) {
 			assert (false);
 		}
 
 		Type aType = lhs.type();
-		boolean rhsNeedsCast = !xts.typeDeepBaseEquals(aType, rhs.type(),
-				context);
+		boolean rhsNeedsCast = !typeSystem.typeDeepBaseEquals(aType, rhs.type(), context);
 		if (rhsNeedsCast) {
 			// Cast is needed to ensure conversion/autoboxing.
 			String castType = chevrons(Emitter.translateType(aType, true));
 		}
 
-		asgn.printSubExpr(rhs, true, sw, tr);
+		//asgn.printSubExpr(rhs, true, sw, tr);
 	}
 
 	@Override
@@ -651,7 +639,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				returned_values);
 
 		/* for error detection */
-		current_graph.getEndBlock().addPred(retn);
+		currentGraph.getEndBlock().addPred(retn);
 		con.getCurrentBlock().mature();
 		con.setCurrentBlockBad();
 	}
@@ -662,12 +650,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(LocalDecl_c dec) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
-		X10TypeSystem xts = (X10TypeSystem) ctx.typeSystem();
-
 		boolean stackAllocate = false;
 		try {
-			Type annotation = (Type) xts.systemResolver().find(
+			Type annotation = (Type) typeSystem.systemResolver().find(
 					QName.make("x10.compiler.StackAllocate"));
 			if (!((X10Ext) dec.ext()).annotationMatching(annotation).isEmpty()) {
 				stackAllocate = true;
@@ -686,8 +671,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Expr initexpr = dec.init();
 		if (initexpr != null) {
 			Type aType = dec.type().type();
-			boolean rhsNeedsCast = !xts.typeDeepBaseEquals(aType,
-					initexpr.type(), ctx);
+			boolean rhsNeedsCast = !typeSystem.typeDeepBaseEquals(aType,
+					initexpr.type(), context);
 			if (rhsNeedsCast) {
 				String toCast = chevrons(Emitter.translateType(aType, true));
 				// Cast is needed to ensure conversion/autoboxing.
@@ -736,7 +721,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Do_c n) {
 		Stmt body = n.body();
 		if (!(body instanceof Block_c))
-			body = tr.nodeFactory().Block(body.position(), body);
+			body = nodeFactory.Block(body.position(), body);
 
 		visitAppropriate(body);
 		visitAppropriate(n.cond());
@@ -747,7 +732,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		visitAppropriate(n.cond());
 		Stmt body = n.body();
 		if (!(body instanceof Block_c))
-			body = tr.nodeFactory().Block(body.position(), body);
+			body = nodeFactory.Block(body.position(), body);
 
 		visitAppropriate(body);
 	}
@@ -780,13 +765,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	private Expr cast(Expr a, Type fType) {
-		X10TypeSystem xts = (X10TypeSystem) tr.typeSystem();
-		X10NodeFactory nf = (X10NodeFactory) tr.nodeFactory();
-		Context ctx = tr.context();
-
-		if (!xts.typeDeepBaseEquals(fType, a.type(), ctx)) {
+		if (!typeSystem.typeDeepBaseEquals(fType, a.type(), context)) {
 			Position pos = a.position();
-			a = nf.X10Cast(pos, nf.CanonicalTypeNode(pos, fType), a,
+			a = nodeFactory.X10Cast(pos, nodeFactory.CanonicalTypeNode(pos, fType), a,
 					Converter.ConversionType.UNCHECKED).type(fType);
 		}
 		return a;
@@ -826,16 +807,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(X10Call_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
-		X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) tr.typeSystem();
 		X10MethodInstance mi = (X10MethodInstance) n.methodInstance();
 		Receiver target = n.target();
 		Type t = target.type();
 		X10MethodDef md = mi.x10Def();
 
 		if (mi.flags().isStatic()) {
-			TypeNode tn = target instanceof TypeNode ? (TypeNode) target : tr
-					.nodeFactory().CanonicalTypeNode(target.position(), t);
+			TypeNode tn = target instanceof TypeNode ? (TypeNode) target : nodeFactory.CanonicalTypeNode(target.position(), t);
 			if (t instanceof ParameterType) {
 				// Rewrite to the class declaring the field.
 				target = tn.typeRef(md.container());
@@ -872,7 +850,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			}
 		}
 
-		X10NodeFactory nf = (X10NodeFactory) tr.nodeFactory();
 		List<Expr> args = new ArrayList<Expr>();
 		int counter = 0;
 		for (Expr a : n.arguments()) {
@@ -881,9 +858,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			// x10.lang.Object.
 			// Compensates for front-end resolving methods invoked on
 			// unconstrained type parameters to Object.
-			if (!xts.typeEquals(mi.container(), xts.Object(), ctx)
-					&& !xts.typeEquals(fType, a.type(), ctx)
-					&& !(xts.isParameterType(fType) && a.type().isNull())) {
+			if (!typeSystem.typeEquals(mi.container(), typeSystem.Object(), context)
+					&& !typeSystem.typeEquals(fType, a.type(), context)
+					&& !(typeSystem.isParameterType(fType) && a.type().isNull())) {
 				a = cast(a, fType);
 			}
 			args.add(a);
@@ -903,12 +880,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Field_c n) {
-		Receiver target = n.target();
-		Type t = target.type();
-		X10TypeSystem xts = (X10TypeSystem) t.typeSystem();
-		X10FieldInstance fi = (X10FieldInstance) n.fieldInstance();
-		X10FieldDef fd = fi.x10Def();
-
 		assert false;
 	}
 
@@ -928,11 +899,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		firm.Mode mode = null;
 
 		if (n.kind() == FloatLit.FLOAT)
-			mode = X10FirmTypeSystem_c
-					.getFirmMode(X10FirmTypeSystem_c.X10_FLOAT);
+			mode = TypeSystem.getFirmMode(TypeSystem.X10_FLOAT);
 		else if (n.kind() == FloatLit.DOUBLE)
-			mode = X10FirmTypeSystem_c
-					.getFirmMode(X10FirmTypeSystem_c.X10_DOUBLE);
+			mode = TypeSystem.getFirmMode(TypeSystem.X10_DOUBLE);
 		else
 			throw new InternalCompilerError("Unrecognized FloatLit kind "
 					+ n.kind());
@@ -944,16 +913,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(IntLit_c n) {
 		firm.Mode mode = null;
 		if (n.kind() == X10IntLit_c.ULONG) {
-			mode = X10FirmTypeSystem_c
-					.getFirmMode(X10FirmTypeSystem_c.X10_ULONG);
+			mode = TypeSystem.getFirmMode(TypeSystem.X10_ULONG);
 		} else if (n.kind() == X10IntLit_c.UINT) {
-			mode = X10FirmTypeSystem_c
-					.getFirmMode(X10FirmTypeSystem_c.X10_UINT);
+			mode = TypeSystem.getFirmMode(TypeSystem.X10_UINT);
 		} else if (n.kind() == IntLit.LONG) {
-			mode = X10FirmTypeSystem_c
-					.getFirmMode(X10FirmTypeSystem_c.X10_LONG);
+			mode = TypeSystem.getFirmMode(TypeSystem.X10_LONG);
 		} else if (n.kind() == IntLit.INT) {
-			mode = X10FirmTypeSystem_c.getFirmMode(X10FirmTypeSystem_c.X10_INT);
+			mode = TypeSystem.getFirmMode(TypeSystem.X10_INT);
 		} else {
 			throw new InternalCompilerError("Unrecognized IntLit kind "
 					+ n.kind());
@@ -968,7 +934,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(StringLit_c n) {
-		X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) tr.typeSystem();
 		String str = n.stringValue();
 	}
 
@@ -981,8 +946,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(BooleanLit_c lit) {
 		int val = (lit.value() ? 1 : 0);
 
-		con.newConst(val, X10FirmTypeSystem_c
-				.getFirmMode(X10FirmTypeSystem_c.X10_BOOLEAN));
+		con.newConst(val, TypeSystem.getFirmMode(TypeSystem.X10_BOOLEAN));
 	}
 
 	@Override
@@ -1052,11 +1016,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Conditional_c n) {
+		/*
 		n.printSubExpr(n.cond(), false, sw, tr);
 		String type = Emitter.translateType(n.type(), true);
 
 		n.printSubExpr(n.consequent(), true, sw, tr);
 		n.printSubExpr(n.alternative(), true, sw, tr);
+		*/
 	}
 
 	@Override
@@ -1093,8 +1059,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(X10Unary_c n) {
 		Expr left = n.expr();
 		Type l = left.type();
-		X10TypeSystem xts = (X10TypeSystem) tr.typeSystem();
-		NodeFactory nf = tr.nodeFactory();
 		Unary.Operator op = n.operator();
 
 		if (op == Unary.POST_DEC || op == Unary.POST_INC || op == Unary.PRE_DEC
@@ -1123,44 +1087,41 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			IntLit.Kind kind = (lit.kind() == X10IntLit_c.UINT) ? IntLit.INT
 					: ((lit.kind() == X10IntLit_c.ULONG) ? IntLit.LONG : lit
 							.kind());
-			n.printSubExpr(lit.value(-lit.longValue()).kind(kind), true, sw, tr);
+			//n.printSubExpr(lit.value(-lit.longValue()).kind(kind), true, sw, tr);
 		} else if (operator.isPrefix()) {
-			n.printSubExpr(expr, false, sw, tr);
+			//n.printSubExpr(expr, false, sw, tr);
 		} else {
-			n.printSubExpr(expr, false, sw, tr);
+			//n.printSubExpr(expr, false, sw, tr);
 		}
 	}
 
 	@Override
 	public void visit(X10Binary_c n) {
-		X10FirmContext_c ctx = (X10FirmContext_c) tr.context();
 		Expr left = n.left();
 		Type l = left.type();
 		Expr right = n.right();
 		Type r = right.type();
-		X10TypeSystem xts = (X10TypeSystem) tr.typeSystem();
-		NodeFactory nf = tr.nodeFactory();
 		Binary.Operator op = n.operator();
 
 		if (op == Binary.EQ || op == Binary.NE) {
 			Type c = null;
 			if (l.isNumeric() && r.isNumeric()) {
 				try {
-					c = xts.promote(l, r);
+					c = typeSystem.promote(l, r);
 				} catch (SemanticException e) {
 					assert (false);
 				}
 			}
-			if (c != null && !xts.isParameterType(c)
-					&& !xts.typeBaseEquals(c, l, ctx)) {
+			if (c != null && !typeSystem.isParameterType(c)
+					&& !typeSystem.typeBaseEquals(c, l, context)) {
 				String type = Emitter.translateType(c, true);
 			}
-			n.printSubExpr(left, sw, tr);
-			if (c != null && !xts.isParameterType(c)
-					&& !xts.typeBaseEquals(c, r, ctx)) {
+			//n.printSubExpr(left, sw, tr);
+			if (c != null && !typeSystem.isParameterType(c)
+					&& !typeSystem.typeBaseEquals(c, r, context)) {
 				String type = Emitter.translateType(c, true);
 			}
-			n.printSubExpr(right, sw, tr);
+			//n.printSubExpr(right, sw, tr);
 			return;
 		}
 
@@ -1173,8 +1134,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			return;
 		}
 		if (op == Binary.ADD
-				&& (l.isSubtype(xts.String(), ctx) || r.isSubtype(xts.String(),
-						ctx))) {
+				&& (l.isSubtype(typeSystem.String(), context)
+						|| r.isSubtype(typeSystem.String(),	context))) {
 			visit((Binary_c) n);
 			return;
 		}
@@ -1183,15 +1144,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Binary_c n) {
-		X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c) tr.typeSystem();
 		String opString = n.operator().toString();
 
 		// Boolean short-circuiting operators are ok
 		assert (opString.equals("&&") || opString.equals("||")) : "visiting "
 				+ n.getClass() + " at " + n.position() + ": " + n;
 
-		n.printSubExpr(n.left(), true, sw, tr);
-		n.printSubExpr(n.right(), false, sw, tr);
+		//n.printSubExpr(n.left(), true, sw, tr);
+		//n.printSubExpr(n.right(), false, sw, tr);
 	}
 
 	@Override

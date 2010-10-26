@@ -1,22 +1,17 @@
 package x10firm;
 
-import polyglot.ast.NodeFactory;
 import polyglot.frontend.Compiler;
 import polyglot.frontend.Goal;
 import polyglot.frontend.Job;
 import polyglot.frontend.Scheduler;
 
 import polyglot.main.Options;
-import polyglot.types.TypeSystem;
 import polyglot.util.ErrorQueue;
 import polyglot.visit.PostCompiled;
-import x10.ast.X10NodeFactory_c;
-import x10firm.ast.X10FirmDelFactory_c;
-import x10firm.ast.X10FirmExtFactory_c;
-import x10firm.types.X10FirmTypeSystem_c;
-import x10firm.visit.X10FirmTranslator;
+import x10.ast.X10NodeFactory;
+import x10firm.types.TypeSystem;
 
-public class ExtensionInfo extends x10cpp.ExtensionInfo {
+public class ExtensionInfo extends x10.ExtensionInfo {
 
 	@Override
 	public String compilerName() {
@@ -29,57 +24,39 @@ public class ExtensionInfo extends x10cpp.ExtensionInfo {
 	}
 
 	@Override
-	protected Options createOptions() {
-		return new X10FirmCompilerOptions(this);
-	}
-
-	@Override
-	protected NodeFactory createNodeFactory() {
-		return new X10NodeFactory_c(this, new X10FirmExtFactory_c(),
-				new X10FirmDelFactory_c()) {
-			/* the constructor is protected, so we use this anonymous subclass */
-		};
-	}
-
-	// X10Firm-specific goals and scheduling
-	@Override
 	protected Scheduler createScheduler() {
 		return new X10FirmScheduler(this);
 	}
 
 	@Override
-	protected TypeSystem createTypeSystem() {
-		return new X10FirmTypeSystem_c();
+	protected polyglot.types.TypeSystem createTypeSystem() {
+		return new TypeSystem();
 	}
 
-	// X10Firm job scheduler
-	public static class X10FirmScheduler extends
-			x10cpp.ExtensionInfo.X10CPPScheduler {
-		protected X10FirmScheduler(ExtensionInfo info) {
+	protected static class X10FirmScheduler extends X10Scheduler {
+		public X10FirmScheduler(ExtensionInfo info) {
 			super(info);
 		}
 
-		// TODO: Add post compilation -> gen machine code from firm graph
 		@Override
 		protected Goal PostCompiled() {
-			return new PostCompiled(extInfo) {
-				private static final long serialVersionUID = 6627554599276926259L;
-
+			/* a NULL goal... */
+			Goal goal = new PostCompiled(extInfo) {
 				@Override
 				protected boolean invokePostCompiler(Options options,
 						Compiler compiler, ErrorQueue eq) {
 					return true;
 				}
-			}.intern(this);
+			};
+			return goal.intern(this);
 		}
 
-		// pack the x10 firm translator into the X10 firm scheduler
 		@Override
 		public Goal CodeGenerated(Job job) {
-			TypeSystem ts = extInfo.typeSystem();
-			NodeFactory nf = extInfo.nodeFactory();
-			return new ValidatingOutputGoal(job, new X10FirmTranslator(job, ts,
-					nf, extInfo.targetFactory())).intern(this);
+			TypeSystem typeSystem = (TypeSystem)extInfo.typeSystem();
+			X10NodeFactory nodeFactory = (X10NodeFactory)extInfo.nodeFactory();
+			Goal goal = new FirmGenerationGoal(job, typeSystem, nodeFactory);
+			return goal.intern(this);
 		}
 	}
 }

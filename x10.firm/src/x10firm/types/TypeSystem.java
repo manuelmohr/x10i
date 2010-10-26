@@ -8,11 +8,11 @@ import firm.Mode;
 
 import polyglot.types.Context;
 import x10.types.X10ClassDef;
+import x10.types.X10Context_c;
 import x10.types.X10MethodDef;
 import x10.types.X10TypeSystem_c;
-import x10firm.visit.X10FirmTranslator;
 
-public class X10FirmTypeSystem_c extends X10TypeSystem_c {
+public class TypeSystem extends X10TypeSystem_c {
 
 	public static final String X10_BOOLEAN = "boolean";
 	public static final String X10_CHAR = "char";
@@ -73,7 +73,8 @@ public class X10FirmTypeSystem_c extends X10TypeSystem_c {
 	}
 
 	public void declFirmClass(X10ClassDef cDef) {
-		String cname = X10FirmTranslator.getFullClassName(cDef.asType());
+		String cname = cDef.asType().fullName().toString();
+		//X10FirmTranslator.getFullClassName(cDef.asType());
 
 		firm.Type cType = new firm.ClassType(new firm.Ident(cname));
 		firm.Type cPointerType = new firm.PointerType(cType);
@@ -89,12 +90,12 @@ public class X10FirmTypeSystem_c extends X10TypeSystem_c {
 		// TODO: Implement me
 	}
 
-	public X10FirmTypeSystem_c() {
+	public TypeSystem() {
 		// TODO: Implement me
 	}
 
 	@Override
 	public Context emptyContext() {
-		return new X10FirmContext_c(this);
+		return new X10Context_c(this);
 	}
 }
