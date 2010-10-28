@@ -168,7 +168,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		this.query = new ASTQuery(translator);
 		
 		// We can only initialize our type system after
-		// the system resolve have been run. 
+		// the system resolver has been run. 
 		typeSystem.init();
 	}
 	
@@ -339,9 +339,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		String methodName = mi.name().toString();
 
 		assert (con == null);
-		firm.MethodType type = typeSystem.declFirmMethod(def);
-		firm.Type global = firm.Program.getGlobalType();
-		firm.Entity mainEnt = new firm.Entity(global, methodName, type);
+		firm.MethodType type 	= typeSystem.declFirmMethod(def);
+		firm.Type global 		= firm.Program.getGlobalType();
+		firm.Entity mainEnt 	= new firm.Entity(global, methodName, type);
 		int n_vars = 1;
 		currentGraph 	= new firm.Graph(mainEnt, n_vars);
 		con 			= new firm.Construction(currentGraph);
@@ -887,6 +887,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(NullLit_c n) {
+		
 	}
 
 	@Override

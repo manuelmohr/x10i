@@ -11,14 +11,8 @@ import polyglot.types.ClassType;
 import polyglot.types.Context;
 import polyglot.types.Ref;
 import polyglot.types.Type;
-import x10.types.FunctionType;
-import x10.types.X10ClassType;
 import x10.types.X10Context_c;
 import x10.types.X10MethodDef;
-import x10.types.X10NamedType;
-import x10.types.X10NullType;
-import x10.types.X10PrimitiveType;
-import x10.types.X10Struct;
 import x10.types.X10TypeSystem_c;
 
 public class TypeSystem extends X10TypeSystem_c {
@@ -56,7 +50,6 @@ public class TypeSystem extends X10TypeSystem_c {
 		primModeMap.put(Double(),  Mode.getD());
 	}
 	
-
 	private void initPrimitiveType() {
 		addType(Boolean(),new firm.PrimitiveType(getFirmMode(Boolean())));
 		addType(Byte(),   new firm.PrimitiveType(getFirmMode(Byte())));
@@ -69,10 +62,11 @@ public class TypeSystem extends X10TypeSystem_c {
 		addType(Char(),   new firm.PrimitiveType(getFirmMode(Char())));
 	}
 
-	public final firm.Mode getFirmMode(final polyglot.types.Type type) {
+	public final firm.Mode getFirmMode(polyglot.types.Type type) {
 		firm.Mode mode = primModeMap.get(type);
 		if (mode != null)
 			return mode;
+		// PointerMode for all the others. 
 		return pointerMode;
 	}
 
@@ -81,18 +75,19 @@ public class TypeSystem extends X10TypeSystem_c {
 		tcache.put(t, type);
 	}
 
-	public firm.Type getFirmType(polyglot.types.Type t) {
+	private firm.Type getFirmType(polyglot.types.Type t) {
 		assert (tcache.containsKey(t));
 		return tcache.get(t);
 	}
 
-	public void declFirmClass(polyglot.types.Type cType) {
+	public firm.PointerType declFirmClass(polyglot.types.Type cType) {
 		assert cType instanceof ClassType;
 		// TODO: Implement me
 //		firm.Type cType 		= new firm.ClassType(new firm.Ident(cname));
 //		firm.Type cPointerType 	= new firm.PointerType(cType);
 
 	//	addType(cDef, cPointerType);
+		return null;
 	}
 
 	public void declFirmStruct(polyglot.types.Type sType) {
@@ -125,6 +120,7 @@ public class TypeSystem extends X10TypeSystem_c {
 		if (nResults == 1) {
 			type.setResType(0, asFirmType(def.returnType().get()));
 		}
+		
 		return type;
 	}
 	

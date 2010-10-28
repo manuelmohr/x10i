@@ -43,8 +43,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			/* a NULL goal... */
 			Goal goal = new PostCompiled(extInfo) {
 				@Override
-				protected boolean invokePostCompiler(Options options,
-						Compiler compiler, ErrorQueue eq) {
+				protected boolean invokePostCompiler(Options options, Compiler compiler, ErrorQueue eq) {
 					return true;
 				}
 			};
