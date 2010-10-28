@@ -1277,7 +1277,6 @@ public class Emitter {
 		        if (idx.intValue() >= components.length) {
 		            throw new InternalCompilerError("Template '"+id+"' '"+regex+"' uses #"+idx+" (max is "+(components.length-1)+")");
 		        }
-		        System.out.println("VOR Pretty Print: " + components[idx.intValue()]);
 		        prettyPrint(components[idx.intValue()], tr, w);
 		    }
 		    pos++;

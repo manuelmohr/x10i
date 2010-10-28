@@ -167,6 +167,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		NoTranslator translator = new NoTranslator(typeSystem, nodeFactory);
 		this.query = new ASTQuery(translator);
 	}
+	
+	private void setReturnNode(firm.nodes.Node returnNode) {
+		return_node = returnNode;
+	}
+	
+	private firm.nodes.Node getReturnNode() {
+		return return_node;
+	}
 
 	@Override
 	public void visit(Node n) {
@@ -631,8 +639,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			 */
 
 			visitAppropriate(e);
-			assert (return_node != null);
-			returned_values[0] = return_node;
+			assert (getReturnNode() != null);
+			returned_values[0] = getReturnNode();
 		}
 
 		firm.nodes.Node retn = con.newReturn(con.getCurrentMem(),
@@ -652,8 +660,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(LocalDecl_c dec) {
 		boolean stackAllocate = false;
 		try {
-			Type annotation = (Type) typeSystem.systemResolver().find(
-					QName.make("x10.compiler.StackAllocate"));
+			Type annotation = (Type) typeSystem.systemResolver().find(QName.make("x10.compiler.StackAllocate"));
 			if (!((X10Ext) dec.ext()).annotationMatching(annotation).isEmpty()) {
 				stackAllocate = true;
 				System.err.println("@StackAllocate " + dec);
@@ -773,20 +780,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return a;
 	}
 
-	// possible native language annotations -> c++, java, cuda
-	private static String JAVA_NATIVE_STRING = "java";
+	private static String FIRM_NATIVE_STRING = "firm";
 
 	protected String[] getCurrentNativeStrings() {
-		return new String[] { CPP_NATIVE_STRING, JAVA_NATIVE_STRING,
-				CUDA_NATIVE_STRING };
+		return new String[] { FIRM_NATIVE_STRING };
 	}
 
 	// returns true if the given X10Def has a native annotation
-	private boolean hasNativeImplForDef(X10Def o) {
+	private String getNativeFirmExpressionForDef(X10Def o) {
 		X10TypeSystem xts = (X10TypeSystem) o.typeSystem();
 		try {
-			Type annotation = (Type) xts.systemResolver().find(
-					QName.make("x10.compiler.Native"));
+			Type annotation = (Type) xts.systemResolver().find(QName.make("x10.compiler.Native"));
 			String[] our_langs = getCurrentNativeStrings();
 			for (String our_lang : our_langs) {
 				List<Type> as = o.annotationsMatching(annotation);
@@ -794,15 +798,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 					assertNumberOfInitializers(at, 2);
 					String lang = getStringPropertyInit(at, 0);
 					if (lang != null && lang.equals(our_lang)) {
-						assert (null != getStringPropertyInit(at, 1));
-						return true;
+						String lit = getStringPropertyInit(at, 1);
+						return lit;
 					}
 				}
 			}
 		} catch (SemanticException e) {
 			// TODO what now?
 		}
-		return false;
+		return null;
 	}
 
 	@Override
@@ -867,7 +871,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			counter++;
 		}
 
-		boolean hasNativeImpl = hasNativeImplForDef(md);
+		String firmNativeExpression = getNativeFirmExpressionForDef(md);
+		if(firmNativeExpression != null) {
+			// evaluate the native firm expression 
+			return;
+		}
 	}
 
 	@Override
@@ -896,6 +904,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(FloatLit_c n) {
+		
 		firm.Mode mode = null;
 
 		if (n.kind() == FloatLit.FLOAT)
@@ -903,15 +912,16 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		else if (n.kind() == FloatLit.DOUBLE)
 			mode = TypeSystem.getFirmMode(TypeSystem.X10_DOUBLE);
 		else
-			throw new InternalCompilerError("Unrecognized FloatLit kind "
-					+ n.kind());
+			throw new InternalCompilerError("Unrecognized FloatLit kind " + n.kind());
 
-		con.newConst(TargetValue.newFromDouble(n.value(), mode));
+		setReturnNode(con.newConst(TargetValue.newFromDouble(n.value(), mode)));
 	}
 
 	@Override
 	public void visit(IntLit_c n) {
+		
 		firm.Mode mode = null;
+		
 		if (n.kind() == X10IntLit_c.ULONG) {
 			mode = TypeSystem.getFirmMode(TypeSystem.X10_ULONG);
 		} else if (n.kind() == X10IntLit_c.UINT) {
@@ -921,11 +931,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		} else if (n.kind() == IntLit.INT) {
 			mode = TypeSystem.getFirmMode(TypeSystem.X10_INT);
 		} else {
-			throw new InternalCompilerError("Unrecognized IntLit kind "
-					+ n.kind());
+			throw new InternalCompilerError("Unrecognized IntLit kind " + n.kind());
 		}
 
-		return_node = con.newConst(new TargetValue(n.value(), mode));
+		setReturnNode(con.newConst(new TargetValue(n.value(), mode)));
 	}
 
 	@Override
@@ -946,7 +955,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(BooleanLit_c lit) {
 		int val = (lit.value() ? 1 : 0);
 
-		con.newConst(val, TypeSystem.getFirmMode(TypeSystem.X10_BOOLEAN));
+		setReturnNode(con.newConst(val, TypeSystem.getFirmMode(TypeSystem.X10_BOOLEAN)));
 	}
 
 	@Override

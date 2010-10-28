@@ -2806,15 +2806,6 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
 		
 		X10MethodDef md = mi.x10Def();
 		
-		System.out.print(md.name().toString() + "  ");
-		List<LocalDef> formals = md.formalNames();
-		System.out.print("Formals size: " + formals.size()); 
-		for(LocalDef d : formals) {
-			System.out.print(d.name().toString() + " ");
-		}
-		System.out.println("");
-		
-		
 		if (mi.flags().isStatic()) {
 		    TypeNode tn =
 		        target instanceof TypeNode ?
@@ -4731,7 +4722,6 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
     	            String lang = getStringPropertyInit(at, 0);
     	            if (lang != null && lang.equals(our_lang)) {
     	                String lit = getStringPropertyInit(at, 1);
-    	                System.out.println("CPP IMPL " + lit); 
     	                return lit;
     	            }
     	        }

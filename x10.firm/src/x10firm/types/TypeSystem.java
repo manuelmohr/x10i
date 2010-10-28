@@ -14,24 +14,35 @@ import x10.types.X10TypeSystem_c;
 
 public class TypeSystem extends X10TypeSystem_c {
 
-	public static final String X10_BOOLEAN = "boolean";
-	public static final String X10_CHAR = "char";
-	public static final String X10_UINT = "uint";
-	public static final String X10_INT = "int";
-	public static final String X10_ULONG = "ulong";
-	public static final String X10_LONG = "long";
-	public static final String X10_FLOAT = "float";
-	public static final String X10_DOUBLE = "double";
+	public static final String X10_BOOLEAN 	= "Boolean";
+	public static final String X10_BYTE     = "Byte";
+	public static final String X10_CHAR 	= "Char";
+	public static final String X10_UINT 	= "UInt";
+	public static final String X10_INT 		= "Int";
+	public static final String X10_ULONG 	= "ULong";
+	public static final String X10_LONG 	= "Long";
+	public static final String X10_FLOAT 	= "Float";
+	public static final String X10_DOUBLE 	= "Double";
 
-	private static Map<String, firm.Mode> primModeMap = new HashMap<String, firm.Mode>();
-	private static firm.Mode pointerMode = null;
+	private static Map<String, firm.Mode> primModeMap;
+	private static Map<String, firm.Type> tcache;
+	private static firm.Mode pointerMode;
 
 	static {
+		primModeMap = new HashMap<String, firm.Mode>();
+		tcache      = new HashMap<String, firm.Type>();
+		
 		Firm.init();
 
+		initModes();
+		initPrimitiveType();
+	}
+	
+	private static void initModes() {
 		pointerMode = Mode.getP();
 
 		primModeMap.put(X10_BOOLEAN, Mode.getb());
+		primModeMap.put(X10_BYTE, Mode.getBs());
 		// unsigned short for x10_char -> Unicode
 		primModeMap.put(X10_CHAR, Mode.getHu());
 		primModeMap.put(X10_UINT, Mode.getIu());
@@ -41,6 +52,19 @@ public class TypeSystem extends X10TypeSystem_c {
 		primModeMap.put(X10_FLOAT, Mode.getF());
 		primModeMap.put(X10_DOUBLE, Mode.getD());
 	}
+	
+
+	private static void initPrimitiveType() {
+		addType(X10_BOOLEAN, new firm.PrimitiveType(getFirmMode(X10_BOOLEAN)));
+		addType(X10_BYTE,    new firm.PrimitiveType(getFirmMode(X10_BYTE)));
+		addType(X10_UINT, 	 new firm.PrimitiveType(getFirmMode(X10_UINT)));
+		addType(X10_INT, 	 new firm.PrimitiveType(getFirmMode(X10_INT)));
+		addType(X10_ULONG,   new firm.PrimitiveType(getFirmMode(X10_ULONG)));
+		addType(X10_LONG,    new firm.PrimitiveType(getFirmMode(X10_LONG)));
+		addType(X10_FLOAT,   new firm.PrimitiveType(getFirmMode(X10_FLOAT)));
+		addType(X10_DOUBLE,  new firm.PrimitiveType(getFirmMode(X10_DOUBLE)));
+		addType(X10_CHAR,    new firm.PrimitiveType(getFirmMode(X10_CHAR)));
+	}
 
 	public static final firm.Mode getFirmMode(final String type) {
 		firm.Mode mode = primModeMap.get(type);
@@ -49,9 +73,7 @@ public class TypeSystem extends X10TypeSystem_c {
 		return pointerMode;
 	}
 
-	private static Map<String, firm.Type> tcache = new HashMap<String, firm.Type>();
-
-	private void addType(String tname, firm.Type type) {
+	private static void addType(String tname, firm.Type type) {
 		assert (!tcache.containsKey(tname));
 		tcache.put(tname, type);
 	}
@@ -59,17 +81,6 @@ public class TypeSystem extends X10TypeSystem_c {
 	public static firm.Type getFirmType(String tname) {
 		assert (tcache.containsKey(tname));
 		return tcache.get(tname);
-	}
-
-	private void initPrimitiveType() {
-		addType(X10_BOOLEAN, new firm.PrimitiveType(getFirmMode(X10_BOOLEAN)));
-		addType(X10_UINT, new firm.PrimitiveType(getFirmMode(X10_UINT)));
-		addType(X10_INT, new firm.PrimitiveType(getFirmMode(X10_INT)));
-		addType(X10_ULONG, new firm.PrimitiveType(getFirmMode(X10_ULONG)));
-		addType(X10_LONG, new firm.PrimitiveType(getFirmMode(X10_LONG)));
-		addType(X10_FLOAT, new firm.PrimitiveType(getFirmMode(X10_FLOAT)));
-		addType(X10_DOUBLE, new firm.PrimitiveType(getFirmMode(X10_DOUBLE)));
-		// TODO why is X10_CHAR missing?
 	}
 
 	public void declFirmClass(X10ClassDef cDef) {
