@@ -384,16 +384,20 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @return corresponding Firm method type
 	 */
 	private firm.MethodType createMethodType(X10MethodDef def) {
-		List<Ref<? extends Type>> params = def.typeParameters();
+		// Watch out: typeParamters are the template parameters of the method and
+		// not the formal parameters
+		
+		// TODO: "this" is not included in formalTypes -> include it in the firm MethodType
+		List<Ref<? extends Type>> formalTypes = def.formalTypes();
+		final int nParameters = formalTypes.size();
 		final int nResults = def.returnType() == null ? 0 : 1;
-		final int nParameters = params.size();
-		// TODO 'this' parameter already included?
+		
 		firm.MethodType type = new firm.MethodType(nParameters, nResults);
-
+		
 		/* set parameter types */
-		for (int i = 0; i < nParameters; i++) {
-			Ref<? extends Type> p = params.get(i);
-			type.setParamType(i, asFirmType(p.get()));
+		for(int i = 0; i < formalTypes.size(); i++) {
+			Ref<? extends Type> formalType = formalTypes.get(i);
+			type.setParamType(i, asFirmType(formalType.get()));
 		}
 
 		if (nResults == 1) {
