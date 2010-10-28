@@ -166,6 +166,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		NoTranslator translator = new NoTranslator(typeSystem, nodeFactory);
 		this.query = new ASTQuery(translator);
+		
+		// We can only initialize our type system after
+		// the system resolve have been run. 
+		typeSystem.init();
 	}
 	
 	private void setReturnNode(firm.nodes.Node returnNode) {
@@ -193,8 +197,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			return;
 		}
 
-		compiler.errorQueue().enqueue(ErrorInfo.SEMANTIC_ERROR,
-				"Unhandled node type: " + n.getClass(), n.position());
+		compiler.errorQueue().enqueue(ErrorInfo.SEMANTIC_ERROR,"Unhandled node type: " + n.getClass(), n.position());
 	}
 
 	@Override
@@ -217,9 +220,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		// decl a new FirmClassType
 		if (!isStruct)
-			typeSystem.declFirmClass(def);
+			typeSystem.declFirmClass(def.asType());
 		else
-			typeSystem.declFirmStruct(def);
+			typeSystem.declFirmStruct(def.asType());
 
 		// visit the node children (class body)
 		List<ClassMember> members = body.members();
@@ -243,18 +246,19 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public static String getCppRTTRep(X10ClassDef def) {
 		return getNativeRepParam(def, 3);
 	}
+	
+	private static final String FIRM_NATIVE_STRING = "firm";
 
 	// returns the i argument in a native annotation
 	public static String getNativeRepParam(X10ClassDef def, int i) {
 		try {
 			X10TypeSystem xts = (X10TypeSystem) def.typeSystem();
-			Type rep = (Type) xts.systemResolver().find(
-					QName.make("x10.compiler.NativeRep"));
+			Type rep = (Type) xts.systemResolver().find(QName.make("x10.compiler.NativeRep"));
 			List<Type> as = def.annotationsMatching(rep);
 			for (Type at : as) {
 				assertNumberOfInitializers(at, 4);
 				String lang = getStringPropertyInit(at, 0);
-				if (lang != null && lang.equals(CPP_NATIVE_STRING)) {
+				if (lang != null && lang.equals(FIRM_NATIVE_STRING)) {
 					return getStringPropertyInit(at, i);
 				}
 			}
@@ -275,9 +279,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		// decl a new FirmClassType
 		if (!isStruct)
-			typeSystem.declFirmClass(def);
+			typeSystem.declFirmClass(def.asType());
 		else
-			typeSystem.declFirmStruct(def);
+			typeSystem.declFirmStruct(def.asType());
 
 		// visit the node children (class body)
 		List<ClassMember> members = body.members();
@@ -332,20 +336,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		X10MethodInstance mi = (X10MethodInstance) def.asInstance();
 		X10ClassType container = (X10ClassType) mi.container();
 
-		typeSystem.declFirmMethod(def);
-
 		String methodName = mi.name().toString();
 
 		assert (con == null);
-		firm.MethodType type = createMethodType(def);
+		firm.MethodType type = typeSystem.declFirmMethod(def);
 		firm.Type global = firm.Program.getGlobalType();
 		firm.Entity mainEnt = new firm.Entity(global, methodName, type);
 		int n_vars = 1;
-		currentGraph = new firm.Graph(mainEnt, n_vars);
-		con = new firm.Construction(currentGraph);
+		currentGraph 	= new firm.Graph(mainEnt, n_vars);
+		con 			= new firm.Construction(currentGraph);
 
-		if ((container.x10Def().typeParameters().size() != 0)
-				&& flags.isStatic()) {
+		if ((container.x10Def().typeParameters().size() != 0) && flags.isStatic()) {
 			// handle static method decl.
 			assert false;
 			return;
@@ -376,61 +377,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 
 		firm.Dump.dumpGraph(currentGraph, "-fresh");
-	}
-
-	/**
-	 * @param def
-	 *            X10 Method Definition
-	 * @return corresponding Firm method type
-	 */
-	private firm.MethodType createMethodType(X10MethodDef def) {
-		// Watch out: typeParamters are the template parameters of the method and
-		// not the formal parameters
-		
-		// TODO: "this" is not included in formalTypes -> include it in the firm MethodType
-		List<Ref<? extends Type>> formalTypes = def.formalTypes();
-		final int nParameters = formalTypes.size();
-		final int nResults = def.returnType() == null ? 0 : 1;
-		
-		firm.MethodType type = new firm.MethodType(nParameters, nResults);
-		
-		/* set parameter types */
-		for(int i = 0; i < formalTypes.size(); i++) {
-			Ref<? extends Type> formalType = formalTypes.get(i);
-			type.setParamType(i, asFirmType(formalType.get()));
-		}
-
-		if (nResults == 1) {
-			type.setResType(0, asFirmType(def.returnType().get()));
-		}
-		return type;
-	}
-
-	private firm.Type asFirmType(polyglot.types.Type t) {
-		if (t instanceof FunctionType) {
-			assert false : "Cannot convert FunctionType to Firm type: " + t;
-		} else if (t instanceof X10NamedType) {
-			/* this includes builtin types like x10.lang.Int */
-			final String typename = ((X10NamedType) t).name().toString();
-			if (typename.equals("Int")) {
-				return new firm.PrimitiveType(firm.Mode.getIs());
-			}
-			assert false : "Cannot convert X10NamedType to Firm type: "
-					+ typename;
-		} else if (t instanceof X10PrimitiveType) {
-			assert false : "Cannot convert X10PrimitiveType to Firm type: " + t;
-		} else if (t instanceof X10Struct) {
-			assert false : "Cannot convert X10Struct to Firm type: " + t;
-		} else if (t instanceof X10NullType) {
-			assert false : "Cannot convert X10NullType to Firm type: " + t;
-		} else if (t instanceof X10ClassType) {
-			X10ClassType ct = (X10ClassType) t;
-			firm.Type cType = new firm.ClassType(new firm.Ident(ct.name()
-					.toString()));
-			return new firm.PointerType(cType);
-		}
-		assert false : "Cannot convert to Firm type: " + t;
-		return null;
 	}
 
 	@Override
@@ -784,8 +730,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return a;
 	}
 
-	private static String FIRM_NATIVE_STRING = "firm";
-
 	protected String[] getCurrentNativeStrings() {
 		return new String[] { FIRM_NATIVE_STRING };
 	}
@@ -912,9 +856,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		firm.Mode mode = null;
 
 		if (n.kind() == FloatLit.FLOAT)
-			mode = TypeSystem.getFirmMode(TypeSystem.X10_FLOAT);
+			mode = typeSystem.getFirmMode(typeSystem.Float());
 		else if (n.kind() == FloatLit.DOUBLE)
-			mode = TypeSystem.getFirmMode(TypeSystem.X10_DOUBLE);
+			mode = typeSystem.getFirmMode(typeSystem.Double());
 		else
 			throw new InternalCompilerError("Unrecognized FloatLit kind " + n.kind());
 
@@ -927,13 +871,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		firm.Mode mode = null;
 		
 		if (n.kind() == X10IntLit_c.ULONG) {
-			mode = TypeSystem.getFirmMode(TypeSystem.X10_ULONG);
+			mode = typeSystem.getFirmMode(typeSystem.ULong());
 		} else if (n.kind() == X10IntLit_c.UINT) {
-			mode = TypeSystem.getFirmMode(TypeSystem.X10_UINT);
+			mode = typeSystem.getFirmMode(typeSystem.UInt());
 		} else if (n.kind() == IntLit.LONG) {
-			mode = TypeSystem.getFirmMode(TypeSystem.X10_LONG);
+			mode = typeSystem.getFirmMode(typeSystem.Long());
 		} else if (n.kind() == IntLit.INT) {
-			mode = TypeSystem.getFirmMode(TypeSystem.X10_INT);
+			mode = typeSystem.getFirmMode(typeSystem.Int());
 		} else {
 			throw new InternalCompilerError("Unrecognized IntLit kind " + n.kind());
 		}
@@ -959,7 +903,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(BooleanLit_c lit) {
 		int val = (lit.value() ? 1 : 0);
 
-		setReturnNode(con.newConst(val, TypeSystem.getFirmMode(TypeSystem.X10_BOOLEAN)));
+		setReturnNode(con.newConst(val, typeSystem.getFirmMode(typeSystem.Boolean())));
 	}
 
 	@Override
