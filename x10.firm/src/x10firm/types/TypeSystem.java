@@ -6,19 +6,28 @@ import java.util.Map;
 
 import firm.Firm;
 import firm.Mode;
+import firm.Program;
+import firm.bindings.binding_typerep;
 
-import polyglot.types.ClassType;
 import polyglot.types.Context;
 import polyglot.types.Ref;
 import polyglot.types.Type;
+import x10.types.X10ClassType;
 import x10.types.X10Context_c;
+import x10.types.X10Flags;
 import x10.types.X10MethodDef;
+import x10.types.X10MethodInstance;
 import x10.types.X10TypeSystem_c;
 
 public class TypeSystem extends X10TypeSystem_c {
 
-	private Map<polyglot.types.Type, firm.Mode> primModeMap = new HashMap<polyglot.types.Type, firm.Mode>();
-	private Map<polyglot.types.Type, firm.Type> tcache      = new HashMap<polyglot.types.Type, firm.Type>();
+	// maps polyglot types to the appropriate firm modes. 
+	private Map<polyglot.types.Type, firm.Mode> primModeMap   = new HashMap<polyglot.types.Type, firm.Mode>();
+	// Maps polyglot types to firm types. 
+	private Map<polyglot.types.Type, firm.Type> firmTypeCache = new HashMap<polyglot.types.Type, firm.Type>();
+	// Maps firm types to the corresponding firm entities. 
+	private Map<firm.Type, firm.Entity> firmEntityCache       = new HashMap<firm.Type, firm.Entity>();
+	
 	private firm.Mode pointerMode;
 	private boolean inited = false;
 	
@@ -51,15 +60,15 @@ public class TypeSystem extends X10TypeSystem_c {
 	}
 	
 	private void initPrimitiveType() {
-		addType(Boolean(),new firm.PrimitiveType(getFirmMode(Boolean())));
-		addType(Byte(),   new firm.PrimitiveType(getFirmMode(Byte())));
-		addType(UInt(),   new firm.PrimitiveType(getFirmMode(UInt())));
-		addType(Int(),    new firm.PrimitiveType(getFirmMode(Int())));
-		addType(ULong(),  new firm.PrimitiveType(getFirmMode(ULong())));
-		addType(Long(),   new firm.PrimitiveType(getFirmMode(Long())));
-		addType(Float(),  new firm.PrimitiveType(getFirmMode(Float())));
-		addType(Double(), new firm.PrimitiveType(getFirmMode(Double())));
-		addType(Char(),   new firm.PrimitiveType(getFirmMode(Char())));
+		addFirmType(Boolean(),new firm.PrimitiveType(getFirmMode(Boolean())));
+		addFirmType(Byte(),   new firm.PrimitiveType(getFirmMode(Byte())));
+		addFirmType(UInt(),   new firm.PrimitiveType(getFirmMode(UInt())));
+		addFirmType(Int(),    new firm.PrimitiveType(getFirmMode(Int())));
+		addFirmType(ULong(),  new firm.PrimitiveType(getFirmMode(ULong())));
+		addFirmType(Long(),   new firm.PrimitiveType(getFirmMode(Long())));
+		addFirmType(Float(),  new firm.PrimitiveType(getFirmMode(Float())));
+		addFirmType(Double(), new firm.PrimitiveType(getFirmMode(Double())));
+		addFirmType(Char(),   new firm.PrimitiveType(getFirmMode(Char())));
 	}
 
 	public final firm.Mode getFirmMode(polyglot.types.Type type) {
@@ -70,58 +79,102 @@ public class TypeSystem extends X10TypeSystem_c {
 		return pointerMode;
 	}
 
-	private void addType(polyglot.types.Type t, firm.Type type) {
-		assert (!tcache.containsKey(t));
-		tcache.put(t, type);
+	private void addFirmType(polyglot.types.Type t, firm.Type type) {
+		assert (!firmTypeCache.containsKey(t));
+		firmTypeCache.put(t, type);
 	}
 
 	private firm.Type getFirmType(polyglot.types.Type t) {
-		assert (tcache.containsKey(t));
-		return tcache.get(t);
+		assert (firmTypeCache.containsKey(t));
+		return firmTypeCache.get(t);
+	}
+	
+	private void addFirmEntity(firm.Type type, firm.Entity entity) {
+		assert(!firmEntityCache.containsKey(type));
+		firmEntityCache.put(type, entity);
+	}
+	
+	public firm.Entity getFirmEntity(firm.Type type) {
+		assert(firmEntityCache.containsKey(type));
+		return firmEntityCache.get(type);
 	}
 
-	public firm.PointerType declFirmClass(polyglot.types.Type cType) {
-		assert cType instanceof ClassType;
-		// TODO: Implement me
-//		firm.Type cType 		= new firm.ClassType(new firm.Ident(cname));
-//		firm.Type cPointerType 	= new firm.PointerType(cType);
-
-	//	addType(cDef, cPointerType);
-		return null;
-	}
-
-	public void declFirmStruct(polyglot.types.Type sType) {
-		assert sType instanceof ClassType;
-		// TODO: Implement me
-	}
-
-	/**Creates a new firm method type
+	/**Creates a new firm class entity
 	 * 
 	 * @param def X10 Method Definition
-	 * @return corresponding Firm method type
+	 * @return corresponding firm class entity
 	 */
-	public firm.MethodType declFirmMethod(X10MethodDef def) {
-		// Watch out: typeParamters are the template parameters of the method and
-		// not the formal parameters
+	public firm.Entity declFirmClass(polyglot.types.ClassType cType) {
+		String cName = cType.toString();
 		
-		// TODO: "this" is not included in formalTypes -> include it in the firm MethodType
+		firm.ClassType classType = new firm.ClassType(new firm.Ident(cName));
+		classType.setTypeState(binding_typerep.ir_type_state.layout_fixed);
+		firm.PointerType classPointerType 	= new firm.PointerType(classType);
+		addFirmType(cType, classPointerType);
+		
+		firm.Entity classEntity = new firm.Entity(Program.getGlobalType(), cName, classType);
+		classEntity.setVisibility(binding_typerep.ir_visibility.ir_visibility_external);
+		addFirmEntity(classPointerType, classEntity);
+		
+		return classEntity;
+	}
+
+	public void declFirmStruct(polyglot.types.StructType sType) {
+		// TODO: Implement me
+	}
+
+	/**Creates a new firm method entity
+	 * 
+	 * @param def X10 Method Definition
+	 * @param isStatic True if the given method is static
+	 * @return corresponding firm method entity
+	 */
+	public firm.Entity declFirmMethod(X10MethodDef def, final X10Flags flags, X10ClassType ownerClass) {
+		
+		boolean isStatic 		= flags.isStatic();
+		X10MethodInstance mi 	= (X10MethodInstance) def.asInstance();
+		
 		List<Ref<? extends Type>> formalTypes = def.formalTypes();
-		final int nParameters = formalTypes.size();
-		final int nResults = def.returnType() == null ? 0 : 1;
+		final int nParameters 	= formalTypes.size() + ((isStatic) ? 0 : 1);
+		final int nResults 		= def.returnType() == null ? 0 : 1;
 		
-		firm.MethodType type = new firm.MethodType(nParameters, nResults);
+		firm.MethodType methType = new firm.MethodType(nParameters, nResults);
+		
+		int i = 0;
+		// Set 'this'
+		if(!isStatic) {
+			firm.PointerType thisPtrType = new firm.PointerType(asFirmType(ownerClass));
+			methType.setParamType(i, thisPtrType);
+			i++;
+		}
 		
 		/* set parameter types */
-		for(int i = 0; i < formalTypes.size(); i++) {
+		for(; i < formalTypes.size(); i++) {
 			Ref<? extends Type> formalType = formalTypes.get(i);
-			type.setParamType(i, asFirmType(formalType.get()));
+			methType.setParamType(i, asFirmType(formalType.get()));
 		}
 
 		if (nResults == 1) {
-			type.setResType(0, asFirmType(def.returnType().get()));
+			methType.setResType(0, asFirmType(def.returnType().get()));
 		}
 		
-		return type;
+		String methodName 	= mi.name().toString();
+		firm.Type methEntityOwnerType = null;
+		
+		if(isStatic) {
+			methEntityOwnerType = firm.Program.getGlobalType();
+		} else {
+			// the returned firm type of the owner class must be a pointer type
+			assert asFirmType(ownerClass) instanceof firm.PointerType;
+			
+			firm.PointerType ptrType = (firm.PointerType)asFirmType(ownerClass);
+			methEntityOwnerType = ptrType.getPointsTo();
+		}
+
+		firm.Entity methEnt = new firm.Entity(methEntityOwnerType, methodName, methType);
+		addFirmEntity(methType, methEnt);
+		
+		return methEnt;
 	}
 	
 	/** 

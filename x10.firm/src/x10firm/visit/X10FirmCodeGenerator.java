@@ -2,8 +2,6 @@ package x10firm.visit;
 
 import static x10cpp.visit.ASTQuery.assertNumberOfInitializers;
 import static x10cpp.visit.ASTQuery.getStringPropertyInit;
-import static x10cpp.visit.SharedVarsMethods.CPP_NATIVE_STRING;
-import static x10cpp.visit.SharedVarsMethods.CUDA_NATIVE_STRING;
 import static x10cpp.visit.SharedVarsMethods.chevrons;
 
 import java.util.ArrayList;
@@ -70,7 +68,6 @@ import polyglot.ast.Unary_c;
 import polyglot.ast.While_c;
 import polyglot.types.LocalInstance;
 import polyglot.types.QName;
-import polyglot.types.Ref;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.util.ErrorInfo;
@@ -116,7 +113,6 @@ import x10.ast.X10SourceFile_c;
 import x10.ast.X10Special_c;
 import x10.ast.X10Unary_c;
 import x10.extension.X10Ext;
-import x10.types.FunctionType;
 import x10.types.ParameterType;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
@@ -128,10 +124,6 @@ import x10.types.X10FieldInstance;
 import x10.types.X10Flags;
 import x10.types.X10MethodDef;
 import x10.types.X10MethodInstance;
-import x10.types.X10NamedType;
-import x10.types.X10NullType;
-import x10.types.X10PrimitiveType;
-import x10.types.X10Struct;
 import x10.types.X10TypeSystem;
 import x10.types.checker.Converter;
 import x10.visit.X10DelegatingVisitor;
@@ -157,7 +149,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private final X10NodeFactory nodeFactory;
 	private final X10Context context;
 	private final ASTQuery query;
-
+	
 	public X10FirmCodeGenerator(Compiler compiler, TypeSystem typeSystem, X10NodeFactory nodeFactory) {
 		this.compiler = compiler;
 		this.typeSystem = typeSystem;
@@ -217,7 +209,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		// TODO: how do we treat native rep classes ?
 		assert (!def.isNested()) : ("Nested class alert!");
-
+		
 		// decl a new FirmClassType
 		if (!isStruct)
 			typeSystem.declFirmClass(def.asType());
@@ -331,22 +323,22 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			// TODO Firm must handle this!
 			return;
 		}
+		
+		X10MethodDef def 	  = (X10MethodDef) dec.methodDef();
+		X10MethodInstance mi  = (X10MethodInstance)def.asInstance();
 
-		X10MethodDef def = (X10MethodDef) dec.methodDef();
-		X10MethodInstance mi = (X10MethodInstance) def.asInstance();
-		X10ClassType container = (X10ClassType) mi.container();
-
-		String methodName = mi.name().toString();
+		// container is the owner class type of the current method
+		X10ClassType ownerClassType = (X10ClassType) mi.container();
 
 		assert (con == null);
-		firm.MethodType type 	= typeSystem.declFirmMethod(def);
-		firm.Type global 		= firm.Program.getGlobalType();
-		firm.Entity mainEnt 	= new firm.Entity(global, methodName, type);
+		
+		firm.Entity methEnt = typeSystem.declFirmMethod(def, flags, ownerClassType);
+		
 		int n_vars = 1;
-		currentGraph 	= new firm.Graph(mainEnt, n_vars);
+		currentGraph 	= new firm.Graph(methEnt, n_vars);
 		con 			= new firm.Construction(currentGraph);
 
-		if ((container.x10Def().typeParameters().size() != 0) && flags.isStatic()) {
+		if ((ownerClassType.x10Def().typeParameters().size() != 0) && flags.isStatic()) {
 			// handle static method decl.
 			assert false;
 			return;
@@ -365,11 +357,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			visitAppropriate(dec.body());
 		} else {
 			// Define property getter methods.
-			if (flags.isProperty() && flags.isAbstract()
-					&& mi.formalTypes().size() == 0
-					&& mi.typeParameters().size() == 0) {
-				X10FieldInstance fi = (X10FieldInstance) container
-						.fieldNamed(mi.name());
+			if (flags.isProperty() && flags.isAbstract() && mi.formalTypes().size() == 0 && mi.typeParameters().size() == 0) {
+				X10FieldInstance fi = (X10FieldInstance) ownerClassType.fieldNamed(mi.name());
 				if (fi != null) {
 					String fieldName = fi.name().toString();
 				}
