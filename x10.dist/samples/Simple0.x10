@@ -1,5 +1,5 @@
 class Milestone0 {
-	public def get0() : int {
+	public static def get0() : int {
 		return 0;
 	}
 }

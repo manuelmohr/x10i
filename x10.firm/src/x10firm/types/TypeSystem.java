@@ -125,8 +125,9 @@ public class TypeSystem extends X10TypeSystem_c {
 
 	/**Creates a new firm method entity
 	 * 
-	 * @param def X10 Method Definition
-	 * @param isStatic True if the given method is static
+	 * @param def X10 method definition
+	 * @param flags of the given method definition
+	 * @param ownerClass owner class of the given method definition
 	 * @return corresponding firm method entity
 	 */
 	public firm.Entity declFirmMethod(X10MethodDef def, final X10Flags flags, X10ClassType ownerClass) {
