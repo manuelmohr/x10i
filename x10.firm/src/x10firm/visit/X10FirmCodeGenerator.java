@@ -170,7 +170,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	class FirmContext {
 		private FirmContext prev;
 		private Stack<FirmScope> firmScopes = new Stack<FirmScope>();
-		// Maps "LocalInstances" to the appropriate IDs.
+		// Maps "LocalInstances" to the appropriate Idxs.
 		private Map<LocalInstance, Integer> localInstanceMapper = new HashMap<LocalInstance, Integer>();
 		
 		public FirmContext(FirmContext prev) {
@@ -195,7 +195,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			localInstanceMapper.put(loc, idx);
 		}
 		
-		public int getIDForLocalInstance(LocalInstance loc) {
+		public int getIdxForLocalInstance(LocalInstance loc) {
 			assert localInstanceMapper.containsKey(loc) : "Loc " + loc + " not found";
 			return localInstanceMapper.get(loc).intValue();
 		}
@@ -391,9 +391,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		} else if (currentClass.isX10Struct()) {
 			// TODO: Implement me
 		} else {
-			for (ClassMember member : n.members()) {
+			for (ClassMember member : n.members())
 				visitAppropriate(member);
-			}
 		}
 	}
 
@@ -558,7 +557,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(ConstructorDecl_c dec) {
-		
+		// TODO: Implement me
 	}
 
 	@Override
@@ -866,7 +865,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(Local_c n) {
 		LocalInstance loc = n.localInstance();
-		int id = firmContext.getIDForLocalInstance(loc);
+		int id = firmContext.getIdxForLocalInstance(loc);
 		
 		firm.nodes.Node ret = con.getVariable(id, typeSystem.getFirmMode(loc.type()));
 		
