@@ -133,24 +133,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private final Compiler compiler;
 	private final TypeSystem typeSystem;
 	
-	
-	private final X10NodeFactory nodeFactory;
-	private final X10Context context;
-	private final ASTQuery query;
-	
-	// following getters are needed for avoiding compiler errors. (never read locally attributes)
-	public X10NodeFactory getNodeFactory() {
-		return nodeFactory;
-	}
-	
-	public X10Context getX10Context() {
-		return context;
-	}
-	
-	public ASTQuery getASTQuery() {
-		return query;
-	}
-	
 	class FirmScope {
 		private firm.nodes.Block []blocks;
 		
@@ -242,11 +224,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public X10FirmCodeGenerator(Compiler compiler, TypeSystem typeSystem, X10NodeFactory nodeFactory) {
 		this.compiler 		= compiler;
 		this.typeSystem 	= typeSystem;
-		this.nodeFactory 	= nodeFactory;
-		this.context 		= new X10Context_c(typeSystem);
-		
-		NoTranslator translator = new NoTranslator(typeSystem, nodeFactory);
-		this.query 				= new ASTQuery(translator);
+	
+		// No translator needed yet
+//		NoTranslator translator = new NoTranslator(typeSystem, nodeFactory);
 		
 		// We can only initialize our type system after
 		// the system resolver has been run. 
