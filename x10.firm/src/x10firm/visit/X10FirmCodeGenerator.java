@@ -156,9 +156,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	// Maps "LocalInstances" to the appropriate ID.
 	private Map<LocalInstance, Integer> localInstanceMapper;
 	
-	// ID of 'this'
-	private static final int FIRM_THIS_ID = 0;
-	
 	public X10FirmCodeGenerator(Compiler compiler, TypeSystem typeSystem, X10NodeFactory nodeFactory) {
 		this.compiler = compiler;
 		this.typeSystem = typeSystem;
@@ -324,12 +321,19 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		assert false;
 	}
 	
-	/** Returns all local variables as 'LocalInstances' from the given method
+	/** Finds all locals and formals in the given method. 
 	 *  @param dec The method declaration
-	 *  @return All local variables as 'LocalInstances'. Formal Parameters are not included.
+	 *  @param formals Will hold all found formals.  
+	 *  @param locals  Will hold all found locals. 
 	 */
-	private List<LocalInstance> getLocalVariablesFromMethod(MethodDecl_c dec) {
-		List<LocalInstance> retList = new ArrayList<LocalInstance>();
+	private void findAllLocalInstancesInMethod(MethodDecl_c dec, List<LocalInstance> formals, List<LocalInstance> locals) {
+		
+		// extract all formal paramters from the given method
+		X10MethodDef def      = (X10MethodDef)dec.methodDef();
+		X10MethodInstance mi  = (X10MethodInstance)def.asInstance();
+		
+		// add the formal local instances. 
+		formals.addAll(mi.formalNames());
 		
 		if(dec.body() != null) {
 			// Search the body of the method declaration for X10Local_c`s
@@ -337,55 +341,53 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			dec.body().visit(xLocals);
 			
 			if(!xLocals.found()) 
-				return retList;
+				return;
 			
-			List<X10Local_c> matchesList = xLocals.getMatches();
+			List<X10Local_c> matchesList  = xLocals.getMatches();
 			
 			for(X10Local_c c : matchesList) {
 				// extract the local instances from the found "X10Local_c`s"
 				LocalInstance locInstance = c.localInstance();
-				retList.add(locInstance);
+				// don`t include the local instances from the formals. 
+				if(formals.contains(locInstance)) 
+					continue;
+				
+				locals.add(locInstance);
 			}
 		}
-		
-		return retList;
-	}
-	
-	/** Returns all forma parameters as 'LocalInstances' from the given method
-	 *  @param dec The method declaration
-	 *  @return All formal parameters as 'LocalInstances'. Local variables are not included. 'this' is also not included. 
-	 */
-	private List<LocalInstance> getFormalParametersFromMethod(MethodDecl_c dec) {
-		X10MethodDef def      = (X10MethodDef)dec.methodDef();
-		X10MethodInstance mi  = (X10MethodInstance)def.asInstance();
-		
-		return mi.formalNames();
 	}
 	
 	private void openMethod(List<LocalInstance> params, List<LocalInstance> vars, boolean isStatic) {
 		// create a new local instance mapper for the method
 		localInstanceMapper = new HashMap<LocalInstance, Integer>();
 		
-		int idx = 0;
 		firm.nodes.Node args = currentGraph.getArgs();
 		if(!isStatic) {
 			// map 'this'
-			firm.nodes.Node projThis = con.newProj(args, typeSystem.getFirmMode(currentClass), idx);
-			con.setVariable(FIRM_THIS_ID, projThis);
-			idx++;
+			firm.nodes.Node projThis = con.newProj(args, typeSystem.getFirmMode(currentClass), 0);
+			con.setVariable(0, projThis);
 		}
+		
+		int idx = isStatic ? 0 : 1;
 		
 		// init and map all parameters. 
 		for(LocalInstance loc : params) {
 			firm.nodes.Node projParam = con.newProj(args, typeSystem.getFirmMode(loc.type()), idx);
 			con.setVariable(idx, projParam);
+			
+			if(localInstanceMapper.containsKey(loc))
+				continue;
+			
 			// map the local instance with the appropriate idx. 
 			localInstanceMapper.put(loc, idx);
 			idx++;
 		}
-		
+
 		// map all local variables. 
 		for(LocalInstance loc : vars) {
+			if(localInstanceMapper.containsKey(loc))
+				continue;
+			
 			localInstanceMapper.put(loc, idx);
 			idx++;
 		}
@@ -420,10 +422,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		firm.Entity methEnt = typeSystem.declFirmMethod(def, flags, ownerClassType);
 		
-		List<LocalInstance> localInstanceParams = getFormalParametersFromMethod(dec);
-		List<LocalInstance> localInstanceVars 	= getLocalVariablesFromMethod(dec);
+		List<LocalInstance> formals = new ArrayList<LocalInstance>();
+		List<LocalInstance> locals  = new ArrayList<LocalInstance>();
 		
-		int nVars = localInstanceVars.size() + localInstanceParams.size();
+		// extract all formals and locals from the method. 
+		findAllLocalInstancesInMethod(dec, formals, locals);
+		
+		int nVars = formals.size() + locals.size();
+		
 		if(!flags.isStatic()) {
 			// Add 'this'
 			nVars++;
@@ -432,7 +438,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		currentGraph 	= new firm.Graph(methEnt, nVars);
 		con 			= new firm.Construction(currentGraph);
 		
-		openMethod(localInstanceParams, localInstanceVars, flags.isStatic());
+		openMethod(formals, locals, flags.isStatic());
 		
 		if ((ownerClassType.x10Def().typeParameters().size() != 0) && flags.isStatic()) {
 			// handle static method decl.
@@ -639,6 +645,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		Expr lhs = asgn.left();
 		Expr rhs = asgn.right();
+		
+		
+		visitAppropriate(lhs);
+		visitAppropriate(rhs);
+		
 		if (unsigned_op) {
 			String type = Emitter.translateType(asgn.type());
 			//String utype = emitter.makeUnsignedType(lhs.type());
@@ -660,32 +671,28 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Return_c ret) {
-		firm.nodes.Node[] returned_values = new firm.nodes.Node[1];
+		firm.nodes.Node retNode;
+		
 		Expr e = ret.expr();
 		if (e != null) {
-			/** return an expression value */
-			/*
-			 * TODO cast? X10FirmTypeSystem_c xts = (X10FirmTypeSystem_c)
-			 * tr.typeSystem(); FunctionDef container = current_method; Type
-			 * rType = container.returnType().get(); boolean rhsNeedsCast =
-			 * !xts.typeDeepBaseEquals(rType, e.type(), ctx);
-			 */
-
 			visitAppropriate(e);
 			assert (getReturnNode() != null);
-			returned_values[0] = getReturnNode();
+			
+			firm.nodes.Node retValue = getReturnNode();
+			retNode = con.newReturn(con.getCurrentMem(), new firm.nodes.Node[]{retValue});
+		} else {
+			retNode = con.newReturn(con.getCurrentMem(), new firm.nodes.Node[]{});
 		}
 
-		firm.nodes.Node retn = con.newReturn(con.getCurrentMem(),returned_values);
-
 		/* for error detection */
-		currentGraph.getEndBlock().addPred(retn);
-		con.getCurrentBlock().mature();
+		currentGraph.getEndBlock().addPred(retNode);
 		con.setCurrentBlockBad();
+		con.finish();
 	}
 
 	@Override
 	public void visit(Formal_c n) {
+		assert false;
 	}
 
 	@Override
@@ -723,9 +730,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Block_c b) {
 		List<Stmt> stmts = b.statements();
 
-		for (Stmt s : stmts) {
+		for (Stmt s : stmts)
 			visitAppropriate(s);
-		}
 	}
 
 	@Override
@@ -922,7 +928,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Local_c n) {
 		LocalInstance var = n.localInstance();
 		int id = getIDForLocalInstance(var);
-		setReturnNode(con.getVariable(id, typeSystem.getFirmMode(var.type())));
+		
+		firm.nodes.Node ret = con.getVariable(id, typeSystem.getFirmMode(var.type()));
+		
+		
+		System.out.println("Local_c: " + var + " ID: " + id + " Name: " + ret);
+		
+		setReturnNode(ret);
 	}
 
 	@Override
@@ -961,7 +973,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		} else {
 			throw new InternalCompilerError("Unrecognized IntLit kind " + n.kind());
 		}
-
+		
 		setReturnNode(con.newConst(new TargetValue(n.value(), mode)));
 	}
 
@@ -994,50 +1006,62 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(X10Cast_c c) {
+		
 	}
 
 	@Override
 	public void visit(SubtypeTest_c n) {
+		
 	}
 
 	@Override
 	public void visit(X10Instanceof_c n) {
+		
 	}
 
 	@Override
 	public void visit(Throw_c n) {
+		
 	}
 
 	@Override
 	public void visit(Try_c n) {
+		
 	}
 
 	@Override
 	public void visit(Catch_c n) {
+		
 	}
 
 	@Override
 	public void visit(Atomic_c a) {
+		
 	}
 
 	@Override
 	public void visit(Await_c n) {
+		
 	}
 
 	@Override
 	public void visit(Next_c n) {
+		
 	}
 
 	@Override
 	public void visit(ForLoop_c n) {
+		
 	}
 
 	@Override
 	public void visit(ForEach_c n) {
+		
 	}
 
 	@Override
 	public void visit(AtEach_c n) {
+		
 	}
 
 	@Override

@@ -47,7 +47,7 @@ public class TypeSystem extends X10TypeSystem_c {
 	private void initModes() {
 		pointerMode = Mode.getP();
 
-		primModeMap.put(Boolean(), Mode.getb());
+		primModeMap.put(Boolean(), Mode.getBs());
 		primModeMap.put(Byte(),    Mode.getBs());
 		// unsigned short for x10_char -> Unicode
 		primModeMap.put(Char(),    Mode.getHu());
@@ -141,13 +141,13 @@ public class TypeSystem extends X10TypeSystem_c {
 		
 		firm.MethodType methType = new firm.MethodType(nParameters, nResults);
 		
-		int i = 0;
 		// Set 'this'
 		if(!isStatic) {
 			firm.PointerType thisPtrType = new firm.PointerType(asFirmType(ownerClass));
-			methType.setParamType(i, thisPtrType);
-			i++;
+			methType.setParamType(0, thisPtrType);
 		}
+		
+		int i = isStatic ? 0 : 1;
 		
 		/* set parameter types */
 		for(; i < formalTypes.size(); i++) {
