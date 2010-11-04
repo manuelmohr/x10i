@@ -5,6 +5,7 @@ import static x10cpp.visit.ASTQuery.getStringPropertyInit;
 import static x10cpp.visit.SharedVarsMethods.chevrons;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
@@ -154,7 +155,103 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private final ASTQuery query;
 	
 	// Maps "LocalInstances" to the appropriate ID.
-	private Map<LocalInstance, Integer> localInstanceMapper;
+	private Map<LocalInstance, Integer> localInstanceMapper = new HashMap<LocalInstance, Integer>();
+	
+	class FirmContext {
+		private FirmContext prev;
+		private firm.nodes.Block []blocks;
+		
+		public FirmContext(FirmContext prev) {
+			this.prev = prev;
+		}
+		
+		public FirmContext() {
+		}
+		
+		public FirmContext(firm.nodes.Block []blocks) {
+			setBlocks(blocks);
+		}
+		
+		public FirmContext pushFirmContext() {
+			return new FirmContext(this);
+		}
+		
+		public FirmContext popFirmContext() {
+			return this.prev;
+		}
+		
+		public void setBlocks(firm.nodes.Block []blocks) {
+			this.blocks = blocks;
+		}
+		
+		public firm.nodes.Block []getBlocks() {
+			return blocks;
+		}
+	}
+	
+	// current firm context
+	private FirmContext firmContext = new FirmContext();
+	/*
+	private firm.nodes.Node withPhiTrailer(JL E, Object o) throws Exception {
+		
+	    firm.nodes.Block cur    = con.getCurrentBlock();
+		firm.nodes.Block bTrue  = con.newBlock();
+		firm.nodes.Block bFalse = con.newBlock();
+		
+		con.setCurrentBlock(bTrue);
+		firm.nodes.Node jmp1 = con.newJmp();
+		firm.nodes.Node one  = con.newConst(1, typeSystem.getFirmMode(typeSystem.Boolean()));
+		
+		con.setCurrentBlock(bFalse);
+		firm.nodes.Node jmp2 = con.newJmp();
+		firm.nodes.Node zero = con.newConst(0, typeSystem.getFirmMode(typeSystem.Boolean()));
+		
+		con.setCurrentBlock(cur);
+		
+		firm.nodes.Block []b = null;
+		if(getCmd(o) == dummyMarker)  // swap true and false jmps.
+			b = new Block[]{bFalse, bTrue};
+		else
+			b = new Block[]{bTrue, bFalse};
+
+		
+		visitAppropriate(E);
+		
+		makeCondition((Node)E.accept(this, setParam1(setCmd(o, null), b)), b);
+		
+		firm.nodes.Block phiBlock = con.newBlock();
+		phiBlock.addPred(jmp1);
+		phiBlock.addPred(jmp2);
+
+		con.setCurrentBlock(phiBlock);
+
+		return con.newPhi(new firm.nodes.Node[]{one, zero}, typeSystem.getFirmMode(typeSystem.Boolean()));
+	}
+	*/
+	private firm.nodes.Node makeCondition(firm.nodes.Node n) {
+		if(!(n instanceof firm.nodes.Cond)) {
+			
+			firm.nodes.Block []blocks = firmContext.getBlocks();
+			
+			firm.nodes.Node c    = con.newConst(1, typeSystem.getFirmMode(typeSystem.Boolean()));
+			firm.nodes.Node cmp  = con.newCmp(n, c);
+			firm.nodes.Node proj = con.newProj(cmp, firm.Mode.getb(), firm.nodes.Cmp.pnEq);
+			firm.nodes.Node cond = con.newCond(proj);
+			
+			firm.nodes.Node projTrue  = con.newProj(cond, firm.Mode.getX(), firm.nodes.Cond.pnTrue);
+			firm.nodes.Node projFalse = con.newProj(cond, firm.Mode.getX(), firm.nodes.Cond.pnFalse);
+			
+			firm.nodes.Block bTrue  = blocks[0];
+			firm.nodes.Block bFalse = blocks[1];
+			
+			bTrue.addPred(projTrue);
+			bFalse.addPred(projFalse);
+			
+			return cond;
+		}
+		return n;
+	}
+	
 	
 	public X10FirmCodeGenerator(Compiler compiler, TypeSystem typeSystem, X10NodeFactory nodeFactory) {
 		this.compiler = compiler;
@@ -357,9 +454,26 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 	}
 	
+	private boolean hasIdxForLocalInstance(LocalInstance loc) {
+		return localInstanceMapper.containsKey(loc);
+	}
+	
+	private void putIdxForLocalInstance(LocalInstance loc, int idx) {
+		assert !localInstanceMapper.containsKey(loc);
+		localInstanceMapper.put(loc, idx);
+	}
+	
+	private int getIDForLocalInstance(LocalInstance loc) {
+		assert localInstanceMapper.containsKey(loc) : "Loc " + loc + " not found";
+		return localInstanceMapper.get(loc).intValue();
+	}
+	
 	private void openMethod(List<LocalInstance> params, List<LocalInstance> vars, boolean isStatic) {
-		// create a new local instance mapper for the method
+		// create a new local instance mapper
 		localInstanceMapper = new HashMap<LocalInstance, Integer>();
+		
+		// Push a new firm context
+		firmContext = firmContext.pushFirmContext();
 		
 		firm.nodes.Node args = currentGraph.getArgs();
 		if(!isStatic) {
@@ -375,20 +489,21 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			firm.nodes.Node projParam = con.newProj(args, typeSystem.getFirmMode(loc.type()), idx);
 			con.setVariable(idx, projParam);
 			
-			if(localInstanceMapper.containsKey(loc))
+			if(hasIdxForLocalInstance(loc))
 				continue;
 			
 			// map the local instance with the appropriate idx. 
-			localInstanceMapper.put(loc, idx);
+			putIdxForLocalInstance(loc, idx);
 			idx++;
 		}
 
 		// map all local variables. 
 		for(LocalInstance loc : vars) {
-			if(localInstanceMapper.containsKey(loc))
+			if(hasIdxForLocalInstance(loc))
 				continue;
 			
-			localInstanceMapper.put(loc, idx);
+			// map the local instance with the appropriate idx. 
+			putIdxForLocalInstance(loc, idx);
 			idx++;
 		}
 	}
@@ -396,11 +511,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private void closeMethod() {
 		// Dump the created graph
 		firm.Dump.dumpGraph(currentGraph, "-fresh");
-	}
-	
-	private int getIDForLocalInstance(LocalInstance loc) {
-		assert localInstanceMapper.containsKey(loc);
-		return localInstanceMapper.get(loc).intValue();
 	}
 
 	@Override
@@ -763,39 +873,122 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Do_c n) {
+		
+		firm.nodes.Block bCond  = con.newBlock();
+		firm.nodes.Block bTrue  = con.newBlock();
+		firm.nodes.Block bAfter = con.newBlock();
+		
+		bTrue.addPred(con.newJmp());
+		con.setCurrentBlock(bTrue);
+		
 		Stmt body = n.body();
-		if (!(body instanceof Block_c))
-			body = nodeFactory.Block(body.position(), body);
-
 		visitAppropriate(body);
-		visitAppropriate(n.cond());
+		
+		firmContext = firmContext.pushFirmContext();
+		{
+			bCond.addPred(con.newJmp());
+			con.setCurrentBlock(bCond);
+			
+			firm.nodes.Block []blocks = new firm.nodes.Block[]{bTrue, bAfter};
+			firmContext.setBlocks(blocks);
+			visitAppropriate(n.cond());
+			firm.nodes.Node retNode = getReturnNode();
+			makeCondition(retNode);
+		}
+		firmContext = firmContext.popFirmContext();
+		
+		con.setCurrentBlock(bAfter);
 	}
 
 	@Override
 	public void visit(While_c n) {
-		visitAppropriate(n.cond());
+		firm.nodes.Block bCond  = con.newBlock();
+		firm.nodes.Block bTrue  = con.newBlock();
+		firm.nodes.Block bAfter = con.newBlock();
+		
+		bCond.addPred(con.newJmp());
+		con.setCurrentBlock(bCond);
+		
+		firmContext = firmContext.pushFirmContext();
+		{
+			firm.nodes.Block []blocks = new firm.nodes.Block[]{bTrue, bAfter};
+			firmContext.setBlocks(blocks);
+			visitAppropriate(n.cond());
+			firm.nodes.Node retNode = getReturnNode();
+			makeCondition(retNode);
+		}
+		firmContext = firmContext.popFirmContext();
+		
+		con.setCurrentBlock(bTrue);
+		
 		Stmt body = n.body();
-		if (!(body instanceof Block_c))
-			body = nodeFactory.Block(body.position(), body);
-
 		visitAppropriate(body);
+		
+		if(!con.getCurrentBlock().isBad())
+			bCond.addPred(con.newJmp());
+		
+		con.setCurrentBlock(bAfter);
 	}
 
 	@Override
 	public void visit(If_c n) {
-		visitAppropriate(n.cond());
+		firm.nodes.Block bTrue  = con.newBlock();
+		firm.nodes.Block bAfter = con.newBlock();
+		
+		firm.nodes.Block bFalse = null; // block will only be created if we have an else stmt.
+		
+		firm.nodes.Block[] blocks = new firm.nodes.Block[2];
+		blocks[0] = bTrue;
+		if (n.alternative() != null) {
+			bFalse = con.newBlock();
+			blocks[1] = bFalse;
+		} else {
+			blocks[1] = bAfter;
+		}
+
+		firmContext = firmContext.pushFirmContext();
+		{
+			firmContext.setBlocks(blocks);
+			visitAppropriate(n.cond());
+			firm.nodes.Node retNode = getReturnNode();
+			makeCondition(retNode);
+		}
+		firmContext = firmContext.popFirmContext();
+		
+		con.setCurrentBlock(bTrue);
+
 		visitAppropriate(n.consequent());
 
+		firm.nodes.Node endIf = null;
+		if(con.getCurrentBlock().isBad())
+			con.setCurrentBlock(bTrue);
+		else
+			endIf = con.newJmp();
+
 		if (n.alternative() != null) {
-			// else block
 			Stmt alternative = n.alternative();
 			if (alternative instanceof Block_c) {
 				Block_c block = (Block_c) alternative;
 				if (block.statements().size() == 1 && block.statements().get(0) instanceof If_c)
 					alternative = block.statements().get(0);
 			}
-			visitAppropriate(alternative);
+			
+			con.setCurrentBlock(bFalse);
+			firmContext = firmContext.pushFirmContext();
+			{
+				visitAppropriate(alternative);
+			}
+			firmContext = firmContext.popFirmContext();
+
+			if(con.getCurrentBlock().isBad())
+				con.setCurrentBlock(bFalse);
+			else
+				bAfter.addPred(con.newJmp());
 		}
+
+		con.setCurrentBlock(bAfter);
+		if(endIf != null)
+			bAfter.addPred(endIf);
 	}
 
 	@Override
@@ -926,13 +1119,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Local_c n) {
-		LocalInstance var = n.localInstance();
-		int id = getIDForLocalInstance(var);
+		LocalInstance loc = n.localInstance();
+		int id = getIDForLocalInstance(loc);
 		
-		firm.nodes.Node ret = con.getVariable(id, typeSystem.getFirmMode(var.type()));
-		
-		
-		System.out.println("Local_c: " + var + " ID: " + id + " Name: " + ret);
+		firm.nodes.Node ret = con.getVariable(id, typeSystem.getFirmMode(loc.type()));
 		
 		setReturnNode(ret);
 	}
