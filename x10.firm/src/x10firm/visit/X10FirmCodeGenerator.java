@@ -185,10 +185,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			return prev;
 		}
 		
-		public boolean hasIdxForLocalInstance(LocalInstance loc) {
-			return localInstanceMapper.containsKey(loc);
-		}
-		
 		@SuppressWarnings("boxing")
 		public void putIdxForLocalInstance(LocalInstance loc, int idx) {
 			assert !localInstanceMapper.containsKey(loc);
@@ -460,9 +456,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			firm.nodes.Node projParam = con.newProj(args, typeSystem.getFirmMode(loc.type()), idx);
 			con.setVariable(idx, projParam);
 			
-			if(firmContext.hasIdxForLocalInstance(loc))
-				continue;
-			
 			// map the local instance with the appropriate idx. 
 			firmContext.putIdxForLocalInstance(loc, idx);
 			idx++;
@@ -470,9 +463,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		// map all local variables. 
 		for(LocalInstance loc : vars) {
-			if(firmContext.hasIdxForLocalInstance(loc))
-				continue;
-			
 			// map the local instance with the appropriate idx. 
 			firmContext.putIdxForLocalInstance(loc, idx);
 			idx++;
@@ -865,9 +855,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(Local_c n) {
 		LocalInstance loc = n.localInstance();
-		int id = firmContext.getIdxForLocalInstance(loc);
+		int idx = firmContext.getIdxForLocalInstance(loc);
 		
-		firm.nodes.Node ret = con.getVariable(id, typeSystem.getFirmMode(loc.type()));
+		firm.nodes.Node ret = con.getVariable(idx, typeSystem.getFirmMode(loc.type()));
 		
 		setReturnNode(ret);
 	}
