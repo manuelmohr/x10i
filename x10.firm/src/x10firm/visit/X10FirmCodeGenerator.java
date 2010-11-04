@@ -434,7 +434,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				// extract the local instances from the found "X10Local_c`s"
 				LocalInstance locInstance = c.localInstance();
 				// don`t include the local instances from the formals. 
-				if(formals.contains(locInstance)) 
+				if(formals.contains(locInstance) || locals.contains(locInstance)) 
 					continue;
 				
 				locals.add(locInstance);

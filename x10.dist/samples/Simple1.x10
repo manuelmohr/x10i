@@ -15,7 +15,6 @@ class Simple1 {
 				}
 			} while(u);
 		}
-
 		return x;
 	}
 }
