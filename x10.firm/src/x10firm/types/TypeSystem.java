@@ -120,6 +120,7 @@ public class TypeSystem extends X10TypeSystem_c {
 	}
 
 	public void declFirmStruct(polyglot.types.StructType sType) {
+		assert false;
 		// TODO: Implement me
 	}
 
@@ -188,6 +189,7 @@ public class TypeSystem extends X10TypeSystem_c {
 		firm.Type t = getFirmType(type);
 		if(t != null)
 			return t;
+		
 		assert false : "Cannot convert to Firm type: " + type;
 		return null;
 		

@@ -2,19 +2,15 @@ package x10firm.visit;
 
 import static x10cpp.visit.ASTQuery.assertNumberOfInitializers;
 import static x10cpp.visit.ASTQuery.getStringPropertyInit;
-import static x10cpp.visit.SharedVarsMethods.chevrons;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 
 import polyglot.ast.ArrayAccess_c;
 import polyglot.ast.ArrayInit_c;
 import polyglot.ast.Assert_c;
-import polyglot.ast.Assign;
 import polyglot.ast.Assign_c;
-import polyglot.ast.Binary;
 import polyglot.ast.Binary_c;
 import polyglot.ast.Block_c;
 import polyglot.ast.BooleanLit_c;
@@ -25,7 +21,6 @@ import polyglot.ast.CharLit_c;
 import polyglot.ast.ClassBody_c;
 import polyglot.ast.ClassMember;
 import polyglot.ast.Conditional_c;
-import polyglot.ast.ConstructorCall;
 import polyglot.ast.ConstructorDecl_c;
 import polyglot.ast.Do_c;
 import polyglot.ast.Empty_c;
@@ -36,7 +31,6 @@ import polyglot.ast.Field_c;
 import polyglot.ast.FloatLit;
 import polyglot.ast.FloatLit_c;
 import polyglot.ast.For_c;
-import polyglot.ast.Formal;
 import polyglot.ast.Formal_c;
 import polyglot.ast.Id_c;
 import polyglot.ast.If_c;
@@ -53,18 +47,14 @@ import polyglot.ast.New_c;
 import polyglot.ast.Node;
 import polyglot.ast.NullLit_c;
 import polyglot.ast.PackageNode_c;
-import polyglot.ast.Receiver;
 import polyglot.ast.Return_c;
 import polyglot.ast.Stmt;
 import polyglot.ast.StringLit_c;
 import polyglot.ast.SwitchBlock_c;
-import polyglot.ast.SwitchElement;
 import polyglot.ast.Switch_c;
 import polyglot.ast.Throw_c;
 import polyglot.ast.TopLevelDecl;
 import polyglot.ast.Try_c;
-import polyglot.ast.TypeNode;
-import polyglot.ast.Unary;
 import polyglot.ast.Unary_c;
 import polyglot.ast.While_c;
 import polyglot.types.LocalInstance;
@@ -73,7 +63,6 @@ import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.util.ErrorInfo;
 import polyglot.util.InternalCompilerError;
-import polyglot.util.Position;
 import polyglot.frontend.Compiler;
 import x10.ast.AssignPropertyBody_c;
 import x10.ast.Async_c;
@@ -114,23 +103,16 @@ import x10.ast.X10NodeFactory;
 import x10.ast.X10SourceFile_c;
 import x10.ast.X10Special_c;
 import x10.ast.X10Unary_c;
-import x10.extension.X10Ext;
-import x10.types.ParameterType;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
-import x10.types.X10ConstructorInstance;
 import x10.types.X10Context;
 import x10.types.X10Context_c;
-import x10.types.X10Def;
-import x10.types.X10FieldInstance;
 import x10.types.X10Flags;
 import x10.types.X10MethodDef;
 import x10.types.X10MethodInstance;
 import x10.types.X10TypeSystem;
-import x10.types.checker.Converter;
 import x10.visit.X10DelegatingVisitor;
 import x10cpp.visit.ASTQuery;
-import x10cpp.visit.Emitter;
 import x10cpp.visit.X10SearchVisitor;
 import x10firm.types.TypeSystem;
 import firm.TargetValue;
@@ -150,34 +132,30 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	
 	private final Compiler compiler;
 	private final TypeSystem typeSystem;
+	
+	
 	private final X10NodeFactory nodeFactory;
 	private final X10Context context;
 	private final ASTQuery query;
 	
-	// Maps "LocalInstances" to the appropriate ID.
-	private Map<LocalInstance, Integer> localInstanceMapper = new HashMap<LocalInstance, Integer>();
+	// following getters are needed for avoiding compiler errors. (never read locally attributes)
+	public X10NodeFactory getNodeFactory() {
+		return nodeFactory;
+	}
 	
-	class FirmContext {
-		private FirmContext prev;
+	public X10Context getX10Context() {
+		return context;
+	}
+	
+	public ASTQuery getASTQuery() {
+		return query;
+	}
+	
+	class FirmScope {
 		private firm.nodes.Block []blocks;
 		
-		public FirmContext(FirmContext prev) {
-			this.prev = prev;
-		}
-		
-		public FirmContext() {
-		}
-		
-		public FirmContext(firm.nodes.Block []blocks) {
-			setBlocks(blocks);
-		}
-		
-		public FirmContext pushFirmContext() {
-			return new FirmContext(this);
-		}
-		
-		public FirmContext popFirmContext() {
-			return this.prev;
+		public FirmScope(firm.nodes.Block []blocks) {
+			this.blocks = blocks;
 		}
 		
 		public void setBlocks(firm.nodes.Block []blocks) {
@@ -189,49 +167,62 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 	}
 	
-	// current firm context
-	private FirmContext firmContext = new FirmContext();
-	/*
-	private firm.nodes.Node withPhiTrailer(JL E, Object o) throws Exception {
+	class FirmContext {
+		private FirmContext prev;
+		private Stack<FirmScope> firmScopes = new Stack<FirmScope>();
+		// Maps "LocalInstances" to the appropriate IDs.
+		private Map<LocalInstance, Integer> localInstanceMapper = new HashMap<LocalInstance, Integer>();
 		
-	    firm.nodes.Block cur    = con.getCurrentBlock();
-		firm.nodes.Block bTrue  = con.newBlock();
-		firm.nodes.Block bFalse = con.newBlock();
+		public FirmContext(FirmContext prev) {
+			this.prev = prev;
+		}
 		
-		con.setCurrentBlock(bTrue);
-		firm.nodes.Node jmp1 = con.newJmp();
-		firm.nodes.Node one  = con.newConst(1, typeSystem.getFirmMode(typeSystem.Boolean()));
+		public FirmContext pushFirmContext() {
+			return new FirmContext(this);
+		}
 		
-		con.setCurrentBlock(bFalse);
-		firm.nodes.Node jmp2 = con.newJmp();
-		firm.nodes.Node zero = con.newConst(0, typeSystem.getFirmMode(typeSystem.Boolean()));
+		public FirmContext popFirmContext() {
+			return prev;
+		}
 		
-		con.setCurrentBlock(cur);
+		public boolean hasIdxForLocalInstance(LocalInstance loc) {
+			return localInstanceMapper.containsKey(loc);
+		}
 		
-		firm.nodes.Block []b = null;
-		if(getCmd(o) == dummyMarker)  // swap true and false jmps.
-			b = new Block[]{bFalse, bTrue};
-		else
-			b = new Block[]{bTrue, bFalse};
-
+		@SuppressWarnings("boxing")
+		public void putIdxForLocalInstance(LocalInstance loc, int idx) {
+			assert !localInstanceMapper.containsKey(loc);
+			localInstanceMapper.put(loc, idx);
+		}
 		
-		visitAppropriate(E);
+		public int getIDForLocalInstance(LocalInstance loc) {
+			assert localInstanceMapper.containsKey(loc) : "Loc " + loc + " not found";
+			return localInstanceMapper.get(loc).intValue();
+		}
 		
-		makeCondition((Node)E.accept(this, setParam1(setCmd(o, null), b)), b);
+		public FirmScope pushFirmScope(FirmScope scope) {
+			return firmScopes.push(scope);
+		}
 		
-		firm.nodes.Block phiBlock = con.newBlock();
-		phiBlock.addPred(jmp1);
-		phiBlock.addPred(jmp2);
-
-		con.setCurrentBlock(phiBlock);
-
-		return con.newPhi(new firm.nodes.Node[]{one, zero}, typeSystem.getFirmMode(typeSystem.Boolean()));
+		public FirmScope popFirmScope() {
+			assert !firmScopes.isEmpty();
+			return firmScopes.pop();
+		}
+		
+		public FirmScope getTopScope() {
+			assert !firmScopes.isEmpty();
+			return firmScopes.peek();
+		}
 	}
-	*/
+	
+	// current firm context
+	private FirmContext firmContext = new FirmContext(null);
+	
 	private firm.nodes.Node makeCondition(firm.nodes.Node n) {
 		if(!(n instanceof firm.nodes.Cond)) {
+			FirmScope scope = firmContext.getTopScope();
 			
-			firm.nodes.Block []blocks = firmContext.getBlocks();
+			firm.nodes.Block []blocks = scope.getBlocks();
 			
 			firm.nodes.Node c    = con.newConst(1, typeSystem.getFirmMode(typeSystem.Boolean()));
 			firm.nodes.Node cmp  = con.newCmp(n, c);
@@ -252,15 +243,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return n;
 	}
 	
-	
 	public X10FirmCodeGenerator(Compiler compiler, TypeSystem typeSystem, X10NodeFactory nodeFactory) {
-		this.compiler = compiler;
-		this.typeSystem = typeSystem;
-		this.nodeFactory = nodeFactory;
-		this.context = new X10Context_c(typeSystem);
+		this.compiler 		= compiler;
+		this.typeSystem 	= typeSystem;
+		this.nodeFactory 	= nodeFactory;
+		this.context 		= new X10Context_c(typeSystem);
 		
 		NoTranslator translator = new NoTranslator(typeSystem, nodeFactory);
-		this.query = new ASTQuery(translator);
+		this.query 				= new ASTQuery(translator);
 		
 		// We can only initialize our type system after
 		// the system resolver has been run. 
@@ -297,10 +287,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(TypeDecl_c n) {
+		assert false;
 	}
 
 	@Override
 	public void visit(LocalTypeDef_c n) {
+		assert false;
 	}
 
 	@Override
@@ -393,10 +385,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(ClassBody_c n) {
-		// X10ClassType superClass = (X10ClassType)
-		// X10TypeMixin.baseType(currentClass.superClass());
-		// X10TypeSystem xts = (X10TypeSystem) tr.typeSystem();
-
+		
 		if (currentClass.flags().isInterface()) {
 			// TODO: Implement me
 		} else if (currentClass.isX10Struct()) {
@@ -425,7 +414,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 */
 	private void findAllLocalInstancesInMethod(MethodDecl_c dec, List<LocalInstance> formals, List<LocalInstance> locals) {
 		
-		// extract all formal paramters from the given method
+		// extract all formal parameters from the given method
 		X10MethodDef def      = (X10MethodDef)dec.methodDef();
 		X10MethodInstance mi  = (X10MethodInstance)def.asInstance();
 		
@@ -454,25 +443,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 	}
 	
-	private boolean hasIdxForLocalInstance(LocalInstance loc) {
-		return localInstanceMapper.containsKey(loc);
-	}
-	
-	@SuppressWarnings("boxing")
-	private void putIdxForLocalInstance(LocalInstance loc, int idx) {
-		assert !localInstanceMapper.containsKey(loc);
-		localInstanceMapper.put(loc, idx);
-	}
-	
-	private int getIDForLocalInstance(LocalInstance loc) {
-		assert localInstanceMapper.containsKey(loc) : "Loc " + loc + " not found";
-		return localInstanceMapper.get(loc).intValue();
-	}
-	
 	private void openMethod(List<LocalInstance> params, List<LocalInstance> vars, boolean isStatic) {
-		// create a new local instance mapper
-		localInstanceMapper = new HashMap<LocalInstance, Integer>();
-		
 		// Push a new firm context
 		firmContext = firmContext.pushFirmContext();
 		
@@ -490,26 +461,28 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			firm.nodes.Node projParam = con.newProj(args, typeSystem.getFirmMode(loc.type()), idx);
 			con.setVariable(idx, projParam);
 			
-			if(hasIdxForLocalInstance(loc))
+			if(firmContext.hasIdxForLocalInstance(loc))
 				continue;
 			
 			// map the local instance with the appropriate idx. 
-			putIdxForLocalInstance(loc, idx);
+			firmContext.putIdxForLocalInstance(loc, idx);
 			idx++;
 		}
 
 		// map all local variables. 
 		for(LocalInstance loc : vars) {
-			if(hasIdxForLocalInstance(loc))
+			if(firmContext.hasIdxForLocalInstance(loc))
 				continue;
 			
 			// map the local instance with the appropriate idx. 
-			putIdxForLocalInstance(loc, idx);
+			firmContext.putIdxForLocalInstance(loc, idx);
 			idx++;
 		}
 	}
 	
 	private void closeMethod() {
+		firmContext = firmContext.popFirmContext();
+		
 		// Dump the created graph
 		firm.Dump.dumpGraph(currentGraph, "-fresh");
 	}
@@ -569,6 +542,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			}
 			visitAppropriate(dec.body());
 		} else {
+			/*
 			// Define property getter methods.
 			if (flags.isProperty() && flags.isAbstract() && mi.formalTypes().size() == 0 && mi.typeParameters().size() == 0) {
 				X10FieldInstance fi = (X10FieldInstance) ownerClassType.fieldNamed(mi.name());
@@ -576,6 +550,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 					String fieldName = fi.name().toString();
 				}
 			}
+			*/
 		}
 		
 		closeMethod();
@@ -583,201 +558,66 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(ConstructorDecl_c dec) {
-		if (dec.flags().flags().isNative())
-			return;
-
-		X10ClassType container = (X10ClassType) dec.constructorDef().container().get();
-		String typeName = Emitter.translateType(container.def().asType());
-
-		X10ConstructorInstance ci = (X10ConstructorInstance) dec.constructorDef().asInstance();
-
-		// constructor must have a body
-		if (dec.body() == null) {
-			assert false : dec.position().toString();
-		}
-
-		// no static constructors allowed
-		assert (!dec.flags().flags().isStatic());
-
-		/*
-		// add local vars for closure realisation.
-		VarInstance<?> ti = typeSystem.localDef(Position.COMPILER_GENERATED,
-				Flags.FINAL, Types.ref(container), Name.make(THIS))
-				.asInstance();
-		ctx.addVariable(ti);
-		*/
-
-		Block_c body = (Block_c) dec.body();
-
-		// Synthetic fields must be initialized before everything else
-		/*
-		for (Stmt s : body.statements()) {
-			if (query.isSyntheticOuterAccessor(s)) {
-				visitAppropriate(s);
-			}
-		}
-		*/
-
-		for (Stmt s : body.statements()) {
-			// handle constructor calls -> super etc.
-			if (s instanceof ConstructorCall) {
-				ConstructorCall call = (ConstructorCall) s;
-				if (call.kind() == ConstructorCall.SUPER) {
-					// super call
-					if (container.isX10Struct()) {
-						String superClass = Emitter.structMethodClass(container.superClass().toClass(), true, true);
-						// TODO:
-					} else {
-						String superClass = Emitter.translateType(container.superClass());
-						// TODO:
-					}
-				} else if (call.kind() == ConstructorCall.THIS) {
-					if (container.isX10Struct()) {
-						// TODO:
-						/* if (call.arguments().size() > 0)
-							sw.write(", ");
-						*/
-					} else {
-						// TODO:
-					}
-				}
-				if (call.arguments().size() > 0) {
-					for (Expr e : call.arguments())
-						visitAppropriate(e);
-				}
-			} else if (query.isSyntheticOuterAccessor(s)) {
-				// we did synthetic field initialisation earlier
-			} else {
-				//dec.printBlock(s, sw, tr);
-			}
-		}
-
-		if (!container.flags().isAbstract()) {
-			// _make
-			if (!container.isX10Struct()) {
-				// alloc container.
-			}
-			for (Iterator<Formal> i = dec.formals().iterator(); i.hasNext();) {
-				Formal f = i.next();
-				String formal_name = f.name().id().toString();
-			}
-		}
+		
 	}
 
 	@Override
 	public void visit(FieldDecl_c dec) {
-		X10ClassType declaringClass = (X10ClassType) dec.fieldDef().asInstance().container();
-
-		boolean isStatic = dec.flags().flags().isStatic();
-
-		if ((((X10ClassDef) declaringClass.def()).typeParameters().size() != 0) && isStatic) {
-			// static field
-			return;
-		}
-
-		// Ignore the initializer -- this will have been done in
-		// extractInits/extractStaticInits
-		// FIXME: the above breaks switch constants!
-		if (isStatic) {
-			visitAppropriate(dec.init());
-		}
-		String container = declaringClass.isX10Struct() ? Emitter.structMethodClass(declaringClass, true, true) : 
-			Emitter.translateType(dec.fieldDef().asInstance().container());
+		assert false;
 	}
 
 	@Override
 	public void visit(PropertyDecl_c n) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(Initializer_c n) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(AssignPropertyBody_c n) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(Assert_c n) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(Switch_c n) {
-		visitAppropriate(n.expr());
-		for (SwitchElement s : n.elements()) {
-			visitAppropriate(s);
-		}
+		assert false;
 	}
 
 	@Override
 	public void visit(SwitchBlock_c n) {
-		for (Stmt s : n.statements()) {
-			visitAppropriate(s);
-		}
+		assert false;
 	}
 
 	@Override
 	public void visit(Case_c n) {
-		if (n.expr() == null) {
-			// default case:
-
-		} else {
-			if (n.expr() instanceof Field_c && n.expr().isConstant()) {
-				// handle constant case expr.
-			} else {
-				visitAppropriate(n.expr());
-			}
-		}
+		assert false;
 	}
 
 	@Override
 	public void visit(Branch_c br) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(Labeled_c label) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(Assign_c asgn) {
-		boolean unsigned_op = false;
-		String opString = asgn.operator().toString();
-
-		if (opString.equals(">>>=")) {
-			unsigned_op = true;
-			opString = opString.substring(1);
-		}
-
 		Expr lhs = asgn.left();
 		Expr rhs = asgn.right();
 		
-		
 		visitAppropriate(lhs);
 		visitAppropriate(rhs);
-		
-		if (unsigned_op) {
-			String type = Emitter.translateType(asgn.type());
-			//String utype = emitter.makeUnsignedType(lhs.type());
-		}
-
-		if (asgn.operator() != Assign.ASSIGN) {
-			assert (false);
-		}
-
-		Type aType = lhs.type();
-		boolean rhsNeedsCast = !typeSystem.typeDeepBaseEquals(aType, rhs.type(), context);
-		if (rhsNeedsCast) {
-			// Cast is needed to ensure conversion/autoboxing.
-			String castType = chevrons(Emitter.translateType(aType, true));
-		}
-
-		//asgn.printSubExpr(rhs, true, sw, tr);
 	}
 
 	@Override
@@ -808,33 +648,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(LocalDecl_c dec) {
-		boolean stackAllocate = false;
-		try {
-			Type annotation = (Type) typeSystem.systemResolver().find(QName.make("x10.compiler.StackAllocate"));
-			if (!((X10Ext) dec.ext()).annotationMatching(annotation).isEmpty()) {
-				stackAllocate = true;
-				System.err.println("@StackAllocate " + dec);
-			}
-		} catch (SemanticException e) {
-			/* Ignore exception when looking for annotation */
-		}
-
-		String tmpName = null;
-		if (stackAllocate) {
-			tmpName = "_StackAllocate_" + dec.name().id().toString();
-			String type = Emitter.translateType(dec.type().type(), false);
-		}
-
 		Expr initexpr = dec.init();
-		if (initexpr != null) {
-			Type aType = dec.type().type();
-			boolean rhsNeedsCast = !typeSystem.typeDeepBaseEquals(aType, initexpr.type(), context);
-			if (rhsNeedsCast) {
-				String toCast = chevrons(Emitter.translateType(aType, true));
-				// Cast is needed to ensure conversion/autoboxing.
-			}
+		
+		if (initexpr != null) 
 			visitAppropriate(initexpr);
-		}
 	}
 
 	@Override
@@ -885,18 +702,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Stmt body = n.body();
 		visitAppropriate(body);
 		
-		firmContext = firmContext.pushFirmContext();
+		firm.nodes.Block []blocks = new firm.nodes.Block[]{bTrue, bAfter};
+		firmContext.pushFirmScope(new FirmScope(blocks));
 		{
 			bCond.addPred(con.newJmp());
 			con.setCurrentBlock(bCond);
 			
-			firm.nodes.Block []blocks = new firm.nodes.Block[]{bTrue, bAfter};
-			firmContext.setBlocks(blocks);
 			visitAppropriate(n.cond());
 			firm.nodes.Node retNode = getReturnNode();
 			makeCondition(retNode);
 		}
-		firmContext = firmContext.popFirmContext();
+		firmContext.popFirmScope();
 		
 		con.setCurrentBlock(bAfter);
 	}
@@ -910,15 +726,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		bCond.addPred(con.newJmp());
 		con.setCurrentBlock(bCond);
 		
-		firmContext = firmContext.pushFirmContext();
+		firm.nodes.Block []blocks = new firm.nodes.Block[]{bTrue, bAfter};
+		FirmScope newScope = new FirmScope(blocks);
+		firmContext.pushFirmScope(newScope);
 		{
-			firm.nodes.Block []blocks = new firm.nodes.Block[]{bTrue, bAfter};
-			firmContext.setBlocks(blocks);
 			visitAppropriate(n.cond());
 			firm.nodes.Node retNode = getReturnNode();
 			makeCondition(retNode);
 		}
-		firmContext = firmContext.popFirmContext();
+		firmContext.popFirmScope();
 		
 		con.setCurrentBlock(bTrue);
 		
@@ -947,14 +763,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			blocks[1] = bAfter;
 		}
 
-		firmContext = firmContext.pushFirmContext();
+		FirmScope newScope = new FirmScope(blocks);
+		firmContext.pushFirmScope(newScope);
 		{
-			firmContext.setBlocks(blocks);
 			visitAppropriate(n.cond());
 			firm.nodes.Node retNode = getReturnNode();
 			makeCondition(retNode);
 		}
-		firmContext = firmContext.popFirmContext();
+		firmContext.popFirmScope();
 		
 		con.setCurrentBlock(bTrue);
 
@@ -975,11 +791,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			}
 			
 			con.setCurrentBlock(bFalse);
-			firmContext = firmContext.pushFirmContext();
-			{
-				visitAppropriate(alternative);
-			}
-			firmContext = firmContext.popFirmContext();
+			visitAppropriate(alternative);
 
 			if(con.getCurrentBlock().isBad())
 				con.setCurrentBlock(bFalse);
@@ -994,6 +806,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Empty_c n) {
+		assert false;
 	}
 
 	@Override
@@ -1001,19 +814,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		visitAppropriate(n.expr());
 	}
 
-	private Expr cast(Expr a, Type fType) {
-		Expr ret = a;
-		if (!typeSystem.typeDeepBaseEquals(fType, a.type(), context)) {
-			Position pos = a.position();
-			ret = nodeFactory.X10Cast(pos, nodeFactory.CanonicalTypeNode(pos, fType), a, Converter.ConversionType.UNCHECKED).type(fType);
-		}
-		return ret;
-	}
-
 	protected String[] getCurrentNativeStrings() {
 		return new String[] { FIRM_NATIVE_STRING };
 	}
 
+	/*
 	// returns true if the given X10Def has a native annotation
 	private String getNativeFirmExpressionForDef(X10Def o) {
 		X10TypeSystem xts = (X10TypeSystem) o.typeSystem();
@@ -1036,82 +841,21 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 		return null;
 	}
+	*/
 
 	@Override
 	public void visit(X10Call_c n) {
-		X10MethodInstance mi = (X10MethodInstance) n.methodInstance();
-		Receiver target = n.target();
-		Type t = target.type();
-		X10MethodDef md = mi.x10Def();
-
-		if (mi.flags().isStatic()) {
-			TypeNode tn = target instanceof TypeNode ? (TypeNode) target : nodeFactory.CanonicalTypeNode(target.position(), t);
-			if (t instanceof ParameterType) {
-				// Rewrite to the class declaring the field.
-				target = tn.typeRef(md.container());
-				n.target(target);
-			}
-			if (t.isClass()) {
-				X10ClassType ct = (X10ClassType) t.toClass();
-				X10ClassDef cd = (X10ClassDef) ct.def();
-				// target =
-				// tn.typeRef(Types.ref(getStaticMemberContainer((X10ClassType)cd.asType())));
-			}
-		}
-
-		X10Flags flags = X10Flags.toX10Flags(mi.flags());
-		// Check for properties accessed using method syntax. They may have
-		// @Native annotations too.
-		if (flags.isProperty() && mi.formalTypes().size() == 0
-				&& mi.typeParameters().size() == 0) {
-			X10FieldInstance fi = (X10FieldInstance) md.container().get()
-					.fieldNamed(mi.name());
-			if (fi != null) {
-				// assert (X10Flags.toX10Flags(fi.flags()).isProperty()); //
-				// FIXME: property fields don't seem to have the property flag
-				// set
-				// This is a property getter method. Translate as a field
-				// access.
-				assert false;
-				/*
-				 * String pat = getCppImplForDef(fi.x10Def()); if (pat != null)
-				 * { Object[] components = new Object[] { target };
-				 * emitter.dumpRegex("Native", components, tr, pat, sw); return;
-				 * }
-				 */
-			}
-		}
-
-		List<Expr> args = new ArrayList<Expr>();
-		int counter = 0;
-		for (Expr a : n.arguments()) {
-			Type fType = mi.formalTypes().get(counter);
-			// HACK: Don't inject cases if the method is defined on
-			// x10.lang.Object.
-			// Compensates for front-end resolving methods invoked on
-			// unconstrained type parameters to Object.
-			if (!typeSystem.typeEquals(mi.container(), typeSystem.Object(), context)
-					&& !typeSystem.typeEquals(fType, a.type(), context)
-					&& !(typeSystem.isParameterType(fType) && a.type().isNull())) {
-				a = cast(a, fType);
-			}
-			args.add(a);
-			counter++;
-		}
-
-		String firmNativeExpression = getNativeFirmExpressionForDef(md);
-		if(firmNativeExpression != null) {
-			// evaluate the native firm expression 
-			return;
-		}
+		assert false;
 	}
 
 	@Override
 	public void visit(RegionMaker_c n) {
+		assert false;
 	}
 
 	@Override
 	public void visit(ConstantDistMaker_c n) {
+		assert false;
 	}
 
 	@Override
@@ -1122,7 +866,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(Local_c n) {
 		LocalInstance loc = n.localInstance();
-		int id = getIDForLocalInstance(loc);
+		int id = firmContext.getIDForLocalInstance(loc);
 		
 		firm.nodes.Node ret = con.getVariable(id, typeSystem.getFirmMode(loc.type()));
 		
@@ -1131,7 +875,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(New_c n) {
-		
+		assert false;
 	}
 
 	@Override
@@ -1171,17 +915,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(NullLit_c n) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(StringLit_c n) {
-		String str = n.stringValue();
+		assert false;
 	}
 
 	@Override
 	public void visit(CharLit_c lit) {
-		char val = lit.charValue();
+		assert false;
 	}
 
 	@Override
@@ -1193,200 +937,132 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Id_c n) {
-		String name = n.id().toString();
+		assert false;
 	}
 
 	@Override
 	public void visit(X10Cast_c c) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(SubtypeTest_c n) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(X10Instanceof_c n) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(Throw_c n) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(Try_c n) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(Catch_c n) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(Atomic_c a) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(Await_c n) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(Next_c n) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(ForLoop_c n) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(ForEach_c n) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(AtEach_c n) {
-		
+		assert false;
 	}
 
 	@Override
 	public void visit(Finish_c n) {
+		assert false;
 	}
 
 	@Override
 	public void visit(ArrayAccess_c n) {
+		assert false;
 	}
 
 	@Override
 	public void visit(ParExpr_c n) {
+		assert false;
 	}
 
 	@Override
 	public void visit(Conditional_c n) {
-		/*
-		n.printSubExpr(n.cond(), false, sw, tr);
-		String type = Emitter.translateType(n.type(), true);
-
-		n.printSubExpr(n.consequent(), true, sw, tr);
-		n.printSubExpr(n.alternative(), true, sw, tr);
-		*/
+		assert false;
 	}
 
 	@Override
 	public void visit(Here_c n) {
-
+		assert false;
 	}
 
 	@Override
 	public void visit(Async_c n) {
-
+		assert false;
 	}
 
 	@Override
 	public void visit(X10Special_c n) {
-
+		assert false;
 	}
 
 	@Override
 	public void visit(Closure_c n) {
-
+		assert false;
 	}
 
 	@Override
 	public void visit(ClosureCall_c c) {
-
+		assert false;
 	}
 
 	@Override
 	public void visit(X10CanonicalTypeNode_c n) {
-
+		assert false;
 	}
 
 	@Override
 	public void visit(X10Unary_c n) {
-		Expr left 	= n.expr();
-		Type l 		= left.type();
-		Unary.Operator op = n.operator();
-
-		if (op == Unary.POST_DEC || op == Unary.POST_INC || op == Unary.PRE_DEC || op == Unary.PRE_INC) { // TODO
-			visit((Unary_c) n);
-			return;
-		}
-		if (l.isNumeric()) {
-			visit((Unary_c) n);
-			return;
-		}
-		if (l.isBoolean()) {
-			visit((Unary_c) n);
-			return;
-		}
-		assert (false) : ("User-defined unary operators should have been desugared earier");
+		assert false;
 	}
 
 	@Override
 	public void visit(Unary_c n) {
-		Unary_c.Operator operator = n.operator();
-		Expr expr = n.expr();
-
-		if (operator == Unary.NEG && expr instanceof IntLit) {
-			IntLit_c lit = (IntLit_c) expr;
-			IntLit.Kind kind = (lit.kind() == X10IntLit_c.UINT) ? IntLit.INT : ((lit.kind() == X10IntLit_c.ULONG) ? IntLit.LONG : lit.kind());
-			//n.printSubExpr(lit.value(-lit.longValue()).kind(kind), true, sw, tr);
-		} else if (operator.isPrefix()) {
-			//n.printSubExpr(expr, false, sw, tr);
-		} else {
-			//n.printSubExpr(expr, false, sw, tr);
-		}
+		assert false;
 	}
 
 	@Override
 	public void visit(X10Binary_c n) {
-		Expr left = n.left();
-		Type l = left.type();
-		Expr right = n.right();
-		Type r = right.type();
-		Binary.Operator op = n.operator();
-
-		if (op == Binary.EQ || op == Binary.NE) {
-			Type c = null;
-			if (l.isNumeric() && r.isNumeric()) {
-				try {
-					c = typeSystem.promote(l, r);
-				} catch (SemanticException e) {
-					assert (false);
-				}
-			}
-			if (c != null && !typeSystem.isParameterType(c) && !typeSystem.typeBaseEquals(c, l, context)) {
-				String type = Emitter.translateType(c, true);
-			}
-			//n.printSubExpr(left, sw, tr);
-			if (c != null && !typeSystem.isParameterType(c) && !typeSystem.typeBaseEquals(c, r, context)) {
-				String type = Emitter.translateType(c, true);
-			}
-			//n.printSubExpr(right, sw, tr);
-			return;
-		}
-
-		if (l.isNumeric() && r.isNumeric()) {
-			visit((Binary_c) n);
-			return;
-		}
-		if (l.isBoolean() && r.isBoolean()) {
-			visit((Binary_c) n);
-			return;
-		}
-		if (op == Binary.ADD && (l.isSubtype(typeSystem.String(), context) || r.isSubtype(typeSystem.String(),	context))) {
-			visit((Binary_c) n);
-			return;
-		}
-		assert (false) : ("User-defined binary operators should have been desugared earier");
+		assert false;
 	}
 
 	@Override
@@ -1412,6 +1088,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Tuple_c c) {
+		assert false;
 	}
 
 	@Override
