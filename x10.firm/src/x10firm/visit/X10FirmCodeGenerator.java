@@ -458,6 +458,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return localInstanceMapper.containsKey(loc);
 	}
 	
+	@SuppressWarnings("boxing")
 	private void putIdxForLocalInstance(LocalInstance loc, int idx) {
 		assert !localInstanceMapper.containsKey(loc);
 		localInstanceMapper.put(loc, idx);
@@ -1001,11 +1002,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	private Expr cast(Expr a, Type fType) {
+		Expr ret = a;
 		if (!typeSystem.typeDeepBaseEquals(fType, a.type(), context)) {
 			Position pos = a.position();
-			a = nodeFactory.X10Cast(pos, nodeFactory.CanonicalTypeNode(pos, fType), a, Converter.ConversionType.UNCHECKED).type(fType);
+			ret = nodeFactory.X10Cast(pos, nodeFactory.CanonicalTypeNode(pos, fType), a, Converter.ConversionType.UNCHECKED).type(fType);
 		}
-		return a;
+		return ret;
 	}
 
 	protected String[] getCurrentNativeStrings() {
@@ -1047,7 +1049,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			if (t instanceof ParameterType) {
 				// Rewrite to the class declaring the field.
 				target = tn.typeRef(md.container());
-				n = (X10Call_c) n.target(target);
+				n.target(target);
 			}
 			if (t.isClass()) {
 				X10ClassType ct = (X10ClassType) t.toClass();
