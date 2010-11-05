@@ -6,8 +6,8 @@ This repository tracks a whole Eclipse workspace, since we need to track five pr
 
 == Git Submodules ==
 
-The jFirm library is an external project. You should import it with git
-submodules. Usually the following is enough:
+The jFirm and libfirm library is an external project. You should import it with
+git submodules. Usually the following is enough:
 
 	git submodule update --init
 
@@ -16,6 +16,13 @@ submodules. Usually the following is enough:
 You need a firm C-library to get jfirm running. Either copy it some prebuilt
 ones (TODO: document from where) or use the jFirm/binding_creator/create_lib.sh
 scritp to produce your own if you have a firm checkout.
+
+== JAVA_HOME ==
+
+Ubuntu does not set any JAVA_HOME environment variables, but the x10 build
+depends on it. You can put something like this in your .bashrc to set JAVA_HOME:
+
+export JAVA_HOME="$(readlink -f $(dirname $(readlink -f /usr/bin/java))/../..)"
 
 == Complete Build ==
 

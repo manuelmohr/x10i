@@ -24,7 +24,7 @@ append_classpath "${X10_TOP}/jFirm/classes"
 append_classpath "${X10_TOP}/jFirm/lib/jna.jar"
 
 # Execute compiler
-java_args="$java_args -Djna.library.path=${X10_TOP}/jFirm/lib"
+java_args="$java_args -Djna.library.path=${X10_TOP}/libfirm/build/debug"
 args="-extclass x10firm.ExtensionInfo -sourcepath ${X10_TOP}/x10.dist/lib/x10.jar"
 command="java -Xmx512m -ea -classpath ${classpath} ${java_args} polyglot.main.Main"
 $command $args "$@"
