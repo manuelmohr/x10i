@@ -225,9 +225,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		this.compiler 		= compiler;
 		this.typeSystem 	= typeSystem;
 	
-		// No translator needed yet
-//		NoTranslator translator = new NoTranslator(typeSystem, nodeFactory);
-		
 		// We can only initialize our type system after
 		// the system resolver has been run. 
 		typeSystem.init();
