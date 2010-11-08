@@ -1,17 +1,20 @@
 package x10firm;
 
+import firm.Firm;
 import polyglot.frontend.Compiler;
 import polyglot.frontend.Goal;
 import polyglot.frontend.Job;
 import polyglot.frontend.Scheduler;
-
 import polyglot.main.Options;
 import polyglot.util.ErrorQueue;
 import polyglot.visit.PostCompiled;
-import x10.ast.X10NodeFactory;
 import x10firm.types.TypeSystem;
 
 public class ExtensionInfo extends x10.ExtensionInfo {
+	
+	public ExtensionInfo() {
+		Firm.init();
+	} 
 
 	@Override
 	public String compilerName() {
@@ -53,8 +56,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		@Override
 		public Goal CodeGenerated(Job job) {
 			TypeSystem typeSystem = (TypeSystem)extInfo.typeSystem();
-			X10NodeFactory nodeFactory = (X10NodeFactory)extInfo.nodeFactory();
-			Goal goal = new FirmGenerationGoal(job, typeSystem, nodeFactory);
+			Goal goal = new FirmGenerationGoal(job, typeSystem);
 			return goal.intern(this);
 		}
 	}
