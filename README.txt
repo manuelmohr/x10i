@@ -1,6 +1,6 @@
 This repository tracks a whole Eclipse workspace, since we need to track five projects at once.
 
-== Prerequesties ==
+== Prerequisites ==
 
 * You should have eclipse 3.6.X (later is probably ok too)
 
@@ -11,11 +11,11 @@ git submodules. Usually the following is enough:
 
 	git submodule update --init
 
-== jfirm ==
+== jFirm ==
 
-You need a firm C-library to get jfirm running. Either copy it some prebuilt
+You need a Firm C-library to get jFirm running. Either copy it some prebuilt
 ones (TODO: document from where) or use the jFirm/binding_creator/create_lib.sh
-scritp to produce your own if you have a firm checkout.
+script to produce your own if you have a Firm checkout.
 
 == JAVA_HOME ==
 
