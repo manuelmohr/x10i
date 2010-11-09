@@ -809,35 +809,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		visitAppropriate(n.expr());
 	}
 
-	protected String[] getCurrentNativeStrings() {
-		return new String[] { FIRM_NATIVE_STRING };
-	}
-
-	/*
-	// returns true if the given X10Def has a native annotation
-	private String getNativeFirmExpressionForDef(X10Def o) {
-		X10TypeSystem xts = (X10TypeSystem) o.typeSystem();
-		try {
-			Type annotation = (Type) xts.systemResolver().find(QName.make("x10.compiler.Native"));
-			String[] our_langs = getCurrentNativeStrings();
-			for (String our_lang : our_langs) {
-				List<Type> as = o.annotationsMatching(annotation);
-				for (Type at : as) {
-					assertNumberOfInitializers(at, 2);
-					String lang = getStringPropertyInit(at, 0);
-					if (lang != null && lang.equals(our_lang)) {
-						String lit = getStringPropertyInit(at, 1);
-						return lit;
-					}
-				}
-			}
-		} catch (SemanticException e) {
-			// TODO what now?
-		}
-		return null;
-	}
-	*/
-
 	@Override
 	public void visit(X10Call_c n) {
 		/* determine called function */
