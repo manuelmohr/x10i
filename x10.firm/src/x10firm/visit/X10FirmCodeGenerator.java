@@ -121,7 +121,6 @@ import firm.TargetValue;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Node;
-import firm.nodes.Proj;
 
 /**
  * TODO:
@@ -826,7 +825,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		assert (type.getNRess() == 1); /* X10 does not support multiple return values */
 		firm.Type ret_type = type.getResType(0);
 		Node all_results = con.newProj(call, Mode.getT(), Call.pnTResult);
-		return_node = con.newProj(all_results, ret_type.getMode(), 0);
+		Mode mode = ret_type.getMode();
+		if (mode == null) {
+			/* classes do not have modes assigned, use pointer mode */
+			mode = Mode.getP();
+			// TODO structs have value semantics
+		}
+		return_node = con.newProj(all_results, mode, 0);
 	}
 
 	@Override
