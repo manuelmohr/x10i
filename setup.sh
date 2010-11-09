@@ -2,7 +2,7 @@
 #
 # Simple and stupid setup. This should set things up in a way suitable for
 # the IPD boxes.
-# This shouldn't do anything special and you shoudl be easily able to live
+# This shouldn't do anything special and you should be easily able to live
 # without it...
 
 # Fetch submodules
