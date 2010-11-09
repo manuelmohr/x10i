@@ -121,6 +121,7 @@ import firm.TargetValue;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Node;
+import firm.nodes.Proj;
 
 /**
  * TODO:
@@ -813,13 +814,19 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			assert (return_node != null);
 			parameters[i] = return_node;
 		}
+		return_node = null;
 		Node mem = con.getCurrentMem();
 		Node call = con.newCall(mem, address, parameters, type);
 		Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
 		con.setCurrentMem(newMem);
 
-		/* TODO: extract results if any */
-		//setReturnNode(call);
+		if (type.getNRess() == 0) {
+			return; /* no return value, we're done */
+		}
+		assert (type.getNRess() == 1); /* X10 does not support multiple return values */
+		firm.Type ret_type = type.getResType(0);
+		Node all_results = con.newProj(call, Mode.getT(), Call.pnTResult);
+		return_node = con.newProj(all_results, ret_type.getMode(), 0);
 	}
 
 	@Override
