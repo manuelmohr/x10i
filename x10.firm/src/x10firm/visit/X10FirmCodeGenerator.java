@@ -229,10 +229,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public X10FirmCodeGenerator(Compiler compiler, TypeSystem typeSystem) {
 		this.compiler 		= compiler;
 		this.typeSystem 	= typeSystem;
-	
-		// We can only initialize our type system after
-		// the system resolver has been run. 
-		typeSystem.init();
 	}
 	
 	private void setReturnNode(firm.nodes.Node returnNode) {
