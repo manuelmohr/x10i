@@ -799,12 +799,20 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		/* determine called function */
 		X10MethodInstance methodInstance = (X10MethodInstance)n.methodInstance();
 		Entity entity = getMethodEntity(methodInstance);
+		firm.MethodType type = (MethodType) entity.getType();
 		Node address = con.newSymConst(entity);
 
-		/* TODO: transform parameters */
-		Node[] parameters = new Node[0];
+		int param_count = type.getNParams();
+		List<Expr> arguments = n.arguments();
+		assert (arguments.size() == param_count);
+		Node[] parameters = new Node[param_count];
+		for (int i=0; i<param_count; i++) {
+			return_node = null;
+			visitAppropriate(arguments.get(i));
+			assert (return_node != null);
+			parameters[i] = return_node;
+		}
 		Node mem = con.getCurrentMem();
-		firm.Type type = entity.getType();
 		Node call = con.newCall(mem, address, parameters, type);
 		Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
 		con.setCurrentMem(newMem);
