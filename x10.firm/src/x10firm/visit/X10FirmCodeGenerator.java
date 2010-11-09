@@ -116,6 +116,7 @@ import firm.Entity;
 import firm.Graph;
 import firm.MethodType;
 import firm.Mode;
+import firm.Program;
 import firm.TargetValue;
 import firm.nodes.Block;
 import firm.nodes.Call;
@@ -126,6 +127,8 @@ import firm.nodes.Node;
  *  - keep Context up-to-date while traversing the AST 
  */
 public class X10FirmCodeGenerator extends X10DelegatingVisitor {
+	private static final String builtin_prefix = "~builtin.";
+
 	private firm.Construction con;
 	private X10ClassType currentClass;
 
@@ -376,7 +379,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 			firm.Type ownerFirm = typeSystem.asFirmType(owner);
 			firm.Type type = typeSystem.asFirmType(methodInstance);
-			entity = new Entity(ownerFirm, name, type);
+			if (ownerFirm.getMode() == null) { /* non-atomic type */
+				entity = new Entity(ownerFirm, name, type);
+			} else {
+				/* atomic types do not have methods,
+				 * we must call a stdlib function instead.
+				 * TODO: inline this function for performance
+				 */
+				entity = new Entity(Program.getGlobalType(), builtin_prefix+name, type);
+			}
 			methodEntities.put(methodInstance, entity);
 		}
 		
