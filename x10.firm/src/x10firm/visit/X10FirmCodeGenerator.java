@@ -13,6 +13,7 @@ import polyglot.ast.ArrayAccess_c;
 import polyglot.ast.ArrayInit_c;
 import polyglot.ast.Assert_c;
 import polyglot.ast.Assign_c;
+import polyglot.ast.Binary;
 import polyglot.ast.Binary_c;
 import polyglot.ast.Block_c;
 import polyglot.ast.BooleanLit_c;
@@ -121,6 +122,8 @@ import firm.TargetValue;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Node;
+import firm.nodes.Cond;
+import firm.nodes.Cmp;
 
 /**
  * TODO:
@@ -163,6 +166,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		public FirmContext(FirmContext prev) {
 			this.prev = prev;
+			// push a dummy firm scope
+			firmScopes.push(new FirmScope(null));
 		}
 		
 		public FirmContext pushFirmContext() {
@@ -224,6 +229,48 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			return cond;
 		}
 		return n;
+	}
+	
+	private Node makePhiTrailer(polyglot.ast.Node E) {
+		
+	    Block cur    = con.getCurrentBlock();
+		Block bTrue  = con.newBlock();
+		Block bFalse = con.newBlock();
+		
+		con.setCurrentBlock(bTrue);
+		Node jmp1 = con.newJmp();
+		Node one  = con.newConst(1, typeSystem.getFirmMode(typeSystem.Boolean()));
+		
+		con.setCurrentBlock(bFalse);
+		Node jmp2 = con.newJmp();
+		Node zero = con.newConst(0, typeSystem.getFirmMode(typeSystem.Boolean()));
+		
+		con.setCurrentBlock(cur);
+		
+		// TODO: Swap jmps if we are in an unary ! expr. 
+		Block []b = null;
+/*		if(getCmd(o) == dummyMarker)  // switch true and false jmps.
+			b = new Block[]{bFalse, bTrue};
+		else
+		*/
+			b = new Block[]{bTrue, bFalse};
+		
+		firmContext.pushFirmScope(new FirmScope(b));
+		{
+			visitAppropriate(E);
+			Node ret = getReturnNode();
+			makeCondition(ret);
+		}
+		firmContext.popFirmScope();
+		
+		Block phiBlock = con.newBlock();
+		phiBlock.addPred(jmp1);
+		phiBlock.addPred(jmp2);
+
+		con.setCurrentBlock(phiBlock);
+		
+		Node ret = con.newPhi(new Node[]{one, zero}, typeSystem.getFirmMode(typeSystem.Boolean()));
+		return ret;
 	}
 	
 	public X10FirmCodeGenerator(Compiler compiler, TypeSystem typeSystem) {
@@ -994,7 +1041,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(ParExpr_c n) {
-		assert false;
+		visitAppropriate(n.expr());
 	}
 
 	@Override
@@ -1043,19 +1090,116 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	@Override
-	public void visit(X10Binary_c n) {
-		assert false;
+	public void visit(X10Binary_c B) {
+		
+		// only '==', '!=', '&&' or '||' are allowed operators. 
+		// all other operators are implemented by native calls. 
+		
+	    Expr left = B.left();
+	    Type l = left.type();
+	    Expr right = B.right();
+	    Type r = right.type();
+	    Binary.Operator op = B.operator();
+
+	    if (op == Binary.EQ || op == Binary.NE) { // FIXME: get rid of this special case
+	    	int modus = (op == Binary.EQ) ? Cmp.pnEq : Cmp.pnLg;
+	    	
+	    	FirmScope curScope = firmContext.getTopScope();
+	    	if(curScope.getBlocks() != null) {
+	    		Block []blocks = curScope.getBlocks();
+	    		Node retLeft  = null;
+	    		Node retRight = null;
+	    		
+	    		// no new firm scoped needed
+	    		visitAppropriate(left);  retLeft  = getReturnNode();
+	    		visitAppropriate(right); retRight = getReturnNode();
+	    		
+				Node cmp  = con.newCmp(retLeft, retRight);
+				Node proj = con.newProj(cmp, Mode.getb(), modus);
+				
+				Node cond = con.newCond(proj);
+				
+				Block bTrue  = blocks[0];
+				Block bFalse = blocks[1];
+				
+				Node projTrue  = con.newProj(cond, Mode.getX(), Cond.pnTrue);
+				Node projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
+
+				bTrue.addPred(projTrue);
+				bFalse.addPred(projFalse);
+				
+				setReturnNode(cond);
+	    		
+	    	} else {
+	    		Node ret = makePhiTrailer(B);
+	    		setReturnNode(ret);
+	    	}
+	    	
+	    	return;
+	    } else if ((l.isNumeric() && r.isNumeric()) || // TODO: get rid of this special case by defining native operators
+	    	(l.isBoolean() && r.isBoolean())) { 
+	    	// delegate it to Binary_c
+	        visit((Binary_c)B);
+	        return;
+	    }
+	    
+
+	    assert (false) : ("User-defined binary operators should have been desugared earier");
 	}
 
 	@Override
-	public void visit(Binary_c n) {
-		String opString = n.operator().toString();
-
-		// Boolean short-circuiting operators are ok
-		assert (opString.equals("&&") || opString.equals("||")) : "visiting " + n.getClass() + " at " + n.position() + ": " + n;
+	public void visit(Binary_c B) {
+		Binary.Operator op = B.operator();
 		
-		visitAppropriate(n.left());
-		visitAppropriate(n.right());
+		// Boolean short-circuiting operators are ok
+		assert (op == Binary.COND_AND || op == Binary.COND_OR) : "visiting " + B.getClass() + " at " + B.position() + ": " + B;
+		
+		// only '&&' and '||' are valid
+		// TODO: Add constant value evaluation
+		
+		FirmScope curScope = firmContext.getTopScope();
+		
+		if(curScope.getBlocks() != null) {
+			Block []blocks = curScope.getBlocks();
+			Block bTrue, bFalse;
+			
+			if(op == Binary.COND_AND) { // '&&'
+				bTrue  = con.newBlock();
+				bFalse = blocks[1];
+			} else { // '||'
+				bTrue  = blocks[0];
+				bFalse = con.newBlock();
+			}
+			
+			Block []b = new Block[]{bTrue, bFalse};
+			
+			firmContext.pushFirmScope(new FirmScope(b));
+			{
+				visitAppropriate(B.left());
+				Node r = getReturnNode();
+				makeCondition(r);
+			}
+			firmContext.popFirmContext();
+			
+			if(op == Binary.COND_AND)
+				con.setCurrentBlock(bTrue);
+			else
+				con.setCurrentBlock(bFalse);
+			
+			Node ret = null;
+			firmContext.pushFirmScope(new FirmScope(blocks));
+			{
+				visitAppropriate(B.right());
+				Node r = getReturnNode();
+				ret = makeCondition(r);
+			}
+			firmContext.popFirmScope();
+			
+			setReturnNode(ret);
+		} else {
+			Node ret = makePhiTrailer(B);
+			setReturnNode(ret);
+		}
 	}
 
 	@Override
