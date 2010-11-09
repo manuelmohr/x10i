@@ -384,8 +384,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			} else {
 				/* atomic types do not have methods,
 				 * we must call a stdlib function instead.
-				 * TODO: inline this function for performance
 				 */
+				// TODO inline this function for performance
+				// TODO function name must include parameter and return type
 				entity = new Entity(Program.getGlobalType(), builtin_prefix+name, type);
 			}
 			methodEntities.put(methodInstance, entity);
