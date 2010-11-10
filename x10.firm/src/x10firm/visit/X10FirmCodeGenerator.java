@@ -572,7 +572,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Expr rhs = asgn.right();
 		
 		if(lhs instanceof Local_c) { // Assignment to a local variable 
+			resetReturnNode();
 			visitAppropriate(lhs);
+			Node leftRet = getReturnNode();
 			
 			resetReturnNode();
 			visitAppropriate(rhs);
@@ -583,6 +585,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			int idx 			= firmContext.getIdxForLocalInstance(loc);
 			
 			con.setVariable(idx, rightRet);
+			setReturnNode(con.getVariable(idx, leftRet.getMode()));
 		} else {
 			// TODO: Implement me
 			assert false;
