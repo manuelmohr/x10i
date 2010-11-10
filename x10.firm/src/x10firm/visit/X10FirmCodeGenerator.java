@@ -709,9 +709,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		con.setCurrentBlock(bCond);
 		
 		Block []blocks = new Block[]{bTrue, bAfter};
-		FirmScope newScope = new FirmScope(blocks);
-		
-		firmContext.pushFirmScope(newScope);
+		firmContext.pushFirmScope(new FirmScope(blocks));
 		{
 			resetReturnNode();
 			visitAppropriate(n.cond());
@@ -770,10 +768,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Node endElse   = con.newJmp();
 		
 		con.setCurrentBlock(curBlock);
+		
 		Block[] blocks = new Block[]{bTrue, bFalse};
-
-		FirmScope newScope = new FirmScope(blocks);
-		firmContext.pushFirmScope(newScope);
+		firmContext.pushFirmScope(new FirmScope(blocks));
 		{
 			resetReturnNode();
 			visitAppropriate(n.cond());
@@ -801,7 +798,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(If_c n) {
 		Block bTrue  = con.newBlock();
 		Block bAfter = con.newBlock();
-		
 		Block bFalse = null; // block will only be created if we have an else stmt.
 		
 		Block[] blocks = new Block[2];
@@ -813,8 +809,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			blocks[1] = bAfter;
 		}
 
-		FirmScope newScope = new FirmScope(blocks);
-		firmContext.pushFirmScope(newScope);
+		firmContext.pushFirmScope(new FirmScope(blocks));
 		{
 			resetReturnNode();
 			visitAppropriate(n.cond());
@@ -825,7 +820,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		firmContext.popFirmScope();
 		
 		con.setCurrentBlock(bTrue);
-
+		resetReturnNode();
 		visitAppropriate(n.consequent());
 
 		Node endIf = null;
@@ -992,7 +987,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(BooleanLit_c lit) {
 		int val = (lit.value() ? 1 : 0);
 
-		resetReturnNode();
 		Node ret = con.newConst(val, typeSystem.getFirmMode(typeSystem.Boolean()));
 		setReturnNode(ret);
 	}
@@ -1185,6 +1179,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		// Boolean short-circuiting operators are ok
 		assert (op == Binary.COND_AND || op == Binary.COND_OR) : "visiting " + B.getClass() + " at " + B.position() + ": " + B;
+		
 		
 		// only '&&' and '||' are valid
 		// TODO: Add constant value evaluation
