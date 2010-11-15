@@ -118,6 +118,9 @@ public class TypeSystem extends X10TypeSystem_c {
 			if (type instanceof X10ClassType) {
 				X10ClassType classType = (X10ClassType) type;
 				result = new ClassType(classType.name().toString());
+			} else if (type.toString().startsWith("x10.lang.Int")) {
+				/* type may be longer, e.g. "x10.lang.Int{self==0}" */
+				return new PrimitiveType(getFirmMode(Int()));
 			} else {
 				assert false : "No implement to get firm type for: " + type;
 			}
