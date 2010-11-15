@@ -1,12 +1,12 @@
 class Simple1 {
 	public static def getX(x : int, y : int) : int {
-			var z: Boolean = true;
+/*			var z: Boolean = true;
 			do {
 				z = (1 < 3 && 5 - 4 == 12) ? ((3 * 4 == 12 || 5 - 3 != 3) ? 1 == 2 : 4 * 4 != 3) : true;
 				return 123;
 			} while(z);
   			//return 12333;
-/*
+*/
 		var z : Boolean = (1 < 3 && 5 - 4 == 12) ? ((3 * 4 == 12 || 5 - 3 != 3) ? 1 == 2 : 4 * 4 != 3) : true;
 		while(z) {
 			var u: Boolean = false;
@@ -37,7 +37,7 @@ class Simple1 {
 			return y;
 		}
 		return a * b * c - x * y;
-*/
+
 
 	}
 }

@@ -711,6 +711,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(While_c n) {
 		
+		// condition evaluates to false -> nothing to do
+		if(!n.condIsConstantTrue())
+			return;
+		
 		Block bCond  = con.newBlock();
 		Block bTrue  = con.newBlock();
 		Block bAfter = con.newBlock();
@@ -743,7 +747,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(Conditional_c n) {
 		
-/*		// check if we have an constant condition
+		// check if we have an constant condition
 		if(n.cond().isConstant()) {
 			boolean cond = (new Boolean((Boolean)n.cond().constantValue())).booleanValue();
 			if(cond) {
@@ -757,7 +761,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			visitAppropriate(n.alternative());
 			return;
 		}
-*/
 
 		Block bTrue    = con.newBlock();
 		Block bFalse   = con.newBlock();
