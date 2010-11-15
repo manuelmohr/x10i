@@ -124,8 +124,6 @@ import firm.Construction;
  *  - keep Context up-to-date while traversing the AST 
  */
 public class X10FirmCodeGenerator extends X10DelegatingVisitor {
-	private static final String builtin_prefix = "~builtin.";
-
 	private Construction con;
 	private X10ClassType currentClass;
 
@@ -390,7 +388,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				 */
 				// TODO inline this function for performance
 				// TODO function name must include parameter and return type
-				entity = new Entity(Program.getGlobalType(), builtin_prefix+name, type);
+				entity = new Entity(Program.getGlobalType(), name, type);
 			}
 			methodEntities.put(methodInstance, entity);
 		}
@@ -883,6 +881,30 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(X10Call_c n) {
 		/* determine called function */
 		X10MethodInstance methodInstance = (X10MethodInstance)n.methodInstance();
+		
+		/* Primitive types are represented as structs in X10.
+		 * We lower the calls to operations here.
+		 */
+		final String signature = methodInstance.signature();
+		if (signature.startsWith("operator")) {
+			X10ClassType owner = (X10ClassType) methodInstance.container();
+			if (owner.toString().startsWith("x10.lang.Int")) { /* an int */
+				final char opChar = signature.charAt(8);
+				setReturnNode(null);
+				switch (opChar) {
+				case '+':
+					createPlus(n);
+					break;
+				default:
+					System.out.println("Unknown x10.lang.Int operation: "+opChar);
+				}
+			} else {
+				System.out.println("Unknown owner type: "+owner.toString());
+			}
+			return;
+		}
+		
+		/* Not a primitive type. Construct Call. */
 		Entity entity = getMethodEntity(methodInstance);
 		firm.MethodType type = (MethodType) entity.getType();
 		Node address = con.newSymConst(entity);
@@ -916,6 +938,23 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 		Node ret = con.newProj(all_results, mode, 0);
 		setReturnNode(ret);
+	}
+
+	/**
+	 * Creates a Firm Add node corresponding to n
+	 * @param n		a operator+ call on x10.lang.Int
+	 */
+	private void createPlus(X10Call_c n) {
+		Expr left = n.arguments().get(0);
+		Expr right = n.arguments().get(0);
+		setReturnNode(null);
+		visitAppropriate(left);
+		Node leftFirm = getReturnNode();
+		setReturnNode(null);
+		visitAppropriate(right);
+		Node rightFirm = getReturnNode();
+		Node add = con.newAdd(leftFirm, rightFirm, Mode.getIs());
+		setReturnNode(add);
 	}
 
 	@Override
