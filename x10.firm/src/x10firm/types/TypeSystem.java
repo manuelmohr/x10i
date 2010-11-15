@@ -13,12 +13,43 @@ import x10.types.X10TypeSystem_c;
 import firm.ClassType;
 import firm.Mode;
 import firm.PointerType;
+import firm.PrimitiveType;
 import firm.Type;
 
 public class TypeSystem extends X10TypeSystem_c {
 
+	// maps polyglot types to the appropriate firm modes. 
+	private Map<polyglot.types.Type, firm.Mode> primModeMap   = new HashMap<polyglot.types.Type, firm.Mode>();
 	// Maps polyglot types to firm types. 
 	private Map<polyglot.types.Type, Type> firmTypeCache = new HashMap<polyglot.types.Type, Type>();
+	
+	private firm.Mode pointerMode;
+	private boolean inited = false;
+	
+	// initialize the type system
+	public void init() {
+		if(!inited) {
+			initModes();
+			initPrimitiveType();
+			inited = true;
+		}
+	}
+	
+	private void initModes() {
+		pointerMode = Mode.getP();
+	}
+	
+	private void initPrimitiveType() {
+		/* X10 has no primitive types per se */
+	}
+
+	public final firm.Mode getFirmMode(polyglot.types.Type type) {
+		firm.Mode mode = primModeMap.get(type);
+		if (mode != null)
+			return mode;
+		// PointerMode for all the others. 
+		return pointerMode;
+	}
 
 	/**
 	 * Creates a method type (= a member function). So we in addition to the
@@ -78,10 +109,5 @@ public class TypeSystem extends X10TypeSystem_c {
 	@Override
 	public Context emptyContext() {
 		return new X10Context_c(this);
-	}
-
-	public Mode getFirmMode(polyglot.types.Type currentClass) {
-		assert (currentClass.isClass());
-		return Mode.getP();
 	}
 }
