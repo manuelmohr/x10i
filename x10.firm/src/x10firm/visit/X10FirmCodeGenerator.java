@@ -681,7 +681,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			 * 		'STMT`s' 
 			 *      return 'EXPR';
 			 * } while(booleanExpr); 
-			 * 
+			 * // "no return stmt"  
 			without an explicit return at the end of the do ... while stmt seems to be a valid
 			stmt in a method with an explicit return value. -> So we will stop the firm generation
 			if we are currently in a bad block. 
