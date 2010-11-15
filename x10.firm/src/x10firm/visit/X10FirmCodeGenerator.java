@@ -143,10 +143,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			this.blocks = blocks;
 		}
 		
-		public void setBlocks(Block []blocks) {
-			this.blocks = blocks;
-		}
-		
 		public Block []getBlocks() {
 			return blocks;
 		}
@@ -670,10 +666,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Do_c n) {
-		
-		Block bCond  = con.newBlock();
 		Block bTrue  = con.newBlock();
-		Block bAfter = con.newBlock();
 		
 		bTrue.addPred(con.newJmp());
 		con.setCurrentBlock(bTrue);
@@ -681,9 +674,26 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Stmt body = n.body();
 		visitAppropriate(body);
 		
+		if(con.getCurrentBlock().isBad()) {
+			return;
+			/* The stmt: 
+			 * do { 
+			 * 		'STMT`s' 
+			 *      return 'EXPR';
+			 * } while(booleanExpr); 
+			 * 
+			without an explicit return at the end of the do ... while stmt seems to be a valid
+			stmt in a method with an explicit return value. -> So we will stop the firm generation
+			if we are currently in a bad block. 
+			*/
+		}
+		
+		Block bCond  = con.newBlock();
 		bCond.addPred(con.newJmp());
+
 		con.setCurrentBlock(bCond);
 		
+		Block bAfter = con.newBlock();
 		Block []blocks = new Block[]{bTrue, bAfter};
 		firmContext.pushFirmScope(new FirmScope(blocks));
 		{
@@ -854,7 +864,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Empty_c n) {
-		assert false;
+		//assert false;
 	}
 
 	@Override
