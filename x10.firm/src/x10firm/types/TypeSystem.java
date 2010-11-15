@@ -37,9 +37,29 @@ public class TypeSystem extends X10TypeSystem_c {
 	
 	private void initModes() {
 		pointerMode = Mode.getP();
+
+		primModeMap.put(Boolean(), Mode.getBs());
+		primModeMap.put(Byte(),    Mode.getBs());
+		// unsigned short for x10_char -> Unicode
+		primModeMap.put(Char(),    Mode.getHu());
+		primModeMap.put(UInt(),    Mode.getIu());
+		primModeMap.put(Int(), 	   Mode.getIs());
+		primModeMap.put(ULong(),   Mode.getLLu());
+		primModeMap.put(Long(),    Mode.getLLs());
+		primModeMap.put(Float(),   Mode.getF());
+		primModeMap.put(Double(),  Mode.getD());
 	}
 	
 	private void initPrimitiveType() {
+		firmTypeCache.put(Boolean(),new PrimitiveType(getFirmMode(Boolean())));
+		firmTypeCache.put(Byte(),   new PrimitiveType(getFirmMode(Byte())));
+		firmTypeCache.put(UInt(),   new PrimitiveType(getFirmMode(UInt())));
+		firmTypeCache.put(Int(),    new PrimitiveType(getFirmMode(Int())));
+		firmTypeCache.put(ULong(),  new PrimitiveType(getFirmMode(ULong())));
+		firmTypeCache.put(Long(),   new PrimitiveType(getFirmMode(Long())));
+		firmTypeCache.put(Float(),  new PrimitiveType(getFirmMode(Float())));
+		firmTypeCache.put(Double(), new PrimitiveType(getFirmMode(Double())));
+		firmTypeCache.put(Char(),   new PrimitiveType(getFirmMode(Char())));
 		/* X10 has no primitive types per se */
 	}
 
