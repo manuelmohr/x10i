@@ -751,7 +751,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		// check if we have an constant condition
 		if(n.cond().isConstant()) {
-			boolean cond = (new Boolean((Boolean)n.cond().constantValue())).booleanValue();
+			boolean cond = (new Boolean(n.cond().constantValue() != null)).booleanValue();
 			if(cond) {
 				resetReturnNode();
 				visitAppropriate(n.consequent());
