@@ -895,6 +895,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				case '+':
 					createPlus(n);
 					break;
+				case '-':
+					createMinus(n);
+					break;
 				case '<':
 					createLessThan(n);
 					break;
@@ -950,11 +953,31 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private void createPlus(X10Call_c n) {
 		Node leftFirm = visitExpression(n.arguments().get(0));
 		Node rightFirm = visitExpression(n.arguments().get(1));
-		
+
 		Node add = con.newAdd(leftFirm, rightFirm, Mode.getIs());
 		setReturnNode(add);
 	}
 
+	/**
+	 * Creates a Firm Sub node corresponding to n
+	 * @param n		a operator- call on x10.lang.Int
+	 */
+	private void createMinus(X10Call_c n) {
+		Node rightFirm;
+		Node leftFirm;
+		if (n.arguments().size() == 2) {
+			leftFirm = visitExpression(n.arguments().get(0));
+			rightFirm = visitExpression(n.arguments().get(1));
+		} else {
+			assert (n.arguments().size() == 1);
+			leftFirm = con.newConst(0, Mode.getIs());
+			rightFirm = visitExpression(n.arguments().get(0));
+		}
+		
+		Node sub = con.newSub(leftFirm, rightFirm, Mode.getIs());
+		setReturnNode(sub);
+	}
+	
 	/**
 	 * @param expr	an X10 Expr node
 	 * @return a Firm node containing the result value of the expression
