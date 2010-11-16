@@ -1003,6 +1003,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		int idx = firmContext.getIdxForLocalInstance(loc);
 		
 		Node ret = con.getVariable(idx, typeSystem.getFirmMode(loc.type()));
+		
 		setReturnNode(ret);
 	}
 
@@ -1277,8 +1278,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			
 			firmContext.pushFirmScope(new FirmScope(b));
 			{
-				visitAppropriate(B.left());
-				Node r = getReturnNode();
+				Node r = visitExpression(B.left());
 				makeCondition(r);
 			}
 			firmContext.popFirmContext();
@@ -1291,8 +1291,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			Node ret = null;
 			firmContext.pushFirmScope(new FirmScope(blocks));
 			{
-				visitAppropriate(B.right());
-				Node r = getReturnNode();
+				Node r = visitExpression(B.right());
 				ret = makeCondition(r);
 			}
 			firmContext.popFirmScope();
