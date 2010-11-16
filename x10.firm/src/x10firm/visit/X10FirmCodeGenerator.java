@@ -2,6 +2,7 @@ package x10firm.visit;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
@@ -918,14 +919,18 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		int param_count = type.getNParams();
 		List<Expr> arguments = n.arguments();
-		assert (arguments.size() == param_count);
+		if (arguments.size()+1 == param_count) {
+			/* arguments is immutable, so we construct a new list */
+			List<Expr> na = new LinkedList<Expr>();
+			na.add(0, (Expr) n.target());
+			na.addAll(arguments);
+			arguments = na;
+		}
+		assert arguments.size() == param_count : "parameters are off : "+arguments.size()+" vs "+param_count;
 		Node[] parameters = new Node[param_count];
 		for (int i=0; i<param_count; i++) {
-			resetReturnNode();
-			visitAppropriate(arguments.get(i));
-			parameters[i] = getReturnNode();
+			parameters[i] = visitExpression(arguments.get(i));
 		}
-		resetReturnNode();
 		Node mem = con.getCurrentMem();
 		Node call = con.newCall(mem, address, parameters, type);
 		Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
@@ -987,7 +992,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		resetReturnNode();
 		visitAppropriate(expr);
 		Node ret = getReturnNode();
-		assert(ret != null);
 		return ret;
 	}
 	
