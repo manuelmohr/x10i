@@ -890,7 +890,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			X10ClassType owner = (X10ClassType) methodInstance.container();
 			if (owner.toString().startsWith("x10.lang.Int")) { /* an int */
 				final char opChar = signature.charAt(8);
-				setReturnNode(null);
+				resetReturnNode();
 				switch (opChar) {
 				case '+':
 					createPlus(n);
@@ -983,7 +983,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @return a Firm node containing the result value of the expression
 	 */
 	private Node visitExpression(Expr expr) {
-		setReturnNode(null);
+		resetReturnNode();
 		visitAppropriate(expr);
 		Node ret = getReturnNode();
 		assert(ret != null);
