@@ -200,7 +200,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			
 			Block []blocks = curScope.getBlocks();
 			
-			Node one  = con.newConst(1, typeSystem.getFirmMode(typeSystem.Boolean()));
+			Node one  = con.newConst(1, Mode.getb());
 			Node cmp  = con.newCmp(n, one);
 			Node proj = con.newProj(cmp, Mode.getb(), Cmp.pnEq);
 			Node cond = con.newCond(proj);
@@ -895,6 +895,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				case '+':
 					createPlus(n);
 					break;
+				case '<':
+					createLessThan(n);
+					break;
 				default:
 					System.out.println("Unknown x10.lang.Int operation: "+opChar);
 				}
@@ -945,16 +948,36 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param n		a operator+ call on x10.lang.Int
 	 */
 	private void createPlus(X10Call_c n) {
-		Expr left = n.arguments().get(0);
-		Expr right = n.arguments().get(0);
-		setReturnNode(null);
-		visitAppropriate(left);
-		Node leftFirm = getReturnNode();
-		setReturnNode(null);
-		visitAppropriate(right);
-		Node rightFirm = getReturnNode();
+		Node leftFirm = visitExpression(n.arguments().get(0));
+		Node rightFirm = visitExpression(n.arguments().get(1));
+		
 		Node add = con.newAdd(leftFirm, rightFirm, Mode.getIs());
 		setReturnNode(add);
+	}
+
+	/**
+	 * @param expr	an X10 Expr node
+	 * @return a Firm node containing the result value of the expression
+	 */
+	private Node visitExpression(Expr expr) {
+		setReturnNode(null);
+		visitAppropriate(expr);
+		Node ret = getReturnNode();
+		assert(ret != null);
+		return ret;
+	}
+	
+	/**
+	 * Creates a comparison corresponding to n
+	 * @param n		a operator< call on x10.lang.Int
+	 */
+	private void createLessThan(X10Call_c n) {
+		Node leftFirm = visitExpression(n.arguments().get(0));
+		Node rightFirm = visitExpression(n.arguments().get(1));
+		
+		Node cmp = con.newCmp(leftFirm, rightFirm);
+		Node projLT = con.newProj(cmp, Mode.getb(),	Cmp.pnLt);
+		setReturnNode(projLT);
 	}
 
 	@Override
