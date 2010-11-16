@@ -228,11 +228,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		con.setCurrentBlock(bTrue);
 		Node jmp1 = con.newJmp();
-		Node one  = con.newConst(1, typeSystem.getFirmMode(typeSystem.Boolean()));
+		Node one  = con.newConst(1, Mode.getb());
 		
 		con.setCurrentBlock(bFalse);
 		Node jmp2 = con.newJmp();
-		Node zero = con.newConst(0, typeSystem.getFirmMode(typeSystem.Boolean()));
+		Node zero = con.newConst(0, Mode.getb());
 		
 		con.setCurrentBlock(cur);
 		
@@ -252,7 +252,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		con.setCurrentBlock(phiBlock);
 		
-		Node ret = con.newPhi(new Node[]{one, zero}, typeSystem.getFirmMode(typeSystem.Boolean()));
+		Node ret = con.newPhi(new Node[]{one, zero}, Mode.getb());
 		return ret;
 	}
 	
