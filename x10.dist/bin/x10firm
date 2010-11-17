@@ -5,6 +5,8 @@ ME=`readlink -f "$0"`
 MYDIR=`dirname "$ME"`
 X10_TOP="${MYDIR}/../.."
 
+[ -z "$JAVA" ] && JAVA="java"
+
 # prepare classpath
 classpath=""
 append_classpath() {
@@ -33,5 +35,5 @@ export LD_LIBRARY_PATH="$JNA_LIBRARY_PATH"
 
 # Execute compiler
 args="-extclass x10firm.ExtensionInfo -sourcepath ${X10_TOP}/x10.dist/lib/x10.jar"
-command="java -Xmx512m -ea -classpath ${classpath} ${java_args} polyglot.main.Main"
+command="$JAVA -Xmx512m -ea -classpath ${classpath} ${java_args} polyglot.main.Main"
 $command $args "$@"
