@@ -16,17 +16,24 @@ import firm.PointerType;
 import firm.PrimitiveType;
 import firm.Type;
 
+/**
+ * Includes everything to map X10 types to Firm types
+ */
 public class TypeSystem extends X10TypeSystem_c {
 
-	// maps polyglot types to the appropriate firm modes. 
+	/** maps polyglot types to the appropriate firm modes. */
 	private Map<polyglot.types.Type, firm.Mode> primModeMap   = new HashMap<polyglot.types.Type, firm.Mode>();
-	// Maps polyglot types to firm types. 
+	
+	/** Maps polyglot types to firm types. */
 	private Map<polyglot.types.Type, Type> firmTypeCache = new HashMap<polyglot.types.Type, Type>();
 	
+	/** remember the Firm mode a pointer/reference uses */
 	private firm.Mode pointerMode;
+	
+	/** is the typeSystem initialized */
 	private boolean inited = false;
 	
-	// initialize the type system
+	/** initialize the type system by preparing maps */
 	public void init() {
 		if(!inited) {
 			initModes();
@@ -35,6 +42,7 @@ public class TypeSystem extends X10TypeSystem_c {
 		}
 	}
 	
+	/** initialize hash map for modes */
 	private void initModes() {
 		pointerMode = Mode.getP();
 
@@ -50,6 +58,7 @@ public class TypeSystem extends X10TypeSystem_c {
 		primModeMap.put(Double(),  Mode.getD());
 	}
 	
+	/** initialize hash map for types */
 	private void initPrimitiveType() {
 		firmTypeCache.put(Boolean(),new PrimitiveType(getFirmMode(Boolean())));
 		firmTypeCache.put(Byte(),   new PrimitiveType(getFirmMode(Byte())));
@@ -63,6 +72,7 @@ public class TypeSystem extends X10TypeSystem_c {
 		/* X10 has no primitive types per se */
 	}
 
+	/** return the Firm mode, if the type is known, otherwise assume a reference */
 	public final firm.Mode getFirmMode(polyglot.types.Type type) {
 		firm.Mode mode = primModeMap.get(type);
 		if (mode != null)
@@ -75,6 +85,8 @@ public class TypeSystem extends X10TypeSystem_c {
 	 * Creates a method type (= a member function). So we in addition to the
 	 * type we need the flags to determine if it is static and the owner class
 	 * to determine the type of the "this" parameter.
+	 * @param methodInstance	an X10 method instance, for which a Firm type is needed
+	 * @return	corresponding Firm type
 	 */
 	public firm.MethodType asFirmType(X10MethodInstance methodInstance) {
 		final List<polyglot.types.Type> formalTypes = methodInstance.formalTypes();

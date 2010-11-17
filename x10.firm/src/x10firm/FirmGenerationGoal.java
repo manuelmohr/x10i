@@ -9,8 +9,15 @@ import x10firm.types.TypeSystem;
 import x10firm.visit.X10FirmCodeGenerator;
 
 public class FirmGenerationGoal extends SourceGoal_c {
+	/**
+	 * Remember the typeSystem until the code generator is actually invoked.
+	 */
 	private final TypeSystem typeSystem;
 
+	/**
+	 * @param job
+	 * @param typeSystem
+	 */
 	public FirmGenerationGoal(Job job, TypeSystem typeSystem) {
 		super("FirmGeneration", job);
 		this.typeSystem = typeSystem;

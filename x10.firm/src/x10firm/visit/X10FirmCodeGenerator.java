@@ -126,16 +126,25 @@ import firm.nodes.Proj;
  *  - keep Context up-to-date while traversing the AST 
  */
 public class X10FirmCodeGenerator extends X10DelegatingVisitor {
+	/** contains the construction helper for creating Firm graphs */
 	private Construction con;
+	
+	/** contains a reference to the class we are currently in (with respect to the AST) */
 	private X10ClassType currentClass;
 
 	/** To return Firm nodes for constructing expressions */
 	private Node returnNode;
 	
 	private final Compiler compiler;
+	
+	/** typeSystem is used to map X10 types to Firm types (and modes) */
 	private final TypeSystem typeSystem;
+	
 	private final HashMap<X10MethodInstance, Entity> methodEntities = new HashMap<X10MethodInstance, Entity>();
 	
+	/**
+	 * TODO what is FirmScope for?
+	 */
 	class FirmScope {
 		private Block trueBlock;
 		private Block falseBlock;
@@ -166,6 +175,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 	}
 	
+	/**
+	 * TODO what is Firmcontext for?
+	 */
 	class FirmContext {
 		private FirmContext prev;
 		private Stack<FirmScope> firmScopes = new Stack<FirmScope>();
@@ -211,9 +223,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 	}
 	
-	// current firm context
+	/** current firm context */
 	private FirmContext firmContext = new FirmContext(null);
 	
+	/**
+	 * If n is not already a Cond node, build a Cmp-with-1 and Cond
+	 * @param n		a Firm node
+	 * @return		a Cond Firm node
+	 */
 	private Node makeCondition(Node n) {
 		if(n instanceof Proj || !(n instanceof Cond)) {
 			FirmScope topScope = firmContext.getTopScope();
@@ -282,6 +299,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return ret;
 	}
 	
+	/**
+	 * @param compiler
+	 * @param typeSystem
+	 */
 	public X10FirmCodeGenerator(Compiler compiler, TypeSystem typeSystem) {
 		this.compiler 		= compiler;
 		this.typeSystem 	= typeSystem;
@@ -291,14 +312,21 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		typeSystem.init();
 	}
 	
+	/** reset the remembered value of the returned node of an expression */
 	private void resetReturnNode() {
 		setReturnNode(null);
 	}
 	
+	/**
+	 * @param retNode	remember this node as holding the returned value of the current expression
+	 */
 	private void setReturnNode(Node retNode) {
 		returnNode = retNode;
 	}
 	
+	/**
+	 * @return	the Firm node holding the returned value of the current expression
+	 */
 	private Node getReturnNode() {
 		assert returnNode != null;
 		return returnNode;
@@ -342,21 +370,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		// TODO: how do we treat native rep classes ?
 		assert (!def.isNested()) : ("Nested class alert!");
 		
-		// visit the node children (class body)
-		List<ClassMember> members = body.members();
-
-		for (ClassMember member : members) {
-			visitAppropriate(member);
-		}
-	}
-	
-	void processClass(X10ClassDecl_c n) {
-		X10ClassDef def  = (X10ClassDef) n.classDef();
-		ClassBody_c body = (ClassBody_c) n.body();
-
-		// TODO: how do we treat native rep classes ?
-		assert (!def.isNested()) : ("Nested class alert!");
-
 		// visit the node children (class body)
 		List<ClassMember> members = body.members();
 

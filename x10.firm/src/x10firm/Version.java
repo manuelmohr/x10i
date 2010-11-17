@@ -1,5 +1,8 @@
 package x10firm;
 
+/**
+ * Polyglot requires thisa class to specify the version of our extension
+ */
 public class Version extends polyglot.main.Version {
 	@Override
 	public String name() {

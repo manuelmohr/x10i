@@ -10,8 +10,16 @@ import polyglot.util.ErrorQueue;
 import polyglot.visit.PostCompiled;
 import x10firm.types.TypeSystem;
 
+/**
+ * Defines our extension (Firm backend in X10 compiler) within the Polyglot framework
+ *
+ */
 public class ExtensionInfo extends x10.ExtensionInfo {
 	
+	/**
+	 * Initializes our extension.
+	 * E.g. loads the native libFirm via JNA.
+	 */
 	public ExtensionInfo() {
 		Firm.init();
 	} 
@@ -36,7 +44,15 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		return new TypeSystem();
 	}
 
+	/**
+	 * X10 needs this.
+	 * TODO why?
+	 */
 	protected static class X10FirmScheduler extends X10Scheduler {
+		/**
+		 * Initialize the scheduler, duh.
+		 * @param info	"==ExtensionInfo.this", because this inner class is static (strange design by X10) 
+		 */
 		public X10FirmScheduler(ExtensionInfo info) {
 			super(info);
 		}
