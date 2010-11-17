@@ -26,9 +26,10 @@ import firm.Type;
  */
 public class TypeSystem extends X10TypeSystem_c {
 
-	/// Maps polyglot types to firm types.
+	/** Maps polyglot types to firm types. */
 	private Map<polyglot.types.Type, Type> firmTypeCache = new HashMap<polyglot.types.Type, Type>();
-	/// Maps some polyglot types to "native"/primitive firm types
+	
+	/** Maps some polyglot types to "native"/primitive firm types */
 	private Map<polyglot.types.Type, Type> firmNativeTypes = new HashMap<polyglot.types.Type, Type>();
 
 	/**
