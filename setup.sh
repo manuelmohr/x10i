@@ -30,6 +30,6 @@ echo "CC = ccache gcc" >> libfirm/config.mak
 # Run "ant dist" once so we have all the required stuff
 pushd x10.dist > /dev/null
 # ant dist requires JAVA_HOME to be set, so do this now if it isn't already
-[ -n "$JAVA_HOME" ] && export JAVA_HOME="$(readlink -f $(dirname $(readlink -f /usr/bin/java))/../..)"
+[ -z "$JAVA_HOME" ] && export JAVA_HOME="$(readlink -f $(dirname $(readlink -f /usr/bin/java))/../..)"
 ant dist
 popd
