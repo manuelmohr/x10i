@@ -148,6 +148,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private static class FirmScope {
 		private Block trueBlock;
 		private Block falseBlock;
+		private Block continueBlock;
 		
 		public void setTrueBlock(Block block) {
 			trueBlock = block;
@@ -165,11 +166,21 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			return falseBlock;
 		}
 		
+		public void setContinueBlock(Block block) {
+			continueBlock = block;
+		}
+		
+		public Block getContinueBlock() {
+			assert continueBlock != null;
+			return continueBlock;
+		}
+		
 		@Override
 		public Object clone() {
 			FirmScope clonedScope  		= new FirmScope();
 			clonedScope.trueBlock     	= this.trueBlock;
 			clonedScope.falseBlock		= this.falseBlock;
+			clonedScope.continueBlock   = this.continueBlock;
 			
 			return clonedScope;
 		}
@@ -228,6 +239,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	
 	/**
 	 * If n is not already a Cond node, build a Cmp-with-1 and Cond
+	 * If n is a Proj node, build a Cond Node 
 	 * @param n		a Firm node
 	 * @return		a Cond Firm node
 	 */
@@ -593,7 +605,27 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Branch_c br) {
-		assert false;
+		if(con.getCurrentBlock().isBad())
+			return;
+		
+		if (br.labelNode() != null) {
+			// TODO: Implement me
+			assert false;
+		} else {
+			// unlabeled continue or break; 
+			FirmScope topScope = firmContext.getTopScope();
+			Block target = null;
+			if (br.kind() == Branch_c.CONTINUE) {
+				target = topScope.getContinueBlock();
+			} else {
+				assert false;
+			}
+			
+			Node jmp = con.newJmp();
+			target.addPred(jmp);
+		}
+		
+		con.setCurrentBlockBad();
 	}
 
 	@Override
@@ -695,13 +727,25 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Do_c n) {
+		
 		Block bTrue  = con.newBlock();
+		Block bCond  = con.newBlock();
+		Block bFalse = con.newBlock();
 		
 		bTrue.addPred(con.newJmp());
 		con.setCurrentBlock(bTrue);
 		
-		Stmt body = n.body();
-		visitAppropriate(body);
+		FirmScope topScope  = firmContext.getTopScope();
+		FirmScope newScope  = (FirmScope)topScope.clone();
+		
+		newScope.setContinueBlock(bCond);
+		
+		firmContext.pushFirmScope(newScope);
+		{
+			Stmt body = n.body();
+			visitAppropriate(body);
+		}
+		firmContext.popFirmScope();
 		
 		if(con.getCurrentBlock().isBad()) {
 			return;
@@ -717,40 +761,37 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			*/
 		}
 		
-		Block bCond  = con.newBlock();
 		bCond.addPred(con.newJmp());
 
 		con.setCurrentBlock(bCond);
 		
-		Block bAfter = con.newBlock();
-		
-		FirmScope topScope = firmContext.getTopScope();
-		FirmScope newScope = (FirmScope)topScope.clone();
+		topScope  = firmContext.getTopScope();
+		newScope  = (FirmScope)topScope.clone();
 		
 		newScope.setTrueBlock(bTrue);
-		newScope.setFalseBlock(bAfter);
+		newScope.setFalseBlock(bFalse);
 		
 		firmContext.pushFirmScope(newScope);
 		{
 			Node retNode = visitExpression(n.cond());
-			
 			makeCondition(retNode);
 		}
 		firmContext.popFirmScope();
 		
-		con.setCurrentBlock(bAfter);
+		con.setCurrentBlock(bFalse);
 	}
 
 	@Override
 	public void visit(While_c n) {
 		
 		// condition evaluates to false -> nothing to do
+		// TODO: Something is wrong with the method condIsConstantTrue
 //		if(!n.condIsConstantTrue())
 //			return;
 		
 		Block bCond  = con.newBlock();
 		Block bTrue  = con.newBlock();
-		Block bAfter = con.newBlock();
+		Block bFalse = con.newBlock();
 		
 		bCond.addPred(con.newJmp());
 		con.setCurrentBlock(bCond);
@@ -759,25 +800,33 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		FirmScope newScope = (FirmScope)topScope.clone();
 		
 		newScope.setTrueBlock(bTrue);
-		newScope.setFalseBlock(bAfter);
+		newScope.setFalseBlock(bFalse);
 		
 		firmContext.pushFirmScope(newScope);
 		{
 			Node retNode = visitExpression(n.cond());
-			
 			makeCondition(retNode);
 		}
 		firmContext.popFirmScope();
 		
 		con.setCurrentBlock(bTrue);
 		
-		Stmt body = n.body();
-		visitAppropriate(body);
+		topScope = firmContext.getTopScope();
+		newScope = (FirmScope)topScope.clone();
+		
+		newScope.setContinueBlock(bCond);
+		
+		firmContext.pushFirmScope(newScope); 
+		{
+			Stmt body = n.body();
+			visitAppropriate(body);
+		}
+		firmContext.popFirmScope();
 		
 		if(!con.getCurrentBlock().isBad())
 			bCond.addPred(con.newJmp());
 		
-		con.setCurrentBlock(bAfter);
+		con.setCurrentBlock(bFalse);
 	}
 	
 	@Override
@@ -1346,7 +1395,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				Node r = visitExpression(B.left());
 				makeCondition(r);
 			}
-			firmContext.popFirmContext();
+			firmContext.popFirmScope();
 			
 			if(op == Binary.COND_AND)
 				con.setCurrentBlock(bTrue);

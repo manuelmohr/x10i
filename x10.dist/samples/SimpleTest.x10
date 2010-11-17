@@ -13,19 +13,21 @@ class Simple1 {
 			var u: Boolean = false;
 			do {
 				if(true) { z = false; }
-				else if(u) { return 4; }
+				else if(u) { continue; }
 				else { 
 					z = false;
 					var a: Boolean = true;
 					while(a) {
 						a = false;
-						return 2;
+						continue;
 					}
 				}
+				
 			} while(u);
-			do {
-				return 123;
-			} while(z);
+			if(u == true) {
+				continue;
+			}
+			u = z == true ? 2 + 3 < 30 : 666 - 333 != 333;
 		}
 
 		var a: Int = 3;
@@ -34,8 +36,12 @@ class Simple1 {
 		a = b = c = (x + y + 5 < 666 || a + b - c < 123) ? (z == true && a + b - c != 333) ? 23 + 4 : 555 - 4 : 333 + 333;
 
 		var u: Int = (x + y == 666 && x + y != 44 || true != false) ? 1 : 0; 
-		if(1 == 2 || (2 != 6 && true == z) || 1 < 4) {
-			return y;
+		while(1 == 2 || (2 != 6 && true == z) || 1 < 4) {
+			if((a + b + c - (z == true ? 1 : -2)) < 100) 
+				continue;
+			a = a + 1;
+			b = b + 2;
+			c = c + 3;
 		}
 		
 		return a + b + c - x - y;
