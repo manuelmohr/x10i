@@ -126,6 +126,7 @@ import firm.nodes.Proj;
  *  - keep Context up-to-date while traversing the AST 
  */
 public class X10FirmCodeGenerator extends X10DelegatingVisitor {
+	/** The current firm construction object */
 	private Construction con;
 	
 	/** contains a reference to the class we are currently in (with respect to the AST) */
@@ -134,11 +135,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/** To return Firm nodes for constructing expressions */
 	private Node returnNode;
 	
+	/** Main Compiler object */
 	private final Compiler compiler;
 	
 	/** typeSystem is used to map X10 types to Firm types (and modes) */
 	private final TypeSystem typeSystem;
 	
+	/** Mapping between X10MethodInstances and firm entities. */
 	private final HashMap<X10MethodInstance, Entity> methodEntities = new HashMap<X10MethodInstance, Entity>();
 	
 	/**
@@ -146,33 +149,63 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * For every new scope we will clone the current (top) scope and set the adequate attributes for the new scope. 
 	 */
 	private static class FirmScope {
+		/** Block we will jump into if an expression evaluates to true */
 		private Block trueBlock;
+		/** Block we will jump into if an expression evaluates to false */
 		private Block falseBlock;
+		/** Block we will jump into if we reach a continue statement */
 		private Block continueBlock;
+		/** Block we will jump into if we reach a break statement */
+		private Block breakBlock;
 		
+		/** Sets the true block.
+		 * @param block The block to set */
 		public void setTrueBlock(Block block) {
 			trueBlock = block;
 		}
 		
+		/** Returns the true block.
+		 * @return The true block */
 		public Block getTrueBlock() {
 			return trueBlock;
 		}
 		
+		/** Sets the false block.
+		 * @param block The block to set */
 		public void setFalseBlock(Block block) {
 			falseBlock = block;
 		}
 		
+		/** Returns the false block.
+		 * @return The false block */
 		public Block getFalseBlock() {
 			return falseBlock;
 		}
 		
+		/** Sets the continue block.
+		 * @param block The block to set */
 		public void setContinueBlock(Block block) {
 			continueBlock = block;
 		}
 		
+		/** Returns the continue block.
+		 * @return The continue block */
 		public Block getContinueBlock() {
 			assert continueBlock != null;
 			return continueBlock;
+		}
+		
+		/** Sets the break block.
+		 * @param block The block to set */
+		public void setBreakBlock(Block block) {
+			breakBlock = block;
+		}
+		
+		/** Returns the break block.
+		 * @return The break block */
+		public Block getBreakBlock() {
+			assert breakBlock != null;
+			return breakBlock;
 		}
 		
 		@Override
@@ -191,44 +224,73 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * For every new method entry we will create a new firm context. 
 	 */
 	private static class FirmContext {
+		/** Reference to the upper firm context */
 		private FirmContext prev;
+		/** Stack to save firm scopes */
 		private Stack<FirmScope> firmScopes = new Stack<FirmScope>();
-		// Maps "LocalInstances" to the appropriate Idxs.
+		/** Maps "LocalInstances" to the appropriate idx`s */
 		private Map<LocalInstance, Integer> localInstanceMapper = new HashMap<LocalInstance, Integer>();
 		
+		/** Constructor for creating a new firm context. 
+		 * @param prev Reference to the upper firm context
+		 */
 		public FirmContext(FirmContext prev) {
 			this.prev = prev;
 			// push a dummy firm scope
 			firmScopes.push(new FirmScope());
 		}
 		
+		/** Pushes a new firm context. 
+		 * @return The new firm context. 
+		 */
 		public FirmContext pushFirmContext() {
 			return new FirmContext(this);
 		}
 		
+		/** Pops the firm context and returns the upper firm context 
+		 * @return The upper firm context
+		 */
 		public FirmContext popFirmContext() {
 			return prev;
 		}
 		
+		/** Sets the idx for a local variable
+		 * @param loc The local variable for which the index should be set
+		 * @param idx The idx for the local variable
+		 */
 		public void putIdxForLocalInstance(LocalInstance loc, int idx) {
 			assert !localInstanceMapper.containsKey(loc);
 			localInstanceMapper.put(loc, new Integer(idx));
 		}
 		
+		/** Returns the idx for a given local variable
+		 * @param loc The local variable for which the index should be returned
+		 * @return The idx of the given local variable 
+		 */
 		public int getIdxForLocalInstance(LocalInstance loc) {
 			assert localInstanceMapper.containsKey(loc) : "Loc " + loc + " not found";
 			return localInstanceMapper.get(loc).intValue();
 		}
 		
+		/** Pushes a new firm scope 
+		 * @param scope The firm scope which should be pushed
+		 * @return The new firm scope
+		 */
 		public FirmScope pushFirmScope(FirmScope scope) {
 			return firmScopes.push(scope);
 		}
 		
+		/** Pops the topmost firm scope
+		 * @return The upper firm scope of the topmost firm scope
+		 */
 		public FirmScope popFirmScope() {
 			assert !firmScopes.isEmpty();
 			return firmScopes.pop();
 		}
 		
+		/** Returns the topmost firm scope
+		 * @return Topmost firm scope
+		 */
 		public FirmScope getTopScope() {
 			assert !firmScopes.isEmpty();
 			return firmScopes.peek();
@@ -619,7 +681,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			if (br.kind() == Branch_c.CONTINUE) {
 				target = topScope.getContinueBlock();
 			} else {
-				assert false;
+				target = topScope.getBreakBlock();
 			}
 			
 			Node jmp = con.newJmp();
@@ -740,6 +802,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		FirmScope newScope  = (FirmScope)topScope.clone();
 		
 		newScope.setContinueBlock(bCond);
+		newScope.setBreakBlock(bFalse);
 		
 		firmContext.pushFirmScope(newScope);
 		{
@@ -816,6 +879,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		newScope = (FirmScope)topScope.clone();
 		
 		newScope.setContinueBlock(bCond);
+		newScope.setBreakBlock(bFalse);
 		
 		firmContext.pushFirmScope(newScope); 
 		{
