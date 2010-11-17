@@ -700,8 +700,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(While_c n) {
 		
 		// condition evaluates to false -> nothing to do
-		if(!n.condIsConstantTrue())
-			return;
+//		if(!n.condIsConstantTrue())
+//			return;
 		
 		Block bCond  = con.newBlock();
 		Block bTrue  = con.newBlock();
