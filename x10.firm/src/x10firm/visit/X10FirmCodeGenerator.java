@@ -235,9 +235,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		 */
 		public FirmContext() {
 			/* nothing to do here */
+			// Push a dummy frame
+			pushFirmScope(new FirmScope());
 		}
 
-		public void putIdxForLocalInstance(LocalInstance loc, int idx) {
+		/** Sets the idx for a given local variable
+		 * @param loc The local variable for which the index should be set
+		 * @param idx The idx for the given local variable
+		 */
+		public void setIdxForLocalInstance(LocalInstance loc, int idx) {
 			assert !localInstanceMapper.containsKey(loc);
 			localInstanceMapper.put(loc, new Integer(idx));
 		}
@@ -570,14 +576,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			con.setVariable(idx, projParam);
 			
 			// map the local instance with the appropriate idx. 
-			firmContext.putIdxForLocalInstance(loc, idx);
+			firmContext.setIdxForLocalInstance(loc, idx);
 			idx++;
 		}
 
 		// map all local variables. 
 		for (LocalInstance loc : locals) {
 			// map the local instance with the appropriate idx. 
-			firmContext.putIdxForLocalInstance(loc, idx);
+			firmContext.setIdxForLocalInstance(loc, idx);
 			idx++;
 		}
 

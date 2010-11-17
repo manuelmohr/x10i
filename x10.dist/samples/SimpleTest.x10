@@ -7,8 +7,8 @@ class Simple1 {
 			} while(z);
   			//return 12333;
 */
-
 		var z : Boolean = (1 < 3 && 5 - 4 == 12) ? ((3 * 4 == 12 || 5 + 3 != 3) ? 1 == 2 : 4 + 4 != 3) : true;
+		
 		while(z) {
 			var u: Boolean = false;
 			do {
@@ -45,7 +45,5 @@ class Simple1 {
 		}
 		
 		return a + b + c - x - y;
-
-
 	}
 }
