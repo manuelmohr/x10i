@@ -143,7 +143,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private final HashMap<X10MethodInstance, Entity> methodEntities = new HashMap<X10MethodInstance, Entity>();
 	
 	/**
-	 * TODO what is FirmScope for?
+	 * Class that holds attributes (true and false blocks, continue blocks, break blocks etc.) for a new scope. 
+	 * For every new scope we will clone the current (top) scope and set the adequate attributes for the new scope. 
 	 */
 	private static class FirmScope {
 		private Block trueBlock;
@@ -187,7 +188,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 	
 	/**
-	 * TODO what is Firmcontext for?
+	 * Class that holds attributes (scopes, mapping of local instance variables etc.) for a new method. 
+	 * For every new method entry we will create a new firm context. 
 	 */
 	private static class FirmContext {
 		private FirmContext prev;
@@ -271,6 +273,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return n;
 	}
 	
+	/**
+	 * Evaluates the given expression and creates the appropriate firm nodes. Afterwards 
+	 * it creates a new true (holds the value 1) and false (holds the value 0) block for 
+	 * the results of the expression. Finally the true and false blocks are combined with 
+	 * a common phi node. 
+	 * @param n		A polyglot expression
+	 * @return		A Phi firm node
+	 */
 	private Node makeConditionalPhiTrailer(Expr E) {
 		
 	    Block cur    = con.getCurrentBlock();
