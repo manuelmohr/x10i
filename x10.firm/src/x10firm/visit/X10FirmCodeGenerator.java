@@ -845,7 +845,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Empty_c n) {
-		//assert false;
+		assert false; // TODO maybe doing nothing is ok?
 	}
 
 	@Override
