@@ -234,7 +234,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		 * Create a new Firm context
 		 */
 		public FirmContext() {
-			/* nothing to do here */
 			// Push a dummy frame
 			pushFirmScope(new FirmScope());
 		}
