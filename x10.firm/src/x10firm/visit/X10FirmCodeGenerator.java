@@ -225,6 +225,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * For every new method entry we will create a new firm context. 
 	 */
 	private static class FirmContext {
+		/** Stack to save firm scopes */
 		private Stack<FirmScope> firmScopes = new Stack<FirmScope>();
 		/** Maps "LocalInstances" to the appropriate idx`s */
 		private Map<LocalInstance, Integer> localInstanceMapper = new HashMap<LocalInstance, Integer>();
