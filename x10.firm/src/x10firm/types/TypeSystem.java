@@ -20,6 +20,9 @@ import firm.Type;
 
 /**
  * Includes everything to map X10 types to Firm types
+ *
+ * XXX While the mapping is static, the X10 type system is not,
+ * because the runtime is loaded dynamically.
  */
 public class TypeSystem extends X10TypeSystem_c {
 
