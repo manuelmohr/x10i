@@ -902,7 +902,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Empty_c n) {
-		//assert false;
+		/* empty statements are irrelevant for Firm construction */
 	}
 
 	@Override
