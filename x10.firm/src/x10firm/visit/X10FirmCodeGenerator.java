@@ -145,7 +145,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/**
 	 * TODO what is FirmScope for?
 	 */
-	class FirmScope {
+	private static class FirmScope {
 		private Block trueBlock;
 		private Block falseBlock;
 		
@@ -178,7 +178,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/**
 	 * TODO what is Firmcontext for?
 	 */
-	class FirmContext {
+	private static class FirmContext {
 		private FirmContext prev;
 		private Stack<FirmScope> firmScopes = new Stack<FirmScope>();
 		// Maps "LocalInstances" to the appropriate Idxs.
