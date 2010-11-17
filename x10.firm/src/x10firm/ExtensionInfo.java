@@ -44,7 +44,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		return new TypeSystem();
 	}
 
-	protected static class X10FirmScheduler extends X10Scheduler {
+	private static class X10FirmScheduler extends X10Scheduler {
 		/**
 		 * Initialize the scheduler, duh.
 		 * @param info	"==ExtensionInfo.this", because this inner class is static (strange design by X10) 

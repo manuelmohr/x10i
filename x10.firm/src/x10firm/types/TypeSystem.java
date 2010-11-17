@@ -28,7 +28,6 @@ public class TypeSystem extends X10TypeSystem_c {
 
 	/** Maps polyglot types to firm types. */
 	private Map<polyglot.types.Type, Type> firmTypeCache = new HashMap<polyglot.types.Type, Type>();
-	
 	/** Maps some polyglot types to "native"/primitive firm types */
 	private Map<polyglot.types.Type, Type> firmNativeTypes = new HashMap<polyglot.types.Type, Type>();
 
@@ -85,6 +84,10 @@ public class TypeSystem extends X10TypeSystem_c {
 		return asFirmTypeNonNative(type);
 	}
 	
+	/**
+	 * return the firm type for a given ast-type.
+	 * This variant does not return the "native"-type even if there is one.
+	 */
 	public firm.Type asFirmTypeNonNative(polyglot.types.Type type) {		
 		firm.Type result = firmTypeCache.get(type);
 		if (result == null) {
@@ -103,10 +106,19 @@ public class TypeSystem extends X10TypeSystem_c {
 		return result;
 	}
 
+	/**
+	 * Returns the mode for a given ast-type.
+	 */
 	public Mode getFirmMode(polyglot.types.Type type) {
 		return asFirmType(type).getMode();
 	}
 
+	/**
+	 * Should be called before the firm-graph is constructed. This extra step
+	 * is necessary because at the time the type-system Object is created in
+	 * the ExtensionInfo we must not use the Int(), Boolean(), ... functions
+	 * yet.
+	 */
 	public void beforeGraphConstruction() {
 		/* we "lower" some well-known types directly to firm modes */
 		Mode modeInt = new Mode("Int", ir_mode_sort.irms_int_number, 32, 1,
@@ -119,6 +131,10 @@ public class TypeSystem extends X10TypeSystem_c {
 		firmNativeTypes.put(Boolean(), typeBoolean);
 	}
 	
+	/**
+	 * can be called to setup a name-mangler.
+	 * It maps our primitive/native types to their mangled names.
+	 */
 	public void setupNameMangler(NameMangling mangler) {
 		for(Entry<polyglot.types.Type, Type> entry : firmNativeTypes.entrySet()) {
 			String mangledName = null;

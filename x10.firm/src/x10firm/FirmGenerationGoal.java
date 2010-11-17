@@ -12,16 +12,18 @@ import x10.extension.X10Ext;
 import x10firm.types.TypeSystem;
 import x10firm.visit.X10FirmCodeGenerator;
 
+/**
+ * This defines the FirmGeneration goal (other people would say "phase")
+ * for polyglot.
+ * @author matze
+ */
 public class FirmGenerationGoal extends SourceGoal_c {
 	/**
 	 * Remember the typeSystem until the code generator is actually invoked.
 	 */
 	private final TypeSystem typeSystem;
 
-	/**
-	 * @param job
-	 * @param typeSystem
-	 */
+	/** Constructor */
 	public FirmGenerationGoal(Job job, TypeSystem typeSystem) {
 		super("FirmGeneration", job);
 		this.typeSystem = typeSystem;
@@ -47,7 +49,7 @@ public class FirmGenerationGoal extends SourceGoal_c {
 		}
 		
 		/* lower OO-constructs */
-		OOSupport.prepareOO(typeSystem);
+		OOSupport.lowerOO(typeSystem);
 
 		/* try to generate some assembly */
 		String compilationUnit = "x10program"; /* can we query the program name? */
