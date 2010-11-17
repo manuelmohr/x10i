@@ -214,6 +214,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			clonedScope.trueBlock     	= this.trueBlock;
 			clonedScope.falseBlock		= this.falseBlock;
 			clonedScope.continueBlock   = this.continueBlock;
+			clonedScope.breakBlock      = this.breakBlock;
 			
 			return clonedScope;
 		}
@@ -339,7 +340,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * it creates a new true (holds the value 1) and false (holds the value 0) block for 
 	 * the results of the expression. Finally the true and false blocks are combined with 
 	 * a common phi node. 
-	 * @param n		A polyglot expression
+	 * @param E		A polyglot expression
 	 * @return		A Phi firm node
 	 */
 	private Node makeConditionalPhiTrailer(Expr E) {
@@ -383,8 +384,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 	
 	/**
-	 * @param compiler
-	 * @param typeSystem
+	 * Constructor for creating a new X10FirmCodeGenerator
+	 * 
+	 * @param compiler The main compiler
+	 * @param typeSystem The main type system
 	 */
 	public X10FirmCodeGenerator(Compiler compiler, TypeSystem typeSystem) {
 		this.compiler   = compiler;
