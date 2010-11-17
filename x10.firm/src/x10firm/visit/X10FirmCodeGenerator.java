@@ -850,7 +850,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Eval_c n) {
+		/* Polyglot Eval captures an expression and is a statement.
+		 * Just process the expression and throw away its value. */ 
 		visitAppropriate(n.expr());
+		resetReturnNode();
 	}
 
 	@Override
