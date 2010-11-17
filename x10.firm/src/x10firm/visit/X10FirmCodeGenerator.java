@@ -225,40 +225,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * For every new method entry we will create a new firm context. 
 	 */
 	private static class FirmContext {
-		/** Reference to the upper firm context */
-		private FirmContext prev;
-		/** Stack to save firm scopes */
 		private Stack<FirmScope> firmScopes = new Stack<FirmScope>();
 		/** Maps "LocalInstances" to the appropriate idx`s */
 		private Map<LocalInstance, Integer> localInstanceMapper = new HashMap<LocalInstance, Integer>();
-		
-		/** Constructor for creating a new firm context. 
-		 * @param prev Reference to the upper firm context
+	
+		/**
+		 * Create a new Firm context
 		 */
-		public FirmContext(FirmContext prev) {
-			this.prev = prev;
-			// push a dummy firm scope
-			firmScopes.push(new FirmScope());
+		public FirmContext() {
+			/* nothing to do here */
 		}
-		
-		/** Pushes a new firm context. 
-		 * @return The new firm context. 
-		 */
-		public FirmContext pushFirmContext() {
-			return new FirmContext(this);
-		}
-		
-		/** Pops the firm context and returns the upper firm context 
-		 * @return The upper firm context
-		 */
-		public FirmContext popFirmContext() {
-			return prev;
-		}
-		
-		/** Sets the idx for a local variable
-		 * @param loc The local variable for which the index should be set
-		 * @param idx The idx for the local variable
-		 */
+
 		public void putIdxForLocalInstance(LocalInstance loc, int idx) {
 			assert !localInstanceMapper.containsKey(loc);
 			localInstanceMapper.put(loc, new Integer(idx));
@@ -299,7 +276,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 	
 	/** current firm context */
-	private FirmContext firmContext = new FirmContext(null);
+	private FirmContext firmContext;
 	
 	/**
 	 * If n is not already a Cond node, build a Cmp-with-1 and Cond
@@ -575,9 +552,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		Graph graph = new Graph(entity, nVars);
 		con 		= new Construction(graph);
-		
-		// Push a new firm context
-		firmContext = firmContext.pushFirmContext();
+		firmContext = new FirmContext();
 		
 		Node args = graph.getArgs();
 		if(!isStatic) {
@@ -616,8 +591,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			con.getGraph().getEndBlock().addPred(returnn);
 		}
 		
-		// restore previous firm context
-		firmContext = firmContext.popFirmContext();
 		con.finish();
 		
 		// Dump the created graph
