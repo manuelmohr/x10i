@@ -119,6 +119,7 @@ import firm.nodes.Node;
 import firm.nodes.Cond;
 import firm.nodes.Cmp;
 import firm.Construction;
+import firm.nodes.Proj;
 
 /**
  * TODO:
@@ -129,21 +130,39 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private X10ClassType currentClass;
 
 	/** To return Firm nodes for constructing expressions */
-	private Node return_node;
+	private Node returnNode;
 	
 	private final Compiler compiler;
 	private final TypeSystem typeSystem;
 	private final HashMap<X10MethodInstance, Entity> methodEntities = new HashMap<X10MethodInstance, Entity>();
 	
 	class FirmScope {
-		private Block []blocks;
+		private Block trueBlock;
+		private Block falseBlock;
 		
-		public FirmScope(Block []blocks) {
-			this.blocks = blocks;
+		public void setTrueBlock(Block block) {
+			trueBlock = block;
 		}
 		
-		public Block []getBlocks() {
-			return blocks;
+		public Block getTrueBlock() {
+			return trueBlock;
+		}
+		
+		public void setFalseBlock(Block block) {
+			falseBlock = block;
+		}
+		
+		public Block getFalseBlock() {
+			return falseBlock;
+		}
+		
+		@Override
+		public Object clone() {
+			FirmScope clonedScope  		= new FirmScope();
+			clonedScope.trueBlock     	= this.trueBlock;
+			clonedScope.falseBlock		= this.falseBlock;
+			
+			return clonedScope;
 		}
 	}
 	
@@ -156,7 +175,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		public FirmContext(FirmContext prev) {
 			this.prev = prev;
 			// push a dummy firm scope
-			firmScopes.push(new FirmScope(null));
+			firmScopes.push(new FirmScope());
 		}
 		
 		public FirmContext pushFirmContext() {
@@ -196,27 +215,30 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private FirmContext firmContext = new FirmContext(null);
 	
 	private Node makeCondition(Node n) {
-		if(!(n instanceof Cond)) {
-			FirmScope curScope = firmContext.getTopScope();
+		if(n instanceof Proj || !(n instanceof Cond)) {
+			FirmScope topScope = firmContext.getTopScope();
 			
-			Block []blocks = curScope.getBlocks();
+			Block bTrue  = topScope.getTrueBlock();
+			Block bFalse = topScope.getFalseBlock();
 			
-			Node one  = con.newConst(1, Mode.getb());
-			Node cmp  = con.newCmp(n, one);
-			Node proj = con.newProj(cmp, Mode.getb(), Cmp.pnEq);
+			Node proj = n;
+			if(!(n instanceof Proj)) { // No projection, create an explicit cmp and proj node. 
+				Node one  = con.newConst(1, n.getMode());
+				Node cmp  = con.newCmp(n, one);
+				proj = con.newProj(cmp, Mode.getb(), Cmp.pnEq);
+			}
+			
 			Node cond = con.newCond(proj);
 			
 			Node projTrue  = con.newProj(cond, Mode.getX(), Cond.pnTrue);
 			Node projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
 			
-			Block bTrue  = blocks[0];
-			Block bFalse = blocks[1];
-			
 			bTrue.addPred(projTrue);
 			bFalse.addPred(projFalse);
 			
 			return cond;
-		}
+			
+		} 
 		return n;
 	}
 	
@@ -236,10 +258,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		con.setCurrentBlock(cur);
 		
-		// TODO: Swap jmps if we are in an unary ! expr.
-		Block []b = new Block[]{bTrue, bFalse};
+		FirmScope topScope = firmContext.getTopScope();
+		FirmScope newScope = (FirmScope)topScope.clone();
 		
-		firmContext.pushFirmScope(new FirmScope(b));
+		// TODO: Swap jmps if we are in an unary ! expr.
+		newScope.setTrueBlock(bTrue);
+		newScope.setFalseBlock(bFalse);
+		
+		firmContext.pushFirmScope(newScope);
 		{
 			Node ret = visitExpression(E);
 			makeCondition(ret);
@@ -269,13 +295,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		setReturnNode(null);
 	}
 	
-	private void setReturnNode(Node returnNode) {
-		return_node = returnNode;
+	private void setReturnNode(Node retNode) {
+		returnNode = retNode;
 	}
 	
 	private Node getReturnNode() {
-		assert return_node != null;
-		return return_node;
+		assert returnNode != null;
+		return returnNode;
 	}
 
 	@Override
@@ -684,8 +710,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		con.setCurrentBlock(bCond);
 		
 		Block bAfter = con.newBlock();
-		Block []blocks = new Block[]{bTrue, bAfter};
-		firmContext.pushFirmScope(new FirmScope(blocks));
+		
+		FirmScope topScope = firmContext.getTopScope();
+		FirmScope newScope = (FirmScope)topScope.clone();
+		
+		newScope.setTrueBlock(bTrue);
+		newScope.setFalseBlock(bAfter);
+		
+		firmContext.pushFirmScope(newScope);
 		{
 			Node retNode = visitExpression(n.cond());
 			
@@ -710,8 +742,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		bCond.addPred(con.newJmp());
 		con.setCurrentBlock(bCond);
 		
-		Block []blocks = new Block[]{bTrue, bAfter};
-		firmContext.pushFirmScope(new FirmScope(blocks));
+		FirmScope topScope = firmContext.getTopScope();
+		FirmScope newScope = (FirmScope)topScope.clone();
+		
+		newScope.setTrueBlock(bTrue);
+		newScope.setFalseBlock(bAfter);
+		
+		firmContext.pushFirmScope(newScope);
 		{
 			Node retNode = visitExpression(n.cond());
 			
@@ -763,8 +800,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		con.setCurrentBlock(curBlock);
 		
-		Block[] blocks = new Block[]{bTrue, bFalse};
-		firmContext.pushFirmScope(new FirmScope(blocks));
+		FirmScope topScope = firmContext.getTopScope();
+		FirmScope newScope = (FirmScope)topScope.clone();
+		
+		newScope.setTrueBlock(bTrue);
+		newScope.setFalseBlock(bFalse);
+		
+		firmContext.pushFirmScope(newScope);
 		{
 			Node ret = visitExpression(n.cond());
 			
@@ -792,19 +834,21 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Block bAfter = con.newBlock();
 		Block bFalse = null; // block will only be created if we have an else stmt.
 		
-		Block[] blocks = new Block[2];
-		blocks[0] = bTrue;
+		FirmScope topScope = firmContext.getTopScope();
+		FirmScope newScope = (FirmScope)topScope.clone();
+		
+		newScope.setTrueBlock(bTrue);
+		
 		if (n.alternative() != null) {
 			bFalse = con.newBlock();
-			blocks[1] = bFalse;
+			newScope.setFalseBlock(bFalse);
 		} else {
-			blocks[1] = bAfter;
+			newScope.setFalseBlock(bAfter);
 		}
 
-		firmContext.pushFirmScope(new FirmScope(blocks));
+		firmContext.pushFirmScope(newScope);
 		{
 			Node retNode = visitExpression(n.cond());
-			
 			makeCondition(retNode);
 		}
 		firmContext.popFirmScope();
@@ -845,7 +889,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Empty_c n) {
-		assert false; // TODO maybe doing nothing is ok?
+		//assert false;
 	}
 
 	@Override
@@ -1211,8 +1255,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	    	int modus = (op == Binary.EQ) ? Cmp.pnEq : Cmp.pnLg;
 	    	
 	    	FirmScope curScope = firmContext.getTopScope();
-	    	if(curScope.getBlocks() != null) {
-	    		Block []blocks = curScope.getBlocks();
+	    	if(curScope.getTrueBlock() != null && curScope.getFalseBlock() != null ) {
+				Block bTrue  = curScope.getTrueBlock();
+				Block bFalse = curScope.getFalseBlock();
+	    		
 	    		Node retLeft  = null;
 	    		Node retRight = null;
 	    		
@@ -1224,9 +1270,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				Node proj = con.newProj(cmp, Mode.getb(), modus);
 				
 				Node cond = con.newCond(proj);
-				
-				Block bTrue  = blocks[0];
-				Block bFalse = blocks[1];
 				
 				Node projTrue  = con.newProj(cond, Mode.getX(), Cond.pnTrue);
 				Node projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
@@ -1240,7 +1283,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	    		Node ret = makeConditionalPhiTrailer(B);
 	    		setReturnNode(ret);
 	    	}
-	    	
+	  
 	    	return;
 	    } else if ((l.isNumeric() && r.isNumeric()) || 
 	    	(l.isBoolean() && r.isBoolean())) { 
@@ -1265,21 +1308,27 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		FirmScope curScope = firmContext.getTopScope();
 		
-		if(curScope.getBlocks() != null) {
-			Block []blocks = curScope.getBlocks();
+		if(curScope.getTrueBlock() != null && curScope.getFalseBlock() != null) {
+			Block bCurTrue  = curScope.getTrueBlock();
+			Block bCurFalse = curScope.getFalseBlock();
+			
 			Block bTrue, bFalse;
 			
 			if(op == Binary.COND_AND) { // '&&'
 				bTrue  = con.newBlock();
-				bFalse = blocks[1];
+				bFalse = curScope.getFalseBlock();
 			} else { // '||'
-				bTrue  = blocks[0];
+				bTrue  = curScope.getTrueBlock();
 				bFalse = con.newBlock();
 			}
 			
-			Block []b = new Block[]{bTrue, bFalse};
+			FirmScope topScope = firmContext.getTopScope();
+			FirmScope newScope = (FirmScope)topScope.clone();
 			
-			firmContext.pushFirmScope(new FirmScope(b));
+			newScope.setTrueBlock(bTrue);
+			newScope.setFalseBlock(bFalse);
+			
+			firmContext.pushFirmScope(newScope);
 			{
 				Node r = visitExpression(B.left());
 				makeCondition(r);
@@ -1291,8 +1340,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			else
 				con.setCurrentBlock(bFalse);
 			
+			topScope = firmContext.getTopScope();
+			newScope = (FirmScope)topScope.clone();
+			
+			newScope.setTrueBlock(bCurTrue);
+			newScope.setFalseBlock(bCurFalse);
+			
 			Node ret = null;
-			firmContext.pushFirmScope(new FirmScope(blocks));
+			firmContext.pushFirmScope(newScope);
 			{
 				Node r = visitExpression(B.right());
 				ret = makeCondition(r);
