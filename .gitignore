@@ -7,6 +7,7 @@
 /x10.dist/etc
 /x10.dist/include
 /x10.dist/lib
+/x10.dist/*.s
 !x10.dist/lib/libfirm.so
 
 /x10.compiler/classes
@@ -19,6 +20,7 @@
 /x10.constraints/common/
 
 *.o
+*.vcg
 /x10.runtime/classes
 /x10.runtime/src-cpp/gen
 /x10.runtime/src-java/gen

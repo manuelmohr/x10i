@@ -4,3 +4,6 @@
 [submodule "libfirm"]
 	path = libfirm
 	url = http://github.com/MatzeB/libfirm.git
+[submodule "liboo"]
+	path = liboo
+	url = http://github.com/MatzeB/liboo.git

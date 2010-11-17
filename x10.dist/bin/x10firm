@@ -21,10 +21,17 @@ append_classpath "${X10_TOP}/x10.constraints/classes"
 append_classpath "${X10_TOP}/x10.dist/lib/lpg.jar"
 append_classpath "${X10_TOP}/x10.firm/classes"
 append_classpath "${X10_TOP}/jFirm/classes"
+append_classpath "${X10_TOP}/liboo/classes"
 append_classpath "${X10_TOP}/jFirm/lib/jna.jar"
 
+JNA_LIBRARY_PATH="${X10_TOP}/libfirm/build/debug"
+JNA_LIBRARY_PATH="${JNA_LIBRARY_PATH}:${X10_TOP}/liboo/build"
+# Some how we can not use -Djna.library.path= as java arguments, otherwise
+# liboo won't find the referenced libfirm librarye (not jna can't find it
+# but dlopen while opening liboo.so)
+export LD_LIBRARY_PATH="$JNA_LIBRARY_PATH"
+
 # Execute compiler
-java_args="$java_args -Djna.library.path=${X10_TOP}/libfirm/build/debug"
 args="-extclass x10firm.ExtensionInfo -sourcepath ${X10_TOP}/x10.dist/lib/x10.jar"
 command="java -Xmx512m -ea -classpath ${classpath} ${java_args} polyglot.main.Main"
 $command $args "$@"

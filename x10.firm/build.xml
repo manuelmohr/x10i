@@ -7,16 +7,23 @@
 	<property name="jar" value="x10firm.jar"/>
 	<property name="jfirm.jar" value="jfirm.jar"/>
 	<property name="jfirm.location" value="${x10.home}/jFirm"/>
+	<property name="liboo.jar" value="liboo.jar"/>
+	<property name="liboo.location" value="${x10.home}/liboo"/>
 	<property name="x10.compiler.location" value="${x10.home}/x10.compiler"/>
 	<property name="x10.constraints.location" value="${x10.home}/x10.constraints"/>
 	<path id="project.classpath">
 		<path refid="jfirm.classpath"/>
+		<path refid="liboo.classpath"/>
 		<path refid="x10.constraints.classpath"/>
 		<path refid="x10.compiler.classpath"/>
 	</path>
 	<path id="jfirm.classpath">
 		<pathelement location="${jfirm.location}/classes"/>
 		<pathelement location="${jfirm.location}/lib/jna.jar"/>
+	</path>
+	<path id="liboo.classpath">
+		<path refid="jfirm.classpath"/>
+		<pathelement location="${liboo.location}/classes"/>
 	</path>
 	<path id="x10.constraints.classpath">
 		<pathelement location="${x10.constraints.location}/classes"/>

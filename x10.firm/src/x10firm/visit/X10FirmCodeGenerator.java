@@ -111,8 +111,8 @@ import firm.Entity;
 import firm.Graph;
 import firm.MethodType;
 import firm.Mode;
-import firm.Program;
 import firm.TargetValue;
+import firm.bindings.binding_typerep;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Node;
@@ -126,7 +126,6 @@ import firm.nodes.Proj;
  *  - keep Context up-to-date while traversing the AST 
  */
 public class X10FirmCodeGenerator extends X10DelegatingVisitor {
-	/** contains the construction helper for creating Firm graphs */
 	private Construction con;
 	
 	/** contains a reference to the class we are currently in (with respect to the AST) */
@@ -326,12 +325,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param typeSystem
 	 */
 	public X10FirmCodeGenerator(Compiler compiler, TypeSystem typeSystem) {
-		this.compiler 		= compiler;
-		this.typeSystem 	= typeSystem;
-	
-		// We can only initialize our type system after
-		// the system resolver has been run. 
-		typeSystem.init();
+		this.compiler   = compiler;
+		this.typeSystem = typeSystem;
 	}
 	
 	/** reset the remembered value of the returned node of an expression */
@@ -407,7 +402,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(ClassBody_c n) {
-		
 		if (currentClass.flags().isInterface()) {
 			// TODO: Implement me
 		} else if (currentClass.isX10Struct()) {
@@ -436,18 +430,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		if (entity == null) {
 			X10ClassType owner = (X10ClassType) methodInstance.container();
 			String name = methodInstance.name().toString();
+			X10Flags flags = X10Flags.toX10Flags(methodInstance.flags());
 		
-			firm.Type ownerFirm = typeSystem.asFirmType(owner);
+			firm.Type ownerFirm = typeSystem.asFirmTypeNonNative(owner);
 			firm.Type type = typeSystem.asFirmType(methodInstance);
-			if (ownerFirm.getMode() == null) { /* non-atomic type */
-				entity = new Entity(ownerFirm, name, type);
-			} else {
-				/* atomic types do not have methods,
-				 * we must call a stdlib function instead.
-				 */
-				// TODO inline this function for performance
-				// TODO function name must include parameter and return type
-				entity = new Entity(Program.getGlobalType(), name, type);
+			entity = new Entity(ownerFirm, name, type);
+			if (flags.isStatic()) {
+				/* set_entity_allocation is deprecated firm API, but we use
+				 * it anyway for now... */
+				binding_typerep.set_entity_allocation(entity.ptr, binding_typerep.ir_allocation.allocation_static.val);
 			}
 			methodEntities.put(methodInstance, entity);
 		}
@@ -975,7 +966,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(X10Call_c n) {
 		/* determine called function */
-		X10MethodInstance methodInstance = (X10MethodInstance)n.methodInstance();
+		X10MethodInstance methodInstance = (X10MethodInstance)n.methodInstance().def().asInstance();
 		
 		/* Primitive types are represented as structs in X10.
 		 * We lower the calls to operations here.
@@ -989,20 +980,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				switch (opChar) {
 				case '+':
 					createPlus(n);
-					break;
+					return;
 				case '-':
 					createMinus(n);
-					break;
+					return;
 				case '<':
 					createLessThan(n);
-					break;
+					return;
 				default:
-					System.out.println("Unknown x10.lang.Int operation: "+opChar);
+					break;
 				}
-			} else {
-				System.out.println("Unknown owner type: "+owner.toString());
 			}
-			return;
 		}
 		
 		/* Not a primitive type. Construct Call. */
@@ -1373,7 +1361,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		// Boolean short-circuiting operators are ok
 		assert (op == Binary.COND_AND || op == Binary.COND_OR) : "visiting " + B.getClass() + " at " + B.position() + ": " + B;
-		
 		
 		// only '&&' and '||' are valid
 		// TODO: Add constant value evaluation

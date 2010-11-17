@@ -44,10 +44,6 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		return new TypeSystem();
 	}
 
-	/**
-	 * X10 needs this.
-	 * TODO why?
-	 */
 	protected static class X10FirmScheduler extends X10Scheduler {
 		/**
 		 * Initialize the scheduler, duh.

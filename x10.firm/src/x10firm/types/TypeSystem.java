@@ -3,15 +3,17 @@ package x10firm.types;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
-import polyglot.types.Context;
 import x10.types.X10ClassType;
-import x10.types.X10Context_c;
 import x10.types.X10Flags;
 import x10.types.X10MethodInstance;
 import x10.types.X10TypeSystem_c;
 import firm.ClassType;
 import firm.Mode;
+import firm.Mode.ir_mode_arithmetic;
+import firm.Mode.ir_mode_sort;
+import firm.NameMangling;
 import firm.PointerType;
 import firm.PrimitiveType;
 import firm.Type;
@@ -21,65 +23,10 @@ import firm.Type;
  */
 public class TypeSystem extends X10TypeSystem_c {
 
-	/** maps polyglot types to the appropriate firm modes. */
-	private Map<polyglot.types.Type, firm.Mode> primModeMap   = new HashMap<polyglot.types.Type, firm.Mode>();
-	
-	/** Maps polyglot types to firm types. */
+	/// Maps polyglot types to firm types.
 	private Map<polyglot.types.Type, Type> firmTypeCache = new HashMap<polyglot.types.Type, Type>();
-	
-	/** remember the Firm mode a pointer/reference uses */
-	private firm.Mode pointerMode;
-	
-	/** is the typeSystem initialized */
-	private boolean inited = false;
-	
-	/** initialize the type system by preparing maps */
-	public void init() {
-		if(!inited) {
-			initModes();
-			initPrimitiveType();
-			inited = true;
-		}
-	}
-	
-	/** initialize hash map for modes */
-	private void initModes() {
-		pointerMode = Mode.getP();
-
-		primModeMap.put(Boolean(), Mode.getBs());
-		primModeMap.put(Byte(),    Mode.getBs());
-		// unsigned short for x10_char -> Unicode
-		primModeMap.put(Char(),    Mode.getHu());
-		primModeMap.put(UInt(),    Mode.getIu());
-		primModeMap.put(Int(), 	   Mode.getIs());
-		primModeMap.put(ULong(),   Mode.getLLu());
-		primModeMap.put(Long(),    Mode.getLLs());
-		primModeMap.put(Float(),   Mode.getF());
-		primModeMap.put(Double(),  Mode.getD());
-	}
-	
-	/** initialize hash map for types */
-	private void initPrimitiveType() {
-		firmTypeCache.put(Boolean(),new PrimitiveType(getFirmMode(Boolean())));
-		firmTypeCache.put(Byte(),   new PrimitiveType(getFirmMode(Byte())));
-		firmTypeCache.put(UInt(),   new PrimitiveType(getFirmMode(UInt())));
-		firmTypeCache.put(Int(),    new PrimitiveType(getFirmMode(Int())));
-		firmTypeCache.put(ULong(),  new PrimitiveType(getFirmMode(ULong())));
-		firmTypeCache.put(Long(),   new PrimitiveType(getFirmMode(Long())));
-		firmTypeCache.put(Float(),  new PrimitiveType(getFirmMode(Float())));
-		firmTypeCache.put(Double(), new PrimitiveType(getFirmMode(Double())));
-		firmTypeCache.put(Char(),   new PrimitiveType(getFirmMode(Char())));
-		/* X10 has no primitive types per se */
-	}
-
-	/** return the Firm mode, if the type is known, otherwise assume a reference */
-	public final firm.Mode getFirmMode(polyglot.types.Type type) {
-		firm.Mode mode = primModeMap.get(type);
-		if (mode != null)
-			return mode;
-		// PointerMode for all the others. 
-		return pointerMode;
-	}
+	/// Maps some polyglot types to "native"/primitive firm types
+	private Map<polyglot.types.Type, Type> firmNativeTypes = new HashMap<polyglot.types.Type, Type>();
 
 	/**
 	 * Creates a method type (= a member function). So we in addition to the
@@ -89,12 +36,13 @@ public class TypeSystem extends X10TypeSystem_c {
 	 * @return	corresponding Firm type
 	 */
 	public firm.MethodType asFirmType(X10MethodInstance methodInstance) {
-		final List<polyglot.types.Type> formalTypes = methodInstance.formalTypes();
+		final List<polyglot.types.Type> formalTypes
+			= methodInstance.formalTypes();
 		final X10Flags flags = X10Flags.toX10Flags(methodInstance.flags());
 		final boolean isStatic = flags.isStatic();
 		final int nParameters = formalTypes.size() + (isStatic ? 0 : 1);
 		final int nResults = methodInstance.returnType() == Void() ? 0 : 1;
-		final X10ClassType owner = (X10ClassType) methodInstance.container();		
+		final X10ClassType owner = (X10ClassType) methodInstance.container();
 		final Type[] parameterTypes = new firm.Type[nParameters];
 		final Type[] resultTypes = new firm.Type[nResults];
 
@@ -107,24 +55,33 @@ public class TypeSystem extends X10TypeSystem_c {
 		for (polyglot.types.Type type : formalTypes) {
 			parameterTypes[p++] = asFirmType(type);
 		}
-		assert(p == nParameters);
-		
+		assert (p == nParameters);
+
 		if (nResults > 0) {
 			assert nResults == 1;
 			polyglot.types.Type type = methodInstance.returnType();
 			resultTypes[0] = asFirmType(type);
 		}
-		
+
 		return new firm.MethodType(parameterTypes, resultTypes);
 	}
 
-	/** 
+	/**
 	 * Returns the corresponding Firm type for the given polyglot type
 	 * 
-	 * @param type The given polyglot type
+	 * @param type
+	 *            The given polyglot type
 	 * @return corresponding Firm method type
 	 */
 	public firm.Type asFirmType(polyglot.types.Type type) {
+		firm.Type result = firmNativeTypes.get(type);
+		if (result != null)
+			return result;
+		
+		return asFirmTypeNonNative(type);
+	}
+	
+	public firm.Type asFirmTypeNonNative(polyglot.types.Type type) {		
 		firm.Type result = firmTypeCache.get(type);
 		if (result == null) {
 			if (type instanceof X10ClassType) {
@@ -138,11 +95,38 @@ public class TypeSystem extends X10TypeSystem_c {
 			}
 			firmTypeCache.put(type, result);
 		}
+		firmTypeCache.put(type, result);
 		return result;
 	}
 
-	@Override
-	public Context emptyContext() {
-		return new X10Context_c(this);
+	public Mode getFirmMode(polyglot.types.Type type) {
+		return asFirmType(type).getMode();
+	}
+
+	public void beforeGraphConstruction() {
+		/* we "lower" some well-known types directly to firm modes */
+		Mode modeInt = new Mode("Int", ir_mode_sort.irms_int_number, 32, 1,
+				ir_mode_arithmetic.irma_twos_complement, 32);
+		Type typeInt = new PrimitiveType(modeInt);
+		firmNativeTypes.put(Int(), typeInt);
+		
+		Mode modeBoolean = Mode.getb();
+		Type typeBoolean = new PrimitiveType(modeBoolean);
+		firmNativeTypes.put(Boolean(), typeBoolean);
+	}
+	
+	public void setupNameMangler(NameMangling mangler) {
+		for(Entry<polyglot.types.Type, Type> entry : firmNativeTypes.entrySet()) {
+			String mangledName = null;
+			if (entry.getKey() == Int()) {
+				mangledName = "i";
+			} else if (entry.getKey() == Boolean()) {
+				mangledName = "b";
+			} else {
+				/* all NativeTypes must have a direct encoding in the name mangling */
+				throw new java.lang.RuntimeException("Unexpected Native Type");
+			}
+			mangler.setPrimitiveTypeName(entry.getValue(), mangledName);
+		}
 	}
 }
