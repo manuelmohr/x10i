@@ -481,7 +481,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			String name = methodInstance.name().toString();
 			X10Flags flags = X10Flags.toX10Flags(methodInstance.flags());
 		
-			firm.Type ownerFirm = typeSystem.asFirmTypeNonNative(owner);
+			firm.Type ownerFirm = typeSystem.asFirmCoreType(owner);
 			firm.Type type = typeSystem.asFirmType(methodInstance);
 			entity = new Entity(ownerFirm, name, type);
 			if (flags.isStatic()) {
@@ -563,8 +563,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		Node args = graph.getArgs();
 		if(!isStatic) {
+			X10ClassType owner = (X10ClassType) methodInstance.container();
+			firm.Type ownerFirm = typeSystem.asFirmType(owner);
+			
 			// map 'this'
-			Node projThis = con.newProj(args, typeSystem.getFirmMode(currentClass), 0);
+			Node projThis = con.newProj(args, ownerFirm.getMode(), 0);
 			con.setVariable(0, projThis);
 		}
 		
