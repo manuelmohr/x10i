@@ -44,6 +44,11 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		return new TypeSystem();
 	}
 
+	@Override
+	protected Options createOptions() {
+		return new CompilerOptions(this);
+	}
+
 	private static class X10FirmScheduler extends X10Scheduler {
 		/**
 		 * Initialize the scheduler, duh.
