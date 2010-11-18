@@ -420,12 +420,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(TypeDecl_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(LocalTypeDef_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
@@ -446,7 +446,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(LocalClassDecl_c n) {
-		assert (false) : ("Local classes should have been removed by a separate pass");
+		throw new RuntimeException("Local classes should have been removed by a separate pass");
 	}
 
 	@Override
@@ -463,12 +463,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(PackageNode_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(Import_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 	
 	/**
@@ -614,42 +614,42 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(FieldDecl_c dec) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(PropertyDecl_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(Initializer_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(AssignPropertyBody_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(Assert_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(Switch_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(SwitchBlock_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(Case_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
@@ -659,7 +659,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		if (br.labelNode() != null) {
 			// TODO: Implement me
-			assert false;
+			throw new RuntimeException("Not implemented yet");
 		} else {
 			// unlabeled continue or break; 
 			FirmScope topScope = firmContext.getTopScope();
@@ -679,7 +679,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Labeled_c label) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
@@ -699,7 +699,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			setReturnNode(con.getVariable(idx, leftRet.getMode()));
 		} else {
 			// TODO: Implement me
-			assert false;
+			throw new RuntimeException("Not implemented yet");
 		}
 	}
 
@@ -722,7 +722,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Formal_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
@@ -771,7 +771,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(For_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
@@ -1141,17 +1141,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(RegionMaker_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(ConstantDistMaker_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(Field_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
@@ -1166,7 +1166,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(New_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
@@ -1208,17 +1208,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(NullLit_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(StringLit_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(CharLit_c lit) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
@@ -1231,77 +1231,77 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Id_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(X10Cast_c c) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(SubtypeTest_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(X10Instanceof_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(Throw_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(Try_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(Catch_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(Atomic_c a) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(Await_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(Next_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(ForLoop_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(ForEach_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(AtEach_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(Finish_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(ArrayAccess_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
@@ -1311,42 +1311,42 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Here_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(Async_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(X10Special_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(Closure_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(ClosureCall_c c) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(X10CanonicalTypeNode_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(X10Unary_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(Unary_c n) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
@@ -1402,7 +1402,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	        return;
 	    }
 	    
-	    assert (false) : ("User-defined binary operators should have been desugared earier");
+	    throw new RuntimeException("User-defined binary operators should have been desugared earier");
 	}
 
 	@Override
@@ -1477,31 +1477,31 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(SettableAssign_c n) {
-		assert (false) : ("Function assign should have been desugared earlier");
+		throw new RuntimeException("Function assign should have been desugared earlier");
 	}
 
 	@Override
 	public void visit(Tuple_c c) {
-		assert false;
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(When_c n) {
-		assert (false) : ("When should have been desugared earlier");
+		throw new RuntimeException("When should have been desugared earlier");
 	}
 
 	@Override
 	public void visit(Future_c n) {
-		assert (false) : ("Future should have been desugared earlier");
+		throw new RuntimeException("Future should have been desugared earlier");
 	}
 
 	@Override
 	public void visit(AtStmt_c n) {
-		assert (false) : ("At statements are deprecated");
+		throw new RuntimeException("At statements are deprecated");
 	}
 
 	@Override
 	public void visit(AtExpr_c n) {
-		assert (false) : ("At expression should have been desugared earlier");
+		throw new RuntimeException("At expression should have been desugared earlier");
 	}
 }
