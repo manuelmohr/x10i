@@ -15,6 +15,7 @@ import polyglot.ast.Binary;
 import polyglot.ast.Binary_c;
 import polyglot.ast.Block_c;
 import polyglot.ast.BooleanLit_c;
+import polyglot.ast.Branch;
 import polyglot.ast.Branch_c;
 import polyglot.ast.Case_c;
 import polyglot.ast.Catch_c;
@@ -660,7 +661,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			// unlabeled continue or break; 
 			FirmScope topScope = firmContext.getTopScope();
 			Block target = null;
-			if (br.kind() == Branch_c.CONTINUE) {
+			if (br.kind() == Branch.CONTINUE) {
 				target = topScope.getContinueBlock();
 			} else {
 				target = topScope.getBreakBlock();
