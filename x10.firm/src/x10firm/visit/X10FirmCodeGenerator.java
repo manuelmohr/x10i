@@ -812,7 +812,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		// create Return node if there was no explicit return statement yet
 		if (!con.getCurrentBlock().isBad()) {
-			assert ((MethodType)entity.getType()).getNParams() == 0;
+			assert ((MethodType)entity.getType()).getNRess() == 0;
 			Node mem = con.getCurrentMem();
 			Node returnn = con.newReturn(mem, new Node[0]);
 			con.getGraph().getEndBlock().addPred(returnn);
