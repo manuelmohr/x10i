@@ -579,7 +579,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		// init and map all parameters.
 		for (LocalInstance loc : formals) {
-			Node projParam = con.newProj(args, typeSystem.getFirmMode(loc.type()), idx);
+			Mode mode = typeSystem.getFirmMode(loc.type());
+			Node projParam = con.newProj(args, mode, idx);
 			con.setVariable(idx, projParam);
 
 			// map the local instance with the appropriate idx.

@@ -146,7 +146,18 @@ public class TypeSystem extends X10TypeSystem_c {
 	 * Returns the mode for a given ast-type.
 	 */
 	public Mode getFirmMode(polyglot.types.Type type) {
-		return asFirmType(type).getMode();
+		final Mode mode = asFirmType(type).getMode();
+		if (mode == null) {
+			return getRefMode();
+		}
+		return mode;
+	}
+
+	/**
+	 * @return	the Firm mode used for references in X10
+	 */
+	private Mode getRefMode() {
+		return Mode.getP();
 	}
 
 	/**
