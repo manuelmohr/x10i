@@ -49,6 +49,7 @@ import polyglot.ast.NullLit_c;
 import polyglot.ast.PackageNode_c;
 import polyglot.ast.Receiver;
 import polyglot.ast.Return_c;
+import polyglot.ast.Special;
 import polyglot.ast.Stmt;
 import polyglot.ast.StringLit_c;
 import polyglot.ast.SwitchBlock_c;
@@ -834,7 +835,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(FieldDecl_c dec) {
-		throw new RuntimeException("Not implemented yet");
+		/* TODO: create initializers if necessary */
 	}
 
 	@Override
@@ -1677,7 +1678,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(X10Special_c n) {
-		throw new RuntimeException("Not implemented yet");
+		if (n.kind() == Special.THIS) {
+			firm.Mode mode = typeSystem.getFirmMode(n.type());
+			Node thisPointer = con.getVariable(0, mode);
+			setReturnNode(thisPointer);
+		} else {
+			throw new RuntimeException("Not implemented yet");
+		}
 	}
 
 	@Override
