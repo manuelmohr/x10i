@@ -110,14 +110,23 @@ import x10.types.X10MethodInstance;
 import x10.visit.X10DelegatingVisitor;
 import x10cpp.visit.X10SearchVisitor;
 import x10firm.types.TypeSystem;
+import firm.ArrayType;
+import firm.ClassType;
 import firm.CompoundType;
 import firm.Construction;
 import firm.Entity;
 import firm.Graph;
+import firm.Ident;
+import firm.Initializer;
 import firm.MethodType;
 import firm.Mode;
+import firm.PrimitiveType;
+import firm.Program;
 import firm.TargetValue;
+import firm.bindings.binding_ircons.ir_linkage;
 import firm.bindings.binding_typerep;
+import firm.bindings.binding_typerep.ir_type_state;
+import firm.bindings.binding_typerep.ir_visibility;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Cmp;
@@ -1251,7 +1260,65 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(StringLit_c n) {
-		throw new RuntimeException("Not implemented yet");
+		/* Construct call to builtin function, which creates an X10 string struct. */
+
+		Node string_const = createStringSymConst(n.value());
+
+		final String name = "x10_string_literal";
+
+		final firm.Type[] parameterTypes = new firm.Type[2];
+		parameterTypes[0] = new PrimitiveType(Mode.getIu());
+		parameterTypes[1] = new PrimitiveType(string_const.getMode());
+		final firm.Type[] resultTypes = new firm.Type[1];
+		resultTypes[0] = typeSystem.asFirmType(typeSystem.String());
+		MethodType type = new firm.MethodType(parameterTypes, resultTypes);
+
+		Entity func_ent = new Entity(Program.getGlobalType(), name, type);
+		Node address = con.newSymConst(func_ent);
+
+		Node[] parameters = new Node[2];
+		parameters[0] = con.newConst(n.value().length(), Mode.getIu());
+		parameters[1] = string_const;
+		Node mem = con.getCurrentMem();
+		Node call = con.newCall(mem, address, parameters, type);
+		Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
+		con.setCurrentMem(newMem);
+
+		assert (type.getNRess() == 1);
+		firm.Type ret_type = type.getResType(0);
+		Node all_results = con.newProj(call, Mode.getT(), Call.pnTResult);
+		Mode mode = ret_type.getMode();
+		assert (mode != null);
+		Node ret = con.newProj(all_results, mode, 0);
+		setReturnNode(ret);
+	}
+
+	private Node createStringSymConst(String value) {
+		ClassType global_type = Program.getGlobalType();
+		firm.Type elem_type = typeSystem.asFirmType(typeSystem.Int());
+		ArrayType type = new ArrayType(1, elem_type);
+
+		Ident id = Ident.createUnique("str.%u");
+		Entity ent = new Entity(global_type, id, type);
+		ent.setLdIdent(id);
+
+		ent.setVisibility(ir_visibility.ir_visibility_private);
+		ent.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT.val);
+
+		type.setBounds(0, 0, value.length()-1);
+		type.setSizeBytes(4 * value.length());
+		type.setTypeState(ir_type_state.layout_fixed);
+
+		Initializer init = new Initializer(value.length());
+		char[] chars = value.toCharArray();
+		for (int i = 0; i < chars.length; ++i) {
+			TargetValue tv = new TargetValue(chars[i], elem_type.getMode());
+			Initializer val = new Initializer(tv);
+			init.setCompoundValue(i, val);
+		}
+		ent.setInitializer(init);
+
+		return con.newSymConst(ent);
 	}
 
 	@Override
