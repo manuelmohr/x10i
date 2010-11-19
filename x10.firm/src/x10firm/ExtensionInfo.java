@@ -8,6 +8,9 @@ import polyglot.frontend.Scheduler;
 import polyglot.main.Options;
 import polyglot.util.ErrorQueue;
 import polyglot.visit.PostCompiled;
+import x10firm.goals.AsmEmitted;
+import x10firm.goals.FirmGenerated;
+import x10firm.goals.OptimizedFirm;
 import x10firm.types.TypeSystem;
 
 /**
@@ -60,10 +63,13 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 
 		@Override
 		protected Goal PostCompiled() {
-			/* a NULL goal... */
+			/* The other X10 backends and Polyglot use this goal to invoke javac/gcc on
+			 * the generated source code. In the Firm context this corresponds to linking
+			 * the assembler output. */
 			Goal goal = new PostCompiled(extInfo) {
 				@Override
 				protected boolean invokePostCompiler(Options options, Compiler compiler, ErrorQueue eq) {
+					// TODO invoke the assembler/linker
 					return true;
 				}
 			};
@@ -73,8 +79,30 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		@Override
 		public Goal CodeGenerated(Job job) {
 			TypeSystem typeSystem = (TypeSystem)extInfo.typeSystem();
-			Goal goal = new FirmGenerationGoal(job, typeSystem);
-			return goal.intern(this);
+			Goal firm_generated = new FirmGenerated(job, typeSystem);
+			firm_generated.intern(this);
+			
+			Goal optimized_firm = new OptimizedFirm(job, typeSystem);
+			optimized_firm.addPrereq(firm_generated);
+			optimized_firm.intern(this);
+			
+			AsmEmitted asm_emitted = new AsmEmitted(job);
+			/* Technically we could output unoptimized Firm as well.
+			 * However, it is the responsibility of the OptimizedFirm goal
+			 * to decide whether and which optimizations to apply.
+			 * Therefore, always require OptimizedFirm */
+			asm_emitted.addPrereq(optimized_firm);
+			asm_emitted.intern(this);
+			
+			/* We must return asm_emitted, so the X10Scheduler will
+			 * call "end_goal.addPrereq(asm_emitted)".
+			 * Nevertheless, all "asm_emitted.addPrereq(X)" calls,
+			 * must be redirected to "firm_generated.addPrereq(X)",
+			 * otherwise firm_generated would have no dependencies,
+			 * which lets it crash.
+			 */
+			asm_emitted.redirectPrereq(firm_generated);
+			return asm_emitted;
 		}
 	}
 }

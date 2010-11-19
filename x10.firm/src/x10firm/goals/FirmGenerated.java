@@ -1,8 +1,7 @@
-package x10firm;
+package x10firm.goals;
 
 import java.io.IOException;
 
-import firm.Backend;
 import firm.Dump;
 import polyglot.ast.Node;
 import polyglot.frontend.Compiler;
@@ -17,21 +16,22 @@ import x10firm.visit.X10FirmCodeGenerator;
  * for polyglot.
  * @author matze
  */
-public class FirmGenerationGoal extends SourceGoal_c {
+public class FirmGenerated extends SourceGoal_c {
 	/**
 	 * Remember the typeSystem until the code generator is actually invoked.
 	 */
 	private final TypeSystem typeSystem;
 
 	/** Constructor */
-	public FirmGenerationGoal(Job job, TypeSystem typeSystem) {
-		super("FirmGeneration", job);
+	public FirmGenerated(Job job, TypeSystem typeSystem) {
+		super("FirmGenerated", job);
 		this.typeSystem = typeSystem;
 	}
 
 	@Override
 	public boolean runTask() {
 		Node ast = job().ast();
+		assert (ast != null);
 		if (!((X10Ext) ast.ext()).subtreeValid()) {
 			return false;
 		}
@@ -46,18 +46,6 @@ public class FirmGenerationGoal extends SourceGoal_c {
 		try {
 			Dump.dumpTypeGraph("typegraph.vcg");
 		} catch (IOException e1) {
-		}
-		
-		/* lower OO-constructs */
-		OOSupport.lowerOO(typeSystem);
-
-		/* try to generate some assembly */
-		String compilationUnit = "x10program"; /* can we query the program name? */
-		try {
-			Backend.option("omitfp"); // makes the assembler a bit more readable 
-			Backend.createAssembler("test.s", compilationUnit);
-		} catch (IOException e) {
-			e.printStackTrace();
 		}
 
 		return true;
