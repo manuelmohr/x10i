@@ -19,6 +19,7 @@ import firm.NameMangling;
 import firm.PointerType;
 import firm.PrimitiveType;
 import firm.Type;
+import firm.bindings.binding_typerep;
 
 /**
  * Includes everything to map X10 types to Firm types
@@ -94,7 +95,6 @@ public class TypeSystem extends X10TypeSystem_c {
 		return result;
 	}
 
-	@SuppressWarnings("unused")
 	private firm.Type createClassType(X10ClassType classType) {
 		String className = classType.name().toString();
 		ClassType result = new ClassType(className);
@@ -107,7 +107,12 @@ public class TypeSystem extends X10TypeSystem_c {
 				continue;
 			String name = field.name().toString();
 			firm.Type type = asFirmType(field.type());
-			new Entity(result, name, type);
+			Entity entity = new Entity(result, name, type);
+			if (flags.isStatic()) {
+				/* set_entity_allocation is deprecated firm API, but we use
+				 * it anyway for now... */
+				binding_typerep.set_entity_allocation(entity.ptr, binding_typerep.ir_allocation.allocation_static.val);
+			}
 		}
 
 		return result;
