@@ -4,12 +4,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import polyglot.types.FieldInstance;
 import x10.types.ConstrainedType_c;
 import x10.types.X10ClassType;
 import x10.types.X10Flags;
 import x10.types.X10MethodInstance;
 import x10.types.X10TypeSystem_c;
 import firm.ClassType;
+import firm.Entity;
 import firm.Mode;
 import firm.Mode.ir_mode_arithmetic;
 import firm.Mode.ir_mode_sort;
@@ -51,9 +53,8 @@ public class TypeSystem extends X10TypeSystem_c {
 
 		int p = 0;
 		if (!isStatic) {
-			Type classType = asFirmType(owner);
-			PointerType thisPtrType = new PointerType(classType);
-			parameterTypes[p++] = thisPtrType;
+			Type thisType = asFirmType(owner);
+			parameterTypes[p++] = thisType;
 		}
 		for (polyglot.types.Type type : formalTypes) {
 			parameterTypes[p++] = asFirmType(type);
@@ -71,7 +72,7 @@ public class TypeSystem extends X10TypeSystem_c {
 
 	/**
 	 * Returns the corresponding Firm type for the given polyglot type
-	 * 
+	 *
 	 * @param type
 	 *            The given polyglot type
 	 * @return corresponding Firm method type
@@ -80,13 +81,11 @@ public class TypeSystem extends X10TypeSystem_c {
 		firm.Type result = firmTypes.get(type);
 		if (result != null)
 			return result;
-		
-		if (type instanceof X10ClassType) {
-			result = asFirmCoreType(type);
+
+		result = asFirmCoreType(type);
+		if (result instanceof ClassType) {
 			/* we really have references to classes */
 			result = new PointerType(result);
-		} else {
-			result = asFirmCoreType(type);
 		}
 		firmTypes.put(type, result);
 
@@ -94,7 +93,26 @@ public class TypeSystem extends X10TypeSystem_c {
 		assert result.getMode() != null;
 		return result;
 	}
-	
+
+	@SuppressWarnings("unused")
+	private firm.Type createClassType(X10ClassType classType) {
+		String className = classType.name().toString();
+		ClassType result = new ClassType(className);
+
+		/* create fields */
+		for (FieldInstance field : classType.fields()) {
+			X10Flags flags = (X10Flags) field.flags();
+			/* properties have no "real" data in the object */
+			if (flags.isProperty())
+				continue;
+			String name = field.name().toString();
+			firm.Type type = asFirmType(field.type());
+			new Entity(result, name, type);
+		}
+
+		return result;
+	}
+
 	/**
 	 * return the firm type for a given ast-type.
 	 * This variant does not return the "native"-type even if there is one.
@@ -111,8 +129,7 @@ public class TypeSystem extends X10TypeSystem_c {
 			return result;
 
 		if (baseType instanceof X10ClassType) {
-			X10ClassType classType = (X10ClassType) baseType;
-			result = new ClassType(classType.name().toString());
+			result = createClassType((X10ClassType) baseType);
 		} else {
 			throw new java.lang.RuntimeException("No implement to get firm type for: " + baseType);
 		}
@@ -138,79 +155,79 @@ public class TypeSystem extends X10TypeSystem_c {
 		Mode modeLong = new Mode("Long", ir_mode_sort.irms_int_number, 64, 1,
 				ir_mode_arithmetic.irma_twos_complement, 64);
 		Type typeLong = new PrimitiveType(modeLong);
-		firmCoreTypes.put(Long(), typeLong);
+		firmTypes.put(Long(), typeLong);
 
 		Mode modeULong = new Mode("ULong", ir_mode_sort.irms_int_number, 64, 0,
 				ir_mode_arithmetic.irma_twos_complement, 64);
 		Type typeULong = new PrimitiveType(modeULong);
-		firmCoreTypes.put(ULong(), typeULong);
+		firmTypes.put(ULong(), typeULong);
 
 		Mode modeInt = new Mode("Int", ir_mode_sort.irms_int_number, 32, 1,
 				ir_mode_arithmetic.irma_twos_complement, 32);
 		Type typeInt = new PrimitiveType(modeInt);
-		firmCoreTypes.put(Int(), typeInt);
+		firmTypes.put(Int(), typeInt);
 
 		Mode modeUInt = new Mode("UInt", ir_mode_sort.irms_int_number, 32, 0,
 				ir_mode_arithmetic.irma_twos_complement, 32);
 		Type typeUInt = new PrimitiveType(modeUInt);
-		firmCoreTypes.put(UInt(), typeUInt);
+		firmTypes.put(UInt(), typeUInt);
 
 		Mode modeShort = new Mode("Short", ir_mode_sort.irms_int_number, 16, 1,
 				ir_mode_arithmetic.irma_twos_complement, 32);
 		Type typeShort = new PrimitiveType(modeShort);
-		firmCoreTypes.put(Short(), typeShort);
+		firmTypes.put(Short(), typeShort);
 
 		Mode modeUShort = new Mode("UShort", ir_mode_sort.irms_int_number, 16,
 				0, ir_mode_arithmetic.irma_twos_complement, 32);
 		Type typeUShort = new PrimitiveType(modeUShort);
-		firmCoreTypes.put(UShort(), typeUShort);
+		firmTypes.put(UShort(), typeUShort);
 
 		Mode modeByte = new Mode("Byte", ir_mode_sort.irms_int_number, 8, 1,
 				ir_mode_arithmetic.irma_twos_complement, 32);
 		Type typeByte = new PrimitiveType(modeByte);
-		firmCoreTypes.put(Byte(), typeByte);
+		firmTypes.put(Byte(), typeByte);
 
 		Mode modeUByte = new Mode("UByte", ir_mode_sort.irms_int_number, 8, 0,
 				ir_mode_arithmetic.irma_twos_complement, 32);
 		Type typeUByte = new PrimitiveType(modeUByte);
-		firmCoreTypes.put(UByte(), typeUByte);
+		firmTypes.put(UByte(), typeUByte);
 
 		Mode modeChar = new Mode("Char", ir_mode_sort.irms_int_number, 32, 0,
 				ir_mode_arithmetic.irma_twos_complement, 0);
 		Type typeChar = new PrimitiveType(modeChar);
-		firmCoreTypes.put(Char(), typeChar);
+		firmTypes.put(Char(), typeChar);
 
 		Mode modeFloat = new Mode("Float", ir_mode_sort.irms_float_number, 32,
 				1, ir_mode_arithmetic.irma_ieee754, 0);
 		Type typeFloat = new PrimitiveType(modeFloat);
-		firmCoreTypes.put(Float(), typeFloat);
+		firmTypes.put(Float(), typeFloat);
 
 		Mode modeDouble = new Mode("Double", ir_mode_sort.irms_float_number, 64,
 				1, ir_mode_arithmetic.irma_ieee754, 0);
 		Type typeDouble = new PrimitiveType(modeDouble);
-		firmCoreTypes.put(Double(), typeDouble);
+		firmTypes.put(Double(), typeDouble);
 
 		Mode modeBoolean = Mode.getb();
 		Type typeBoolean = new PrimitiveType(modeBoolean);
-		firmCoreTypes.put(Boolean(), typeBoolean);
+		firmTypes.put(Boolean(), typeBoolean);
 	}
-	
+
 	/**
 	 * can be called to setup a name-mangler.
 	 * It maps our primitive/native types to their mangled names.
 	 */
 	public void setupNameMangler(NameMangling mangler) {
-		mangler.setPrimitiveTypeName(firmCoreTypes.get(Long()),    "x");
-		mangler.setPrimitiveTypeName(firmCoreTypes.get(ULong()),   "y");
-		mangler.setPrimitiveTypeName(firmCoreTypes.get(Int()),     "i");
-		mangler.setPrimitiveTypeName(firmCoreTypes.get(UInt()),    "j");
-		mangler.setPrimitiveTypeName(firmCoreTypes.get(Short()),   "s");
-		mangler.setPrimitiveTypeName(firmCoreTypes.get(UShort()),  "t");
-		mangler.setPrimitiveTypeName(firmCoreTypes.get(Byte()),    "a");
-		mangler.setPrimitiveTypeName(firmCoreTypes.get(UByte()),   "h");
-		mangler.setPrimitiveTypeName(firmCoreTypes.get(Char()),    "Di");
-		mangler.setPrimitiveTypeName(firmCoreTypes.get(Float()),   "f");
-		mangler.setPrimitiveTypeName(firmCoreTypes.get(Double()),  "d");
-		mangler.setPrimitiveTypeName(firmCoreTypes.get(Boolean()), "b");
+		mangler.setPrimitiveTypeName(firmTypes.get(Long()),    "x");
+		mangler.setPrimitiveTypeName(firmTypes.get(ULong()),   "y");
+		mangler.setPrimitiveTypeName(firmTypes.get(Int()),     "i");
+		mangler.setPrimitiveTypeName(firmTypes.get(UInt()),    "j");
+		mangler.setPrimitiveTypeName(firmTypes.get(Short()),   "s");
+		mangler.setPrimitiveTypeName(firmTypes.get(UShort()),  "t");
+		mangler.setPrimitiveTypeName(firmTypes.get(Byte()),    "a");
+		mangler.setPrimitiveTypeName(firmTypes.get(UByte()),   "h");
+		mangler.setPrimitiveTypeName(firmTypes.get(Char()),    "Di");
+		mangler.setPrimitiveTypeName(firmTypes.get(Float()),   "f");
+		mangler.setPrimitiveTypeName(firmTypes.get(Double()),  "d");
+		mangler.setPrimitiveTypeName(firmTypes.get(Boolean()), "b");
 	}
 }
