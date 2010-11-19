@@ -45,24 +45,18 @@ class X10FirmScheduler extends X10Scheduler {
 	public Goal CodeGenerated(Job job) {
 		final GoalSequence seq = new GoalSequence("FirmSequence", job);
 		
-		TypeSystem typeSystem = (TypeSystem)extInfo.typeSystem();
+		final TypeSystem typeSystem = (TypeSystem)extInfo.typeSystem();
 		
 		final Goal firm_generated = new FirmGenerated(job, typeSystem);
-		firm_generated.intern(this);
+		intern(firm_generated);
 		seq.append(firm_generated);
 		
 		final Goal optimized_firm = new OptimizedFirm(job, typeSystem);
-		optimized_firm.addPrereq(firm_generated);
-		optimized_firm.intern(this);
+		intern(optimized_firm);
 		seq.append(optimized_firm);
 		
-		final AsmEmitted asm_emitted = new AsmEmitted(job);
-		/* Technically we could output unoptimized Firm as well.
-		 * However, it is the responsibility of the OptimizedFirm goal
-		 * to decide whether and which optimizations to apply.
-		 * Therefore, always require OptimizedFirm */
-		asm_emitted.addPrereq(optimized_firm);
-		asm_emitted.intern(this);
+		final Goal asm_emitted = new AsmEmitted(job);
+		intern(asm_emitted);
 		seq.append(asm_emitted);
 		
 		return seq;
