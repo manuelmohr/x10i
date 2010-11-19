@@ -99,6 +99,10 @@ public class TypeSystem extends X10TypeSystem_c {
 		String className = classType.name().toString();
 		ClassType result = new ClassType(className);
 
+		/* put the class into the core types already, because we could
+		 * have a field referencing ourself */
+		firmCoreTypes.put(classType, result);
+
 		/* create fields */
 		for (FieldInstance field : classType.fields()) {
 			X10Flags flags = (X10Flags) field.flags();
@@ -136,9 +140,10 @@ public class TypeSystem extends X10TypeSystem_c {
 		if (baseType instanceof X10ClassType) {
 			result = createClassType((X10ClassType) baseType);
 		} else {
+			/* remember to put new types into coreTypeCache */
+			firmCoreTypes.put(baseType, result);
 			throw new java.lang.RuntimeException("No implement to get firm type for: " + baseType);
 		}
-		firmCoreTypes.put(baseType, result);
 		return result;
 	}
 
