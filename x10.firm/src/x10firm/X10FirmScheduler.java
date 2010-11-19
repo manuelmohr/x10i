@@ -31,14 +31,14 @@ class X10FirmScheduler extends X10Scheduler {
 		/* The other X10 backends and Polyglot use this goal to invoke javac/gcc on
 		 * the generated source code. In the Firm context this corresponds to linking
 		 * the assembler output. */
-		Goal goal = new PostCompiled(extInfo) {
+		final Goal goal = new PostCompiled(extInfo) {
 			@Override
 			protected boolean invokePostCompiler(Options options, Compiler compiler, ErrorQueue eq) {
 				// TODO invoke the assembler/linker
 				return true;
 			}
 		};
-		return goal.intern(this);
+		return intern(goal);
 	}
 
 	@Override
@@ -47,18 +47,17 @@ class X10FirmScheduler extends X10Scheduler {
 		
 		final TypeSystem typeSystem = (TypeSystem)extInfo.typeSystem();
 		
-		final Goal firm_generated = new FirmGenerated(job, typeSystem);
+		final Goal firm_generated = intern(new FirmGenerated(job, typeSystem));
 		intern(firm_generated);
 		seq.append(firm_generated);
 		
-		final Goal optimized_firm = new OptimizedFirm(job, typeSystem);
+		final Goal optimized_firm = intern(new OptimizedFirm(job, typeSystem));
 		intern(optimized_firm);
 		seq.append(optimized_firm);
 		
-		final Goal asm_emitted = new AsmEmitted(job);
-		intern(asm_emitted);
+		final Goal asm_emitted = intern(new AsmEmitted(job));
 		seq.append(asm_emitted);
 		
-		return seq;
+		return intern(seq);
 	}
 }
