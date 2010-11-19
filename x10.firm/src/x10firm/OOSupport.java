@@ -10,12 +10,12 @@ import firm.NameMangling;
  */
 public final class OOSupport {
 	private OOSupport() { }
-	
+
 	/** lowers object oriented constructs */
 	public static void lowerOO(TypeSystem typeSystem) {
 		NameMangling mangler = new NameMangling();
 		mangler.beginMangling();
-		
+
 		typeSystem.setupNameMangler(mangler);
 		/* the following substitutions should be the same as in the C++ (itanium) ABI */
 
@@ -52,15 +52,19 @@ public final class OOSupport {
 		mangler.addNameSubstitution("operator||",  "oo");
 		mangler.addNameSubstitution("operator++",  "pp");
 		mangler.addNameSubstitution("operator--",  "mm");
+
+		/* TODO: the following does not work as the spec requires the name of the type behind the 'cv' */
+		mangler.addNameSubstitution("operator_as", "cv");
+
 		/* TODO: unary +, -
 		 * The problem here is that we cannot identify them by name alone
 		 * (it's still "operator+" in X10). */
-		
+
 		/* this is our addition */
 		mangler.addNameSubstitution("operator>>>", "v3rbs");
-		
+
 		mangler.lowerOO();
-		
+
 		mangler.endMangling();
 	}
 }
