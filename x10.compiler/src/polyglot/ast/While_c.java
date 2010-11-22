@@ -81,9 +81,7 @@ public class While_c extends Loop_c implements While
 	TypeSystem ts = tc.typeSystem();
 	
 	if (! ts.typeEquals(cond.type(), ts.Boolean(), tc.context())) {
-	    throw new SemanticException(
-		"Condition of while statement must have boolean type.",
-		cond.position());
+	    throw new SemanticException("Condition of while statement must have boolean type.",cond.position());
 	}
 	
 	return this;
@@ -115,7 +113,7 @@ public class While_c extends Loop_c implements While
         return cond;
     }
 
-    public List<Term> acceptCFG(CFGBuilder v, List<Term> succs) {
+    public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
         if (condIsConstantTrue()) {
             v.visitCFG(cond, body, ENTRY);
         }

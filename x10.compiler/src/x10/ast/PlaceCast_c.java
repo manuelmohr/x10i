@@ -25,7 +25,6 @@ import polyglot.util.Position;
 import polyglot.visit.CFGBuilder;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.NodeVisitor;
-import x10.visit.ExprFlattener;
 
 /** An immutable representation of the X10 construct (@place) expr. 
  * @author vj May 18, 2005
@@ -61,9 +60,6 @@ public class PlaceCast_c extends Expr_c implements PlaceCast {
 		Expr place = (Expr) visitChild(this.place, v);
 		Expr expr = (Expr) visitChild(this.expr, v);
 		Node result = reconstruct(place, expr);
-		if (v instanceof ExprFlattener.Flattener ) {
-			//Report.report(1, "PlaceCast_c flattened to |" + result + "|");
-		}
 		return result;
 	}
 	/* (non-Javadoc)
@@ -82,7 +78,7 @@ public class PlaceCast_c extends Expr_c implements PlaceCast {
 	/* (non-Javadoc)
 	 * @see polyglot.ast.Term#acceptCFG(polyglot.visit.CFGBuilder, java.util.List)
 	 */
-	 public List acceptCFG(CFGBuilder v, List succs) {
+	 public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
         v.visitCFG(place, expr, ENTRY);
         v.visitCFG(expr, this, EXIT);
         return succs;

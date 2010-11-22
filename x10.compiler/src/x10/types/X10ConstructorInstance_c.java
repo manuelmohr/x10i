@@ -47,12 +47,23 @@ import x10.types.constraints.TypeConstraint;
 
 /**
  * An X10ConstructorInstance_c varies from a ConstructorInstance_c only in that it
- * maintains a returnType. If an explicit returnType is not declared in the constructor
- * then the returnType is simply a noClause variant of the container.
+ * maintains a returnType, and a guard. 
+ * 
+ * <p>If an explicit returnType is not declared in the constructor
+ * then the returnType is simply the container together with the constraints 
+ * introduced by the property call in the body of the constructor (if the container has
+ * properties).
+ * 
+ * <p> It also has a typeParameteres() method. This currently returns null. 
+ * Constructor definitions may not specify type parameters. The type parameters of
+ * the container are intended to be in effect in the constructor declaration.
+ * 
+ *  
  * @author vj
  *
  */
 public class X10ConstructorInstance_c extends ConstructorInstance_c implements X10ConstructorInstance {
+    private static final long serialVersionUID = 65438556574848648L;
 
     public X10ConstructorInstance_c(TypeSystem ts, Position pos, 
     		Ref<? extends X10ConstructorDef> def) {
@@ -60,8 +71,8 @@ public class X10ConstructorInstance_c extends ConstructorInstance_c implements X
     }
     
     @Override
-    public boolean moreSpecific(ProcedureInstance<ConstructorDef> p, Context context) {
-        return X10TypeMixin.moreSpecificImpl(this, p, context);
+    public boolean moreSpecific(Type ct, ProcedureInstance<ConstructorDef> p, Context context) {
+        return X10TypeMixin.moreSpecificImpl(ct, this, p, context);
     }
 
     public X10ConstructorDef x10Def() {
@@ -105,6 +116,7 @@ public class X10ConstructorInstance_c extends ConstructorInstance_c implements X
         return returnTypeRef(Types.ref(retType));
     }
     public X10ConstructorInstance returnTypeRef(Ref<? extends Type> retType) {
+        if (retType == this.returnType) return this;
         X10ConstructorInstance_c n = (X10ConstructorInstance_c) copy();
         n.returnType = retType;
         return n;
@@ -113,7 +125,13 @@ public class X10ConstructorInstance_c extends ConstructorInstance_c implements X
     /** Constraint on superclass constructor call return type. */
     public CConstraint supClause() { 
         return Types.get(x10Def().supClause());
-        }
+    }
+
+    @Override
+    public X10ConstructorInstance container(StructType container) {
+        if (container == this.container) return this;
+        return (X10ConstructorInstance) super.container(container);
+    }
 
     CConstraint guard;
     
@@ -125,6 +143,7 @@ public class X10ConstructorInstance_c extends ConstructorInstance_c implements X
     }
 
     public X10ConstructorInstance guard(CConstraint c) {
+        if (c == this.guard) return this;
         X10ConstructorInstance_c n = (X10ConstructorInstance_c) copy();
         n.guard = c;
         return n;
@@ -133,7 +152,8 @@ public class X10ConstructorInstance_c extends ConstructorInstance_c implements X
     /** Constraint on type parameters. */
     protected TypeConstraint typeGuard;
     public TypeConstraint typeGuard() { return typeGuard; }
-    public X10ConstructorInstance typeGuard(TypeConstraint s) { 
+    public X10ConstructorInstance typeGuard(TypeConstraint s) {
+        if (s == this.typeGuard) return this;
         X10ConstructorInstance_c n = (X10ConstructorInstance_c) copy();
         n.typeGuard = s; 
         return n;
@@ -146,26 +166,32 @@ public class X10ConstructorInstance_c extends ConstructorInstance_c implements X
     	return true;
     }
     
-    public List<Type> typeParameters;
-
     public List<Type> typeParameters() {
         return Collections.emptyList();
+// [IP] TODO
+//        return ((X10ParsedClassType) this.container()).typeArguments();
     }
 
     public X10ConstructorInstance typeParameters(List<Type> typeParameters) {
         if (typeParameters.size() != 0)
             throw new InternalCompilerError("Attempt to set type parameters of a constructor instance: "+this, this.position());
         return this;
+// [IP] TODO
+//        if (typeParameters.size() != x10Def().typeParameters().size())
+//            throw new InternalCompilerError("Attempt to set incorrect number of type parameters of a constructor instance: "+this+" params: "+typeParameters, this.position());
+//        // Set the container's type parameters instead
+//        return (X10ConstructorInstance) this.container(((X10ParsedClassType) this.container()).typeArguments(typeParameters));
     }
 
     public List<LocalInstance> formalNames;
     
     public List<LocalInstance> formalNames() {
 	if (this.formalNames == null) {
-	    return new TransformingList(x10Def().formalNames(), new Transformation<LocalDef,LocalInstance>() {
-		public LocalInstance transform(LocalDef o) {
-		    return o.asInstance();
-		}
+	    return new TransformingList<LocalDef, LocalInstance>(x10Def().formalNames(),
+	        new Transformation<LocalDef,LocalInstance>() {
+	            public LocalInstance transform(LocalDef o) {
+	                return o.asInstance();
+	            }
 	    });
 	}
 	
@@ -173,9 +199,16 @@ public class X10ConstructorInstance_c extends ConstructorInstance_c implements X
     }
     
     public X10ConstructorInstance formalNames(List<LocalInstance> formalNames) {
-	X10ConstructorInstance_c n = (X10ConstructorInstance_c) copy();
-	n.formalNames = formalNames;
-	return n;
+        if (formalNames == this.formalNames) return this;
+        X10ConstructorInstance_c n = (X10ConstructorInstance_c) copy();
+        n.formalNames = formalNames;
+        return n;
+    }
+
+    @Override
+    public X10ConstructorInstance formalTypes(List<Type> formalTypes) {
+        if (formalTypes == this.formalTypes) return this;
+        return (X10ConstructorInstance) super.formalTypes(formalTypes);
     }
 
     private SemanticException error;
@@ -185,6 +218,7 @@ public class X10ConstructorInstance_c extends ConstructorInstance_c implements X
     }
 
     public X10ConstructorInstance error(SemanticException e) {
+        if (e == this.error) return this;
         X10ConstructorInstance_c n = (X10ConstructorInstance_c) copy();
         n.error = e;
         return n;
@@ -192,66 +226,71 @@ public class X10ConstructorInstance_c extends ConstructorInstance_c implements X
 
     public String toString() {
 	    String s = designator() + " " + X10Flags.toX10Flags(flags()).prettyPrint() + container() + "." + signature();
-	
-	    if (! throwTypes().isEmpty()) {
-		    s += " throws " + CollectionUtil.listToString(throwTypes());
-	    }
+
 	
 	    return s;
     }
     
     public String signature() {
-	StringBuilder sb = new StringBuilder();
-	sb.append("this");
-	List<String> params = new ArrayList<String>();
-	if (typeParameters != null) {
-	    for (int i = 0; i < typeParameters.size(); i++) {
-		params.add(typeParameters.get(i).toString());
-	    }
-	}
-	else {
-	    for (int i = 0; i < x10Def().typeParameters().size(); i++) {
-		params.add(x10Def().typeParameters().get(i).toString());
-	    }
-	}
-	if (params.size() > 0) {
-	    sb.append("[");
-	    sb.append(CollectionUtil.listToString(params));
-	    sb.append("]");
-	}
-	List<String> formals = new ArrayList<String>();
-	if (formalTypes != null) {
-	    for (int i = 0; i < formalTypes.size(); i++) {
-		String s = "";
-		String t = formalTypes.get(i).toString();
-		if (formalNames != null && i < formalNames.size()) {
-		    LocalInstance a = formalNames.get(i);
-		    if (a != null && ! a.name().toString().equals(""))
-			s = a.name() + ": " + t; 
-		    else
-			s = t;
-		}
-		else {
-		    s = t;
-		}
-		formals.add(s);
-	    }
-	}
-	else {
-	    for (int i = 0; i < def().formalTypes().size(); i++) {
-		formals.add(def().formalTypes().get(i).toString());
-	    }
-	}
-	sb.append("(");
-	sb.append(CollectionUtil.listToString(formals));
-	sb.append(")");
-	if (guard != null)
-	    sb.append(guard);
-	if (returnType != null && returnType.known()) {
-	    sb.append(": ");
-	    sb.append(returnType);
-	}
-	return sb.toString();
+        StringBuilder sb = new StringBuilder();
+        sb.append("this");
+        // [IP] Constructors don't have type parameters, they inherit them from the container.
+        //List<String> params = new ArrayList<String>();
+        //List<Type> typeParameters = typeParameters();
+        //if (typeParameters != null) {
+        //    for (int i = 0; i < typeParameters.size(); i++) {
+        //        params.add(typeParameters.get(i).toString());
+        //    }
+        //}
+        //if (params.size() > 0) {
+        //    sb.append("[");
+        //    sb.append(CollectionUtil.listToString(params));
+        //    sb.append("]");
+        //}
+        List<String> formals = new ArrayList<String>();
+        List<Type> formalTypes = formalTypes();
+        if (formalTypes != null) {
+            List<LocalInstance> formalNames = formalNames();
+            for (int i = 0; i < formalTypes.size(); i++) {
+                String s = "";
+                String t = formalTypes.get(i).toString();
+                if (formalNames != null && i < formalNames.size()) {
+                    LocalInstance a = formalNames.get(i);
+                    if (a != null && ! a.name().toString().equals(""))
+                        s = a.name() + ": " + t; 
+                    else
+                        s = t;
+                }
+                else {
+                    s = t;
+                }
+                formals.add(s);
+            }
+        }
+        else {
+            for (int i = 0; i < def().formalTypes().size(); i++) {
+                formals.add(def().formalTypes().get(i).toString());
+            }
+        }
+        sb.append("(");
+        sb.append(CollectionUtil.listToString(formals));
+        sb.append(")");
+        CConstraint guard = guard();
+        if (guard != null)
+            sb.append(guard);
+        else if (x10Def().guard() != null)
+            sb.append(x10Def().guard());
+        TypeConstraint typeGuard = this.typeGuard();
+        if (typeGuard != null)
+            sb.append(typeGuard);
+        else if (x10Def().typeGuard() != null)
+            sb.append(x10Def().typeGuard());
+        Ref<? extends Type> returnType = returnTypeRef();
+        if (returnType != null && returnType.known()) {
+            sb.append(": ");
+            sb.append(returnType);
+        }
+        return sb.toString();
     }
     
     public boolean isValid() {

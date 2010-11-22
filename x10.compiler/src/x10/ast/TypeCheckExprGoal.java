@@ -20,6 +20,7 @@ import polyglot.visit.TypeChecker;
 import x10.types.X10ClassType;
 
 public class TypeCheckExprGoal extends TypeCheckFragmentGoal<Type> {
+	private static final long serialVersionUID = -6191310441875644253L;
 
 	public TypeCheckExprGoal(Node parent, Expr n, TypeChecker v, LazyRef<Type> r) {
 		super(parent, n, v, r, false);
@@ -32,7 +33,8 @@ public class TypeCheckExprGoal extends TypeCheckFragmentGoal<Type> {
 	}
 
 	@Override
-	protected void postprocess(Node m) {
+	protected Node process(Node parent, Node n, TypeChecker v) {
+		Node m = super.process(parent, n, v);
 		if (m instanceof Expr) {
 			Type t = ((Expr) m).type();
 			if (t instanceof X10ClassType) {
@@ -46,6 +48,7 @@ public class TypeCheckExprGoal extends TypeCheckFragmentGoal<Type> {
 			}
 			r().update(t);
 		}
+		return m;
 	}
 
 	@Override

@@ -29,6 +29,7 @@ import polyglot.types.Named;
 import polyglot.types.ParsedClassType_c;
 import polyglot.types.Ref;
 import polyglot.types.SemanticException;
+import polyglot.types.StructType;
 import polyglot.types.Type;
 import polyglot.types.TypeObject;
 import polyglot.types.TypeSystem;
@@ -57,6 +58,8 @@ import x10.types.matcher.Subst;
 public class X10ParsedClassType_c extends ParsedClassType_c
 implements X10ParsedClassType
 {
+    private static final long serialVersionUID = -647880315275370901L;
+
     TypeParamSubst cacheSubst; // "subst" is just an auxiliary structure (cached to improve performance). It represents the typeArguments (thus it is nullified when assigning to typeArguments).
 
     public int hashCode() {
@@ -97,8 +100,20 @@ implements X10ParsedClassType
     
     public
     TypeParamSubst subst() {
-        if (cacheSubst == null)
-            cacheSubst = new TypeParamSubst((X10TypeSystem) ts, typeArguments, x10Def().typeParameters());
+        if (cacheSubst == null) {
+            List<Type> typeArguments = new ArrayList<Type>();
+            List<ParameterType> typeParameters = new ArrayList<ParameterType>();
+            for (X10ParsedClassType_c c = this; c != null; c = (X10ParsedClassType_c) c.container()) {
+                List<ParameterType> tp = c.x10Def().typeParameters();
+                if (!tp.isEmpty() && c.typeArguments != null) {
+                    typeArguments.addAll(c.typeArguments);
+                    typeParameters.addAll(tp);
+                }
+                if (!c.isMember())
+                    break;
+            }
+            cacheSubst = new TypeParamSubst((X10TypeSystem) ts, typeArguments, typeParameters);
+        }
         return cacheSubst;
     }
     
@@ -137,7 +152,7 @@ implements X10ParsedClassType
     List<Expr> propertyInitializers;
     public List<Expr> propertyInitializers() {
         if (propertyInitializers == null)
-            return Collections.EMPTY_LIST;
+            return Collections.<Expr>emptyList();
         return Collections.unmodifiableList(propertyInitializers);
     }
     public Expr propertyInitializer(int i) {
@@ -169,6 +184,15 @@ implements X10ParsedClassType
         n.error = e;
         return n;
     }
+
+    public X10ClassType container() {
+        return (X10ClassType) super.container();
+    }
+
+    public X10ParsedClassType container(StructType container) {
+        return (X10ParsedClassType) super.container(container);
+    }
+
     public X10ClassDef x10Def() {
         return (X10ClassDef) def();
     }
@@ -268,13 +292,6 @@ implements X10ParsedClassType
 	    return subst.reinstantiate(super.memberClasses());
 	}
 
-	/**
-	 * A parsed class is safe iff it explicitly has a flag saying so.
-	 */
-	public boolean isSafe() {
-		return X10Flags.toX10Flags(flags()).isSafe();
-	}
-
 	public static class X10FieldAsTypeTransform implements Transformation<X10FieldDef, FieldInstance> {
 	    public FieldInstance transform(X10FieldDef def) {
 		return def.asInstance();
@@ -311,7 +328,7 @@ implements X10ParsedClassType
 	
 	public List<Type> typeArguments() {
 	    if (typeArguments == null) {
-		return TypedList.copyAndCheck((List) x10Def().typeParameters(), Type.class, true);
+		return TypedList.<Type>copyAndCheck(x10Def().typeParameters(), Type.class, true);
 	    }
 	    return typeArguments;
 	}
@@ -322,6 +339,7 @@ implements X10ParsedClassType
 	 * for this type.
 	 */
 	public X10ParsedClassType typeArguments(List<Type> typeArgs) {
+	    if (typeArgs == this.typeArguments) return this;
 	    X10ParsedClassType_c n = (X10ParsedClassType_c) copy();
 	    n.typeArguments = TypedList.copyAndCheck(typeArgs, Type.class, false);
 	    try {
@@ -367,9 +385,6 @@ implements X10ParsedClassType
 		StringBuffer sb = new StringBuffer();
 		if (flags() != null) {
 			X10Flags f = X10Flags.toX10Flags(flags());
-			if (f.isProto()) {
-				sb.append("proto ");
-			}
 
 		}
 		//	sb.append(flags().toString()).append(" ");
@@ -389,23 +404,8 @@ implements X10ParsedClassType
 		return sb.toString();
 	}
 	    
-	public boolean isProto() { return X10Flags.toX10Flags(flags()).isProto(); }
 	public boolean isX10Struct() { 	return X10Flags.toX10Flags(flags()).isStruct(); }
-    public Proto makeProto() {
-    	if (isProto())
-    		return this;
-    	X10ParsedClassType_c c = (X10ParsedClassType_c) copy();
-    	c.setFlags(X10Flags.toX10Flags(flags()).Proto());
-    	return c;
-    	
-    }
-    public Proto baseOfProto() {
-    	if (! isProto())
-    		return this;
-    	X10ParsedClassType_c c = (X10ParsedClassType_c) copy();
-    	c.setFlags(X10Flags.toX10Flags(flags()).clearProto());
-    	return c;
-    }
+
     public X10Struct makeX10Struct() {
     	if (isX10Struct())
     		return this;
@@ -444,6 +444,21 @@ implements X10ParsedClassType
 
 	public boolean isValid() {
 		return !(def instanceof ErrorRef_c<?>);
+	}
+
+	public X10ParsedClassType instantiateTypeParametersExplicitly() {
+	    X10ParsedClassType pct = this;
+	    List<ParameterType> typeParameters = pct.x10Def().typeParameters();
+	    if (pct.isMember()) {
+	        X10ClassType container = ((X10ParsedClassType) pct.container()).instantiateTypeParametersExplicitly();
+	        if (container != pct.container()) {
+	            pct = pct.container(container);
+	        }
+	    }
+	    if (!typeParameters.isEmpty() && pct.typeArguments().equals(typeParameters)) {
+	        pct = pct.typeArguments(new ArrayList<Type>(typeParameters));
+	    }
+	    return pct;
 	}
 }
 

@@ -29,6 +29,7 @@ import polyglot.types.Type;
 import polyglot.types.TypeSystem;
 import polyglot.types.VarInstance;
 import x10.ast.ConstantDistMaker_c;
+import x10.types.X10ClassType;
 import x10.types.X10MethodInstance;
 import x10.types.X10ParsedClassType;
 import x10.types.X10TypeSystem;
@@ -91,6 +92,7 @@ public class SharedVarsMethods {
 	static final String DESERIALIZER_METHOD = "_deserializer";
     static final String DESERIALIZE_BODY_METHOD = "_deserialize_body";
     public static final String DESERIALIZE_CUDA_METHOD = "_deserialize_cuda";
+    public static final String POST_CUDA_METHOD = "_post_cuda";
     static final String STRUCT_EQUALS = "x10aux::struct_equals";
     public static final String STRUCT_EQUALS_METHOD = "_struct_equals";
     public static final String REFERENCE_TYPE = "x10::lang::Reference";
@@ -110,6 +112,15 @@ public class SharedVarsMethods {
 			return type+"*";
 		return "x10aux::ref"+chevrons(type);
 	}
+	
+	public static String make_captured_lval(Type type) {
+	    if (type.isClass() && !((X10ClassType)type.toClass()).isX10Struct()) {
+	        return "x10aux::captured_ref_lval"+chevrons(Emitter.translateType(type, false));
+	    } else {
+            return "x10aux::captured_struct_lval"+chevrons(Emitter.translateType(type, false));
+	    }
+	}
+
 	static String closure_name(String prefix, int id) {
 		return prefix + id;
 	}
@@ -170,7 +181,7 @@ public class SharedVarsMethods {
 				Type x_l_place = ts.Place();
 				knownSafeFields.add(ts.findField(x_l_place, ts.FieldMatcher(x_l_place, Name.make("MAX_PLACES"), context)));
 				Type x_l_region = ts.Region();
-				knownSafeMethods.add(ts.findMethod(x_l_region, ts.MethodMatcher(x_l_region, Name.make("toDistribution"), Collections.EMPTY_LIST, context)));
+				knownSafeMethods.add(ts.findMethod(x_l_region, ts.MethodMatcher(x_l_region, Name.make("toDistribution"), Collections.<Type>emptyList(), context)));
 				knownSafeFields.add(ts.findField(x_l_region, ts.FieldMatcher(x_l_region, Name.make("factory"), context)));
 				Type x_l_dist = ts.Dist();
 				Type[] X_L_P = { x_l_place };

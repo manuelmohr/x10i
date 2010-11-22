@@ -62,9 +62,7 @@ public class Throw_c extends Stmt_c implements Throw
     /** Type check the statement. */
     public Node typeCheck(ContextVisitor tc) throws SemanticException {
     	if (! expr.type().isThrowable()) {
-	    throw new SemanticException(
-		"Can only throw subclasses of \"" +
-		tc.typeSystem().Throwable() + "\".", expr.position());
+	    throw new SemanticException("Can only throw subclasses of \"" +tc.typeSystem().Throwable() + "\".", expr.position());
 	}
 
 	return this;
@@ -95,11 +93,11 @@ public class Throw_c extends Stmt_c implements Throw
         return expr;
     }
 
-    public List<Term> acceptCFG(CFGBuilder v, List<Term> succs) {
+    public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
         v.visitCFG(expr, this, EXIT);
 
         // Throw edges will be handled by visitor.
-        return Collections.EMPTY_LIST;
+        return Collections.<S>emptyList();
     }
 
     public List<Type> throwTypes(TypeSystem ts) {

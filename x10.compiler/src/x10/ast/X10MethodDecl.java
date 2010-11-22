@@ -14,17 +14,29 @@ package x10.ast;
 import java.util.List;
 
 import polyglot.ast.Expr;
+import polyglot.ast.FlagsNode;
+import polyglot.ast.Formal;
+import polyglot.ast.Id;
 import polyglot.ast.MethodDecl;
 import polyglot.ast.TypeNode;
+import polyglot.types.MethodDef;
+import x10.types.X10MethodDef;
 
-public interface X10MethodDecl extends MethodDecl {
+public interface X10MethodDecl extends MethodDecl, Guarded {
 	// The method's guard.
 	DepParameterExpr guard();
 	X10MethodDecl guard(DepParameterExpr e);
-	
+
 	List<TypeParamNode> typeParameters();
 	X10MethodDecl typeParameters(List<TypeParamNode> typeParams);
 
 	TypeNode offerType();
-	X10MethodDecl_c offerType(TypeNode offerType);
+	X10MethodDecl offerType(TypeNode offerType);
+
+	X10MethodDecl flags(FlagsNode flags);
+	X10MethodDecl returnType(TypeNode returnType);
+	X10MethodDecl name(Id name);
+	X10MethodDecl formals(List<Formal> formals);
+	X10MethodDecl methodDef(MethodDef mi);
+	X10MethodDef methodDef();
 }

@@ -19,8 +19,10 @@ import polyglot.util.*;
  */
 public abstract class ClassType_c extends ReferenceType_c implements ClassType
 {
+    private static final long serialVersionUID = 3894454742809763539L;
+
     protected Ref<? extends ClassDef> def;
-    
+
     /** Used for deserializing types. */
     protected ClassType_c() { }
 
@@ -182,7 +184,7 @@ public abstract class ClassType_c extends ReferenceType_c implements ClassType
             }
 
             // Use the short name if it is unique.
-            if (c != null && !Globals.Options().fully_qualified_names) {
+            if (c != null && !typeSystem().extensionInfo().getOptions().fully_qualified_names) {
                 try {
                     Named x = c.find(ts.TypeMatcher(name()));
                     
@@ -203,7 +205,7 @@ public abstract class ClassType_c extends ReferenceType_c implements ClassType
             }
 
             // Use the short name if it is unique.
-            if (c != null && !Globals.Options().fully_qualified_names) {
+            if (c != null && !typeSystem().extensionInfo().getOptions().fully_qualified_names) {
                 try {
                     Named x = c.find(ts.TypeMatcher(name()));
 

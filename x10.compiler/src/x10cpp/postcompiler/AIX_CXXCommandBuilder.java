@@ -22,8 +22,7 @@ public class AIX_CXXCommandBuilder extends CXXCommandBuilder {
         assert (CXXCommandBuilder.PLATFORM.startsWith("aix_"));
     }
 
-    @Override
-	protected void addPreArgs(ArrayList<String> cxxCmd) {
+    protected void addPreArgs(ArrayList<String> cxxCmd) {
         super.addPreArgs(cxxCmd);
         
         if (USE_XLC) {
@@ -40,8 +39,7 @@ public class AIX_CXXCommandBuilder extends CXXCommandBuilder {
         }     
     }
 
-    @Override
-	protected void addPostArgs(ArrayList<String> cxxCmd) {
+    protected void addPostArgs(ArrayList<String> cxxCmd) {
         super.addPostArgs(cxxCmd);
         
         if (USE_XLC) {

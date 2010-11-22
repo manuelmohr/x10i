@@ -119,7 +119,7 @@ public class Initializer_c extends Term_c implements Initializer
         return body();
     }
 
-    public List<Term> acceptCFG(CFGBuilder v, List<Term> succs) {
+    public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
         v.visitCFG(body(), this, EXIT);
         return succs;
     }
@@ -191,15 +191,14 @@ public class Initializer_c extends Term_c implements Initializer
         if (flags.isStatic() &&
               initializerDef().container().get().toClass().isInnerClass()) {
             // it's a static initializer in an inner class.
-            throw new SemanticException("Inner classes cannot declare " + 
-                    "static initializers.", this.position());             
+            throw new SemanticException("Inner classes cannot declare static initializers.", this.position());
         }
 
 	return this;
     }
 
     public NodeVisitor exceptionCheckEnter(ExceptionChecker ec) throws SemanticException {
-        if (initializerDef().flags().isStatic()) {
+     /*   if (initializerDef().flags().isStatic()) {
             return ec.push(new ExceptionChecker.CodeTypeReporter("A static initializer block"));
         }
         
@@ -246,7 +245,7 @@ public class Initializer_c extends Term_c implements Initializer
             
             
             return ec;
-        }
+        }*/
 
         return ec.push();
     }

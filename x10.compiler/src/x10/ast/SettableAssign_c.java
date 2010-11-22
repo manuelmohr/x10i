@@ -23,7 +23,6 @@ import polyglot.ast.Assign;
 import polyglot.ast.Assign_c;
 import polyglot.ast.Binary;
 import polyglot.ast.Call;
-import polyglot.ast.CanonicalTypeNode_c;
 import polyglot.ast.Expr;
 import polyglot.ast.Field;
 import polyglot.ast.Node;
@@ -66,6 +65,7 @@ import x10.types.X10MethodInstance;
 import x10.types.X10TypeMixin;
 import x10.types.X10TypeSystem;
 import x10.types.X10TypeSystem_c;
+import x10.types.checker.Checker;
 import x10.types.checker.Converter;
 import x10.types.matcher.DumbMethodMatcher;
 import x10.visit.X10TypeChecker;
@@ -178,21 +178,21 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
    		return child.type();
    	}
 	
-	MethodInstance mi;
-	MethodInstance ami;
+	X10MethodInstance mi;
+	X10MethodInstance ami;
 	
-	public MethodInstance methodInstance() {
+	public X10MethodInstance methodInstance() {
 	    return mi;
 	}
-	public SettableAssign methodInstance(MethodInstance mi) {
+	public SettableAssign methodInstance(X10MethodInstance mi) {
 	    SettableAssign_c n = (SettableAssign_c) copy();
 	    n.mi = mi;
 	    return n;
 	}
-	public MethodInstance applyMethodInstance() {
-	    return mi;
+	public X10MethodInstance applyMethodInstance() {
+	    return ami;
 	}
-	public SettableAssign applyMethodInstance(MethodInstance ami) {
+	public SettableAssign applyMethodInstance(X10MethodInstance ami) {
 	    SettableAssign_c n = (SettableAssign_c) copy();
 	    n.ami = ami;
 	    return n;
@@ -202,10 +202,10 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
 	public Node buildTypes(TypeBuilder tb) throws SemanticException {
 	    SettableAssign_c n = (SettableAssign_c) super.buildTypes(tb);
 
-	    TypeSystem ts = tb.typeSystem();
+	    X10TypeSystem ts = (X10TypeSystem) tb.typeSystem();
 
-	    MethodInstance mi = ts.createMethodInstance(position(), new ErrorRef_c<MethodDef>(ts, position(), "Cannot get MethodDef before type-checking settable assign."));
-	    MethodInstance ami = ts.createMethodInstance(position(), new ErrorRef_c<MethodDef>(ts, position(), "Cannot get MethodDef before type-checking settable assign."));
+	    X10MethodInstance mi = ts.createMethodInstance(position(), new ErrorRef_c<MethodDef>(ts, position(), "Cannot get MethodDef before type-checking settable assign."));
+	    X10MethodInstance ami = ts.createMethodInstance(position(), new ErrorRef_c<MethodDef>(ts, position(), "Cannot get MethodDef before type-checking settable assign."));
 	    return n.methodInstance(mi).applyMethodInstance(ami);
 	}
 
@@ -247,7 +247,7 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
 		args.addAll(index);
 
 		// First try to find the method without implicit conversions.
-		mi = ClosureCall_c.findAppropriateMethod(tc, array.type(), SET, typeArgs, actualTypes);
+		mi = Checker.findAppropriateMethod(tc, array.type(), SET, typeArgs, actualTypes);
 		if (mi.error() != null) {
 		    // Now, try to find the method with implicit conversions, making them explicit.
 		    try {
@@ -271,7 +271,7 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
 		actualTypes.remove(0);
 
 		// First try to find the method without implicit conversions.
-		ami = ClosureCall_c.findAppropriateMethod(tc, array.type(), ClosureCall.APPLY, typeArgs, actualTypes);
+		ami = Checker.findAppropriateMethod(tc, array.type(), ClosureCall.APPLY, typeArgs, actualTypes);
 		if (ami.error() != null) {
 		    Type bt = X10TypeMixin.baseType(array.type());
 		    boolean arrayP = xts.isX10Array(bt) || xts.isX10DistArray(bt);

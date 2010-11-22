@@ -313,4 +313,5 @@ public class CXXCommandBuilder {
                 "Unknown platform '"+PLATFORM+"'; using the default post-compiler (g++)");
         return new CXXCommandBuilder(options, eq);
     }
+
 }

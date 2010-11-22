@@ -172,13 +172,11 @@ public class SourceFile_c extends Node_c implements SourceFile
 	Set<Name> names = new HashSet<Name>();
 	boolean hasPublic = false;
 
-	for (Iterator i = decls.iterator(); i.hasNext();) {
-	    TopLevelDecl d = (TopLevelDecl) i.next();
+	for (TopLevelDecl d : decls) {
 	    Name s = d.name().id();
 
 	    if (names.contains(s)) {
-		throw new SemanticException("Duplicate declaration: \"" + s + 
-		    "\".", d.position());
+		throw new SemanticException("Duplicate declaration: \"" + s + "\".", d.position());
 	    }
 
 	    names.add(s);

@@ -93,7 +93,7 @@ public class NewInstanceSynth extends AbstractStateSynth implements IStmtSynth, 
         
        // aNew.qualifier(qualifier);
         Ref<? extends ClassDef> outerRef = classType.def().outer();
-        if(outerRef != null){ //in case it has outer, it need set the new's qualifier
+        if(outerRef != null && classType.def().isInnerClass()){
             ClassDef outerDef = outerRef.get();
             Expr q = xnf.This(Position.COMPILER_GENERATED,
                         xnf.CanonicalTypeNode(Position.COMPILER_GENERATED, outerDef.asType())).type(outerDef.asType());
@@ -104,7 +104,7 @@ public class NewInstanceSynth extends AbstractStateSynth implements IStmtSynth, 
         if (annotations.size() > 0) {
             aNew = (New) ((X10Del) aNew.del()).annotations(annotations);
         }
-        Expr construct = aNew.constructorInstance(constructorIns).type(PlaceChecker.AddIsHereClause(classType, xct));            
+        Expr construct = aNew.constructorInstance(constructorIns).type(classType); // PlaceChecker.AddIsHereClause(classType, xct));            
         return construct;
     }
     

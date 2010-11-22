@@ -10,6 +10,7 @@ package polyglot.ast;
 
 import java.util.List;
 
+import polyglot.frontend.ExtensionInfo;
 import polyglot.types.*;
 import polyglot.types.Package;
 import polyglot.util.Position;
@@ -22,6 +23,11 @@ import polyglot.util.Position;
 public interface NodeFactory
 {
 
+	/**
+	 * Returns the ExtensionInfo object associated with this factory.
+	 */
+	public ExtensionInfo extensionInfo();
+	
     /**
      * Returns a disambiguator for nodes from this factory.
      */
@@ -138,7 +144,7 @@ public interface NodeFactory
 	                            Expr outer, List<Expr> args);
 
     ConstructorDecl ConstructorDecl(Position pos, FlagsNode flags, Id name,
-            List<Formal> formals, List<TypeNode> throwTypes,
+            List<Formal> formals, 
             Block body);
 
     FieldDecl FieldDecl(Position pos, FlagsNode flags, TypeNode type, Id name);
@@ -180,7 +186,7 @@ public interface NodeFactory
     LocalDecl LocalDecl(Position pos, FlagsNode flags, TypeNode type, Id name, Expr init);
 
     MethodDecl MethodDecl(Position pos, FlagsNode flags, TypeNode returnType, Id name,
-            List<Formal> formals, List<TypeNode> throwTypes, Block body);
+            List<Formal> formals,  Block body);
 
     New New(Position pos, TypeNode type, List<Expr> args);
     New New(Position pos, TypeNode type, List<Expr> args, ClassBody body);

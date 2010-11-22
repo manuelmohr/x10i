@@ -41,6 +41,7 @@ import x10.types.constraints.CConstraint;
  *
  */
 public class X10FieldInstance_c extends FieldInstance_c implements X10FieldInstance {
+    private static final long serialVersionUID = 2257055113898437924L;
 
     public X10FieldInstance_c(TypeSystem ts, Position pos, Ref<? extends X10FieldDef> def) {
         super(ts, pos, def);
@@ -72,12 +73,19 @@ public class X10FieldInstance_c extends FieldInstance_c implements X10FieldInsta
     }
 
     public X10FieldInstance type(Type type, Type rightType) {
+        if (type == this.type) return this;
         X10FieldInstance_c fi =  (X10FieldInstance_c) super.type(type);
         assert fi != this;
         fi.rightType = rightType;
         return fi;
     }
     
+    @Override
+    public X10FieldInstance container(StructType container) {
+        if (container == this.container) return this;
+        return (X10FieldInstance) super.container(container);
+    }
+
     Type rightType;
 
     public Type rightType() {
@@ -155,6 +163,7 @@ public class X10FieldInstance_c extends FieldInstance_c implements X10FieldInsta
     }
 
     public X10FieldInstance error(SemanticException e) {
+        if (e == this.error) return this;
         X10FieldInstance_c n = (X10FieldInstance_c) copy();
         n.error = e;
         return n;
@@ -173,6 +182,7 @@ public class X10FieldInstance_c extends FieldInstance_c implements X10FieldInsta
     }
 
     public String toString() {
+	Type type = type();
 	String typeString = type != null ? type.toString() : def().type().toString();
 	String s = "field " + X10Flags.toX10Flags(flags()).prettyPrint() + containerString() + "." + name() + ": " + typeString;
 	return s;

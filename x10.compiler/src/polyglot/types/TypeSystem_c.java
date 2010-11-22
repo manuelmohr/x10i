@@ -24,14 +24,20 @@ import polyglot.util.*;
  **/
 public abstract class TypeSystem_c implements TypeSystem
 {
+    private static volatile int counter = 0;
+
     protected SystemResolver systemResolver;
     protected TopLevelResolver loadedResolver;
     protected Map<String, Flags> flagsForName;
     protected ExtensionInfo extInfo;
 
     private Throwable creator;
+    private int creationTime;
     public TypeSystem_c() {
         creator = new Throwable().fillInStackTrace();
+        creationTime = counter++;
+        if (Report.should_report("TypeSystem", 1))
+            Report.report(1, "Creating " + getClass() + " at " + creationTime);
     }
 
     /**
@@ -150,7 +156,7 @@ public abstract class TypeSystem_c implements TypeSystem
 	    if (o instanceof TypeObject) {
 		assert_((TypeObject) o);
 	    }
-	    else if (o instanceof Ref) {
+	    else if (o instanceof Ref<?>) {
 		assert_((Ref<?>) o);
 	    }
 	}
@@ -160,8 +166,13 @@ public abstract class TypeSystem_c implements TypeSystem
 
     protected void assert_(TypeObject o) {
 	if (o != null && o.typeSystem() != this) {
-	    throw new InternalCompilerError("we are " + this + " but " + o + " ("+o.getClass()+")" +
-	                                    " is from " + o.typeSystem());
+            TypeSystem_c ots = (TypeSystem_c) o.typeSystem();
+            System.err.print("we are " + this + "(" + creationTime + "): ");
+            this.creator.printStackTrace(System.err);
+            System.err.print(" but " + o + " ("+o.getClass()+")" + " is from " + ots + "(" + ots.creationTime + "): ");
+            ots.creator.printStackTrace(System.err);
+            throw new InternalCompilerError("we are " + this + " but " + o + " ("+o.getClass()+")" +
+                                            " is from " + ots);
 	}
     }
 
@@ -276,19 +287,19 @@ public abstract class TypeSystem_c implements TypeSystem
 	    access = access.Public();            
 	}
 	return constructorDef(pos, container,
-	                      access, Collections.<Ref<? extends Type>>emptyList(),
-	                      Collections.<Ref<? extends Type>>emptyList());
+	                      access, Collections.<Ref<? extends Type>>emptyList()
+	                      );
     }
 
     public ConstructorDef constructorDef(Position pos,
 	    Ref<? extends ClassType> container,
-	    Flags flags, List<Ref<? extends Type>> argTypes,
-	    List<Ref<? extends Type>> excTypes) {
+	    Flags flags, List<Ref<? extends Type>> argTypes
+	    ) {
 	assert_(container);
 	assert_(argTypes);
-	assert_(excTypes);
+
 	return new ConstructorDef_c(this, pos, container, flags,
-	                            argTypes, excTypes);
+	                            argTypes);
     }
 
     public InitializerDef initializerDef(Position pos,
@@ -301,14 +312,13 @@ public abstract class TypeSystem_c implements TypeSystem
     public MethodDef methodDef(Position pos,
 	    Ref<? extends StructType> container, Flags flags,
 	    Ref<? extends Type> returnType, Name name,
-	    List<Ref<? extends Type>> argTypes, List<Ref<? extends Type>> excTypes) {
+	    List<Ref<? extends Type>> argTypes) {
 
 	assert_(container);
 	assert_(returnType);
 	assert_(argTypes);
-	assert_(excTypes);
 	return new MethodDef_c(this, pos, container, flags,
-	                       returnType, name, argTypes, excTypes);
+	                       returnType, name, argTypes);
     }
     
     public ClassDef classDefOf(Type t) {
@@ -452,7 +462,7 @@ public abstract class TypeSystem_c implements TypeSystem
     /**
      * Checks whether the member mi can be accessed from Context "context".
      */
-    public boolean isAccessible(MemberInstance<? extends MemberDef> mi, Context context) {
+    public boolean isAccessible(MemberInstance<?> mi, Context context) {
 	assert_(mi);
 	return env(context).isAccessible(mi);
     }
@@ -508,16 +518,14 @@ public abstract class TypeSystem_c implements TypeSystem
 	    }
 
 	    if (goal == superType) {
-		throw new SemanticException("Circular inheritance involving " + goal, 
-		                            curr.position());
+		throw new SemanticException("Circular inheritance involving " + goal,curr.position());
 	    }
 
 	    checkCycles(superType, goal);
 
 	    for (Type si : ot.interfaces()) {
 		if (si == goal) {
-		    throw new SemanticException("Circular inheritance involving " + goal, 
-		                                curr.position());
+		    throw new SemanticException("Circular inheritance involving " + goal,curr.position());
 		}
 
 		checkCycles(si, goal);
@@ -714,7 +722,7 @@ public abstract class TypeSystem_c implements TypeSystem
 		}
 		catch (SemanticException e) {
 		}
-		return Collections.EMPTY_SET;
+		return Collections.<FieldInstance>emptySet();
 	    }
 	}
 
@@ -800,6 +808,9 @@ public abstract class TypeSystem_c implements TypeSystem
 	public Context context() {
 	    return context;
 	}
+	public Type container() {
+		return container;
+	}
 
 	public Name name() {
 	    return Name.make("this");
@@ -852,6 +863,9 @@ public abstract class TypeSystem_c implements TypeSystem
 	    MethodMatcher n = copy();
 	    n.container = container;
 	    return n;
+	}
+	public Type container() {
+		return container;
 	}
 
 	public MethodMatcher copy() {
@@ -918,6 +932,9 @@ public abstract class TypeSystem_c implements TypeSystem
 	    return context;
 	}
 
+	public Type container() {
+		return container;
+	}
 	public FieldMatcher container(Type container) {
 	    FieldMatcher n = copy();
 	    n.container = container;
@@ -969,6 +986,9 @@ public abstract class TypeSystem_c implements TypeSystem
 	    this.context = context;
 	}
 
+	public Type container() {
+		return container;
+	}
 	public String signature() {
 	    return name.toString();
 	}
@@ -1017,6 +1037,7 @@ public abstract class TypeSystem_c implements TypeSystem
 	    return name;
 	}
 
+	
 	public Named instantiate(Named t) throws SemanticException {
 	    if (! t.name().equals(name)) {
 		return null;
@@ -1056,13 +1077,14 @@ public abstract class TypeSystem_c implements TypeSystem
 
 	if (acceptable.size() == 0) {
 	    throw new NoMemberException(NoMemberException.METHOD,
-	                                "No valid method call found for " + matcher.signature() +
-	                                " in " +
-	                                container + ".");
+	                                "No valid method call found for call in given type."
+	    		+ "\n\t Call: " + matcher.signature() 
+	    		+ "\n\t Type: " + container);
+	                             
 	}
 
 	Collection<MethodInstance> maximal =
-	    findMostSpecificProcedures(acceptable, (Matcher<MethodInstance>) matcher, context);
+	    findMostSpecificProcedures(container, acceptable, (Matcher<MethodInstance>) matcher, context);
 
 	if (maximal.size() > 1) {
 	    StringBuffer sb = new StringBuffer();
@@ -1115,13 +1137,20 @@ public abstract class TypeSystem_c implements TypeSystem
 	return ci;
     }
 
-    public <S extends ProcedureDef, T extends ProcedureInstance<S>> Collection<T> findMostSpecificProcedures(List<T> acceptable, Matcher<T> matcher, Context context)
+    public <S extends ProcedureDef, T extends ProcedureInstance<S>> Collection<T>
+    findMostSpecificProcedures(List<T> acceptable, Matcher<T> matcher, Context context)
+    throws SemanticException {
+    	return findMostSpecificProcedures(null, acceptable, matcher, context);
+    }
+    public <S extends ProcedureDef, T extends ProcedureInstance<S>> Collection<T>
+    findMostSpecificProcedures(Type container, List<T> acceptable, Matcher<T> matcher, Context context)
     throws SemanticException {
 	
 	// now, use JLS 15.11.2.2
 	// First sort from most- to least-specific.
-	Comparator<T> msc = mostSpecificComparator(matcher, context);
-	acceptable = new ArrayList<T>(acceptable); // make into array list to sort
+	Comparator<T> msc = mostSpecificComparator(container, matcher, context);
+	ArrayList<T> acceptable2 = new ArrayList<T>(acceptable); // make into array list to sort
+
 	Collections.<T>sort(acceptable, msc);
 
 	List<T> maximal = new ArrayList<T>(acceptable.size());
@@ -1145,7 +1174,7 @@ public abstract class TypeSystem_c implements TypeSystem
 	    List<T> notAbstract = new ArrayList<T>(maximal.size());
 	    for (Iterator<T> j = maximal.iterator(); j.hasNext(); ) {
 		T p = j.next();
-		if (! (p instanceof MemberInstance) || ! ((MemberInstance) p).flags().isAbstract()) {
+		if (! (p instanceof MemberInstance<?>) || ! ((MemberInstance<?>) p).flags().isAbstract()) {
 		    notAbstract.add(p);
 		}
 	    }
@@ -1181,7 +1210,7 @@ public abstract class TypeSystem_c implements TypeSystem
 	return maximal;
     }
 
-    protected <S extends ProcedureDef, T extends ProcedureInstance<S>> Comparator<T> mostSpecificComparator(Matcher<T> matcher, Context context) {
+    protected <S extends ProcedureDef, T extends ProcedureInstance<S>> Comparator<T> mostSpecificComparator(Type container, Matcher<T> matcher, Context context) {
 	return new MostSpecificComparator<S,T>(context);
     }
 
@@ -1221,15 +1250,17 @@ public abstract class TypeSystem_c implements TypeSystem
     /**
      * Class to handle the comparisons; dispatches to moreSpecific method.
      */
-    protected static class MostSpecificComparator<S extends ProcedureDef, T extends ProcedureInstance<S>> implements Comparator<T> {
-	Context context;
+    public static class MostSpecificComparator<S extends ProcedureDef, T extends ProcedureInstance<S>> implements Comparator<T> {
+	protected Context context;
+
 	public MostSpecificComparator(Context context) {
 	    this.context = context;
+	    
 	}
 	public int compare(T p1, T p2) {
-	    if (p1.moreSpecific(p2, context))
+	    if (p1.moreSpecific(null, p2, context))
 		return -1;
-	    if (p2.moreSpecific(p1, context))
+	    if (p2.moreSpecific(null, p1, context))
 		return 1;
 	    return 0;
 	}
@@ -1292,12 +1323,13 @@ public abstract class TypeSystem_c implements TypeSystem
 			    Report.report(3, "Trying " + mi);
 
 			try {
+				MethodInstance oldmi = mi;
 			    mi = matcher.instantiate(mi);
 
 			    if (mi == null) {
 				continue;
 			    }
-
+			    mi.setOrigMI(oldmi);
 			    if (isAccessible(mi, context)) {
 				if (Report.should_report(Report.types, 3)) {
 				    Report.report(3, "->acceptable: " + mi + " in "
@@ -1363,10 +1395,10 @@ public abstract class TypeSystem_c implements TypeSystem
 	
 	if (acceptable.size() == 0) {
 	    if (error == null) {
-		error = new NoMemberException(NoMemberException.METHOD,
-		                              "No valid method call found for " + matcher.signature() +
-		                              " in " +
-		                              container + ".");
+	    	  throw new NoMemberException(NoMemberException.METHOD,
+                      "No valid method call found for call in given type."
+	+ "\n\t Call: " + matcher.signature() 
+	+ "\n\t Type: " + container);
 	    }
 	    throw error;
 	}
@@ -1408,7 +1440,7 @@ public abstract class TypeSystem_c implements TypeSystem
 	assert_(type);
 	if (type instanceof ObjectType)
 	    return ((ObjectType) type).interfaces();
-	return Collections.EMPTY_LIST;
+	return Collections.<Type>emptyList();
     }
 
     /**
@@ -1434,14 +1466,7 @@ public abstract class TypeSystem_c implements TypeSystem
 	return env(context).hasMethod(t, mi);
     }
 
-    /**
-     * Returns true iff <p1> throws fewer exceptions than <p2>.
-     */
-    public <T extends ProcedureDef> boolean throwsSubset(ProcedureInstance<T> p1, ProcedureInstance<T> p2) {
-	assert_(p1);
-	assert_(p2);
-	return ((ProcedureInstance_c<T>) p1).throwsSubset(p2);
-    }
+    
 
     /** Return true if t overrides mi */
     public boolean hasFormals(ProcedureInstance<? extends ProcedureDef> pi, List<Type> formalTypes, Context context) {
@@ -1584,13 +1609,13 @@ public abstract class TypeSystem_c implements TypeSystem
     protected final PrimitiveType DOUBLE_  = createPrimitive(Name.make("double"));
 
     public Object placeHolder(TypeObject o) {
-	return placeHolder(o, Collections.EMPTY_SET);
+	return placeHolder(o, Collections.<TypeObject>emptySet());
     }
 
-    public Object placeHolder(TypeObject o, Set roots) {
+    public Object placeHolder(TypeObject o, Set<TypeObject> roots) {
 	assert_(o);
 
-	if (o instanceof Ref_c) {
+	if (o instanceof Ref_c<?>) {
 	    Ref_c<?> ref = (Ref_c<?>) o;
 
 	    if (ref.get() instanceof ClassDef) {
@@ -1608,7 +1633,7 @@ public abstract class TypeSystem_c implements TypeSystem
 
 		TypeSystem_c ts = this;
 		LazyRef<ClassDef> sym = Types.lazyRef(unknownClassDef(), null);
-		Goal resolver = Globals.Scheduler().LookupGlobalTypeDef(sym, name);
+		Goal resolver = extInfo.scheduler().LookupGlobalTypeDef(sym, name);
 		resolver.update(Goal.Status.SUCCESS);
 		sym.setResolver(resolver);
 		return sym;
@@ -1782,7 +1807,7 @@ public abstract class TypeSystem_c implements TypeSystem
      * and the usual class resolvers can't otherwise find them) they
      * should be returned in the set in addition to clazz.
      */
-    public Set getTypeEncoderRootSet(TypeObject t) {
+    public Set<TypeObject> getTypeEncoderRootSet(TypeObject t) {
 	return Collections.singleton(t);
     }
 
@@ -2148,7 +2173,7 @@ public abstract class TypeSystem_c implements TypeSystem
 	    
 	    return superInterfaces;
 	}
-	return Collections.EMPTY_LIST;
+	return Collections.<Type>emptyList();
     }
 
     /**
@@ -2209,7 +2234,7 @@ public abstract class TypeSystem_c implements TypeSystem
     }
 
     protected void initFlags() {
-	flagsForName = new HashMap();
+	flagsForName = new HashMap<String, Flags>();
 	flagsForName.put("public", Flags.PUBLIC);
 	flagsForName.put("private", Flags.PRIVATE);
 	flagsForName.put("protected", Flags.PROTECTED);
@@ -2263,25 +2288,18 @@ public abstract class TypeSystem_c implements TypeSystem
 	return f;
     }
 
-    public Flags flagsForName(String name) {
-	Flags f = (Flags) flagsForName.get(name);
-	if (f == null) {
-	    throw new InternalCompilerError("No flag named \"" + name + "\".");
-	}
-	return f;
-    }
-
     protected String getCreatorStack(int limit) {
         StackTraceElement[] trace = creator.getStackTrace();
-        int size = trace.length < limit ? trace.length : limit;
+        // The first 3 elements will be the factory methods and the constructor
+        int size = trace.length-3 < limit ? trace.length-3 : limit;
         StackTraceElement[] res = new StackTraceElement[size];
         for (int i = 0; i < res.length; i++)
-            res[i] = trace[i];
+            res[i] = trace[i+3];
         return Arrays.toString(res);
     }
 
     public String toString() {
-	return StringUtil.getShortNameComponent(getClass().getName()) + " created at " + getCreatorStack(10);
+	return StringUtil.getShortNameComponent(getClass().getName()) + " created at " + creationTime;
     }
 
 }

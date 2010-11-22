@@ -88,9 +88,7 @@ public class Catch_c extends Stmt_c implements Catch
         TypeSystem ts = tc.typeSystem();
 
 	if (! catchType().isThrowable()) {
-	    throw new SemanticException(
-		"Can only throw subclasses of \"" +
-		ts.Throwable() + "\".", formal.position());
+	    throw new SemanticException("Can only throw subclasses of \"" +ts.Throwable() + "\".", formal.position());
 
 	}
 
@@ -113,7 +111,7 @@ public class Catch_c extends Stmt_c implements Catch
         return formal;
     }
 
-    public List<Term> acceptCFG(CFGBuilder v, List<Term> succs) {
+    public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
         v.visitCFG(formal, body, ENTRY);
         v.visitCFG(body, this, EXIT);
         return succs;

@@ -14,7 +14,6 @@
     <property name="etc" location="${x10.dist.location}/etc"/>
     <property name="config" value="*.cfg"/>
     <property name="lpg.jar" value="lpg.jar"/>
-    <property name="compiler.x10.lib" location="${basedir}/lib" />
     <path id="project.classpath">
         <path refid="mainproject.classpath"/>
         <path refid="lpg.classpath"/>
@@ -37,7 +36,7 @@
     <property environment="env"/>
     <target name="init">
         <tstamp/>
-				<mkdir dir="${build}"/>
+        <mkdir dir="${build}"/>
     </target>
     <target name="clean">
         <delete dir="${build}" failonerror="false"/>
@@ -53,7 +52,7 @@
         </copy>
     </target>
     <target name="check-jar" depends="init">
-        <fileset id="compiler.classes" dir="${build}" includes="org/**,polyglot/**,x10/**,x10cpp/**,x10c/**,x10cuda/**,x10firm/**,data/**" excludes="${jar}"/>
+        <fileset id="compiler.classes" dir="${build}" includes="org/**,polyglot/**,x10/**,x10cpp/**,x10c/**,x10cuda/**,data/**" excludes="${jar}"/>
         <fileset id="constraints.classes" dir="${x10.constraints.location}/classes" includes="x10/constraint/**" excludes="x10/constraint/test/**"/>
         <fileset id="common.classes" dir="${x10.common.location}/classes" includes="x10/**"/>
         <uptodate property="compiler.uptodate" targetfile="${build}/${jar}">
@@ -64,7 +63,7 @@
         </uptodate>
     </target>
     <target name="jar" depends="build,check-jar" unless="compiler.uptodate">
-        <jar jarfile="${build}/${jar}" >
+        <jar jarfile="${build}/${jar}">
             <fileset refid="compiler.classes"/>
             <fileset refid="constraints.classes"/>
             <fileset refid="common.classes"/>
@@ -78,7 +77,7 @@
     </target>
     <target name="build" depends="init,prereq-jars">
         <echo message="${ant.project.name}: ${ant.file}"/>
-        <javac destdir="${build}" source="1.5" target="1.5" debug="on" includes="polyglot/**,x10/**,x10c/**,x10cpp/**,x10cuda/**,x10firm/**" excludes="polyglot/ext/x10/dom/**,polyglot/ext/x10/plugin/**,polyglot/ext/x10/visit/Propagate*AnnotationsVisitor.java">
+        <javac destdir="${build}" source="1.5" target="1.5" debug="on" includes="polyglot/**,x10/**,x10c/**,x10cpp/**,x10cuda/**" excludes="polyglot/ext/x10/dom/**,polyglot/ext/x10/plugin/**,polyglot/ext/x10/visit/Propagate*AnnotationsVisitor.java">
             <src path="${src}"/>
             <classpath refid="project.classpath"/>
         </javac>
@@ -93,9 +92,15 @@
         <condition property="platform" value="win32"><os family="windows"/></condition>
         <condition property="platform" value="linux"><os name="Linux"/></condition>
         <condition property="platform" value="macosx"><os name="Mac OS X"/></condition>
-        <!-- Work around Mac OS's Java reporting x86 as i386 -->
-        <condition property="arch" value="x86" else="${os.arch}"><equals arg1="${os.arch}" arg2="i386"/></condition>
-        <property name="lpg.executable.location" location="${x10.home}/lpg.generator.${platform}_${arch}"/>
+        <condition property="arch" value="x86" else="${os.arch}">
+            <or>
+                <!-- Work around Mac OS's Java reporting x86 as i386 -->
+                <equals arg1="${os.arch}" arg2="i386"/>
+                <!-- Treat amd64 as x86 -->
+                <equals arg1="${os.arch}" arg2="amd64"/>
+            </or>
+        </condition>
+        <property name="lpg.executable.location" location="${lpg.location}.${platform}_${arch}"/>
         <property name="lpg.executable" location="${lpg.executable.location}/lpgexe/lpg-${platform}_${arch}"/>
         <!--
         <echo message="OS: ${os.name} ${os.arch}"/>
@@ -109,6 +114,7 @@
         -->
         <exec dir="${src}/x10/parser" executable="${lpg.executable}" failonerror="true">
             <arg value="-include-directory=${templates.dir};${include.dir};"/>
+            <arg value="-directory-prefix=${src}/"/>
             <arg value="${grammar.file}"/>
         </exec>
     </target>
@@ -150,4 +156,3 @@
       </exec>
     </target>
 </project>
-

@@ -91,9 +91,7 @@ public class Case_c extends Stmt_c implements Case
 	TypeSystem ts = tc.typeSystem();
 
 	if (! ts.isImplicitCastValid(expr.type(), ts.Int(), tc.context()) && ! ts.isImplicitCastValid(expr.type(), ts.Char(), tc.context())) {
-	    throw new SemanticException(
-		"Case label must be an byte, char, short, or int.",
-		position());
+	    throw new SemanticException("Case label must be an byte, char, short, or int.",position());
 	}
     
 	return this;
@@ -117,8 +115,7 @@ public class Case_c extends Stmt_c implements Case
             }
         }
         
-        throw new SemanticException("Case label must be an integral constant.",
-                                    position());
+        throw new SemanticException("Case label must be an integral constant.",position());
     }
 
     public Type childExpectedType(Expr child, AscriptionVisitor av) {
@@ -157,7 +154,7 @@ public class Case_c extends Stmt_c implements Case
         return null;
     }
 
-    public List<Term> acceptCFG(CFGBuilder v, List<Term> succs) {
+    public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
         if (expr != null) {
             v.visitCFG(expr, this, EXIT);
         }

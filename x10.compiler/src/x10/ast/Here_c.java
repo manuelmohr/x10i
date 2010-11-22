@@ -57,7 +57,7 @@ public class Here_c extends Expr_c
     /**
      * Visit this term in evaluation order.
      */
-    public List acceptCFG(CFGBuilder v, List succs) {
+    public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
         return succs;
     }
     
@@ -82,7 +82,7 @@ public class Here_c extends Expr_c
 		if (h != null) {
 			CConstraint cc = new CConstraint();
 			try {
-				cc.addSelfBinding(xc.currentPlaceTerm());
+				cc.addSelfBinding(h);
 			}
 			catch (XFailure e) {
 				throw new SemanticException("Constraint on here is inconsistent; " + e.getMessage(), position());

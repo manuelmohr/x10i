@@ -11,7 +11,6 @@
 
 package x10.ast;
 
-import java.util.Iterator;
 import java.util.List;
 
 import polyglot.ast.Import;
@@ -37,14 +36,10 @@ public class X10SourceFile_c extends SourceFile_c {
 		// Override method to not check for duplicate declarations. This will be
 		// caught during type building. But, we need to allow duplicates to handle
 		// overloaded typedefs.
-		for (Iterator i = decls.iterator(); i.hasNext();) {
-			TopLevelDecl d = (TopLevelDecl) i.next();
-
+		for (TopLevelDecl d : decls) {
 			if (d.flags().flags().isPublic()) {
 				if (hasPublic) {
-					throw new SemanticException(
-							"The source contains more than one public declaration.",
-							d.position());
+					throw new SemanticException("The source contains more than one public declaration.",d.position());
 				}
 
 				hasPublic = true;

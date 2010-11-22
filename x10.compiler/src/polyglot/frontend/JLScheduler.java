@@ -50,8 +50,10 @@ public class JLScheduler extends Scheduler {
         goals.add(ReassembleAST(job));
         
         goals.add(ConformanceChecked(job));
-        goals.add(ReachabilityChecked(job));
-        goals.add(ExceptionsChecked(job));
+
+       // Data-flow analyses
+        goals.add(ReachabilityChecked(job)); // This must be the first dataflow analysis (see DataFlow.reportCFG_Errors)
+       // goals.add(ExceptionsChecked(job));
         goals.add(ExitPathsChecked(job));
         goals.add(InitializationsChecked(job));
         goals.add(ConstructorCallsChecked(job));
@@ -87,6 +89,7 @@ public class JLScheduler extends Scheduler {
         TypeSystem ts = extInfo.typeSystem();
         NodeFactory nf = extInfo.nodeFactory();
         return new BarrierGoal("TypesInitializedForCommandLineBarrier", commandLineJobs()) {
+            private static final long serialVersionUID = 3109663087276641223L;
             public Goal prereqForJob(Job job) {
                 return PreTypeCheck(job);
             }
@@ -176,9 +179,10 @@ public class JLScheduler extends Scheduler {
     	}
     	else {
     		return new SourceGoal_c("Serialized", job) {
-    			public boolean runTask() {
-    				return true;
-    			}
+    		    private static final long serialVersionUID = -8593991322883156651L;
+    		    public boolean runTask() {
+    		        return true;
+    		    }
             }.intern(this);
         }
     }
@@ -212,17 +216,20 @@ public class JLScheduler extends Scheduler {
     
     public Goal EnsureNoErrors(Job job) {
            return new SourceGoal_c("EnsureNoErrors", job) {
+               private static final long serialVersionUID = -4163660223226023837L;
                public boolean runTask() {
                    return !job.reportedErrors();
                }
            }.intern(this);
        }
 
-    public static class LookupGlobalType extends TypeObjectGoal_c<Type> {
+    public class LookupGlobalType extends TypeObjectGoal_c<Type> {
+        private static final long serialVersionUID = 3031200221165141846L;
+
         public LookupGlobalType(String name, Ref<Type> v) {
             super(name, v);
             ref = Types.lazyRef(null);
-			Goal g = Globals.Scheduler().LookupGlobalTypeDef(ref, null);
+			Goal g = JLScheduler.this.LookupGlobalTypeDef(ref, null);
 			ref.setResolver(g);
         }
         
@@ -235,7 +242,9 @@ public class JLScheduler extends Scheduler {
         }
     }
 
-    protected static class LookupGlobalTypeDefAndSetFlags extends TypeObjectGoal_c<ClassDef> {
+    protected class LookupGlobalTypeDefAndSetFlags extends TypeObjectGoal_c<ClassDef> {
+        private static final long serialVersionUID = -1038006362196297872L;
+
         protected QName className;
         protected Flags flags;
 
@@ -270,7 +279,7 @@ public class JLScheduler extends Scheduler {
         		}
         	}
         	catch (SemanticException e) {
-        		Globals.Compiler().errorQueue().enqueue(ErrorInfo.SEMANTIC_ERROR, e.getMessage(), e.position());
+        		extInfo.compiler().errorQueue().enqueue(ErrorInfo.SEMANTIC_ERROR, e.getMessage(), e.position());
         	}
         	return false;
         }

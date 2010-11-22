@@ -50,13 +50,13 @@ public class AmbQualifierNode_c extends Node_c implements AmbQualifierNode
 	return this.qual;
     }
 
-    public AmbQualifierNode qual(Prefix qual) {
+    protected AmbQualifierNode qual(Prefix qual) {
 	AmbQualifierNode_c n = (AmbQualifierNode_c) copy();
 	n.qual = qual;
 	return n;
     }
 
-    public AmbQualifierNode qualifier(LazyRef<Qualifier> qualifier) {
+    protected AmbQualifierNode qualifierRef(LazyRef<Qualifier> qualifier) {
 	AmbQualifierNode_c n = (AmbQualifierNode_c) copy();
 	n.qualifier = qualifier;
 	return n;
@@ -81,8 +81,8 @@ public class AmbQualifierNode_c extends Node_c implements AmbQualifierNode
 
     public Node buildTypes(TypeBuilder tb) throws SemanticException {
         TypeSystem ts = tb.typeSystem();
-        LazyRef<Qualifier> sym = Types.<Qualifier>lazyRef(ts.unknownQualifier(position()), new SetResolverGoal(tb.job()));
-        return qualifier(sym);
+        LazyRef<Qualifier> sym = Types.<Qualifier>lazyRef(ts.unknownQualifier(position()), new SetResolverGoal(tb.job()).intern(tb.job().extensionInfo().scheduler()));
+        return qualifierRef(sym);
     }
     
 	public Qualifier qualifier() {
@@ -93,7 +93,7 @@ public class AmbQualifierNode_c extends Node_c implements AmbQualifierNode
 		final LazyRef<Qualifier> r = (LazyRef<Qualifier>) qualifierRef();
 		TypeChecker tc = new TypeChecker(v.job(), v.typeSystem(), v.nodeFactory(), v.getMemo());
 		tc = (TypeChecker) tc.context(v.context().freeze());
-		r.setResolver(new TypeCheckTypeGoal(parent, this, tc, r, false));
+		r.setResolver(new TypeCheckFragmentGoal<Qualifier>(parent, this, tc, r, false));
 	}
 
 	public Node disambiguate(ContextVisitor ar) throws SemanticException {
@@ -109,9 +109,7 @@ public class AmbQualifierNode_c extends Node_c implements AmbQualifierNode
 				return n;
 			}
 
-			ex = new SemanticException("Could not find type or package \"" +
-					(qual == null ? name.toString() : qual.toString() + "." + name.toString()) +
-					"\".", position());
+			ex = new SemanticException("Could not find type or package \"" + (qual == null ? name.toString() : qual.toString() + "." + name.toString()) + "\".", position());
 		}
 		catch (SemanticException e) {
 			ex = e;

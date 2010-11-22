@@ -80,10 +80,10 @@ import x10.constraint.XTerms;
 import x10.constraint.XVar;
 import x10.extension.X10Del;
 import x10.types.FunctionType;
+import x10.types.ParameterType;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
 import x10.types.X10Context;
-import x10.types.X10Context_c;
 import x10.types.X10Def;
 import x10.types.X10FieldInstance;
 import x10.types.X10Flags;
@@ -103,166 +103,151 @@ import x10.visit.X10TypeChecker;
  *
  */
 public class Synthesizer {
-	
+
 	X10TypeSystem xts;
 	X10NodeFactory xnf;
 	public Synthesizer(X10NodeFactory nf, X10TypeSystem ts) {
-		xts=ts;
-		xnf=nf;
+		xts = ts;
+		xnf = nf;
 	}
-	
 
-	  /**
-   * Create a synthetic MethodDecl from the given data and return
-   * a new Class with this MethodDecl added in. No duplicate method
-   * checks will be performed. It is up to the user to make sure
-   * the constructed method will not duplicate an existing method.
-   * 
-   * Should be called after the class has been typechecked.
-   * @param ct  -- The class to which this code has to be added
-   * @param flags -- The flags for the method
-   * @param name -- The name of the method
-   * @param fmls -- A list of LocalDefs specifying the parameters to the method.
-   * @param returnType -- The return type of this method.
-   * @param trow  -- The types of throwables from the method.
-   * @param block -- The body of the method
-   * @return  this, with the method added.
-   * 
-   * TODO: Ensure that type parameters and a guard can be supplied as well.
-   */
-	
-	 public  X10ClassDecl_c addSyntheticMethod(X10ClassDecl_c ct, Flags flags, 
-			 Name name, List<LocalDef> fmls, 
-			 Type returnType, List<Type> trow, Block block) {
-		 assert ct.classDef() != null;
-	     MethodDecl result = makeSyntheticMethod(ct, flags, name,fmls, returnType, trow, block);
-	     ClassBody b = ct.body();
-	    	b = b.addMember(result);
-	    	ct.classDef().addMethod(result.methodDef());
-	    	return (X10ClassDecl_c) ct.body(b);
-	 }
-	 
-	  /**
-	   * Create a synthetic MethodDecl from the given data and return
-	   * the MethodDecl 
-	   * Should be called after the class has been type-checked.
-	   * 
-	   * @param ct  -- The class to which this code has to be added
-	   * @param flags -- The flags for the method
-	   * @param name -- The name of the method
-	   * @param fmls -- A list of LocalDefs specifying the parameters to the method.
-	   * @param returnType -- The return type of this method.
-	   * @param trow  -- The types of throwables from the method.
-	   * @param block -- The body of the method
-	   * @return  this, with the method added.
-	   * 
-	   */
-	public  MethodDecl makeSyntheticMethod(X10ClassDecl_c ct, Flags flags, 
-			 Name name, List<LocalDef> fmls, 
-			 Type returnType, List<Type> trow, Block block) {
-	    	
-	    	
-	    	Position CG = X10NodeFactory_c.compilerGenerated(ct.body());
-	    	List<Expr> args = new ArrayList<Expr>(); //FIXME: what's the usage of the args?
-	    	List<Ref<? extends Type>> argTypes = new ArrayList<Ref<? extends Type>>();
-	    	List<Formal> formals = new ArrayList<Formal>(fmls.size());
-	    	for (LocalDef f : fmls) {
-	    		Id id = xnf.Id(CG, f.name()); 
+	/**
+	 * Create a synthetic MethodDecl from the given data and return
+	 * a new Class with this MethodDecl added in. No duplicate method
+	 * checks will be performed. It is up to the user to make sure
+	 * the constructed method will not duplicate an existing method.
+	 * 
+	 * Should be called after the class has been typechecked.
+	 * @param ct  -- The class to which this code has to be added
+	 * @param flags -- The flags for the method
+	 * @param typeParameters -- The type parameters of the method.
+	 * @param name -- The name of the method
+	 * @param fmls -- A list of LocalDefs specifying the parameters to the method.
+	 * @param returnType -- The return type of this method.
+	 * @param block -- The body of the method
+	 * @return this, with the method added.
+	 * 
+	 * TODO: Ensure that a guard can be supplied as well.
+	 */
+	public X10ClassDecl_c addSyntheticMethod(X10ClassDecl_c ct, Flags flags, List<ParameterType> typeParameters,
+	        Name name, List<LocalDef> fmls, Type returnType, Block block)
+	{
+	    assert ct.classDef() != null;
+	    MethodDecl result = makeSyntheticMethod(ct, flags, typeParameters,name, fmls, returnType, block);
+	    ClassBody b = ct.body();
+	    b = b.addMember(result);
+	    ct.classDef().addMethod(result.methodDef());
+	    return (X10ClassDecl_c) ct.body(b);
+	}
 
-	    		Formal ff = xnf.Formal(CG,xnf.FlagsNode(CG, Flags.NONE), 
-	    				xnf.CanonicalTypeNode(CG, f.type()),
-	    				id);
-	    		Local loc = xnf.Local(CG, id);
-	    		LocalDef li = xts.localDef(CG, ff.flags().flags(), ff.type().typeRef(), id.id());
-	    		ff = ff.localDef(li);
-	    		loc = loc.localInstance(li.asInstance());
-	    		loc = (Local) loc.type(li.asInstance().type());
-	    		formals.add(ff);
-	    		args.add(loc);
-	    		argTypes.add(li.type());
-	    	}
-	    	FlagsNode newFlags = xnf.FlagsNode(CG, flags);
-	    	TypeNode rt = xnf.CanonicalTypeNode(CG, returnType);
+	/**
+	 * Create a synthetic MethodDecl from the given data and return
+	 * the MethodDecl 
+	 * Should be called after the class has been type-checked.
+	 * 
+	 * @param ct  -- The class to which this code has to be added
+	 * @param flags -- The flags for the method
+	 * @param typeParameters -- The type parameters of the method.
+	 * @param name -- The name of the method
+	 * @param fmls -- A list of LocalDefs specifying the parameters to the method.
+	 * @param returnType -- The return type of this method.
+	 * @param block -- The body of the method
+	 * @return the newly constructed method.
+	 * 
+	 * TODO: Ensure that a guard can be supplied as well.
+	 */
+	public MethodDecl makeSyntheticMethod(X10ClassDecl_c ct, Flags flags, List<ParameterType> typeParameters,
+	        Name name, List<LocalDef> fmls, Type returnType, Block block)
+	{
+	    Position CG = X10NodeFactory_c.compilerGenerated(ct.body());
 
-
-	    	List<TypeNode> throwTypeNodes = new ArrayList<TypeNode>();
-	    	List<Ref<? extends Type>> throwTypes = new ArrayList<Ref<? extends Type>>();
-	    	for (Type  t: trow) {
-	    		Ref<Type> tref = Types.ref(t);
-	    		throwTypes.add(tref);
-	    		throwTypeNodes.add(xnf.CanonicalTypeNode(CG, t));
-	    	}
-
-	    	// Create the method declaration node and the CI.
-	    	MethodDecl result = 
-	    		xnf.MethodDecl(CG, newFlags, rt, xnf.Id(CG,name), formals, throwTypeNodes, block);
-
-	    	MethodDef rmi = xts.methodDef(CG, Types.ref(ct.classDef().asType()), 
-	    			newFlags.flags(), rt.typeRef(), name, argTypes, throwTypes);
-	    	
-	    	result = result.methodDef(rmi);
-	    return result;
+	    List<TypeParamNode> typeParamNodes = new ArrayList<TypeParamNode>();
+	    for (ParameterType pt : typeParameters) {
+	        typeParamNodes.add(xnf.TypeParamNode(CG, xnf.Id(CG, pt.name())).type(pt));
 	    }
-	 
-	 public static XTerm makeProperty(Type type, XVar receiver, String name) {
-		 X10FieldInstance fi = 
-				X10TypeMixin.getProperty(type, Name.make(name));
-		 if (fi == null)
-			 return null;
-			XName field = XTerms.makeName(fi.def(), 
-					Types.get(fi.def().container()) 
-					+ "#" + fi.name().toString());
-			return XTerms.makeField(receiver, field);
-			
-	 }
-	 
-	 public XTerm makePointRankTerm(XVar receiver) {
-		 return makeProperty(xts.Point(), receiver, "rank");
-	 }
+	    List<Ref<? extends Type>> argTypes = new ArrayList<Ref<? extends Type>>();
+	    List<Formal> formals = new ArrayList<Formal>(fmls.size());
+	    List<LocalDef> formalNames = new ArrayList<LocalDef>(fmls.size());
+	    for (LocalDef f : fmls) {
+	        Id id = xnf.Id(CG, f.name());
+	        Formal ff = xnf.Formal(CG,xnf.FlagsNode(CG, Flags.NONE),
+	                xnf.CanonicalTypeNode(CG, f.type()), id);
+	        LocalDef li = xts.localDef(CG, ff.flags().flags(), ff.type().typeRef(), id.id());
+	        ff = ff.localDef(li);
+	        formals.add(ff);
+	        formalNames.add(li);
+	        argTypes.add(li.type());
+	    }
+	    FlagsNode newFlags = xnf.FlagsNode(CG, flags);
+	    TypeNode rt = xnf.CanonicalTypeNode(CG, returnType);
 
-	   public XTerm makeRegionRankTerm(XVar receiver) {
-	         return makeProperty(xts.Region(), receiver, "rank");
-	     }
+	    // Create the method declaration node and the CI.
+	    MethodDecl result = 
+	        xnf.X10MethodDecl(CG, newFlags, rt, xnf.Id(CG,name), typeParamNodes, formals, null, null, block);
 
-	 public XTerm makeRectTerm(XVar receiver) {
-		 return makeProperty(xts.Region(), receiver, "rect");
-	 }
-	
-	 public Type addRectConstraint(Type type, XVar receiver) {
-			XTerm v = makeRectTerm(receiver);
-			return X10TypeMixin.addTerm(type, v);
-		 
-	 }
-	 public Type addRectConstraintToSelf(Type type) {
-	     XVar receiver = X10TypeMixin.self(type);
-	     if (receiver == null) {
-	         CConstraint c = new CConstraint();
-	         type = X10TypeMixin.xclause(type, c);
-	         receiver = c.self();
-	     }
-         XTerm v = makeRectTerm(receiver);
-         return X10TypeMixin.addTerm(type, v);
-	 }
+	    MethodDef rmi = xts.methodDef(CG, Types.ref(ct.classDef().asType()), 
+	            newFlags.flags(), rt.typeRef(), name, typeParameters, argTypes, ct.classDef().thisVar(), formalNames, null, null, null, null);
 
-	 /*public Type addRankConstraint(Type type, XVar receiver, int n, X10TypeSystem ts) {
-			XTerm v = makeRegionRankTerm(receiver);
-			XTerm rank = XTerms.makeLit(new Integer(n));
-			return X10TypeMixin.addBinding(type, v, rank);
-		 
-	 }
-	 public Type addRankConstraintToSelf(Type type,  int n, X10TypeSystem ts) {
-		 XVar receiver = X10TypeMixin.self(type);
-		 if (receiver == null) {
-			 CConstraint c = new CConstraint();
-			 type = X10TypeMixin.xclause(type, c);
-			 receiver = c.self();
-		 }
-		 XTerm v = makeRegionRankTerm(receiver);
-		 XTerm rank = XTerms.makeLit(new Integer(n));
-		 return X10TypeMixin.addBinding(type, v, rank);
+	    result = result.methodDef(rmi);
+	    return result;
+	}
 
-	 }*/
-	 
+	public static XTerm makeProperty(Type type, XVar receiver, String name) {
+	    X10FieldInstance fi = X10TypeMixin.getProperty(type, Name.make(name));
+	    if (fi == null)
+	        return null;
+	    XName field = XTerms.makeName(fi.def(), Types.get(fi.def().container()) + "#" + fi.name().toString());
+	    return XTerms.makeField(receiver, field);
+	}
+
+	public XTerm makePointRankTerm(XVar receiver) {
+	    return makeProperty(xts.Point(), receiver, "rank");
+	}
+
+	public XTerm makeRegionRankTerm(XVar receiver) {
+	    return makeProperty(xts.Region(), receiver, "rank");
+	}
+
+	public XTerm makeRectTerm(XVar receiver) {
+	    return makeProperty(xts.Region(), receiver, "rect");
+	}
+
+	public Type addRectConstraint(Type type, XVar receiver) {
+	    XTerm v = makeRectTerm(receiver);
+	    return X10TypeMixin.addTerm(type, v);
+	}
+
+	public Type addRectConstraintToSelf(Type type) {
+	    XVar receiver = X10TypeMixin.self(type);
+	    if (receiver == null) {
+	        CConstraint c = new CConstraint();
+	        type = X10TypeMixin.xclause(type, c);
+	        receiver = c.self();
+	    }
+	    XTerm v = makeRectTerm(receiver);
+	    return X10TypeMixin.addTerm(type, v);
+	}
+
+	/*
+	public Type addRankConstraint(Type type, XVar receiver, int n, X10TypeSystem ts) {
+	    XTerm v = makeRegionRankTerm(receiver);
+	    XTerm rank = XTerms.makeLit(new Integer(n));
+	    return X10TypeMixin.addBinding(type, v, rank);
+	}
+
+	public Type addRankConstraintToSelf(Type type,  int n, X10TypeSystem ts) {
+	    XVar receiver = X10TypeMixin.self(type);
+	    if (receiver == null) {
+	        CConstraint c = new CConstraint();
+	        type = X10TypeMixin.xclause(type, c);
+	        receiver = c.self();
+	    }
+	    XTerm v = makeRegionRankTerm(receiver);
+	    XTerm rank = XTerms.makeLit(new Integer(n));
+	    return X10TypeMixin.addBinding(type, v, rank);
+	}
+	*/
+
 	 /**
 	  * If formal = p(x) construct
 	  *  for|foreach|ateach ( var _gen = low; _gen <= high; _gen++) {
@@ -568,8 +553,8 @@ public class Synthesizer {
 			Name name,
 			Type returnType,
 			X10Context xc) throws SemanticException {
-		return makeStaticCall(pos, receiver, name, Collections.EMPTY_LIST, 
-				Collections.EMPTY_LIST, returnType, xc);
+		return makeStaticCall(pos, receiver, name, Collections.<TypeNode>emptyList(), 
+				Collections.<Expr>emptyList(), returnType, xc);
 	}
 	
 	public Call makeStaticCall(Position pos, 
@@ -578,7 +563,7 @@ public class Synthesizer {
 			List<Expr> args,
 			Type returnType,
 			X10Context xc) throws SemanticException {
-		return makeStaticCall(pos, receiver, name, Collections.EMPTY_LIST, args, returnType, xc);
+		return makeStaticCall(pos, receiver, name, Collections.<TypeNode>emptyList(), args, returnType, xc);
 	}
 
 	public Call makeStaticCall(Position pos, 
@@ -588,7 +573,7 @@ public class Synthesizer {
 			Type returnType,
 			List<Type> argTypes,
 			X10Context xc) throws SemanticException {
-		return makeStaticCall(pos, receiver, name, Collections.EMPTY_LIST, args, 
+		return makeStaticCall(pos, receiver, name, Collections.<TypeNode>emptyList(), args, 
 				returnType, argTypes, xc);
 	}
 	public Call makeStaticCall(Position pos, Type receiver, Name name,
@@ -607,8 +592,8 @@ public class Synthesizer {
 	 * @param name
 	 * @param typeArgsN
 	 * @param args
-	 * @param xnf
-	 * @param xts
+	 * @param returnType
+	 * @param argTypes
 	 * @param xc
 	 * @return
 	 * @throws SemanticException if no method can be located with this data
@@ -719,11 +704,11 @@ public class Synthesizer {
 	 */
 	
 	public Closure makeClosure(Position pos, Type retType, Block body, X10Context context, List<X10ClassType> annotations) {
-		return makeClosure(pos, retType, Collections.EMPTY_LIST, body, context, annotations);
+		return makeClosure(pos, retType, Collections.<Formal>emptyList(), body, context, annotations);
 	}
 	 
     public Closure makeClosure(Position pos, Type retType, Block body, X10Context context) {
-        return makeClosure(pos, retType, Collections.EMPTY_LIST, body, context);
+        return makeClosure(pos, retType, Collections.<Formal>emptyList(), body, context);
     }
 	 
 	public Block toBlock(Stmt body) {
@@ -737,7 +722,7 @@ public class Synthesizer {
 			c.addBinding(id, XTerms.makeLit(0));
 			Type type = X10TypeMixin.xclause(xts.Place(), c);
 			return makeStaticField(Position.COMPILER_GENERATED, xts.Place(),
-					Name.make("FIRST_PLACE"), type, new X10Context_c(xts));
+					Name.make("FIRST_PLACE"), type, (X10Context) xts.emptyContext());
 		} catch (XFailure z) {
 			// wont happen
 		} catch (SemanticException z) {
@@ -841,7 +826,7 @@ public class Synthesizer {
      *            the inner classes to be inserted into the class
      * @return A newly created class with inner classes as members
      */
-    public X10ClassDecl addInnerClasses(X10ClassDecl cDecl, List<X10ClassDecl> innerClasses) {
+    public static X10ClassDecl addNestedClasses(X10ClassDecl cDecl, List<X10ClassDecl> innerClasses) {
 
         List<ClassMember> cMembers = new ArrayList<ClassMember>();
         ClassBody body = cDecl.body();
@@ -851,9 +836,9 @@ public class Synthesizer {
 
         for (X10ClassDecl icDecl : innerClasses) {
             X10ClassDef icDef = (X10ClassDef) icDecl.classDef();
-            icDef.kind(ClassDef.MEMBER);
+//            icDef.kind(ClassDef.MEMBER);
             icDef.setPackage(cDef.package_());
-            icDef.outer(Types.<ClassDef> ref(cDef));
+//            icDef.outer(Types.<ClassDef> ref(cDef));
 
             cMembers.add(icDecl);
             cDef.addMemberClass(Types.<ClassType> ref(icDef.asType()));
@@ -869,7 +854,7 @@ public class Synthesizer {
      * @param methods The methods to be inserted in
      * @return A newly created class with methods as members
      */
-    public X10ClassDecl addMethods(X10ClassDecl cDecl, List<X10MethodDecl> methods){
+    public static X10ClassDecl addMethods(X10ClassDecl cDecl, List<X10MethodDecl> methods){
         List<ClassMember> cm = new ArrayList<ClassMember>();
         cm.addAll(cDecl.body().members());
         cm.addAll(methods);
@@ -937,13 +922,11 @@ public class Synthesizer {
 
         // constructor
         X10ConstructorDecl xd = (X10ConstructorDecl) xnf.ConstructorDecl(p, xnf.FlagsNode(p, X10Flags.PRIVATE), cDecl
-                .name(), fList, Collections.<TypeNode> emptyList(), block);
+                .name(), fList,  block);
         xd.typeParameters(cDecl.typeParameters());
         xd.returnType(xnf.CanonicalTypeNode(p, cDef.asType()));
 
-        ConstructorDef xDef = xts.constructorDef(p, Types.ref(cDef.asType()), X10Flags.PRIVATE, ftList, Collections
-                .<Ref<? extends Type>> emptyList());
-
+        ConstructorDef xDef = xts.constructorDef(p, Types.ref(cDef.asType()), X10Flags.PRIVATE, ftList);
         return (X10ConstructorDecl) xd.constructorDef(xDef);
     }
 
@@ -997,7 +980,6 @@ public class Synthesizer {
                 xnf.FlagsNode(p, X10Flags.PUBLIC),
                 cDecl.name(),
                 fList,                              // formal types
-                Collections.<TypeNode>emptyList(),  // throw types
                 block);
         xd.typeParameters(cDecl.typeParameters());
         xd.returnType(xnf.CanonicalTypeNode(p, cDef.asType()));
@@ -1005,8 +987,8 @@ public class Synthesizer {
         ConstructorDef xDef = xts.constructorDef(p,
                 Types.ref(cDef.asType()),
                 X10Flags.PUBLIC,
-                frList,                                         // formal types
-                Collections.<Ref<? extends Type>>emptyList());  // throw types
+                frList                                         // formal types
+                );  // throw types
 
         List<ClassMember> cm = new ArrayList<ClassMember>();
         ClassBody cb = cDecl.body();
@@ -1112,7 +1094,7 @@ public class Synthesizer {
 
         // Find the right super constructor: def (args)
         Type sType = cDecl.superClass().type();
-        Type scType = PlaceChecker.AddIsHereClause(sType, context);
+        Type scType = sType; // PlaceChecker.AddIsHereClause(sType, context);
        
         ConstructorDef sDef = xts.findConstructor(sType,    // receiver's type
                 xts.ConstructorMatcher(sType, 
@@ -1202,7 +1184,7 @@ public class Synthesizer {
                 Types.ref(returnType), 
                 name, 
                 formalTypeRefs, 
-                throwTypeRefs,
+             
                 Types.ref(offerType));
         classDef.addMethod(mDef);
         return mDef;
@@ -1226,15 +1208,11 @@ public class Synthesizer {
         X10ClassDef cDef = (X10ClassDef) cDecl.classDef();
         Position p = mDef.position();
         // Method Decl
-        List<TypeNode> throwTypeNodes = new ArrayList<TypeNode>();
-        for (Ref<? extends Type> t : mDef.throwTypes()) {
-            throwTypeNodes.add(xnf.CanonicalTypeNode(p, t.get()));
-        }
         FlagsNode flagNode = xnf.FlagsNode(p, mDef.flags());
         TypeNode returnTypeNode = xnf.CanonicalTypeNode(p, mDef.returnType());
         
         MethodDecl mDecl = xnf.MethodDecl(p, flagNode, returnTypeNode, xnf.Id(p, mDef.name()), 
-                formals, throwTypeNodes, body);
+                formals,  body);
 
         mDecl = mDecl.methodDef(mDef); //Need set the method def to the method instance
 
@@ -1314,9 +1292,8 @@ public class Synthesizer {
      */ 
     public X10ClassDecl createClassWithConstructor(Position p, 
                                                    X10ClassDef cDef,
-                                                   X10Context context) throws SemanticException {
-
-       
+                                                   X10Context context) throws SemanticException
+    {
         X10ClassDecl cDecl = createClass(p, cDef, context);
         
         //add default constructor
@@ -1324,7 +1301,6 @@ public class Synthesizer {
                 xnf.FlagsNode(p, X10Flags.PUBLIC),
                 cDecl.name(),
                 Collections.<Formal>emptyList(),
-                Collections.<TypeNode>emptyList(),
                 xnf.Block(p));
         xd.typeParameters(cDecl.typeParameters());
         xd.returnType(xnf.CanonicalTypeNode(p, cDef.asType()));
@@ -1332,7 +1308,6 @@ public class Synthesizer {
         ConstructorDef xDef = xts.constructorDef(p,
                 Types.ref(cDef.asType()),
                 X10Flags.PRIVATE,
-                Collections.<Ref<? extends Type>>emptyList(),
                 Collections.<Ref<? extends Type>>emptyList());
 
         List<ClassMember> cm = new ArrayList<ClassMember>();
@@ -1341,7 +1316,6 @@ public class Synthesizer {
         cDef.addConstructor(xDef);
         
         return (X10ClassDecl) cDecl.body(cb.members(cm));
-      
     }
             
     /**
@@ -1353,9 +1327,7 @@ public class Synthesizer {
      * @param tc
      * @return
      * @throws SemanticException
-     * 
      */
-    
     // TODO: This has to be made to work with nested types.
     public X10CanonicalTypeNode makeCanonicalTypeNodeWithDepExpr(Position pos, Type type, ContextVisitor tc) {
     	X10NodeFactory nf = ((X10NodeFactory) tc.nodeFactory());
@@ -1368,8 +1340,8 @@ public class Synthesizer {
 			return nf.X10CanonicalTypeNode(pos, type);
 		Type base = X10TypeMixin.baseType(type);
 		String typeName = base.toString();
-		List<Type> types = Collections.EMPTY_LIST;
-		List<TypeNode> typeArgs = Collections.EMPTY_LIST;
+		List<Type> types = Collections.<Type>emptyList();
+		List<TypeNode> typeArgs = Collections.<TypeNode>emptyList();
 		if (base instanceof X10ClassType) {
 			X10ClassType xc = (X10ClassType) base;
 			types = xc.typeArguments();
@@ -1389,7 +1361,7 @@ public class Synthesizer {
 		QName qName = QName.make(typeName);
 		QName qual = qName.qualifier();
 		TypeNode tn =  nf.AmbDepTypeNode(pos, qual==null ? null : nf.PrefixFromQualifiedName(pos, qual), 
-				nf.Id(pos, qName.name()), typeArgs, Collections.EMPTY_LIST, dep);
+				nf.Id(pos, qName.name()), typeArgs, Collections.<Expr>emptyList(), dep);
 		TypeBuilder tb = new TypeBuilder(tc.job(),  tc.typeSystem(), nf);
 		tn = (TypeNode) tn.visit(tb);
 		TypeChecker typeChecker = (TypeChecker) new X10TypeChecker(tc.job(), ts, nf,tc.job().nodeMemo()).context(tc.context());
@@ -1397,160 +1369,201 @@ public class Synthesizer {
 		if (! (tn instanceof X10CanonicalTypeNode))
 			assert tn instanceof X10CanonicalTypeNode;
 		return (X10CanonicalTypeNode) tn;
-	
     }
-	   /**
+
+    /**
      * Return a synthesized AST for a constraint. Used when generating code from implicit casts.
-     * @param c -- the constraint
-     * @return -- the expr corresponding to the constraint
-     * @seeAlso -- X10TypeTransltor.constraint(...): it generates a constraint from an AST.
+     * @param c the constraint
+     * @return the expression corresponding to the constraint
+     * @seeAlso X10TypeTranslator.constraint(...): it generates a constraint from an AST.
      */
-	Expr makeExpr(XTerm t, Position pos) {
-		if (t instanceof XField) 
-			return makeExpr((XField) t, pos);
-		if (t instanceof XLit)
-			return makeExpr((XLit) t, pos);
-		if (t instanceof XEquals)
-			return makeExpr((XEquals) t, pos);
-		if (t instanceof XDisEquals)
-			return makeExpr((XDisEquals) t, pos);
-		if (t instanceof XEQV)
-			return makeExpr((XEQV) t, pos); // this must occur before XLocal_c
-		if (t instanceof XLocal)
-			return makeExpr((XLocal) t, pos);
-		if (t instanceof XNot)
-			return makeExpr((XNot) t, pos);
-		if (t instanceof XFormula)
-			return makeExpr((XFormula) t, pos);
-		return null;
-	}
-	Expr makeExpr(XField t, Position pos) {
-		Receiver r = makeExpr(t.receiver(), pos);
-		if (r == null && t.receiver() instanceof XLit) {
-		    Object val = ((XLit) t.receiver()).val();
-		    if (val instanceof QName) {
-		        r = xnf.TypeNodeFromQualifiedName(pos, (QName) val);
-		    }
-		}
-		String str = t.field().toString();
-		int i = str.indexOf("#");
-		//TypeNode tn = null;
-		if (i > 0) {
-		    // FIXME: should we create a type node and cast?  Can we ever access fields of a superclass?
-		    //String typeName = str.substring(0, i);
-		    //tn = xnf.TypeNodeFromQualifiedName(pos,  QName.make(typeName));
-		    str = str.substring(i+1);
-		    if (str.endsWith("()"))
-		        str = str.substring(0, str.length()-2);
-		}
-		return xnf.Field(pos, r, xnf.Id(pos, Name.make(str)));
-	}
-	Expr makeExpr(XEQV t, Position pos) {
-		String str = t.toString();
-		//if (str.startsWith("_place"))
-		//	assert ! str.startsWith("_place") : "Place var: "+str;
-		int i = str.indexOf("#");
-		TypeNode tn = null;
-		if (i > 0) {
-			String typeName = str.substring(0, i);
-			tn = xnf.TypeNodeFromQualifiedName(pos,  QName.make(typeName));
-			str = str.substring(i+1);
-		}
-		if (str.equals("self"))
-			return tn == null ? xnf.Special(pos, X10Special.SELF) : xnf.Special(pos, X10Special.SELF, tn);
-		if (str.equals("this"))
-			return tn == null ? xnf.Special(pos, X10Special.THIS) : xnf.Special(pos, X10Special.THIS, tn);
-		
-		return xnf.AmbExpr(pos, xnf.Id(pos,Name.make(str)));
-	}
-	Expr makeExpr(XLocal t, Position pos) {
-		String str = t.name().toString();
-		//if (str.startsWith("_place"))
-		//	assert ! str.startsWith("_place") : "Place var: "+str;
-		if (str.equals("here"))
-			return xnf.Here(pos);
-		int i = str.indexOf("#");
-		TypeNode tn = null;
-		if (i > 0) {
-			String typeName = str.substring(0, i);
-			tn = xnf.TypeNodeFromQualifiedName(pos,  QName.make(typeName));
-			str = str.substring(i+1);
-		}
-		if (str.equals("self"))
-			return tn == null ? xnf.Special(pos, X10Special.SELF) : xnf.Special(pos, X10Special.SELF, tn);
-		if (str.equals("this"))
-			return tn == null ? xnf.Special(pos, X10Special.THIS) : xnf.Special(pos, X10Special.THIS, tn);
-		return xnf.AmbExpr(pos, xnf.Id(pos,Name.make(str)));
-	}
-	
-	Expr makeExpr(XNot t, Position pos) {
-		return xnf.Unary(pos, makeExpr(t.arguments().get(0), pos), Unary.NOT);
-	}
-	
-	Expr makeExpr(XLit t, Position pos) {
-		Object val = t.val();
-		if (val== null)
-			return xnf.NullLit(pos);
-		if (val instanceof String)
-			return xnf.StringLit(pos, (String) val);
-		if (val instanceof Integer)
-			return xnf.IntLit(pos, IntLit.INT, ((Integer) val).intValue());
-		if (val instanceof Long)
-			return xnf.IntLit(pos, IntLit.LONG, ((Long) val).longValue());
-		if (val instanceof Boolean)
-			return xnf.BooleanLit(pos, ((Boolean) val).booleanValue());
-		if (val instanceof Character)
-			return xnf.CharLit(pos, ((Character) val).charValue());
-		if (val instanceof Float)
-			return xnf.FloatLit(pos, FloatLit.FLOAT, ((Float) val).doubleValue());
-		if (val instanceof Double)
-			return xnf.FloatLit(pos, FloatLit.DOUBLE, ((Double) val).doubleValue());
-		return null;
-	}
-	Expr makeExpr(XEquals t, Position pos) {
-		Expr left = makeExpr(t.arguments().get(0), pos);
-		Expr right = makeExpr(t.arguments().get(1), pos);
-		if (left == null)
-			assert left != null;
-		if (right == null)
-			assert right != null;
-		return xnf.Binary(pos, left, Binary.EQ, right);
-	}
-	Expr makeExpr(XDisEquals t, Position pos) {
-		Expr left = makeExpr(t.arguments().get(0), pos);
-		Expr right = makeExpr(t.arguments().get(1), pos);
-		return xnf.Binary(pos, left, Binary.NE, right);
-	}
-	Expr makeExpr(XFormula t, Position pos) {
-		List<Expr> args = new ArrayList<Expr>();
-		for (XTerm a : t.arguments()) {
-			args.add(makeExpr(a, pos));
-		}
-		Name n = Name.make(t.operator().toString());
-		// FIXME: [IP] Hack to handle the "at" atom added by XTypeTranslator for structs
-		if (n.toString().equals("at")) {
-			Receiver r = args.remove(0);
-			return xnf.Call(pos, r, xnf.Id(pos, n), args);
-		} else {
-			return xnf.Call(pos, xnf.Id(pos, n), args);
-		}
-	}	
-	
-	
-    public List<Expr> makeExpr(CConstraint c, Position pos) {
-    	List<Expr> es = new ArrayList<Expr>();
-    	if (c==null)
-    		return es;
-    	List<XTerm> terms  = c.extConstraints();
-   
-    	for (XTerm term : terms) {
-    		es.add(makeExpr(term, pos));
-    	}
-    	return es;
+    Expr makeExpr(XTerm t, Position pos) {
+        if (t instanceof XField) 
+            return makeExpr((XField) t, pos);
+        if (t instanceof XLit)
+            return makeExpr((XLit) t, pos);
+        if (t instanceof XEquals)
+            return makeExpr((XEquals) t, pos);
+        if (t instanceof XDisEquals)
+            return makeExpr((XDisEquals) t, pos);
+        if (t instanceof XEQV)
+            return makeExpr((XEQV) t, pos); // this must occur before XLocal_c
+        if (t instanceof XLocal)
+            return makeExpr((XLocal) t, pos);
+        if (t instanceof XNot)
+            return makeExpr((XNot) t, pos);
+        if (t instanceof XFormula)
+            return makeExpr((XFormula) t, pos);
+        // FIXME: warn about being unable to translate the term
+        return null;
     }
-    
+
+    TypeNode makeTypeNode(XVar receiver, Position pos) {
+        if (!(receiver instanceof XLit))
+            return null;
+        Object val = ((XLit) receiver).val();
+        if (!(val instanceof QName))
+            return null;
+        return xnf.TypeNodeFromQualifiedName(pos, (QName) val);
+    }
+
+    Expr makeExpr(XField t, Position pos) {
+        if (t.isHidden())
+            return null;
+        Receiver r = makeExpr(t.receiver(), pos);
+        if (r == null) {
+            r = makeTypeNode(t.receiver(), pos);
+        }
+        if (r == null)
+            return null;
+        String str = t.field().toString();
+        int i = str.indexOf("#");
+        //TypeNode tn = null;
+        if (i > 0) {
+            // FIXME: should we create a type node and cast?  Can we ever access fields of a superclass?
+            //String typeName = str.substring(0, i);
+            //tn = xnf.TypeNodeFromQualifiedName(pos,  QName.make(typeName));
+            str = str.substring(i+1);
+            if (str.endsWith("()"))
+                str = str.substring(0, str.length()-2);
+        }
+        return xnf.Field(pos, r, xnf.Id(pos, Name.make(str)));
+    }
+
+    // FIXME: merge with makeExpr(XLocal, Position)
+    Expr makeExpr(XEQV t, Position pos) {
+        String str = t.toString();
+        //if (str.startsWith("_place"))
+        //	assert ! str.startsWith("_place") : "Place var: "+str;
+        int i = str.indexOf("#");
+        TypeNode tn = null;
+        if (i > 0) {
+            String typeName = str.substring(0, i);
+            tn = xnf.TypeNodeFromQualifiedName(pos,  QName.make(typeName));
+            str = str.substring(i+1);
+        }
+        if (str.equals("self") || str.equals("this")) {
+            X10Special.Kind kind = str.equals("self") ? X10Special.SELF : X10Special.THIS;
+            return tn == null ? xnf.Special(pos, kind) : xnf.Special(pos, kind, tn);
+        }
+        return xnf.AmbExpr(pos, xnf.Id(pos,Name.make(str)));
+    }
+
+    // FIXME: merge with makeExpr(XEQV, Position)
+    Expr makeExpr(XLocal t, Position pos) {
+        String str = t.name().toString();
+        //if (str.startsWith("_place"))
+        //	assert ! str.startsWith("_place") : "Place var: "+str;
+        if (str.equals("here"))
+            return xnf.Here(pos);
+        int i = str.indexOf("#");
+        TypeNode tn = null;
+        if (i > 0) {
+            String typeName = str.substring(0, i);
+            tn = xnf.TypeNodeFromQualifiedName(pos,  QName.make(typeName));
+            str = str.substring(i+1);
+        }
+        if (str.equals("self") || str.equals("this")) {
+            X10Special.Kind kind = str.equals("self") ? X10Special.SELF : X10Special.THIS;
+            return tn == null ? xnf.Special(pos, kind) : xnf.Special(pos, kind, tn);
+        }
+        return xnf.AmbExpr(pos, xnf.Id(pos,Name.make(str)));
+    }
+
+    Expr makeExpr(XNot t, Position pos) {
+        Expr expr = makeExpr(t.arguments().get(0), pos);
+        if (expr == null)
+            return null;
+        return xnf.Unary(pos, expr, Unary.NOT);
+    }
+
+    Expr makeExpr(XLit t, Position pos) {
+        Object val = t.val();
+        if (val == null)
+            return xnf.NullLit(pos);
+        if (val instanceof String)
+            return xnf.StringLit(pos, (String) val);
+        if (val instanceof Integer)
+            return xnf.IntLit(pos, IntLit.INT, ((Integer) val).intValue());
+        if (val instanceof Long)
+            return xnf.IntLit(pos, IntLit.LONG, ((Long) val).longValue());
+        if (val instanceof Boolean)
+            return xnf.BooleanLit(pos, ((Boolean) val).booleanValue());
+        if (val instanceof Character)
+            return xnf.CharLit(pos, ((Character) val).charValue());
+        if (val instanceof Float)
+            return xnf.FloatLit(pos, FloatLit.FLOAT, ((Float) val).doubleValue());
+        if (val instanceof Double)
+            return xnf.FloatLit(pos, FloatLit.DOUBLE, ((Double) val).doubleValue());
+        if (val instanceof QName) // will get picked up later
+            return null;
+        // FIXME: warn about being unable to translate the literal
+        return null;
+    }
+
+    Expr makeExpr(XEquals t, Position pos) {
+        Expr left = makeExpr(t.arguments().get(0), pos);
+        Expr right = makeExpr(t.arguments().get(1), pos);
+        if (left == null || right == null)
+            return null;
+        return xnf.Binary(pos, left, Binary.EQ, right);
+    }
+
+    Expr makeExpr(XDisEquals t, Position pos) {
+        Expr left = makeExpr(t.arguments().get(0), pos);
+        Expr right = makeExpr(t.arguments().get(1), pos);
+        if (left == null || right == null)
+            return null;
+        return xnf.Binary(pos, left, Binary.NE, right);
+    }
+
+    Expr makeExpr(XFormula t, Position pos) {
+        List<Expr> args = new ArrayList<Expr>();
+        for (XTerm a : t.arguments()) {
+            Expr e = makeExpr(a, pos);
+            if (e == null)
+                return null;
+            args.add(e);
+        }
+        String op = t.asExprOperator().toString();
+        if (op.equals(XTerms.asExprAndName.toString())) {
+            return xnf.Binary(pos, args.get(0), Binary.COND_AND, args.get(1));
+        }
+        if (op.equals(XTerms.asExprEqualsName.toString())) {
+            return xnf.Binary(pos, args.get(0), Binary.EQ, args.get(1));
+        }
+        if (op.equals(XTerms.asExprDisEqualsName.toString())) {
+            return xnf.Binary(pos, args.get(0), Binary.NE, args.get(1));
+        }
+        if (op.equals(XTerms.asExprNotName.toString())) {
+            return xnf.Unary(pos, Unary.NOT, args.get(0));
+        }
+
+        // FIXME: [IP] Hack to handle the "at" atom added by XTypeTranslator for structs
+        //if (n.toString().equals("at")) {
+        //	Receiver r = args.remove(0);
+        //	return xnf.Call(pos, r, xnf.Id(pos, n), args);
+        //} else {
+            return xnf.Call(pos, xnf.Id(pos, Name.make(op)), args);
+        //}
+    }
+
+    public List<Expr> makeExpr(CConstraint c, Position pos) {
+        List<Expr> es = new ArrayList<Expr>();
+        if (c==null)
+            return es;
+        List<XTerm> terms  = c.extConstraints();
+
+        for (XTerm term : terms) {
+            Expr e = makeExpr(term, pos);
+            if (e != null)
+                es.add(e);
+        }
+        return es;
+    }
+
     //Some 
-    
+
     /**
      * Get an int value expression
      * @param value
@@ -1601,10 +1614,10 @@ public class Synthesizer {
      */
     public FunctionType simpleFunctionType(Type type, Position pos){        
         return xts.closureType(pos, Types.ref(type),
-                       Collections.EMPTY_LIST,
-                       Collections.EMPTY_LIST,
-                       null, 
-                       Collections.EMPTY_LIST);
+                       Collections.<Ref<? extends Type>>emptyList(),
+                       Collections.<LocalDef>emptyList(),
+                       null
+                      );
     }
     
 }

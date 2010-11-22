@@ -22,13 +22,6 @@ public interface ProcedureInstance<T extends ProcedureDef> extends CodeInstance<
     List<Type> formalTypes();
     ProcedureInstance<T> formalTypes(List<Type> formalTypes);
 
-    /**
-     * List of declared exception types thrown.
-     * @return A list of <code>Type</code>.
-     * @see polyglot.types.Type
-     */
-    List<Type> throwTypes();
-    ProcedureInstance<T> throwTypes(List<Type> throwTypes);
 
     /**
      * Returns a String representing the signature of the procedure.
@@ -47,7 +40,7 @@ public interface ProcedureInstance<T extends ProcedureDef> extends CodeInstance<
      * in terms of method overloading.
      * @param context TODO
      */
-    boolean moreSpecific(ProcedureInstance<T> pi, Context context);
+    boolean moreSpecific(Type ct, ProcedureInstance<T> pi, Context context);
 
     /**
      * Returns true if the procedure has the given arguments.
@@ -55,11 +48,6 @@ public interface ProcedureInstance<T extends ProcedureDef> extends CodeInstance<
      */
     boolean hasFormals(List<Type> arguments, Context context);
 
-    /**
-     * Returns true if the procedure throws a subset of the exceptions
-     * thrown by <code>pi</code>.
-     */
-    boolean throwsSubset(ProcedureInstance<T> pi);
 
     /**
      * Returns true if the procedure can be called with the given arguments.

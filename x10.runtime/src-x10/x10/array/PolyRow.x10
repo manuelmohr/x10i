@@ -30,7 +30,6 @@ import x10.io.Printer;
 public class PolyRow(rank:Int) extends ValRow {
 
     static type PolyRegion(rank:Int) = PolyRegion{self.rank==rank};
-    //static type PolyRegionListBuilder(rank:Int) = PolyRegionListBuilder{self.rank==rank};
     static type PolyRow(rank:Int) = PolyRow{self.rank==rank};
     static type PolyMat(rank:Int) = PolyMat{self.rank==rank};
 
@@ -39,9 +38,9 @@ public class PolyRow(rank:Int) extends ValRow {
     //
 
 
-    def this(as_: ValRail[int])= this(as_, as_.length-1);
+    def this(as_:Array[int](1))= this(as_, as_.size-1);
 
-    private def this(as_: ValRail[int], n:int): PolyRow(n) {
+    private def this(as_:Array[int](1), n:int): PolyRow(n) {
         super(as_);
         property(n);
     }
@@ -82,7 +81,7 @@ public class PolyRow(rank:Int) extends ValRow {
      * allow for multiplication by positive constant
      */
 
-    global def isParallel(that: PolyRow): boolean {
+    def isParallel(that: PolyRow): boolean {
         for (var i: int = 0; i<cols-1; i++)
             if (this(i)!=that(i))
                 return false;
@@ -95,7 +94,7 @@ public class PolyRow(rank:Int) extends ValRow {
      * non-zero
      */
 
-    global def isRect(): boolean {
+    def isRect(): boolean {
         var nz: boolean = false;
         for (var i: int = 0; i<cols-1; i++) {
             if (this(i)!=0) {
@@ -111,7 +110,7 @@ public class PolyRow(rank:Int) extends ValRow {
      * determine whether point satisfies halfspace
      */
 
-    global def contains(p: Point): boolean {
+    def contains(p: Point): boolean {
         var sum: int = this(rank);
         for (var i: int = 0; i<rank; i++)
             sum += this(i)*p(i);
@@ -129,9 +128,9 @@ public class PolyRow(rank:Int) extends ValRow {
      *   -a0*x0 - ... -ar+1 <=  0
      */
 
-    global def complement(): PolyRow {
+    def complement(): PolyRow {
         val init = (i:Int) => i<rank? -this(i) : -this(rank)+1;
-        val as_ = ValRail.make[int](rank+1, init);
+        val as_ = new Array[int](rank+1, init);
         return new PolyRow(as_);
     }
 
@@ -140,7 +139,7 @@ public class PolyRow(rank:Int) extends ValRow {
      * print a halfspace in equation form
      */
 
-    global def printEqn(ps: Printer, spc: String, row: int) {
+    def printEqn(ps: Printer, spc: String, row: int) {
         var sgn: int = 0;
         var first: boolean = true;
         for (var i: int = 0; i<cols-1; i++) {

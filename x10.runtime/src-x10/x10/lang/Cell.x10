@@ -39,9 +39,8 @@ public final class Cell[T] {
      *
      * @return the String object being constructed by the StringBuilder
      */
-    public global safe def toString() {
-        if (!at(here)) throw new UnsupportedOperationException();
-        return "Cell(" + (this as Cell[T]!).value.toString() + ")";
+    public def toString() {
+        return "Cell(" + this.value.toString() + ")";
     }
 
 
@@ -51,7 +50,7 @@ public final class Cell[T] {
      *
      * @return the current value stored in the Cell.
      */
-    public global def apply() = at (this) value;
+    public def apply() =  value;
 
     /**
      * Set the value stored in the Cell to the new value.
@@ -59,7 +58,7 @@ public final class Cell[T] {
      *
      * @param x the new value
      */
-    public global def apply(x:T) { at (this) value = x; }
+    public def apply(x:T) { value = x; }
 
     /**
      * Set the value stored in the Cell to the new value.
@@ -68,7 +67,7 @@ public final class Cell[T] {
      * @param x the new value
      * @return the new value stored in the Cell.
      */
-    public global def set(x:T) { at (this) value = x; return x; }
+    public def set(x:T) { value = x; return x; }
 
 
     /**
@@ -89,7 +88,7 @@ public final class Cell[T] {
      * @param x the given Cell
      * @return the value stored in the given Cell.
      */
-    public static operator[T](x:Cell[T]) = x();
+    public static operator[V](x:Cell[V]) = x();
 
     /**
      * Create a new Cell with the given value stored in it.
@@ -98,7 +97,7 @@ public final class Cell[T] {
      * @param x the given value
      * @return a new Cell with the given value stored in it.
      */
-    public static operator[T](x:T) = make[T](x);
+    public static operator[W](x:W) = make[W](x);
 }
 
 // vim:tabstop=4:shiftwidth=4:expandtab

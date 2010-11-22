@@ -40,8 +40,6 @@ import x10.types.X10NamedType;
 import x10.types.X10TypeMixin;
 import x10.types.X10TypeSystem;
 import x10.types.checker.PlaceChecker;
-import x10.visit.ExprFlattener;
-import x10.visit.ExprFlattener.Flattener;
 
 
 /** A <code>AtExp </code> is a representation of the X10 at construct:
@@ -58,7 +56,7 @@ public class AtExpr_c extends PlacedClosure_c
 	    super(nf, p, place, returnType, offerType, body);
     }
 
-    public Node typeCheck( ContextVisitor tc ) throws SemanticException {
+    public Node typeCheck(ContextVisitor tc) {
     	AtExpr_c n = (AtExpr_c) super.typeCheck(tc);
     	Type t = n.returnType().type();
     	Context childC = enterChildScope(body, tc.context());

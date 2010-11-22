@@ -15,10 +15,6 @@ import java.lang.reflect.Array;
 import java.util.List;
 
 import x10.core.Any;
-import x10.core.fun.Fun;
-import x10.core.fun.Fun_0_1;
-import x10.core.fun.Fun_0_2;
-import x10.core.fun.VoidFun;
 
 public class RuntimeType<T> implements Type<T> {
 
@@ -31,7 +27,6 @@ public class RuntimeType<T> implements Type<T> {
     public RuntimeType(Class<?> c) {
         this.base = c;
     }
-    
     
     public RuntimeType(Class<?> c, Variance... variances) {
         this.base = c;
@@ -50,7 +45,7 @@ public class RuntimeType<T> implements Type<T> {
     }
     
     public String toString() {
-    	return base.getName();
+        return typeName();
     }
     
     public boolean equals(Object o) {
@@ -66,9 +61,17 @@ public class RuntimeType<T> implements Type<T> {
     
     public boolean isSubtype(Type<?> o) {
         if (this == o) return true;
+        if (o == Types.ANY) return true;
+        if (o == Types.OBJECT) return !Types.isStructType(this);
         if (o instanceof RuntimeType<?>) {
             RuntimeType<?> rt = (RuntimeType<?>) o;
             if (rt.base.isAssignableFrom(base)) {
+                return true;
+            }
+        }
+        if (o instanceof ParameterizedType) {
+            ParameterizedType<?> pt = (ParameterizedType<?>) o;
+            if (pt.getRuntimeType().isSuperType(pt.getParams(), (RuntimeType<?>) this, null)) {
                 return true;
             }
         }
@@ -144,8 +147,8 @@ public class RuntimeType<T> implements Type<T> {
         }
         else if (o instanceof String) {
             // @NativeRep'ed String type (the one with parents info)
-            RuntimeType<String> rtt = (RuntimeType<String>)Types.STR0;
-            return instantiateCheck(params, rtt, (String)o);
+            RuntimeType<?> rtt = (RuntimeType<?>) Types.getNativeRepRTT(o);
+            return instantiateCheck(params, rtt, o);
         }
         else if (o instanceof Number) {
             // @NativeRep'ed numeric type
@@ -155,14 +158,27 @@ public class RuntimeType<T> implements Type<T> {
     }
 
     // e.g. C[T1,T2]:Super[Int, T1] -> C[Int,Double]:Super[Int,Int] 
-    private final boolean instantiateCheck(Type<?>[] params, RuntimeType<String> rtt, String o) {
-        for (Type<?> t : rtt.parents) {
-            if (base.isAssignableFrom(t.getJavaClass())) {
-                if (t instanceof ParameterizedType<?>) {
-                    ParameterizedType<?> pt = (ParameterizedType<?>) t;
-                    Type<?>[] paramsT = pt.getParams();
-                    if (subtypeof(params, pt.getRuntimeType(), paramsT)) {
-                        return true;
+    private final boolean instantiateCheck(Type<?>[] params, RuntimeType<?> rtt, Object o) {
+        if (rtt.parents != null) {
+            for (Type<?> t : rtt.parents) {
+                if (base.isAssignableFrom(t.getJavaClass())) {
+                    if (t instanceof ParameterizedType<?>) {
+                        ParameterizedType<?> pt = (ParameterizedType<?>) t;
+                        Type<?>[] paramsT = pt.getParams();
+                        Type<?>[] newParamsT = new Type<?>[paramsT.length];
+                        for (int i = 0; i < paramsT.length; i ++ ) {
+                            if (paramsT[i] != null && paramsT[i] instanceof UnresolvedType) {
+                                int index = ((UnresolvedType) paramsT[i]).index;
+                                assert(index == -1);
+                                newParamsT[i] = rtt;
+                            }
+                            else {
+                                newParamsT[i] = paramsT[i];
+                            }
+                        }
+                        if (isSuperType(params, pt.getRuntimeType(), newParamsT)) {
+                            return true;
+                        }
                     }
                 }
             }
@@ -172,22 +188,27 @@ public class RuntimeType<T> implements Type<T> {
 
     // e.g. C[T1,T2]:Super[Int, T1] -> C[Int,Double]:Super[Int,Int] 
     private final boolean instantiateCheck(Type<?>[] params, RuntimeType<?> rtt, Any any) {
-        for (Type<?> t : rtt.parents) {
-            if (base.isAssignableFrom(t.getJavaClass())) {
-                if (t instanceof ParameterizedType<?>) {
-                    ParameterizedType<?> pt = (ParameterizedType<?>) t;
-                    Type<?>[] paramsT = pt.getParams();
-                    Type<?>[] newParamsT = new Type<?>[paramsT.length];
-                    for (int i = 0; i < paramsT.length; i ++ ) {
-                        if (paramsT[i] != null && paramsT[i] instanceof UnresolvedType) {
-                            int index = ((UnresolvedType) paramsT[i]).index;
-                            newParamsT[i]= index == -1 ? rtt : any.getParam(index);
+        if (rtt.parents != null) {
+            for (Type<?> t : rtt.parents) {
+                if (base.isAssignableFrom(t.getJavaClass())) {
+                    if (t instanceof ParameterizedType<?>) {
+                        ParameterizedType<?> pt = (ParameterizedType<?>) t;
+                        Type<?>[] paramsT = pt.getParams();
+                        Type<?>[] newParamsT = new Type<?>[paramsT.length];
+                        for (int i = 0; i < paramsT.length; i ++ ) {
+                            if (paramsT[i] != null && paramsT[i] instanceof UnresolvedType) {
+                                int index = ((UnresolvedType) paramsT[i]).index;
+                                newParamsT[i]= index == -1 ? rtt : any.getParam(index);
+                            }
+                            else {
+                                newParamsT[i] = paramsT[i];
+                            }
                         }
-                        else {
-                            newParamsT[i] = paramsT[i];
+                        if (isSuperType(params, pt.getRuntimeType(), newParamsT)) {
+                            return true;
                         }
                     }
-                    if (subtypeof(params, pt.getRuntimeType(), newParamsT)) {
+                    if (t instanceof RuntimeType && equals(t)) {
                         return true;
                     }
                 }
@@ -198,22 +219,27 @@ public class RuntimeType<T> implements Type<T> {
     
     // e.g. C[T1,T2]:Super[Int, T1] -> C[Int,Double]:Super[Int,Int] 
     private final boolean instantiateCheck(Type<?>[] params, RuntimeType<?> rtt, Type<?>[] paramsRTT) {
-        for (Type<?> t : rtt.parents) {
-            if (base.isAssignableFrom(t.getJavaClass())) {
-                if (t instanceof ParameterizedType<?>) {
-                    ParameterizedType<?> pt = (ParameterizedType<?>) t;
-                    Type<?>[] paramsT = pt.getParams();
-                    Type<?>[] newParamsT = new Type<?>[paramsT.length];
-                    for (int i = 0; i < paramsT.length; i ++ ) {
-                        if (paramsT[i] != null && paramsT[i] instanceof UnresolvedType) {
-                            int index = ((UnresolvedType) paramsT[i]).index;
-                            newParamsT[i] = index == -1 ? rtt : paramsRTT[index];
+        if (rtt.parents != null) {
+            for (Type<?> t : rtt.parents) {
+                if (base.isAssignableFrom(t.getJavaClass())) {
+                    if (t instanceof ParameterizedType<?>) {
+                        ParameterizedType<?> pt = (ParameterizedType<?>) t;
+                        Type<?>[] paramsT = pt.getParams();
+                        Type<?>[] newParamsT = new Type<?>[paramsT.length];
+                        for (int i = 0; i < paramsT.length; i ++ ) {
+                            if (paramsT[i] != null && paramsT[i] instanceof UnresolvedType) {
+                                int index = ((UnresolvedType) paramsT[i]).index;
+                                newParamsT[i] = index == -1 ? rtt : paramsRTT[index];
+                            }
+                            else {
+                                newParamsT[i] = paramsT[i];
+                            }
                         }
-                        else {
-                            newParamsT[i] = paramsT[i];
+                        if (isSuperType(params, pt.getRuntimeType(), newParamsT)) {
+                            return true;
                         }
                     }
-                    if (subtypeof(params, pt.getRuntimeType(), newParamsT)) {
+                    if (t instanceof RuntimeType && equals(t)) {
                         return true;
                     }
                 }
@@ -223,19 +249,21 @@ public class RuntimeType<T> implements Type<T> {
     }
     
     // check "type and paramsType" <: "this and params"
-    private final boolean subtypeof(Type<?>[] params, RuntimeType<?> rtt, Type<?>[] paramsType) {
+    final boolean isSuperType(Type<?>[] params, RuntimeType<?> rtt, Type<?>[] paramsType) {
         if (base == rtt.getJavaClass()) {
-            for (int i = 0, s = params.length; i < s; i ++) {
-                switch (variances[i]) {
-                case INVARIANT:
-                    if (!params[i].equals(paramsType[i])) {return false;}
-                    break;
-                case COVARIANT:
-                    if (!paramsType[i].isSubtype(params[i])) {return false;}
-                    break;
-                case CONTRAVARIANT:
-                    if (!params[i].isSubtype(paramsType[i])) {return false;}
-                    break;
+            if (params != null) {
+                for (int i = 0, s = params.length; i < s; i ++) {
+                    switch (variances[i]) {
+                    case INVARIANT:
+                        if (!params[i].equals(paramsType[i])) {return false;}
+                        break;
+                    case COVARIANT:
+                        if (!paramsType[i].isSubtype(params[i])) {return false;}
+                        break;
+                    case CONTRAVARIANT:
+                        if (!params[i].isSubtype(paramsType[i])) {return false;}
+                        break;
+                    }
                 }
             }
             return true;
@@ -248,91 +276,6 @@ public class RuntimeType<T> implements Type<T> {
         }
     }
     
-    public T minValue() {
-        throw new UnsupportedOperationException();
-    }
-    
-    public T maxValue() {
-        throw new UnsupportedOperationException();
-    }
-
-    public T zeroValue() {
-        // null for ref types, otherwise complain
-       /* if (!x10.runtime.impl.java.Configuration.NULL_DEFAULT_VALUE 
-              && Value.class.isAssignableFrom(c)) {
-            throw new UnsupportedOperationException();
-        }*/
-        return null;
-    }
-    
-    public T unitValue() {
-        throw new UnsupportedOperationException();
-    }
-
-    public Fun_0_1<T, T> absOperator() {
-        throw new UnsupportedOperationException();
-    }
-    
-    public Fun_0_1<T, T> scaleOperator(int k) {
-        throw new UnsupportedOperationException();
-    }
-
-    public Fun_0_2<T, T, T> addOperator() {
-        throw new UnsupportedOperationException();
-    }
-
-    public Fun_0_2<T, T, T> andOperator() {
-        throw new UnsupportedOperationException();
-    }
-
-    public Fun_0_2<T, T, T> divOperator() {
-        throw new UnsupportedOperationException();
-    }
-
-    public Fun_0_2<T, T, T> maxOperator() {
-        throw new UnsupportedOperationException();
-    }
-
-    public Fun_0_2<T, T, T> minOperator() {
-        throw new UnsupportedOperationException();
-    }
-
-    public Fun_0_2<T, T, T> modOperator() {
-        throw new UnsupportedOperationException();
-    }
-
-    public Fun_0_2<T, T, T> mulOperator() {
-        throw new UnsupportedOperationException();
-    }
-
-    public Fun_0_1<T, T> negOperator() {
-        throw new UnsupportedOperationException();
-    }
-
-    public Fun_0_1<T, T> notOperator() {
-        throw new UnsupportedOperationException();
-    }
-
-    public Fun_0_2<T, T, T> orOperator() {
-        throw new UnsupportedOperationException();
-    }
-
-    public Fun_0_2<T, T, T> subOperator() {
-        throw new UnsupportedOperationException();
-    }
-
-    public Fun_0_2<T, T, T> xorOperator() {
-        throw new UnsupportedOperationException();
-    }
-
-    public Fun_0_1<T, T> invOperator() {
-        throw new UnsupportedOperationException();
-    }
-
-    public Fun_0_1<T, T> posOperator() {
-        throw new UnsupportedOperationException();
-    }
-
     public Class<?> getJavaClass() {
         return base;
     }
@@ -365,33 +308,32 @@ public class RuntimeType<T> implements Type<T> {
         } else if (name.startsWith("interface ")) {
             name = name.substring("interface ".length());
         }
-        // TODO convert to X10 typename
         return name;
     }
 
-    public final String typeName(Object o) {
-        if (o instanceof Fun) {
-            String str = "(";
-            int i;
-            for (i = 0; i < variances.length - 1; i++) {
+    protected final String typeNameForFun(Object o) {
+        String str = "(";
+        int i;
+        for (i = 0; i < variances.length - 1; i++) {
+            if (i != 0) str += ",";
+            str += ((Any) o).getParam(i).typeName();
+        }
+        str += ")=>";
+        str += ((Any) o).getParam(i).typeName();
+        return str;
+    }
+    protected final String typeNameForVoidFun(Object o) {
+        String str = "(";
+        if (variances != null && variances.length > 0) {
+            for (int i = 0; i < variances.length; i++) {
                 if (i != 0) str += ",";
                 str += ((Any) o).getParam(i).typeName();
             }
-            str += ")=>";
-            str += ((Any) o).getParam(i).typeName();
-            return str;
         }
-        if (o instanceof VoidFun) {
-            String str = "(";
-            if (variances != null && variances.length > 0) {
-                for (int i = 0; i < variances.length; i++) {
-                    if (i != 0) str += ",";
-                    str += ((Any) o).getParam(i).typeName();
-                }
-            }
-            str += ")=>Void";
-            return str;
-        }
+        str += ")=>Void";
+        return str;
+    }
+    protected final String typeNameForOthers(Object o) {
         String str = typeName();
         if (variances != null && variances.length > 0) {
             if (o instanceof Any) {
@@ -404,6 +346,10 @@ public class RuntimeType<T> implements Type<T> {
             }
         }
         return str;
+    }
+    // should be overridden by RTT of all function types
+    public String typeName(Object o) {
+        return typeNameForOthers(o);
     }
     
     // for shortcut

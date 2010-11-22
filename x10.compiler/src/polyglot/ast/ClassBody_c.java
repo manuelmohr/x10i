@@ -14,6 +14,7 @@ import polyglot.main.Report;
 import polyglot.types.*;
 import polyglot.util.*;
 import polyglot.visit.*;
+import x10.errors.Errors;
 
 /**
  * A <code>ClassBody</code> represents the body of a class or interface
@@ -72,7 +73,7 @@ public class ClassBody_c extends Term_c implements ClassBody
         return "{ ... }";
     }
 
-    protected void duplicateFieldCheck(ContextVisitor tc) throws SemanticException {
+    protected void duplicateFieldCheck(ContextVisitor tc) {
         ClassDef type = tc.context().currentClassDef();
 
         ArrayList<FieldDef> l = new ArrayList<FieldDef>(type.fields());
@@ -84,13 +85,13 @@ public class ClassBody_c extends Term_c implements ClassBody
                 FieldDef fj = (FieldDef) l.get(j);
 
                 if (fi.name().equals(fj.name())) {
-                    throw new SemanticException("Duplicate field \"" + fj + "\".", fj.position());
+                    reportDuplicate(fj,tc);
                 }
             }
         }
     }
 
-    protected void duplicateConstructorCheck(ContextVisitor tc) throws SemanticException {
+    protected void duplicateConstructorCheck(ContextVisitor tc) {
         ClassDef type = tc.context().currentClassDef();
         TypeSystem ts = tc.typeSystem();
 
@@ -105,13 +106,13 @@ public class ClassBody_c extends Term_c implements ClassBody
                 ConstructorInstance tj = cj.asInstance();
 
                 if (ti.hasFormals(tj.formalTypes(), tc.context())) {
-                    throw new SemanticException("Duplicate constructor \"" + cj + "\".", cj.position());
+                    reportDuplicate(cj,tc);
                 }
             }
         }
     }
 
-    protected void duplicateMethodCheck(ContextVisitor tc) throws SemanticException {
+    protected void duplicateMethodCheck(ContextVisitor tc) {
         ClassDef type = tc.context().currentClassDef();
 
         TypeSystem ts = tc.typeSystem();
@@ -127,13 +128,13 @@ public class ClassBody_c extends Term_c implements ClassBody
                 MethodInstance tj = mj.asInstance();
 
                 if (ti.isSameMethod(tj, tc.context())) {
-                    throw new SemanticException("Duplicate method \"" + mj + "\".", mj.position());
+                    reportDuplicate(mj,tc);
                 }
             }
         }
     }
 
-    protected void duplicateMemberClassCheck(ContextVisitor tc) throws SemanticException {
+    protected void duplicateMemberClassCheck(ContextVisitor tc) {
         ClassDef type = tc.context().currentClassDef();
 
         ArrayList<Ref<? extends Type>> l = new ArrayList<Ref<? extends Type>>(type.memberClasses());
@@ -146,11 +147,15 @@ public class ClassBody_c extends Term_c implements ClassBody
 
                 if (mi instanceof Named && mj instanceof Named) {
                     if (((Named) mi).name().equals(((Named) mj).name())) {
-                        throw new SemanticException("Duplicate member type \"" + mj + "\".", mj.position());
+                        reportDuplicate(mj,tc);
                     }
                 }
             }
         }
+    }
+    private void reportDuplicate(TypeObject def, ContextVisitor tc) {
+        new Errors.DuplicateMember(def).issue(tc.job());
+
     }
 
     protected boolean isSameMethod(TypeSystem ts,
@@ -158,7 +163,7 @@ public class ClassBody_c extends Term_c implements ClassBody
         return mi.isSameMethod(mj, context);
     }
 
-    public Node conformanceCheck(ContextVisitor tc) throws SemanticException {
+    public Node conformanceCheck(ContextVisitor tc) {
         duplicateFieldCheck(tc);
         duplicateConstructorCheck(tc);
         duplicateMethodCheck(tc);
@@ -206,7 +211,7 @@ public class ClassBody_c extends Term_c implements ClassBody
     /**
      * Visit this term in evaluation order.
      */
-    public List<Term> acceptCFG(CFGBuilder v, List<Term> succs) {
+    public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
         return succs;
     }
 

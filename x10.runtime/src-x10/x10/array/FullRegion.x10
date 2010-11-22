@@ -11,6 +11,8 @@
 
 package x10.array;
 
+import x10.compiler.TempNoInline_0;
+
 /**
  * A full region is the unbounded region that contains all points of its rank
  */
@@ -21,15 +23,29 @@ final class FullRegion extends Region{rect} {
 	if (rank<0) throw new IllegalArgumentException("Rank is negative ("+rank+")");
     }
 
-    public global def isConvex() = true;
-    public global def isEmpty() = false;
-    public global def size():int {
-        throw new IllegalOperationException("Full Region is infinite; size not supported");
+    public def isConvex() = true;
+    public def isEmpty() = false;
+    public def size():int {
+        throw new UnboundedRegionException("size not supported");
     }
-    public global def min() = ValRail.make(rank, (Int)=>Int.MIN_VALUE);
-    public global def max() = ValRail.make(rank, (Int)=>Int.MAX_VALUE);
-    public global def intersection(that: Region(rank)): Region(rank) = that;
-    public global def product(that: Region): Region/*(this.rank+that.rank)*/ {
+    public def indexOf(Point):int {
+        throw new UnboundedRegionException("indexOf not supported");
+    }
+    public def min():(int)=>int {
+        return (i:int) => {
+            if (i<0 || i>=rank) throw new ArrayIndexOutOfBoundsException("min: "+i+" is not a valid rank for "+this);
+            Int.MIN_VALUE
+        };
+    }
+    public def max():(int)=>int {
+        return (i:int) => {
+            if (i<0 || i>=rank) throw new ArrayIndexOutOfBoundsException("max: "+i+" is not a valid rank for "+this);
+            Int.MAX_VALUE
+        };
+    }
+    public def intersection(that: Region(rank)): Region(rank) = that;
+    public def product(that: Region): Region/*(this.rank+that.rank)*/{
+        @TempNoInline_0
         if (that.isEmpty()) {
             return Region.makeEmpty(rank+that.rank);
         } else if (that instanceof FullRegion) {
@@ -38,27 +54,27 @@ final class FullRegion extends Region{rect} {
             val thatMin = (that as RectRegion).min();
             val thatMax = (that as RectRegion).max();
             val newRank = rank+that.rank;
-            val newMin = ValRail.make[int](newRank, (i:int)=>i<rank?Int.MIN_VALUE:thatMin(i-rank));
-            val newMax = ValRail.make[int](newRank, (i:int)=>i<rank?Int.MAX_VALUE:thatMax(i-rank));
-	    return Region.makeRectangular(newMin,newMax);
+            val newMin = new Array[int](newRank, (i:int)=>i<rank?Int.MIN_VALUE:thatMin(i-rank));
+            val newMax = new Array[int](newRank, (i:int)=>i<rank?Int.MAX_VALUE:thatMax(i-rank));
+            return new RectRegion(newMin,newMax);
         } else {
 	    throw new UnsupportedOperationException("haven't implemented FullRegion product with "+that.typeName());
         }
     }
-    public global def projection(axis: int): Region(1) = new FullRegion(1);
-    public global def translate(p:Point(rank)): Region(rank) = this;
-    public global def eliminate(i:Int)= new FullRegion(rank-1);
-    protected global def computeBoundingBox(): Region(rank) = this;
-    public global def contains(that: Region(rank)):Boolean = true;
-    public global def contains(p:Point):Boolean = true;
-    public global safe def toString() = "full(" + rank + ")";
+    public def projection(axis: int): Region(1) = new FullRegion(1);
+    public def translate(p:Point(rank)): Region(rank) = this;
+    public def eliminate(i:Int)= new FullRegion(rank-1);
+    protected def computeBoundingBox(): Region(rank) = this;
+    public def contains(that: Region(rank)):Boolean = true;
+    public def contains(p:Point):Boolean = true;
+    public def toString() = "full(" + rank + ")";
 
 
-    public global def scanners():Iterator[Region.Scanner]! {
-        throw new IllegalOperationException("Full Region is infinite: scanning is not supported");
+    public def scanners():Iterator[Region.Scanner] {
+        throw new UnboundedRegionException("scanners not supported");
     }
 
-    public global def iterator():Iterator[Point(rank)] {
-        throw new IllegalOperationException("Full Region is infinite: iteration is not supported");
+    public def iterator():Iterator[Point(rank)] {
+        throw new UnboundedRegionException("iterator not supported");
     }
 }

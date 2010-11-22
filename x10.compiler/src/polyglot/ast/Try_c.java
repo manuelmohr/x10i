@@ -150,9 +150,7 @@ public class Try_c extends Stmt_c implements Try
             
             // Check if the exception has already been caught.
             if (caught.contains(catchType)) {
-                throw new SemanticException("The exception \"" +
-                                            catchType + "\" has been caught by an earlier catch block.",
-                                            cb.position()); 
+                throw new SemanticException("The exception \"" +catchType + "\" has been caught by an earlier catch block.",cb.position());
             }
             
             caught.add(catchType);
@@ -244,7 +242,7 @@ public class Try_c extends Stmt_c implements Try
         return tryBlock;
     }
 
-    public List<Term> acceptCFG(CFGBuilder v, List<Term> succs) {
+    public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
         // Add edges from the try entry to any catch blocks for Error and
         // RuntimeException.
         TypeSystem ts = v.typeSystem();

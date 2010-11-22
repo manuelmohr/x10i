@@ -82,9 +82,7 @@ public class Do_c extends Loop_c implements Do
         TypeSystem ts = tc.typeSystem();
 
         if (! ts.typeEquals(cond.type(), ts.Boolean(), tc.context())) {
-	    throw new SemanticException(
-		"Condition of do statement must have boolean type.",
-		cond.position());
+	    throw new SemanticException("Condition of do statement must have boolean type.",cond.position());
 	}
 
 	return this;
@@ -119,7 +117,7 @@ public class Do_c extends Loop_c implements Do
         return body;
     }
 
-    public List<Term> acceptCFG(CFGBuilder v, List<Term> succs) {
+    public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
         v.push(this).visitCFG(body, cond, ENTRY);
 
         if (condIsConstantTrue()) {

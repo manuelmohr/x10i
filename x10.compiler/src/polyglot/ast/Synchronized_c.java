@@ -80,9 +80,7 @@ public class Synchronized_c extends Stmt_c implements Synchronized
 	TypeSystem ts = tc.typeSystem();
 
 	if (! ts.isSubtype(expr.type(), ts.Object(), tc.context()) ) {
-	     throw new SemanticException(
-		 "Cannot synchronize on an expression of type \"" +
-		 expr.type() + "\".", expr.position());
+	     throw new SemanticException("Cannot synchronize on an expression of type \"" + expr.type() + "\".", expr.position());
 	}
 
 	return this;
@@ -114,7 +112,7 @@ public class Synchronized_c extends Stmt_c implements Synchronized
         return expr;
     }
 
-    public List<Term> acceptCFG(CFGBuilder v, List<Term> succs) {
+    public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
         v.visitCFG(expr, body, ENTRY);
         v.visitCFG(body, this, EXIT);
         return succs;
