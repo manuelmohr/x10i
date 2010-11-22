@@ -708,6 +708,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				 * it anyway for now... */
 				binding_typerep.set_entity_allocation(entity.ptr, binding_typerep.ir_allocation.allocation_static.val);
 			}
+			if (flags.isNative()) {
+				entity.setVisibility(ir_visibility.ir_visibility_external);
+			}
 			methodEntities.put(methodInstance, entity);
 		}
 
