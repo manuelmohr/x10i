@@ -139,6 +139,9 @@ import firm.nodes.Proj;
  *  - keep Context up-to-date while traversing the AST
  */
 public class X10FirmCodeGenerator extends X10DelegatingVisitor {
+	/* names of builtin functions */
+	private static final String X10_STRING_LITERAL = "x10_string_literal";
+
 	/** The current firm construction object */
 	private Construction con;
 
@@ -1514,8 +1517,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		Node string_const = createStringSymConst(n.value());
 
-		final String name = "x10_string_literal";
-
 		final firm.Type[] parameterTypes = new firm.Type[2];
 		parameterTypes[0] = typeSystem.asFirmType(typeSystem.UInt());
 		parameterTypes[1] = new PointerType(parameterTypes[0]); /* XXX Pointer to uint is not quite correct */
@@ -1523,7 +1524,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		resultTypes[0] = typeSystem.asFirmType(typeSystem.String());
 		MethodType type = new firm.MethodType(parameterTypes, resultTypes);
 
-		Entity func_ent = new Entity(Program.getGlobalType(), name, type);
+		Entity func_ent = new Entity(Program.getGlobalType(), X10_STRING_LITERAL, type);
 		Node address = con.newSymConst(func_ent);
 
 		Node[] parameters = new Node[2];
