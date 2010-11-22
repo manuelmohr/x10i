@@ -158,20 +158,20 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private final HashMap<X10MethodInstance, Entity> methodEntities = new HashMap<X10MethodInstance, Entity>();
 
 	/**
-	 * Holds the corresponding target blocks for labeled continue and break statements. 
+	 * Holds the corresponding target blocks for labeled continue and break statements.
 	 */
 	private static class FirmLabel {
-		
+
 		/**
 		 * Holds the target block for a labeled continue statement
 		 */
 		private Block continueBlock;
-		
+
 		/**
 		 * Holds the target block for a labeled break statement
 		 */
 		private Block breakBlock;
-		
+
 		/**
 		 * Sets the target block for a labeled continue statement
 		 * @param block The target block
@@ -179,7 +179,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		public void setContinueBlock(Block block) {
 			continueBlock = block;
 		}
-		
+
 		/**
 		 * Returns the target block for a labeled continue statement
 		 * @return The target block
@@ -188,7 +188,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			assert continueBlock != null;
 			return continueBlock;
 		}
-		
+
 		/**
 		 * Sets the target block for a labeled break statement
 		 * @param block The target block
@@ -196,7 +196,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		public void setBreakBlock(Block block) {
 			breakBlock = block;
 		}
-		
+
 		/**
 		 * Returns the target block for a labeled break statement
 		 * @return The target block
@@ -206,23 +206,23 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			return breakBlock;
 		}
 	}
-	
+
 	/**
-	 * Class that holds attributes (true and false blocks, continue blocks, break blocks etc.) for a new scope. 
-	 * For every new scope we will clone the current (top) scope and set the adequate attributes for the new scope. 
+	 * Class that holds attributes (true and false blocks, continue blocks, break blocks etc.) for a new scope.
+	 * For every new scope we will clone the current (top) scope and set the adequate attributes for the new scope.
 	 */
 	private static class FirmScope {
-		
+
 		/**
-		 * Holds a reference to the upper FirmScope. 
+		 * Holds a reference to the upper FirmScope.
 		 */
 		private FirmScope prev;
-		
-		/** 
-		 * Mapping between Labels (String) and the corresponding FirmLabels. 
+
+		/**
+		 * Mapping between Labels (String) and the corresponding FirmLabels.
 		 */
 		private Map<String, FirmLabel> firmLabelMapper     = new HashMap<String, FirmLabel>();
-		
+
 		/** Block we will jump into if an expression evaluates to true */
 		private Block trueBlock;
 		/** Block we will jump into if an expression evaluates to false */
@@ -231,16 +231,16 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		private Block continueBlock;
 		/** Block we will jump into if we reach a break statement */
 		private Block breakBlock;
-		
-		/** 
+
+		/**
 		 * Sets the upper FirmScope for the current FirmScope
-		 * 
+		 *
 		 * @param prev The upper FirmScope
 		 */
 		public void setPrev(FirmScope prev) {
 			this.prev = prev;
 		}
-		
+
 		/**
 		 * Returns the upper FirmScope of the current FirmScope
 		 * @return The upper FirmScope
@@ -248,59 +248,59 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		public FirmScope getPrev() {
 			return prev;
 		}
-				
+
 		/** Sets the true block.
 		 * @param block The block to set */
 		public void setTrueBlock(Block block) {
 			trueBlock = block;
 		}
-		
+
 		/** Returns the true block.
 		 * @return The true block */
 		public Block getTrueBlock() {
 			return trueBlock;
 		}
-		
+
 		/** Sets the false block.
 		 * @param block The block to set */
 		public void setFalseBlock(Block block) {
 			falseBlock = block;
 		}
-		
+
 		/** Returns the false block.
 		 * @return The false block */
 		public Block getFalseBlock() {
 			return falseBlock;
 		}
-		
+
 		/** Sets the continue block.
 		 * @param block The block to set */
 		public void setContinueBlock(Block block) {
 			continueBlock = block;
 		}
-		
+
 		/** Returns the continue block.
 		 * @return The continue block */
 		public Block getContinueBlock() {
 			assert continueBlock != null;
 			return continueBlock;
 		}
-		
+
 		/** Sets the break block.
 		 * @param block The block to set */
 		public void setBreakBlock(Block block) {
 			breakBlock = block;
 		}
-		
+
 		/** Returns the break block.
 		 * @return The break block */
 		public Block getBreakBlock() {
 			assert breakBlock != null;
 			return breakBlock;
 		}
-		
+
 		/**
-		 * Sets the target block for a labeled continue statement. 
+		 * Sets the target block for a labeled continue statement.
 		 * @param label The label of the continue statement.
 		 * @param block The target block for the continue statement
 		 */
@@ -308,7 +308,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			FirmLabel firmLabel = getFirmLabel(label);
 			firmLabel.setContinueBlock(block);
 		}
-		
+
 		/**
 		 * Returns the corresponding target block for a labeled continue block
 		 * @param label The label of the continue statement
@@ -318,9 +318,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			FirmLabel firmLabel = getFirmLabel(label);
 			return firmLabel.getContinueBlock();
 		}
-		
+
 		/**
-		 * Sets the target block for a labeled break statement. 
+		 * Sets the target block for a labeled break statement.
 		 * @param label The label of the break statement.
 		 * @param block The target block for the break statement
 		 */
@@ -328,7 +328,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			FirmLabel firmLabel = getFirmLabel(label);
 			firmLabel.setBreakBlock(block);
 		}
-		
+
 		/**
 		 * Returns the corresponding target block for a labeled break block
 		 * @param label The label of the break statement
@@ -338,10 +338,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			FirmLabel firmLabel = getFirmLabel(label);
 			return firmLabel.getBreakBlock();
 		}
-		
+
 		/**
 		 * Helper function. Traverse all FirmScopes upwards and try to find the
-		 * corresponding FirmLabel for the given string label. 
+		 * corresponding FirmLabel for the given string label.
 		 * @param label The label we are searching for
 		 * @return The corresponding FirmLabel or null if the given string label could not be found
 		 */
@@ -350,32 +350,32 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				if(getPrev() != null)
 					return getPrev().getFirmLabelHelp(label);
 				return null;
-				
+
 			}
 			return firmLabelMapper.get(label);
 		}
-		
+
 		/**
 		 * Returns the corresponding FirmLabel for the given string label
 		 * @param label The label we are searching for
-		 * @return The corresponding FirmLabel for the given string label 
+		 * @return The corresponding FirmLabel for the given string label
 		 */
 		private FirmLabel getFirmLabel(String label) {
 			FirmLabel firmLabel = getFirmLabelHelp(label);
 			assert firmLabel != null;
-			
+
 			return firmLabel;
 		}
-		
+
 		/**
-		 * Declare (Create) a new FirmLabel for the given string label in the current firm scope. 
-		 * @param label The string label 
+		 * Declare (Create) a new FirmLabel for the given string label in the current firm scope.
+		 * @param label The string label
 		 */
 		public void declFirmLabel(String label) {
 			assert !firmLabelMapper.containsKey(label);
 			firmLabelMapper.put(label, new FirmLabel());
 		}
-		
+
 		@Override
 		public Object clone() {
 			FirmScope clonedScope  		= new FirmScope();
@@ -384,29 +384,29 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			clonedScope.continueBlock   = this.continueBlock;
 			clonedScope.breakBlock      = this.breakBlock;
 			// The local mapper needn`t be cloned
-			
+
 			return clonedScope;
 		}
 	}
 
 	/**
-	 * Class that holds attributes (scopes, mapping of local instance variables etc.) for a new method. 
-	 * For every new method entry we will create a new firm context. 
+	 * Class that holds attributes (scopes, mapping of local instance variables etc.) for a new method.
+	 * For every new method entry we will create a new firm context.
 	 */
 	private static class FirmContext {
 		/** Holds the topmost firmScope. -> Push a dummy frame in the current FirmContext */
 		private FirmScope topFirmScope = new FirmScope();
-		
+
 		/** Maps "LocalInstances" to the appropriate idx`s */
 		private Map<LocalInstance, Integer> localInstanceMapper = new HashMap<LocalInstance, Integer>();
-		
+
 		/**
-		 * Will hold the corresponding statement if we have reached a labeled statement. Otherwise null. 
+		 * Will hold the corresponding statement if we have reached a labeled statement. Otherwise null.
 		 */
 		private Stmt stmt;
-		
+
 		/**
-		 * Will hold the corresponding label if we have reached a labeled statement. Otherwise null. 
+		 * Will hold the corresponding label if we have reached a labeled statement. Otherwise null.
 		 */
 		private String label;
 
@@ -414,7 +414,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		 * Create a new Firm context
 		 */
 		public FirmContext() {
-			
+
 		}
 
 		/** Sets the idx for a given local variable
@@ -425,17 +425,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			assert !localInstanceMapper.containsKey(loc);
 			localInstanceMapper.put(loc, new Integer(idx));
 		}
-		
+
 		/** Returns the idx for a given local variable
 		 * @param loc The local variable for which the index should be returned
-		 * @return The idx of the given local variable 
+		 * @return The idx of the given local variable
 		 */
 		public int getIdxForLocalInstance(LocalInstance loc) {
 			assert localInstanceMapper.containsKey(loc) : "Loc " + loc + " not found";
 			return localInstanceMapper.get(loc).intValue();
 		}
-		
-		/** Pushes a new firm scope 
+
+		/** Pushes a new firm scope
 		 * @param scope The firm scope which should be pushed
 		 * @return The new firm scope
 		 */
@@ -444,7 +444,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			topFirmScope = scope;
 			return scope;
 		}
-		
+
 		/** Pops the topmost firm scope
 		 * @return The upper firm scope of the topmost firm scope
 		 */
@@ -453,7 +453,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			topFirmScope = topFirmScope.getPrev();
 			return topFirmScope;
 		}
-		
+
 		/** Returns the topmost firm scope
 		 * @return Topmost firm scope
 		 */
@@ -461,7 +461,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			assert topFirmScope != null;
 			return topFirmScope;
 		}
-		
+
 		/**
 		 * Set the statement and label in a labeled statement
 		 * @param label The label of the labeled statement
@@ -471,7 +471,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			this.label = label;
 			this.stmt  = stmt;
 		}
-		
+
 		/**
 		 * Resets the saved statement and label in the last seen labeled statement
 		 */
@@ -479,7 +479,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			this.label = null;
 			this.stmt  = null;
 		}
-		
+
 		/**
 		 * Returns the statement of the last seen labeled statement
 		 * @return The statement
@@ -487,17 +487,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		public Stmt getLabeledStmt() {
 			return stmt;
 		}
-		
+
 		/**
 		 * Returns the label of the last seen labeled statement
-		 * @return The label 
+		 * @return The label
 		 */
 		public String getLabel() {
 			assert label != null;
 			return label;
 		}
 	}
-	
+
 
 	/** current firm context */
 	private FirmContext firmContext;
@@ -568,7 +568,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			// TODO: Swap jmps if we are in an unary ! expr.
 			newScope.setTrueBlock(bTrue);
 			newScope.setFalseBlock(bFalse);
-			
+
 			Node ret = visitExpression(E);
 			makeCondition(ret);
 		}
@@ -873,7 +873,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Branch_c br) {
 		if(con.getCurrentBlock().isBad())
 			return;
-		
+
 		FirmScope topScope = firmContext.getTopScope();
 		if (br.labelNode() != null) {
 			Block target = null;
@@ -886,38 +886,38 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			Node jmp = con.newJmp();
 			target.addPred(jmp);
 		} else {
-			// unlabeled continue or break; 
+			// unlabeled continue or break;
 			Block target = null;
 			if (br.kind() == Branch.CONTINUE) {
 				target = topScope.getContinueBlock();
 			} else {
 				target = topScope.getBreakBlock();
 			}
-			
+
 			Node jmp = con.newJmp();
 			target.addPred(jmp);
 		}
-		
+
 		con.setCurrentBlockBad();
 	}
 
 
 	@Override
-	public void visit(Labeled_c label) {   
-		
+	public void visit(Labeled_c label) {
+
 		Stmt stmt 	= label.statement();
-		String lab 	= label.labelNode().id().toString(); 
-		
+		String lab 	= label.labelNode().id().toString();
+
 		// Mark the corresponding stmt with the appropriate label
 		firmContext.setLabeledStmt(lab, stmt);
-		
+
 		// Declare the label in the current firm scope
 		FirmScope topScope = firmContext.getTopScope();
 		FirmScope newScope = (FirmScope)topScope.clone();
-		
+
 		firmContext.pushFirmScope(newScope);
 		{
-			newScope.declFirmLabel(lab); 
+			newScope.declFirmLabel(lab);
 			visitAppropriate(stmt);
 		}
 		firmContext.popFirmScope();
@@ -1017,129 +1017,129 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Do_c n) {
-		
+
 		String label = null;
 		if(firmContext.getLabeledStmt() == n) {
 			label = firmContext.getLabel();
 			firmContext.resetLabeledStmt();
 		}
-		
+
 		Block bTrue  = con.newBlock();
 		Block bCond  = con.newBlock();
 		Block bFalse = con.newBlock();
-		
+
 		bTrue.addPred(con.newJmp());
 		con.setCurrentBlock(bTrue);
-		
+
 		FirmScope topScope  = firmContext.getTopScope();
 		FirmScope newScope  = (FirmScope)topScope.clone();
-		
+
 		firmContext.pushFirmScope(newScope);
 		{
 			newScope.setContinueBlock(bCond);
 			newScope.setBreakBlock(bFalse);
-			
+
 			if(label != null) {
 				newScope.setBlockForLabeledBreak(label, bFalse);
 				newScope.setBlockForLabeledContinue(label, bCond);
 			}
-			
+
 			Stmt body = n.body();
 			visitAppropriate(body);
 		}
 		firmContext.popFirmScope();
-		
+
 		if(con.getCurrentBlock().isBad()) {
 			return;
-			/* The stmt: 
-			 * do { 
-			 * 		'STMT`s' 
+			/* The stmt:
+			 * do {
+			 * 		'STMT`s'
 			 *      return 'EXPR';
-			 * } while(booleanExpr); 
-			 * // "no return stmt"  
+			 * } while(booleanExpr);
+			 * // "no return stmt"
 			without an explicit return at the end of the do ... while stmt seems to be a valid
 			stmt in a method with an explicit return value. -> So we will stop the firm generation
-			if we are currently in a bad block. 
+			if we are currently in a bad block.
 			*/
 		}
-		
+
 		bCond.addPred(con.newJmp());
 
 		con.setCurrentBlock(bCond);
-		
+
 		topScope  = firmContext.getTopScope();
 		newScope  = (FirmScope)topScope.clone();
-		
+
 		firmContext.pushFirmScope(newScope);
 		{
 			newScope.setTrueBlock(bTrue);
 			newScope.setFalseBlock(bFalse);
-			
+
 			Node retNode = visitExpression(n.cond());
 			makeCondition(retNode);
 		}
 		firmContext.popFirmScope();
-		
+
 		con.setCurrentBlock(bFalse);
 	}
 
 	@Override
 	public void visit(While_c n) {
-		
+
 		// condition evaluates to false -> nothing to do
 		// TODO: Something is wrong with the method condIsConstantTrue
 //		if(!n.condIsConstantTrue())
 //			return;
-		
+
 		String label = null;
 		if(firmContext.getLabeledStmt() == n) {
 			label = firmContext.getLabel();
 			firmContext.resetLabeledStmt();
 		}
-		
+
 		Block bCond  = con.newBlock();
 		Block bTrue  = con.newBlock();
 		Block bFalse = con.newBlock();
-		
+
 		bCond.addPred(con.newJmp());
 		con.setCurrentBlock(bCond);
-		
+
 		FirmScope topScope = firmContext.getTopScope();
 		FirmScope newScope = (FirmScope)topScope.clone();
-		
+
 		firmContext.pushFirmScope(newScope);
 		{
 			newScope.setTrueBlock(bTrue);
 			newScope.setFalseBlock(bFalse);
-			
+
 			Node retNode = visitExpression(n.cond());
 			makeCondition(retNode);
 		}
 		firmContext.popFirmScope();
-		
+
 		con.setCurrentBlock(bTrue);
-		
+
 		topScope = firmContext.getTopScope();
 		newScope = (FirmScope)topScope.clone();
-		
-		firmContext.pushFirmScope(newScope); 
+
+		firmContext.pushFirmScope(newScope);
 		{
 			newScope.setContinueBlock(bCond);
 			newScope.setBreakBlock(bFalse);
-			
+
 			if(label != null) {
 				newScope.setBlockForLabeledBreak(label, bFalse);
 				newScope.setBlockForLabeledContinue(label, bCond);
 			}
-			
+
 			Stmt body = n.body();
 			visitAppropriate(body);
 		}
 		firmContext.popFirmScope();
-		
+
 		if(!con.getCurrentBlock().isBad())
 			bCond.addPred(con.newJmp());
-		
+
 		con.setCurrentBlock(bFalse);
 	}
 
@@ -1183,7 +1183,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		{
 			newScope.setTrueBlock(bTrue);
 			newScope.setFalseBlock(bFalse);
-			
+
 			Node ret = visitExpression(n.cond());
 
 			makeCondition(ret);
@@ -1223,7 +1223,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			} else {
 				newScope.setFalseBlock(bAfter);
 			}
-			
+
 			Node retNode = visitExpression(n.cond());
 			makeCondition(retNode);
 		}
@@ -1793,7 +1793,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			{
 				newScope.setTrueBlock(bTrue);
 				newScope.setFalseBlock(bFalse);
-				
+
 				Node r = visitExpression(B.left());
 				makeCondition(r);
 			}
@@ -1812,7 +1812,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			{
 				newScope.setTrueBlock(bCurTrue);
 				newScope.setFalseBlock(bCurFalse);
-				
+
 				Node r = visitExpression(B.right());
 				ret = makeCondition(r);
 			}
