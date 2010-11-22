@@ -43,6 +43,7 @@ import polyglot.ast.Labeled_c;
 import polyglot.ast.LocalClassDecl_c;
 import polyglot.ast.LocalDecl_c;
 import polyglot.ast.Local_c;
+import polyglot.ast.MethodDecl;
 import polyglot.ast.MethodDecl_c;
 import polyglot.ast.New_c;
 import polyglot.ast.NullLit_c;
@@ -60,6 +61,7 @@ import polyglot.ast.Try_c;
 import polyglot.ast.Unary_c;
 import polyglot.ast.While_c;
 import polyglot.frontend.Compiler;
+import polyglot.types.Context;
 import polyglot.types.FieldInstance;
 import polyglot.types.LocalInstance;
 import polyglot.types.Type;
@@ -106,8 +108,12 @@ import x10.types.X10Flags;
 import x10.types.X10MethodDef;
 import x10.types.X10MethodInstance;
 import x10.visit.X10DelegatingVisitor;
+import x10cpp.Configuration;
 import x10cpp.visit.X10SearchVisitor;
 import x10firm.types.TypeSystem;
+
+import com.sun.jna.Platform;
+
 import firm.ArrayType;
 import firm.ClassType;
 import firm.CompoundType;
@@ -828,6 +834,86 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		// Dump the created graph
 		firm.Dump.dumpGraph(con.getGraph(), "-fresh");
+
+		if (isMainMethod(dec)) {
+			processMainMethod(entity);
+		}
+	}
+
+    private static boolean seenMain = false; // FIXME: non-reentrant
+    private static boolean warnedAboutMain = false; // FIXME: non-reentrant
+    /** test if a method is the main method (the one we start first when the
+     * program runs)
+     * Note: This code is copied from the ASTQuery class. (It doesn't have the
+     * public modifier there so we can't use it directly. Also ASTQuery
+     * unnecessarily depends on a Translator which we don't have)
+     */
+	private boolean isMainMethod(MethodDecl dec) {
+		X10ClassType container = (X10ClassType) dec.methodDef().asInstance()
+				.container();
+		Context context = null;
+		assert (container.isClass());
+		boolean result = (Configuration.MAIN_CLASS == null || container
+				.fullName().toString().equals(Configuration.MAIN_CLASS))
+				&& dec.name().toString().equals("main")
+				&& dec.flags().flags().isPublic()
+				&& dec.flags().flags().isStatic()
+				&& dec.returnType().type().isVoid()
+				&& (dec.formals().size() == 1)
+				&& typeSystem.isSubtype(dec.formals().get(0).type()
+						.type(), typeSystem.Array(typeSystem.String()), context);
+		if (result) {
+			boolean dash_c = compiler.sourceExtension().getOptions().post_compiler == null;
+			if (seenMain && !warnedAboutMain && !dash_c
+					&& Configuration.MAIN_CLASS == null) {
+				compiler.errorQueue().enqueue(
+						ErrorInfo.SEMANTIC_ERROR,
+						"Multiple main() methods encountered.  "
+								+ "Please specify MAIN_CLASS.");
+				warnedAboutMain = true;
+			}
+			seenMain = true;
+		}
+		return result;
+	}
+
+	private void processMainMethod(Entity mainEntity) {
+		/* let's create a simple "main" function which just calls the other main */
+		firm.Type global = Program.getGlobalType();
+		/* let's hope the X10 int type is compatible to the C int-type */
+		firm.Type intType = typeSystem.asFirmType(typeSystem.Int());
+		firm.Type[] returnTypes = new firm.Type[] { intType };
+		firm.Type[] parameterTypes = new firm.Type[] {};
+		MethodType mainType = new MethodType(parameterTypes, returnTypes);
+		Entity entity = new Entity(global, "main", mainType);
+		String ldIdent = "main";
+		if (Platform.isMac() || Platform.isWindows()) {
+			ldIdent = "_" + ldIdent;
+		}
+		entity.setLdIdent(ldIdent);
+		entity.setVisibility(ir_visibility.ir_visibility_default);
+		entity.addLinkage(ir_linkage.IR_LINKAGE_HIDDEN_USER.val);
+
+		Graph graph = new Graph(entity, 0);
+		Construction construction = new Construction(graph);
+		Node symConst = construction.newSymConst(mainEntity);
+		Node mem = construction.getCurrentMem();
+		firm.Type type = mainEntity.getType();
+		firm.Type paramType = ((MethodType) type).getParamType(0);
+		/* TODO: convert the arguments passed to the Rail[String] */
+		Node args = construction.newConst(paramType.getMode().getNull());
+		Node call = construction.newCall(mem, symConst, new Node[] { args }, type);
+		Node newMem = construction.newProj(call, Mode.getM(), Call.pnM);
+		construction.setCurrentMem(newMem);
+
+		Node returnMem = construction.getCurrentMem();
+		Node zero = construction.newConst(intType.getMode().getNull());
+		Node returnn = construction.newReturn(returnMem, new Node[] {zero});
+		construction.getGraph().getEndBlock().addPred(returnn);
+		construction.setCurrentBlockBad();
+
+		construction.finish();
+		Program.setMainGraph(graph);
 	}
 
 	@Override
@@ -1494,8 +1580,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(FloatLit_c n) {
-
-		Mode mode = null;
+		final Mode mode;
 
 		if (n.kind() == FloatLit.FLOAT)
 			mode = typeSystem.getFirmMode(typeSystem.Float());
