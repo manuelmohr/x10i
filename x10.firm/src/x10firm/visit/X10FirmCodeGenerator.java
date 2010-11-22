@@ -64,7 +64,6 @@ import polyglot.types.LocalInstance;
 import polyglot.types.Type;
 import polyglot.util.ErrorInfo;
 import polyglot.util.InternalCompilerError;
-import x10.ast.AssignPropertyBody_c;
 import x10.ast.Async_c;
 import x10.ast.AtEach_c;
 import x10.ast.AtExpr_c;
@@ -75,7 +74,6 @@ import x10.ast.ClosureCall_c;
 import x10.ast.Closure_c;
 import x10.ast.ConstantDistMaker_c;
 import x10.ast.Finish_c;
-import x10.ast.ForEach_c;
 import x10.ast.ForLoop_c;
 import x10.ast.Future_c;
 import x10.ast.Here_c;
@@ -650,7 +648,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(X10ClassDecl_c n) {
-		X10ClassDef def = (X10ClassDef) n.classDef();
+		X10ClassDef def = n.classDef();
 		ClassBody_c body = (ClassBody_c) n.body();
 
 		// TODO: how do we treat native rep classes ?
@@ -844,11 +842,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Initializer_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(AssignPropertyBody_c n) {
 		throw new RuntimeException("Not implemented yet");
 	}
 
@@ -1637,11 +1630,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(ForLoop_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(ForEach_c n) {
 		throw new RuntimeException("Not implemented yet");
 	}
 
