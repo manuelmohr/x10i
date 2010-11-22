@@ -89,7 +89,6 @@ import polyglot.visit.TypeChecker;
 import x10.constraint.XFailure;
 import x10.constraint.XName;
 import x10.constraint.XNameWrapper;
-import x10.constraint.XRef;
 import x10.constraint.XVar;
 import x10.constraint.XTerm;
 import x10.constraint.XTerms;
@@ -144,9 +143,9 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 	TypeNode hasType;
 	public X10MethodDecl_c(X10NodeFactory nf, Position pos, FlagsNode flags, 
 			TypeNode returnType, Id name,
-			List<TypeParamNode> typeParams, List<Formal> formals, DepParameterExpr guard, List<TypeNode> throwTypes, TypeNode offerType, Block body) {
+			List<TypeParamNode> typeParams, List<Formal> formals, DepParameterExpr guard,  TypeNode offerType, Block body) {
 		super(pos, flags, returnType instanceof HasTypeNode_c ? nf.UnknownTypeNode(returnType.position()) : returnType, 
-				name, formals, throwTypes, body);
+				name, formals,  body);
 		this.guard = guard;
 		this.typeParameters = TypedList.copyAndCheck(typeParams, TypeParamNode.class, true);
 		if (returnType instanceof HasTypeNode_c) 
@@ -177,7 +176,7 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 
 	protected MethodDef createMethodDef(TypeSystem ts, ClassDef ct, Flags flags) {
 		X10MethodDef mi = (X10MethodDef) ((X10TypeSystem) ts).methodDef(position(), Types.ref(ct.asType()), flags, returnType.typeRef(), name.id(),
-				Collections.<Ref<? extends Type>>emptyList(), Collections.<Ref<? extends Type>>emptyList(), 
+				Collections.<Ref<? extends Type>>emptyList(), 
 				offerType == null ? null : offerType.typeRef());
 
 		mi.setThisVar(((X10ClassDef) ct).thisVar());
@@ -212,9 +211,9 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 			mi.setTypeGuard(n.guard().typeConstraint());
 		}
 
-		List<Ref<? extends Type>> typeParameters = new ArrayList<Ref<? extends Type>>(n.typeParameters().size());
+		List<ParameterType> typeParameters = new ArrayList<ParameterType>(n.typeParameters().size());
 		for (TypeParamNode tpn : n.typeParameters()) {
-			typeParameters.add(Types.ref(tpn.type()));
+			typeParameters.add(tpn.type());
 		}
 		mi.setTypeParameters(typeParameters);
 
@@ -226,8 +225,7 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 
 		if (n.returnType() instanceof UnknownTypeNode && n.body() == null) {
 			Errors.issue(tb.job(),
-			             new SemanticException("Cannot infer method return type; method has no body.",
-			                                   position()));
+			             new SemanticException("Cannot infer method return type; method has no body.", position()));
 			NodeFactory nf = tb.nodeFactory();
 			TypeSystem ts = tb.typeSystem();
 			Position rtpos = n.returnType().position();
@@ -237,13 +235,13 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 		X10Flags xf = X10Flags.toX10Flags(mi.flags());
 		if (xf.isProperty()) {
 			final LazyRef<XTerm> bodyRef = Types.lazyRef(null);
-			bodyRef.setResolver(new SetResolverGoal(tb.job()));
+			bodyRef.setResolver(new SetResolverGoal(tb.job()).intern(tb.job().extensionInfo().scheduler()));
 			mi.body(bodyRef);
 		}
 
 		// property implies public, final
 		if (xf.isProperty()) {
-			if (xf.isAbstract())
+			if (xf.isAbstract())  //todo: Yoav thinks we should not have abstract property methods (all property methods, even in interfaces, should have a body so they can be expanded)
 				xf = X10Flags.toX10Flags(xf.Public());
 			else
 				xf = X10Flags.toX10Flags(xf.Public().Final());
@@ -263,51 +261,84 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 	}
 	public void setResolver(Node parent, final TypeCheckPreparer v) {
 		X10MethodDef mi = (X10MethodDef) this.mi;
-		if (mi.body() instanceof LazyRef) {
+		if (mi.body() instanceof LazyRef<?>) {
 			LazyRef<XTerm> r = (LazyRef<XTerm>) mi.body();
 			TypeChecker tc = new X10TypeChecker(v.job(), v.typeSystem(), v.nodeFactory(), v.getMemo());
 			tc = (TypeChecker) tc.context(v.context().freeze());
-			r.setResolver(new TypeCheckFragmentGoal(parent, this, tc, r, false));
+			r.setResolver(new TypeCheckFragmentGoal<XTerm>(parent, this, tc, r, false));
 		}
 	}
 
 	/** Visit the children of the method. */
 	public Node visitSignature(NodeVisitor v) {
-		X10MethodDecl_c result = (X10MethodDecl_c) super.visitSignature(v);
-		List<TypeParamNode> typeParams = (List<TypeParamNode>) visitList(result.typeParameters, v);
-		if (! CollectionUtil.allEqual(typeParams, result.typeParameters))
-			result = (X10MethodDecl_c) result.typeParameters(typeParams);
-		DepParameterExpr guard = (DepParameterExpr) visitChild(result.guard, v);
-		if (guard != result.guard)
-			result = (X10MethodDecl_c) result.guard(guard);
-		TypeNode ht = (TypeNode) visitChild(result.hasType, v);
-		result = result.hasType(ht);
-		if (offerType != null) {
-			TypeNode ot = (TypeNode) visitChild(result.offerType, v);
-			result = result.offerType(ot);
-		}
-
-		return result;
+		FlagsNode flags = (FlagsNode) this.visitChild(this.flags, v);
+		Id name = (Id) this.visitChild(this.name, v);
+		List<Formal> formals = this.visitList(this.formals, v);
+		List<TypeParamNode> typeParams = visitList(this.typeParameters, v);
+		DepParameterExpr guard = (DepParameterExpr) visitChild(this.guard, v);
+		TypeNode ht = (TypeNode) visitChild(this.hasType, v);
+		TypeNode ot = (TypeNode) visitChild(this.offerType, v);
+		TypeNode returnType = (TypeNode) visitChild(this.returnType, v);
+		return reconstruct(flags, name, typeParams, formals, guard, ht, returnType, ot, this.body);
 	}
 
+	/** Reconstruct the method. */
+	protected X10MethodDecl_c reconstruct(FlagsNode flags, Id name, List<TypeParamNode> typeParameters, List<Formal> formals, DepParameterExpr guard, TypeNode hasType, TypeNode returnType, TypeNode offerType, Block body) {
+		X10MethodDecl_c n = (X10MethodDecl_c) super.reconstruct(flags, returnType, name, formals, body);
+		if (! CollectionUtil.allEqual(typeParameters, n.typeParameters) || guard != n.guard || hasType != n.hasType || offerType != n.offerType) {
+			if (n == this) {
+				n = (X10MethodDecl_c) n.copy();
+			}
+			n.typeParameters = TypedList.copyAndCheck(typeParameters, TypeParamNode.class, true);
+			n.guard = guard;
+			n.hasType = hasType;
+			n.offerType = offerType;
+			return n;
+		}
+		return n;
+	}
 
 	public List<TypeParamNode> typeParameters() {
 		return typeParameters;
 	}
 
-	public X10MethodDecl typeParameters(List<TypeParamNode> typeParams) {
+	public X10MethodDecl_c typeParameters(List<TypeParamNode> typeParams) {
 		X10MethodDecl_c n = (X10MethodDecl_c) copy();
 		n.typeParameters=TypedList.copyAndCheck(typeParams, TypeParamNode.class, true);
 		return n;
 	}
 
 	public DepParameterExpr guard() { return guard; }
-	public X10MethodDecl guard(DepParameterExpr e) {
+	public X10MethodDecl_c guard(DepParameterExpr e) {
 		X10MethodDecl_c n = (X10MethodDecl_c) copy();
 		n.guard = e;
 		return n;
 	}
 
+	@Override
+	public X10MethodDecl_c flags(FlagsNode flags) {
+	    return (X10MethodDecl_c) super.flags(flags);
+	}
+	@Override
+	public X10MethodDecl_c returnType(TypeNode returnType) {
+	    return (X10MethodDecl_c) super.returnType(returnType);
+	}
+	@Override
+	public X10MethodDecl_c name(Id name) {
+	    return (X10MethodDecl_c) super.name(name);
+	}
+	@Override
+	public X10MethodDecl_c formals(List<Formal> formals) {
+	    return (X10MethodDecl_c) super.formals(formals);
+	}
+	@Override
+	public X10MethodDecl_c methodDef(MethodDef mi) {
+	    return (X10MethodDecl_c) super.methodDef(mi);
+	}
+	@Override
+	public X10MethodDef methodDef() {
+	    return (X10MethodDef) super.methodDef();
+	}
 
 	@Override
 	public Context enterChildScope(Node child, Context c) {
@@ -320,19 +351,24 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 			for (TypeParamNode f : typeParameters) {
 				f.addDecls(c);
 			}
-			for (Formal f : formals) {
+			for (int i=0; i < formals.size(); i++) {
+				Formal f = formals.get(i);
 				f.addDecls(c);
+				if (f == child)
+					break; // do not add downstream formals
 			}
+			
 		}
 
 		// Ensure that the place constraint is set appropriately when
 		// entering the body of the method, the return type and the throw type.
 
 
-		if (child == body || child == returnType || child == hasType || child == throwTypes || child == offerType || (formals != null && formals.contains(child))) {
+		if (child == body || child == returnType || child == hasType  || child == offerType 
+				|| (formals != null && formals.contains(child))) {
 			if (placeTerm != null)
 				c = ((X10Context) c).pushPlace( XConstrainedTerm.make(placeTerm));
-			// 	PlaceChecker.pushHereTerm(methodDef(), (X10Context) c);
+			else c = PlaceChecker.pushHereTerm(methodDef(), (X10Context) c);
 		}
 
 		// Add the method guard into the environment.
@@ -344,12 +380,11 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 				c = c.pushBlock();
 				try {
 					if (vc.known())
-						c= ((X10Context) c).pushAdditionalConstraint(vc.get());
+						c = ((X10Context) c).pushAdditionalConstraint(vc.get());
 					// TODO: Add type constraint.
 
 				} catch (SemanticException z) {
-					throw 
-					new InternalCompilerError("Unexpected inconsistent guard" + z);
+					throw new InternalCompilerError("Unexpected inconsistent guard" + z);
 				}
 				//        ((X10Context) c).setCurrentConstraint(vc.get());
 				//        ((X10Context) c).setCurrentTypeConstraint(tc.get());
@@ -383,7 +418,7 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 
 	@Override
 	public Node setResolverOverride(Node parent, TypeCheckPreparer v) {
-		if (returnType() instanceof UnknownTypeNode && body != null) {
+		if (returnType() instanceof UnknownTypeNode && body() != null) {
 			UnknownTypeNode tn = (UnknownTypeNode) returnType();
 
 			NodeVisitor childv = v.enter(parent, this);
@@ -394,24 +429,21 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 				final LazyRef<Type> r = (LazyRef<Type>) tn.typeRef();
 				TypeChecker tc = new X10TypeChecker(v.job(), v.typeSystem(), v.nodeFactory(), v.getMemo(), true);
 				tc = (TypeChecker) tc.context(tcp.context().freeze());
-				r.setResolver(new TypeCheckReturnTypeGoal(this, body, tc, r));
+				r.setResolver(new TypeCheckReturnTypeGoal(this, body(), tc, r));
 			}
 		}
 		return super.setResolverOverride(parent, v);
 	}
 
 	@Override
-	protected void checkFlags(ContextVisitor tc, Flags flags) throws SemanticException {
+	protected void checkFlags(ContextVisitor tc, Flags flags) {
 		X10Flags xf = X10Flags.toX10Flags(flags);
 
 		if (xf.isExtern() && body != null) {
-			throw new SemanticException("An extern method cannot have a body.", position());
+			Errors.issue(tc.job(),
+			        new SemanticException("An extern method cannot have a body.", position()));
 		}
 
-		if (xf.isProto() && xf.isStatic()) {
-			throw new SemanticException("Only instance method may have a proto flag.", 
-					position());
-		}
 
 		// Set the native flag if incomplete or extern so super.checkFlags doesn't complain.
 		if (xf.isIncomplete() || xf.isExtern())
@@ -420,10 +452,12 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 			super.checkFlags(tc, xf);
 
 		if (xf.isProperty() && ! xf.isAbstract() && ! xf.isFinal()) {
-			throw new SemanticException("A non-abstract property method must be final.", position());
+			Errors.issue(tc.job(),
+			        new SemanticException("A non-abstract property method must be final.", position()));
 		}
 		if (xf.isProperty() && xf.isStatic()) {
-			throw new SemanticException("A property method cannot be static.", position());
+			Errors.issue(tc.job(),
+			        new SemanticException("A property method cannot be static.", position()));
 		}
 	}
 
@@ -433,15 +467,9 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 		NodeFactory nf = tc.nodeFactory();
 		X10TypeSystem ts = (X10TypeSystem) tc.typeSystem();
 		if (((X10TypeSystem) tc.typeSystem()).isStructType(mi.container().get())) {
-			Flags xf = X10Flags.toX10Flags(mi.flags()).Global().Final();
+			Flags xf = X10Flags.toX10Flags(mi.flags()).Final();
 			mi.setFlags(xf);
 			n = (X10MethodDecl_c) n.flags(n.flags().flags(xf));
-		}
-
-		for (TypeNode type : n.throwTypes()) {
-			CConstraint rc = X10TypeMixin.xclause(type.type());
-			if (rc != null && ! rc.valid())
-				throw new SemanticException("Cannot throw a dependent type.", type.position());
 		}
 
 		X10Flags xf = X10Flags.toX10Flags(mi.flags());
@@ -483,7 +511,7 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 						XTerm v = ts.xtypeTranslator().trans((CConstraint) null, r.expr(), (X10Context) tc.context());
 						ok = true;
 						X10MethodDef mi = (X10MethodDef) this.mi;
-						if (mi.body() instanceof LazyRef) {
+						if (mi.body() instanceof LazyRef<?>) {
 							LazyRef<XTerm> bodyRef = (LazyRef<XTerm>) mi.body();
 							bodyRef.update(v);
 						}
@@ -498,8 +526,6 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 
 		dupFormalCheck(typeParameters, formals);
 
-		X10TypeMixin.protoTypeCheck(formals(),  returnType().type(), position(),
-				true);
 		X10TypeMixin.checkMissingParameters(n.returnType());
 		return n;
 	}
@@ -542,27 +568,23 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 	}
 
 	@Override
-	public Node conformanceCheck(ContextVisitor tc) throws SemanticException {
+	public Node conformanceCheck(ContextVisitor tc) {
 		checkVariance(tc);
 
 		MethodDef mi = this.methodDef();
 		X10TypeSystem xts = (X10TypeSystem) tc.typeSystem();
 
-		for (TypeNode type : throwTypes()) {
-			CConstraint rc = X10TypeMixin.xclause(type.type());
-			if (rc != null && ! rc.valid())
-				throw new SemanticException("Cannot throw a dependent type.", type.position());
-		}
-
 		if (X10Flags.toX10Flags(mi.flags()).isProperty()) {
 			X10MethodInstance xmi = (X10MethodInstance) mi.asInstance();
 			if (xmi.guard() != null && ! xmi.guard().valid())
-				throw new SemanticException("A property method cannot have a guard.", guard != null ? guard.position() : position());
+				Errors.issue(tc.job(),
+				        new SemanticException("A property method cannot have a guard.", guard != null ? guard.position() : position()));
 		}
 
 		if (X10Flags.toX10Flags(mi.flags()).isExtern()) {
 			if (!mi.returnType().get().isPrimitive())
-				throw new SemanticException("Return type " + mi.returnType() + " of extern method must be a primitive type.", this.position());
+				Errors.issue(tc.job(),
+				        new SemanticException("Return type " + mi.returnType() + " of extern method must be a primitive type.", position()));
 
 			for (Formal parameter : this.formals()) {
 				Type declType = parameter.declType();
@@ -577,27 +599,23 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 					isOk = xts.isRail(declType) || xts.isValRail(declType);
 				}
 				if (!isOk)
-					throw new SemanticException("Parameters to extern calls must be either X10 arrays or primitives.", parameter.position());
+					Errors.issue(tc.job(),
+					        new SemanticException("Parameters to extern calls must be either X10 arrays or primitives.", parameter.position()));
 			}
 		}
 
-		checkVisibility(tc.typeSystem(), tc.context(), this);
+		checkVisibility(tc, this);
 
 		// Need to ensure that method overriding is checked in a context in which here=this.home
 		// has been asserted.
 		Context childtc = enterChildScope(returnType(), tc.context());
 		ContextVisitor childVisitor = tc.context(childtc);
-		try {
-		    return super.conformanceCheck(childVisitor);
-		} catch (SemanticException e) {
-		    Errors.issue(tc.job(), e, this);
-		    return this;
-		}
+		return super.conformanceCheck(childVisitor);
 	}
 
 	final static boolean CHECK_VISIBILITY = false;
 
-	protected static void checkVisibility(final TypeSystem ts, Context c, final ClassMember mem) throws SemanticException {
+	protected static void checkVisibility(ContextVisitor tc, final ClassMember mem) {
 		// This doesn't work since we've already translated away expressions into constraints.
 		if (! CHECK_VISIBILITY)
 			return;
@@ -783,11 +801,11 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 		});
 
 		if (ex[0] != null)
-			throw ex[0];
+			Errors.issue(tc.job(), ex[0], mem);
 	}
 
 
-	protected void checkVariance(ContextVisitor tc) throws SemanticException {
+	protected void checkVariance(ContextVisitor tc) {
 		if (methodDef().flags().isStatic())
 			return;
 
@@ -799,9 +817,17 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 			vars.put(pt.name(), v);
 		}
 
-		Checker.checkVariancesOfType(returnType.position(), returnType.type(), ParameterType.Variance.COVARIANT, "as a method return type", vars, tc);
+		try {
+		    Checker.checkVariancesOfType(returnType.position(), returnType.type(), ParameterType.Variance.COVARIANT, "as a method return type", vars, tc);
+		} catch (SemanticException e) {
+		    Errors.issue(tc.job(), e, this);
+		}
 		for (Formal f : formals) {
-			Checker.checkVariancesOfType(f.type().position(), f.declType(), ParameterType.Variance.CONTRAVARIANT, "as a method parameter type", vars, tc);
+			try {
+			    Checker.checkVariancesOfType(f.type().position(), f.declType(), ParameterType.Variance.CONTRAVARIANT, "as a method parameter type", vars, tc);
+			} catch (SemanticException e) {
+			    Errors.issue(tc.job(), e, this);
+			}
 		}
 	}
 
@@ -922,10 +948,7 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 			}
 		}
 
-		// Step I.c. Check the throw types
-		List<TypeNode> processedThrowTypes = nn.visitList(nn.throwTypes(), childtc);
-		nn = (X10MethodDecl) nn.throwTypes(processedThrowTypes);
-
+	
 		// Step II. Check the return type. 
 		// Now visit the returntype to ensure that its depclause, if any is processed.
 		// Visit the formals so that they get added to the scope .. the return type
@@ -944,7 +967,7 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 			final TypeNode r = (TypeNode) nn.visitChild(nn.returnType(), childtc1);
 			nn = (X10MethodDecl) nn.returnType(r);
 			Type type = PlaceChecker.ReplaceHereByPlaceTerm(r.type(), ( X10Context ) childtc1.context());
-			((Ref<Type>) nn.methodDef().returnType()).update(r.type());
+			((Ref<Type>) nn.methodDef().returnType()).update(r.type()); 
 
 			if (hasType != null) {
 				final TypeNode h = (TypeNode) nn.visitChild(((X10MethodDecl_c) nn).hasType, childtc1);
@@ -983,8 +1006,8 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 			X10TypeSystem ts = (X10TypeSystem) tc.typeSystem();
 			// Body had no return statement.  Set to void.
 			Type t;
-			if (! ts.isUnknown(((Ref<Type>) nn.returnType().typeRef()).getCached())) {
-				t = ((Ref<Type>) nn.returnType().typeRef()).getCached();
+			if (!ts.isUnknown(nn.returnType().typeRef().getCached())) {
+				t = nn.returnType().typeRef().getCached();
 			}
 			else {
 				t = ts.Void();
@@ -998,15 +1021,6 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 
 	private static final Collection<String> TOPICS = 
 		CollectionUtil.list(Report.types, Report.context);
-
-	public Node visitChildren(NodeVisitor v) {
-		X10MethodDecl_c n = (X10MethodDecl_c) super.visitChildren(v);
-		TypeNode ht  = (TypeNode) n.visitChild(this.hasType, v);
-		n = n.hasType(ht);
-		TypeNode ot  = (TypeNode) n.visitChild(this.offerType, v);
-		n = n.offerType(ot);
-		return n;
-	}
 
     /** Write the method to an output file. */
     public void prettyPrintHeader(CodeWriter w, PrettyPrinter tr) {
@@ -1038,21 +1052,18 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
         w.allowBreak(2, 2, "", 1);
         print(returnType, w, tr);
     
-        if (! throwTypes().isEmpty()) {
-            w.allowBreak(6);
-            w.write("throws ");
-    
-            for (Iterator i = throwTypes().iterator(); i.hasNext(); ) {
-                TypeNode tn = (TypeNode) i.next();
-            print(tn, w, tr);
-    
-            if (i.hasNext()) {
-                w.write(",");
-                w.allowBreak(4, " ");
-            }
-            }
-        }
-    
         w.end();
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(flags.flags().translate());
+        sb.append(returnType).append(" ");
+        sb.append(name);
+        if (typeParameters != null && !typeParameters.isEmpty())
+            sb.append(typeParameters);
+        sb.append("(...)");
+        return sb.toString();
     }
 }

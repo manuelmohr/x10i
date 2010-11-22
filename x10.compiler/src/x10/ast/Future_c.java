@@ -36,8 +36,6 @@ import x10.types.X10Context;
 import x10.types.X10NamedType;
 import x10.types.X10TypeMixin;
 import x10.types.X10TypeSystem;
-import x10.visit.ExprFlattener;
-import x10.visit.ExprFlattener.Flattener;
 
 
 /** A <code>Future </code> is a representation of the X10 future construct:
@@ -56,7 +54,7 @@ public class Future_c extends PlacedClosure_c
     }
 
     /** Type check the expression. */
-    public Node typeCheck( ContextVisitor tc ) throws SemanticException {
+    public Node typeCheck(ContextVisitor tc) {
     	X10TypeSystem ts = (X10TypeSystem) tc.typeSystem();
     	Future_c n = (Future_c) super.typeCheck(tc);
     	Type t = n.returnType().type();

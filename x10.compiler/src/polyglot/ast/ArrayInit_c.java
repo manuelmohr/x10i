@@ -99,9 +99,7 @@ public class ArrayInit_c extends Expr_c implements ArrayInit
 
         TypeSystem ts = av.typeSystem();
 
-	for (Iterator i = elements.iterator(); i.hasNext(); ) {
-	    Expr e = (Expr) i.next();
-
+        for (Expr e : elements) {
             if (e == child) {
                 if (ts.numericConversionValid(t, e.constantValue(), av.context())) {
                     return child.type();
@@ -119,8 +117,7 @@ public class ArrayInit_c extends Expr_c implements ArrayInit
     	TypeSystem ts = tc.typeSystem();
 
         if (! lhsType.isArray()) {
-          throw new SemanticException("Cannot initialize " + lhsType +
-                                      " with " + type + ".", position());
+          throw new SemanticException("Cannot initialize " + lhsType + " with " + type + ".", position());
         }
 
         // Check if we can assign each individual element.
@@ -138,8 +135,7 @@ public class ArrayInit_c extends Expr_c implements ArrayInit
             if (! ts.isImplicitCastValid(s, t, tc.context()) &&
                 ! ts.typeEquals(s, t, tc.context()) &&
                 ! ts.numericConversionValid(t, e.constantValue(), tc.context())) {
-                throw new SemanticException("Cannot assign " + s +
-                                            " to " + t + ".", e.position());
+                throw new SemanticException("Cannot assign " + s + " to " + t + ".", e.position());
             }
         }
     }
@@ -170,7 +166,7 @@ public class ArrayInit_c extends Expr_c implements ArrayInit
         return listChild(elements, null);
     }
 
-    public List<Term> acceptCFG(CFGBuilder v, List<Term> succs) {
+    public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
         v.visitCFGList(elements, this, EXIT);
         return succs;
     }

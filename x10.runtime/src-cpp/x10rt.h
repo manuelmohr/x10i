@@ -10,6 +10,7 @@
 
 #include <x10aux/class_cast.h>
 #include <x10aux/ref.h>
+#include <x10aux/captured_lval.h>
 #include <x10aux/reference_logger.h>
 #include <x10aux/alloc.h>
 #include <x10aux/serialization.h>
@@ -21,7 +22,13 @@
 #include <x10aux/static_init.h>
 #include <x10aux/hash.h>
 #include <x10aux/basic_functions.h>
+
+#include <x10aux/cuda_kernel.h>
+
 #include <x10aux/atomic_ops.h>
+#include <x10aux/atomic_boolean_funs.h>
+#include <x10aux/atomic_int_funs.h>
+#include <x10aux/atomic_long_funs.h>
 
 #include <x10aux/itables.h>
 
@@ -41,10 +48,6 @@
 #include <x10aux/system_utils.h>
 
 #include <x10aux/place_local.h>
-
-#include <x10aux/cuda/cuda_utils.h>
-#include <x10aux/cuda/bridge_buffer.h>
-#include <x10aux/cuda/ring_buffer.h>
 
 #endif
 // vim:tabstop=4:shiftwidth=4:expandtab

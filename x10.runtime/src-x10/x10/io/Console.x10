@@ -26,9 +26,9 @@ public class Console {
         @Native("c++", "x10::io::InputStreamReader__InputStream::STANDARD_IN()")
         private native static def realIn(): InputStreamReader.InputStream;
     
-        public const OUT: Printer = new Printer(new OutputStreamWriter(realOut()));
-        public const ERR: Printer = new Printer(new OutputStreamWriter(realErr()));
-        public const IN:  Reader  = new InputStreamReader(realIn());
+        public static OUT: Printer = new Printer(new OutputStreamWriter(realOut()));
+        public static ERR: Printer = new Printer(new OutputStreamWriter(realErr()));
+        public static IN:  Reader  = new InputStreamReader(realIn());
         
    /*
         public static def write(b: Byte): Void throws IOException = OUT.write(b);
@@ -39,7 +39,6 @@ public class Console {
         public static def println(o: String): Void throws IOException = OUT.print(o);
     
         public static def printf(fmt: String, args: Rail[Object]): Void throws IOException = OUT.printf(fmt, args);
-        public static def printf(fmt: String, args: ValRail[Object]): Void throws IOException = OUT.printf(fmt, args);
 
         public static def ewrite(b: Byte): Void throws IOException = ERR.write(b);
         public static def eprintln(): Void throws IOException = ERR.println();
@@ -49,7 +48,6 @@ public class Console {
         public static def eprintln(o: String): Void throws IOException = ERR.print(o);
     
         public static def eprintf(fmt: String, args: Rail[Object]): Void throws IOException = ERR.printf(fmt, args);
-        public static def eprintf(fmt: String, args: ValRail[Object]): Void throws IOException = ERR.printf(fmt, args);
         
         public static def read(): Byte throws IOException = IN.read();
         public static def readln(): Byte throws IOException = IN.readLine();

@@ -12,15 +12,15 @@
 package x10.core;
 
 
-import x10.core.fun.Fun_0_1;
 import x10.rtt.ParameterizedType;
 import x10.rtt.RuntimeType;
+import x10.rtt.RuntimeType.Variance;
 import x10.rtt.Type;
 import x10.rtt.Types;
 import x10.rtt.UnresolvedType;
-import x10.rtt.RuntimeType.Variance;
+import x10.array.Array;
 
-public final class GrowableRail<T> extends Ref implements Fun_0_1<Integer,T>, Settable<Integer, T>, Iterable<T> {
+public final class GrowableRail<T> extends Ref implements x10.lang.Indexable<Integer,T>, x10.lang.Iterable<T>, x10.lang.Settable<Integer, T> {
     private Type<T> elementType;
     private Object array;
     private int length;
@@ -47,7 +47,7 @@ public final class GrowableRail<T> extends Ref implements Fun_0_1<Integer,T>, Se
         this.length = 0;
     }
 
-    public T set$G(T v, Integer i) {
+    public T set(T v, Type t1, Integer i, Type t2) {
         return set$G(v, (int)i);
     }
 
@@ -67,7 +67,7 @@ public final class GrowableRail<T> extends Ref implements Fun_0_1<Integer,T>, Se
         length++;
     }
 
-    public void insert(int loc, ValRail<T> items) {
+    public void insert(int loc, Rail<T> items) {
         int addLen = items.length;
         int movLen = length - loc;
         int newLen = length + addLen;
@@ -91,9 +91,9 @@ public final class GrowableRail<T> extends Ref implements Fun_0_1<Integer,T>, Se
         shrink(length+1);
     }
 
-    public ValRail<T> moveSectionToValRail(int i, int j) {
+    public Rail<T> moveSectionToRail(int i, int j) {
         int len = j - i + 1;
-        if (len < 1) return RailFactory.makeValRail(elementType, 0);
+        if (len < 1) return RailFactory.makeVarRail(elementType, 0);
         Object tmp = elementType.makeArray(len);
         System.arraycopy(array, i, tmp, 0, len);
         System.arraycopy(array, j+1, array, i, length-j-1);
@@ -102,14 +102,14 @@ public final class GrowableRail<T> extends Ref implements Fun_0_1<Integer,T>, Se
         }
         length-=len;
         shrink(length+1);
-        return RailFactory.makeValRailFromJavaArray(elementType, tmp);
+        return RailFactory.makeRailFromJavaArray(elementType, tmp);
     }
 
-    public Iterator<T> iterator() {
+    public x10.lang.Iterator<T> iterator() {
         return new RailIterator();
     }
 
-    protected class RailIterator implements Iterator<T> {
+    protected class RailIterator implements x10.lang.Iterator<T> {
         int i = 0;
 
         public boolean hasNext() {
@@ -142,8 +142,8 @@ public final class GrowableRail<T> extends Ref implements Fun_0_1<Integer,T>, Se
         array = tmp;
     }
 
-    public T apply$G(Integer i) {
-        return apply$G((int)i);
+    public T apply(Object i, Type t) {
+        return apply$G((int)(Integer)i);
     }
     public T apply$G(int i) {
         /*
@@ -168,10 +168,10 @@ public final class GrowableRail<T> extends Ref implements Fun_0_1<Integer,T>, Se
         return RailFactory.makeRailFromJavaArray(elementType, tmp);
     }
 
-    public ValRail<T> toValRail() {
+    public Array<T> toArray() {
         Object tmp = elementType.makeArray(length);
         System.arraycopy(array, 0, tmp, 0, length);
-        return RailFactory.makeValRailFromJavaArray(elementType, tmp);
+        return RailFactory.makeArrayFromJavaArray(elementType, tmp);
     }
 
     //
@@ -181,8 +181,9 @@ public final class GrowableRail<T> extends Ref implements Fun_0_1<Integer,T>, Se
         GrowableRail.class,
         new Variance[] {Variance.INVARIANT},
         new Type<?>[] {
-            new ParameterizedType(Fun_0_1._RTT, Types.INT, new UnresolvedType(0)),
-            new ParameterizedType(Settable._RTT, Types.INT, new UnresolvedType(0))
+            new ParameterizedType(x10.lang.Indexable._RTT, Types.INT, new UnresolvedType(0)),
+            new ParameterizedType(x10.lang.Iterable._RTT, new UnresolvedType(0)),
+            new ParameterizedType(x10.lang.Settable._RTT, Types.INT, new UnresolvedType(0))
         }
     ) {
         @Override

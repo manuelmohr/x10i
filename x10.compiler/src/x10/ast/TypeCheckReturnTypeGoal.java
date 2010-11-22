@@ -18,6 +18,8 @@ import polyglot.types.UnknownType;
 import polyglot.visit.TypeChecker;
 
 public class TypeCheckReturnTypeGoal extends TypeCheckFragmentGoal<Type> {
+	private static final long serialVersionUID = -7110597916418023302L;
+		
 	public TypeCheckReturnTypeGoal(Node parent, Node n, TypeChecker v, LazyRef<Type> r) {
 		super(parent, n, v, r, true);
 	}
@@ -29,10 +31,12 @@ public class TypeCheckReturnTypeGoal extends TypeCheckFragmentGoal<Type> {
 	}
 
 	@Override
-	protected void postprocess(Node m) {
+	protected Node process(Node parent, Node n, TypeChecker v) {
+		Node m = super.process(parent, n, v);
 		if (r().getCached() instanceof UnknownType) {
 			// Body had no return statement.  Set to void.
 			r().update(v.typeSystem().Void());
 		}
+		return m;
 	}
 }

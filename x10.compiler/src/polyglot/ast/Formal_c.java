@@ -158,10 +158,7 @@ public class Formal_c extends Term_c implements Formal
         }
 
         if (outerLocal != null && ! li.equals(outerLocal.def()) && c.isLocal(li.name())) {
-            throw new SemanticException(
-                "Local variable \"" + name + "\" multiply defined.  "
-                    + "Previous definition at " + outerLocal.position() + ".",
-                position());
+            throw new SemanticException("Local variable \"" + name + "\" multiply defined. Previous definition at " + outerLocal.position() + ".",position());
         }
 
 	TypeSystem ts = tc.typeSystem();
@@ -180,7 +177,7 @@ public class Formal_c extends Term_c implements Formal
         return type;
     }
 
-    public List<Term> acceptCFG(CFGBuilder v, List<Term> succs) {
+    public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
         v.visitCFG(type, this, EXIT);        
         return succs;
     }

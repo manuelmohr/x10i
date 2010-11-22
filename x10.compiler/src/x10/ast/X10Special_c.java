@@ -25,10 +25,12 @@ import polyglot.visit.ContextVisitor;
 import x10.constraint.XFailure;
 import x10.constraint.XVar;
 import x10.constraint.XTerm;
+import x10.types.ConstrainedType;
 import x10.types.X10ConstructorDef;
 import x10.types.X10Context;
 import x10.types.X10Flags;
 import x10.types.X10MethodDef;
+import x10.types.X10ParsedClassType;
 import x10.types.X10ProcedureDef;
 
 import x10.types.X10TypeMixin;
@@ -94,25 +96,8 @@ public class X10Special_c extends Special_c implements X10Special {
         			X10ConstructorDef cd = (X10ConstructorDef) c.currentCode();
         			Type returnType =  cd.returnType().get();
         			returnType =  ts.expandMacros(returnType);
-        			// Set the type of this to be proto T, where T is the return
-        			// type of the constructor.
-        			returnType = X10TypeMixin.makeProto(returnType);
-        			/*
-            		if (returnType.isClass()) {
-            			t = (ClassType) X10TypeMixin.makeProto(returnType);
-            		}
-            		else {
-            			throw new SemanticException("Constructor return type is not a class type.", cd.position());
-            		}*/
-        		} else 
-        			// Check if this is a proto method, then the type of this needs 
-        			// to be set to proto C
-        			if (c.currentCode() instanceof X10MethodDef) {
-        				X10MethodDef cd = (X10MethodDef) c.currentCode();
-        				if (cd.isProto()) {
-        					t =  X10TypeMixin.makeProto(t);
-        				}
-        			}
+        			t = returnType;
+        		}
         }
         else {
             if (qualifier.type().isClass()) {
@@ -121,13 +106,8 @@ public class X10Special_c extends Special_c implements X10Special {
                 CodeDef cd = c.currentCode();
            
                 if (!c.currentClass().hasEnclosingInstance(ct)) {
-                    throw new SemanticException("The nested class \"" + 
-                                                c.currentClass() + "\" does not have an enclosing instance of type \"" +
-                                                ct + "\".", qualifier.position());
+                    throw new SemanticException("The nested class \"" +c.currentClass() + "\" does not have an enclosing instance of type \"" +ct + "\".", qualifier.position());
                 }
-                if (cd instanceof X10ConstructorDef
-                		|| (cd instanceof X10MethodDef && ((X10MethodDef) cd).isProto()))
-                	t = X10TypeMixin.makeProto(ct);
                 
             }
             else {
@@ -142,6 +122,13 @@ public class X10Special_c extends Special_c implements X10Special {
 
         X10Special result = this;
         X10TypeSystem xts = (X10TypeSystem) ts;
+        assert (t.isClass());
+        // Instantiate with the class's type arguments
+        CConstraint constraint = t instanceof ConstrainedType ? ((ConstrainedType) t).getRealXClause() : null;
+        t = ((X10ParsedClassType) t.toClass()).instantiateTypeParametersExplicitly();
+        if (constraint != null) {
+            t = X10TypeMixin.xclause(t, constraint);
+        }
 
         if (kind == THIS) {
             Type tt = X10TypeMixin.baseType(t);
@@ -151,13 +138,13 @@ public class X10Special_c extends Special_c implements X10Special {
             	XVar var = (XVar) xts.xtypeTranslator().trans(cc, this, c);
                 cc.addSelfBinding(var);
             	cc.setThisVar(var);
-            	PlaceChecker.AddThisHomeEqualsPlaceTerm(cc, var, c);
+            	//PlaceChecker.AddThisHomeEqualsPlaceTerm(cc, var, c);
             }
             catch (XFailure e) {
                 throw new SemanticException("Constraint on this is inconsistent; " + e.getMessage(), position());
             }
             tt = X10TypeMixin.xclause(X10TypeMixin.baseType(tt), cc);
-           
+            
             result = (X10Special) type(tt);
         }
         else if (kind == SUPER) {
@@ -168,7 +155,7 @@ public class X10Special_c extends Special_c implements X10Special {
             try {
             	XVar var = (XVar) xts.xtypeTranslator().trans(cc, this, c);
                 cc.addSelfBinding(var);
-            	PlaceChecker.AddThisHomeEqualsPlaceTerm(cc, var, c);
+            	//PlaceChecker.AddThisHomeEqualsPlaceTerm(cc, var, c);
             }
             catch (XFailure e) {
                 throw new SemanticException("Constraint on super is inconsistent; " + e.getMessage(), position());
@@ -200,7 +187,7 @@ public class X10Special_c extends Special_c implements X10Special {
 
         return result;
     }
-    
+
     public String toString() {
     	String typeString = null;
     	if (qualifier != null)

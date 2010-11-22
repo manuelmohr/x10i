@@ -17,6 +17,7 @@ import polyglot.types.ClassType;
 import polyglot.types.ErrorRef_c;
 import polyglot.types.Flags;
 import polyglot.types.LocalInstance_c;
+import polyglot.types.Name;
 import polyglot.types.Ref;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
@@ -36,6 +37,7 @@ import x10.types.constraints.CConstraint;
  *
  */
 public class X10LocalInstance_c extends LocalInstance_c implements X10LocalInstance {
+    private static final long serialVersionUID = -2728180556244846992L;
 
     public X10LocalInstance_c(TypeSystem ts, Position pos, Ref<? extends X10LocalDef> def) {
         super(ts, pos, def);
@@ -52,15 +54,21 @@ public class X10LocalInstance_c extends LocalInstance_c implements X10LocalInsta
         return X10TypeObjectMixin.annotationsMatching(this, t);
     }
     
+    public X10LocalInstance name(Name name) {
+        if (name == this.name()) return this;
+        return (X10LocalInstance) super.name(name);
+    }
+    
     public X10LocalInstance type(Type t) {
+        if (t == this.type) return this;
         X10LocalInstance_c n = (X10LocalInstance_c) super.type(t);
-        assert n != this;
+        if (n == this) n = (X10LocalInstance_c) this.copy();
         // clear right type so it is recomputed from type
         n.rightType = null;
         return n;
     }
     
-    Type rightType;
+    private Type rightType;
 
     public Type rightType() {
         if (rightType != null) 
@@ -104,8 +112,8 @@ public class X10LocalInstance_c extends LocalInstance_c implements X10LocalInsta
         return n;
     }
     public String toString() {
-	String s = "local " + X10Flags.toX10Flags(flags()).prettyPrint() + name() + ": " + type();
-	return s;
+        String s = "local " + X10Flags.toX10Flags(flags()).prettyPrint() + name() + ": " + type();
+        return s;
     }
 
     public boolean isValid() {

@@ -12,6 +12,7 @@
 package x10.lang;
 
 import x10.compiler.Native;
+import x10.compiler.TempNoInline_1;
 
 /**
  * @author Christian Grothoff
@@ -24,11 +25,11 @@ public final struct Place(id: Int)  {
 
     @Native("java", "x10.runtime.impl.java.Runtime.MAX_PLACES")
     @Native("c++", "x10aux::num_places")
-    public const ALL_PLACES = 4;
+    public static ALL_PLACES = 4;
 
     @Native("java", "x10.runtime.impl.java.Runtime.MAX_PLACES")
     @Native("c++", "x10aux::num_hosts")
-    public const MAX_PLACES = 4;
+    public static MAX_PLACES = 4;
 
     /**
      * Find number of children under a place.
@@ -79,13 +80,15 @@ public final struct Place(id: Int)  {
     @Native("c++", "x10aux::child_index(#1)")
     public static def childIndex(id:Int):Int { throw new BadPlaceException(); }
 
-    public const places = ValRail.make[Place](MAX_PLACES, ((id: Int) => Place(id)));
-    public const children = ValRail.make[ValRail[Place]](
-                                ALL_PLACES,
-                                (p: Int) => ValRail.make[Place](numChildren(p),
-                                                                (i:Int) => Place(child(p,i))));
-    public const NUM_ACCELS = ALL_PLACES - MAX_PLACES;
-    public const FIRST_PLACE: Place(0) = places(0) as Place(0);
+    private static childrenArray = 
+        new Array[Array[Place](1)](ALL_PLACES,
+                                   (p: Int) => new Array[Place](numChildren(p), (i:Int) => Place(child(p,i))));
+
+    private static places = new Array[Place](MAX_PLACES, ((id:Int) => Place(id)));
+    public static def places():Sequence[Place]=places.sequence();
+    public static children = childrenArray.values();
+    public static NUM_ACCELS = ALL_PLACES - MAX_PLACES;
+    public static FIRST_PLACE:Place(0) = Place(0);
 
     public def this(id: Int):Place(id) { property(id); }
 
@@ -95,27 +98,29 @@ public final struct Place(id: Int)  {
     public def prev(i: Int): Place = next(-i);
     public def next(i: Int): Place {
         // -1 % n == -1, not n-1, so need to add n
-        if (isHost(id)) {
+        if (@TempNoInline_1 isHost(id)) {
             val k = (id + i % MAX_PLACES + MAX_PLACES) % MAX_PLACES;
             return place(k);
         }
         // FIXME: iterate through peers
         return this;
-	}
+    }
 
-	public def isFirst(): Boolean = id == 0;
-	public def isLast(): Boolean = id == MAX_PLACES - 1;
+    public static def numPlaces():int = ALL_PLACES;
 
-	public def isHost(): Boolean = isHost(id);
-	public def isSPE(): Boolean = isSPE(id);
-	public def isCUDA(): Boolean = isCUDA(id);
+    public def isFirst(): Boolean = id == 0;
+    public def isLast(): Boolean = id == MAX_PLACES - 1;
+
+    public def isHost(): Boolean = isHost(id);
+    public def isSPE(): Boolean = isSPE(id);
+    public def isCUDA(): Boolean = isCUDA(id);
 
     public def numChildren() = numChildren(id);
     public def child(i:Int) = Place(child(id,i));
 
-    public def children() = children(id);
+    public def children() = childrenArray(id);
 
-    public def parent() = places(parent(id));
+    public def parent() = Place(parent(id));
 
     public def childIndex() {
         if (isHost()) {
@@ -124,8 +129,8 @@ public final struct Place(id: Int)  {
         return childIndex(id);
     }
 
-    public global safe def toString() = "(Place " + this.id + ")";
-    public global safe def equals(p:Place) = p.id==this.id; 
-    public global safe def equals(p:Any) = p instanceof Place && (p as Place).id==this.id;
-    public global safe def hashCode()=id;
+    public def toString() = "(Place " + this.id + ")";
+    public def equals(p:Place) = p.id==this.id;
+    public def equals(p:Any) = p instanceof Place && (p as Place).id==this.id;
+    public def hashCode()=id;
 }

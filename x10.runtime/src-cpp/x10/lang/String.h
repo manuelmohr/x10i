@@ -29,7 +29,6 @@ namespace x10 {
     namespace lang {
 
         template<class T> class Rail;
-        template<class T> class ValRail;
 
         class String : public Object {
             const char *FMGL(content);
@@ -62,6 +61,8 @@ namespace x10 {
             }
             static x10aux::ref<String> _make(x10aux::ref<String> s);
             static x10aux::ref<String> _make(x10aux::ref<Rail<x10_char> > rail,
+                                             x10_int start, x10_int length);
+            static x10aux::ref<String> _make(x10aux::ref<x10::array::Array<x10_char> > array,
                                              x10_int start, x10_int length);
 
             // This is for string literals, brought out here so we have easier control
@@ -112,16 +113,16 @@ namespace x10 {
                 return substring(start, this->length());
             }
 
-            x10aux::ref<ValRail<x10aux::ref<String> > > split(x10aux::ref<String> pat);
+            x10aux::ref<Rail<x10aux::ref<String> > > split(x10aux::ref<String> pat);
 
             // Forwarding method needed so that String can be used in Generic contexts (T <: (nat)=>char)
             x10_char apply(x10_int i) { return charAt(i); }
             
             x10_char charAt(x10_int i);
 
-            x10aux::ref<ValRail<x10_char> > chars();
+            x10aux::ref<Rail<x10_char> > chars();
 
-            x10aux::ref<ValRail<x10_byte> > bytes();
+            x10aux::ref<Rail<x10_byte> > bytes();
 
             static void _serialize(x10aux::ref<String> this_,
                                    x10aux::serialization_buffer &buf);
@@ -141,10 +142,7 @@ namespace x10 {
             virtual void _destructor();
 
             static x10aux::ref<String> format(x10aux::ref<String> format,
-                                              x10aux::ref<ValRail<x10aux::ref<Any> > > parms);
-
-            static x10aux::ref<String> format(x10aux::ref<String> format,
-                                              x10aux::ref<Rail<x10aux::ref<Any> > > parms);
+                                              x10aux::ref<x10::array::Array<x10aux::ref<Any> > > parms);
 
             virtual x10_boolean equals(x10aux::ref<x10::lang::Any> p0);
 
@@ -189,8 +187,8 @@ namespace x10 {
         #endif
 
         template<class T> x10aux::ref<T> String::_deserializer(x10aux::deserialization_buffer& buf) {
-            x10aux::ref<String> this_ = new (x10aux::alloc_remote<String>()) String();
-            buf.record_reference(this_); // TODO: avoid; no global refs; final class
+            x10aux::ref<String> this_ = new (x10aux::alloc<String>()) String();
+            buf.record_reference(this_);
             this_->_deserialize_body(buf);
             return this_;
         }
@@ -198,11 +196,13 @@ namespace x10 {
         // Specialized deserialization
         template<class T> x10aux::ref<T> String::_deserialize(x10aux::deserialization_buffer &buf) {
             Object::_reference_state rr = Object::_deserialize_reference_state(buf);
-            x10aux::ref<String> this_;
-            if (rr.ref != 0) {
-                this_ = String::_deserializer<String>(buf);
+            if (0 == rr.ref) {
+                return x10aux::null;
+            } else {
+                x10aux::ref<String> res = String::_deserializer<String>(buf);
+                _S_("Deserialized a "<<ANSI_SER<<ANSI_BOLD<<"class"<<ANSI_RESET<<" x10::lang::String");
+                return res;
             }
-            return Object::_finalize_reference<T>(this_, rr, buf);
         }
 
     } // namespace x10::lang

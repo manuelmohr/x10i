@@ -48,6 +48,8 @@ import x10.types.constraints.CConstraint;
 import x10.types.constraints.TypeConstraint;
 
 public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
+    private static final long serialVersionUID = -4644427081636650171L;
+
     protected List<ParameterType.Variance> variances;
     XVar thisVar;
     
@@ -77,7 +79,7 @@ public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
 
     public List<Ref<? extends Type>> defAnnotations() {
 	if (annotations == null)
-	    return Collections.EMPTY_LIST;
+	    return Collections.<Ref<? extends Type>>emptyList();
         return Collections.unmodifiableList(annotations);
     }
     
@@ -247,7 +249,7 @@ public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
 			    
 			    // Disable this for now since it can cause an infinite loop.
 			    // TODO: vj 08/12/09 Revisit this.
-			    if (false && result.consistent()) {
+			    /*if (false && result.consistent()) {
 				    // Verify that the realclause, as it stands, entails the assertions of the 
 				    // property.
 				    for (X10FieldDef fi : properties) {
@@ -260,24 +262,17 @@ public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
 					    if (! result.entails(c, ((X10Context) ts.emptyContext()).constraintProjection(result, c))) {
 						    this.rootClause = Types.ref(result);
 						    this.rootClauseInvalid = 
-							    new SemanticException("The real clause, " + result 
-							                          + ", does not satisfy constraints from " + fi + ".", position());
+							    new SemanticException("The real clause, " + result + ", does not satisfy constraints from " + fi + ".", position());
 					    }
 				    }
-			    }
+			    }*/
 		    }
-		    catch (XFailure e) {
+		  /*  catch (XFailure e) {
 		    	CConstraint result = new CConstraint();
 			    result.setInconsistent();
 			    this.rootClause = Types.ref(result);
 			    this.rootClauseInvalid = new SemanticException(e.getMessage(), position());
-		    }
-		    catch (SemanticException e) {
-		    	CConstraint result = new CConstraint();
-			    result.setInconsistent();
-			    this.rootClause = Types.ref(result);
-			    this.rootClauseInvalid = e;
-		    }
+		    }*/
 		    finally {
 			    computing = false;
 		    }
@@ -292,10 +287,11 @@ public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
     }
 
     public List<X10FieldDef> properties() {
-	List<X10FieldDef> x10fields = new TransformingList(fields(), new Transformation<FieldDef,X10FieldDef>() {
-	    public X10FieldDef transform(FieldDef o) {
-		return (X10FieldDef) o;
-	    }
+	List<X10FieldDef> x10fields = new TransformingList<FieldDef, X10FieldDef>(fields(),
+	    new Transformation<FieldDef,X10FieldDef>() {
+	        public X10FieldDef transform(FieldDef o) {
+	            return (X10FieldDef) o;
+	        }
 	});
         return new FilteringList<X10FieldDef>(x10fields, new Predicate<X10FieldDef>() {
             public boolean isTrue(X10FieldDef o) {
@@ -343,7 +339,7 @@ public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
     	return false;
     }
     private String typeParameterString() {
-    	return ""; // ((typeParameters == null || typeParameters.isEmpty())? "" : typeParameters.toString());
+    	return ""; //(typeParameters.isEmpty() ? "" : typeParameters.toString());
     }
     public String toString() {
         Name name = name();

@@ -41,10 +41,13 @@ import polyglot.ast.ConstructorDecl;
 import polyglot.ast.Eval;
 import polyglot.ast.FieldDecl;
 import polyglot.ast.For;
+import polyglot.ast.Formal;
 import polyglot.ast.If;
+import polyglot.ast.LocalDecl;
 import polyglot.ast.MethodDecl;
 import polyglot.ast.Node;
 import polyglot.ast.NodeFactory;
+import polyglot.ast.ProcedureDecl;
 import polyglot.ast.Return;
 import polyglot.ast.SourceCollection;
 import polyglot.ast.SourceFile;
@@ -190,7 +193,7 @@ public class X10CPPTranslator extends Translator {
 		    String key = w.getStreamName(StreamWrapper.CC);
 		    X10CPPContext_c c = (X10CPPContext_c) context;
 		    HashMap<String, LineNumberMap> fileToLineNumberMap =
-		        (HashMap<String, LineNumberMap>) c.findData(FILE_TO_LINE_NUMBER_MAP);
+		        c.<HashMap<String, LineNumberMap>>findData(FILE_TO_LINE_NUMBER_MAP);
 		    if (fileToLineNumberMap != null) {
 		        final LineNumberMap lineNumberMap = fileToLineNumberMap.get(key);
 		        // [DC] avoid NPE when writing to .cu files
@@ -217,6 +220,16 @@ public class X10CPPTranslator extends Translator {
 		                    }
 		                });
 		            }
+		            if (n instanceof FieldDecl)
+		            	lineNumberMap.addClassMemberVariable(((FieldDecl)n).name().toString(), ((FieldDecl)n).type().toString(), Emitter.mangled_non_method_name(context.currentClass().toString()));
+		            else if (n instanceof LocalDecl && !((LocalDecl)n).position().isCompilerGenerated())
+		            	lineNumberMap.addLocalVariableMapping(((LocalDecl)n).name().toString(), ((LocalDecl)n).type().toString(), line, parent.position().endLine(), file);
+		            else if (def != null)
+		            {
+		            	List<Formal> args = ((ProcedureDecl)parent).formals();
+		            	for (int i=0; i<args.size(); i++)
+		            		lineNumberMap.addLocalVariableMapping(args.get(i).name().toString(), args.get(i).type().toString(), line, parent.position().endLine(), file);
+		            }
 		        }
 		    }
 		}
@@ -239,6 +252,7 @@ public class X10CPPTranslator extends Translator {
     	assert src_path.isDirectory() : src_path_+" is not a directory";
     	assert dest_path.isDirectory() : dest_path_+" is not a directory";
     	try {
+    		dest_path.mkdirs();
 			FileInputStream src = new FileInputStream(new File(src_path_+file));
 	    	FileOutputStream dest = new FileOutputStream(new File(dest_path_+file));
 	    	int b;
@@ -275,8 +289,7 @@ public class X10CPPTranslator extends Translator {
 				c.addData(FILE_TO_LINE_NUMBER_MAP, new HashMap<String, LineNumberMap>());
 
 			// Use the class name to derive a default output file name.
-			for (Iterator i = sfn.decls().iterator(); i.hasNext(); ) {
-				TopLevelDecl decl = (TopLevelDecl) i.next();
+			for (TopLevelDecl decl : sfn.decls()) {
 				if (!(decl instanceof X10ClassDecl))
 					continue;
 				X10ClassDecl cd = (X10ClassDecl) decl;
@@ -337,7 +350,8 @@ public class X10CPPTranslator extends Translator {
 				opts.compilationUnits().add(cc);
 				
 				if (x10.Configuration.DEBUG) {
-					HashMap<String, LineNumberMap> fileToLineNumberMap = (HashMap<String, LineNumberMap>)c.getData(FILE_TO_LINE_NUMBER_MAP);
+					HashMap<String, LineNumberMap> fileToLineNumberMap =
+					    c.<HashMap<String, LineNumberMap>>getData(FILE_TO_LINE_NUMBER_MAP);
 					fileToLineNumberMap.put(closures, new LineNumberMap());
 					fileToLineNumberMap.put(cc, new LineNumberMap());
 					fileToLineNumberMap.put(header, new LineNumberMap());
@@ -346,7 +360,8 @@ public class X10CPPTranslator extends Translator {
 				translateTopLevelDecl(sw, sfn, decl);
 				
 				if (x10.Configuration.DEBUG) {
-					HashMap<String, LineNumberMap> fileToLineNumberMap = (HashMap<String, LineNumberMap>)c.getData(FILE_TO_LINE_NUMBER_MAP);
+					HashMap<String, LineNumberMap> fileToLineNumberMap =
+					    c.<HashMap<String, LineNumberMap>>getData(FILE_TO_LINE_NUMBER_MAP);
 //					sw.pushCurrentStream(sw.getNewStream(StreamWrapper.Closures, false));
 //					printLineNumberMap(sw, pkg, className, StreamWrapper.Closures, fileToLineNumberMap);
 //					sw.popCurrentStream();
@@ -463,18 +478,15 @@ public class X10CPPTranslator extends Translator {
 	}
 
     public static boolean doPostCompile(Options options, ErrorQueue eq, Collection<String> outputFiles, String[] cxxCmd) {
+    	return doPostCompile(options, eq, outputFiles, cxxCmd, false);
+    }
+    public static boolean doPostCompile(Options options, ErrorQueue eq, Collection<String> outputFiles, String[] cxxCmd, boolean noError) {
         if (Report.should_report(postcompile, 1)) {
         	StringBuffer cmdStr = new StringBuffer();
         	for (int i = 0; i < cxxCmd.length; i++)
         		cmdStr.append(cxxCmd[i]+" ");
         	Report.report(1, "Executing post-compiler " + cmdStr);
         }
-/*        
-    	StringBuffer cmdStr = new StringBuffer();
-    	for (int i = 0; i < cxxCmd.length; i++)
-    		cmdStr.append(cxxCmd[i]+" ");
-    	System.out.println(cmdStr);
-    	*/
 
         try {
             Runtime runtime = Runtime.getRuntime();
@@ -511,15 +523,15 @@ public class X10CPPTranslator extends Translator {
         	}
 
         	if (output != null)
-        		eq.enqueue(proc.exitValue() > 0 ? ErrorInfo.POST_COMPILER_ERROR : ErrorInfo.WARNING, output);
+        		eq.enqueue((proc.exitValue() > 0 && !noError) ? ErrorInfo.POST_COMPILER_ERROR : ErrorInfo.WARNING, output);
         	if (proc.exitValue() > 0) {
-        		eq.enqueue(ErrorInfo.POST_COMPILER_ERROR,
+        		eq.enqueue(noError?ErrorInfo.WARNING:ErrorInfo.POST_COMPILER_ERROR,
         				"Non-zero return code: " + proc.exitValue());
         		return false;
         	}
         }
         catch(Exception e) {
-        	eq.enqueue(ErrorInfo.POST_COMPILER_ERROR, e.getMessage() != null ? e.getMessage() : e.toString());
+        	eq.enqueue(noError?ErrorInfo.WARNING:ErrorInfo.POST_COMPILER_ERROR, e.getMessage() != null ? e.getMessage() : e.toString());
         	return false;
         }
         return true;
@@ -528,8 +540,7 @@ public class X10CPPTranslator extends Translator {
 	private boolean translateSourceCollection(SourceCollection sc) {
 		boolean okay = true;
 
-		for (Iterator i = sc.sources().iterator(); i.hasNext(); ) {
-			SourceFile sfn = (SourceFile) i.next();
+		for (SourceFile sfn : sc.sources()) {
 			okay &= translateSource(sfn);
 		}
 

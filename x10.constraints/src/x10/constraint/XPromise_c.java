@@ -26,11 +26,15 @@ import java.util.Set;
  * constraint are either Promise_c's or other implementations of Promise, such
  * as C_Lit and C_Here.
  * 
- * Invariant: If fields is not empty, then var is an XVar.
+ * <p>Invariant: If fields is not empty, then var is an XVar.
+ * 
+ * <p>Note: This class is not public. It is internal to the implementation of the constraint system. No 
+ * client of the constraint system should use this class.
+ * 
  * @author vj
  * 
  */
-public class XPromise_c implements XPromise, Serializable {
+class XPromise_c implements XPromise, Serializable {
     /**
      * The externally visible XTerm that this node represents in the constraint
      * graph. May be null, if this promise corresponds to an internal node.
@@ -362,7 +366,7 @@ public class XPromise_c implements XPromise, Serializable {
         return false;
     }
 
-    public void dump(XVar path, List<XTerm> result, boolean dumpEQV) {
+    public void dump(XVar path, List<XTerm> result, boolean dumpEQV, boolean hideFake) {
         XTerm t1 = path == null? term() : path;
         if (t1 == null)
             return;
@@ -373,6 +377,10 @@ public class XPromise_c implements XPromise, Serializable {
         if (value != null) {
         		if (dumpEQV || ! t1.hasEQV()) {
         			XTerm t2 = lookup().var();
+        			if (hideFake && t1 instanceof XField && ((XField) t1).isHidden())
+        				return;
+        			if (hideFake && t2 instanceof XField && ((XField) t2).isHidden())
+        				return;
         			result.add( XTerms.makeEquals(t1, t2));
         		}
             return;
@@ -386,8 +394,17 @@ public class XPromise_c implements XPromise, Serializable {
         		for (Map.Entry<XName,XPromise> m : fields.entrySet()) {
         			XName name = m.getKey();
         			XPromise p = m.getValue();
-        			XVar path2 =  v==null? null : XTerms.makeField(v, name);
-        			p.dump(path2, result, dumpEQV);
+        			XTerm t = p.term();
+        			XVar path2 = null;
+        			if (v != null && !(t instanceof XField) && !((XField) t).receiver().equals(v)) {
+        			    assert false;
+//        			    path2 = XTerms.makeField(v, name);
+        			}
+//        			path2 = v == null ? null : (XVar) t;
+        			boolean hidden = t instanceof XField ? ((XField) t).isHidden() : false;
+        			path2 = v == null ? null :
+        			    (hidden ? XTerms.makeFakeField(v, name) : XTerms.makeField(v, name));
+        			p.dump(path2, result, dumpEQV, hideFake);
         		}
         	}
         if (disEquals != null) {
@@ -397,11 +414,17 @@ public class XPromise_c implements XPromise, Serializable {
         }
     }
 
+    private boolean toStringMark = false;
     public String toString() {
-        return var + ((value != null) 
-        		? "->" + value 
-        				: ((fields != null) ? fields.toString() : "")
-        				+ (disEquals != null ? " != " + disEquals.toString() : ""));
+        if (toStringMark)
+            return "...";
+        toStringMark = true;
+        String res = var + ((value != null)
+                ? "->" + value 
+                        : ((fields != null) ? fields.toString() : "")
+                        + (disEquals != null ? " != " + disEquals.toString() : ""));
+        toStringMark = false;
+        return res;
     }
 
     public void replaceDescendant(XPromise y, XPromise x, XConstraint c) {

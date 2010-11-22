@@ -17,18 +17,22 @@
 #include <x10aux/ref.h>
 #include <x10aux/network.h>
 
-namespace x10 { namespace lang { class Object; } }
+namespace x10 { namespace lang { class Reference; } }
 
 namespace x10aux {
 
     class deserialization_buffer;
 
-    typedef ref<x10::lang::Object> (*Deserializer)(deserialization_buffer &buf);
+    typedef ref<x10::lang::Reference> (*Deserializer)(deserialization_buffer &buf);
     template<> inline const char *typeName<Deserializer>() { return "Deserializer"; }
 
     typedef void (*CUDAPre)(deserialization_buffer &buf, place p,
                             size_t &blocks, size_t &threads, size_t &shm, size_t &argc, char *&argv, size_t &cmemc, char *&cmemv);
     template<> inline const char *typeName<CUDAPre>() { return "CUDAPre"; }
+
+    typedef void (*CUDAPost)(deserialization_buffer &buf, place p,
+                             size_t blocks, size_t threads, size_t shm, size_t argc, char *argv, size_t cmemc, char *cmemv);
+    template<> inline const char *typeName<CUDAPost>() { return "CUDAPost"; }
 
     typedef void *(*BufferFinder)(deserialization_buffer &buf, x10_int len);
     template<> inline const char *typeName<BufferFinder>() { return "BufferFinder"; }
@@ -55,6 +59,7 @@ namespace x10aux {
 
             Deserializer deser;
             CUDAPre cuda_pre;
+            CUDAPost cuda_post;
             const char *cubin;
             const char *kernel;
 
@@ -79,19 +84,24 @@ namespace x10aux {
         template<class T> static ref<T> create(deserialization_buffer &buf,
                                                serialization_id_t id);
 
-        ref<x10::lang::Object> create_(deserialization_buffer &buf);
-        ref<x10::lang::Object> create_(deserialization_buffer &buf, serialization_id_t id);
+        ref<x10::lang::Reference> create_(deserialization_buffer &buf);
+        ref<x10::lang::Reference> create_(deserialization_buffer &buf, serialization_id_t id);
 
         static serialization_id_t addDeserializer (Deserializer deser, bool is_async=false,
                                                    CUDAPre cuda_pre = NULL,
+                                                   CUDAPost cuda_post = NULL,
                                                    const char *cubin = NULL,
                                                    const char *kernel = NULL);
-        serialization_id_t addDeserializer_ (Deserializer deser, bool is_async,
-                                             CUDAPre cuda_pre,
-                                             const char *cubin, const char *kernel);
+        serialization_id_t addDeserializer_ (Deserializer deser, bool is_async = false,
+                                             CUDAPre cuda_pre = NULL,
+                                             CUDAPost cuda_post = NULL,
+                                             const char *cubin = NULL, const char *kernel = NULL);
 
         static CUDAPre getCUDAPre(serialization_id_t id);
         CUDAPre getCUDAPre_(serialization_id_t id);
+
+        static CUDAPost getCUDAPost(serialization_id_t id);
+        CUDAPost getCUDAPost_(serialization_id_t id);
 
         static serialization_id_t addPutFunctions(BufferFinder bfinder, Notifier notifier,
                                                  BufferFinder cuda_bfinder, Notifier cuda_notifier);
@@ -131,6 +141,9 @@ namespace x10aux {
 
     inline CUDAPre DeserializationDispatcher::getCUDAPre (serialization_id_t id)
     { return it->getCUDAPre_(id); }
+
+    inline CUDAPost DeserializationDispatcher::getCUDAPost (serialization_id_t id)
+    { return it->getCUDAPost_(id); }
 
 
     inline BufferFinder DeserializationDispatcher::getPutBufferFinder (serialization_id_t id)

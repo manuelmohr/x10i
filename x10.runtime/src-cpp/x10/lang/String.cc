@@ -22,6 +22,8 @@
 #include <x10/lang/String.h>
 #include <x10/lang/Rail.h>
 
+#include <x10/array/Array.h>
+
 #include <cstdarg>
 #include <sstream>
 
@@ -53,7 +55,22 @@ String::_make(x10aux::ref<Rail<x10_char> > rail, x10_int start, x10_int length) 
     x10_int i = 0;
     char *content= x10aux::alloc<char>(length+1);
     for (i=0; i<length; i++) {
-        content[i] = (char)(rail->raw()[start + i].v);
+        content[i] = (char)((*rail)[start + i].v);
+    }
+    content[i] = '\0';
+
+    this_->_constructor(content, i);
+    return this_;
+}
+
+x10aux::ref<String>
+String::_make(x10aux::ref<x10::array::Array<x10_char> > array, x10_int start, x10_int length) {
+    x10aux::ref<String> this_ = new (x10aux::alloc<String>()) String();
+    nullCheck(array);
+    x10_int i = 0;
+    char *content= x10aux::alloc<char>(length+1);
+    for (i=0; i<length; i++) {
+        content[i] = (char)(array->raw()[start + i].v);
     }
     content[i] = '\0';
 
@@ -206,9 +223,9 @@ ref<String> String::substring(x10_int start, x10_int end) {
     return String::Steal(str);
 }
 
-static ref<ValRail<ref<String> > > split_all_chars(String* str) {
+static ref<Rail<ref<String> > > split_all_chars(String* str) {
     size_t sz = (size_t)str->length();
-    ValRail<ref<String> > *rail = alloc_rail<ref<String>,ValRail<ref<String> > > (sz);
+    Rail<ref<String> > *rail = alloc_rail<ref<String>,Rail<ref<String> > > (sz);
     for (size_t i = 0; i < sz; ++i) {
         rail->raw()[i] = str->substring(i, i+1);
     }
@@ -216,7 +233,7 @@ static ref<ValRail<ref<String> > > split_all_chars(String* str) {
 }
 
 // FIXME: this does not treat pat as a regex
-ref<ValRail<ref<String> > > String::split(ref<String> pat) {
+ref<Rail<ref<String> > > String::split(ref<String> pat) {
     nullCheck(pat);
     int l = pat->length();
     if (l == 0) // if splitting on an empty string, just return the chars
@@ -226,7 +243,7 @@ ref<ValRail<ref<String> > > String::split(ref<String> pat) {
     while ((i = indexOf(pat, i+l)) != -1) {
         sz++;
     }
-    ValRail<ref<String> > *rail = alloc_rail<ref<String>,ValRail<ref<String> > > (sz);
+    Rail<ref<String> > *rail = alloc_rail<ref<String>,Rail<ref<String> > > (sz);
     int c = 0;
     int o = 0; // now build the rail
     while ((i = indexOf(pat, o)) != -1) {
@@ -244,17 +261,17 @@ x10_char String::charAt(x10_int i) {
 }
 
 
-ref<ValRail<x10_char> > String::chars() {
+ref<Rail<x10_char> > String::chars() {
     x10_int sz = length();
-    ValRail<x10_char> *rail = alloc_rail<x10_char,ValRail<x10_char> > (sz);
+    Rail<x10_char> *rail = alloc_rail<x10_char,Rail<x10_char> > (sz);
     for (int i = 0; i < sz; ++i)
         rail->raw()[i] = (x10_char) FMGL(content)[i]; // avoid bounds check
     return rail;
 }
 
-ref<ValRail<x10_byte> > String::bytes() {
+ref<Rail<x10_byte> > String::bytes() {
     x10_int sz = length();
-    ValRail<x10_byte> *rail = alloc_rail<x10_byte,ValRail<x10_byte> > (sz);
+    Rail<x10_byte> *rail = alloc_rail<x10_byte,Rail<x10_byte> > (sz);
     for (int i = 0; i < sz; ++i)
         rail->raw()[i] = FMGL(content)[i]; // avoid bounds check
     return rail;
@@ -298,8 +315,7 @@ void String::_formatHelper(std::ostringstream &ss, char* fmt, ref<Any> p) {
         dealloc(buf);
 }
 
-// TODO: merge with format(String, Rail[Any])
-ref<String> String::format(ref<String> format, ref<ValRail<ref<Any> > > parms) {
+ref<String> String::format(ref<String> format, ref<x10::array::Array<ref<Any> > > parms) {
     std::ostringstream ss;
     nullCheck(format);
     nullCheck(parms);
@@ -315,33 +331,7 @@ ref<String> String::format(ref<String> format, ref<ValRail<ref<Any> > > parms) {
             ss << fmt;
             --i;
         } else {
-            const ref<Reference> p = parms->operator[](i);
-            _formatHelper(ss, fmt, p);
-        }
-        if (next != NULL)
-            *next = '%';
-    }
-    return String::Lit(ss.str().c_str());
-}
-
-// TODO: merge with format(String, ValRail[Any])
-ref<String> String::format(ref<String> format, ref<Rail<ref<Any> > > parms) {
-    std::ostringstream ss;
-    nullCheck(format);
-    placeCheck(nullCheck(parms));
-    //size_t len = format->FMGL(content_length);
-    char* orig = const_cast<char*>(format->c_str());
-    char* fmt = orig;
-    char* next = NULL;
-    for (x10_int i = 0; fmt != NULL; ++i, fmt = next) {
-        next = strchr(fmt+1, '%'); // FIXME: this is only ok if we always null-terminate content
-        if (next != NULL)
-            *next = '\0';
-        if (*fmt != '%') {
-            ss << fmt;
-            --i;
-        } else {
-            const ref<Reference> p = parms->operator[](i);
+            const ref<Reference> p = parms->apply(i);
             _formatHelper(ss, fmt, p);
         }
         if (next != NULL)
@@ -454,7 +444,7 @@ x10_boolean String::endsWith(ref<String> s) {
 }
 
 const serialization_id_t String::_serialization_id =
-    DeserializationDispatcher::addDeserializer(String::_deserializer<Object>);
+    DeserializationDispatcher::addDeserializer(String::_deserializer<Reference>);
 
 // Specialized serialization
 void String::_serialize(x10aux::ref<String> this_, x10aux::serialization_buffer &buf) {
@@ -492,12 +482,12 @@ void String::_deserialize_body(x10aux::deserialization_buffer &buf) {
     _S_("Deserialized string was: \""<<this<<"\"");
 }
 
-Fun_0_1<x10_int, x10_char>::itable<String> String::_itable_Fun_0_1(&String::apply, &String::at, &String::at,
+Fun_0_1<x10_int, x10_char>::itable<String> String::_itable_Fun_0_1(&String::apply, 
                                                                    &String::equals, &String::hashCode,
-                                                                   &String::home, &String::toString, &String::typeName);
-Comparable<ref<String> >::itable<String> String::_itable_Comparable(&String::at, &String::at, &String::compareTo,
+                                                                   &String::toString, &String::typeName);
+Comparable<ref<String> >::itable<String> String::_itable_Comparable(&String::compareTo,
                                                                    &String::equals, &String::hashCode,
-                                                                   &String::home, &String::toString, &String::typeName);
+                                                                   &String::toString, &String::typeName);
 
 x10aux::itable_entry String::_itables[3] = {
     x10aux::itable_entry(&x10aux::getRTT<Fun_0_1<x10_int, x10_char> >, &String::_itable_Fun_0_1),

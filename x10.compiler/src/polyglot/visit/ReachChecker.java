@@ -15,6 +15,8 @@ import polyglot.main.Report;
 import polyglot.types.SemanticException;
 import polyglot.types.TypeSystem;
 import polyglot.util.InternalCompilerError;
+import polyglot.visit.DataFlow.Item;
+import polyglot.visit.FlowGraph.EdgeKey;
 
 /**
  * Visitor which checks that all statements must be reachable
@@ -25,6 +27,7 @@ public class ReachChecker extends DataFlow
 	super(job, ts, nf, 
               true /* forward analysis */, 
               true /* perform dataflow on entry to CodeDecls */);
+        reportCFG_Errors = true; // this is always the first dataflow analysis
     }
 
     protected static class DataFlowItem extends Item {
@@ -72,7 +75,7 @@ public class ReachChecker extends DataFlow
         }
     }
     
-    public Map flow(Item in, FlowGraph graph, Term n, boolean entry, Set succEdgeKeys) {
+    public Map<EdgeKey, Item> flow(Item in, FlowGraph graph, Term n, boolean entry, Set<EdgeKey> succEdgeKeys) {
         if (in == DataFlowItem.NOT_REACHABLE) {
             return itemToMap(in, succEdgeKeys);
         }
@@ -80,7 +83,7 @@ public class ReachChecker extends DataFlow
         // in is either REACHABLE or REACHABLE_EX_ONLY.
         // return a map where all exception edges are REACHABLE_EX_ONLY,
         // and all non-exception edges are REACHABLE.
-        Map m = itemToMap(DataFlowItem.REACHABLE_EX_ONLY, succEdgeKeys);
+        Map<EdgeKey, Item> m = itemToMap(DataFlowItem.REACHABLE_EX_ONLY, succEdgeKeys);
 
         if (succEdgeKeys.contains(FlowGraph.EDGE_KEY_OTHER)) {
             m.put(FlowGraph.EDGE_KEY_OTHER, DataFlowItem.REACHABLE);
@@ -95,20 +98,20 @@ public class ReachChecker extends DataFlow
         return m;
     }
 
-    public Item confluence(List inItems, Term node, boolean entry, FlowGraph graph) {
+    public Item confluence(List<Item> inItems, Term node, boolean entry, FlowGraph graph) {
         throw new InternalCompilerError("Should never be called.");
     }
 
-    public Item confluence(List inItems, List itemKeys, 
+    public Item confluence(List<Item> inItems, List<EdgeKey> itemKeys, 
             Term node, boolean entry, FlowGraph graph) {
         // if any predecessor is reachable, so is this one, and if any
         // predecessor is normal reachable, and the edge key is not an 
         // exception edge key, then so is this one.
         
         
-        List l = this.filterItemsNonException(inItems, itemKeys);
-        for (Iterator i = l.iterator(); i.hasNext(); ) {
-            if (i.next() == DataFlowItem.REACHABLE) {
+        List<Item> l = this.filterItemsNonException(inItems, itemKeys);
+        for (Item item : l) {
+            if (item == DataFlowItem.REACHABLE) {
                 // this term is reachable via a non-exception edge
                 return DataFlowItem.REACHABLE;
             }
@@ -119,8 +122,8 @@ public class ReachChecker extends DataFlow
         // We now need to determine if this node is
         // reachable via an exception edge key, or if 
         // it is not reachable at all.
-        for (Iterator i = inItems.iterator(); i.hasNext(); ) {
-            if (((DataFlowItem)i.next()).reachable) {
+        for (Item item : inItems) {
+            if (((DataFlowItem)item).reachable) {
                 // this term is reachable, but only through an
                 // exception edge.
                 return DataFlowItem.REACHABLE_EX_ONLY;
@@ -134,7 +137,7 @@ public class ReachChecker extends DataFlow
         // check for reachability.
         if (n instanceof Term) {
            n = checkReachability((Term)n);
-           if (!((Term)n).reachable()) {
+           if (!hadCFG_Error && !((Term)n).reachable()) {
                // Do we throw an exception or not?
                
                // Compound statements are allowed to be unreachable
@@ -157,13 +160,11 @@ public class ReachChecker extends DataFlow
     protected Node checkReachability(Term n) {
         FlowGraph g = currentFlowGraph();
         if (g != null) {   
-            Collection peers = g.peers(n, Term.EXIT);
+            Collection<FlowGraph.Peer> peers = g.peers(n, Term.EXIT);
             if (peers != null && !peers.isEmpty()) {
                 boolean isInitializer = (n instanceof Initializer);
                 
-                for (Iterator iter = peers.iterator(); iter.hasNext(); ) {
-                    FlowGraph.Peer p = (FlowGraph.Peer) iter.next();
-        
+                for (FlowGraph.Peer p : peers) {
                     // the peer is reachable if at least one of its out items
                     // is reachable. This would cover all cases, except that some
                     // peers may have no successors (e.g. peers that throw an
@@ -184,8 +185,8 @@ public class ReachChecker extends DataFlow
                     }
                     
                     if (p.outItems != null) {
-                        for (Iterator k = p.outItems.values().iterator(); k.hasNext(); ) {
-                            DataFlowItem item = (DataFlowItem) k.next();
+                        for (Item v : p.outItems.values()) {
+                            DataFlowItem item = (DataFlowItem) v;
                         
                             if (item != null && item.reachable) {
                                 // n is reachable.
@@ -211,7 +212,7 @@ public class ReachChecker extends DataFlow
     } 
 
     public void check(FlowGraph graph, Term n, boolean entry, 
-            Item inItem, Map outItems) {
+            Item inItem, Map<EdgeKey, Item> outItems) {
         throw new InternalCompilerError("ReachChecker.check should " +
                 "never be called.");
     }

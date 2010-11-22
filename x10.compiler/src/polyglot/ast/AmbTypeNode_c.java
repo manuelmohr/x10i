@@ -82,15 +82,13 @@ public class AmbTypeNode_c extends TypeNode_c implements AmbTypeNode {
               sym.update(tn.typeRef().get());
               
               // Reset the resolver goal to one that can run when the ref is deserialized.
-              Goal resolver = Globals.Scheduler().LookupGlobalType(sym);
+              Goal resolver = ar.job().extensionInfo().scheduler().LookupGlobalType(sym);
               resolver.update(Goal.Status.SUCCESS);
               sym.setResolver(resolver);
               return n;
           }
 
-          ex = new SemanticException("Could not find type \"" +
-                                     (prefix == null ? name.id() : prefix.toString() + "." + name.id()) +
-                                     "\".", position());
+          ex = new SemanticException("Could not find type \"" + (prefix == null ? name.id() : prefix.toString() + "." + name.id()) + "\".", position());
       }
       catch (SemanticException e) {
           ex = e;

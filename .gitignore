@@ -42,8 +42,17 @@
 /x10.runtime/x10rt/include/x10_x10rt_ActiveMessage.h
 /x10.runtime/x10rt/include/x10_x10rt_X10RT.h
 /x10.runtime/x10rt/test/x10rt_basic.pgas_sockets
+/x10.runtime/x10rt/test/x10rt_basic.sockets
 /x10.runtime/x10rt/test/x10rt_basic.standalone
+/x10.runtime/x10rt/test/x10rt_coll.pgas_sockets
+/x10.runtime/x10rt/test/x10rt_coll.sockets
+/x10.runtime/x10rt/test/x10rt_coll.standalone
 /x10.runtime/x10rt/test/x10rt_gups.pgas_sockets
 /x10.runtime/x10rt/test/x10rt_gups.standalone
+/x10.runtime/x10rt/test/x10rt_gups.sockets
 /x10.runtime/x10rt/test/x10rt_topology.pgas_sockets
 /x10.runtime/x10rt/test/x10rt_topology.standalone
+/x10.runtime/x10rt/test/x10rt_topology.sockets
+/x10.runtime/x10rt/pgas-20100916-linux_x86_g++4-sockets.tgz
+/x10.runtime/x10rt/bin
+/x10.runtime/x10rt/etc

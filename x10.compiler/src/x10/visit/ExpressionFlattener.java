@@ -72,7 +72,6 @@ import x10.ast.Await;
 import x10.ast.Closure;
 import x10.ast.ClosureCall;
 import x10.ast.Finish;
-import x10.ast.ForEach;
 import x10.ast.ForLoop;
 import x10.ast.Future;
 import x10.ast.Here;
@@ -85,6 +84,7 @@ import x10.ast.StmtSeq;
 import x10.ast.SubtypeTest;
 import x10.ast.Tuple;
 import x10.ast.When;
+import x10.ast.X10ClassDecl;
 import x10.ast.X10NodeFactory;
 import x10.optimizations.ForLoopOptimizer;
 import x10.types.X10TypeSystem;
@@ -120,36 +120,55 @@ public final class ExpressionFlattener extends ContextVisitor {
 
     /* (non-Javadoc)
      * @see polyglot.visit.NodeVisitor#override(polyglot.ast.Node)
+     */
+    /**
+     * Don't visit nodes that cannot be flattened.
      * 
-     * AST Nodes that aren't flattened.
-     *     Assert, Await, and When require the Java back-end handle StmtExpr's to achieve the right semantics.
+     * @param n the node to be visited (or not)
+     * @return n if the node is NOT to be visited, otherwise null
+     */
+    public Node override(Node n) {
+        if (n instanceof X10ClassDecl) {
+            if (DEBUG) System.out.println("DEBUG: flattening: " +((X10ClassDecl) n).classDef()+ " (@" +((X10ClassDecl) n).position()+ ")");
+            return null;
+        }
+        if (cannotFlatten(n)) return n;
+        return null;
+    }
+
+    /**
+     * Is this Node unflattenable?
+     * 
+     * Nodes that cannot be flattened:
+     *     Assert requires the Java back-end handle StmtExpr's to achieve the right semantics.
+     *     When requires its tests to be evaluated atomically.
      *     Constructors and class initializers cannot be flattened because of Java's initialization rules (X10 proto would fix
      *         this but the Java back-end must be able to handle the new code).
      *     Case Expr's are constant expressions that will eventually get evaluated at compile time.
+     *     
+     * @param n an AST node that might be flattened
+     * @return true if the node cannot be flattened, false otherwise
      */
-    public Node override(Node n) {
+    public static boolean cannotFlatten(Node n) {
         if (n instanceof ConstructorDecl) { // can't flatten constructors until local assignments can precede super() and this()
-            return n;
+            return true;
         }
         if (n instanceof AssignPropertyCall) { // can't flatten constructors until local assignments can precede property assignments
-            return n;
+            return true;
         }
         if (n instanceof FieldDecl) { // can't flatten class initializes until assignments can precede field declarations
-            return n;
+            return true;
         }
         if (n instanceof Assert) { // can't flatten assert's until Java can handle StmtExpr's
-            return n;
+            return true;
         }
-        if (n instanceof Await) { // can't flatten await's until Java can handle StmtExpr's
-            return n;
-        }
-        if (n instanceof When) { // can't flatten when's until Java can handle StmtExpr's
-            return n;
+        if (n instanceof When) { // can't flatten when's because tests need to be evaluated atomically
+            return true;
         }
         if (n instanceof Case) { // case Expr's will become constants, don't screw with them.
-            return n;
+            return true;
         }
-        return null;
+        return false;
     }
     
     
@@ -706,7 +725,6 @@ public final class ExpressionFlattener extends ContextVisitor {
         else if (stmt instanceof AtStmt)    return flattenAtStmt((AtStmt) stmt);
         else if (stmt instanceof Await)     return flattenAwait((Await) stmt);
         else if (stmt instanceof When)      return flattenWhen((When) stmt);
-        else if (stmt instanceof ForEach)   return flattenForEach((ForEach) stmt);
         else if (stmt instanceof AtEach)    return flattenAtEach((AtEach) stmt);
         else if (stmt instanceof AssignPropertyCall) return flattenAssignPropertyCall((AssignPropertyCall) stmt);
         else if (stmt instanceof ConstructorCall)    return flattenConstructorCall((ConstructorCall) stmt);
@@ -793,22 +811,6 @@ public final class ExpressionFlattener extends ContextVisitor {
     private StmtSeq flattenWhen(When stmt) {
         assert false;
         return syn.toStmtSeq(stmt);
-    }
-
-    /**
-     * Flatten a ForEach statement.
-     * <pre>
-     * foreach (x in ({s1; e1})) S  ->  s1; val t1 = e1; foreach (x in t1) S; 
-     * </pre>
-     * 
-     * @param stmt the ForEach statement to flatten
-     * @return a flat statement with the same semantics as stmt
-     */
-    private StmtSeq flattenForEach(ForEach stmt) {
-        List<Stmt> stmts = new ArrayList<Stmt>();
-        Expr domain = getPrimaryAndStatements(stmt.domain(), stmts);
-        stmts.add(stmt.domain(domain));
-        return syn.toStmtSeq(stmt.position(), stmts);
     }
 
     /**
@@ -937,7 +939,7 @@ public final class ExpressionFlattener extends ContextVisitor {
      */
     private StmtSeq flattenAsync(Async stmt) {
         List<Stmt> stmts = new ArrayList<Stmt>();
-        stmts.add((Async) flattenRemoteActivityInvocation(stmt, stmts));
+        stmts.add((Async) stmt);
         return syn.toStmtSeq(stmt.position(), stmts);
     }
 
@@ -963,8 +965,8 @@ public final class ExpressionFlattener extends ContextVisitor {
     /**
      * Flatten the evaluation of an expression.
      * <pre>
-     * ({s1; null});  ->  s1;
-     * ({s1; e1});    ->  s1; Eval(e1);
+     * ({s1; e1});    ->  s1;               if "e1" is "null" or cannot have side-effects
+     * ({s1; e1});    ->  s1; Eval(e1);     otherwise
      * </pre>
      * 
      * @param stmt the evaluation to be flattened.
@@ -974,8 +976,18 @@ public final class ExpressionFlattener extends ContextVisitor {
         List<Stmt> stmts = new ArrayList<Stmt>();
         stmts.addAll(getStatements(stmt.expr()));
         Expr result = getResult(stmt.expr());
-        if (null != result) 
+        while (result instanceof ParExpr) result = ((ParExpr) result).expr();
+        if (null != result && (
+                result instanceof Call || 
+                result instanceof Assign || 
+              ( result instanceof Unary && (
+                    ((Unary) result).operator().equals(Unary.POST_DEC) ||
+                    ((Unary) result).operator().equals(Unary.POST_INC) ||
+                    ((Unary) result).operator().equals(Unary.PRE_DEC) ||
+                    ((Unary) result).operator().equals(Unary.PRE_INC) )) )
+            ) {
             stmts.add(syn.createEval(result));
+        }
         return syn.toStmtSeq(syn.toStmtSeq(stmt.position(), stmts));
     }
 
@@ -999,11 +1011,11 @@ public final class ExpressionFlattener extends ContextVisitor {
         if (JAVA_CONSTRUCTOR_RULES) return syn.toStmtSeq(stmt);
         List<Stmt> stmts = new ArrayList<Stmt>();
         List<Expr> args  = new ArrayList<Expr>();
-        for (Expr arg : stmt.args()) {
+        for (Expr arg : stmt.arguments()) {
             Expr primary = getPrimaryAndStatements(arg, stmts);
             args.add(primary);
         }
-        stmts.add(stmt.args(args));
+        stmts.add(stmt.arguments(args));
         return syn.toStmtSeq(syn.createBlock(stmt.position(), stmts));
     }
 

@@ -34,6 +34,8 @@ import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
 
 public class LoadJobPlugins extends VisitorGoal {
+	private static final long serialVersionUID = 6125852391079139183L;
+	
 	public static class LoadJobPluginsVisitor extends NodeVisitor {
 		Job job;
 		
@@ -86,7 +88,7 @@ public class LoadJobPlugins extends VisitorGoal {
 	}
 
 	public List<Goal> prereqs() {
-		X10Scheduler x10Sched = (X10Scheduler) Globals.Scheduler();
+		X10Scheduler x10Sched = (X10Scheduler) scheduler;
 		List<Goal> l = new ArrayList<Goal>();
 		l.add(x10Sched.LoadPlugins());
 		l.add(x10Sched.PropagateAnnotations(job));

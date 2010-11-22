@@ -22,6 +22,7 @@ import polyglot.types.QName;
 import polyglot.types.Ref;
 import polyglot.types.Type;
 import polyglot.types.TypeSystem;
+import polyglot.types.Types;
 import polyglot.util.CollectionUtil;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
@@ -42,7 +43,9 @@ import x10.types.constraints.TypeConstraint;
  *
  */
 public class X10ConstructorDef_c extends ConstructorDef_c implements X10ConstructorDef {
-    Ref<? extends ClassType> returnType;
+    private static final long serialVersionUID = -8014698525564801656L;
+
+    Ref<? extends Type> returnType;
     protected Ref<CConstraint> supClause;
     protected Ref<CConstraint> guard;
     protected Ref<TypeConstraint> typeGuard;
@@ -56,9 +59,9 @@ public class X10ConstructorDef_c extends ConstructorDef_c implements X10Construc
             List<Ref<? extends Type>> formalTypes,
             XVar thisVar,
             List<LocalDef> formalNames, Ref<CConstraint> guard,
-            Ref<TypeConstraint> typeGuard, List<Ref<? extends Type>> throwTypes,
+            Ref<TypeConstraint> typeGuard, 
             Ref<? extends Type> offerType) {
-        super(ts, pos, container, flags, formalTypes, throwTypes);
+        super(ts, pos, container, flags, formalTypes);
         this.returnType = returnType;
         this.thisVar = thisVar;
         this.formalNames = TypedList.copyAndCheck(formalNames, LocalDef.class, true);
@@ -74,7 +77,7 @@ public class X10ConstructorDef_c extends ConstructorDef_c implements X10Construc
     List<Ref<? extends Type>> annotations;
 
     public List<Ref<? extends Type>> defAnnotations() {
-	if (annotations == null) return Collections.EMPTY_LIST;
+        if (annotations == null) return Collections.emptyList();
         return Collections.unmodifiableList(annotations);
     }
     
@@ -99,7 +102,7 @@ public class X10ConstructorDef_c extends ConstructorDef_c implements X10Construc
         return this.returnType;
     }
 
-    public void setReturnType(Ref<? extends ClassType> r) {
+    public void setReturnType(Ref<? extends Type> r) {
         this.returnType = r;
     }
 
@@ -147,20 +150,16 @@ public class X10ConstructorDef_c extends ConstructorDef_c implements X10Construc
         this.typeGuard = s;
     }
     
-    public List<Ref<? extends Type>> typeParameters() {
-        return Collections.<Ref<? extends Type>>emptyList();
+    public List<ParameterType> typeParameters() {
+        return ((X10ParsedClassType) Types.get(container)).x10Def().typeParameters();
     }
 
-    public void setTypeParameters(List<Ref<? extends Type>> typeParameters) {
+    public void setTypeParameters(List<ParameterType> typeParameters) {
         throw new InternalCompilerError("Attempt to set type parameters on a constructor def: "+this, position());
     }
     
     public String toString() {
 	    String s = designator() + " " + flags().translate() + container() + "." + signature() + (guard() != null ? guard() : "") + ": " + returnType();
-
-	    if (!throwTypes().isEmpty()) {
-		    s += " throws " + CollectionUtil.listToString(throwTypes());
-	    }
 
 	    return s;
     }

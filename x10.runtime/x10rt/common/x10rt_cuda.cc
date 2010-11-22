@@ -102,6 +102,7 @@ namespace {
             case CUDA_ERROR_UNKNOWN:
                 errstr = "CUDA_ERROR_UNKNOWN"; break;
 
+            #if CUDA_VERSION >= 3000
             case CUDA_ERROR_NOT_MAPPED_AS_ARRAY:
                 errstr = "CUDA_ERROR_NOT_MAPPED_AS_ARRAY"; break;
             case CUDA_ERROR_NOT_MAPPED_AS_POINTER:
@@ -112,6 +113,7 @@ namespace {
                 errstr = "CUDA_ERROR_POINTER_IS_64BIT"; break;
             case CUDA_ERROR_SIZE_IS_64BIT:
                 errstr = "CUDA_ERROR_SIZE_IS_64BIT"; break;
+            #endif
         
         }
         fprintf(stderr,"%s (At %s:%d)\n",errstr,file,line);
@@ -137,22 +139,21 @@ namespace {
     typedef void *x10rt_cuda_kptr;
 
     // State machine
-    template<class T> struct x10rt_cuda_base_op {
+    template<class T> struct BaseOp : FifoElement<T> {
         bool begun;
         x10rt_msg_params p;
-        T *next;
-        x10rt_cuda_base_op (const x10rt_msg_params &p_)
-          : begun(false), p(p_), next(NULL)
+        BaseOp (const x10rt_msg_params &p_)
+          : begun(false), p(p_)
         { }
-        virtual ~x10rt_cuda_base_op (void) { }
+        virtual ~BaseOp (void) { }
         virtual bool is_kernel() { return false; }
         virtual bool is_put() { return false; }
         virtual bool is_get() { return false; }
         virtual bool is_copy() { return false; }
     };
 
-    #define CUDA_PARAM_SZ 80
-    struct x10rt_cuda_kernel : x10rt_cuda_base_op<x10rt_cuda_kernel> {
+    #define CUDA_PARAM_SZ 240
+    struct BaseOpKernel : BaseOp<BaseOpKernel> {
         size_t blocks;
         size_t threads;
         size_t shm;
@@ -161,46 +162,43 @@ namespace {
         char *argv;
         size_t cmemc;
         char *cmemv;
-        x10rt_cuda_kernel (x10rt_msg_params &p_)
-          : x10rt_cuda_base_op<x10rt_cuda_kernel>(p_), blocks(0), threads(0), shm(0),
+        BaseOpKernel (x10rt_msg_params &p_)
+          : BaseOp<BaseOpKernel>(p_), blocks(0), threads(0), shm(0),
             argc(CUDA_PARAM_SZ), argv(param_data), cmemc(0), cmemv(0)
         { }
         virtual bool is_kernel() { return true; }
     };
 
-    struct x10rt_cuda_copy : x10rt_cuda_base_op<x10rt_cuda_copy> {
+    struct BaseOpCopy : BaseOp<BaseOpCopy> {
         void *dst; 
         void *src; // 1 of {dst,src} known at start, the other discovered via callback
         size_t len; // known at start
         size_t started;
         size_t finished; // when equal to len, call on_comp and clean up
-        x10rt_cuda_copy (x10rt_msg_params &p_, void *dst_, void *src_, size_t len_)
-            : x10rt_cuda_base_op<x10rt_cuda_copy>(p_),
+        BaseOpCopy (x10rt_msg_params &p_, void *dst_, void *src_, size_t len_)
+            : BaseOp<BaseOpCopy>(p_),
               dst(dst_), src(src_), len(len_), started(0), finished(0) { }
         virtual bool is_copy() { return true; }
     };
 
-    struct x10rt_cuda_put : x10rt_cuda_copy {
-        x10rt_cuda_put (x10rt_msg_params &p_, void *src_, size_t len_)
-            : x10rt_cuda_copy(p_, NULL, src_, len_) { }
+    struct BaseOpPut : BaseOpCopy {
+        BaseOpPut (x10rt_msg_params &p_, void *src_, size_t len_)
+            : BaseOpCopy(p_, NULL, src_, len_) { }
         virtual bool is_put() { return true; }
     };
-    struct x10rt_cuda_get : x10rt_cuda_copy {
-        x10rt_cuda_get (x10rt_msg_params &p_, void *dst_, size_t len_)
-            : x10rt_cuda_copy(p_, dst_, NULL, len_) { }
+    struct BaseOpGet : BaseOpCopy {
+        BaseOpGet (x10rt_msg_params &p_, void *dst_, size_t len_)
+            : BaseOpCopy(p_, dst_, NULL, len_) { }
         virtual bool is_get() { return true; }
     };
 
-    template<class T> struct op_queue {
+    template<class T> struct FifoCuda : Fifo<T> {
         bool initialized;
         CUstream stream;
-        int size; // number of ops held here
-        T *fifo_b, *fifo_e; // begin/end of fifo
-        T *current; // op currently associated with the stream
-        op_queue ()
-          : initialized(false), size(0), fifo_b(NULL), fifo_e(NULL), current(NULL)
+        FifoCuda ()
+          : initialized(false)
         { }
-        ~op_queue ()
+        ~FifoCuda ()
         {
             assert(!initialized);
         }
@@ -215,30 +213,6 @@ namespace {
             assert(initialized);
             CU_SAFE(cuStreamDestroy(stream));
             initialized = false;
-        }
-
-        void push_back (T *op)
-        {
-            if (fifo_e == NULL) {
-                fifo_b = op;
-                fifo_e = op;
-            } else {
-                fifo_e->next = op;
-                fifo_e = op;
-            }
-            size++;
-        }
-
-        // pop from front
-        T *pop_op (void)
-        {
-            T *op = fifo_b;
-            if (op==NULL) return op;
-            fifo_b = op->next;
-            // case for empty queue
-            if (fifo_b == NULL) fifo_e = NULL;
-            size--;
-            return op;
         }
 
     };
@@ -288,8 +262,8 @@ struct x10rt_cuda_ctx {
     void *front;
     void *back;
     size_t commit;
-    op_queue<x10rt_cuda_kernel> kernel_q;
-    op_queue<x10rt_cuda_copy> dma_q;
+    FifoCuda<BaseOpKernel> kernel_q;
+    FifoCuda<BaseOpCopy> dma_q;
     Table<x10rt_functions> cbs;
     
     x10rt_cuda_ctx (unsigned device) {
@@ -519,10 +493,14 @@ void x10rt_cuda_send_get (x10rt_cuda_ctx *ctx, x10rt_msg_params *p, void *buf, x
         abort();
     }
 
+    x10rt_msg_params p_ = *p;
+    p_.msg = safe_malloc<unsigned char>(p->len);
+    memcpy(p_.msg, p->msg, p->len);
+
     void *remote = do_buffer_finder(ctx, p, buf, len);
 
     if (remote) {
-        x10rt_cuda_get *op = new (safe_malloc<x10rt_cuda_get>()) x10rt_cuda_get(*p,buf,len);
+        BaseOpGet *op = new (safe_malloc<BaseOpGet>()) BaseOpGet(p_,buf,len);
         op->src = remote;
         ctx->dma_q.push_back(op);
         pthread_mutex_unlock(&big_lock_of_doom);
@@ -554,10 +532,14 @@ void x10rt_cuda_send_put (x10rt_cuda_ctx *ctx, x10rt_msg_params *p, void *buf, x
         abort();
     }
 
+    x10rt_msg_params p_ = *p;
+    p_.msg = safe_malloc<unsigned char>(p->len);
+    memcpy(p_.msg, p->msg, p->len);
+
     void *remote = do_buffer_finder(ctx, p, buf, len);
 
     if (remote) {
-        x10rt_cuda_put *op = new (safe_malloc<x10rt_cuda_put>()) x10rt_cuda_put(*p,buf,len);
+        BaseOpPut *op = new (safe_malloc<BaseOpPut>()) BaseOpPut(p_,buf,len);
         op->dst = remote;
         ctx->dma_q.push_back(op);
         pthread_mutex_unlock(&big_lock_of_doom);
@@ -594,7 +576,11 @@ void x10rt_cuda_send_msg (x10rt_cuda_ctx *ctx, x10rt_msg_params *p)
         abort();
     }
 
-    x10rt_cuda_kernel *op = new (safe_malloc<x10rt_cuda_kernel>()) x10rt_cuda_kernel(*p);
+    x10rt_msg_params p_ = *p;
+    p_.msg = safe_malloc<unsigned char>(p->len);
+    memcpy(p_.msg, p->msg, p->len);
+
+    BaseOpKernel *op = new (safe_malloc<BaseOpKernel>()) BaseOpKernel(p_);
 
     x10rt_cuda_pre *pre = ctx->cbs[p->type].kernel_cbs.pre;
     DEBUG(2,"x10rt_cuda_send_msg: pre callback begins\n");
@@ -689,7 +675,7 @@ void x10rt_cuda_probe (x10rt_cuda_ctx *ctx)
     // spool kernels
     if (stream_ready(ctx->kernel_q.stream)) {
         if (ctx->kernel_q.current == NULL) {
-            x10rt_cuda_kernel *kop = ctx->kernel_q.pop_op();
+            BaseOpKernel *kop = ctx->kernel_q.pop();
             if (kop != NULL) {
                 assert(kop->is_kernel());
                 assert(!kop->begun);
@@ -707,7 +693,7 @@ void x10rt_cuda_probe (x10rt_cuda_ctx *ctx)
                 ctx->kernel_q.current = kop;
             }
         } else {
-            x10rt_cuda_kernel *kop = ctx->kernel_q.current;
+            BaseOpKernel *kop = ctx->kernel_q.current;
             ctx->kernel_q.current = NULL;
             assert(kop->is_kernel());
             assert(kop->begun);
@@ -717,11 +703,12 @@ void x10rt_cuda_probe (x10rt_cuda_ctx *ctx)
             DEBUG(2,"probe: post callback begins\n");
             CU_SAFE(cuCtxPopCurrent(NULL));
             pthread_mutex_unlock(&big_lock_of_doom);
-            fptr(&kop->p, &kop->argv); /****CALLBACK****/
+            fptr(&kop->p, kop->blocks, kop->threads, kop->shm, kop->argc, kop->argv, kop->cmemc, kop->cmemv); /****CALLBACK****/
             pthread_mutex_lock(&big_lock_of_doom);
             CU_SAFE(cuCtxPushCurrent(ctx->ctx));
             DEBUG(2,"probe: post callback ends\n");
-            kop->~x10rt_cuda_kernel();
+            safe_free(kop->p.msg);
+            kop->~BaseOpKernel();
             free(kop);
         }
     }
@@ -729,10 +716,10 @@ void x10rt_cuda_probe (x10rt_cuda_ctx *ctx)
     // spool DMAs
     if (stream_ready(ctx->dma_q.stream)) {
 
-        x10rt_cuda_copy *cop = ctx->dma_q.current;
+        BaseOpCopy *cop = ctx->dma_q.current;
 
         if (cop == NULL) {
-            cop = ctx->dma_q.pop_op();
+            cop = ctx->dma_q.pop();
             if (cop==NULL) goto landingzone;
             assert(!cop->begun);
             cop->begun = true;
@@ -798,7 +785,8 @@ void x10rt_cuda_probe (x10rt_cuda_ctx *ctx)
             CU_SAFE(cuCtxPopCurrent(NULL));
             pthread_mutex_unlock(&big_lock_of_doom);
             ch(&cop->p, len); /****CALLBACK****/
-            cop->~x10rt_cuda_copy();
+            safe_free(cop->p.msg);
+            cop->~BaseOpCopy();
             free(cop);
             return;
         }

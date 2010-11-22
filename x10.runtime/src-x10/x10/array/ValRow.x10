@@ -13,25 +13,25 @@ package x10.array;
 
 public class ValRow extends Row {
 
-    global private val row: ValRail[int];
+    private val row:Array[int](1);
 
-    public def this(row: ValRail[int]) {
-        super(row.length);
+    public def this(row:Array[int](1)) {
+        super(row.size);
         this.row = row;
     }
 
-    public def this(row: Rail[int]!) {
+    public def this(row:Rail[int]) {
         this(row.length, (i:Int) => row(i));
     }
 
-    public def this(cols: Int, init: (Int)=>int) {
+    public def this(cols:Int, init:(Int)=>int) {
         super(cols);
-        row = ValRail.make[int](cols, init);
+        row = new Array[int](cols, init);
     }
     
-    public safe global def apply(i:Int) = row(i);
+    public def apply(i:Int) = row(i);
     
-    public safe global def set(v:int, i:Int):int {
+    public def set(v:int, i:Int):int {
         throw new IllegalOperationException("ValRow.set");
     }
 }

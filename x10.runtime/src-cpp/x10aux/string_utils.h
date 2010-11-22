@@ -14,26 +14,24 @@
 
 #include <x10aux/config.h>
 #include <x10aux/ref.h>
+#include <x10aux/captured_lval.h>
 
 namespace x10 {
     namespace lang {
         template<class T> class Rail;
-        template<class T> class ValRail;
         class String;
     }
+    namespace array {
+        template<class T> class Array;
+    }        
 }
 
 namespace x10aux {
 
-    x10::lang::Rail<ref<x10::lang::String> > *convert_args(int ac, char **av);
-
-    void free_args(ref<x10::lang::Rail<ref<x10::lang::String> > > arr);
-
-    template<class T> bool is_null(ref<T> v) { return v.isNull(); }
-    template<class T> bool is_null(T v) { return false; }
+    ref<x10::array::Array<ref<x10::lang::String> > > convert_args(int ac, char **av);
 
     // Used by x10/util/StringBuilder.x10
-    ref<x10::lang::String> vrc_to_string(x10aux::ref<x10::lang::ValRail<x10_char> > v);
+    ref<x10::lang::String> vrc_to_string(x10aux::ref<x10::lang::Rail<x10_char> > v);
 
     namespace string_utils {
 
@@ -43,10 +41,22 @@ namespace x10aux {
 
     }
 
+    /*
+     * Wrapers around to_string to translate null to "null"
+     */
+    template<class T> ref<x10::lang::String> safe_to_string(ref<T> v) {
+        if (v.isNull()) return string_utils::lit("null");
+        return to_string(v);
+    }
+    template<class T> ref<x10::lang::String> safe_to_string(captured_ref_lval<T> v) {
+        return safe_to_string(*v);
+    }
+    template<class T> ref<x10::lang::String> safe_to_string(captured_struct_lval<T> v) {
+        return to_string(*v);
+    }
     template<class T> ref<x10::lang::String> safe_to_string(T v) {
-            if (is_null(v)) return string_utils::lit("null");
-            return to_string(v);
-        }
+        return to_string(v);
+    }
 }
 
     

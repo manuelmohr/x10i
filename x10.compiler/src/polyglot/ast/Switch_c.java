@@ -87,8 +87,7 @@ public class Switch_c extends Stmt_c implements Switch
 	Context context = tc.context();
 
 	if (! ts.isImplicitCastValid(expr.type(), ts.Int(), context) && ! ts.isImplicitCastValid(expr.type(), ts.Char(), context)) {
-            throw new SemanticException("Switch index must be an integer.",
-                                        position());
+            throw new SemanticException("Switch index must be an integer.", position());
         }
         
         return this;
@@ -119,8 +118,7 @@ public class Switch_c extends Stmt_c implements Switch
                 }
                 
                 if (labels.contains(key)) {
-                    throw new SemanticException("Duplicate case label: " +
-                                                str + ".", c.position());
+                    throw new SemanticException("Duplicate case label: " +str + ".", c.position());
                 }
                 
                 labels.add(key);
@@ -181,7 +179,7 @@ public class Switch_c extends Stmt_c implements Switch
         return expr;
     }
 
-    public List<Term> acceptCFG(CFGBuilder v, List<Term> succs) {
+    public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
         List<Term> cases = new ArrayList<Term>(elements.size()+1);
         List<Integer> entry = new ArrayList<Integer>(elements.size()+1);
         boolean hasDefault = false;

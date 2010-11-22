@@ -11,10 +11,7 @@
 
 package x10.ast;
 
-import polyglot.ast.Assign;
-import polyglot.ast.Call;
 import polyglot.ast.Expr;
-import polyglot.ast.New;
 import polyglot.ast.Node;
 import polyglot.ast.NodeFactory;
 import polyglot.ast.Return_c;
@@ -24,9 +21,7 @@ import polyglot.types.Context;
 import polyglot.types.FunctionDef;
 import polyglot.types.InitializerDef;
 import polyglot.types.LocalDef;
-import polyglot.types.LocalInstance;
 import polyglot.types.MethodDef;
-import polyglot.types.Name;
 import polyglot.types.Ref;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
@@ -34,7 +29,6 @@ import polyglot.types.Types;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import polyglot.visit.ContextVisitor;
-import x10.Configuration;
 import x10.constraint.XEQV;
 import x10.constraint.XFailure;
 import x10.constraint.XLocal;
@@ -48,6 +42,7 @@ import x10.types.X10ProcedureDef;
 import x10.types.X10TypeMixin;
 import x10.types.X10TypeSystem;
 import x10.types.X10TypeSystem_c;
+import x10.types.X10Context_c;
 import x10.types.checker.Converter;
 import x10.types.checker.PlaceChecker;
 import x10.types.constraints.CConstraint;
@@ -102,9 +97,7 @@ public class X10Return_c extends Return_c {
 	
 		CodeDef ci = c.currentCode();
 		
-		if ((ci != null) 
-				&& (ci instanceof MethodDef)
-				&& ((MethodDef) ci).name().toString().equals(X10TypeSystem_c.DUMMY_ASYNC)) {
+		if (((X10Context_c)c).inAsyncScope()) { // can return from an at but not from an async
 		    Errors.issue(tc.job(), new SemanticException("Cannot return from an async."), this);
 		    return this;
 		}
@@ -244,15 +237,12 @@ public class X10Return_c extends Return_c {
         CodeDef ci = c.currentCode();
         
         if (ci instanceof InitializerDef) {
-            throw new SemanticException(
-        	"Cannot return from an initializer block.", position());
+            throw new SemanticException("Cannot return from an initializer block.", position());
         }
         
         if (ci instanceof ConstructorDef) {
             if (expr != null) {
-        	throw new SemanticException(
-        	    "Cannot return a value from " + ci + ".",
-        	    position());
+        	throw new SemanticException("Cannot return a value from " + ci + ".",position());
             }
         
             return this;
@@ -276,24 +266,20 @@ public class X10Return_c extends Return_c {
         
             if (returnType.isVoid()) {
                 if (expr != null) {
-                    throw new SemanticException("Cannot return a value from " +
-                        fi + ".", position());
+                    throw new SemanticException("Cannot return a value from " +fi + ".", position());
                 }
                 else {
                     return this;
                 }
             }
             else if (expr == null) {
-                throw new SemanticException("Must return a value from " +
-                    fi + ".", position());
+                throw new SemanticException("Must return a value from " +fi + ".", position());
             }
         
             if (ts.isImplicitCastValid(expr.type(), returnType, c)) {
                 return this;
             }
-        
-            throw new SemanticException("Cannot return expression of type " +
-        	expr.type() + " from " + fi + ".", expr.position());
+            throw new Errors.CannotReturnExpr(expr.type(), returnType, expr.position());
         }
         
         throw new SemanticException("Cannot return from this context.", position());

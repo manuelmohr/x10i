@@ -26,6 +26,7 @@ import polyglot.types.LocalDef;
 import polyglot.types.LocalInstance;
 import polyglot.types.MemberDef;
 import polyglot.types.MethodDef;
+import polyglot.types.MethodInstance;
 import polyglot.types.MethodInstance_c;
 import polyglot.types.Name;
 import polyglot.types.Named;
@@ -37,6 +38,7 @@ import polyglot.types.StructType;
 import polyglot.types.Type;
 import polyglot.types.TypeSystem;
 import polyglot.types.Types;
+import polyglot.types.UpcastTransform;
 import polyglot.util.CollectionUtil;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
@@ -54,20 +56,21 @@ import x10.types.constraints.TypeConstraint;
 import x10.types.matcher.Matcher;
 
 /**
- * A representation of a MethodInstance. This implements the requirement that method
- * annotations such as sequential, local, nonblocking, safe are preserved on overriding.
+ * A representation of a MethodInstance.  
+ * 
  * @author vj
  *
  */
 public class X10MethodInstance_c extends MethodInstance_c implements X10MethodInstance {
+    private static final long serialVersionUID = -2510860168293880632L;
 
     public X10MethodInstance_c(TypeSystem ts, Position pos, Ref<? extends X10MethodDef> def) {
         super(ts, pos, def);
     }
 
     @Override
-    public boolean moreSpecific(ProcedureInstance<MethodDef> p, Context context) {
-        return X10TypeMixin.moreSpecificImpl(this, p, context);
+    public boolean moreSpecific(Type container, ProcedureInstance<MethodDef> p, Context context) {
+        return X10TypeMixin.moreSpecificImpl(container, this, p, context);
     }
 
     public static class NoClauseVariant implements Transformation<Type, Type> {
@@ -92,7 +95,9 @@ public class X10MethodInstance_c extends MethodInstance_c implements X10MethodIn
     public X10MethodInstance returnType(Type returnType) {
         return (X10MethodInstance) super.returnType(returnType);
     }
+    @Override
     public X10MethodInstance returnTypeRef(Ref<? extends Type> returnType) {
+        if (returnType == this.returnType) return this;
         return (X10MethodInstance) super.returnTypeRef(returnType);
     }
 
@@ -112,6 +117,7 @@ public class X10MethodInstance_c extends MethodInstance_c implements X10MethodIn
     }
 
     public X10MethodInstance body(XTerm body) {
+        if (body == this.body) return this;
         X10MethodInstance_c n = (X10MethodInstance_c) copy();
         n.body = body;
         return n;
@@ -121,6 +127,12 @@ public class X10MethodInstance_c extends MethodInstance_c implements X10MethodIn
     	return x10Def().offerType();
     }
   
+    @Override
+    public X10MethodInstance container(StructType container) {
+        if (container == this.container) return this;
+        return (X10MethodInstance) super.container(container);
+    }
+
     /** Constraint on formal parameters. */
     protected CConstraint guard;
     public CConstraint guard() {
@@ -128,7 +140,8 @@ public class X10MethodInstance_c extends MethodInstance_c implements X10MethodIn
             return Types.get(x10Def().guard());
         return guard;
     }
-    public X10MethodInstance guard(CConstraint s) { 
+    public X10MethodInstance guard(CConstraint s) {
+        if (s == this.guard) return this;
         X10MethodInstance_c n = (X10MethodInstance_c) copy();
         n.guard = s; 
         return n;
@@ -141,7 +154,8 @@ public class X10MethodInstance_c extends MethodInstance_c implements X10MethodIn
             return Types.get(x10Def().typeGuard());
         return typeGuard;
     }
-    public X10MethodInstance typeGuard(TypeConstraint s) { 
+    public X10MethodInstance typeGuard(TypeConstraint s) {
+        if (s == this.typeGuard) return this;
         X10MethodInstance_c n = (X10MethodInstance_c) copy();
         n.typeGuard = s; 
         return n;
@@ -151,13 +165,14 @@ public class X10MethodInstance_c extends MethodInstance_c implements X10MethodIn
 
     public List<Type> typeParameters() {
         if (this.typeParameters == null) {
-            return new TransformingList<Ref<? extends Type>, Type>(x10Def().typeParameters(), new DerefTransform<Type>());
+            return new TransformingList<ParameterType, Type>(x10Def().typeParameters(), new UpcastTransform<Type, ParameterType>());
         }
 
         return typeParameters;
     }
 
     public X10MethodInstance typeParameters(List<Type> typeParameters) {
+        if (typeParameters == this.typeParameters) return this;
         X10MethodInstance_c n = (X10MethodInstance_c) copy();
         n.typeParameters = typeParameters;
         return n;
@@ -179,9 +194,15 @@ public class X10MethodInstance_c extends MethodInstance_c implements X10MethodIn
     }
 
     public X10MethodInstance formalNames(List<LocalInstance> formalNames) {
+        if (formalNames == this.formalNames) return this;
         X10MethodInstance_c n = (X10MethodInstance_c) copy();
         n.formalNames = formalNames;
         return n;
+    }
+
+    public X10MethodInstance formalTypes(List<Type> formalTypes) {
+        if (formalTypes == this.formalTypes) return this;
+        return (X10MethodInstance) super.formalTypes(formalTypes);
     }
 
     private SemanticException error;
@@ -191,15 +212,17 @@ public class X10MethodInstance_c extends MethodInstance_c implements X10MethodIn
     }
 
     public X10MethodInstance error(SemanticException e) {
+        if (e == this.error) return this;
         X10MethodInstance_c n = (X10MethodInstance_c) copy();
         n.error = e;
         return n;
     }
 
     public static void buildSubst(X10MethodInstance mi, List<XVar> ys, List<XVar> xs, XVar thisVar) {
-        if (mi.x10Def().thisVar() != null && mi.x10Def().thisVar() != thisVar) {
+    	XVar mdThisVar = mi.x10Def().thisVar();
+        if (mdThisVar != null && mdThisVar != thisVar && ! xs.contains(mdThisVar)) {
             ys.add(thisVar);
-            xs.add(mi.x10Def().thisVar());
+            xs.add(mdThisVar);
         }
 
         buildSubst(mi.container(), ys, xs, thisVar);
@@ -209,7 +232,8 @@ public class X10MethodInstance_c extends MethodInstance_c implements X10MethodIn
         Type container = X10TypeMixin.baseType(t);
         if (container instanceof X10ClassType) {
             X10ClassDef cd = ((X10ClassType) container).x10Def();
-            if (cd.thisVar() != null && cd.thisVar() != thisVar) {
+            XVar cdThisVar = cd.thisVar();
+            if (cdThisVar != null && cdThisVar != thisVar && ! xs.contains(cdThisVar) ) {
                 ys.add(thisVar);
                 xs.add(cd.thisVar());
             }
@@ -249,20 +273,6 @@ public class X10MethodInstance_c extends MethodInstance_c implements X10MethodIn
         result = f.isSafe();
         return result;
     }*/
-    protected static String myListToString(List l) {
-        StringBuffer sb = new StringBuffer();
-
-        for (Iterator i = l.iterator(); i.hasNext(); ) {
-            Object o = i.next();
-            sb.append(o.toString());
-
-            if (i.hasNext()) {
-                sb.append(", ");
-            }
-        }
-
-        return sb.toString();
-    }
 
 
     public X10MethodDef x10Def() {
@@ -285,10 +295,7 @@ public class X10MethodInstance_c extends MethodInstance_c implements X10MethodIn
     public String toString() {
         String s = designator() + " " + X10Flags.toX10Flags(flags()).prettyPrint() + containerString() + "." + signature();
 
-        if (! throwTypes().isEmpty()) {
-            s += " throws " + CollectionUtil.listToString(throwTypes());
-        }
-
+       
         if (body != null)
             s += " = " + body;
 

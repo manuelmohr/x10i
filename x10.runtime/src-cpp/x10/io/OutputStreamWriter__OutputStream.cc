@@ -15,7 +15,6 @@
 
 #include <x10/io/OutputStreamWriter__OutputStream.h>
 #include <x10/io/FileWriter__FileOutputStream.h>
-#include <x10/lang/ValRail.h>
 #include <x10/lang/Rail.h>
 
 using namespace x10::lang;
@@ -39,25 +38,13 @@ x10aux::ref<OutputStreamWriter__OutputStream> OutputStreamWriter__OutputStream::
 }
 
 void OutputStreamWriter__OutputStream::write(ref<Rail<x10_byte> > b) {
-    placeCheck(nullCheck(b));
+    nullCheck(b);
     this->write(b, 0, b->x10__length);
 }
 
 void OutputStreamWriter__OutputStream::write(ref<Rail<x10_byte> > b,
                                              x10_int off, x10_int len) {
-    if (len > 0) { placeCheck(nullCheck(b)); }
-    for (x10_int i = 0; i < len; i++)
-        this->write((x10_int) b->operator[](off + i));
-}
-
-void OutputStreamWriter__OutputStream::write(ref<ValRail<x10_byte> > b) {
-    nullCheck(b);
-    this->write(b, 0, b->x10__length);
-}
-
-void OutputStreamWriter__OutputStream::write(ref<ValRail<x10_byte> > b,
-                                             x10_int off, x10_int len) {
-    if (len > 0) nullCheck(b);
+    if (len > 0) { nullCheck(b); }
     for (x10_int i = 0; i < len; i++)
         this->write((x10_int) b->operator[](off + i));
 }

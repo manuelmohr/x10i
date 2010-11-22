@@ -16,6 +16,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * A representation of a literal. A literal is both an XVar and an XPromise.
+ * 
+ * @author vijay
+ *
+ */
 public class XLit extends XVar implements XPromise {
 	protected Object val;
 
@@ -23,7 +29,7 @@ public class XLit extends XVar implements XPromise {
 		val = l;
 	}
 
-	public Object val() {
+	public Object val() { 
 		return val;
 	}
 
@@ -35,7 +41,7 @@ public class XLit extends XVar implements XPromise {
 
 	public XTermKind kind() { return XTermKind.LITERAL;}
 	public List<XEQV> eqvs() {
-		return Collections.EMPTY_LIST;
+		return Collections.emptyList();
 	}
 
 	public String toString() {
@@ -145,7 +151,7 @@ public class XLit extends XVar implements XPromise {
 	}
 
 
-	public void dump(XVar path, List<XTerm> result,  boolean dumpEQV) {
+	public void dump(XVar path, List<XTerm> result,  boolean dumpEQV, boolean hideFake) {
 		// nothing to dump.
 	}
 

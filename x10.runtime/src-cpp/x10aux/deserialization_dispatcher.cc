@@ -36,13 +36,14 @@ template<class T> T *zrealloc (T *buf, size_t was, size_t now)
 
 serialization_id_t DeserializationDispatcher::addDeserializer (Deserializer deser, bool is_async,
                                                                CUDAPre cuda_pre,
+                                                               CUDAPost cuda_post,
                                                                const char *cubin,
                                                                const char *kernel)
 {
     if (NULL == it) {
         it = new (system_alloc<DeserializationDispatcher>()) DeserializationDispatcher();
     }
-    return it->addDeserializer_(deser, is_async, cuda_pre, cubin, kernel);
+    return it->addDeserializer_(deser, is_async, cuda_pre, cuda_post, cubin, kernel);
 }
 
 static void ensure_data_size (DeserializationDispatcher::Data *&data_v,
@@ -56,6 +57,7 @@ static void ensure_data_size (DeserializationDispatcher::Data *&data_v,
 
 serialization_id_t DeserializationDispatcher::addDeserializer_ (Deserializer deser, bool is_async,
                                                                 CUDAPre cuda_pre,
+                                                                CUDAPost cuda_post,
                                                                 const char *cubin,
                                                                 const char *kernel)
 {
@@ -64,11 +66,12 @@ serialization_id_t DeserializationDispatcher::addDeserializer_ (Deserializer des
     // up RAM unnecessarily
     ensure_data_size(data_v, next_id+1, data_c);
     serialization_id_t r = next_id++;
-    _S_("DeserializationDispatcher registered the following handler for id: "
+    _S_("DeserializationDispatcher "<<this<<" "<<(this==it?"(the system one) ":"")<<"registered the following handler for id: "
         <<r<<": "<<std::hex<<(size_t)deser<<std::dec);
     data_v[r].deser = deser;
     data_v[r].has_mt = is_async;
     data_v[r].cuda_pre = cuda_pre;
+    data_v[r].cuda_post = cuda_post;
     data_v[r].cubin = cubin;
     data_v[r].kernel = kernel;
     return r;
@@ -76,6 +79,10 @@ serialization_id_t DeserializationDispatcher::addDeserializer_ (Deserializer des
 
 CUDAPre DeserializationDispatcher::getCUDAPre_(serialization_id_t id)
 { return data_v[id].cuda_pre; }
+
+
+CUDAPost DeserializationDispatcher::getCUDAPost_(serialization_id_t id)
+{ return data_v[id].cuda_post; }
 
 
 
@@ -183,7 +190,7 @@ void DeserializationDispatcher::registerHandlers () {
 }
 
 void DeserializationDispatcher::registerHandlers_ () {
-    for (size_t i=0 ; i<next_id ; ++i) { // FIXME: 0-based?!
+    for (size_t i=0 ; i<next_id ; ++i) {
         Data &d = data_v[i];
         if (d.has_mt) {
             msg_type id;
@@ -214,12 +221,12 @@ void DeserializationDispatcher::registerHandlers_ () {
 }
 
 
-ref<Object> DeserializationDispatcher::create_(deserialization_buffer &buf, serialization_id_t id) {
+ref<Reference> DeserializationDispatcher::create_(deserialization_buffer &buf, serialization_id_t id) {
     _S_("Dispatching deserialisation using id: "<<id);
     return data_v[id].deser(buf);
 }
 
-ref<Object> DeserializationDispatcher::create_(deserialization_buffer &buf) {
+ref<Reference> DeserializationDispatcher::create_(deserialization_buffer &buf) {
     serialization_id_t id = buf.read<serialization_id_t>();
     return create_(buf, id);
 }

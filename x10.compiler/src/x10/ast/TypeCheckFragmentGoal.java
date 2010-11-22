@@ -19,14 +19,15 @@ import polyglot.frontend.SourceGoal;
 import polyglot.types.LazyRef;
 import polyglot.visit.TypeChecker;
 
-public class TypeCheckFragmentGoal<T> extends polyglot.ast.TypeCheckFragmentGoal implements SourceGoal {
+public class TypeCheckFragmentGoal<T> extends polyglot.ast.TypeCheckFragmentGoal<T> implements SourceGoal {
+    private static final long serialVersionUID = -7690455598516526228L;
 
     public TypeCheckFragmentGoal(Node parent, Node n, TypeChecker v, LazyRef<T> r, boolean mightFail) {
         super(parent, n, v, r, mightFail);
     }
 
     protected LazyRef<T> r() {
-        return (LazyRef<T>) r;
+        return r;
     }
 
     public boolean runTask() {
@@ -39,10 +40,9 @@ public class TypeCheckFragmentGoal<T> extends polyglot.ast.TypeCheckFragmentGoal
         }
 
         try {
-            Node m = parent.visitChild(n, v);
+            Node m = process(parent, n, v);
             v.job().nodeMemo().put(n, m);
             v.job().nodeMemo().put(m, m);
-            postprocess(m);
             return mightFail || r.known();
         }
         catch (SchedulerException e) {
@@ -50,11 +50,13 @@ public class TypeCheckFragmentGoal<T> extends polyglot.ast.TypeCheckFragmentGoal
         }
     }
 
+    protected Node process(Node parent, Node n, TypeChecker v) {
+        return parent.visitChild(n, v);
+    }
+
     protected T defaultRecursiveValue() {
         return r().getCached();
     }
-
-    protected void postprocess(Node m) { }
 
     public Job job() {
         return v.job();

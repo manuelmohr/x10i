@@ -15,6 +15,7 @@ import polyglot.frontend.Goal;
 import polyglot.types.*;
 import polyglot.util.*;
 import polyglot.visit.*;
+import x10.errors.Errors;
 
 /**
  * A <code>New</code> is an immutable representation of the use of the
@@ -83,12 +84,16 @@ public class New_c extends Expr_c implements New
 	return n;
     }
 
-    public ProcedureInstance procedureInstance() {
+    public ConstructorInstance procedureInstance() {
 	return constructorInstance();
     }
 
     public ConstructorInstance constructorInstance() {
 	return this.ci;
+    }
+
+    public New procedureInstance(ProcedureInstance<? extends ProcedureDef> pi) {
+        return constructorInstance((ConstructorInstance) pi);
     }
 
     public New constructorInstance(ConstructorInstance ci) {
@@ -160,7 +165,7 @@ public class New_c extends Expr_c implements New
         
         Expr qual = (Expr) n.visitChild(n.qualifier(), tb);
         TypeNode objectType = (TypeNode) n.visitChild(n.objectType(), tb);
-        List<Expr> arguments = (List<Expr>) n.visitList(n.arguments(), tb);
+        List<Expr> arguments = n.visitList(n.arguments(), tb);
         
         ClassBody body = null;
         
@@ -342,8 +347,7 @@ public class New_c extends Expr_c implements New
         }
         
         if (outer == null) {
-            throw new SemanticException("Could not find non-static member class \"" +
-                                        name + "\".", position());
+            throw new SemanticException("Could not find non-static member class \"" + name + "\".", position());
         }
         
         // Create the qualifier.
@@ -407,9 +411,7 @@ public class New_c extends Expr_c implements New
             Type qt = qualifier.type();
 
             if (! qt.isClass()) {
-                throw new SemanticException(
-                    "Cannot instantiate member class of a non-class type.",
-                    qualifier.position());
+                throw new SemanticException("Cannot instantiate member class of a non-class type.", qualifier.position());
             }
             
             // Disambiguate the type node as a member of the qualifier type.
@@ -418,9 +420,8 @@ public class New_c extends Expr_c implements New
             // According to JLS2 15.9.1, the class type being
             // instantiated must be inner.
 	    if (! ct.isInnerClass()) {
-                throw new SemanticException(
-                    "Cannot provide a containing instance for non-inner class " +
-		    ct.fullName() + ".", qualifier.position());
+            if (!(qualifier instanceof Special)) // Yoav added "this" qualifier for non-static anonymous classes
+                throw new SemanticException("Cannot provide a containing instance for non-inner class " + ct.fullName() + ".", qualifier.position());
             }
         }
         else {
@@ -429,9 +430,7 @@ public class New_c extends Expr_c implements New
             if (ct.isMember()) {
                 for (ClassType t = ct; t.isMember(); t = t.outer()) {
                     if (! t.flags().isStatic()) {
-                        throw new SemanticException(
-                            "Cannot allocate non-static member class \"" +
-                            t + "\".", position());
+                        throw new SemanticException("Cannot allocate non-static member class \"" +t + "\".", position());
                     }
                 }
             }
@@ -443,29 +442,37 @@ public class New_c extends Expr_c implements New
 
 	if (this.body == null) {
 	    if (ct.flags().isInterface()) {
-		throw new SemanticException(
-		    "Cannot instantiate an interface.", position());
+		throw new SemanticException("Cannot instantiate an interface.", position());
 	    }
 
 	    if (ct.flags().isAbstract()) {
-		throw new SemanticException(
-		    "Cannot instantiate an abstract class.", position());
+		throw new SemanticException("Cannot instantiate an abstract class.", position());
 	    }
 	}
 	else {
 	    if (ct.flags().isFinal()) {
-		throw new SemanticException(
-		    "Cannot create an anonymous subclass of a final class.",
-                    position());
+		throw new SemanticException("Cannot create an anonymous subclass of a final class.", position());
             }
 
 	    if (ct.flags().isInterface() && ! arguments.isEmpty()) {
-	        throw new SemanticException(
-		    "Cannot pass arguments to an anonymous class that " +
-		    "implements an interface.",
-		    arguments.get(0).position());
+	        throw new SemanticException("Cannot pass arguments to an anonymous class that implements an interface.",arguments.get(0).position());
 	    }
 	}
+    }
+
+    @Override
+    public Node conformanceCheck(ContextVisitor tc) {
+        if (body == null) {
+            return this;
+        }
+        // Check that the anonymous class implements all abstract methods that it needs to.
+        try {
+            TypeSystem ts = tc.typeSystem();
+            ts.checkClassConformance(anonType.asType(), enterChildScope(body, tc.context()));
+        } catch (SemanticException e) {
+            Errors.issue(tc.job(), e, this);
+        }
+        return this;
     }
 
     public Type childExpectedType(Expr child, AscriptionVisitor av) {
@@ -495,20 +502,7 @@ public class New_c extends Expr_c implements New
         return child.type();
     }
 
-    public Node exceptionCheck(ExceptionChecker ec) throws SemanticException {
-	// something didn't work in the type check phase, so just ignore it.
-	if (ci == null) {
-	    throw new InternalCompilerError(position(),
-		"Null constructor instance after type check.");
-	}
-
-	for (Iterator i = ci.throwTypes().iterator(); i.hasNext(); ) {
-	    Type t = (Type) i.next();
-	    ec.throwsException(t, position());
-	}
-
-	return super.exceptionCheck(ec);
-    }
+    
 
     /** Get the precedence of the expression. */
     public Precedence precedence() {
@@ -579,7 +573,7 @@ public class New_c extends Expr_c implements New
         return qualifier != null ? (Term) qualifier : tn;
     }
 
-    public List<Term> acceptCFG(CFGBuilder v, List<Term> succs) {
+    public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
         if (qualifier != null) {
             v.visitCFG(qualifier, tn, ENTRY);
         }
@@ -598,14 +592,6 @@ public class New_c extends Expr_c implements New
         }
 
         return succs;
-    }
-
-    public List<Type> throwTypes(TypeSystem ts) {
-      List<Type> l = new ArrayList<Type>();
-      assert ci != null : "null ci for " + this;
-      l.addAll(ci.throwTypes());
-      l.addAll(ts.uncheckedExceptions());
-      return l;
     }
 
 }

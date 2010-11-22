@@ -105,9 +105,7 @@ public class Conditional_c extends Expr_c implements Conditional
         Type t2 = e2.type();
       
         if (! cond.type().isBoolean()) {
-            throw new SemanticException(
-                                        "Condition of ternary expression must be of type boolean.",
-                                        cond.position());
+            throw new SemanticException("Condition of ternary expression must be of type boolean.",cond.position());
         }
 
         // From the JLS, section:
@@ -172,8 +170,7 @@ public class Conditional_c extends Expr_c implements Conditional
             }
         }
 
-        throw new SemanticException("Could not determine type of ternary conditional expression; cannot assign " + t1 + " to " + t2 + " or vice versa.",
-                                    position());
+        throw new SemanticException("Could not determine type of ternary conditional expression; cannot assign " + t1 + " to " + t2 + " or vice versa.",position());
    }
 
     public Type childExpectedType(Expr child, AscriptionVisitor av) {
@@ -210,7 +207,7 @@ public class Conditional_c extends Expr_c implements Conditional
         return cond;
     }
 
-    public List<Term> acceptCFG(CFGBuilder v, List<Term> succs) {
+    public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
         v.visitCFG(cond, FlowGraph.EDGE_KEY_TRUE, consequent,
                          ENTRY, FlowGraph.EDGE_KEY_FALSE, alternative, ENTRY);
         v.visitCFG(consequent, this, EXIT);

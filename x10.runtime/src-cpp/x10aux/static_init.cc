@@ -28,10 +28,10 @@ serialization_id_t StaticInitBroadcastDispatcher::addRoutine(Deserializer init) 
     if (NULL == it) {
         it = new (system_alloc<DeserializationDispatcher>()) DeserializationDispatcher();
     }
-    return it->addDeserializer_(init, false, NULL, NULL, NULL);
+    return it->addDeserializer_(init);
 }
 
-ref<Object> StaticInitBroadcastDispatcher::dispatch(deserialization_buffer &buf) {
+ref<Reference> StaticInitBroadcastDispatcher::dispatch(deserialization_buffer &buf) {
     assert (NULL != it);
     serialization_id_t init_id = buf.read<serialization_id_t>();
     return it->create_(buf, init_id);

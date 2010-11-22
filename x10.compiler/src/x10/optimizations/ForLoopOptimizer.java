@@ -26,12 +26,15 @@ import polyglot.ast.For;
 import polyglot.ast.ForInit;
 import polyglot.ast.ForUpdate;
 import polyglot.ast.Formal;
+import polyglot.ast.Id;
 import polyglot.ast.IntLit;
 import polyglot.ast.Local;
 import polyglot.ast.LocalDecl;
+import polyglot.ast.Loop;
 import polyglot.ast.Node;
 import polyglot.ast.NodeFactory;
 import polyglot.ast.Stmt;
+import polyglot.ast.Switch;
 import polyglot.ast.Term;
 import polyglot.ast.TypeNode;
 import polyglot.ast.Unary;
@@ -62,14 +65,12 @@ import x10.ast.X10Formal;
 import x10.ast.X10NodeFactory;
 import x10.constraint.XFailure;
 import x10.constraint.XTerm;
-import x10.constraint.XTerms;
 import x10.types.X10Context;
 import x10.types.X10MethodInstance;
 import x10.types.X10TypeMixin;
 import x10.types.X10TypeSystem;
 import x10.types.X10TypeSystem_c;
 import x10.types.checker.Converter;
-import x10.types.checker.PlaceChecker;
 import x10.types.constraints.CConstraint;
 import x10.util.Synthesizer;
 import x10.visit.ConstantPropagator;
@@ -179,6 +180,7 @@ public class ForLoopOptimizer extends ContextVisitor {
             assert (null != domain);
         }
 
+        Id           label      = createLabel(pos);
         X10Context   context    = (X10Context) context();
         List<Formal> formalVars = formal.vars();
         boolean      named      = !formal.isUnnamed();
@@ -231,6 +233,10 @@ public class ForLoopOptimizer extends ContextVisitor {
             assert xts.isPoint(formal.declType());
             if (VERBOSE) System.out.println("  rectangular region, rank=" +rank+ " point=" +formal);
             
+            if (1 < rank) {
+                body = labelFreeBreaks(body, label);
+            }
+            
             List<Stmt> stmts      = new ArrayList<Stmt>();
             Name       prefix     = named ? formal.name().id() : Name.make("p");
             
@@ -244,7 +250,7 @@ public class ForLoopOptimizer extends ContextVisitor {
             if (named) {
                 // create a rail to contain the value of the formal at each iteration
                 Name       indexName  = Name.makeFresh(prefix);
-                           indexType  = PlaceChecker.AddIsHereClause(xts.Rail(xts.Int()), context);
+                           indexType  = xts.Rail(xts.Int()); // PlaceChecker.AddIsHereClause(xts.Rail(xts.Int()), context);
                 List<Type> railType   = Collections.<Type>singletonList(xts.Int());
                 Expr       indexInit  = createStaticCall(pos, xts.Rail(), MAKE, railType, createIntLit(rank));
                            indexLDecl = createLocalDecl(pos, Flags.FINAL, indexName, indexType, indexInit);
@@ -306,7 +312,9 @@ public class ForLoopOptimizer extends ContextVisitor {
                 body = createStandardFor(pos, varLDecl, cond, update, body);
                 
             }
-            
+            if (1 < rank) {
+                body = xnf.Labeled(body.position(), label, body);
+            }
             stmts.add(body);
             Block result = createBlock(pos, stmts);
             if (VERBOSE) result.dump(System.out);
@@ -341,6 +349,43 @@ public class ForLoopOptimizer extends ContextVisitor {
         Stmt result           = createStandardFor(pos, iterLDecl, hasExpr, createBlock(pos, bodyStmts));
         if (VERBOSE) result.dump(System.out);
         return result;
+    }
+
+    /**
+     * Change free unlabeled breaks in the body to refer to a given label.
+     * 
+     * @param body the body of a ForLoop
+     * @param label a label to be attached to the outermost synthesized For
+     * @return aa copy of the body with its free breaks suitably captured
+     */
+    private Stmt labelFreeBreaks(Stmt body, final Id label) {
+        return (Stmt) body.visit(new NodeVisitor(){
+            @Override
+            public Node override(Node node) { // these constructs capture free breaks
+                if (node instanceof Loop) return node;
+                if (node instanceof Switch) return node;
+                return null;
+            }
+            @Override
+            public Node leave(Node old, Node n, NodeVisitor v) {
+                if (n instanceof Branch) {
+                    Branch b = (Branch) n;
+                    if (b.kind().equals(Branch.BREAK) && null == b.labelNode()) {
+                        return b.labelNode(label);
+                    }
+                }
+                return n;
+            }
+        });
+    }
+
+    /**
+     * @param pos
+     * @return
+     */
+    private Id createLabel(Position pos) {
+        Id label = xnf.Id(pos, Name.makeFresh("L"));
+        return label;
     }
 
     // General helper methods
@@ -433,7 +478,7 @@ public class ForLoopOptimizer extends ContextVisitor {
      * TODO: move into Synthesizer
      */
     public LocalDecl createLocalDecl(Position pos, LocalDef def, Expr init) {
-        return xnf.LocalDecl( pos, 
+        return xnf.LocalDecl( pos.markCompilerGenerated(), 
                               xnf.FlagsNode(pos, def.flags()),
                               xnf.CanonicalTypeNode(pos, def.type().get()), 
                               xnf.Id(pos, def.name()),

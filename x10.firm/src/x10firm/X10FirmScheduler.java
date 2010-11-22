@@ -19,7 +19,8 @@ import x10firm.types.TypeSystem;
  */
 class X10FirmScheduler extends X10Scheduler {
 	/**
-	 * Constructor
+	 * Initialize the scheduler, duh.
+	 * @param info	"==ExtensionInfo.this", because this inner class is static (strange design by X10)
 	 */
 	public X10FirmScheduler(ExtensionInfo info) {
 		super(info);
@@ -43,8 +44,9 @@ class X10FirmScheduler extends X10Scheduler {
 
 		final Goal asmEmitted = new AsmEmitted(this);
 		postCompiled.addPrereq(asmEmitted);
+		asmEmitted.intern(this);
 
-		return intern(postCompiled);
+		return postCompiled.intern(this);
 	}
 
 	@Override
@@ -53,14 +55,14 @@ class X10FirmScheduler extends X10Scheduler {
 
 		final TypeSystem typeSystem = (TypeSystem) extInfo.typeSystem();
 
-		final Goal firm_generated = intern(new FirmGenerated(job, typeSystem));
-		intern(firm_generated);
+		final Goal firm_generated = new FirmGenerated(job, typeSystem);
+		firm_generated.intern(this);
 		seq.append(firm_generated);
 
-		final Goal optimized_firm = intern(new OptimizedFirm(job, typeSystem));
-		intern(optimized_firm);
+		final Goal optimized_firm = new OptimizedFirm(job, typeSystem);
+		optimized_firm.intern(this);
 		seq.append(optimized_firm);
 
-		return intern(seq);
+		return seq.intern(this);
 	}
 }

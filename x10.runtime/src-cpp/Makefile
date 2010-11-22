@@ -95,6 +95,9 @@ ALL_XRCPP_OBJECTS = \
 	x10aux/alloc.o \
 	x10aux/assert.o \
 	x10aux/atomic_ops.o \
+	x10aux/atomic_boolean_funs.o \
+	x10aux/atomic_int_funs.o \
+	x10aux/atomic_long_funs.o \
 	x10aux/basic_functions.o \
 	x10aux/boolean_utils.o \
 	x10aux/bootstrap.o \
@@ -133,6 +136,7 @@ ALL_XRCPP_OBJECTS = \
 	x10/lang/Any.o \
 	x10/lang/Closure.o \
 	x10/lang/Fun.o \
+	x10/lang/GlobalRef.o \
 	x10/lang/Object.o \
 	x10/lang/Rail.o \
 	x10/lang/Reference.o \
@@ -146,9 +150,6 @@ ALL_XRCPP_OBJECTS = \
 	x10/lang/Thread.o \
 	x10/util/GrowableRail.o \
 	x10/util/IndexedMemoryChunk.o \
-	x10/util/concurrent/atomic/AtomicBoolean.o \
-	x10/util/concurrent/atomic/AtomicInteger.o \
-	x10/util/concurrent/atomic/AtomicLong.o \
 	x10/util/concurrent/atomic/AtomicReference.o 
 
 ALL_MANUAL_OBJECTS=$(ALL_XRCPP_OBJECTS)
@@ -206,6 +207,7 @@ install: $(XRCPP_ARCHIVE) $(XRX_ARCHIVE)
 	@find x10 -name \*.h | tar cf - $(INC_FLAG) | (cd $(INSTDIR)/include && tar xf -)
 	@find x10 -name \*.struct_h | tar cf - $(INC_FLAG) | (cd $(INSTDIR)/include && tar xf -)
 	@find x10aux -name \*.h | tar cf - $(INC_FLAG) | (cd $(INSTDIR)/include && tar xf -)
+	@find x10aux -name \*.cuh | tar cf - $(INC_FLAG) | (cd $(INSTDIR)/include && tar xf -)
 	@cp -p x10rt.h $(INSTDIR)/include
 	@cp -p $(XRX_ARCHIVE) $(INSTDIR)/lib
 	@cp -p $(XRX_MANIFEST) $(INSTDIR)/lib

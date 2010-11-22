@@ -11,7 +11,6 @@
 
 package x10.types;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import polyglot.ast.Expr;
@@ -19,9 +18,8 @@ import polyglot.types.ClassType;
 import polyglot.types.FieldInstance;
 import polyglot.types.Matcher;
 import polyglot.types.Named;
-import polyglot.types.Name;
+import polyglot.types.StructType;
 import polyglot.types.Type;
-import polyglot.util.TransformingList;
 
 /** The representative of ClassType in the X10 type hierarchy. 
  * 
@@ -30,7 +28,7 @@ import polyglot.util.TransformingList;
  * @author vj
  *
  */
-public interface X10ClassType extends ClassType, Proto, X10Struct, X10Use<X10ClassDef> {
+public interface X10ClassType extends ClassType, X10Struct, X10Use<X10ClassDef> {
 
 	/** Property initializers, used in annotations. */
 	List<Expr> propertyInitializers();
@@ -63,6 +61,6 @@ public interface X10ClassType extends ClassType, Proto, X10Struct, X10Use<X10Cla
 
 	boolean isJavaType();
 
-	
-	
+	X10ClassType container();
+	X10ClassType container(StructType container);
 }
