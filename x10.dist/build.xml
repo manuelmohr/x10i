@@ -87,6 +87,7 @@
         <ant antfile="${x10.runtime.location}/build.xml" target="clean-java" inheritAll="false" dir="${x10.runtime.location}"/>
         <ant antfile="${x10.compiler.location}/build.xml" target="clean" inheritAll="false" dir="${x10.compiler.location}"/>
         <ant antfile="${jfirm.location}/build.xml" target="clean" inheritAll="false" dir="${jfirm.location}"/>
+        <ant antfile="${liboo.location}/build.xml" target="clean" inheritAll="false" dir="${liboo.location}"/>
         <ant antfile="${x10.firm.location}/build.xml" target="clean" inheritAll="$false" dir="${x10.firm.location}"/>
     </target>
 
