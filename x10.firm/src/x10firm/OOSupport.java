@@ -16,9 +16,10 @@ public final class OOSupport {
 		NameMangling mangler = new NameMangling();
 		mangler.beginMangling();
 
+		/* setup primitives */
 		typeSystem.setupNameMangler(mangler);
-		/* the following substitutions should be the same as in the C++ (itanium) ABI */
 
+		/* the following substitutions should be the same as in the C++ (itanium) ABI */
 		mangler.addNameSubstitution("operator~",   "co");
 		mangler.addNameSubstitution("operator+",   "pl");
 		mangler.addNameSubstitution("operator-",   "mi");
