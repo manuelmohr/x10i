@@ -111,7 +111,7 @@ public class TypeSystem extends X10TypeSystem_c {
 
 		/* create fields */
 		for (FieldInstance field : classType.fields()) {
-			X10Flags flags = (X10Flags) field.flags();
+			X10Flags flags = X10Flags.toX10Flags(field.flags());
 			/* properties have no "real" data in the object */
 			if (flags.isProperty())
 				continue;

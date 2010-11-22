@@ -753,9 +753,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(MethodDecl_c dec) {
-		X10Flags flags 						= X10Flags.toX10Flags(dec.flags().flags());
 		X10MethodDef def 					= (X10MethodDef) dec.methodDef();
 		X10MethodInstance methodInstance 	= (X10MethodInstance) def.asInstance();
+		X10Flags flags 						= X10Flags.toX10Flags(methodInstance.flags());
 		Entity entity 						= getMethodEntity(methodInstance);
 
 		if (flags.isNative() || flags.isAbstract()) {
@@ -795,7 +795,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		// init and map all parameters.
 		for (LocalInstance loc : formals) {
-			Node projParam = con.newProj(args, typeSystem.getFirmMode(loc.type()), idx);
+			Mode mode = typeSystem.getFirmMode(loc.type());
+			Node projParam = con.newProj(args, mode, idx);
 			con.setVariable(idx, projParam);
 
 			// map the local instance with the appropriate idx.
@@ -951,12 +952,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Return_c ret) {
 		Node retNode;
 
+		Node mem = con.getCurrentMem();
 		Expr e = ret.expr();
 		if (e != null) {
 			Node retValue = visitExpression(e);
-			retNode = con.newReturn(con.getCurrentMem(), new Node[]{retValue});
+			retNode = con.newReturn(mem, new Node[]{retValue});
 		} else {
-			retNode = con.newReturn(con.getCurrentMem(), new Node[]{});
+			retNode = con.newReturn(mem, new Node[]{});
 		}
 
 		/* for error detection */
@@ -1432,7 +1434,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Field_c n) {
 		FieldInstance instance = n.fieldInstance();
 		FieldInstance def = instance.def().asInstance();
-		X10Flags flags = (X10Flags) def.flags();
+		X10Flags flags = X10Flags.toX10Flags(def.flags());
 		Entity entity = getFieldEntity(def);
 
 		Node address;
