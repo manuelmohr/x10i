@@ -758,8 +758,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		X10MethodInstance methodInstance 	= (X10MethodInstance) def.asInstance();
 		Entity entity 						= getMethodEntity(methodInstance);
 
-		if (flags.isNative()) {
-			assert def.body() == null;
+		if (flags.isNative() || flags.isAbstract()) {
 			/* native code is defined elsewhere, so nothing left to do */
 			return;
 		}
