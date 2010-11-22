@@ -119,7 +119,7 @@ import firm.Ident;
 import firm.Initializer;
 import firm.MethodType;
 import firm.Mode;
-import firm.PrimitiveType;
+import firm.PointerType;
 import firm.Program;
 import firm.TargetValue;
 import firm.bindings.binding_ircons.ir_linkage;
@@ -1517,8 +1517,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final String name = "x10_string_literal";
 
 		final firm.Type[] parameterTypes = new firm.Type[2];
-		parameterTypes[0] = new PrimitiveType(Mode.getIu());
-		parameterTypes[1] = new PrimitiveType(string_const.getMode());
+		parameterTypes[0] = typeSystem.asFirmType(typeSystem.UInt());
+		parameterTypes[1] = new PointerType(parameterTypes[0]); /* XXX Pointer to uint is not quite correct */
 		final firm.Type[] resultTypes = new firm.Type[1];
 		resultTypes[0] = typeSystem.asFirmType(typeSystem.String());
 		MethodType type = new firm.MethodType(parameterTypes, resultTypes);
