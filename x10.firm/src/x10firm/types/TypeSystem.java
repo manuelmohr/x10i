@@ -79,16 +79,22 @@ public class TypeSystem extends X10TypeSystem_c {
 	 * @return corresponding Firm method type
 	 */
 	public firm.Type asFirmType(polyglot.types.Type type) {
-		firm.Type result = firmTypes.get(type);
+		/* strip type-constraints */
+		polyglot.types.Type baseType = type;
+		while (baseType instanceof ConstrainedType_c) {
+			baseType = ((ConstrainedType_c)baseType).baseType().get();
+		}
+
+		firm.Type result = firmTypes.get(baseType);
 		if (result != null)
 			return result;
 
-		result = asFirmCoreType(type);
+		result = asFirmCoreType(baseType);
 		if (result instanceof ClassType) {
 			/* we really have references to classes */
 			result = new PointerType(result);
 		}
-		firmTypes.put(type, result);
+		firmTypes.put(baseType, result);
 
 		/* currently we should never produce types without modes here */
 		assert result.getMode() != null;
