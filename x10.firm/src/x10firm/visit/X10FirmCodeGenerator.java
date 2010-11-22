@@ -1546,7 +1546,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	private Node createStringSymConst(String value) {
 		ClassType global_type = Program.getGlobalType();
-		firm.Type elem_type = typeSystem.asFirmType(typeSystem.Int());
+		firm.Type elem_type = typeSystem.asFirmType(typeSystem.Int()); /* XXX always wide chars */
 		ArrayType type = new ArrayType(1, elem_type);
 
 		Ident id = Ident.createUnique("str.%u");
