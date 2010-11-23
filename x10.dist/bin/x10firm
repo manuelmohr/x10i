@@ -37,6 +37,8 @@ JNA_LIBRARY_PATH="${JNA_LIBRARY_PATH}:${X10_TOP}/liboo/build"
 # liboo won't find the referenced libfirm librarye (not jna can't find it
 # but dlopen while opening liboo.so)
 export LD_LIBRARY_PATH="$JNA_LIBRARY_PATH"
+# and for our OS/X friends
+export DYLD_LIBRARY_PATH="$JNA_LIBRARY_PATH"
 
 # Execute compiler
 args="-extclass x10firm.ExtensionInfo -sourcepath ${X10_TOP}/x10.dist/lib/x10.jar"
