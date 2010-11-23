@@ -226,6 +226,11 @@ public class TypeSystem extends X10TypeSystem_c {
 		Mode modeBoolean = Mode.getb();
 		Type typeBoolean = new PrimitiveType(modeBoolean);
 		firmTypes.put(Boolean(), typeBoolean);
+
+		Type unknown = Type.getUnknown();
+		Type nullRefType = new PointerType(unknown);
+		firmTypes.put(Null(), nullRefType);
+		/* Note: there is no sensible firmCoreType for Null() */
 	}
 
 	/**

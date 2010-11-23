@@ -1595,8 +1595,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(IntLit_c n) {
-
-		Mode mode = null;
+		final Mode mode;
 
 		if (n.kind() == X10IntLit_c.ULONG) {
 			mode = typeSystem.getFirmMode(typeSystem.ULong());
@@ -1616,7 +1615,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(NullLit_c n) {
-		throw new RuntimeException("Not implemented yet");
+		final firm.Type type = typeSystem.asFirmType(n.type());
+		final Mode mode = type.getMode();
+		Node result = con.newConst(mode.getNull());
+		setReturnNode(result);
 	}
 
 	@Override
