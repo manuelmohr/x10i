@@ -132,6 +132,7 @@ import firm.nodes.Cond;
 import firm.nodes.Load;
 import firm.nodes.Node;
 import firm.nodes.Proj;
+import firm.nodes.Store;
 
 /**
  * TODO:
@@ -938,9 +939,33 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 			con.setVariable(idx, rightRet);
 			setReturnNode(con.getVariable(idx, leftRet.getMode()));
+		} else if (lhs instanceof Field_c) {
+			Field_c field = (Field_c) lhs;
+			FieldInstance instance = field.fieldInstance();
+			FieldInstance def = instance.def().asInstance();
+			X10Flags flags = X10Flags.toX10Flags(def.flags());
+			Entity entity = getFieldEntity(def);
+
+			Node address;
+			if (flags.isStatic()) {
+				address = con.newSymConst(entity);
+			} else {
+				Receiver target = field.target();
+				Node objectPointer = visitExpression((Expr)target);
+				address = con.newSel(objectPointer, entity);
+			}
+			Node rightRet = visitExpression(rhs);
+
+			firm.Type type = typeSystem.asFirmType(def.type());
+			assert rightRet.getMode().equals(type.getMode());
+
+			Node mem = con.getCurrentMem();
+			Node store = con.newStore(mem, address, rightRet);
+			Node newMem = con.newProj(store, Mode.getM(), Store.pnM);
+			con.setCurrentMem(newMem);
+			setReturnNode(rightRet);
 		} else {
-			// TODO: Implement me
-			throw new RuntimeException("Not implemented yet");
+			throw new RuntimeException("Unexpected assignment target");
 		}
 	}
 
