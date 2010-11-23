@@ -4,6 +4,9 @@
 /x10.dist/bin/setupX10
 /x10.dist/bin/x10
 /x10.dist/bin/x10c
+/x10.dist/bin/daemon
+/x10.dist/bin/manager
+/x10.dist/bin/launcher
 /x10.dist/etc
 /x10.dist/include
 /x10.dist/lib
