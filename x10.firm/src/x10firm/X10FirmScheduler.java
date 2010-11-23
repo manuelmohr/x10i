@@ -1,12 +1,16 @@
 package x10firm;
 
+import java.util.ArrayList;
+
 import polyglot.frontend.Compiler;
 import polyglot.frontend.Goal;
 import polyglot.frontend.Job;
 import polyglot.main.Options;
+import polyglot.util.ErrorInfo;
 import polyglot.util.ErrorQueue;
 import polyglot.visit.PostCompiled;
 import x10.ExtensionInfo.X10Scheduler;
+import x10cpp.visit.X10CPPTranslator;
 import x10firm.goals.AsmEmitted;
 import x10firm.goals.FirmGenerated;
 import x10firm.goals.GoalSequence;
@@ -38,7 +42,22 @@ class X10FirmScheduler extends X10Scheduler {
 			@Override
 			protected boolean invokePostCompiler(Options options,
 					Compiler compiler, ErrorQueue eq) {
-				// TODO invoke the assembler/linker
+				CompilerOptions opts = (CompilerOptions) options;
+				String exe_name = opts.exe_name;
+				String asm_name = AsmEmitted.ASM_FILENAME;
+				// TODO link our standard library
+				String[] cmd = {"gcc",asm_name,"-o",exe_name};
+				System.out.println("output: "+exe_name);
+
+				/* C++ backend decides according to options, whether to delete the output files */
+				ArrayList<String> output_files = new ArrayList<String>();
+				output_files.add(asm_name);
+
+				/* reuse the C++ backend */
+				if (! X10CPPTranslator.doPostCompile(options, eq, output_files, cmd)) {
+					eq.enqueue(ErrorInfo.POST_COMPILER_ERROR, "linking failed");
+					return false;
+				}
 				return true;
 			}
 		};

@@ -14,6 +14,9 @@ import firm.Backend;
  * @author matze
  */
 public class AsmEmitted extends AllBarrierGoal {
+	/** name of the intermediate asm file */
+	public static final String ASM_FILENAME = "test.s";
+
 	private Goal prereq_redirection = null;
 
 	/** Constructor */
@@ -24,10 +27,11 @@ public class AsmEmitted extends AllBarrierGoal {
 	@Override
 	public boolean runTask() {
 		/* try to generate some assembly */
-		String compilationUnit = "x10program"; /* can we query the program name? */
+		String compilationUnit = "x10program";
+
 		try {
 			Backend.option("omitfp"); // makes the assembler a bit more readable
-			Backend.createAssembler("test.s", compilationUnit);
+			Backend.createAssembler(ASM_FILENAME, compilationUnit);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

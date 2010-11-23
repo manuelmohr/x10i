@@ -3,18 +3,21 @@ package x10firm;
 import java.io.PrintStream;
 import java.util.Set;
 
-import firm.Backend;
-
 import polyglot.frontend.ExtensionInfo;
 import polyglot.main.Main;
 import polyglot.main.UsageError;
 import x10.X10CompilerOptions;
+import firm.Backend;
 
 /**
  * Firm-Backend specific commandline option parsing.
  * @author matze
  */
 public class CompilerOptions extends X10CompilerOptions {
+	/**
+	 * name for the resulting executable
+	 */
+	public String exe_name = "a.out";
 
 	/** constructor */
 	public CompilerOptions(ExtensionInfo extension) {
@@ -38,6 +41,11 @@ public class CompilerOptions extends X10CompilerOptions {
 			return index + 1;
 		}
 
+		if (args[i].startsWith("-o")) {
+			exe_name = args[i+1];
+			return index + 2;
+		}
+
 		return index;
 	}
 
@@ -53,7 +61,7 @@ public class CompilerOptions extends X10CompilerOptions {
 
 	/**
 	 * Override usage info for the -post flag.
-	 * 
+	 *
 	 * @see polyglot.main.Options#usageForFlag(java.io.PrintStream,
 	 *      java.lang.String, java.lang.String)
 	 */
