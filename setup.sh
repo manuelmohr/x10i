@@ -25,7 +25,10 @@ fi
 
 # Place a config.mak into libfirm directory, so we can get ccache benefits
 rm -f libfirm/config.mak
-echo "CC = ccache gcc" >> libfirm/config.mak
+# Use ccache if you have it installed...
+if which ccache > /dev/null; then
+	echo "CC = ccache gcc" >> libfirm/config.mak
+fi
 
 # Run "ant dist" once so we have all the required stuff
 pushd x10.dist > /dev/null
