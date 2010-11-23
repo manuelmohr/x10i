@@ -55,22 +55,9 @@ public class CompilerOptions extends X10CompilerOptions {
 	@Override
 	public void usage(PrintStream out) {
 		super.usage(out);
-		usageForFlag(out, "-bflag",
-				"set firm backend option (use -bhelp for additional help)");
-	}
-
-	/**
-	 * Override usage info for the -post flag.
-	 *
-	 * @see polyglot.main.Options#usageForFlag(java.io.PrintStream,
-	 *      java.lang.String, java.lang.String)
-	 */
-	@Override
-	protected void usageForFlag(PrintStream out, String flag, String description) {
-		if (flag.startsWith("-b")) {
-			super.usageForFlag(out, "-b<flag>", "pass option to firm backend.  ");
-			return;
-		}
-		super.usageForFlag(out, flag, description);
+		usageForFlag(out, "-b<flag>",
+				"Set firm backend options (use -bhelp for additional help)");
+		usageForFlag(out, "-o <file>",
+				"Place the output into <file>");
 	}
 }
