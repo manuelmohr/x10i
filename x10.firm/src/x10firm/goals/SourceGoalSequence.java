@@ -1,7 +1,8 @@
 package x10firm.goals;
 
-import polyglot.frontend.AbstractGoal_c;
 import polyglot.frontend.Goal;
+import polyglot.frontend.Job;
+import polyglot.frontend.SourceGoal_c;
 
 /**
  * This is a meta goal, which really consists of a linear sequence of goals.
@@ -9,11 +10,11 @@ import polyglot.frontend.Goal;
  * We only need this class to work around the Polyglot scheduler architecture,
  * where the CodeGenerated method can only return one goal.
  */
-public class GoalSequence extends AbstractGoal_c {
+public class SourceGoalSequence extends SourceGoal_c {
 
 	/** constructor calls super -- make Java happy */
-	public GoalSequence(String name) {
-		super(name);
+	public SourceGoalSequence(String name, Job job) {
+		super(name, job);
 	}
 
 	/**
