@@ -1,7 +1,12 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # determine toplevel directory of x10 installation
-ME=`readlink -f "$0"`
+ME="$0"
+if [ -L "$ME" ]; then
+	# TODO: readlink -f is NOT posix, but writing stiff manually is cumbersome
+	# so I just hope nobody installs x10firm with symlinks on macs for now.
+	ME="`readlink -f "$ME"`"
+fi
 MYDIR=`dirname "$ME"`
 X10_TOP="${MYDIR}/../.."
 
