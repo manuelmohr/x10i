@@ -169,7 +169,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/**
 	 * Holds the corresponding target blocks for labeled continue and break statements.
 	 */
-	private static class FirmLabel {
+	protected static class FirmLabel {
 
 		/**
 		 * Holds the target block for a labeled continue statement
@@ -220,7 +220,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * Class that holds attributes (true and false blocks, continue blocks, break blocks etc.) for a new scope.
 	 * For every new scope we will clone the current (top) scope and set the adequate attributes for the new scope.
 	 */
-	private static class FirmScope {
+	protected static class FirmScope {
 
 		/**
 		 * Holds a reference to the upper FirmScope.
