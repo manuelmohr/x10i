@@ -27,7 +27,7 @@ public class Linked extends PostCompiled {
 		String exe_name = opts.exe_name;
 		String asm_name = AsmEmitted.ASM_FILENAME;
 		// TODO link our standard library correctly
-		String[] cmd = {"gcc",asm_name,"stdlib/primitive_types.c","stdlib/simple_lib.c","-lm","-o",exe_name};
+		String[] cmd = {"gcc","-std=c99",asm_name,"stdlib/primitive_types.c","stdlib/simple_lib.c","-lm","-o",exe_name};
 
 		/* C++ backend decides according to options, whether to delete the output files */
 		ArrayList<String> output_files = new ArrayList<String>();
