@@ -2,9 +2,11 @@ package x10firm.visit;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import polyglot.ast.ArrayAccess_c;
 import polyglot.ast.ArrayInit_c;
@@ -16,6 +18,7 @@ import polyglot.ast.Block_c;
 import polyglot.ast.BooleanLit_c;
 import polyglot.ast.Branch;
 import polyglot.ast.Branch_c;
+import polyglot.ast.Case;
 import polyglot.ast.Case_c;
 import polyglot.ast.Catch_c;
 import polyglot.ast.CharLit_c;
@@ -54,6 +57,7 @@ import polyglot.ast.Special;
 import polyglot.ast.Stmt;
 import polyglot.ast.StringLit_c;
 import polyglot.ast.SwitchBlock_c;
+import polyglot.ast.SwitchElement;
 import polyglot.ast.Switch_c;
 import polyglot.ast.Throw_c;
 import polyglot.ast.TopLevelDecl;
@@ -240,7 +244,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		private Block continueBlock;
 		/** Block we will jump into if we reach a break statement */
 		private Block breakBlock;
-
+		/** Reference to the current switch cond node -> null if we are not in a switch statement */
+		private Cond curSwitchCond;
+		/** Proj number for the 'default' statement in a switch statement */
+		private long curSwitchDefaultProjNr;
+		
 		/**
 		 * Sets the upper FirmScope for the current FirmScope
 		 *
@@ -306,6 +314,36 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		public Block getBreakBlock() {
 			assert breakBlock != null;
 			return breakBlock;
+		}
+		
+		/** Sets the current switch condition node. 
+		 * @param cond The cond to set
+		 */
+		public void setCurSwitchCond(Cond cond) {
+			curSwitchCond = cond;
+		}
+		
+		/** Returns the current switch condition node
+		 * @return The current switch condition node
+		 */
+		public Cond getCurSwitchCond() {
+			assert curSwitchCond != null;
+			return curSwitchCond;
+		}
+		
+		/** Sets the proj number for the 'default' statement in the current switch statement
+		 * @param projNr The proj number for the 'default' statement. 
+		 */
+		public void setCurSwitchDefaultProjNr(long projNr) {
+			curSwitchDefaultProjNr = projNr;
+		}
+		
+		/**
+		 * Returns the proj number for the 'default' label in the current switch statement 
+		 * @return The proj for the 'default' statement
+		 */
+		public long getCurSwitchDefaultProjNr() {
+			return curSwitchDefaultProjNr;
 		}
 
 		/**
@@ -940,20 +978,126 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Assert_c n) {
 		throw new RuntimeException("Not implemented yet");
 	}
-
+	
 	@Override
 	public void visit(Switch_c n) {
-		throw new RuntimeException("Not implemented yet");
+		
+		boolean hasExplicitDefaultCase = false;
+		Block curBlock        = con.getCurrentBlock();
+		Cond switchCond		  = null;
+		
+		if (!curBlock.isBad()) {
+			Node expr   = visitExpression(n.expr());
+			switchCond  = (Cond)con.newCond(expr);
+		}
+			
+		long defNr    = 0;
+		long numCases = 0;
+		for(SwitchElement elem : n.elements()) {
+			if(elem instanceof Case) {
+				Case c = (Case)elem;
+				if(c.isDefault()) {
+					hasExplicitDefaultCase = true;
+					continue;
+				}
+				
+				if(c.value() > defNr)
+					defNr = c.value();
+				
+				numCases++;
+			}
+		}
+		
+		if(defNr == Integer.MAX_VALUE) { // TODO: Adjust it to Long.MAX_VALUE -> Firm only supports Int (32 Bit) as proj numbers. 
+			Set<Long> vals = new HashSet<Long>();
+			for(SwitchElement elem : n.elements()) {
+				if(elem instanceof Case) {
+					Case c = (Case)elem;
+					if(c.isDefault())
+						continue;
+					
+					vals.add(Long.valueOf(c.value()));
+				}
+			}
+			
+			int i;
+			for(i = 0; i < Integer.MAX_VALUE; i++)
+				if(!vals.contains(Long.valueOf(i)))
+					break;
+			
+			defNr = i;
+		} else {
+			defNr++;
+		}
+		
+		con.setCurrentBlockBad();
+		
+		Block bBreak				   = con.newBlock();
+		
+		FirmScope topScope = firmContext.getTopScope();
+		FirmScope newScope = (FirmScope)topScope.clone();
+		
+		firmContext.pushFirmScope(newScope);
+		{
+			newScope.setBreakBlock(bBreak);
+			newScope.setCurSwitchCond(switchCond);
+			newScope.setCurSwitchDefaultProjNr(defNr);
+			
+			for(SwitchElement elem : n.elements())
+				visitAppropriate(elem);
+		}
+		firmContext.popFirmScope();
+		
+		if(!con.getCurrentBlock().isBad()) {
+			Node jmp = con.newJmp();
+			bBreak.addPred(jmp);
+		}
+		
+		if(!hasExplicitDefaultCase && !curBlock.isBad()) {
+			con.setCurrentBlock(curBlock);
+			switchCond.setDefaultProj((int)defNr);
+			Node proj = con.newProj(switchCond, Mode.getX(), (int)defNr);
+			bBreak.addPred(proj);
+		}
+		
+		bBreak.mature();
+		
+		con.setCurrentBlock(bBreak);
 	}
 
 	@Override
 	public void visit(SwitchBlock_c n) {
-		throw new RuntimeException("Not implemented yet");
+		for(Stmt stmt : n.statements())
+			visitAppropriate(stmt);
 	}
 
 	@Override
 	public void visit(Case_c n) {
-		throw new RuntimeException("Not implemented yet");
+		Node fallthrough = (con.getCurrentBlock().isBad()) ? null : con.newJmp();
+		Block block = con.newBlock();
+		
+		FirmScope topScope 	  = firmContext.getTopScope();
+		Cond switchCond       = topScope.getCurSwitchCond();
+		Block switchCondBlock = (Block)switchCond.getBlock();
+		
+		con.setCurrentBlock(switchCondBlock);
+		if(!n.isDefault()) {
+			// Case label
+			long val = n.value();
+			Node proj = con.newProj(switchCond, Mode.getX(), (int)val); // TODO: Add support for newProj with long as the last argument
+			block.addPred(proj);
+		} else {
+			// default label
+			long projNr = topScope.getCurSwitchDefaultProjNr();
+			switchCond.setDefaultProj((int)projNr);
+			Node proj = con.newProj(switchCond, Mode.getX(), (int)projNr);
+			block.addPred(proj);
+		}
+		
+		if(fallthrough != null) 
+			block.addPred(fallthrough);
+		
+		con.setCurrentBlock(block);
 	}
 
 	@Override

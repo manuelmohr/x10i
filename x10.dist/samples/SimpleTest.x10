@@ -47,16 +47,21 @@ class Simple1 {
 		
 		return a + b + c - x - y;
 */
-		var i: Int = 0;
-		var j: Int = 0;
-		lbl1 : do {
-			 lbl2: while(j < 100) {
-				if (i == 0) break lbl1;
-				if (j == 1) continue lbl2;
-				if (i == 4) break lbl2;
-				if (j == 3) continue lbl1;
-			}
-		} while(i < 100);
-		return 42;
+
+		var a: Int = 1;
+		var b: Int = 2;
+		var c: Int = 3;
+
+		while(1 + 2 < 3) {
+			c = c + 1;
+			switch(c) { case 1: case 2: case 3: c = c + 3; default: b = b + 1; }
+			if(c + b < 2) break; 
+		}
+
+		switch(a + b) {
+			case 127000: c = c - 1;  switch(c + b) { case 1: break; default: return 3; } 
+			default: c = c + 1; 
+		}
+		return a + b + c;
 	}
 }
