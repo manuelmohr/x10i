@@ -52,16 +52,24 @@ class Simple1 {
 		var b: Int = 2;
 		var c: Int = 3;
 
-		while(1 + 2 < 3) {
-			c = c + 1;
-			switch(c) { case 1: case 2: case 3: c = c + 3; default: b = b + 1; }
-			if(c + b < 2) break; 
-		}
+		lbl: do {
+			lbl2: while(1 + 2 < 3) {
+				c = c + 1;
+				switch(c) { case 1: case 2: case 3: c = c + 3; default: b = b + 1; case 5: return 33; case 7: c = c -4; continue lbl2; case 9: switch(a + b) {
+					case 3: continue lbl; case 5: a = a+ 3; break; case 2: continue lbl; case 6: break lbl; case 9: return 444; case 10: continue lbl2; 
+					case 33: break lbl2; default: c = a + b;
+				} }
+				if(c + b < 2) break; 
+			}
+		} while(c - 5 < 55); 
 
 		switch(a + b) {
-			case 127000: c = c - 1;  switch(c + b) { case 1: break; default: return 3; } 
+			case 1: case 2: case 3: c = c + 3; case 7: b = b + 1;  switch(c + b) { case 1: c = c - 1; break; } 
 			default: c = c + 1; 
 		}
+
+		switch(c) { case 1: case 2: case 3: c = c + 3; default: b = b + 1; case 5: return 33; case 7: c = c -4; case 8: b = b + 44; }
+
 		return a + b + c;
 	}
 }

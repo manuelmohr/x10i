@@ -173,7 +173,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/**
 	 * Holds the corresponding target blocks for labeled continue and break statements.
 	 */
-	protected static class FirmLabel {
+	protected class FirmLabel {
 
 		/**
 		 * Holds the target block for a labeled continue statement
@@ -224,7 +224,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * Class that holds attributes (true and false blocks, continue blocks, break blocks etc.) for a new scope.
 	 * For every new scope we will clone the current (top) scope and set the adequate attributes for the new scope.
 	 */
-	protected static class FirmScope {
+	protected class FirmScope {
 
 		/**
 		 * Holds a reference to the upper FirmScope.
@@ -309,11 +309,20 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			breakBlock = block;
 		}
 
-		/** Returns the break block.
+		/** Returns the break block. Creates a new block, if the break block was
+		 * not previously set. 
 		 * @return The break block */
 		public Block getBreakBlock() {
-			assert breakBlock != null;
+			if(breakBlock == null)
+				breakBlock = con.newBlock();
 			return breakBlock;
+		}
+		
+		/** Returns true if the break block is set.
+		 *  @return True or false
+		 */
+		public boolean isBreakBlockSet() {
+			return breakBlock != null;
 		}
 		
 		/** Sets the current switch condition node. 
@@ -440,7 +449,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * Class that holds attributes (scopes, mapping of local instance variables etc.) for a new method.
 	 * For every new method entry we will create a new firm context.
 	 */
-	private static class FirmContext {
+	private class FirmContext {
 		/** Holds the topmost firmScope. -> Push a dummy frame in the current FirmContext */
 		private FirmScope topFirmScope = new FirmScope();
 
@@ -578,7 +587,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			bFalse.addPred(projFalse);
 
 			return cond;
-
 		}
 		return n;
 	}
@@ -1032,24 +1040,33 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		con.setCurrentBlockBad();
 		
-		Block bBreak				   = con.newBlock();
-		
 		FirmScope topScope = firmContext.getTopScope();
 		FirmScope newScope = (FirmScope)topScope.clone();
 		
+		Block bBreak = null;
+		
 		firmContext.pushFirmScope(newScope);
 		{
-			newScope.setBreakBlock(bBreak);
+			// Reset the break block -> Break block will be automatically created in the evaluation of the
+			// switch statement if we need one. (getBreakBlock())
+			newScope.setBreakBlock(null);
 			newScope.setCurSwitchCond(switchCond);
 			newScope.setCurSwitchDefaultProjNr(defNr);
 			
 			for(SwitchElement elem : n.elements())
 				visitAppropriate(elem);
+			
+			// Check if a new break block was created. 
+			if(newScope.isBreakBlockSet())
+				bBreak = newScope.getBreakBlock();
 		}
 		firmContext.popFirmScope();
 		
 		if(!con.getCurrentBlock().isBad()) {
 			Node jmp = con.newJmp();
+			if(bBreak == null)
+				bBreak = con.newBlock();
+			
 			bBreak.addPred(jmp);
 		}
 		
@@ -1057,12 +1074,20 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			con.setCurrentBlock(curBlock);
 			switchCond.setDefaultProj((int)defNr);
 			Node proj = con.newProj(switchCond, Mode.getX(), (int)defNr);
+			
+			if(bBreak == null)
+				bBreak = con.newBlock();
+			
 			bBreak.addPred(proj);
 		}
 		
-		bBreak.mature();
+		if(bBreak != null)
+			bBreak.mature();
 		
-		con.setCurrentBlock(bBreak);
+		if(bBreak == null)
+			con.setCurrentBlockBad();
+		else
+			con.setCurrentBlock(bBreak);
 	}
 
 	@Override
@@ -1139,7 +1164,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Stmt stmt 	= label.statement();
 		String lab 	= label.labelNode().id().toString();
 
-		// Mark the corresponding stmt with the appropriate label
+		// Mark the corresponding statement with the appropriate label
 		firmContext.setLabeledStmt(lab, stmt);
 
 		// Declare the label in the current firm scope
@@ -1160,13 +1185,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Expr rhs = asgn.right();
 
 		if(lhs instanceof Local_c) { // Assignment to a local variable
-			Node leftRet = visitExpression(lhs);
+			Node leftRet  = visitExpression(lhs);
 			Node rightRet = visitExpression(rhs);
-
+			
 			Local_c lhsLocal  	= (Local_c)lhs;
 			LocalInstance loc 	= lhsLocal.localInstance();
 			int idx 			= firmContext.getIdxForLocalInstance(loc);
-
+			
 			con.setVariable(idx, rightRet);
 			setReturnNode(con.getVariable(idx, leftRet.getMode()));
 		} else if (lhs instanceof Field_c) {
@@ -1292,8 +1317,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		firmContext.pushFirmScope(newScope);
 		{
-			newScope.setContinueBlock(bCond);
 			newScope.setBreakBlock(bFalse);
+			newScope.setContinueBlock(bCond);
 
 			if(label != null) {
 				newScope.setBlockForLabeledBreak(label, bFalse);
@@ -1380,8 +1405,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		firmContext.pushFirmScope(newScope);
 		{
-			newScope.setContinueBlock(bCond);
 			newScope.setBreakBlock(bFalse);
+			newScope.setContinueBlock(bCond);
 
 			if(label != null) {
 				newScope.setBlockForLabeledBreak(label, bFalse);
@@ -1402,7 +1427,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(Conditional_c n) {
 
-		// check if we have an constant condition
+		// check if we have a constant condition
 		if(n.cond().isConstant()) {
 			@SuppressWarnings("boxing")
 			boolean cond = (Boolean)n.cond().constantValue();
