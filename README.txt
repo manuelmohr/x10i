@@ -3,31 +3,16 @@ This repository tracks a whole Eclipse workspace, since we need to track five pr
 == Prerequisites ==
 
 * You should have eclipse 3.6.X (later is probably ok too)
+* A working gcc compiler
+* apache-ant (1.8.x works, maybe also earlier versions)
 
-== Git Submodules ==
+== Initial build ==
 
-The jFirm and libfirm library is an external project. You should import it with
-git submodules. Usually the following is enough:
+There are somethings like initialising git submodules, and creating the x10
+c++ class libraries which have to be performed at least once initially.
+We put all this stuff into the setup.sh so running this should be enough to get you going:
 
-	git submodule update --init
-
-== jFirm ==
-
-You need a Firm C-library to get jFirm running. Either copy it some prebuilt
-ones (TODO: document from where) or use the jFirm/binding_creator/create_lib.sh
-script to produce your own if you have a Firm checkout.
-
-== JAVA_HOME ==
-
-Ubuntu does not set any JAVA_HOME environment variables, but the x10 build
-depends on it. You can put something like this in your .bashrc to set JAVA_HOME:
-
-export JAVA_HOME="$(readlink -f $(dirname $(readlink -f /usr/bin/java))/../..)"
-
-== Complete Build ==
-
-cd x10.dist
-ant
+	./setup.sh
 
 Note: You should only need to do this once. At least if you just run x10firm
 the eclipse rebuilding should be enough after the initial build here.
