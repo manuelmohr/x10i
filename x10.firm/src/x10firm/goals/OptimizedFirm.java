@@ -4,6 +4,7 @@ import polyglot.frontend.Job;
 import polyglot.frontend.SourceGoal_c;
 import x10firm.OOSupport;
 import x10firm.types.TypeSystem;
+import firm.Backend;
 
 /**
  * This defines the FirmGeneration goal (other people would say "phase")
@@ -23,9 +24,9 @@ public class OptimizedFirm extends SourceGoal_c {
 	}
 
 	@Override
-	public boolean runTask() {		
-		/* lower OO-constructs */
+	public boolean runTask() {
 		OOSupport.lowerOO(typeSystem);
+		Backend.lowerForTarget();
 		return true;
 	}
 }
