@@ -1753,7 +1753,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		else
 			throw new InternalCompilerError("Unrecognized FloatLit kind " + n.kind());
 
-		Node ret = con.newConst(TargetValue.newFromDouble(n.value(), mode));
+		double value = n.value();
+		TargetValue tarval = new TargetValue(value, mode);
+		Node ret = con.newConst(tarval);
 		setReturnNode(ret);
 	}
 
