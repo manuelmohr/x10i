@@ -33,6 +33,8 @@ public class TypeSystem extends X10TypeSystem_c {
 	private Map<polyglot.types.Type, Type> firmCoreTypes = new HashMap<polyglot.types.Type, Type>();
 	/** Maps some polyglot types to "native"/primitive firm types */
 	private Map<polyglot.types.Type, Type> firmTypes = new HashMap<polyglot.types.Type, Type>();
+	/** Maps fields to firm entities */
+	private Map<FieldInstance, Entity> fieldMap = new HashMap<FieldInstance, Entity>();
 
 	/**
 	 * Creates a method type (= a member function). So we in addition to the
@@ -123,9 +125,19 @@ public class TypeSystem extends X10TypeSystem_c {
 				 * it anyway for now... */
 				binding_typerep.set_entity_allocation(entity.ptr, binding_typerep.ir_allocation.allocation_static.val);
 			}
+			fieldMap.put(field, entity);
 		}
 
 		return result;
+	}
+
+	/**
+	 * returns firm entity created for a FieldInstance.
+	 * Note: this will only work if createClassType was already called for
+	 * the fields class.
+	 */
+	public Entity getEntityForField(FieldInstance instance) {
+		return fieldMap.get(instance);
 	}
 
 	/**

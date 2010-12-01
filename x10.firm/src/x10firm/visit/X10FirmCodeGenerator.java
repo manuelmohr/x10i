@@ -120,7 +120,6 @@ import com.sun.jna.Platform;
 
 import firm.ArrayType;
 import firm.ClassType;
-import firm.CompoundType;
 import firm.Construction;
 import firm.Entity;
 import firm.Graph;
@@ -175,7 +174,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/**
 	 * Holds the corresponding target blocks for labeled continue and break statements.
 	 */
-	protected class FirmLabel {
+	private class FirmLabel {
 
 		/**
 		 * Holds the target block for a labeled continue statement
@@ -186,6 +185,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		 * Holds the target block for a labeled break statement
 		 */
 		private Block breakBlock;
+
+		/** Constructor */
+		public FirmLabel() {
+		}
 
 		/**
 		 * Sets the target block for a labeled continue statement
@@ -965,8 +968,40 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		// TODO: Implement me
 	}
 
+	private Initializer expr2Initializer(Expr expr) {
+		final Initializer result;
+		if (expr instanceof IntLit_c) {
+			TargetValue targetValue = getIntLitTarval((IntLit_c) expr);
+			result = new Initializer(targetValue);
+		} else if (expr instanceof BooleanLit_c) {
+			TargetValue targetValue = getBooleanLitTargetValue((BooleanLit_c) expr);
+			result = new Initializer(targetValue);
+		} else if (expr instanceof FloatLit_c) {
+			TargetValue targetValue = getFloatLitTargetValue((FloatLit_c) expr);
+			result = new Initializer(targetValue);
+		} else {
+			throw new RuntimeException("unimplemented initializer expression");
+		}
+		return result;
+	}
+
 	@Override
 	public void visit(FieldDecl_c dec) {
+		X10Flags flags = X10Flags.toX10Flags(dec.flags().flags());
+
+		/* make sure enclosing classtype has been created */
+		FieldInstance instance = dec.fieldDef().asInstance();
+		typeSystem.asFirmType(instance.container());
+
+		/* static fields may have initializers */
+		if (flags.isStatic()) {
+			Expr init = dec.init();
+			if (init != null) {
+				Initializer initializer = expr2Initializer(init);
+				Entity entity = typeSystem.getEntityForField(dec.fieldDef().asInstance());
+				entity.setInitializer(initializer);
+			}
+		}
 	}
 
 	@Override
@@ -1198,7 +1233,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			FieldInstance instance = field.fieldInstance();
 			FieldInstance def = instance.def().asInstance();
 			X10Flags flags = X10Flags.toX10Flags(def.flags());
-			Entity entity = getFieldEntity(def);
+			Entity entity = typeSystem.getEntityForField(instance);
 
 			Node address;
 			if (flags.isStatic()) {
@@ -1692,25 +1727,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		throw new RuntimeException("Not implemented yet");
 	}
 
-	private Entity getFieldEntity(FieldInstance field) {
-		polyglot.types.Type owner = field.container();
-		firm.Type ownerFirm = typeSystem.asFirmCoreType(owner);
-
-		/* search the entity */
-		CompoundType compoundType = (CompoundType) ownerFirm;
-		for (Entity member : compoundType.getMembers()) {
-			if (member.getName().equals(field.name().toString()))
-				return member;
-		}
-		throw new RuntimeException(String.format("Entity for field '%s' not found", field));
-	}
-
 	@Override
 	public void visit(Field_c n) {
 		FieldInstance instance = n.fieldInstance();
 		FieldInstance def = instance.def().asInstance();
 		X10Flags flags = X10Flags.toX10Flags(def.flags());
-		Entity entity = getFieldEntity(def);
+		/* make sure enclosing class-type has been created */
+		typeSystem.asFirmType(def.container());
+		Entity entity = typeSystem.getEntityForField(def);
 
 		Node address;
 		if (flags.isStatic()) {
@@ -1746,40 +1770,51 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		throw new RuntimeException("Not implemented yet");
 	}
 
-	@Override
-	public void visit(FloatLit_c n) {
+	private TargetValue getFloatLitTargetValue(FloatLit_c literal) {
 		final Mode mode;
 
-		if (n.kind() == FloatLit.FLOAT)
+		polyglot.ast.FloatLit.Kind kind = literal.kind();
+		if (kind == FloatLit.FLOAT)
 			mode = typeSystem.getFirmMode(typeSystem.Float());
-		else if (n.kind() == FloatLit.DOUBLE)
+		else if (kind == FloatLit.DOUBLE)
 			mode = typeSystem.getFirmMode(typeSystem.Double());
 		else
-			throw new InternalCompilerError("Unrecognized FloatLit kind " + n.kind());
+			throw new InternalCompilerError("Unrecognized FloatLit kind " + kind);
 
-		double value = n.value();
-		TargetValue tarval = new TargetValue(value, mode);
-		Node ret = con.newConst(tarval);
+		double value = literal.value();
+		return new TargetValue(value, mode);
+	}
+
+	@Override
+	public void visit(FloatLit_c literal) {
+		TargetValue targetValue = getFloatLitTargetValue(literal);
+		Node ret = con.newConst(targetValue);
 		setReturnNode(ret);
+	}
+
+	private TargetValue getIntLitTarval(IntLit_c literal) {
+		final Mode mode;
+
+		polyglot.ast.IntLit.Kind kind = literal.kind();
+		if (kind == X10IntLit_c.ULONG) {
+			mode = typeSystem.getFirmMode(typeSystem.ULong());
+		} else if (literal.kind() == X10IntLit_c.UINT) {
+			mode = typeSystem.getFirmMode(typeSystem.UInt());
+		} else if (literal.kind() == IntLit.LONG) {
+			mode = typeSystem.getFirmMode(typeSystem.Long());
+		} else if (literal.kind() == IntLit.INT) {
+			mode = typeSystem.getFirmMode(typeSystem.Int());
+		} else {
+			throw new InternalCompilerError("Unrecognized IntLit kind " + kind);
+		}
+		long value = literal.value();
+		return new TargetValue(value, mode);
 	}
 
 	@Override
 	public void visit(IntLit_c n) {
-		final Mode mode;
-
-		if (n.kind() == X10IntLit_c.ULONG) {
-			mode = typeSystem.getFirmMode(typeSystem.ULong());
-		} else if (n.kind() == X10IntLit_c.UINT) {
-			mode = typeSystem.getFirmMode(typeSystem.UInt());
-		} else if (n.kind() == IntLit.LONG) {
-			mode = typeSystem.getFirmMode(typeSystem.Long());
-		} else if (n.kind() == IntLit.INT) {
-			mode = typeSystem.getFirmMode(typeSystem.Int());
-		} else {
-			throw new InternalCompilerError("Unrecognized IntLit kind " + n.kind());
-		}
-
-		Node ret = con.newConst(new TargetValue(n.value(), mode));
+		TargetValue targetValue = getIntLitTarval(n);
+		Node ret = con.newConst(targetValue);
 		setReturnNode(ret);
 	}
 
@@ -1857,11 +1892,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		throw new RuntimeException("Not implemented yet");
 	}
 
-	@Override
-	public void visit(BooleanLit_c lit) {
-		int val = (lit.value() ? 1 : 0);
+	private TargetValue getBooleanLitTargetValue(BooleanLit_c literal) {
+		Mode mode = typeSystem.getFirmMode(typeSystem.Boolean());
+		return literal.value() ? mode.getOne() : mode.getNull();
+	}
 
-		Node ret = con.newConst(val, typeSystem.getFirmMode(typeSystem.Boolean()));
+	@Override
+	public void visit(BooleanLit_c literal) {
+		TargetValue targetValue = getBooleanLitTargetValue(literal);
+		Node ret = con.newConst(targetValue);
 		setReturnNode(ret);
 	}
 
