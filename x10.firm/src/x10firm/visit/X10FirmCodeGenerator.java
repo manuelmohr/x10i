@@ -145,8 +145,7 @@ import firm.nodes.Proj;
 import firm.nodes.Store;
 
 /**
- * TODO:
- *  - keep Context up-to-date while traversing the AST
+ * creates a firm-program (a collection of firm-graphs) from an X10-AST.
  */
 public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/* names of builtin functions */
@@ -169,7 +168,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	/** Mapping between X10MethodInstances and firm entities. */
 	private final HashMap<X10MethodInstance, Entity> methodEntities = new HashMap<X10MethodInstance, Entity>();
-	
+
 	/** current firm context */
 	private FirmContext firmContext;
 
@@ -227,7 +226,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * Class that holds attributes (true and false blocks, continue blocks, break blocks etc.) for a new scope.
 	 * For every new scope we will clone the current (top) scope and set the adequate attributes for the new scope.
 	 */
-	protected class FirmScope {
+	private class FirmScope {
 
 		/**
 		 * Holds a reference to the upper FirmScope.
@@ -237,7 +236,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		/**
 		 * Mapping between Labels (String) and the corresponding FirmLabels.
 		 */
-		private Map<String, FirmLabel> firmLabelMapper     = new HashMap<String, FirmLabel>();
+		private Map<String, FirmLabel> firmLabelMapper = new HashMap<String, FirmLabel>();
 
 		/** Block we will jump into if an expression evaluates to true */
 		private Block trueBlock;
@@ -248,10 +247,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		/** Block we will jump into if we reach a break statement */
 		private Block breakBlock;
 		/** Reference to the current switch cond node -> null if we are not in a switch statement */
-		private Cond curSwitchCond;
+		private Node curSwitchCond;
 		/** Proj number for the 'default' statement in a switch statement */
 		private long curSwitchDefaultProjNr;
-		
+
+		/** constructor */
+		public FirmScope() {
+		}
+
 		/**
 		 * Sets the upper FirmScope for the current FirmScope
 		 *
@@ -313,45 +316,43 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 
 		/** Returns the break block. Creates a new block, if the break block was
-		 * not previously set. 
+		 * not previously set.
 		 * @return The break block */
 		public Block getBreakBlock() {
-			if(breakBlock == null)
-				breakBlock = con.newBlock();
 			return breakBlock;
 		}
-		
+
 		/** Returns true if the break block is set.
 		 *  @return True or false
 		 */
 		public boolean isBreakBlockSet() {
 			return breakBlock != null;
 		}
-		
-		/** Sets the current switch condition node. 
+
+		/** Sets the current switch condition node.
 		 * @param cond The condition to set
 		 */
-		public void setCurSwitchCond(Cond cond) {
+		public void setCurSwitchCond(Node cond) {
 			curSwitchCond = cond;
 		}
-		
+
 		/** Returns the current switch condition node
 		 * @return The current switch condition node
 		 */
-		public Cond getCurSwitchCond() {
+		public Node getCurSwitchCond() {
 			assert curSwitchCond != null;
 			return curSwitchCond;
 		}
-		
+
 		/** Sets the projection number for the 'default' statement in the current switch statement
-		 * @param projNr The projection number for the 'default' statement. 
+		 * @param projNr The projection number for the 'default' statement.
 		 */
 		public void setCurSwitchDefaultProjNr(long projNr) {
 			curSwitchDefaultProjNr = projNr;
 		}
-		
+
 		/**
-		 * Returns the projection number of the 'default' label in the current switch statement 
+		 * Returns the projection number of the 'default' label in the current switch statement
 		 * @return The projection number of the 'default' statement
 		 */
 		public long getCurSwitchDefaultProjNr() {
@@ -703,7 +704,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		X10ClassDef def = n.classDef();
 		ClassBody_c body = (ClassBody_c) n.body();
 
-		// TODO: how do we treat native rep classes ?
 		assert (!def.isNested()) : ("Nested class alert!");
 
 		// visit the node children (class body)
@@ -722,7 +722,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(ClassBody_c n) {
 		if (currentClass.flags().isInterface()) {
-			// TODO: Implement me
+			// nothing todo
 		} else if (currentClass.isX10Struct()) {
 			// TODO: Implement me
 		} else {
@@ -884,8 +884,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 	}
 
-    private static boolean seenMain = false; // FIXME: non-reentrant
-    private static boolean warnedAboutMain = false; // FIXME: non-reentrant
+    private boolean seenMain = false;
+    private boolean warnedAboutMain = false;
     /** test if a method is the main method (the one we start first when the
      * program runs)
      * Note: This code is copied from the ASTQuery class. (It doesn't have the
@@ -944,7 +944,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Node mem = construction.getCurrentMem();
 		firm.Type type = mainEntity.getType();
 		firm.Type paramType = ((MethodType) type).getParamType(0);
-		/* TODO: convert the arguments passed to the Rail[String] */
+		/* TODO: convert the arguments passed to the Array[String] */
 		Node args = construction.newConst(paramType.getMode().getNull());
 		Node call = construction.newCall(mem, symConst, new Node[] { args }, type);
 		Node newMem = construction.newProj(call, Mode.getM(), Call.pnM);
@@ -967,7 +967,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(FieldDecl_c dec) {
-		/* TODO: create initializers if necessary */
 	}
 
 	@Override
@@ -984,19 +983,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Assert_c n) {
 		throw new RuntimeException("Not implemented yet");
 	}
-	
+
 	@Override
 	public void visit(Switch_c n) {
-		
-		boolean hasExplicitDefaultCase 	= false;
-		Block curBlock        			= con.getCurrentBlock();
-		Cond switchCond		  			= null;
-		
-		if (!curBlock.isBad()) {
-			Node expr   = visitExpression(n.expr());
-			switchCond  = (Cond)con.newCond(expr);
-		}
-		
+
+		boolean hasExplicitDefaultCase = false;
+		final Block curBlock           = con.getCurrentBlock();
+		final Node expr                = visitExpression(n.expr());
+		final Node switchCond          = con.newCond(expr);
+
 		long defNr    = 0;
 		long numCases = 0;
 		for(SwitchElement elem : n.elements()) {
@@ -1006,43 +1001,48 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 					hasExplicitDefaultCase = true;
 					continue;
 				}
-				
+
 				if(c.value() > defNr)
 					defNr = c.value();
-				
+
 				numCases++;
 			}
 		}
-		
-		if(defNr == Integer.MAX_VALUE) { // TODO: Adjust it to Long.MAX_VALUE -> Firm only supports Int (32 Bit) as projection numbers. 
+
+		if(defNr == Integer.MAX_VALUE) { // TODO: Adjust it to Long.MAX_VALUE -> Firm only supports Int (32 Bit) as projection numbers.
 			Set<Long> vals = new HashSet<Long>();
 			for(SwitchElement elem : n.elements()) {
 				if(elem instanceof Case) {
 					Case c = (Case)elem;
 					if(c.isDefault())
 						continue;
-					
+
 					vals.add(Long.valueOf(c.value()));
 				}
 			}
-			
+
 			int i;
 			for(i = 0; i < Integer.MAX_VALUE; i++)
 				if(!vals.contains(Long.valueOf(i)))
 					break;
-			
+
 			defNr = i;
 		} else {
 			defNr++;
 		}
-		
+		/* if Cond is not a Bad node yet, set defaultProj number */
+		if (switchCond instanceof Cond) {
+			Cond cond = (Cond) switchCond;
+			cond.setDefaultProj((int)defNr); // TODO: Adjust the defNr (Long)
+		}
+
 		con.setCurrentBlockBad();
-		
+
 		FirmScope topScope = firmContext.getTopScope();
 		FirmScope newScope = (FirmScope)topScope.clone();
-		
+
 		Block bBreak = null;
-		
+
 		firmContext.pushFirmScope(newScope);
 		{
 			// Reset the break block -> Break block will be automatically created in the evaluation of the
@@ -1050,38 +1050,38 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			newScope.setBreakBlock(null);
 			newScope.setCurSwitchCond(switchCond);
 			newScope.setCurSwitchDefaultProjNr(defNr);
-			
+
 			for(SwitchElement elem : n.elements())
 				visitAppropriate(elem);
-			
-			// Check if a new break block was created. 
-			if(newScope.isBreakBlockSet())
+
+			// Check if a new break block was created.
+			if(newScope.isBreakBlockSet()) {
 				bBreak = newScope.getBreakBlock();
+			}
 		}
 		firmContext.popFirmScope();
-		
+
 		if(!con.getCurrentBlock().isBad()) {
 			Node jmp = con.newJmp();
 			if(bBreak == null)
 				bBreak = con.newBlock();
-			
+
 			bBreak.addPred(jmp);
 		}
-		
+
 		if(!hasExplicitDefaultCase && !curBlock.isBad()) {
 			con.setCurrentBlock(curBlock);
-			switchCond.setDefaultProj((int)defNr);	// TODO: Adjust the defNr (Long)
 			Node proj = con.newProj(switchCond, Mode.getX(), (int)defNr);	// TODO: Adjust the defNr (Long)
-			
+
 			if(bBreak == null)
 				bBreak = con.newBlock();
-			
+
 			bBreak.addPred(proj);
 		}
-		
+
 		if(bBreak != null)
 			bBreak.mature();
-		
+
 		if(bBreak == null)
 			con.setCurrentBlockBad();
 		else
@@ -1098,11 +1098,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Case_c n) {
 		Node fallthrough 	= con.getCurrentBlock().isBad() ? null : con.newJmp();
 		Block block 		= con.newBlock();
-		
+
 		FirmScope topScope 	  = firmContext.getTopScope();
-		Cond switchCond       = topScope.getCurSwitchCond();
+		Node switchCond       = topScope.getCurSwitchCond();
 		Block switchCondBlock = (Block)switchCond.getBlock();
-		
+
 		con.setCurrentBlock(switchCondBlock);
 		if(!n.isDefault()) {
 			// Case label
@@ -1112,14 +1112,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		} else {
 			// default label
 			long projNr = topScope.getCurSwitchDefaultProjNr();
-			switchCond.setDefaultProj((int)projNr);
 			Node proj = con.newProj(switchCond, Mode.getX(), (int)projNr); // TODO: Adjust the projNr (Long)
 			block.addPred(proj);
 		}
-		
-		if(fallthrough != null) 
+
+		if(fallthrough != null)
 			block.addPred(fallthrough);
-		
+
 		con.setCurrentBlock(block);
 	}
 
@@ -1133,19 +1132,24 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		if (br.labelNode() != null) {
 			// labeled continue or break
 			String label = br.labelNode().id().toString();
-			
+
 			if(br.kind() == Branch.CONTINUE)
 				target = topScope.getBlockForLabeledContinue(label);
-			else 
+			else
 				target = topScope.getBlockForLabeledBreak(label);
 		} else {
 			// unlabeled continue or break
-			if (br.kind() == Branch.CONTINUE)
+			if (br.kind() == Branch.CONTINUE) {
 				target = topScope.getContinueBlock();
-			else
+			} else {
 				target = topScope.getBreakBlock();
+				if (target == null) {
+					target = con.newBlock();
+					topScope.setBreakBlock(target);
+				}
+			}
 		}
-		
+
 		Node jmp = con.newJmp();
 		target.addPred(jmp);
 
@@ -1182,11 +1186,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		if(lhs instanceof Local_c) { // Assignment to a local variable
 			Node leftRet  = visitExpression(lhs);
 			Node rightRet = visitExpression(rhs);
-			
+
 			Local_c lhsLocal  	= (Local_c)lhs;
 			LocalInstance loc 	= lhsLocal.localInstance();
 			int idx 			= firmContext.getIdxForLocalInstance(loc);
-			
+
 			con.setVariable(idx, rightRet);
 			setReturnNode(con.getVariable(idx, leftRet.getMode()));
 		} else if (lhs instanceof Field_c) {
