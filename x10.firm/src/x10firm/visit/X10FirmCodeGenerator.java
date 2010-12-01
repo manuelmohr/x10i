@@ -979,6 +979,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		} else if (expr instanceof FloatLit_c) {
 			TargetValue targetValue = getFloatLitTargetValue((FloatLit_c) expr);
 			result = new Initializer(targetValue);
+		} else if (expr instanceof CharLit_c) {
+			TargetValue targetValue = getCharLitTargetValue((CharLit_c) expr);
+			result = new Initializer(targetValue);
 		} else {
 			throw new RuntimeException("unimplemented initializer expression");
 		}
@@ -1887,9 +1890,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return con.newSymConst(ent);
 	}
 
+	private TargetValue getCharLitTargetValue(CharLit_c literal) {
+		Mode mode = typeSystem.getFirmMode(literal.type());
+		long value = literal.value();
+		return new TargetValue(value, mode);
+	}
+
 	@Override
-	public void visit(CharLit_c lit) {
-		throw new RuntimeException("Not implemented yet");
+	public void visit(CharLit_c literal) {
+		TargetValue targetValue = getCharLitTargetValue(literal);
+		Node ret = con.newConst(targetValue);
+		setReturnNode(ret);
 	}
 
 	private TargetValue getBooleanLitTargetValue(BooleanLit_c literal) {
