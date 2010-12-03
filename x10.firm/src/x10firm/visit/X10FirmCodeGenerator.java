@@ -62,6 +62,7 @@ import polyglot.ast.Switch_c;
 import polyglot.ast.Throw_c;
 import polyglot.ast.TopLevelDecl;
 import polyglot.ast.Try_c;
+import polyglot.ast.TypeNode;
 import polyglot.ast.Unary_c;
 import polyglot.ast.While_c;
 import polyglot.frontend.Compiler;
@@ -127,13 +128,16 @@ import firm.Ident;
 import firm.Initializer;
 import firm.MethodType;
 import firm.Mode;
+import firm.OO;
 import firm.PointerType;
 import firm.Program;
 import firm.TargetValue;
 import firm.bindings.binding_ircons.ir_linkage;
-import firm.bindings.binding_typerep;
+import firm.bindings.binding_ircons.ir_where_alloc;
+import firm.bindings.binding_oo.ddispatch_binding;
 import firm.bindings.binding_typerep.ir_type_state;
 import firm.bindings.binding_typerep.ir_visibility;
+import firm.nodes.Alloc;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Cmp;
@@ -758,9 +762,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			firm.Type type = typeSystem.asFirmType(methodInstance);
 			entity = new Entity(ownerFirm, name, type);
 			if (flags.isStatic()) {
-				/* set_entity_allocation is deprecated firm API, but we use
-				 * it anyway for now... */
-				binding_typerep.set_entity_allocation(entity.ptr, binding_typerep.ir_allocation.allocation_static.val);
+				OO.setEntityBinding(entity, ddispatch_binding.bind_static);
+			}
+			if (flags.isAbstract()) {
+				OO.setMethodAbstract(entity, true);
 			}
 			if (flags.isNative()) {
 				entity.setVisibility(ir_visibility.ir_visibility_external);
@@ -1236,7 +1241,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			FieldInstance instance = field.fieldInstance();
 			FieldInstance def = instance.def().asInstance();
 			X10Flags flags = X10Flags.toX10Flags(def.flags());
-			Entity entity = typeSystem.getEntityForField(instance);
+			/* make sure the entity container type has been constructed */
+			typeSystem.asFirmCoreType(def.container());
+			Entity entity = typeSystem.getEntityForField(def);
 
 			Node address;
 			if (flags.isStatic()) {
@@ -1770,7 +1777,19 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(New_c n) {
-		throw new RuntimeException("Not implemented yet");
+		TypeNode  type     = n.objectType();
+		firm.Type resType  = typeSystem.asFirmType(n.type());
+		firm.Type firmType = typeSystem.asFirmCoreType(type.type());
+		Node mem    = con.getCurrentMem();
+		Node count  = con.newConst(1, Mode.getIu());
+		Node alloc  = con.newAlloc(mem, count, firmType, ir_where_alloc.heap_alloc);
+		Node newMem = con.newProj(alloc, Mode.getM(), Alloc.pnM);
+		Node res    = con.newProj(alloc, resType.getMode(), Alloc.pnRes);
+		con.setCurrentMem(newMem);
+
+		/* TODO: invoke constructor here */
+
+		setReturnNode(res);
 	}
 
 	private TargetValue getFloatLitTargetValue(FloatLit_c literal) {

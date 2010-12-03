@@ -1,7 +1,7 @@
 package x10firm;
 
 import x10firm.types.TypeSystem;
-import firm.NameMangling;
+import firm.OO;
 
 /**
  * helper class with functions for implementing object-orientation
@@ -11,61 +11,65 @@ import firm.NameMangling;
 public final class OOSupport {
 	private OOSupport() { }
 
-	/** lowers object oriented constructs */
-	public static void lowerOO(TypeSystem typeSystem) {
-		NameMangling mangler = new NameMangling();
-		mangler.beginMangling();
+	private static boolean nameSubstitutionsInitialized;
 
-		/* setup primitives */
-		typeSystem.setupNameMangler(mangler);
-
+	private static void setupNameSubstitutions() {
 		/* the following substitutions should be the same as in the C++ (itanium) ABI */
-		mangler.addNameSubstitution("operator~",   "co");
-		mangler.addNameSubstitution("operator+",   "pl");
-		mangler.addNameSubstitution("operator-",   "mi");
-		mangler.addNameSubstitution("operator*",   "ml");
-		mangler.addNameSubstitution("operator/",   "dv");
-		mangler.addNameSubstitution("operator%",   "rm");
-		mangler.addNameSubstitution("operator&",   "an");
-		mangler.addNameSubstitution("operator|",   "or");
-		mangler.addNameSubstitution("operator^",   "eo");
-		mangler.addNameSubstitution("operator=",   "aS");
-		mangler.addNameSubstitution("operator+=",  "pL");
-		mangler.addNameSubstitution("operator-=",  "mI");
-		mangler.addNameSubstitution("operator*=",  "mL");
-		mangler.addNameSubstitution("operator/=",  "dV");
-		mangler.addNameSubstitution("operator%=",  "rM");
-		mangler.addNameSubstitution("operator&=",  "aN");
-		mangler.addNameSubstitution("operator|=",  "oR");
-		mangler.addNameSubstitution("operator^=",  "eO");
-		mangler.addNameSubstitution("operator<<",  "ls");
-		mangler.addNameSubstitution("operator>>",  "rs");
-		mangler.addNameSubstitution("operator<<=", "lS");
-		mangler.addNameSubstitution("operator>>=", "rS");
-		mangler.addNameSubstitution("operator==",  "eq");
-		mangler.addNameSubstitution("operator!=",  "ne");
-		mangler.addNameSubstitution("operator<",   "lt");
-		mangler.addNameSubstitution("operator>",   "gt");
-		mangler.addNameSubstitution("operator<=",  "le");
-		mangler.addNameSubstitution("operator>=",  "ge");
-		mangler.addNameSubstitution("operator!",   "nt");
-		mangler.addNameSubstitution("operator&&",  "aa");
-		mangler.addNameSubstitution("operator||",  "oo");
-		mangler.addNameSubstitution("operator++",  "pp");
-		mangler.addNameSubstitution("operator--",  "mm");
+		OO.addNameSubstitution("operator~",   "co");
+		OO.addNameSubstitution("operator+",   "pl");
+		OO.addNameSubstitution("operator-",   "mi");
+		OO.addNameSubstitution("operator*",   "ml");
+		OO.addNameSubstitution("operator/",   "dv");
+		OO.addNameSubstitution("operator%",   "rm");
+		OO.addNameSubstitution("operator&",   "an");
+		OO.addNameSubstitution("operator|",   "or");
+		OO.addNameSubstitution("operator^",   "eo");
+		OO.addNameSubstitution("operator=",   "aS");
+		OO.addNameSubstitution("operator+=",  "pL");
+		OO.addNameSubstitution("operator-=",  "mI");
+		OO.addNameSubstitution("operator*=",  "mL");
+		OO.addNameSubstitution("operator/=",  "dV");
+		OO.addNameSubstitution("operator%=",  "rM");
+		OO.addNameSubstitution("operator&=",  "aN");
+		OO.addNameSubstitution("operator|=",  "oR");
+		OO.addNameSubstitution("operator^=",  "eO");
+		OO.addNameSubstitution("operator<<",  "ls");
+		OO.addNameSubstitution("operator>>",  "rs");
+		OO.addNameSubstitution("operator<<=", "lS");
+		OO.addNameSubstitution("operator>>=", "rS");
+		OO.addNameSubstitution("operator==",  "eq");
+		OO.addNameSubstitution("operator!=",  "ne");
+		OO.addNameSubstitution("operator<",   "lt");
+		OO.addNameSubstitution("operator>",   "gt");
+		OO.addNameSubstitution("operator<=",  "le");
+		OO.addNameSubstitution("operator>=",  "ge");
+		OO.addNameSubstitution("operator!",   "nt");
+		OO.addNameSubstitution("operator&&",  "aa");
+		OO.addNameSubstitution("operator||",  "oo");
+		OO.addNameSubstitution("operator++",  "pp");
+		OO.addNameSubstitution("operator--",  "mm");
 
 		/* TODO: the following does not work as the spec requires the name of the type behind the 'cv' */
-		mangler.addNameSubstitution("operator_as", "cv");
+		OO.addNameSubstitution("operator_as", "cv");
 
 		/* TODO: unary +, -
 		 * The problem here is that we cannot identify them by name alone
 		 * (it's still "operator+" in X10). */
 
 		/* this is our addition */
-		mangler.addNameSubstitution("operator>>>", "v3rbs");
+		OO.addNameSubstitution("operator>>>", "v3rbs");
+	}
 
-		mangler.lowerOO();
+	/** lowers object oriented constructs */
+	public static void lowerOO(TypeSystem typeSystem) {
+		/* setup primitives */
+		typeSystem.setupNameMangler();
 
-		mangler.endMangling();
+		if (!nameSubstitutionsInitialized) {
+			setupNameSubstitutions();
+			nameSubstitutionsInitialized = true;
+		}
+
+		OO.lowerProgram();
 	}
 }

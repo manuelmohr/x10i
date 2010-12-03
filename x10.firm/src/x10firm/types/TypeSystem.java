@@ -15,11 +15,11 @@ import firm.Entity;
 import firm.Mode;
 import firm.Mode.ir_mode_arithmetic;
 import firm.Mode.ir_mode_sort;
-import firm.NameMangling;
+import firm.OO;
 import firm.PointerType;
 import firm.PrimitiveType;
 import firm.Type;
-import firm.bindings.binding_typerep;
+import firm.bindings.binding_oo.ddispatch_binding;
 
 /**
  * Includes everything to map X10 types to Firm types
@@ -106,24 +106,40 @@ public class TypeSystem extends X10TypeSystem_c {
 	private firm.Type createClassType(X10ClassType classType) {
 		String className = classType.name().toString();
 		ClassType result = new ClassType(className);
+		X10Flags flags   = X10Flags.toX10Flags(classType.flags());
 
 		/* put the class into the core types already, because we could
 		 * have a field referencing ourself */
 		firmCoreTypes.put(classType, result);
 
+		/* create supertypes */
+		polyglot.types.Type superType = classType.superClass();
+		if (superType != null) {
+			Type firmSuperType = asFirmCoreType(superType);
+			result.addSuperType(firmSuperType);
+		} else {
+			if (flags.isStruct()) {
+				/* no superclass */
+			} else {
+				assert classType.toString().equals("x10.lang.Object");
+				/* we need a vtable pointer */
+				firm.Type pointerType = Mode.getP().getType();
+				Entity vtablePointer = new Entity(result, "$vtbl", pointerType);
+				OO.setClassVTableEntity(result, vtablePointer);
+			}
+		}
+
 		/* create fields */
 		for (FieldInstance field : classType.fields()) {
-			X10Flags flags = X10Flags.toX10Flags(field.flags());
+			X10Flags fieldFlags = X10Flags.toX10Flags(field.flags());
 			/* properties have no "real" data in the object */
-			if (flags.isProperty())
+			if (fieldFlags.isProperty())
 				continue;
 			String name = field.name().toString();
 			firm.Type type = asFirmType(field.type());
 			Entity entity = new Entity(result, name, type);
-			if (flags.isStatic()) {
-				/* set_entity_allocation is deprecated firm API, but we use
-				 * it anyway for now... */
-				binding_typerep.set_entity_allocation(entity.ptr, binding_typerep.ir_allocation.allocation_static.val);
+			if (fieldFlags.isStatic()) {
+				OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 			}
 			fieldMap.put(field, entity);
 		}
@@ -249,18 +265,18 @@ public class TypeSystem extends X10TypeSystem_c {
 	 * can be called to setup a name-mangler.
 	 * It maps our primitive/native types to their mangled names.
 	 */
-	public void setupNameMangler(NameMangling mangler) {
-		mangler.setPrimitiveTypeName(firmTypes.get(Long()),    "x");
-		mangler.setPrimitiveTypeName(firmTypes.get(ULong()),   "y");
-		mangler.setPrimitiveTypeName(firmTypes.get(Int()),     "i");
-		mangler.setPrimitiveTypeName(firmTypes.get(UInt()),    "j");
-		mangler.setPrimitiveTypeName(firmTypes.get(Short()),   "s");
-		mangler.setPrimitiveTypeName(firmTypes.get(UShort()),  "t");
-		mangler.setPrimitiveTypeName(firmTypes.get(Byte()),    "a");
-		mangler.setPrimitiveTypeName(firmTypes.get(UByte()),   "h");
-		mangler.setPrimitiveTypeName(firmTypes.get(Char()),    "Di");
-		mangler.setPrimitiveTypeName(firmTypes.get(Float()),   "f");
-		mangler.setPrimitiveTypeName(firmTypes.get(Double()),  "d");
-		mangler.setPrimitiveTypeName(firmTypes.get(Boolean()), "b");
+	public void setupNameMangler() {
+		OO.setPrimitiveTypeName(firmTypes.get(Long()),    "x");
+		OO.setPrimitiveTypeName(firmTypes.get(ULong()),   "y");
+		OO.setPrimitiveTypeName(firmTypes.get(Int()),     "i");
+		OO.setPrimitiveTypeName(firmTypes.get(UInt()),    "j");
+		OO.setPrimitiveTypeName(firmTypes.get(Short()),   "s");
+		OO.setPrimitiveTypeName(firmTypes.get(UShort()),  "t");
+		OO.setPrimitiveTypeName(firmTypes.get(Byte()),    "a");
+		OO.setPrimitiveTypeName(firmTypes.get(UByte()),   "h");
+		OO.setPrimitiveTypeName(firmTypes.get(Char()),    "Di");
+		OO.setPrimitiveTypeName(firmTypes.get(Float()),   "f");
+		OO.setPrimitiveTypeName(firmTypes.get(Double()),  "d");
+		OO.setPrimitiveTypeName(firmTypes.get(Boolean()), "b");
 	}
 }

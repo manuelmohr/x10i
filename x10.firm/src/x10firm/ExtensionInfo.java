@@ -1,6 +1,7 @@
 package x10firm;
 
 import firm.Firm;
+import firm.OO;
 import polyglot.frontend.Scheduler;
 import polyglot.main.Options;
 import x10firm.types.TypeSystem;
@@ -17,6 +18,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 	 */
 	public ExtensionInfo() {
 		Firm.init();
+		OO.init();
 	} 
 
 	@Override
