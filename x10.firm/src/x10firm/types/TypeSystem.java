@@ -7,6 +7,7 @@ import java.util.Map;
 import polyglot.types.FieldInstance;
 import x10.types.ConstrainedType_c;
 import x10.types.X10ClassType;
+import x10.types.X10ConstructorInstance;
 import x10.types.X10Flags;
 import x10.types.X10MethodInstance;
 import x10.types.X10TypeSystem_c;
@@ -69,6 +70,29 @@ public class TypeSystem extends X10TypeSystem_c {
 			polyglot.types.Type type = methodInstance.returnType();
 			resultTypes[0] = asFirmType(type);
 		}
+
+		return new firm.MethodType(parameterTypes, resultTypes);
+	}
+
+	/**
+	 * create a method type for an X10 constructor
+	 */
+	public firm.MethodType asFirmType(X10ConstructorInstance instance) {
+		final List<polyglot.types.Type> formalTypes
+			= instance.formalTypes();
+		final int nParameters = formalTypes.size() + 1;
+		final int nResults = 0;
+		final X10ClassType owner = (X10ClassType) instance.container();
+		final Type[] parameterTypes = new firm.Type[nParameters];
+		final Type[] resultTypes = new firm.Type[nResults];
+
+		int p = 0;
+		Type thisType = asFirmType(owner);
+		parameterTypes[p++] = thisType;
+		for (polyglot.types.Type type : formalTypes) {
+			parameterTypes[p++] = asFirmType(type);
+		}
+		assert (p == nParameters);
 
 		return new firm.MethodType(parameterTypes, resultTypes);
 	}

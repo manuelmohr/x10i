@@ -58,6 +58,9 @@ public final class OOSupport {
 
 		/* this is our addition */
 		OO.addNameSubstitution("operator>>>", "v3rbs");
+
+		/* constructor */
+		OO.addNameSubstitution("this", "C1");
 	}
 
 	/** lowers object oriented constructs */

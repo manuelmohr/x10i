@@ -24,6 +24,7 @@ import polyglot.ast.Catch_c;
 import polyglot.ast.CharLit_c;
 import polyglot.ast.ClassBody_c;
 import polyglot.ast.ClassMember;
+import polyglot.ast.CodeBlock;
 import polyglot.ast.Conditional_c;
 import polyglot.ast.ConstructorDecl_c;
 import polyglot.ast.Do_c;
@@ -62,7 +63,6 @@ import polyglot.ast.Switch_c;
 import polyglot.ast.Throw_c;
 import polyglot.ast.TopLevelDecl;
 import polyglot.ast.Try_c;
-import polyglot.ast.TypeNode;
 import polyglot.ast.Unary_c;
 import polyglot.ast.While_c;
 import polyglot.frontend.Compiler;
@@ -102,6 +102,7 @@ import x10.ast.X10Call_c;
 import x10.ast.X10CanonicalTypeNode_c;
 import x10.ast.X10Cast_c;
 import x10.ast.X10ClassDecl_c;
+import x10.ast.X10ConstructorCall_c;
 import x10.ast.X10Instanceof_c;
 import x10.ast.X10IntLit_c;
 import x10.ast.X10SourceFile_c;
@@ -109,6 +110,9 @@ import x10.ast.X10Special_c;
 import x10.ast.X10Unary_c;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
+import x10.types.X10ConstructorDef;
+import x10.types.X10ConstructorInstance;
+import x10.types.X10ConstructorInstance_c;
 import x10.types.X10Flags;
 import x10.types.X10MethodDef;
 import x10.types.X10MethodInstance;
@@ -171,6 +175,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	/** Mapping between X10MethodInstances and firm entities. */
 	private final HashMap<X10MethodInstance, Entity> methodEntities = new HashMap<X10MethodInstance, Entity>();
+	/** mapping between X10ConstructorInstances and firm entities */
+	private final HashMap<X10ConstructorInstance, Entity> constructorEntities = new HashMap<X10ConstructorInstance, Entity>();
 
 	/** current firm context */
 	private FirmContext firmContext;
@@ -686,14 +692,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			visit((X10ClassDecl_c) n);
 			return;
 		} else if (n instanceof X10SourceFile_c) {
-			X10SourceFile_c sf = (X10SourceFile_c) n;
-			for (TopLevelDecl top_level_declaration : sf.decls()) {
-				visit(top_level_declaration);
-			}
+			visit((X10SourceFile_c) n);
 			return;
 		}
 
-		compiler.errorQueue().enqueue(ErrorInfo.SEMANTIC_ERROR,"Unhandled node type: " + n.getClass(), n.position());
+		throw new RuntimeException("Unhandled node type: " + n.getClass());
+	}
+
+	private void visit(X10SourceFile_c sourceFile) {
+		for (TopLevelDecl top_level_declaration : sourceFile.decls()) {
+			visit(top_level_declaration);
+		}
 	}
 
 	@Override
@@ -748,18 +757,40 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		throw new RuntimeException("Not implemented yet");
 	}
 
+	private Entity getConstructorEntity(X10ConstructorInstance instance) {
+		Entity entity = constructorEntities.get(instance);
+		if (entity == null) {
+			X10ClassType owner = (X10ClassType) instance.container();
+			String name = "this";
+			X10Flags flags = X10Flags.toX10Flags(instance.flags());
+
+			firm.Type ownerFirm = typeSystem.asFirmCoreType(owner);
+			firm.Type type      = typeSystem.asFirmType(instance);
+			entity = new Entity(ownerFirm, name, type);
+			if (flags.isAbstract()) {
+				OO.setMethodAbstract(entity, true);
+			}
+			if (flags.isNative()) {
+				entity.setVisibility(ir_visibility.ir_visibility_external);
+			}
+
+			constructorEntities.put(instance, entity);
+		}
+		return entity;
+	}
+
 	/**
 	 * Return entity for an X10 method
 	 */
-	private Entity getMethodEntity(X10MethodInstance methodInstance) {
-		Entity entity = methodEntities.get(methodInstance);
+	private Entity getMethodEntity(X10MethodInstance instance) {
+		Entity entity = methodEntities.get(instance);
 		if (entity == null) {
-			X10ClassType owner = (X10ClassType) methodInstance.container();
-			String name = methodInstance.name().toString();
-			X10Flags flags = X10Flags.toX10Flags(methodInstance.flags());
+			X10ClassType owner = (X10ClassType) instance.container();
+			String name = instance.name().toString();
+			X10Flags flags = X10Flags.toX10Flags(instance.flags());
 
 			firm.Type ownerFirm = typeSystem.asFirmCoreType(owner);
-			firm.Type type = typeSystem.asFirmType(methodInstance);
+			firm.Type type = typeSystem.asFirmType(instance);
 			entity = new Entity(ownerFirm, name, type);
 			if (flags.isStatic()) {
 				OO.setEntityBinding(entity, ddispatch_binding.bind_static);
@@ -770,70 +801,47 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			if (flags.isNative()) {
 				entity.setVisibility(ir_visibility.ir_visibility_external);
 			}
-			methodEntities.put(methodInstance, entity);
+			methodEntities.put(instance, entity);
 		}
 
 		return entity;
 	}
 
 	/** Finds all locals and formals in the given method.
-	 *  @param dec The method declaration
+	 *  @param core    method/constructor code
 	 *  @param formals Will hold all found formals.
 	 *  @param locals  Will hold all found locals.
 	 */
-	private void findAllLocalInstancesInMethod(MethodDecl_c dec, List<LocalInstance> formals, List<LocalInstance> locals) {
-		// extract all formal parameters from the given method
-		X10MethodDef def      = (X10MethodDef)dec.methodDef();
-		X10MethodInstance mi  = (X10MethodInstance)def.asInstance();
+	private void findAllLocalInstancesInMethod(CodeBlock code, List<LocalInstance> formals, List<LocalInstance> locals) {
+		if (code.body() == null)
+			return;
+		// Search the body of the method declaration for LocalDecl_c`s
+		X10SearchVisitor<LocalDecl_c> xLocals = new X10SearchVisitor<LocalDecl_c>(LocalDecl_c.class);
+		code.body().visit(xLocals);
 
-		// add the formal local instances.
-		formals.addAll(mi.formalNames());
+		if (!xLocals.found())
+			return;
 
-		if(dec.body() != null) {
-			// Search the body of the method declaration for LocalDecl_c`s
-			X10SearchVisitor<LocalDecl_c> xLocals = new X10SearchVisitor<LocalDecl_c>(LocalDecl_c.class);
-			dec.body().visit(xLocals);
+		List<LocalDecl_c> matchesList  = xLocals.getMatches();
 
-			if(!xLocals.found())
-				return;
+		for (LocalDecl_c c : matchesList) {
+			// extract the local instances from the found "LocalDecl_c`s"
+			LocalInstance locInstance = c.localDef().asInstance();
+			// don`t include the local instances from the formals or duplicate local instances.
+			if(formals.contains(locInstance) || locals.contains(locInstance))
+				continue;
 
-			List<LocalDecl_c> matchesList  = xLocals.getMatches();
-
-			for(LocalDecl_c c : matchesList) {
-				// extract the local instances from the found "LocalDecl_c`s"
-				LocalInstance locInstance = c.localDef().asInstance();
-				// don`t include the local instances from the formals or duplicate local instances.
-				if(formals.contains(locInstance) || locals.contains(locInstance))
-					continue;
-
-				locals.add(locInstance);
-			}
+			locals.add(locInstance);
 		}
 	}
 
-	@Override
-	public void visit(MethodDecl_c dec) {
-		X10MethodDef def 					= (X10MethodDef) dec.methodDef();
-		X10MethodInstance methodInstance 	= (X10MethodInstance) def.asInstance();
-		X10Flags flags 						= X10Flags.toX10Flags(methodInstance.flags());
-		Entity entity 						= getMethodEntity(methodInstance);
-
-		if (flags.isNative() || flags.isAbstract()) {
-			/* native code is defined elsewhere, so nothing left to do */
-			return;
-		}
-
-		List<LocalInstance> formals = new ArrayList<LocalInstance>();
+	private void constructGraph(Entity entity, CodeBlock code, List<LocalInstance> formals, boolean isStatic,
+		                        X10ClassType owner) {
 		List<LocalInstance> locals  = new ArrayList<LocalInstance>();
-
 		// extract all formals and locals from the method.
-		findAllLocalInstancesInMethod(dec, formals, locals);
-
+		findAllLocalInstancesInMethod(code, formals, locals);
 		int nVars = formals.size() + locals.size();
-
-		boolean isStatic = flags.isStatic();
 		if (!isStatic) {
-			// Add 'this'
 			nVars++;
 		}
 
@@ -843,7 +851,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		Node args = graph.getArgs();
 		if(!isStatic) {
-			X10ClassType owner = (X10ClassType) methodInstance.container();
 			firm.Type ownerFirm = typeSystem.asFirmType(owner);
 
 			// map 'this'
@@ -872,7 +879,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 
 		// Walk body and construct graph
-		visitAppropriate(dec.body());
+		visitAppropriate(code.body());
 
 		// create Return node if there was no explicit return statement yet
 		if (!con.getCurrentBlock().isBad()) {
@@ -886,6 +893,24 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		// Dump the created graph
 		firm.Dump.dumpGraph(con.getGraph(), "-fresh");
+	}
+
+	@Override
+	public void visit(MethodDecl_c dec) {
+		X10MethodDef      def            = (X10MethodDef) dec.methodDef();
+		X10MethodInstance methodInstance = (X10MethodInstance) def.asInstance();
+		X10Flags          flags          = X10Flags.toX10Flags(methodInstance.flags());
+		Entity            entity         = getMethodEntity(methodInstance);
+
+		if (flags.isNative() || flags.isAbstract()) {
+			/* native code is defined elsewhere, so nothing left to do */
+			return;
+		}
+
+		List<LocalInstance> formals = methodInstance.formalNames();
+		boolean isStatic = flags.isStatic();
+		X10ClassType owner = (X10ClassType) methodInstance.container();
+		constructGraph(entity, dec, formals, isStatic, owner);
 
 		if (isMainMethod(dec)) {
 			processMainMethod(entity);
@@ -970,7 +995,20 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(ConstructorDecl_c dec) {
-		// TODO: Implement me
+		X10ConstructorDef      def      = (X10ConstructorDef) dec.constructorDef();
+		X10Flags               flags    = X10Flags.toX10Flags(def.flags());
+		X10ConstructorInstance instance = (X10ConstructorInstance) def.asInstance();
+		Entity                 entity   = getConstructorEntity(instance);
+
+		if (flags.isNative()) {
+			/* native code is defined elsewhere, so nothing left to do */
+			return;
+		}
+
+		List<LocalInstance> formals = instance.formalNames();
+		boolean isStatic = flags.isStatic();
+		X10ClassType owner = (X10ClassType) instance.container();
+		constructGraph(entity, dec, formals, isStatic, owner);
 	}
 
 	private Initializer expr2Initializer(Expr expr) {
@@ -1671,6 +1709,30 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		setReturnNode(ret);
 	}
 
+	@Override
+	public void visit(X10ConstructorCall_c n) {
+		/* TODO: check for this or super */
+
+		/* determine called function */
+		X10ConstructorInstance instance = n.constructorInstance();
+		Entity entity = getConstructorEntity(instance);
+		firm.MethodType type = (MethodType) entity.getType();
+		Node address = con.newSymConst(entity);
+
+		int param_count = type.getNParams();
+		Node[] parameters = new Node[param_count];
+		int p = 0;
+		parameters[p++] = getThis(Mode.getP());
+		for (Expr expr : n.arguments()) {
+			parameters[p++] = visitExpression(expr);
+		}
+		assert(p == param_count);
+		Node mem = con.getCurrentMem();
+		Node call = con.newCall(mem, address, parameters, type);
+		Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
+		con.setCurrentMem(newMem);
+	}
+
 	/**
 	 * Creates a Firm Add node corresponding to n
 	 * @param n		a operator+ call on x10.lang.Int
@@ -1777,9 +1839,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(New_c n) {
-		TypeNode  type     = n.objectType();
+		Type      type     = n.objectType().type();
 		firm.Type resType  = typeSystem.asFirmType(n.type());
-		firm.Type firmType = typeSystem.asFirmCoreType(type.type());
+		firm.Type firmType = typeSystem.asFirmCoreType(type);
 		Node mem    = con.getCurrentMem();
 		Node count  = con.newConst(1, Mode.getIu());
 		Node alloc  = con.newAlloc(mem, count, firmType, ir_where_alloc.heap_alloc);
@@ -1787,7 +1849,31 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Node res    = con.newProj(alloc, resType.getMode(), Alloc.pnRes);
 		con.setCurrentMem(newMem);
 
-		/* TODO: invoke constructor here */
+		/* invoke class constructor */
+		X10ConstructorInstance_c instance = (X10ConstructorInstance_c) n.constructorInstance();
+		if (instance != null) {
+			Entity entity = getConstructorEntity(instance);
+			firm.MethodType entityType = (MethodType) entity.getType();
+			Node address = con.newSymConst(entity);
+
+			int param_count = entityType.getNParams();
+			Node[] parameters = new Node[param_count];
+
+			List<Expr> arguments = n.arguments();
+			int p = 0;
+			parameters[p++] = res; /* this argument */
+			for (int i=0; i<arguments.size(); i++) {
+				parameters[p++] = visitExpression(arguments.get(i));
+			}
+			assert arguments.size()+1 == param_count;
+
+			mem = con.getCurrentMem();
+			Node call = con.newCall(mem, address, parameters, entityType);
+			newMem = con.newProj(call, Mode.getM(), Call.pnM);
+			con.setCurrentMem(newMem);
+		} else {
+			/* no constructor */
+		}
 
 		setReturnNode(res);
 	}
@@ -2019,11 +2105,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		throw new RuntimeException("Not implemented yet");
 	}
 
+	private Node getThis(Mode mode) {
+		return con.getVariable(0, mode);
+	}
+
 	@Override
 	public void visit(X10Special_c n) {
 		if (n.kind() == Special.THIS) {
 			firm.Mode mode = typeSystem.getFirmMode(n.type());
-			Node thisPointer = con.getVariable(0, mode);
+			Node thisPointer = getThis(mode);
 			setReturnNode(thisPointer);
 		} else {
 			throw new RuntimeException("Not implemented yet");
