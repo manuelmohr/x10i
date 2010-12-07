@@ -1650,21 +1650,18 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final String signature = methodInstance.signature();
 		if (signature.startsWith("operator")) {
 			X10ClassType owner = (X10ClassType) methodInstance.container();
-			if (owner.toString().startsWith("x10.lang.Int")) { /* an int */
-				final char opChar = signature.charAt(8);
+			if (owner.toString().startsWith("x10.lang.Int")
+					&& n.arguments().size() == 2) { /* an int */
 				resetReturnNode();
-				switch (opChar) {
-				case '+':
+				if (signature.equals("operator +")) {
 					createPlus(n);
 					return;
-				case '-':
+				} else if (signature.equals("operator -")) {
 					createMinus(n);
 					return;
-				case '<':
+				} else if (signature.equals("operator <")) {
 					createLessThan(n);
 					return;
-				default:
-					break;
 				}
 			}
 		}
