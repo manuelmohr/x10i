@@ -51,6 +51,7 @@ public final class OOSupport {
 
 		/* TODO: the following does not work as the spec requires the name of the type behind the 'cv' */
 		OO.addNameSubstitution("operator_as", "cv");
+		OO.addNameSubstitution("implicit_operator_as", "cv");
 
 		/* TODO: unary +, -
 		 * The problem here is that we cannot identify them by name alone
