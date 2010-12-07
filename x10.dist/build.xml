@@ -34,6 +34,7 @@
     <property name="liboo.jar" value="liboo.jar"/>
     <property name="x10.firm.location" location="${x10.home}/x10.firm"/>
     <property name="x10firm.jar" value="x10firm.jar"/>
+    <property name="libx10std.location" value="${basedir}/stdlib"/>
     <path id="project.classpath"/>
     <!-- get the environment variables -->
     <property environment="env"/>
@@ -269,11 +270,15 @@
        </copy>
     </target>
 
-    <target name="x10firm-jar" depends="init,compiler-jar,liboo-jar">
+    <target name="x10firm-jar" depends="init,compiler-jar,liboo-jar,libx10std">
        <ant antfile="${x10.firm.location}/build.xml" target="jar" inheritAll="false" dir="${x10.firm.location}"/>
        <mkdir dir="${lib}"/>
        <copy todir="${lib}">
-       <fileset dir="${x10.firm.location}/${builddir}" includes="${x10firm.jar}"/>
+          <fileset dir="${x10.firm.location}/${builddir}" includes="${x10firm.jar}"/>
+          <fileset dir="${libx10std.location}">
+             <include name="libx10std.a" />
+             <include name="libx10std.so.2.1.0" />
+          </fileset>
        </copy>
     </target>
 
@@ -282,9 +287,13 @@
         <ant antfile="${x10.compiler.location}/build.xml" target="jar" inheritAll="false" dir="${x10.compiler.location}"/>
         <mkdir dir="${lib}"/>
         <copy todir="${lib}">
-            <fileset dir="${x10.compiler.location}/${builddir}" includes="${compiler.jar}"/>
+        <fileset dir="${x10.compiler.location}/${builddir}" includes="${compiler.jar}"/>
         </copy>
     </target>
+
+   <target name="libx10std">
+      <exec executable="make" failonerror="true" dir="${libx10std.location}"/>
+   </target>
 
     <target name="bin"
             description="configure bin directory"
@@ -387,7 +396,7 @@
         <echo message="X10_PLATFORM = '${env.X10_PLATFORM}'"/>
         <echo message="TOP = '${basedir}'"/>
         <!-- TODO: some of this is x10c-specific; factor out into x10c.in -->
-	<echo file="${bin}/defs" append="no">#!/usr/bin/env bash
+ <echo file="${bin}/defs" append="no">#!/usr/bin/env bash
 # DO NOT EDIT - This file was automatically generated.
 
 #JAVA='${java.executable}'
@@ -581,3 +590,5 @@ if [[ "$UNAME" = CYGWIN* ]]; then JAVA_HOME="$(cygpath -am "$JAVA_HOME")"; fi
     <target name="zips" depends="zip,srczip,testzip"/>
 
 </project>
+
+<!-- vim: set expandtab: -->

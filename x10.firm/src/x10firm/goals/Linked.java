@@ -31,10 +31,7 @@ public class Linked extends PostCompiled {
 				"gcc",
 				"-std=c99",
 				asm_name,
-				"stdlib/primitive_types.c",
-				"stdlib/simple_lib.c",
-				"stdlib/x10_lang_string.c",
-				"stdlib/object.c",
+				"stdlib/libx10std.a",
 				"-lm",
 				"-o", exe_name
 		};
