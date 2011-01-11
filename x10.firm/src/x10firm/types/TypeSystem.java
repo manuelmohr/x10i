@@ -149,7 +149,7 @@ public class TypeSystem extends X10TypeSystem_c {
 				/* we need a vtable pointer */
 				firm.Type pointerType = Mode.getP().getType();
 				Entity vtablePointer = new Entity(result, "$vtbl", pointerType);
-				OO.setClassVTableEntity(result, vtablePointer);
+				OO.setClassVPtrEntity(result, vtablePointer);
 			}
 		}
 
