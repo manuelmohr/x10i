@@ -101,8 +101,7 @@ public class TypeSystem extends X10TypeSystem_c {
 	/**
 	 * Returns the corresponding Firm type for the given polyglot type
 	 *
-	 * @param type
-	 *            The given polyglot type
+	 * @param type The given polyglot type
 	 * @return corresponding Firm method type
 	 */
 	public firm.Type asFirmType(polyglot.types.Type type) {
@@ -125,6 +124,7 @@ public class TypeSystem extends X10TypeSystem_c {
 
 		/* currently we should never produce types without modes here */
 		assert result.getMode() != null;
+		
 		return result;
 	}
 
@@ -144,10 +144,11 @@ public class TypeSystem extends X10TypeSystem_c {
 			result.addSuperType(firmSuperType);
 		} else if (flags.isStruct()) {
 			/* no superclass */
+		} else if(flags.isInterface()) {
+			/* no superclass interface */
 		} else {
 			/* the only thing left without a superclass should be x10.lang.Object */
 			assert classType.toString().equals("x10.lang.Object");
-			/* the only thing left without a superclass should be x10.lang.Object */
 			firm.Type pointerType = Mode.getP().getType();
 			Entity vtablePointer = new Entity(result, "$vtbl", pointerType);
 			OO.setClassVPtrEntity(result, vtablePointer);
