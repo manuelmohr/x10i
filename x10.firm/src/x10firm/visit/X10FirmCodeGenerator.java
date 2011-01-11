@@ -773,6 +773,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			if (flags.isNative()) {
 				entity.setVisibility(ir_visibility.ir_visibility_external);
 			}
+			OO.setMethodConstructor(entity, true);
+			OO.setMethodExcludeFromVTable(entity, true);
+			/* the binding of a constructor is static as we will not use the
+			 * vtable to determine which method to call.
+			 * (Note that we still have a "this" pointer anyway) */
+			OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 
 			constructorEntities.put(instance, entity);
 		}
@@ -789,11 +795,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			String name = instance.name().toString();
 			X10Flags flags = X10Flags.toX10Flags(instance.flags());
 
-			firm.Type ownerFirm = typeSystem.asFirmCoreType(owner);
+			firm.Type owningClass = typeSystem.asFirmCoreType(owner);
+			firm.Type ownerFirm = flags.isStatic() ? Program.getGlobalType() : owningClass;
 			firm.Type type = typeSystem.asFirmType(instance);
 			entity = new Entity(ownerFirm, name, type);
 			if (flags.isStatic()) {
 				OO.setEntityBinding(entity, ddispatch_binding.bind_static);
+				OO.setEntityAltNamespace(entity, owningClass);
+			} else {
+				OO.setEntityBinding(entity, ddispatch_binding.bind_dynamic);
 			}
 			if (flags.isAbstract()) {
 				OO.setMethodAbstract(entity, true);

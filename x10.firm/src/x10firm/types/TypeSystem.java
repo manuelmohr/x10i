@@ -19,6 +19,7 @@ import firm.Mode.ir_mode_sort;
 import firm.OO;
 import firm.PointerType;
 import firm.PrimitiveType;
+import firm.Program;
 import firm.Type;
 import firm.bindings.binding_oo.ddispatch_binding;
 
@@ -128,7 +129,7 @@ public class TypeSystem extends X10TypeSystem_c {
 	}
 
 	private firm.Type createClassType(X10ClassType classType) {
-		String className = classType.name().toString();
+		String className = classType.toString();
 		ClassType result = new ClassType(className);
 		X10Flags flags   = X10Flags.toX10Flags(classType.flags());
 
@@ -141,16 +142,15 @@ public class TypeSystem extends X10TypeSystem_c {
 		if (superType != null) {
 			Type firmSuperType = asFirmCoreType(superType);
 			result.addSuperType(firmSuperType);
+		} else if (flags.isStruct()) {
+			/* no superclass */
 		} else {
-			if (flags.isStruct()) {
-				/* no superclass */
-			} else {
-				assert classType.toString().equals("x10.lang.Object");
-				/* we need a vtable pointer */
-				firm.Type pointerType = Mode.getP().getType();
-				Entity vtablePointer = new Entity(result, "$vtbl", pointerType);
-				OO.setClassVPtrEntity(result, vtablePointer);
-			}
+			/* the only thing left without a superclass should be x10.lang.Object */
+			assert classType.toString().equals("x10.lang.Object");
+			/* the only thing left without a superclass should be x10.lang.Object */
+			firm.Type pointerType = Mode.getP().getType();
+			Entity vtablePointer = new Entity(result, "$vtbl", pointerType);
+			OO.setClassVPtrEntity(result, vtablePointer);
 		}
 
 		/* create fields */
@@ -161,10 +161,12 @@ public class TypeSystem extends X10TypeSystem_c {
 				continue;
 			String name = field.name().toString();
 			firm.Type type = asFirmType(field.type());
-			Entity entity = new Entity(result, name, type);
+			firm.Type owner = fieldFlags.isStatic() ? Program.getGlobalType() : result;
+			Entity entity = new Entity(owner, name, type);
 			if (fieldFlags.isStatic()) {
-				OO.setEntityBinding(entity, ddispatch_binding.bind_static);
+				OO.setEntityAltNamespace(entity, result);
 			}
+			OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 			fieldMap.put(field, entity);
 		}
 
