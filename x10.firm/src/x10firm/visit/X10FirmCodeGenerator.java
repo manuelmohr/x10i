@@ -285,7 +285,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		/**
 		 * Holds a reference to the upper FirmScope.
 		 */
-		FirmScope prev;
+		private FirmScope prev;
 
 		/**
 		 * Mapping between Labels (String) and the corresponding FirmLabels.
@@ -450,8 +450,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		 */
 		private FirmLabel getFirmLabelHelp(String label) {
 			if(!firmLabelMapper.containsKey(label)) {
-				if(prev != null)
+				if(prev != null) {
 					return prev.getFirmLabelHelp(label);
+				}
 				return null;
 
 			}
@@ -671,7 +672,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		 * @return The new firm scope
 		 */
 		public FirmScope pushFirmScope(FirmScope scope) {
-			scope.prev = scope; 
+			scope.prev = topFirmScope;
 			topFirmScope = scope;
 			return scope;
 		}
@@ -761,6 +762,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 		return n;
 	}
+	
 
 	/**
 	 * Evaluates the given expression and creates the appropriate firm nodes. Afterwards
@@ -1352,9 +1354,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			bBreak.addPred(proj);
 		}
 
-		if(bBreak != null)
-			bBreak.mature();
-
 		if(bBreak == null)
 			con.setCurrentBlockBad();
 		else
@@ -1758,10 +1757,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			makeCondition(ret);
 		}
 		firmContext.popFirmScope();
-
-		bTrue.mature();
-		bFalse.mature();
-
+		
 		// add a common phi block for the true and false expressions.
 		Block phiBlock = con.newBlock();
 		phiBlock.addPred(endIf);
@@ -2922,8 +2918,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	    	}
 
 	    	return;
-	    } else if ((l.isNumeric() && r.isNumeric()) ||
-	    	(l.isBoolean() && r.isBoolean())) {
+	    } else if ((l.isNumeric() && r.isNumeric()) || (l.isBoolean() && r.isBoolean())) {
 	    	// delegate it to Binary_c
 	        visit((Binary_c)B);
 	        return;

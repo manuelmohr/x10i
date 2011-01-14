@@ -186,7 +186,8 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Case_c n) {
-		visitAppropriate(n.expr());
+		if(n.expr() != null)
+			visitAppropriate(n.expr());
 	}
 
 	@Override

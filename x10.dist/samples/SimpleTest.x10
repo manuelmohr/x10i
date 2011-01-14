@@ -1,5 +1,5 @@
 class Simple1 {
-	public static def main(Array[String]) {
+	public static def m() {
 		var x: Int = 33;
 		var y: Int = 33333;
 		var a: Int = 333322;
@@ -14,6 +14,9 @@ class Simple1 {
 */
 
 		var z : Boolean = (1 < 3 && 5 - 4 == 12) ? ((3 * 4 == 12 || 5 + 3 != 3) ? 1 == 2 : 4 + 4 != 3) : true;
+		if(z) {
+			z = true;
+		}
 		
 		while(z) {
 			var u: Boolean = false;
@@ -35,7 +38,6 @@ class Simple1 {
 			}
 			u = z == true ? 2 + 3 < 30 : 666 - 333 != 333;
 		}
-
 		a = b = c = (x + y + 5 < 666 || a + b - c < 123) ? (z == true && a + b - c != 333) ? 23 + 4 : 555 - 4 : 333 + 333;
 
 		var u: Int = (x + y == 666 && x + y != 44 || true != false) ? 1 : 0; 
@@ -62,7 +64,7 @@ class Simple1 {
 
 		switch(c) { case 1: case 2: case 3: c = c + 3; default: b = b + 1; case 5: return 33; case 7: c = c - 4; case 8: b = b + 44; }
 
-		return a + b + c;
+		return 1 + 3 + 4;
 	}
 	public var a : Int;
 	public var b : Int;
