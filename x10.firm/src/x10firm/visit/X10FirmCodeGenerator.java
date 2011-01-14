@@ -285,7 +285,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		/**
 		 * Holds a reference to the upper FirmScope.
 		 */
-		private FirmScope prev;
+		FirmScope prev;
 
 		/**
 		 * Mapping between Labels (String) and the corresponding FirmLabels.
@@ -763,7 +763,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return n;
 	}
 	
-
+	private Node makeExpressionCondition(final Expr e) {
+		Node ret = visitExpression(e);
+		return makeCondition(ret);
+	}
+	
 	/**
 	 * Evaluates the given expression and creates the appropriate firm nodes. Afterwards
 	 * it creates a new true (holds the value 1) and false (holds the value 0) block for
@@ -772,7 +776,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param E		A polyglot expression
 	 * @return		A Phi firm node
 	 */
-	private Node makeConditionalPhiTrailer(Expr E) {
+	private Node makeConditionalPhiTrailer(final Expr E) {
 
 	    Block cur    = con.getCurrentBlock();
 		Block bTrue  = con.newBlock();
@@ -797,16 +801,20 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			newScope.setTrueBlock(bTrue);
 			newScope.setFalseBlock(bFalse);
 
-			Node ret = visitExpression(E);
-			makeCondition(ret);
+			makeExpressionCondition(E);
 		}
 		firmContext.popFirmScope();
-
+		
+		bTrue.mature();
+		bFalse.mature();
+		
 		Block phiBlock = con.newBlock();
 		phiBlock.addPred(jmp1);
 		phiBlock.addPred(jmp2);
 
 		con.setCurrentBlock(phiBlock);
+		
+		phiBlock.mature();
 
 		return con.newPhi(new Node[]{one, zero}, Mode.getb());
 	}
@@ -866,16 +874,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	@Override
-	public void visit(TypeDecl_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(LocalTypeDef_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
 	public void visit(X10ClassDecl_c n) {
 		X10ClassDef def = n.classDef();
 		ClassBody_c body = (ClassBody_c) n.body();
@@ -894,11 +892,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	@Override
-	public void visit(LocalClassDecl_c n) {
-		throw new RuntimeException("Local classes should have been removed by a separate pass");
-	}
-
-	@Override
 	public void visit(ClassBody_c n) {
 		X10ClassType currentClass = firmContext.getCurClass();
 		if (currentClass.flags().isInterface()) {
@@ -909,16 +902,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			for (ClassMember member : n.members())
 				visitAppropriate(member);
 		}
-	}
-
-	@Override
-	public void visit(PackageNode_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(Import_c n) {
-		throw new RuntimeException("Not implemented yet");
 	}
 
 	private Entity getConstructorEntity(X10ConstructorInstance instance) {
@@ -1014,9 +997,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		if (!isStatic) {
 			nVars++;
 		}
-		
-//		System.out.println("Entity: " + entity + " Formals: " + formals.size() + " Locals: " + locals.size());
-		
+			
 		Graph graph = new Graph(entity, nVars);
 		Construction savedConstruction = con;
 		con = new Construction(graph);
@@ -1059,10 +1040,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			firmContext.setVarEntry(VarEntry.newVarEntryForLocalInstance(loc, idx));
 			idx++;
 		}
-
+		
 		// Walk body and construct graph
 		visitAppropriate(code.body());
-
+		
 		// create Return node if there was no explicit return statement yet
 		if (!con.getCurrentBlock().isBad()) {
 			assert ((MethodType)entity.getType()).getNRess() == 0;
@@ -1072,10 +1053,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 		
 		con.finish();
-
-		// Dump the created graph
-		firm.Dump.dumpGraph(con.getGraph(), "-fresh");
-		
+			
 		con = savedConstruction;
 		
 		firmContext = firmContext.popFirmContext();
@@ -1245,21 +1223,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	@Override
-	public void visit(PropertyDecl_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(Initializer_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(Assert_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
 	public void visit(Switch_c n) {
 
 		boolean hasExplicitDefaultCase = false;
@@ -1353,6 +1316,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 			bBreak.addPred(proj);
 		}
+		
+		if(bBreak != null)
+			bBreak.mature();
 
 		if(bBreak == null)
 			con.setCurrentBlockBad();
@@ -1390,6 +1356,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		if(fallthrough != null)
 			block.addPred(fallthrough);
+		
+		block.mature();
 
 		con.setCurrentBlock(block);
 	}
@@ -1529,11 +1497,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	@Override
-	public void visit(Formal_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
 	public void visit(LocalDecl_c n) {
 		Expr initexpr = n.init();
 
@@ -1576,11 +1539,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Expr e = n.result();
 		if (e != null)
 			visitAppropriate(e);
-	}
-
-	@Override
-	public void visit(For_c n) {
-		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
@@ -1632,6 +1590,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 
 		bCond.addPred(con.newJmp());
+		
+		bCond.mature();
 
 		con.setCurrentBlock(bCond);
 
@@ -1643,10 +1603,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			newScope.setTrueBlock(bTrue);
 			newScope.setFalseBlock(bFalse);
 
-			Node retNode = visitExpression(n.cond());
-			makeCondition(retNode);
+			makeExpressionCondition(n.cond());
 		}
 		firmContext.popFirmScope();
+		
+		bTrue.mature();
+		bFalse.mature();
 
 		con.setCurrentBlock(bFalse);
 	}
@@ -1680,10 +1642,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			newScope.setTrueBlock(bTrue);
 			newScope.setFalseBlock(bFalse);
 
-			Node retNode = visitExpression(n.cond());
-			makeCondition(retNode);
+			makeExpressionCondition(n.cond());
 		}
 		firmContext.popFirmScope();
+		
+		bTrue.mature();
 
 		con.setCurrentBlock(bTrue);
 
@@ -1704,9 +1667,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			visitAppropriate(body);
 		}
 		firmContext.popFirmScope();
+		
+		bFalse.mature();
 
 		if(!con.getCurrentBlock().isBad())
 			bCond.addPred(con.newJmp());
+		
+		bCond.mature();
 
 		con.setCurrentBlock(bFalse);
 	}
@@ -1752,11 +1719,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			newScope.setTrueBlock(bTrue);
 			newScope.setFalseBlock(bFalse);
 
-			Node ret = visitExpression(n.cond());
-
-			makeCondition(ret);
+			makeExpressionCondition(n.cond());
 		}
 		firmContext.popFirmScope();
+		
+		bFalse.mature();
 		
 		// add a common phi block for the true and false expressions.
 		Block phiBlock = con.newBlock();
@@ -1764,6 +1731,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		phiBlock.addPred(endElse);
 
 		con.setCurrentBlock(phiBlock);
+		
+		phiBlock.mature();
 
 		Node ret = con.newPhi(new Node[]{trueExpr, falseExpr}, falseExpr.getMode());
 		setReturnNode(ret);
@@ -1789,8 +1758,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				newScope.setFalseBlock(bAfter);
 			}
 
-			Node retNode = visitExpression(n.cond());
-			makeCondition(retNode);
+			makeExpressionCondition(n.cond());
 		}
 		firmContext.popFirmScope();
 
@@ -1804,6 +1772,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			con.setCurrentBlock(bTrue);
 		else
 			endIf = con.newJmp();
+		
+		bTrue.mature();
 
 		if (n.alternative() != null) {
 			Stmt alternative = n.alternative();
@@ -1818,14 +1788,20 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 			if(con.getCurrentBlock().isBad())
 				con.setCurrentBlock(bFalse);
-			else
+			else {
 				bAfter.addPred(con.newJmp());
+			}
+			
+			if(bFalse != null)
+				bFalse.mature();
 		}
 
 		con.setCurrentBlock(bAfter);
 
 		if(endIf != null)
 			bAfter.addPred(endIf);
+		
+		bAfter.mature();
 	}
 
 	@Override
@@ -1997,16 +1973,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Node cmp = con.newCmp(leftFirm, rightFirm);
 		Node projLT = con.newProj(cmp, Mode.getb(),	Cmp.pnLt);
 		setReturnNode(projLT);
-	}
-
-	@Override
-	public void visit(RegionMaker_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(ConstantDistMaker_c n) {
-		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
@@ -2313,91 +2279,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		setReturnNode(ret);
 	}
 
-	@Override
-	public void visit(Id_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(X10Cast_c c) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(SubtypeTest_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(X10Instanceof_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(Throw_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(Try_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(Catch_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(Atomic_c a) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(Await_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(Next_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(ForLoop_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(AtEach_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(Finish_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(ArrayAccess_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(ParExpr_c n) {
-		visitAppropriate(n.expr());
-	}
-
-	@Override
-	public void visit(Here_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(Async_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
 	private Node getThis(Mode mode) {
 		return con.getVariable(0, mode);
 	}
@@ -2676,15 +2557,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
         // apply method of the super class !!!
         X10MethodInstance applyMethodInst = (X10MethodInstance)sup.methods().get(0);
         X10MethodDef applyMethodDef = (X10MethodDef)applyMethodInst.def();
-        
-//        System.out.println("SUPPPPPP: " + sup);
-        
+                
         Entity ent = getMethodEntity(applyMethodInst);
         // save the apply method of the super class !
         putClosureEntity(applyMethodInst.signature(), ent);
-        
-//        System.out.println("Sup Method I " + applyMethod);
-        
+                
         String thisName = "#this";
         XName thisNameName = new XNameWrapper<Object>(new Object(), thisName);
         XVar thisVar = XTerms.makeLocal(thisNameName);
@@ -2858,21 +2735,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	@Override
-	public void visit(X10CanonicalTypeNode_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(X10Unary_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(Unary_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
 	public void visit(X10Binary_c B) {
 
 		// only '==', '!=', '&&' or '||' are allowed operators.
@@ -2892,12 +2754,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				Block bTrue  = curScope.getTrueBlock();
 				Block bFalse = curScope.getFalseBlock();
 
-	    		Node retLeft  = null;
-	    		Node retRight = null;
+	    		Node retLeft  = visitExpression(left);
+	    		Node retRight = visitExpression(right);
 
 	    		// no new firm scope needed
-	    		retLeft  = visitExpression(left);
-	    		retRight = visitExpression(right);
 
 				Node cmp  = con.newCmp(retLeft, retRight);
 				Node proj = con.newProj(cmp, Mode.getb(), modus);
@@ -2961,8 +2821,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				newScope.setTrueBlock(bTrue);
 				newScope.setFalseBlock(bFalse);
 
-				Node r = visitExpression(B.left());
-				makeCondition(r);
+				makeExpressionCondition(B.left());
 			}
 			firmContext.popFirmScope();
 
@@ -2980,10 +2839,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				newScope.setTrueBlock(bCurTrue);
 				newScope.setFalseBlock(bCurFalse);
 
-				Node r = visitExpression(B.right());
-				ret = makeCondition(r);
+				ret = makeExpressionCondition(B.right());
 			}
 			firmContext.popFirmScope();
+			
+			if(op == Binary.COND_AND) {
+				bTrue.mature();
+			} else {
+				bFalse.mature();
+			}
 
 			setReturnNode(ret);
 		} else {
@@ -2991,6 +2855,167 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			setReturnNode(ret);
 		}
 	}
+	
+	@Override
+	public void visit(ParExpr_c n) {
+		visitAppropriate(n.expr());
+	}
+	
+	@Override
+	public void visit(TypeDecl_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(LocalTypeDef_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+	
+	@Override
+	public void visit(LocalClassDecl_c n) {
+		throw new RuntimeException("Local classes should have been removed by a separate pass");
+	}
+	
+	@Override
+	public void visit(PackageNode_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(Import_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+	
+	@Override
+	public void visit(PropertyDecl_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(Initializer_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(Assert_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+	
+	@Override
+	public void visit(Formal_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+	
+	@Override
+	public void visit(For_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+	
+	@Override
+	public void visit(RegionMaker_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(ConstantDistMaker_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+	
+	@Override
+	public void visit(X10CanonicalTypeNode_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(X10Unary_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(Unary_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+	
+	@Override
+	public void visit(Id_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(X10Cast_c c) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(SubtypeTest_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(X10Instanceof_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(Throw_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(Try_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(Catch_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(Atomic_c a) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(Await_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(Next_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(ForLoop_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(AtEach_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(Finish_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(ArrayAccess_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(Here_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(Async_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
 
 	@Override
 	public void visit(ArrayInit_c n) {

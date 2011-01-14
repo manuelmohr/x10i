@@ -7,7 +7,7 @@ import polyglot.ast.LocalDecl_c;
 import x10.ast.Closure_c;
 
 /** 
- * Visitor which extracts all local declaration from an "AST"
+ * Visitor which extracts all local declarations from an ast
  */
 public class X10LocalDeclVisitor extends X10DummyDelegatingVisitor {
 	

@@ -3,6 +3,10 @@ package x10firm.goals;
 import java.io.IOException;
 
 import firm.Dump;
+import firm.Graph;
+import firm.Program;
+import firm.bindings.binding_irgopt;
+import firm.bindings.binding_iroptimize;
 import polyglot.ast.Node;
 import polyglot.frontend.Compiler;
 import polyglot.frontend.Job;
@@ -46,6 +50,11 @@ public class FirmGenerated extends SourceGoal_c {
 		try {
 			Dump.dumpTypeGraph("typegraph.vcg");
 		} catch (IOException e1) {
+		}
+		
+		for(Graph g : Program.getGraphs()) {
+			binding_iroptimize.optimize_cf(g.ptr);
+			Dump.dumpGraph(g, "--fresh");
 		}
 
 		return true;
