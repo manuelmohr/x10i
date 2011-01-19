@@ -35,3 +35,17 @@ After the build the x10.dist directory should hold a working x10 distribution.
 This means executables in bin/ and library files in lib/.
 For our Firm backend use bin/x10firm instead of bin/x10c or bin/x10c++.
 
+
+
+
+== Tips for debugging Java in gdb ==
+If you want to run java programs in gdb, then you should make sure that gdb ignores some unix signals that java reroutes and expects to receive. If gdb intercepts these the java program won't work.
+The easy way to do this is to add this macro to your .gdbinit and start it before running any java programs. (We advice against this for non-java programs, since it hides most segfaults from gdb)
+
+define javadebug
+handle SIGUSR1 nostop noprint pass
+handle SIGSEGV nostop noprint pass
+handle SIGILL nostop noprint pass
+handle SIGQUIT nostop noprint pass
+end
+
