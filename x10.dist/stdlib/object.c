@@ -1,5 +1,5 @@
 /* Object constructor */
-void _ZN6ObjectC1EJvv(void *t)
+void _ZN3x104lang6ObjectC1Ev(void *t)
 {
 	(void) t;
 }

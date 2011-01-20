@@ -33,6 +33,7 @@ public class Linked extends PostCompiled {
 				asm_name,
 				"stdlib/libx10std.a",
 				"-lm",
+				"-L../liboo/build", "-Wl,-R../liboo/build", "-loo_rt",
 				"-o", exe_name
 		};
 

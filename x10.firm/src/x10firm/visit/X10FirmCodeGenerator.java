@@ -939,6 +939,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Entity entity = methodEntities.get(instance);
 		if (entity == null) {
 			X10ClassType owner = (X10ClassType) instance.container();
+			// TODO: mangle the complete method signature (but without the name of the defining class)
+			//       This entity name is used during interface method lookups.
 			String name = instance.name().toString();
 			X10Flags flags = X10Flags.toX10Flags(instance.flags());
 
@@ -949,6 +951,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			if (flags.isStatic()) {
 				OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 				OO.setEntityAltNamespace(entity, owningClass);
+			} else if (owner.flags().isInterface()) {
+				OO.setEntityBinding(entity, ddispatch_binding.bind_interface);
 			} else {
 				OO.setEntityBinding(entity, ddispatch_binding.bind_dynamic);
 			}
@@ -958,6 +962,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			if (flags.isNative()) {
 				entity.setVisibility(ir_visibility.ir_visibility_external);
 			}
+			
+			// TODO: lookup the overwritten method and tell Firm about this relation. (add_entity_overwrites(..))
+			//       - Needed during the vtable construction.
+			
 			methodEntities.put(instance, entity);
 		}
 
@@ -2943,7 +2951,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(X10Cast_c c) {
-		throw new RuntimeException("Not implemented yet");
+		visitAppropriate(c.expr()); // FIXME need real implementation
 	}
 
 	@Override

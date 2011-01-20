@@ -13,6 +13,7 @@ import x10.types.X10MethodInstance;
 import x10.types.X10TypeSystem_c;
 import firm.ClassType;
 import firm.Entity;
+import firm.Ident;
 import firm.Mode;
 import firm.Mode.ir_mode_arithmetic;
 import firm.Mode.ir_mode_sort;
@@ -38,6 +39,9 @@ public class TypeSystem extends X10TypeSystem_c {
 	/** Maps fields to firm entities */
 	private Map<FieldInstance, Entity> fieldMap = new HashMap<FieldInstance, Entity>();
 
+	/** All class instances share the same location for the vptr (the pointer to the vtable) */
+	private Entity vptrEntity;
+	
 	/**
 	 * Creates a method type (= a member function). So we in addition to the
 	 * type we need the flags to determine if it is static and the owner class
@@ -127,6 +131,14 @@ public class TypeSystem extends X10TypeSystem_c {
 		
 		return result;
 	}
+	
+	private Entity getVptrEntity() {
+		if (vptrEntity == null) {
+			firm.Type pointerType = Mode.getP().getType();
+			vptrEntity = new Entity(Program.getGlobalType(), "$vptr", pointerType);
+		}
+		return vptrEntity;
+	}
 
 	private firm.Type createClassType(X10ClassType classType) {
 		String className = classType.toString();
@@ -149,9 +161,7 @@ public class TypeSystem extends X10TypeSystem_c {
 		} else {
 			/* the only thing left without a superclass should be x10.lang.Object */
 			assert classType.toString().equals("x10.lang.Object");
-			firm.Type pointerType = Mode.getP().getType();
-			Entity vtablePointer = new Entity(result, "$vtbl", pointerType);
-			OO.setClassVPtrEntity(result, vtablePointer);
+			getVptrEntity().setOwner(result);
 		}
 
 		/* create fields */
@@ -170,6 +180,13 @@ public class TypeSystem extends X10TypeSystem_c {
 			OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 			fieldMap.put(field, entity);
 		}
+		
+		OO.setClassVPtrEntity(result, getVptrEntity());
+		
+		Entity classInfoEntity = new Entity(Program.getGlobalType(),
+				Ident.createUnique("class_info_%u"), // TODO: mangle "package.SomeClass.class$" and use it as this entity's ld name
+				Mode.getP().getType());
+		OO.setClassRTTIEntity(result, classInfoEntity);
 
 		return result;
 	}
