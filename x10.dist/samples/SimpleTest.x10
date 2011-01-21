@@ -1,5 +1,40 @@
+
+/*
+class Poly {
+	public operator this + (var p: Poly) = new Poly(); 
+	public operator (var n: Int) + this = new Poly();
+	public static operator(var a:Int) as Poly = new Poly();
+	public operator + this = new Poly();
+	public static operator (p: Poly) + (q: Poly) = new Poly();
+	public static operator (c:Int) : Poly = new Poly();
+}
+*/
+
 class Simple1 {
-	public static def m() {
+
+	abstract class Choice {
+		def this() { }
+		def choose(b: Boolean) { if(b) this.yes(); else this.no(); }
+		abstract def yes(): Void;
+		abstract def no(): Void;
+	}
+
+
+	public def m(f: (Int) => Boolean, absent: Float): Int = {
+		{ class MySimpleLocalClass { } }
+		{ class MySimpleLocalClass { } }
+		val c = new Choice() {
+			def yes() { }
+			def no() { }
+		};
+		val c2 = new Choice() {
+			def yes() { }
+			def no() { }
+		};
+		return 123;
+	}
+
+ 	public static def main(Array[String]) {
 		var x: Int = 1;
 		var y: Int = 2;
 		var a: Int = 3;
@@ -53,7 +88,9 @@ class Simple1 {
 		return 2 + 3 +4;
 
 	}
-	public var a : Int;
+
+	public val a : Int = 1233;
 	public var b : Int;
 	public var c : Int;
+
 }

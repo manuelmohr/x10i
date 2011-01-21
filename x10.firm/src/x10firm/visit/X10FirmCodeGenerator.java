@@ -597,7 +597,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		 * Returns the current class
 		 */
 		public X10ClassType getCurClass() {
-			assert curClass != null;
 			return curClass;
 		}
 		
@@ -829,6 +828,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public X10FirmCodeGenerator(Compiler compiler, TypeSystem typeSystem) {
 		this.compiler   = compiler;
 		this.typeSystem = typeSystem;
+		
+		X10NameMangler.setup(typeSystem);
 	}
 
 	/** reset the remembered value of the returned node of an expression */
@@ -880,8 +881,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		ClassBody_c body = (ClassBody_c) n.body();
 		X10ClassType classType = (X10ClassType)def.asType();
 
-		assert (!def.isNested()) : ("Nested class alert!");
+//		assert (!def.isNested()) : ("Nested class alert!");
 		
+		X10ClassType savedClass = firmContext.getCurClass();	
 		firmContext.setCurClass(classType);
 
 		// visit the node children (class body)
@@ -890,6 +892,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		for (ClassMember member : members) {
 			visitAppropriate(member);
 		}
+		
+		firmContext.setCurClass(savedClass);
 	}
 
 	@Override
@@ -909,12 +913,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Entity entity = constructorEntities.get(instance);
 		if (entity == null) {
 			X10ClassType owner = (X10ClassType) instance.container();
-			String name = "this";
+			String name = X10NameMangler.mangleTypeObject(instance);
 			X10Flags flags = X10Flags.toX10Flags(instance.flags());
 
 			firm.Type ownerFirm = typeSystem.asFirmCoreType(owner);
 			firm.Type type      = typeSystem.asFirmType(instance);
 			entity = new Entity(ownerFirm, name, type);
+			entity.setLdIdent(name);
 			if (flags.isAbstract()) {
 				OO.setMethodAbstract(entity, true);
 			}
@@ -942,13 +947,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			X10ClassType owner = (X10ClassType) instance.container();
 			// TODO: mangle the complete method signature (but without the name of the defining class)
 			//       This entity name is used during interface method lookups.
-			String name = instance.name().toString();
+			String name = X10NameMangler.mangleTypeObject(instance);
 			X10Flags flags = X10Flags.toX10Flags(instance.flags());
 
 			firm.Type owningClass = typeSystem.asFirmCoreType(owner);
 			firm.Type ownerFirm = flags.isStatic() ? Program.getGlobalType() : owningClass;
 			firm.Type type = typeSystem.asFirmType(instance);
 			entity = new Entity(ownerFirm, name, type);
+			entity.setLdIdent(name);
 			if (flags.isStatic()) {
 				OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 				OO.setEntityAltNamespace(entity, owningClass);
@@ -2625,23 +2631,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final Set<LocalInstance> savedLocals = closureVisitor.getSavedLocalInstances();
 		final boolean needSavedThis = closureVisitor.needSavedThis();
 		
-		/*
-		System.out.println("Closure Locals");
-		for(LocalInstance loc : locals)
-			System.out.println("Local: " + loc);
-		System.out.println();
-		
-		System.out.println("Closure Saved Locals");
-		for(LocalInstance loc : savedLocals)
-			System.out.println("Saved Local: " + loc);
-		System.out.println();
-		*/
-		
 		X10ClassDef closureClassDef = newClosureDef(def, savedLocals, needSavedThis);
 		FunctionType closureType = (FunctionType)closureClassDef.asType();
         X10MethodInstance applyMethod = closureType.applyMethod();
         
-		Entity ent = getMethodEntity(applyMethod);
+		Entity entity = getMethodEntity(applyMethod);
         
 		/* Create an instance of the closure and save the current context. */
         Node objectPointer = doNewAlloc(closureType, closureType);
@@ -2658,7 +2652,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
         	doClosureFieldWrite(objectPointer, X10_SAVED_THIS_LITERAL, closureType, rhs);
         }
         
-		constructGraph(ent, n, true, formals, locals, false, closureType);
+		constructGraph(entity, n, true, formals, locals, false, closureType);
 		
 		setReturnNode(objectPointer);
 	}

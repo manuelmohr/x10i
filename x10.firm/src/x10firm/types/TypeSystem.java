@@ -141,7 +141,7 @@ public class TypeSystem extends X10TypeSystem_c {
 	}
 
 	private firm.Type createClassType(X10ClassType classType) {
-		String className = classType.toString();
+		String className = X10NameMangler.mangleTypeObject(classType);
 		ClassType result = new ClassType(className);
 		X10Flags flags   = X10Flags.toX10Flags(classType.flags());
 
@@ -170,10 +170,11 @@ public class TypeSystem extends X10TypeSystem_c {
 			/* properties have no "real" data in the object */
 			if (fieldFlags.isProperty())
 				continue;
-			String name = field.name().toString();
+			String name = X10NameMangler.mangleTypeObject(field);
 			firm.Type type = asFirmType(field.type());
 			firm.Type owner = fieldFlags.isStatic() ? Program.getGlobalType() : result;
 			Entity entity = new Entity(owner, name, type);
+			entity.setLdIdent(name);
 			if (fieldFlags.isStatic()) {
 				OO.setEntityAltNamespace(entity, result);
 			}

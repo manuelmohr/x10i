@@ -5,8 +5,9 @@ import java.util.List;
 import java.util.Map;
 
 import polyglot.types.FieldInstance;
+import polyglot.types.Flags;
+import polyglot.types.LocalInstance;
 import polyglot.types.Package;
-import polyglot.types.Ref;
 import polyglot.types.TypeObject;
 import x10.types.FunctionType;
 import x10.types.X10ClassType;
@@ -35,6 +36,10 @@ public class X10NameMangler {
 	 */
 	private static Map<String, String> nameSubst = new HashMap<String, String>();
 	
+	/** 
+	 * Substitution table for unary operators.
+	 */
+	private static Map<String, String> unOpSubst = new HashMap<String, String>();
 	
 	private static final String MANGLE_PREFIX = "_Z";
 	private static final String MANGLE_SUFFIX = "";
@@ -45,6 +50,20 @@ public class X10NameMangler {
 	private static final String MANGLED_VOID_TYPE = "v";
 	private static final String MANGLED_POINTER_REF = "P";
 	private static final String MANGLED_CONSTRUCTOR = "C1";
+	private static final String MANGLED_THIS = "C1";
+	private static final String MANGLED_FINAL = "K";
+	
+	/**
+	 * Initializes name substitutions for unary operators
+	 */
+	private static void setupUnOpSubstitutions() {
+		unOpSubst.put("operator+", "ps");
+		unOpSubst.put("operator-", "ng");
+		// There are no substitutions in the spec for the following unary! operators
+		// -> our own additions
+		unOpSubst.put("operator!", "v3unt");
+		unOpSubst.put("operator~", "v3uti");
+	}
 	
 	/**
 	 * Initializes name substitutions
@@ -84,20 +103,25 @@ public class X10NameMangler {
 		nameSubst.put("operator||",  "oo");
 		nameSubst.put("operator++",  "pp");
 		nameSubst.put("operator--",  "mm");
-
-		/* TODO: the following does not work as the spec requires the name of the type behind the 'cv' */
-		nameSubst.put("operator_as", "cv");
-		nameSubst.put("implicit_operator_as", "cv");
-
-		/* TODO: unary +, -
-		 * The problem here is that we cannot identify them by name alone
-		 * (it's still "operator+" in X10). */
-
+		
 		/* this is our addition */
 		nameSubst.put("operator>>>", "v3rbs");
+		
+		/* inverse operators -> same as the upper operators with a 'v' <digit> prefix
+		 * our own additions 
+		 */
+		Map<String, String> invNameSubs = new HashMap<String, String>();
+		for(String key : nameSubst.keySet())
+			invNameSubs.put("inverse_" + key, "v3i" + nameSubst.get(key));
+		nameSubst.putAll(invNameSubs);
+
+		nameSubst.put("operator_as", "cv");
+		// operator_as and implicit_operator_as must be distinct because you can have
+		// both operator definitions in a class
+		nameSubst.put("implicit_operator_as", "v3icv");
 
 		/* constructor */
-		nameSubst.put("this", MANGLED_CONSTRUCTOR);
+		nameSubst.put("this", MANGLED_THIS);
 	}
 	
 	/** 
@@ -116,7 +140,6 @@ public class X10NameMangler {
 		primMangleTable.put(typeSystem.Float(),   "f");
 		primMangleTable.put(typeSystem.Double(),  "d");
 		primMangleTable.put(typeSystem.Boolean(), "b");
-		primMangleTable.put(typeSystem.Void(),    MANGLED_VOID_TYPE);
 	}
 
 	/**
@@ -125,6 +148,7 @@ public class X10NameMangler {
 	 */
 	public static void setup(TypeSystem typeSystem_) {
 		typeSystem = typeSystem_;
+		setupUnOpSubstitutions();
 		setupNameSubstitutions();
 		setupPrimitiveTypeNameMangling();
 	}
@@ -148,6 +172,15 @@ public class X10NameMangler {
 	}
 	
 	/**
+	 * Tries to mangle a given string (unary)
+	 * @param name The string which should be mangled
+	 * @return The mangled name of the given string or null if no name substitution was set for the given string
+	 */
+	private static String tryUnOpSubsitution(String name) {
+		return unOpSubst.get(name);
+	}
+	
+	/**
 	 * Mangles a given string
 	 * @param name The string which should be mangled
 	 * @return The mangled name of the given string
@@ -167,7 +200,18 @@ public class X10NameMangler {
 	 * @param name The method name which should be mangled
 	 * @return The mangled method name
 	 */
-	private static String mangleMethodName(String name) {
+	private static String mangleMethodName(X10MethodInstance meth) {
+		String name = meth.name().toString();
+		if(name.startsWith("operator")) {
+			List<Type> formals = meth.formalTypes();
+			Flags flags = meth.flags();
+			if((flags.isStatic() && formals.size() == 1) || 
+			  (!flags.isStatic() && formals.size() == 0)) { // try unary
+				String tmp = tryUnOpSubsitution(name);
+				if(tmp != null) return tmp;
+			}
+		}
+		
 		String tmp = tryNameSubsitution(name);
 		if(tmp != null) return tmp;
 		return mangleName(name);
@@ -187,12 +231,37 @@ public class X10NameMangler {
 	}
 	
 	/**
+	 * Mangles the given flags. 
+	 * @param flag The flags
+	 * @return The mangled flags
+	 */
+	private static String mangleFlags(Flags flag) {
+		StringBuilder buf = new StringBuilder();
+		if(flag.isFinal())
+			buf.append(MANGLED_FINAL);
+		
+		return buf.toString();
+	}
+	
+	/**
+	 * Mangles a local instance as a argument 
+	 * @param type The type which should be mangled
+	 * @return The mangled name of the given local instance as a argument
+	 */
+	private static String mangleArgument(LocalInstance loc) {
+		StringBuilder buf = new StringBuilder();
+		buf.append(mangleFlags(loc.flags()));
+		buf.append(mangleParameter(loc.type()));
+		return buf.toString();
+	}
+	
+	/**
 	 * Mangles a given type as an argument 
 	 * @param type The type which should be mangled
 	 * @return The mangled name of the given type
 	 */
-	private static String mangleArgument(Type type) {
-		String tmp = tryPrimitiveType(type);		
+	private static String mangleParameter(Type type) {
+		String tmp = tryPrimitiveType(type);
 		if(tmp != null) return tmp;
 
 		StringBuilder buf = new StringBuilder();
@@ -202,7 +271,7 @@ public class X10NameMangler {
 			X10Struct struct = (X10Struct)type;
 			if(struct.isX10Struct())
 				passAsRef = false;
-		} 
+		}
 
 		if(passAsRef)
 			buf.append(MANGLED_POINTER_REF);
@@ -219,7 +288,7 @@ public class X10NameMangler {
 	 */
 	private static String mangleReturn(Type type) {
 		// same as mangleArgument
-		return mangleArgument(type);
+		return mangleParameter(type);
 	}
 	
 	/**
@@ -228,7 +297,7 @@ public class X10NameMangler {
 	 * @return The mangled name of the given type 
 	 */
 	private static String mangleTypeParameter(Type type) {
-		// same as mangle type with embedding
+		// same as mangle type without embedding
 		return mangleType(type, false);
 	}
 	
@@ -255,13 +324,6 @@ public class X10NameMangler {
         		buf.append(QUAL_START);
         	}
         	buf.append(mangleType(clazz.outer(), true));
-        } else if (clazz.isLocal()) {
-        	assert(false);
-        	assert(clazz.isNested());
-            // return name().toString();
-        } else if (clazz.isAnonymous()) {
-        	assert(false);
-            // return "<anonymous class>";
         } else {
         	assert(false): "Unknown class type";
         }
@@ -293,7 +355,7 @@ public class X10NameMangler {
 		if(method.container() != null) {
 			buf.append(QUAL_START);
 			buf.append(mangleType(method.container(), true));
-			buf.append(mangleMethodName(method.name().toString()));
+			buf.append(mangleMethodName(method));
 			buf.append(QUAL_END);
 		}
 		
@@ -308,24 +370,12 @@ public class X10NameMangler {
 			buf.append(TYPEARG_END);
 		}
 		
-		if(method.formalTypes() != null) {
-			List<Type> formalTypes = method.formalTypes();
-			if(!formalTypes.isEmpty()) {
-				for(Type type : method.formalTypes())
-					buf.append(mangleArgument(type));
-			} else {
-				// mangle the implicit void parameter. 
-				buf.append(MANGLED_VOID_TYPE);
-			}
+		List<LocalInstance> forms = method.formalNames();
+		if(!forms.isEmpty()) {
+			for(LocalInstance form : forms) 
+				buf.append(mangleArgument(form));
 		} else {
-			List<Ref<? extends Type>> formalTypes = method.x10Def().formalTypes();
-			if(!formalTypes.isEmpty()) {
-				for(Ref<? extends Type> type : formalTypes)
-					buf.append(mangleArgument(type.get()));
-			} else {
-				// mangle the implicit void parameter. 
-				buf.append(MANGLED_VOID_TYPE);
-			}
+			buf.append(MANGLED_VOID_TYPE);
 		}
 		
 		if(needMangledRet) {
@@ -342,10 +392,8 @@ public class X10NameMangler {
 	 * @return The mangled name of the given closure type
 	 */
 	private static String mangleClosureType(FunctionType closure, boolean embed) {
-//		StringBuilder buf = new StringBuilder();
 		// TODO: Add closure mangling 
 		return mangleClassType(closure, embed);
-//		return buf.toString();
 	}
 	
 	/**
@@ -379,24 +427,12 @@ public class X10NameMangler {
 		buf.append(MANGLED_CONSTRUCTOR);
 		buf.append(QUAL_END);
 		
-		if(cons.formalTypes() != null) {
-			List<Type> formalTypes = cons.formalTypes();
-			if(!formalTypes.isEmpty()) {
-				for(Type type : cons.formalTypes())
-					buf.append(mangleArgument(type));
-			} else {
-				// mangle the implicit void parameter. 
-				buf.append(MANGLED_VOID_TYPE);
-			}
+		List<LocalInstance> forms = cons.formalNames();
+		if(!forms.isEmpty()) {
+			for(LocalInstance form : forms) 
+				buf.append(mangleArgument(form));
 		} else {
-			List<Ref<? extends Type>> formalTypes = cons.x10Def().formalTypes();
-			if(!formalTypes.isEmpty()) {
-				for(Ref<? extends Type> type : formalTypes)
-					buf.append(mangleArgument(type.get()));
-			} else {
-				// mangle the implicit void parameter. 
-				buf.append(MANGLED_VOID_TYPE);
-			}
+			buf.append(MANGLED_VOID_TYPE);
 		}
 
 		return buf.toString();
@@ -418,7 +454,7 @@ public class X10NameMangler {
 		} else if(type instanceof X10ClassType) { // a class type
 			tmp = mangleClassType((X10ClassType)type, embed);
 		} else {
-			assert(false): "Unknown type in mangleType";
+			assert(false): "Unknown type in mangleType" + type.getClass() + ": " + type;
 		}
 		
 		return tmp;
