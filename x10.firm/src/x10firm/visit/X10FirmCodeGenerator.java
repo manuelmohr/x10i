@@ -147,6 +147,7 @@ import x10.types.constraints.CConstraint;
 import x10.visit.X10DelegatingVisitor;
 import x10cpp.Configuration;
 import x10firm.types.TypeSystem;
+import x10firm.types.X10NameMangler;
 
 import com.sun.jna.Platform;
 
