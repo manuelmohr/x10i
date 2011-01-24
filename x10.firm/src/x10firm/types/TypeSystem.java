@@ -141,14 +141,14 @@ public class TypeSystem extends X10TypeSystem_c {
 	}
 
 	private firm.Type createClassType(X10ClassType classType) {
-		String className = X10NameMangler.mangleTypeObject(classType);
+		String className = X10NameMangler.mangleTypeObjectWithDefClass(classType);
 		ClassType result = new ClassType(className);
 		X10Flags flags   = X10Flags.toX10Flags(classType.flags());
 
 		/* put the class into the core types already, because we could
 		 * have a field referencing ourself */
 		firmCoreTypes.put(classType, result);
-
+		
 		/* create supertypes */
 		polyglot.types.Type superType = classType.superClass();
 		if (superType != null) {
@@ -170,7 +170,7 @@ public class TypeSystem extends X10TypeSystem_c {
 			/* properties have no "real" data in the object */
 			if (fieldFlags.isProperty())
 				continue;
-			String name = X10NameMangler.mangleTypeObject(field);
+			String name = X10NameMangler.mangleTypeObjectWithDefClass(field);
 			firm.Type type = asFirmType(field.type());
 			firm.Type owner = fieldFlags.isStatic() ? Program.getGlobalType() : result;
 			Entity entity = new Entity(owner, name, type);

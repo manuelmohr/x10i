@@ -913,7 +913,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Entity entity = constructorEntities.get(instance);
 		if (entity == null) {
 			X10ClassType owner = (X10ClassType) instance.container();
-			String name = X10NameMangler.mangleTypeObject(instance);
+			String name = X10NameMangler.mangleTypeObjectWithDefClass(instance);
 			X10Flags flags = X10Flags.toX10Flags(instance.flags());
 
 			firm.Type ownerFirm = typeSystem.asFirmCoreType(owner);
@@ -947,14 +947,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			X10ClassType owner = (X10ClassType) instance.container();
 			// TODO: mangle the complete method signature (but without the name of the defining class)
 			//       This entity name is used during interface method lookups.
-			String name = X10NameMangler.mangleTypeObject(instance);
+			String nameWithoutDefiningClass = X10NameMangler.mangleTypeObjectWithoutDefClass(instance);
+			String nameWithDefiningClass = X10NameMangler.mangleTypeObjectWithDefClass(instance);
 			X10Flags flags = X10Flags.toX10Flags(instance.flags());
 
 			firm.Type owningClass = typeSystem.asFirmCoreType(owner);
 			firm.Type ownerFirm = flags.isStatic() ? Program.getGlobalType() : owningClass;
 			firm.Type type = typeSystem.asFirmType(instance);
-			entity = new Entity(ownerFirm, name, type);
-			entity.setLdIdent(name);
+			entity = new Entity(ownerFirm, nameWithoutDefiningClass, type);
+			entity.setLdIdent(nameWithDefiningClass);
 			if (flags.isStatic()) {
 				OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 				OO.setEntityAltNamespace(entity, owningClass);

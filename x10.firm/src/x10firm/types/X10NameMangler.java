@@ -52,6 +52,8 @@ public class X10NameMangler {
 	private static final String MANGLED_CONSTRUCTOR = "C1";
 	private static final String MANGLED_THIS = "C1";
 	private static final String MANGLED_FINAL = "K";
+	private static final String MANGLED_VTABLE = "TV";
+	private static final String MANGLED_TYPEINFO = "TI";
 	
 	/**
 	 * Initializes name substitutions for unary operators
@@ -107,7 +109,7 @@ public class X10NameMangler {
 		/* this is our addition */
 		nameSubst.put("operator>>>", "v3rbs");
 		
-		/* inverse operators -> same as the upper operators with a 'v' <digit> prefix
+		/* inverse operators -> same as the upper operators with a 'v' <digit> 'i' prefix
 		 * our own additions 
 		 */
 		Map<String, String> invNameSubs = new HashMap<String, String>();
@@ -348,15 +350,21 @@ public class X10NameMangler {
 	/**
 	 * Mangles a given method instance
 	 * @param method The method instance which should be mangled
+	 * @param mangleDefiningClass True if the defining class of the method should also be mangled
 	 * @return The mangled name of the given method instance
 	 */
-	private static String mangleMethodInstance(X10MethodInstance method) {
+	private static String mangleMethodInstance(X10MethodInstance method, boolean mangleDefiningClass) {
 		StringBuilder buf = new StringBuilder();
-		if(method.container() != null) {
-			buf.append(QUAL_START);
-			buf.append(mangleType(method.container(), true));
+		
+		if(mangleDefiningClass) {
+			if(method.container() != null) {
+				buf.append(QUAL_START);
+				buf.append(mangleType(method.container(), true));
+				buf.append(mangleMethodName(method));
+				buf.append(QUAL_END);
+			}
+		} else {
 			buf.append(mangleMethodName(method));
-			buf.append(QUAL_END);
 		}
 		
 		boolean needMangledRet = false; // return type must also be mangled if we have type parameters. 
@@ -401,14 +409,18 @@ public class X10NameMangler {
 	 * @param field The field instance which should be mangled
 	 * @return The mangled name of the given field instance
 	 */
-	private static String mangleFieldInstance(FieldInstance field) {
+	private static String mangleFieldInstance(FieldInstance field, boolean defClass) {
 		StringBuilder buf = new StringBuilder();
 		assert(field.container() != null);
 		
-		buf.append(QUAL_START);
-		buf.append(mangleType(field.container(), true));
-		buf.append(mangleName(field.name().toString()));
-		buf.append(QUAL_END);
+		if(defClass) {
+			buf.append(QUAL_START);
+			buf.append(mangleType(field.container(), true));
+			buf.append(mangleName(field.name().toString()));
+			buf.append(QUAL_END);
+		} else {
+			buf.append(mangleName(field.name().toString()));
+		}
 		
 		return buf.toString();
 	}
@@ -466,16 +478,16 @@ public class X10NameMangler {
 	 * @param embed True if the given type object is embedded in another type object
 	 * @return The mangled name of the given type object
 	 */
-	private static String mangleTypeObjectHelp(TypeObject typeObject, boolean embed) {
+	private static String mangleTypeObjectHelp(TypeObject typeObject, boolean embed, boolean mangleDefiningClass) {
 		if(typeObject instanceof Type)
 			return mangleType((Type)typeObject, embed);
 		
 		String tmp = null;
 		
 		if(typeObject instanceof FieldInstance) { // a field instance
-			tmp = mangleFieldInstance((FieldInstance)typeObject);
+			tmp = mangleFieldInstance((FieldInstance)typeObject, mangleDefiningClass);
 		} else if(typeObject instanceof X10MethodInstance) { // a method
-			tmp = mangleMethodInstance((X10MethodInstance)typeObject);
+			tmp = mangleMethodInstance((X10MethodInstance)typeObject, mangleDefiningClass);
 		} else if(typeObject instanceof X10ConstructorInstance) { // a constructor
 			tmp = mangleConstructorInstance((X10ConstructorInstance)typeObject);
 		} else {
@@ -488,13 +500,64 @@ public class X10NameMangler {
 	/**
 	 * Mangles a given type object and returns the mangled name
 	 * @param type The type object for which the name should be mangled
+	 * @param mangleDefiningClass True if the defining class of the given type object should also be mangled
 	 * @return The mangled name of the given type object
 	 */
-	public static String mangleTypeObject(TypeObject type) {
+	private static String mangleTypeObject(TypeObject type, boolean mangleDefiningClass) {
 		StringBuilder buf = new StringBuilder();
 		
 		buf.append(MANGLE_PREFIX);
-		buf.append(mangleTypeObjectHelp(type, false));
+		buf.append(mangleTypeObjectHelp(type, false, mangleDefiningClass));
+		buf.append(MANGLE_SUFFIX);
+		
+		return buf.toString();
+	}
+	
+	/**
+	 * Mangles a given type object and returns the mangled name with the appropriate defining class
+	 * @param type The type object for which the name should be mangled
+	 * @return The mangled name of the given type object
+	 */
+	public static String mangleTypeObjectWithDefClass(TypeObject type) {
+		return mangleTypeObject(type, true);
+	}
+	
+	/**
+	 * Mangles a given type object and returns the mangled name withouth the appropriate defining class
+	 * @param type The type object for which the name should be mangled
+	 * @return The mangled name of the given type object
+	 */
+	public static String mangleTypeObjectWithoutDefClass(TypeObject type) {
+		return mangleTypeObject(type, false);
+	}
+	
+	/**
+	 * Returns the mangled vtable name for a given class type
+	 * @param clazz The class type for which the mangled vtable name should be returned
+	 * @return The mangled vtable name
+	 */
+	public static String mangleVTable(X10ClassType clazz) {
+		StringBuilder buf = new StringBuilder();
+		
+		buf.append(MANGLE_PREFIX);
+		buf.append(MANGLED_VTABLE);
+		buf.append(mangleClassType(clazz, false));
+		buf.append(MANGLE_SUFFIX);
+		
+		return buf.toString();
+	}
+	
+	/**
+	 * Returns the mangled typeinfo name for a given class type
+	 * @param clazz The class type for which the mangled typeinfo name should be returned
+	 * @return The mangled typeinfo name
+	 */
+	public static String mangleTypeinfo(X10ClassType clazz) {
+		StringBuilder buf = new StringBuilder();
+		
+		buf.append(MANGLE_PREFIX);
+		buf.append(MANGLED_TYPEINFO);
+		buf.append(mangleClassType(clazz, false));
 		buf.append(MANGLE_SUFFIX);
 		
 		return buf.toString();
