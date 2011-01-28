@@ -132,9 +132,6 @@ import x10.constraint.XVar;
 import x10.types.ClosureDef;
 import x10.types.ClosureInstance;
 import x10.types.ClosureType_c;
-import x10.types.FunctionType;
-import x10.types.ParameterType;
-import x10.types.ParameterType_c;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassDef_c;
 import x10.types.X10ClassType;
@@ -145,8 +142,8 @@ import x10.types.X10Context_c;
 import x10.types.X10Flags;
 import x10.types.X10MethodDef;
 import x10.types.X10MethodInstance;
-import x10.types.X10TypeSystem_c;
 import x10.types.constraints.CConstraint;
+import x10.util.ClosureSynthesizer;
 import x10.visit.X10DelegatingVisitor;
 import x10cpp.Configuration;
 import x10firm.types.TypeSystem;
@@ -211,7 +208,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private final HashMap<X10MethodInstance, Entity> methodEntities = new HashMap<X10MethodInstance, Entity>();
 	/** mapping between X10ConstructorInstances and firm entities */
 	private final HashMap<X10ConstructorInstance, Entity> constructorEntities = new HashMap<X10ConstructorInstance, Entity>();
-
+	
 	/**
 	 * Closure id for generating unique closure names
 	 */
@@ -2348,7 +2345,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(X10Special_c n) {
-		
 		if (n.kind() == Special.THIS) {
 			firm.Mode mode = typeSystem.getFirmMode(n.type());
 			Node thisPointer = getThis(mode);
@@ -2357,155 +2353,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			throw new RuntimeException("Not implemented yet");
 		}
 	}
-	
-	/* WORKAROUND START -> The following code is only a workaround because firm doesn`t support interfaces yet.
-	 * The workaround transforms interfaces into abstract classes. 
-	 * -> [Code will be deleted] 
-	 */
-	
-	/** Mapping between the concatenation of the types of the "apply" method and the appropriate abstract base class */
-	private final Map<String, X10ClassDef> closureBaseDefs = new HashMap<String, X10ClassDef>();
-	
-	/** Creates a new mapping */
-	private void putClosureBaseDef(String name, X10ClassDef def) {
-		closureBaseDefs.put(name, def);
-	}
-	
-	/**
-	 * Returns the appropriate class def for a given signature name
-	 */
-	private X10ClassDef getClosureBaseDef(String name) {
-		return closureBaseDefs.get(name);
-	}
-	
-	/** For the definition of unique closure base names */
-	private static int closureCounter = 0;
-	
-	/**
-	 * Creates a new abstract base class for closures. 
-	 * @param closureDefName Concatenation of the types of the "apply" method -> Used for the identification of the base classes. 
-	 * @param xts Type system 
-	 * @param numTypeParams 
-	 * @param numValueParams
-	 * @param isVoid
-	 * @return
-	 */
-    private X10ClassDef newClosureBaseClass(final String closureDefName, final X10TypeSystem_c xts, final int numTypeParams, 
-    		final int numValueParams, 
-    		final boolean isVoid) {
-    	
-    	// Check if the base class was also defined
-    	X10ClassDef ret = getClosureBaseDef(closureDefName);
-    	if(ret != null) {
-    		return ret;
-    	}
-    	    	
-        final Position pos = Position.COMPILER_GENERATED;
-
-        String name = "Fun_" + numTypeParams + "_" + numValueParams + "_" + closureCounter++;
-
-        if (isVoid) {
-            name = "Void" + name;
-        }
-        
-        X10ClassDef cd = new X10ClassDef_c(xts, null) {
-            private static final long serialVersionUID = -2035251841478824351L;
-            @Override
-            public boolean isFunction() { 
-                return true;
-            }
-            @Override
-            public polyglot.types.ClassType asType() {
-                if (asType == null) {
-                    asType = new ClosureType_c(xts, pos, this);
-                }
-                return asType;
-            }
-        };
-        
-        // Get "Object" class and set it as the super class
-        QName fullName = QName.make("x10.lang", "Object");
-        Named n = xts.systemResolver().check(fullName);
-        assert(n != null && n instanceof X10ClassType);
-        X10ClassType objectType = (X10ClassType)n;
-        
-        cd.position(pos);
-        cd.name(Name.make(name));
-        cd.setPackage(null);
-        cd.kind(ClassDef.TOP_LEVEL);
-        cd.superType(Types.ref(objectType));
-        cd.flags(X10Flags.toX10Flags(Flags.PUBLIC.Abstract()));
-
-        final List<ParameterType> typeParams = new ArrayList<ParameterType>();
-        final List<Ref<? extends Type>> argTypes = new ArrayList<Ref<? extends Type>>();
-
-        for (int i = 0; i < numTypeParams; i++) {
-            ParameterType t = new ParameterType_c(xts, pos, Name.make("X" + i), Types.ref(cd));
-            typeParams.add(t);
-        }
-
-        for (int i = 0; i < numValueParams; i++) {
-            ParameterType t = new ParameterType_c(xts, pos, Name.make("Z" + (i + 1)), Types.ref(cd));
-            argTypes.add(Types.ref(t));
-            cd.addTypeParameter(t, ParameterType.Variance.CONTRAVARIANT);
-        }
-
-        Type rt = null;
-
-        if (!isVoid) {
-            ParameterType returnType = new ParameterType_c(xts, pos, Name.make("U"), Types.ref(cd));
-            cd.addTypeParameter(returnType, ParameterType.Variance.COVARIANT);
-            rt = returnType;
-        }
-        else {
-            rt = xts.Void();
-        }
-
-        // NOTE: don't call cd.asType() until after the type parameters are
-        // added.
-        FunctionType ct = (FunctionType) cd.asType();
-
-        String fullNameWithThis = "#this";
-        XName thisName = new XNameWrapper<Object>(new Object(), fullNameWithThis);
-        XVar thisVar = XTerms.makeLocal(thisName);
-
-        List<LocalDef> formalNames = xts.dummyLocalDefs(argTypes);
-        X10MethodDef mi = xts.methodDef(pos, Types.ref(ct),
-        		Flags.PUBLIC.Abstract(), Types.ref(rt),
-        		ClosureCall.APPLY, 
-        		typeParams, 
-        		argTypes, 
-        		thisVar,
-        		formalNames, 
-        		null,
-        		null, 
-        	
-        		null,
-        		null);
-        cd.addMethod(mi);
-
-        putClosureBaseDef(closureDefName, cd);
-        
-        return cd;
-    }
     
-    /**
-     * Returns a unique name of the "apply" method for the identification of the correct abstract base class of a closure class
-     * @param def The closure def
-     * @return The concatenation of the tpyes of the "apply" method. 
-     */
-    private static String getClosureDefIdName(final ClosureDef def) {
-        StringBuffer buf = new StringBuffer();
-        for(LocalDef d : def.formalNames()) 
-        	buf.append(d.type().toString());
-        return buf.toString();
-    }
-    
-    /* WORKAROUND END */
     
     /**
      * Mapping between the signature (!!!) of the "apply" method in a closure and the appropriate
-     * entity of the super class (interface)
+     * entity of the super interface
      */
 	private static final Map<String, Entity> closureEntities = new HashMap<String, Entity>();
 	
@@ -2525,6 +2377,67 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private static Entity getClosureEntity(String sig) {
 		return closureEntities.get(sig);
 	}
+	
+	/**
+	 * Helper function to create a new closure def class (see newClosureDef)
+	 * @param def The ClosureDef from which the closure class definition should be created
+	 * @return The created closure class definition.
+	 */
+	private X10ClassDef newClosureDefHelp(final ClosureDef def) {
+        final Position pos = def.position();
+
+        X10ClassDef cd = new X10ClassDef_c(typeSystem, null) { 	
+            private static final long serialVersionUID = 4543620040069882230L;
+            @Override
+            public boolean isFunction() { 
+                return true;
+            }
+        };
+        
+        // use a unique name for the closure class
+        final String name = getUniqueClosureName();
+        
+        // Get "Object" class and set it as the super class
+        QName fullName = QName.make("x10.lang", "Object");
+        Named n = typeSystem.systemResolver().check(fullName);
+        assert(n != null && n instanceof X10ClassType);
+        X10ClassType objectType = (X10ClassType)n;
+
+        cd.position(pos);
+        cd.name(Name.make(name));
+        cd.setPackage(null);
+        cd.kind(ClassDef.TOP_LEVEL);
+        cd.flags(Flags.FINAL);
+        cd.superType(Types.ref(objectType));
+
+        final int numTypeParams = def.typeParameters().size();
+        final int numValueParams = def.formalTypes().size();
+
+        // Add type parameters.
+        List<Type> typeArgs = new ArrayList<Type>();
+
+        ClosureInstance ci = def.asInstance();
+        typeArgs.addAll(ci.formalTypes());
+
+        if (!ci.returnType().isVoid()) {
+            typeArgs.add(ci.returnType());
+        }
+
+        // Instantiate the super type on the new parameters.
+        X10ClassType sup = (X10ClassType)ClosureSynthesizer.closureBaseInterfaceDef(typeSystem, numTypeParams, 
+        		numValueParams, 
+        		ci.returnType().isVoid(),
+        		def.formalNames(),
+        		def.guard())
+        		.asType();
+
+        assert sup.x10Def().typeParameters().size() == typeArgs.size() : def + ", " + sup + ", " + typeArgs;
+        sup = sup.typeArguments(typeArgs);
+        
+        cd.addInterface(Types.ref(sup));
+        
+        return cd;
+	}
     
 	/**
 	 * Creates a new class definition for a closure
@@ -2535,128 +2448,38 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 */
 	private X10ClassDef newClosureDef(final ClosureDef def, Set<LocalInstance> savedFields,
 			boolean needSavedThis) {
-        final Position pos = Position.COMPILER_GENERATED;
+		
+		X10ClassDef cd = newClosureDefHelp(def);
+		X10ClassType ct = (X10ClassType)cd.asType();
+		Position pos = cd.position();
+		
+		X10ClassType supInt = (X10ClassType)cd.interfaces().get(0).get();
+		X10MethodInstance supApplyMethInst = (X10MethodInstance)supInt.methods().get(0);
+		
+		Entity ent = getMethodEntity(supApplyMethInst);
+		putClosureEntity(supApplyMethInst.signature(), ent);
+		
+		// Copy the formal types from the method instance !!! and not from the method def. 
+		// Method def can have unresolved types. 
+		List<Ref<? extends Type>> types = new LinkedList<Ref<? extends Type>>();
+		for(Type t : supApplyMethInst.formalTypes())
+			types.add(Types.ref(t));
         
-        // Create a new closure class definition
-        X10ClassDef cd = new X10ClassDef_c(typeSystem, null) { 	
-            private static final long serialVersionUID = 4543620040069882230L;
-            
-            @Override
-            public boolean isFunction() { 
-                return true;
-            }
-            
-            @Override
-            public polyglot.types.ClassType asType() {
-                if (asType == null) {
-                    asType = new ClosureType_c(typeSystem, pos, this);
-                }
-                return asType;
-            }
-        };
-        
-        int numTypeParams = def.typeParameters().size();
-        int numValueParams = def.formalTypes().size();
-        ClosureInstance ci = def.asInstance();
-        
-        String closureDefId = getClosureDefIdName(def);
-        
-        // Instantiate the super type on the new parameters.
-        X10ClassType sup = (X10ClassType)newClosureBaseClass(closureDefId, typeSystem, numTypeParams, 
-        		numValueParams,
-        		ci.returnType().isVoid())
-        		.asType();
-        
-        // use a unique name for the closure class
-        String name = getUniqueClosureName();
-
-        cd.position(pos);
-        cd.name(Name.make(name));
-        cd.setPackage(null);
-        cd.kind(ClassDef.TOP_LEVEL);
-        cd.flags(Flags.FINAL);
-
-        // Add type parameters.
-        List<Type> typeArgs = new ArrayList<Type>();
-
-        typeArgs.addAll(ci.formalTypes());
-        
-        if (!ci.returnType().isVoid()) {
-            typeArgs.add(ci.returnType());
-        }
-
-        assert sup.x10Def().typeParameters().size() == typeArgs.size() : def + ", " + sup + ", " + typeArgs;
-        sup = sup.typeArguments(typeArgs);
-
-        // Adding the method guard
-        Ref<CConstraint> guard = def.guard();
-        if (guard!=null) {
-            CConstraint constraint = guard.get();
-            // need to rename the guard variables according to the method parameters
-            List<LocalDef> fromNames = def.formalNames();
-            MethodInstance instance = sup.methods().get(0);
-            List<LocalDef> toNames = ((X10MethodDef) instance.def()).formalNames();
-            for (int i=0; i<fromNames.size(); i++) {
-                LocalDef fromName = fromNames.get(i);
-                LocalDef toName = toNames.get(i);
-                try {
-                    XLocal fromLocal = new XLocal(new XNameWrapper<LocalDef>(fromName,fromName.name().toString()));
-                    XLocal toLocal = new XLocal(new XNameWrapper<LocalDef>(toName,toName.name().toString()));
-                    constraint = constraint.substitute(toLocal,fromLocal);
-                } catch (XFailure xFailure) {
-                    assert false;
-                }
-            }
-            try {
-                ((ClosureType_c)sup).getXClause().addIn(constraint);
-            } catch (XFailure xFailure) {
-                assert false;
-            }
-        }
-        cd.superType(Types.ref(sup));
-        
-        assert(sup.methods().size() == 1);
-        
-        // apply method of the super class !!!
-        X10MethodInstance applyMethodInst = (X10MethodInstance)sup.methods().get(0);
-        X10MethodDef applyMethodDef = (X10MethodDef)applyMethodInst.def();
-                
-        Entity ent = getMethodEntity(applyMethodInst);
-        // save the apply method of the super class !
-        putClosureEntity(applyMethodInst.signature(), ent);
-                
-        String thisName = "#this";
-        XName thisNameName = new XNameWrapper<Object>(new Object(), thisName);
-        XVar thisVar = XTerms.makeLocal(thisNameName);
-        
-        final List<Ref<? extends Type>> argTypes = new ArrayList<Ref<? extends Type>>();
-        for(Type t : applyMethodInst.formalTypes())
-        	argTypes.add(Types.ref(t));
-        final List<ParameterType> typeParams = applyMethodDef.typeParameters();
-
-        FunctionType ct = (FunctionType)cd.asType();
-        
-        // create the "apply" method. 
-        X10MethodDef mi = typeSystem.methodDef(pos, Types.ref(ct),
-        		Flags.PUBLIC, Types.ref(applyMethodInst.returnType()),
+        // create the "apply" method.
+        final X10MethodDef mi = typeSystem.methodDef(pos, Types.ref(ct),
+        		Flags.PUBLIC, Types.ref(supApplyMethInst.returnType()),
         		ClosureCall.APPLY, 
-        		typeParams, 
-        		argTypes, 
-        		thisVar,
-        		applyMethodDef.formalNames(), 
-        		null,//todo: it was guard1
-        		null,
-        		null, // offerType
-        		null);
+        		types);
         
         cd.addMethod(mi);
-        
+		
         // create the context of the closure
         for(LocalInstance loc : savedFields) {
             FieldDef fdef = typeSystem.fieldDef(pos, Types.ref(ct), Flags.PUBLIC, Types.ref(loc.type()), loc.name());
             cd.addField(fdef);
         }
         
+        // Do we need a ref to the outer class.
         if(needSavedThis) {
         	FieldDef fdef = typeSystem.fieldDef(pos, Types.ref(ct), Flags.PUBLIC, Types.ref(firmContext.getCurClass()), Name.make(X10_SAVED_THIS_LITERAL));
         	cd.addField(fdef);
@@ -2675,18 +2498,18 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		X10ClosureVisitor closureVisitor = new X10ClosureVisitor(formals);
 		closureVisitor.visit(n.body());
 		
-		final List<LocalInstance> locals = closureVisitor.getLocals();
-		final Set<LocalInstance> savedLocals = closureVisitor.getSavedLocalInstances();
-		final boolean needSavedThis = closureVisitor.needSavedThis();
+		List<LocalInstance> locals = closureVisitor.getLocals();
+		Set<LocalInstance> savedLocals = closureVisitor.getSavedLocalInstances();
+		boolean needSavedThis = closureVisitor.needSavedThis();
 		
 		X10ClassDef closureClassDef = newClosureDef(def, savedLocals, needSavedThis);
-		FunctionType closureType = (FunctionType)closureClassDef.asType();
-        X10MethodInstance applyMethod = closureType.applyMethod();
+		X10ClassType closureType = (X10ClassType)closureClassDef.asType();
+        X10MethodInstance applyMethod = (X10MethodInstance)closureType.methods().get(0);
         
 		Entity entity = getMethodEntity(applyMethod);
         
 		/* Create an instance of the closure and save the current context. */
-        Node objectPointer = doNewAlloc(closureType, closureType);
+        final Node objectPointer = doNewAlloc(closureType, closureType);
         for(LocalInstance loc : savedLocals) {
     		VarEntry var = firmContext.getVarEntry(loc);
     		assert var.getIdx() != -1; /* must be a local var */

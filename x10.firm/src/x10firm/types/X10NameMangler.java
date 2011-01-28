@@ -9,7 +9,6 @@ import polyglot.types.Flags;
 import polyglot.types.LocalInstance;
 import polyglot.types.Package;
 import polyglot.types.TypeObject;
-import x10.types.FunctionType;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10MethodInstance;
@@ -394,17 +393,6 @@ public class X10NameMangler {
 	}
 	
 	/**
-	 * Mangles a given closure type
-	 * @param closure The closure type which should be mangled
-	 * @param embed
-	 * @return The mangled name of the given closure type
-	 */
-	private static String mangleClosureType(FunctionType closure, boolean embed) {
-		// TODO: Add closure mangling 
-		return mangleClassType(closure, embed);
-	}
-	
-	/**
 	 * Mangles a given field instance
 	 * @param field The field instance which should be mangled
 	 * @return The mangled name of the given field instance
@@ -461,9 +449,7 @@ public class X10NameMangler {
 		
 		if(tmp != null) return tmp;
 		
-		if(type instanceof FunctionType) { // a closure
-			tmp = mangleClosureType((FunctionType)type, embed);
-		} else if(type instanceof X10ClassType) { // a class type
+		if(type instanceof X10ClassType) { // a class type
 			tmp = mangleClassType((X10ClassType)type, embed);
 		} else {
 			assert(false): "Unknown type in mangleType" + type.getClass() + ": " + type;
