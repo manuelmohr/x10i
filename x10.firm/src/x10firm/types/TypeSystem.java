@@ -305,23 +305,4 @@ public class TypeSystem extends X10TypeSystem_c {
 		firmTypes.put(Null(), nullRefType);
 		/* Note: there is no sensible firmCoreType for Null() */
 	}
-
-	/**
-	 * can be called to setup a name-mangler.
-	 * It maps our primitive/native types to their mangled names.
-	 */
-	public void setupNameMangler() {
-		OO.setPrimitiveTypeName(firmTypes.get(Long()),    "x");
-		OO.setPrimitiveTypeName(firmTypes.get(ULong()),   "y");
-		OO.setPrimitiveTypeName(firmTypes.get(Int()),     "i");
-		OO.setPrimitiveTypeName(firmTypes.get(UInt()),    "j");
-		OO.setPrimitiveTypeName(firmTypes.get(Short()),   "s");
-		OO.setPrimitiveTypeName(firmTypes.get(UShort()),  "t");
-		OO.setPrimitiveTypeName(firmTypes.get(Byte()),    "a");
-		OO.setPrimitiveTypeName(firmTypes.get(UByte()),   "h");
-		OO.setPrimitiveTypeName(firmTypes.get(Char()),    "Di");
-		OO.setPrimitiveTypeName(firmTypes.get(Float()),   "f");
-		OO.setPrimitiveTypeName(firmTypes.get(Double()),  "d");
-		OO.setPrimitiveTypeName(firmTypes.get(Boolean()), "b");
-	}
 }
