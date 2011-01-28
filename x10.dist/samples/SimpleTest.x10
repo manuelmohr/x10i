@@ -1,6 +1,6 @@
 import SimpleLib;
 
-
+/*
 class Poly {
 	public operator this + (var p: Poly) = new Poly(); 
 	public operator (var n: Int) + this = new Poly();
@@ -33,9 +33,10 @@ class Choice_c extends Choice {
 	public def no(): Void  = { }
 	def yes(a: Int) : Void = { }
 }
-
+*/
 
 class Simple1 {
+/*
 	public def m(f: (Int) => Boolean, absent: Float): Int = {
 		{ class MySimpleLocalClass { } }
 		{ class MySimpleLocalClass { } }
@@ -49,8 +50,8 @@ class Simple1 {
 		};
 		return 123;
 	}
+*/
 
-/*
 	public static def m12() {
 		var x: Int = 1;
 		var y: Int = 2;
@@ -104,14 +105,16 @@ class Simple1 {
 		switch(c) { case 1: case 2: case 3: c = c + 3; default: b = b + 1; case 5: return 33; case 7: c = c - 4; case 8: b = b + 44; }
 		return 2 + 3 +4;
 	}
-*/
-
- 	public static def main(Array[String]) : Void {
-		
-	}
 
 	public val a : Int = 1233;
 	public var b : Int;
 	public var c : Int;
+
+ 	public static def main(Array[String]) : Void {
+		val x = 4 + 3 * 3 << 45;
+		SimpleLib.print(x);
+	}
+
+
 
 }

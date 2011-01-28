@@ -50,7 +50,6 @@ public class X10NameMangler {
 	private static final String MANGLED_POINTER_REF = "P";
 	private static final String MANGLED_CONSTRUCTOR = "C1";
 	private static final String MANGLED_THIS = "C1";
-	private static final String MANGLED_FINAL = "K";
 	private static final String MANGLED_VTABLE = "TV";
 	private static final String MANGLED_TYPEINFO = "TI";
 	
@@ -232,26 +231,12 @@ public class X10NameMangler {
 	}
 	
 	/**
-	 * Mangles the given flags. 
-	 * @param flag The flags
-	 * @return The mangled flags
-	 */
-	private static String mangleFlags(Flags flag) {
-		StringBuilder buf = new StringBuilder();
-		if(flag.isFinal())
-			buf.append(MANGLED_FINAL);
-		
-		return buf.toString();
-	}
-	
-	/**
 	 * Mangles a local instance as a argument 
 	 * @param type The type which should be mangled
 	 * @return The mangled name of the given local instance as a argument
 	 */
 	private static String mangleArgument(LocalInstance loc) {
 		StringBuilder buf = new StringBuilder();
-		buf.append(mangleFlags(loc.flags()));
 		buf.append(mangleParameter(loc.type()));
 		return buf.toString();
 	}
@@ -445,9 +430,12 @@ public class X10NameMangler {
 	 * @return The mangled name of the given type
 	 */
 	private static String mangleType(Type type, boolean embed) {
-		String tmp = tryPrimitiveType(type);
+		String tmp = null;
+		if(!embed) {
+			tmp = tryPrimitiveType(type);
+			if(tmp != null) return tmp;
+		}
 		
-		if(tmp != null) return tmp;
 		
 		if(type instanceof X10ClassType) { // a class type
 			tmp = mangleClassType((X10ClassType)type, embed);

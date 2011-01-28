@@ -71,7 +71,6 @@ import polyglot.types.Context;
 import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
-import polyglot.types.LocalDef;
 import polyglot.types.LocalInstance;
 import polyglot.types.MethodInstance;
 import polyglot.types.Name;
@@ -123,15 +122,8 @@ import x10.ast.X10IntLit_c;
 import x10.ast.X10SourceFile_c;
 import x10.ast.X10Special_c;
 import x10.ast.X10Unary_c;
-import x10.constraint.XFailure;
-import x10.constraint.XLocal;
-import x10.constraint.XName;
-import x10.constraint.XNameWrapper;
-import x10.constraint.XTerms;
-import x10.constraint.XVar;
 import x10.types.ClosureDef;
 import x10.types.ClosureInstance;
-import x10.types.ClosureType_c;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassDef_c;
 import x10.types.X10ClassType;
@@ -142,7 +134,6 @@ import x10.types.X10Context_c;
 import x10.types.X10Flags;
 import x10.types.X10MethodDef;
 import x10.types.X10MethodInstance;
-import x10.types.constraints.CConstraint;
 import x10.util.ClosureSynthesizer;
 import x10.visit.X10DelegatingVisitor;
 import x10cpp.Configuration;
@@ -1882,32 +1873,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		/* determine called function */
 		X10MethodInstance methodInstance = (X10MethodInstance)n.methodInstance().def().asInstance();
 
-		/* Primitive types are represented as structs in X10.
-		 * We lower the calls to operations here.
-		 */
-		final String signature = methodInstance.signature();
-		if (signature.startsWith("operator")) {
-			X10ClassType owner = (X10ClassType) methodInstance.container();
-			if (owner.toString().startsWith("x10.lang.Int")) { /* an int */
-				final char opChar = signature.charAt(8);
-				resetReturnNode();
-				switch (opChar) {
-				case '+':
-					createPlus(n);
-					return;
-				case '-':
-					createMinus(n);
-					return;
-				case '<':
-					createLessThan(n);
-					return;
-				default:
-					break;
-				}
-			}
-		}
-
-		/* Not a primitive type. Construct Call. */
 		Entity entity = getMethodEntity(methodInstance);
 		
 		firm.MethodType type = (MethodType) entity.getType();
@@ -1980,38 +1945,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	/**
-	 * Creates a Firm Add node corresponding to n
-	 * @param n		a operator+ call on x10.lang.Int
-	 */
-	private void createPlus(X10Call_c n) {
-		Node leftFirm = visitExpression(n.arguments().get(0));
-		Node rightFirm = visitExpression(n.arguments().get(1));
-
-		Node add = con.newAdd(leftFirm, rightFirm, Mode.getIs());
-		setReturnNode(add);
-	}
-
-	/**
-	 * Creates a Firm Sub node corresponding to n
-	 * @param n		a operator- call on x10.lang.Int
-	 */
-	private void createMinus(X10Call_c n) {
-		Node rightFirm;
-		Node leftFirm;
-		if (n.arguments().size() == 2) {
-			leftFirm = visitExpression(n.arguments().get(0));
-			rightFirm = visitExpression(n.arguments().get(1));
-		} else {
-			assert (n.arguments().size() == 1);
-			leftFirm = con.newConst(0, Mode.getIs());
-			rightFirm = visitExpression(n.arguments().get(0));
-		}
-
-		Node sub = con.newSub(leftFirm, rightFirm, Mode.getIs());
-		setReturnNode(sub);
-	}
-
-	/**
 	 * @param expr	an X10 Expr node
 	 * @return a Firm node containing the result value of the expression
 	 */
@@ -2020,19 +1953,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		visitAppropriate(expr);
 		Node ret = getReturnNode();
 		return ret;
-	}
-
-	/**
-	 * Creates a comparison corresponding to n
-	 * @param n		a operator< call on x10.lang.Int
-	 */
-	private void createLessThan(X10Call_c n) {
-		Node leftFirm = visitExpression(n.arguments().get(0));
-		Node rightFirm = visitExpression(n.arguments().get(1));
-
-		Node cmp = con.newCmp(leftFirm, rightFirm);
-		Node projLT = con.newProj(cmp, Mode.getb(),	Cmp.pnLt);
-		setReturnNode(projLT);
 	}
 
 	@Override

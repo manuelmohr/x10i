@@ -4,51 +4,51 @@
 #include <stdio.h>
 #include <wchar.h>
 
-void _ZN9SimpleLib5printEJvx(int64_t v)
+void _ZN9SimpleLib5printEx(int64_t v)
 {
 	printf("%"PRIi64"\n", v);
 }
-void _ZN9SimpleLib5printEJvy(uint64_t v)
+void _ZN9SimpleLib5printEy(uint64_t v)
 {
 	printf("%"PRIu64"\n", v);
 }
-void _ZN9SimpleLib5printEJvi(int32_t v)
+void _ZN9SimpleLib5printEi(int32_t v)
 {
 	printf("%"PRIi32"\n", v);
 }
-void _ZN9SimpleLib5printEJvj(uint32_t v)
+void _ZN9SimpleLib5printEj(uint32_t v)
 {
 	printf("%"PRIu32"\n", v);
 }
-void _ZN9SimpleLib5printEJvs(int16_t v)
+void _ZN9SimpleLib5printEs(int16_t v)
 {
 	printf("%"PRIi16"\n", v);
 }
-void _ZN9SimpleLib5printEJvt(uint16_t v)
+void _ZN9SimpleLib5printEt(uint16_t v)
 {
 	printf("%"PRIu16"\n", v);
 }
-void _ZN9SimpleLib5printEJva(int8_t v)
+void _ZN9SimpleLib5printEa(int8_t v)
 {
 	printf("%"PRIi8"\n", v);
 }
-void _ZN9SimpleLib5printEJvh(uint8_t v)
+void _ZN9SimpleLib5printEh(uint8_t v)
 {
 	printf("%"PRIu8"\n", v);
 }
-void _ZN9SimpleLib5printEJvDi(wchar_t v)
+void _ZN9SimpleLib5printEDi(wchar_t v)
 {
 	printf("%lc\n", v);
 }
-void _ZN9SimpleLib5printEJvf(float v)
+void _ZN9SimpleLib5printEf(float v)
 {
 	printf("%f\n", v);
 }
-void _ZN9SimpleLib5printEJvd(double v)
+void _ZN9SimpleLib5printEd(double v)
 {
 	printf("%f\n", v);
 }
-void _ZN9SimpleLib5printEJvb(bool v)
+void _ZN9SimpleLib5printEb(bool v)
 {
 	printf("%s\n", v ? "true" : "false");
 }
