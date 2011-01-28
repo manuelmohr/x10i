@@ -23,9 +23,13 @@ public class OptimizedFirm extends SourceGoal_c {
 		super("OptimizedFirm", job);
 		this.typeSystem = typeSystem;
 	}
+	
+	private static boolean hasRun = false;
 
 	@Override
 	public boolean runTask() {
+		if(hasRun) return true;
+		hasRun = true;
 		OOSupport.lowerOO(typeSystem);
 		Util.lowerSels();
 		Backend.lowerForTarget();

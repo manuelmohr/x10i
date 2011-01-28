@@ -1,25 +1,39 @@
 
-/*
 class Poly {
 	public operator this + (var p: Poly) = new Poly(); 
 	public operator (var n: Int) + this = new Poly();
-	public static operator(var a:Int) as Poly = new Poly();
 	public operator + this = new Poly();
 	public static operator (p: Poly) + (q: Poly) = new Poly();
 	public static operator (c:Int) : Poly = new Poly();
+	public static operator(var a:Int) as Poly = new Poly();
 }
-*/
+
+class PolyOverrider extends Poly {
+	public operator this + (var p: PolyOverrider) = new Poly(); 
+	public operator (var n: Int) + this = new Poly();
+	public operator + this = new Poly();
+	public static operator (p: Poly) + (q: Poly) = new Poly();
+	public static operator (c:Int) : Poly = new Poly();
+	public static operator(var a:Int) as Poly = new Poly();
+}
+
+
+abstract class Choice {
+	def this() { }
+	private def choose(b: Boolean) { if(b) this.yes(); else this.no(); }
+	abstract def yes(): Void;
+	abstract def no(): Void;
+}
+
+class Choice_c extends Choice {
+	public def choose(b: Boolean) { if(b) this.yes(); else this.no(); }
+	def yes(): Void = { }
+	public def no(): Void  = { }
+	def yes(a: Int) : Void = { }
+}
+
 
 class Simple1 {
-
-	abstract class Choice {
-		def this() { }
-		def choose(b: Boolean) { if(b) this.yes(); else this.no(); }
-		abstract def yes(): Void;
-		abstract def no(): Void;
-	}
-
-
 	public def m(f: (Int) => Boolean, absent: Float): Int = {
 		{ class MySimpleLocalClass { } }
 		{ class MySimpleLocalClass { } }
@@ -34,7 +48,8 @@ class Simple1 {
 		return 123;
 	}
 
- 	public static def main(Array[String]) {
+/*
+	public static def m12() {
 		var x: Int = 1;
 		var y: Int = 2;
 		var a: Int = 3;
@@ -86,6 +101,10 @@ class Simple1 {
 
 		switch(c) { case 1: case 2: case 3: c = c + 3; default: b = b + 1; case 5: return 33; case 7: c = c - 4; case 8: b = b + 44; }
 		return 2 + 3 +4;
+	}
+*/
+
+ 	public static def main(Array[String]) : Void {
 
 	}
 
