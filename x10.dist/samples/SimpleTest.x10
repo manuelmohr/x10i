@@ -1,3 +1,5 @@
+import SimpleLib;
+
 
 class Poly {
 	public operator this + (var p: Poly) = new Poly(); 
@@ -105,7 +107,7 @@ class Simple1 {
 */
 
  	public static def main(Array[String]) : Void {
-
+		
 	}
 
 	public val a : Int = 1233;

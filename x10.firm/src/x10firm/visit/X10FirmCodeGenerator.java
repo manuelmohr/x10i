@@ -76,8 +76,10 @@ import polyglot.types.LocalInstance;
 import polyglot.types.MethodInstance;
 import polyglot.types.Name;
 import polyglot.types.Named;
+import polyglot.types.ObjectType;
 import polyglot.types.QName;
 import polyglot.types.Ref;
+import polyglot.types.StructType;
 import polyglot.types.Type;
 import polyglot.types.Types;
 import polyglot.types.VarInstance;
@@ -139,6 +141,7 @@ import x10.types.X10ClassType;
 import x10.types.X10ConstructorDef;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10ConstructorInstance_c;
+import x10.types.X10Context_c;
 import x10.types.X10Flags;
 import x10.types.X10MethodDef;
 import x10.types.X10MethodInstance;
@@ -197,6 +200,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	/** Main Compiler object */
 	private final Compiler compiler;
+	
+	/** X10 Context */
+	private X10Context_c x10Context = null;
 
 	/** typeSystem is used to map X10 types to Firm types (and modes) */
 	final TypeSystem typeSystem;
@@ -829,6 +835,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		this.compiler   = compiler;
 		this.typeSystem = typeSystem;
 		
+		this.x10Context = new X10Context_c(typeSystem);
+		
 		X10NameMangler.setup(typeSystem);
 	}
 
@@ -937,6 +945,46 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 		return entity;
 	}
+	
+	/**
+	 * Returns the firm entity of a method which a given method instance maybe overwrites. 
+	 * @param instance The method instance which should be checked
+	 * @return The appropriate firm method entity or null if the given method instance doesn`t overwrite any other methods. 
+	 */
+	private Entity getMethodOverride(X10MethodInstance instance) {
+		X10Flags flags = X10Flags.toX10Flags(instance.flags());
+		// static methods can`t override other methods. 
+		if(flags.isStatic()) return null;
+		
+		StructType cont = instance.container();
+		
+		boolean firstRun = true;
+		while(cont != null) {
+			if(!firstRun) {
+				for(MethodInstance meth: cont.methods()) {
+		        	if(typeSystem.canOverride(meth, instance, x10Context)) {
+		        		return getMethodEntity((X10MethodInstance)meth);
+		        	}
+				}
+			}
+
+			firstRun = false;
+			
+			StructType sup = null;
+			
+			// check if we have a super class. 
+			if(cont instanceof ObjectType) {
+				ObjectType objType = (ObjectType)cont;
+				if(objType.superClass() instanceof StructType) {
+					sup = (StructType)objType.superClass();
+				}
+			}
+			
+			cont = sup;
+		}
+		
+		return null;
+	}
 
 	/**
 	 * Return entity for an X10 method
@@ -945,8 +993,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Entity entity = methodEntities.get(instance);
 		if (entity == null) {
 			X10ClassType owner = (X10ClassType) instance.container();
-			// TODO: mangle the complete method signature (but without the name of the defining class)
-			//       This entity name is used during interface method lookups.
 			String nameWithoutDefiningClass = X10NameMangler.mangleTypeObjectWithoutDefClass(instance);
 			String nameWithDefiningClass = X10NameMangler.mangleTypeObjectWithDefClass(instance);
 			X10Flags flags = X10Flags.toX10Flags(instance.flags());
@@ -971,8 +1017,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				entity.setVisibility(ir_visibility.ir_visibility_external);
 			}
 			
-			// TODO: lookup the overwritten method and tell Firm about this relation. (add_entity_overwrites(..))
-			//       - Needed during the vtable construction.
+			Entity overwritten = getMethodOverride(instance);
+			if(overwritten != null) 
+				entity.addEntityOverwrites(overwritten);
 			
 			methodEntities.put(instance, entity);
 		}
