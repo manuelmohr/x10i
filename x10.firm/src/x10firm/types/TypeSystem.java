@@ -140,6 +140,7 @@ public class TypeSystem extends X10TypeSystem_c {
 		return vptrEntity;
 	}
 
+	@SuppressWarnings("unused")
 	private firm.Type createClassType(X10ClassType classType) {
 		String className = X10NameMangler.mangleTypeObjectWithDefClass(classType);
 		ClassType result = new ClassType(className);
@@ -154,6 +155,8 @@ public class TypeSystem extends X10TypeSystem_c {
 		if (superType != null) {
 			Type firmSuperType = asFirmCoreType(superType);
 			result.addSuperType(firmSuperType);
+			new Entity(result, "$super", firmSuperType);
+			
 		} else if (flags.isStruct()) {
 			/* no superclass */
 		} else if(flags.isInterface()) {
@@ -188,6 +191,9 @@ public class TypeSystem extends X10TypeSystem_c {
 				Ident.createUnique("class_info_%u"), // TODO: mangle "package.SomeClass.class$" and use it as this entity's ld name
 				Mode.getP().getType());
 		OO.setClassRTTIEntity(result, classInfoEntity);
+		
+		result.layoutFields();
+		result.finishLayout();
 
 		return result;
 	}

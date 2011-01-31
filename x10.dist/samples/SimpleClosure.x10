@@ -8,22 +8,27 @@ class SimpleClosure {
 		};
 		return closure;
 	}
-	
+
+	public val d : Int = 1;
+	public var e : Int = 2;
+	public var f : Int = 3;
 	
 	def mI(val d: Int) {
+		val g: Int = 4;
+		val h: Int = 5;
 		val closure = (val i: Int, val j: Int) => {
-			val xxx: Int = 4;
 			SimpleLib.print(5);
-
-			val closure2 = (val w: int, val e: Int) => {
+			val k: Int = 6;
+			val closure2 = (val r: int, val s: Int) => {
 				val a: Int = 6;
-				val b: Int = 7 + 8 + 9 + 10;
-				SimpleLib.print(222);
-				return 11 + 12 + b + w + e;
+				val b: Int = 7 + s + r + 10;
+				SimpleLib.print(e);
+				return f + 12 + d + r + e;
 			};
-			val ew = closure2(xxx, i + j);
+			val ew = closure2(k, i + j);
 			val u : Int = 13;
-			return i + j + 14 + 15 + xxx + 16 + 17 + ew;
+
+			return i + j + d + 15 + k + 16 + 17 + 23;
 		};
 		return closure;
 	}
