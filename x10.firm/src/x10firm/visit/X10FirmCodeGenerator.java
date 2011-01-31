@@ -922,7 +922,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			if (flags.isNative()) {
 				entity.setVisibility(ir_visibility.ir_visibility_external);
 			}
-			OO.setMethodConstructor(entity, true);
 			OO.setMethodExcludeFromVTable(entity, true);
 			/* the binding of a constructor is static as we will not use the
 			 * vtable to determine which method to call.
@@ -992,7 +991,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			entity.setLdIdent(nameWithDefiningClass);
 			if (flags.isStatic()) {
 				OO.setEntityBinding(entity, ddispatch_binding.bind_static);
-				OO.setEntityAltNamespace(entity, owningClass);
 			} else if (owner.flags().isInterface()) {
 				OO.setEntityBinding(entity, ddispatch_binding.bind_interface);
 			} else {
