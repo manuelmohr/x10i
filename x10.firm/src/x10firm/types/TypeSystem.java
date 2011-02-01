@@ -178,18 +178,22 @@ public class TypeSystem extends X10TypeSystem_c {
 			firm.Type owner = fieldFlags.isStatic() ? Program.getGlobalType() : result;
 			Entity entity = new Entity(owner, name, type);
 			entity.setLdIdent(name);
-			if (fieldFlags.isStatic()) {
-				OO.setEntityAltNamespace(entity, result);
-			}
 			OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 			fieldMap.put(field, entity);
 		}
 		
 		OO.setClassVPtrEntity(result, getVptrEntity());
 		
-		Entity classInfoEntity = new Entity(Program.getGlobalType(),
-				Ident.createUnique("class_info_%u"), // TODO: mangle "package.SomeClass.class$" and use it as this entity's ld name
+		if (! flags.isInterface() && ! flags.isStruct()) {
+			Entity vtable = new Entity(Program.getGlobalType(),
+					X10NameMangler.mangleVTable(classType),
+					Mode.getP().getType());
+			OO.setClassVTableEntity(result, vtable);
+		}
+		
+		Entity classInfoEntity = new Entity(Program.getGlobalType(),Ident.createUnique(className + "$"), 
 				Mode.getP().getType());
+		
 		OO.setClassRTTIEntity(result, classInfoEntity);
 		
 		result.layoutFields();

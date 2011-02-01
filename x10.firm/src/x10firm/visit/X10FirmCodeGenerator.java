@@ -922,7 +922,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			if (flags.isNative()) {
 				entity.setVisibility(ir_visibility.ir_visibility_external);
 			}
-			OO.setMethodConstructor(entity, true);
 			OO.setMethodExcludeFromVTable(entity, true);
 			/* the binding of a constructor is static as we will not use the
 			 * vtable to determine which method to call.
@@ -992,7 +991,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			entity.setLdIdent(nameWithDefiningClass);
 			if (flags.isStatic()) {
 				OO.setEntityBinding(entity, ddispatch_binding.bind_static);
-				OO.setEntityAltNamespace(entity, owningClass);
 			} else if (owner.flags().isInterface()) {
 				OO.setEntityBinding(entity, ddispatch_binding.bind_interface);
 			} else {
@@ -1057,7 +1055,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		if(closure) {
 			/* mark that we are currently in a closure */
 			newFirmContext.enterClosure();
-		}
+		} 
 		
 		newFirmContext.setCurClass(owner);
 		
@@ -2000,7 +1998,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @return The appropriate field instance
 	 */
 	private FieldInstance getClosureFieldInstance(X10ClassType closureType, String name) {
-		X10ClassDef closureDef = closureType.x10Def();			
+		X10ClassDef closureDef = closureType.x10Def();
      	FieldInstance fInst = null;
      	for(FieldDef fDef : closureDef.fields()) {
      		if(fDef.name().toString().equals(name)) {
@@ -2072,8 +2070,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				setReturnNode(ret);
 				return;
 			}
-			// it`s actually a local instance in the closure 
-			// generate code for a normal local instance. 
+			/* it`s actually a local instance in the closure 
+			   generate code for a normal local instance. 
+			   -> below else block 
+			*/ 
 		} else {
 			var = firmContext.getVarEntry(loc);
 		}
