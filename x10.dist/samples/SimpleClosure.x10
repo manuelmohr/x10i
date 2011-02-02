@@ -1,19 +1,31 @@
 import SimpleLib;
 
 class SimpleClosure {
-	/*
+	
 	class MySimpleClosureInner {
+		public val d: Int = 344;
+		public var e: Int = 123;
 		class MySimpleClosureInner2 {
 			def mF(val d: Float) {
 				val closure = (var i: Float, val j: Float) => {
 					SimpleLib.print(f);
+					f = 7744422;
 				};
 				return closure;
 			}
 		}
+		public def doIt() {
+			SimpleLib.print(888);
+			SimpleLib.print(f);
+			SimpleLib.print(888);
+			f = 555555;
+			val y = new MySimpleClosureInner2();
+			val closure = y.mF(123.034f);
+			closure(1.03f, 42.42f);
+			SimpleLib.print(f);
+		}
 	}
-	*/
-
+	
 	public var d : Int = 1;
 	public var e : Int = 2;
 	public var f : Int = 3;
@@ -52,12 +64,9 @@ class SimpleClosure {
 		SimpleLib.print(666);
 		SimpleLib.print(closure1(2,3));
 		SimpleLib.print(666);
-	/*
-		SimpleLib.print(111);
-		val closure2 = mF(123.03f);
-		closure2(1.0f, 2.0f);
-		SimpleLib.print(111);
-*/
+	
+		val x = new MySimpleClosureInner();
+		x.doIt();
 	}
 
 	public static def main(Array[String]) : Void {

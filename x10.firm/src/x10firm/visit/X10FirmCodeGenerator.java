@@ -581,14 +581,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 		
 		/**
-		 * Returns the outer firm context without popping it
-		 * @return The outer firm context
-		 */
-		public FirmContext getOuter() {
-			return outer;
-		}
-		
-		/**
 		 * Sets the current class
 		 */
 		public void setCurClass(X10ClassType curClass) {
@@ -623,17 +615,18 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 		
 		/**
-		 * Saves that we are currently in a closure
+		 * Marking that we are currently in a closure
+		 * @param in True if we are currently in a closure 
 		 */
-		public void enterClosure() {
-			inClosure = true;
+		public void setInClosure(boolean in) {
+			inClosure = in;
 		}
 		
 		/**
 		 * Checks if we are currently in a closure
 		 * @return True if we are currently in a closure
 		 */
-		public boolean inClosure() {
+		public boolean isInClosure() {
 			return inClosure;
 		}
 		
@@ -1054,16 +1047,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		if (!isStatic) {
 			nVars++;
 		}
-			
+		
 		Graph graph = new Graph(entity, nVars);
 		Construction savedConstruction = con;
 		con = new Construction(graph);
 		
 		FirmContext newFirmContext = new FirmContext();
-		if(closure) {
-			/* mark that we are currently in a closure */
-			newFirmContext.enterClosure();
-		} 
+		
+		newFirmContext.setInClosure(closure);
 		
 		newFirmContext.setCurClass(owner);
 		
@@ -1105,8 +1096,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		if (!con.getCurrentBlock().isBad()) {
 			assert ((MethodType)entity.getType()).getNRess() == 0;
 			Node mem = con.getCurrentMem();
-			Node returnn = con.newReturn(mem, new Node[0]);
-			con.getGraph().getEndBlock().addPred(returnn);
+			Node ret = con.newReturn(mem, new Node[0]);
+			con.getGraph().getEndBlock().addPred(ret);
 		}
 		
 		con.finish();
@@ -1496,11 +1487,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			FieldInstance instance = field.fieldInstance();
 			FieldInstance def = instance.def().asInstance();
 			
-			Node savedThisPointer = null;
-			if(firmContext.inClosure()) {
-				savedThisPointer = doClosureFieldRead(X10_SAVED_THIS_LITERAL, firmContext.getCurClass());
-			}
-			
 			X10Flags flags = X10Flags.toX10Flags(def.flags());
 			/* make sure the entity container type has been constructed */
 			typeSystem.asFirmCoreType(def.container());
@@ -1512,11 +1498,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			} else {
 				Receiver target = field.target();
 				Node objectPointer = null;
-				if(savedThisPointer != null) { /* for closures */
-					objectPointer = savedThisPointer;
-				} else {
-					objectPointer = visitExpression((Expr)target);
-				}
+				objectPointer = visitExpression((Expr)target);
 				
 				address = con.newSel(objectPointer, entity);
 			}
@@ -1966,11 +1948,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		FieldInstance instance = n.fieldInstance();
 		FieldInstance def = instance.def().asInstance();
 		
-		Node savedThisPointer = null;
-		if(firmContext.inClosure()) {
-			savedThisPointer = doClosureFieldRead(X10_SAVED_THIS_LITERAL, firmContext.getCurClass());
-		}
-		
 		X10Flags flags = X10Flags.toX10Flags(def.flags());
 		/* make sure enclosing class-type has been created */
 		typeSystem.asFirmType(def.container());
@@ -1982,11 +1959,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		} else {
 			Receiver target = n.target();
 			Node objectPointer = visitExpression((Expr)target);
-			if(savedThisPointer != null) { // for closure 
-				address = con.newSel(savedThisPointer, entity);
-			} else {
-				address = con.newSel(objectPointer, entity);
-			}
+			address = con.newSel(objectPointer, entity);
 		}
 
 		firm.Type type = typeSystem.asFirmType(def.type());
@@ -2070,7 +2043,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		LocalInstance loc = n.localInstance();
 		VarEntry var = null;
 		
-		if(firmContext.inClosure()) {
+		if(firmContext.isInClosure()) {
 			var = firmContext.getVarEntryInThisScope(loc);
 			if(var == null) {
 				/* it`s a field of the closure */
@@ -2274,8 +2247,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(X10Special_c n) {
 		if (n.kind() == Special.THIS) {
-			firm.Mode mode = typeSystem.getFirmMode(n.type());
-			Node thisPointer = getThis(mode);
+			Node thisPointer = null;
+			if(firmContext.isInClosure()) {
+				thisPointer = doClosureFieldRead(X10_SAVED_THIS_LITERAL, firmContext.getCurClass());
+			} else {
+				firm.Mode mode = typeSystem.getFirmMode(n.type());
+				thisPointer = getThis(mode);
+			}
 			setReturnNode(thisPointer);
 		} else {
 			throw new RuntimeException("Not implemented yet");
@@ -2448,7 +2426,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
         
         if(needSavedThis) {
         	Node thisPointer = null;
-        	if(firmContext.inClosure()) {
+        	if(firmContext.isInClosure()) {
         		// if we are currently in a closure we will use the saved this reference from the current closure
         		// for the new closure
         		thisPointer = doClosureFieldRead(X10_SAVED_THIS_LITERAL, firmContext.getCurClass());
