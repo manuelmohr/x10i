@@ -581,6 +581,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 		
 		/**
+		 * Returns the outer firm context without popping it
+		 * @return The outer firm context
+		 */
+		public FirmContext getOuter() {
+			return outer;
+		}
+		
+		/**
 		 * Sets the current class
 		 */
 		public void setCurClass(X10ClassType curClass) {
@@ -625,7 +633,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		 * Checks if we are currently in a closure
 		 * @return True if we are currently in a closure
 		 */
-		public boolean isInClosure() {
+		public boolean inClosure() {
 			return inClosure;
 		}
 		
@@ -1489,7 +1497,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			FieldInstance def = instance.def().asInstance();
 			
 			Node savedThisPointer = null;
-			if(firmContext.isInClosure()) {
+			if(firmContext.inClosure()) {
 				savedThisPointer = doClosureFieldRead(X10_SAVED_THIS_LITERAL, firmContext.getCurClass());
 			}
 			
@@ -1959,7 +1967,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		FieldInstance def = instance.def().asInstance();
 		
 		Node savedThisPointer = null;
-		if(firmContext.isInClosure()) {
+		if(firmContext.inClosure()) {
 			savedThisPointer = doClosureFieldRead(X10_SAVED_THIS_LITERAL, firmContext.getCurClass());
 		}
 		
@@ -2062,7 +2070,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		LocalInstance loc = n.localInstance();
 		VarEntry var = null;
 		
-		if(firmContext.isInClosure()) {
+		if(firmContext.inClosure()) {
 			var = firmContext.getVarEntryInThisScope(loc);
 			if(var == null) {
 				/* it`s a field of the closure */
@@ -2439,8 +2447,16 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
         }
         
         if(needSavedThis) {
-			Node rhs = getThis(Mode.getP());
-        	doClosureFieldWrite(objectPointer, X10_SAVED_THIS_LITERAL, closureType, rhs);
+        	Node thisPointer = null;
+        	if(firmContext.inClosure()) {
+        		// if we are currently in a closure we will use the saved this reference from the current closure
+        		// for the new closure
+        		thisPointer = doClosureFieldRead(X10_SAVED_THIS_LITERAL, firmContext.getCurClass());
+        	} else {
+    			thisPointer = getThis(Mode.getP());
+        	}
+
+        	doClosureFieldWrite(objectPointer, X10_SAVED_THIS_LITERAL, closureType, thisPointer);
         }
         
 		constructGraph(entity, n, true, formals, locals, false, closureType);

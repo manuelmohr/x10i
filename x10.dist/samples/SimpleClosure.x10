@@ -14,37 +14,41 @@ class SimpleClosure {
 	}
 	*/
 
-	public val d : Int = 1;
+	public var d : Int = 1;
 	public var e : Int = 2;
 	public var f : Int = 3;
 	
-	def mI(val d: Int) {
+	def mI(val hh: Int) {
 		val g: Int = 4;
 		val h: Int = 5;
-		val closure = (val i: Int, val j: Int) => {
+		val closure = (val t: Int, val f: Int) => {
+			val i: Int = 6;
+			val j: Int = 7;
 			SimpleLib.print(5);
 			SimpleLib.print(d);
 			SimpleLib.print(e);
+			e = 44444;
 			SimpleLib.print(f);
 			val k: Int = 6;
 			val closure2 = (val r: int, val s: Int) => {
 				SimpleLib.print(999);
-				val a: Int = 6;
-				val b: Int = 7 + s + r + 10;
+				SimpleLib.print(d);
 				SimpleLib.print(e);
+				e = 3234;
+				SimpleLib.print(f);
 				SimpleLib.print(999);
-				return f + 12 + d + r + e;
+				return 1 + 3;
 			};
 			val ew = closure2(k, i + j);
 			val u : Int = 13;
-
+			SimpleLib.print(e);
 			return i + j + d + 15 + k + 16 + 17 + 23;
 		};
 		return closure;
 	}
 	
 	public def start() {
-		val closure1 = mI(1);
+		val closure1 = mI(e);
 		SimpleLib.print(666);
 		SimpleLib.print(closure1(2,3));
 		SimpleLib.print(666);
