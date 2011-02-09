@@ -42,13 +42,23 @@
 #define MAKE_CONF(prefix, suffix, fromtype, totype) \
 	totype prefix##cv##suffix##E (fromtype a) { return (totype) a; }
 
+// implicit conf
+#define MAKE_IMP_CONF(prefix, suffix, fromtype, totype) \
+	totype prefix##v3icv##E##suffix (fromtype a) { return (totype) a; }
+
 #define MAKE_CONFS(prefix, fromtype) \
 	MAKE_CONF(prefix, x, int64_t,  fromtype) \
 	MAKE_CONF(prefix, i, int32_t,  fromtype) \
 	MAKE_CONF(prefix, s, int16_t,  fromtype) \
 	MAKE_CONF(prefix, a, int8_t,   fromtype) \
 	MAKE_CONF(prefix, f, float,    fromtype) \
-	MAKE_CONF(prefix, d, double,   fromtype)
+	MAKE_CONF(prefix, d, double,   fromtype) \
+	MAKE_IMP_CONF(prefix, x, int64_t,  fromtype) \
+	MAKE_IMP_CONF(prefix, i, int32_t,  fromtype) \
+	MAKE_IMP_CONF(prefix, s, int16_t,  fromtype) \
+	MAKE_IMP_CONF(prefix, a, int8_t,   fromtype) \
+	MAKE_IMP_CONF(prefix, f, float,    fromtype) \
+	MAKE_IMP_CONF(prefix, d, double,   fromtype) \
 
 MAKE_INT_BINOPS(_ZN3x104lang4Long, xx, int64_t)
 MAKE_CMPOPS(_ZN3x104lang4Long, xx, int64_t)

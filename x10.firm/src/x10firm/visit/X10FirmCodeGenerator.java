@@ -983,7 +983,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			X10ClassType owner = (X10ClassType) instance.container();
 			String nameWithoutDefiningClass = X10NameMangler.mangleTypeObjectWithoutDefClass(instance);
 			String nameWithDefiningClass = X10NameMangler.mangleTypeObjectWithDefClass(instance);
-			
+
 			X10Flags flags = X10Flags.toX10Flags(instance.flags());
 
 			firm.Type owningClass = typeSystem.asFirmCoreType(owner);
@@ -1254,6 +1254,69 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(dec);
 		constructGraph(entity, dec, false, formals, locals, isStatic, owner);
 	}
+	
+	/**
+	 * Createas a target value for a given constant expr
+	 * @param expr The constant expr
+	 * @return The target value of the given constant expr
+	 */
+	private TargetValue constantToTargetValue(Expr expr) {
+		assert(expr != null && expr.isConstant());
+		
+		Object obj = expr.constantValue();
+		
+		TargetValue targetValue = null;
+		
+		// all unsigned types can`t be evaluated at compile time, because they use an "implicit operator as" 
+		// to convert the datatype to long, integer etc. 
+		
+		if(obj instanceof Integer || obj instanceof Long || obj instanceof Byte || obj instanceof Short) {
+			final Mode mode;
+			long value;
+			if(obj instanceof Integer) {
+				mode = typeSystem.getFirmMode(typeSystem.Int());
+				value = ((Integer)obj).longValue();
+			} else if(obj instanceof Long) {
+				mode = typeSystem.getFirmMode(typeSystem.Long());
+				value = ((Long)obj).longValue();
+			} else if(obj instanceof Byte) {
+				mode = typeSystem.getFirmMode(typeSystem.Byte());
+				value = ((Byte)obj).longValue();
+			} else { // SHORT
+				mode = typeSystem.getFirmMode(typeSystem.Short());
+				value = ((Short)obj).longValue();
+			}
+			targetValue = new TargetValue(value, mode);
+		} else if(obj instanceof Float || obj instanceof Double) {
+			final Mode mode;
+			double value;
+			if(obj instanceof Float) {
+				mode = typeSystem.getFirmMode(typeSystem.Float());
+				value = ((Float)obj).doubleValue();
+			} else {
+				mode = typeSystem.getFirmMode(typeSystem.Double());
+				value = ((Double)obj).doubleValue();
+			}
+			targetValue = new TargetValue(value, mode);
+		} else if(obj instanceof Boolean) {
+			final Mode mode = typeSystem.getFirmMode(typeSystem.Boolean());
+			boolean value = ((Boolean)obj).booleanValue();
+			targetValue = value ? mode.getOne() : mode.getNull();
+		}
+		
+		return targetValue;
+	}
+	
+	/**
+	 * Creates an initializer for a given constant expr
+	 * @param expr The constant expr
+	 * @return The initializer for the given constant expr
+	 */
+	private Initializer constantExprToInitializer(Expr expr) {
+		TargetValue targetValue = constantToTargetValue(expr);
+		if(targetValue == null) return null;
+		return new Initializer(targetValue);
+	}
 
 	private Initializer expr2Initializer(Expr expr) {
 		final Initializer result;
@@ -1271,7 +1334,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		} else if (expr instanceof CharLit_c) {
 			TargetValue targetValue = getCharLitTargetValue((CharLit_c) expr);
 			result = new Initializer(targetValue);
+		} else if (expr instanceof NullLit_c) {
+			Node nullNode = getStaticNullLitNode((NullLit_c)expr);
+			result = new Initializer(nullNode);
 		} else {
+			// Now we will try the constant evaluation of expr
+			result = constantExprToInitializer(expr);
+			if(result != null)
+				return result;
+
 			throw new RuntimeException("unimplemented initializer expression");
 		}
 		return result;
@@ -1370,7 +1441,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * Creates a new getter method for a static non const field 
 	 * @param dec The field declaration for which the getter method should be created. 
 	 */
-	private void generateStaticNonConstDecl(FieldDecl_c dec) {
+	private void generateStaticNonConstFieldDecl(FieldDecl_c dec) {
 		assert(!dec.init().isConstant());
 		FieldDef fieldDef = dec.fieldDef();
 		FieldInstance fieldInst = fieldDef.asInstance();
@@ -1467,7 +1538,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 					Entity entity = typeSystem.getEntityForField(dec.fieldDef().asInstance());
 					entity.setInitializer(initializer);
 				} else {
-					generateStaticNonConstDecl(dec);
+					generateStaticNonConstFieldDecl(dec);
 				}
 			}
 		}
@@ -2314,7 +2385,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Node ret = con.newConst(targetValue);
 		setReturnNode(ret);
 	}
-
+	
+	private Node getStaticNullLitNode(NullLit_c n) {
+		// Create a new local construction and use it to create a new null const node
+		Graph graph = Program.getConstCodeGraph();
+		Construction c = new Construction(graph);
+		final firm.Type type = typeSystem.asFirmType(n.type());
+		final Mode mode = type.getMode();
+		Node result = c.newConst(mode.getNull());
+		return result;
+	}
+	
 	@Override
 	public void visit(NullLit_c n) {
 		final firm.Type type = typeSystem.asFirmType(n.type());
