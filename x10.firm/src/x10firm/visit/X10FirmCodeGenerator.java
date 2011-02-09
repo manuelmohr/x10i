@@ -630,17 +630,16 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			return inClosure;
 		}
 		
-		/** Sets the "VarEntry" for a given local variable
-		 * @param entry The "VarEntry" for the given local variable
+		/** Sets the "VarEntry" for a given variable (local variable or field instance)
+		 * @param entry The "VarEntry" for the given variable
 		 */
 		public void setVarEntry(VarEntry entry) {
 			assert !varEntryMapper.containsKey(entry.getVarInstance());
 			varEntryMapper.put(entry.getVarInstance(), entry);
 		}
 
-		/** Returns the "VarEntry" for a given instance variable
-		 * @return The "VarEntry" of the given instance variable or null if the instance 
-		 * variable could not be found
+		/** Returns the "VarEntry" for a given variable (local variable or field instance)
+		 * @return The "VarEntry" of the given variable or null if the variable could not be found
 		 */
 		public VarEntry getVarEntry(VarInstance<?> var) {
 			VarEntry ret = varEntryMapper.get(var);
@@ -937,7 +936,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/**
 	 * Returns the firm entity of a method which a given method instance maybe overwrites. 
 	 * @param instance The method instance which should be checked
-	 * @return The appropriate firm method entity or null if the given method instance doesn`t overwrite any other methods. 
+	 * @return The appropriate firm method entity or null if the given method instance doesn`t overwrite any other methods 
+	 * in the class hierarchy. 
 	 */
 	private Entity getMethodOverride(X10MethodInstance instance) {
 		X10Flags flags = X10Flags.toX10Flags(instance.flags());
@@ -983,6 +983,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			X10ClassType owner = (X10ClassType) instance.container();
 			String nameWithoutDefiningClass = X10NameMangler.mangleTypeObjectWithoutDefClass(instance);
 			String nameWithDefiningClass = X10NameMangler.mangleTypeObjectWithDefClass(instance);
+			
 			X10Flags flags = X10Flags.toX10Flags(instance.flags());
 
 			firm.Type owningClass = typeSystem.asFirmCoreType(owner);
@@ -1041,8 +1042,18 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		return ret;
 	}
-
-	private void constructGraph(Entity entity, CodeBlock code, boolean closure, List<LocalInstance> formals, List<LocalInstance> locals, boolean isStatic, X10ClassType owner) {		
+	
+	/**
+	 * Initializes a new construction
+	 * @param entity The method entities for which the a new construction should be inited. 
+	 * @param closure True if the construction should be inited for a closure 
+	 * @param formals The formals of the given method entity
+	 * @param locals The locals of the given method entity
+	 * @param isStatic True if the method is static
+	 * @param owner The owner of the method
+	 * @return A reference to the current (saved) construction 
+	 */
+	private Construction initConstruction(Entity entity, boolean closure, List<LocalInstance> formals, List<LocalInstance> locals, boolean isStatic, X10ClassType owner) {
 		int nVars = formals.size() + locals.size();
 		if (!isStatic) {
 			nVars++;
@@ -1088,10 +1099,16 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			firmContext.setVarEntry(VarEntry.newVarEntryForLocalInstance(loc, idx));
 			idx++;
 		}
-		
-		// Walk body and construct graph
-		visitAppropriate(code.body());
-		
+
+		return savedConstruction;
+	}
+	
+	/**
+	 * Finishes a construction 
+	 * @param entity The method entity for which the construction should be finished
+	 * @param savedConstruction A reference to the previous construction 
+	 */
+	private void finishConstruction(Entity entity, Construction savedConstruction) {
 		// create Return node if there was no explicit return statement yet
 		if (!con.getCurrentBlock().isBad()) {
 			assert ((MethodType)entity.getType()).getNRess() == 0;
@@ -1105,6 +1122,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		con = savedConstruction;
 		
 		firmContext = firmContext.popFirmContext();
+	}
+
+	private void constructGraph(Entity entity, CodeBlock code, boolean closure, List<LocalInstance> formals, List<LocalInstance> locals, boolean isStatic, X10ClassType owner) {		
+		Construction savedConstruction = initConstruction(entity, closure, formals, locals, isStatic, owner);
+		
+		// Walk body and construct graph
+		visitAppropriate(code.body());
+		
+		finishConstruction(entity, savedConstruction);
 	}
 
 	@Override
@@ -1231,6 +1257,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	private Initializer expr2Initializer(Expr expr) {
 		final Initializer result;
+		assert(expr.isConstant());
+		
 		if (expr instanceof IntLit_c) {
 			TargetValue targetValue = getIntLitTarval((IntLit_c) expr);
 			result = new Initializer(targetValue);
@@ -1248,6 +1276,177 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 		return result;
 	}
+	
+	private static final String X10_STATIC_FIELD_STATUS_SUFFIX = "__status";
+	private static final String X10_STATIC_FIELD_ACCESSOR_SUFFIX = "__get";
+	
+	private static final int    X10_STATIC_FIELD_STATUS_UNITIALIZED = 0;
+	private static final int    X10_STATIC_FIELD_STATUS_INITIALIZED = 1;
+	
+	private Node getFieldAddress(Receiver target, FieldInstance instance) {
+		FieldInstance def = instance.def().asInstance();
+		X10Flags flags = X10Flags.toX10Flags(def.flags());
+		/* make sure enclosing class-type has been created */
+		typeSystem.asFirmType(def.container());
+		Entity entity = typeSystem.getEntityForField(def);
+		Node address = null;
+		if (flags.isStatic()) {
+			address = con.newSymConst(entity);
+		} else {
+			assert(target != null);
+			Node objectPointer = visitExpression((Expr)target);
+			address = con.newSel(objectPointer, entity);
+		}
+		return address;
+	}
+	
+	private Node doFieldLoad(Receiver target, FieldInstance instance) {
+		FieldInstance def = instance.def().asInstance();
+		Node address = getFieldAddress(target, instance);
+		firm.Type type = typeSystem.asFirmType(def.type());
+		Node mem = con.getCurrentMem();
+		Mode loadMode = type.getMode();
+		Node load = con.newLoad(mem, address, loadMode);
+		Node newMem = con.newProj(load, Mode.getM(), Load.pnM);
+		Node result = con.newProj(load, loadMode, Load.pnRes);
+		con.setCurrentMem(newMem);
+		return result;
+	}
+	
+	private Node doFieldAssign(Receiver target, FieldInstance instance, Node rightRet) {
+		FieldInstance def = instance.def().asInstance();
+		Node address = getFieldAddress(target, instance);
+		firm.Type type = typeSystem.asFirmType(def.type());
+		assert rightRet.getMode().equals(type.getMode());
+		Node mem = con.getCurrentMem();
+		Node store = con.newStore(mem, address, rightRet);
+		Node newMem = con.newProj(store, Mode.getM(), Store.pnM);
+		con.setCurrentMem(newMem);
+		return rightRet;
+	}
+	
+	private Node doFieldAssign(Receiver target, FieldInstance instance, Expr expr) {
+		Node rightRet = visitExpression(expr);
+		doFieldAssign(target, instance, rightRet);
+		return rightRet;
+	}
+	
+	/**
+	 * Mapping between static non const fields and the appropriate getter method entities. 
+	 */
+	private Map<FieldInstance, Entity> staticFieldGetterMethodMap = new HashMap<FieldInstance, Entity>();
+	
+	/**
+	 * Returns the getter method for a given static non constant field
+	 * @param field The field for which the appropriate getter method should be returned
+	 * @return The appropriate getter method for the given field
+	 */
+	private Entity getGetterMethodForStaticField(FieldInstance field) {
+		assert(field.flags().isStatic() && !field.isConstant());
+		Entity ent = staticFieldGetterMethodMap.get(field);
+		if(ent != null)
+			return ent;
+		
+		X10ClassType contType = (X10ClassType)field.container();
+		X10ClassDef contDef = (X10ClassDef)contType.def();
+		
+		Position pos = Position.COMPILER_GENERATED;
+    	// Create the method for accessing the field
+        final X10MethodDef mi = typeSystem.methodDef(pos, Types.ref(contType),
+        		typeSystem.Public().Static(), Types.ref(field.type()),
+        		Name.make(field.name().toString() + X10_STATIC_FIELD_ACCESSOR_SUFFIX), 
+        		new LinkedList<Ref<? extends Type>>());
+        contDef.addMethod(mi);
+        
+        X10MethodInstance staticAccMeth = (X10MethodInstance)mi.asInstance();
+        Entity entity = getMethodEntity(staticAccMeth);
+        
+        staticFieldGetterMethodMap.put(field, entity);
+        
+        return entity;
+	}
+	
+	/**
+	 * Creates a new getter method for a static non const field 
+	 * @param dec The field declaration for which the getter method should be created. 
+	 */
+	private void generateStaticNonConstDecl(FieldDecl_c dec) {
+		assert(!dec.init().isConstant());
+		FieldDef fieldDef = dec.fieldDef();
+		FieldInstance fieldInst = fieldDef.asInstance();
+		X10ClassType contType = (X10ClassType)fieldInst.container();
+		X10ClassDef contDef = (X10ClassDef)contType.def();
+		
+		Position pos = Position.COMPILER_GENERATED;
+		// Create a new static value for the given field for holding the status of the initialization
+    	FieldDef statusField = typeSystem.fieldDef(pos, Types.ref(contType), typeSystem.Public().Static(), 
+    			Types.ref(typeSystem.Int()), Name.make(fieldDef.name().toString() + X10_STATIC_FIELD_STATUS_SUFFIX));
+    	contDef.addField(statusField);
+    	
+    	FieldInstance statusFieldInst = statusField.asInstance();
+    	
+    	typeSystem.addExtraStaticField(statusFieldInst);
+
+        Entity staticFieldGetterMethod = getGetterMethodForStaticField(fieldInst);
+        Construction savedConstruction = initConstruction(staticFieldGetterMethod, false, new LinkedList<LocalInstance>(), new LinkedList<LocalInstance>(), true, contType);
+        Entity statusFieldEnt = typeSystem.getEntityForField(statusFieldInst);
+        
+        // Set the default "UNITIALIZED" value for "field".__status;
+        Initializer staticFieldStatusInitializer = new Initializer(new TargetValue(X10_STATIC_FIELD_STATUS_UNITIALIZED, typeSystem.getFirmMode(typeSystem.Int())));
+        statusFieldEnt.setInitializer(staticFieldStatusInitializer);
+        
+        /** Generate the following code for the "field"__get method
+         *  #define INITIALIZED 1
+         *  #define UNITIALIZED 0
+         *  
+         *  "field".__status is initialized with UNITIALIZED
+         *  
+         *  if("field".__status != INITIALIZED) {
+         *      "field" = "field".init();
+         *      "field".__status = INITIALIZED;
+         *  }
+         *  return "field";
+         */
+        
+		Block bTrue  = con.newBlock();
+		Block bAfter = con.newBlock();
+		
+		Node retLeft  = doFieldLoad(null, statusFieldInst);
+		Node retRight = con.newConst(new TargetValue(X10_STATIC_FIELD_STATUS_INITIALIZED, typeSystem.getFirmMode(typeSystem.Int())));
+		
+		Node cmp  = con.newCmp(retLeft, retRight);
+		Node proj = con.newProj(cmp, Mode.getb(), Cmp.pnLg);
+
+		Node cond = con.newCond(proj);
+
+		Node projTrue  = con.newProj(cond, Mode.getX(), Cond.pnTrue);
+		Node projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
+		
+		bTrue.addPred(projTrue);
+		bAfter.addPred(projFalse);
+		
+		con.setCurrentBlock(bTrue);
+		doFieldAssign(null, fieldInst, dec.init());
+		
+		Node nodeInitialized = con.newConst(new TargetValue(X10_STATIC_FIELD_STATUS_INITIALIZED, typeSystem.getFirmMode(typeSystem.Int())));
+		doFieldAssign(null, statusFieldInst, nodeInitialized);
+		
+		bAfter.addPred(con.newJmp());
+		bTrue.mature();
+		con.setCurrentBlock(bAfter);
+		
+		Node mem = con.getCurrentMem();
+		Node retValue = doFieldLoad(null, fieldInst);
+		Node retNode = con.newReturn(mem, new Node[]{retValue});
+
+		/* for error detection */
+		con.getGraph().getEndBlock().addPred(retNode);
+		con.setCurrentBlockBad();
+		
+		bAfter.mature();
+        
+        finishConstruction(staticFieldGetterMethod, savedConstruction);
+	}
 
 	@Override
 	public void visit(FieldDecl_c dec) {
@@ -1263,9 +1462,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		if (flags.isStatic()) {
 			Expr init = dec.init();
 			if (init != null) {
-				Initializer initializer = expr2Initializer(init);
-				Entity entity = typeSystem.getEntityForField(dec.fieldDef().asInstance());
-				entity.setInitializer(initializer);
+				if(dec.init().isConstant()) {
+					Initializer initializer = expr2Initializer(init);
+					Entity entity = typeSystem.getEntityForField(dec.fieldDef().asInstance());
+					entity.setInitializer(initializer);
+				} else {
+					generateStaticNonConstDecl(dec);
+				}
 			}
 		}
 	}
@@ -1485,33 +1688,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		} else if (lhs instanceof Field_c) {
 			Field_c field = (Field_c) lhs;
 			FieldInstance instance = field.fieldInstance();
-			FieldInstance def = instance.def().asInstance();
-			
-			X10Flags flags = X10Flags.toX10Flags(def.flags());
-			/* make sure the entity container type has been constructed */
-			typeSystem.asFirmCoreType(def.container());
-			Entity entity = typeSystem.getEntityForField(def);
-
-			Node address;
-			if (flags.isStatic()) {
-				address = con.newSymConst(entity);
-			} else {
-				Receiver target = field.target();
-				Node objectPointer = null;
-				objectPointer = visitExpression((Expr)target);
-				
-				address = con.newSel(objectPointer, entity);
-			}
-			Node rightRet = visitExpression(rhs);
-
-			firm.Type type = typeSystem.asFirmType(def.type());
-			assert rightRet.getMode().equals(type.getMode());
-
-			Node mem = con.getCurrentMem();
-			Node store = con.newStore(mem, address, rightRet);
-			Node newMem = con.newProj(store, Mode.getM(), Store.pnM);
-			con.setCurrentMem(newMem);
-			setReturnNode(rightRet);
+			Node ret = doFieldAssign(field.target(), instance, rhs);
+			setReturnNode(ret);
 		} else {
 			throw new RuntimeException("Unexpected assignment target");
 		}
@@ -1949,27 +2127,18 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		FieldInstance def = instance.def().asInstance();
 		
 		X10Flags flags = X10Flags.toX10Flags(def.flags());
-		/* make sure enclosing class-type has been created */
-		typeSystem.asFirmType(def.container());
-		Entity entity = typeSystem.getEntityForField(def);
-
-		Node address;
-		if (flags.isStatic()) {
-			address = con.newSymConst(entity);
+		
+		if(flags.isStatic() && !n.isConstant()) {
+			// a static constant field -> do a static method call to the "field".__get method
+			Entity staticGetterMethod = getGetterMethodForStaticField(instance);
+			assert staticGetterMethod != null;
+			
+			doX10Call(true, staticGetterMethod, new ArrayList<Expr>(), null);
+			// setReturnNode is set in doX10Call
 		} else {
-			Receiver target = n.target();
-			Node objectPointer = visitExpression((Expr)target);
-			address = con.newSel(objectPointer, entity);
+			Node ret = doFieldLoad(n.target(), instance);
+			setReturnNode(ret);
 		}
-
-		firm.Type type = typeSystem.asFirmType(def.type());
-		Node mem = con.getCurrentMem();
-		Mode loadMode = type.getMode();
-		Node load = con.newLoad(mem, address, loadMode);
-		Node newMem = con.newProj(load, Mode.getM(), Load.pnM);
-		Node result = con.newProj(load, loadMode, Load.pnRes);
-		con.setCurrentMem(newMem);
-		setReturnNode(result);
 	}
 	
 	/**
@@ -2385,8 +2554,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
             cd.addField(fdef);
         }
         
-        // Do we need a ref to the outer class.
         if(needSavedThis) {
+        	// We need a reference to the outer class. 
         	FieldDef fdef = typeSystem.fieldDef(pos, Types.ref(ct), Flags.PUBLIC, Types.ref(firmContext.getCurClass()), Name.make(X10_SAVED_THIS_LITERAL));
         	cd.addField(fdef);
         }

@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
 import x10.types.ConstrainedType_c;
 import x10.types.X10ClassType;
@@ -23,6 +24,7 @@ import firm.PrimitiveType;
 import firm.Program;
 import firm.Type;
 import firm.bindings.binding_oo.ddispatch_binding;
+import firm.bindings.binding_typerep.ir_type_state;
 
 /**
  * Includes everything to map X10 types to Firm types
@@ -139,6 +141,35 @@ public class TypeSystem extends X10TypeSystem_c {
 		}
 		return vptrEntity;
 	}
+	
+	/**
+	 * Adds a new field to the type system
+	 * @param field The field which should be added
+	 * @param klass The defining class of the field
+	 */
+	private void addField(FieldInstance field, firm.Type klass) {
+		X10Flags fieldFlags = X10Flags.toX10Flags(field.flags());
+		/* properties have no "real" data in the object */
+		if (fieldFlags.isProperty())
+			return;
+		String name = X10NameMangler.mangleTypeObjectWithDefClass(field);
+		firm.Type type = asFirmType(field.type());
+		firm.Type owner = fieldFlags.isStatic() ? Program.getGlobalType() : klass;
+		Entity entity = new Entity(owner, name, type);
+		entity.setLdIdent(name);
+		OO.setEntityBinding(entity, ddispatch_binding.bind_static);
+		fieldMap.put(field, entity);
+	}
+	
+	/**
+	 * Adds a new static field instance to the type system
+	 * @param field The field instance which should be added
+	 */
+	public void addExtraStaticField(FieldInstance field) {
+		assert field.flags().isStatic();
+		firm.Type klass = asFirmCoreType(field.container());
+		addField(field, klass);
+	}
 
 	@SuppressWarnings("unused")
 	private firm.Type createClassType(X10ClassType classType) {
@@ -169,17 +200,7 @@ public class TypeSystem extends X10TypeSystem_c {
 
 		/* create fields */
 		for (FieldInstance field : classType.fields()) {
-			X10Flags fieldFlags = X10Flags.toX10Flags(field.flags());
-			/* properties have no "real" data in the object */
-			if (fieldFlags.isProperty())
-				continue;
-			String name = X10NameMangler.mangleTypeObjectWithDefClass(field);
-			firm.Type type = asFirmType(field.type());
-			firm.Type owner = fieldFlags.isStatic() ? Program.getGlobalType() : result;
-			Entity entity = new Entity(owner, name, type);
-			entity.setLdIdent(name);
-			OO.setEntityBinding(entity, ddispatch_binding.bind_static);
-			fieldMap.put(field, entity);
+			addField(field, result);
 		}
 		
 		OO.setClassVPtrEntity(result, getVptrEntity());
@@ -193,6 +214,9 @@ public class TypeSystem extends X10TypeSystem_c {
 		
 		Entity classInfoEntity = new Entity(Program.getGlobalType(),Ident.createUnique(className + "$"), 
 				Mode.getP().getType());
+		
+		result.layoutFields();
+		result.finishLayout();
 		
 		OO.setClassRTTIEntity(result, classInfoEntity);
 		

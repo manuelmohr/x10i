@@ -22,7 +22,7 @@ class SimpleClosure {
 			val y = new MySimpleClosureInner2();
 			val closure = y.mF(123.034f);
 			closure(1.03f, 42.42f);
-			SimpleLib.print(f);
+
 		}
 	}
 	
@@ -58,6 +58,8 @@ class SimpleClosure {
 		};
 		return closure;
 	}
+
+	public static uu : Int = 233;
 	
 	public def start() {
 		val closure1 = mI(e);
@@ -67,6 +69,7 @@ class SimpleClosure {
 	
 		val x = new MySimpleClosureInner();
 		x.doIt();
+		SimpleLib.print(uu);
 	}
 
 	public static def main(Array[String]) : Void {
