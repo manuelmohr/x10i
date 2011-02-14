@@ -83,7 +83,7 @@ class Simple1 {
 		}
 
 		var u: Int = (x + y == 666 && x + y != 44 || true != false) ? 1 : 0; 
-		while(1 == 2 || (2 != 6 && true == z) || 1 < 4) {
+		while(1 == 2 && (2 != 6 && true == z)) {
 			if((a + b + c - (z == true ? 1 : -2)) < 100) 
 				continue;
 			a = a + 1;
@@ -102,6 +102,7 @@ class Simple1 {
 			}
 		} while(c - 5 < 55); 
 
+		SimpleLib.print(c);
 		switch(c) { case 1: case 2: case 3: c = c + 3; default: b = b + 1; case 5: return 33; case 7: c = c - 4; case 8: b = b + 44; }
 		return 2 + 3 +4;
 	}
@@ -112,7 +113,7 @@ class Simple1 {
 
  	public static def main(Array[String]) : Void {
 		val x = 4 + 3 * 3 << 45;
-		SimpleLib.print(x);
+		SimpleLib.print(m12());
 	}
 
 
