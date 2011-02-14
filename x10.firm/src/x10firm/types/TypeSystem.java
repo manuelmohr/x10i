@@ -215,9 +215,6 @@ public class TypeSystem extends X10TypeSystem_c {
 		Entity classInfoEntity = new Entity(Program.getGlobalType(),Ident.createUnique(className + "$"), 
 				Mode.getP().getType());
 		
-		result.layoutFields();
-		result.finishLayout();
-		
 		OO.setClassRTTIEntity(result, classInfoEntity);
 		
 		result.layoutFields();
