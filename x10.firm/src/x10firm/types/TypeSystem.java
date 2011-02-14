@@ -192,11 +192,18 @@ public class TypeSystem extends X10TypeSystem_c {
 			/* no superclass */
 		} else if(flags.isInterface()) {
 			/* no superclass interface */
+			OO.setClassIsInterface(result, true);
 		} else {
 			/* the only thing left without a superclass should be x10.lang.Object */
 			assert classType.toString().equals("x10.lang.Object");
 			getVptrEntity().setOwner(result);
 		}
+		
+		/* create interfaces */
+//		for (polyglot.types.Type iface : classType.interfaces()) {
+//			Type firmIface = asFirmCoreType(iface);
+//			result.addSuperType(firmIface);
+//		}
 
 		/* create fields */
 		for (FieldInstance field : classType.fields()) {

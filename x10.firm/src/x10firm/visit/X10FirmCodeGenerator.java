@@ -160,8 +160,10 @@ import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Cmp;
 import firm.nodes.Cond;
+import firm.nodes.InstanceOf;
 import firm.nodes.Load;
 import firm.nodes.Node;
+import firm.nodes.OOConstruction;
 import firm.nodes.Proj;
 import firm.nodes.Store;
 
@@ -557,7 +559,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		Graph graph = new Graph(entity, nVars);
 		Construction savedConstruction = con;
-		con = new Construction(graph);
+		con = new OOConstruction(graph);
 		
 		X10FirmContext newFirmContext = new X10FirmContext();
 		
@@ -672,7 +674,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		entity.addLinkage(ir_linkage.IR_LINKAGE_HIDDEN_USER.val);
 
 		Graph graph = new Graph(entity, 0);
-		Construction construction = new Construction(graph);
+		Construction construction = new OOConstruction(graph);
 		Node symConst = construction.newSymConst(mainEntity);
 		Node mem = construction.getCurrentMem();
 		firm.Type type = mainEntity.getType();
@@ -1847,7 +1849,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private Node getStaticNullLitNode(NullLit_c n) {
 		// Create a new local construction and use it to create a new null const node
 		Graph graph = Program.getConstCodeGraph();
-		Construction c = new Construction(graph);
+		Construction c = new OOConstruction(graph);
 		final firm.Type type = typeSystem.asFirmType(n.type());
 		final Mode mode = type.getMode();
 		Node result = c.newConst(mode.getNull());
@@ -2460,7 +2462,20 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(X10Instanceof_c n) {
-		throw new RuntimeException("Not implemented yet");
+		assert con instanceof OOConstruction;
+		
+		visitAppropriate(n.expr());
+		Node objPtr = getReturnNode();
+		Type type = n.compareType().typeRef().get();
+		firm.Type firmType = typeSystem.asFirmCoreType(type);
+		Node mem = con.getCurrentMem();
+		
+		Node instanceOf = ((OOConstruction)con).newInstanceOf(mem, objPtr, firmType);
+
+		Node projM = con.newProj(instanceOf, Mode.getM(), InstanceOf.pnM);
+		con.setCurrentMem(projM);
+		Node projRes = con.newProj(instanceOf, Mode.getIs(), InstanceOf.pnRes);
+		setReturnNode(projRes);
 	}
 
 	@Override
