@@ -435,7 +435,7 @@ public class X10NameMangler {
 	 */
 	private static Type simplifyType(final Type type) {
 		Type ret = type;
-		while(type instanceof ConstrainedType) {
+		while(ret instanceof ConstrainedType) {
 			ret = ((ConstrainedType)ret).baseType().get();
 		}
 		return ret;

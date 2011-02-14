@@ -1,14 +1,17 @@
 package x10firm.visit;
 
+import java.util.LinkedList;
 import java.util.List;
 
 import polyglot.ast.Binary;
 import polyglot.ast.BooleanLit;
 import polyglot.ast.Cast;
+import polyglot.ast.ClassMember;
 import polyglot.ast.Conditional;
 import polyglot.ast.Expr;
 import polyglot.ast.FieldDecl_c;
 import polyglot.ast.FloatLit;
+import polyglot.ast.Initializer_c;
 import polyglot.ast.IntLit;
 import polyglot.ast.MethodDecl;
 import polyglot.ast.Return;
@@ -19,14 +22,13 @@ import polyglot.util.ErrorInfo;
 import x10.ast.Closure;
 import x10.ast.ClosureCall;
 import x10.ast.ParExpr;
+import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
 import x10cpp.Configuration;
 import x10firm.types.TypeSystem;
 
 /**
  * Our main class for AST queries. 
- * @author s_frank
- *
  */
 public class X10ASTQuery {
 
@@ -99,17 +101,17 @@ public class X10ASTQuery {
 	 * @param name The field name which should be checked
 	 * @return True if the given field name is actually a synthetic field
 	 */
-    public boolean isSyntheticField(String name) {
+    private boolean isSyntheticField(String name) {
 		if (name.startsWith("jlc$")) return true;
 		return false;
 	}
     
     /**
-     * Checks if a given field decl is global init (static und the init expression must be constant)
+     * Checks if a given field decl is global init (static and the init expression must be constant)
      * @param fd The field decl which should be checked
      * @return True if the given field decl is a global init field decl. 
      */
-	public boolean isGlobalInit(FieldDecl_c fd) {
+	private boolean isGlobalInit(FieldDecl_c fd) {
 	    return (fd.init() != null &&
 	            fd.flags().flags().isStatic() && fd.flags().flags().isFinal() &&
 	            isConstantExpression(fd.init()) &&
@@ -117,6 +119,35 @@ public class X10ASTQuery {
 	             fd.init().type().isChar() || fd.init().type().isNull()));
 	}
 	
+	public List<ClassMember> extractInits(List<ClassMember> members)
+	{
+		final List<ClassMember> ret = new LinkedList<ClassMember>();
+
+	    for(ClassMember member : members) {
+	        if(member.memberDef().flags().isStatic())
+	            continue;
+	        if(!(member instanceof Initializer_c) && !(member instanceof FieldDecl_c))
+	            continue;
+	        if(member instanceof FieldDecl_c && (((FieldDecl_c)member).init() == null ||
+	            isSyntheticField(((FieldDecl_c)member).name().id().toString())))
+	            continue;
+	        if (member instanceof FieldDecl_c) {
+	            FieldDecl_c dec = (FieldDecl_c) member;
+	            if(dec.flags().flags().isStatic()) {
+	                X10ClassType container = (X10ClassType)dec.fieldDef().asInstance().container();
+	                if(((X10ClassDef)container.def()).typeParameters().size() != 0)
+	                    continue;
+	                if(isGlobalInit(dec))
+	                    continue;
+	            }
+	        }
+	        
+	        // This class members must be initialised
+	        ret.add(member);
+	    }
+	    
+	    return ret;
+	}
 	
     private boolean seenMain = false;
     private boolean warnedAboutMain = false;

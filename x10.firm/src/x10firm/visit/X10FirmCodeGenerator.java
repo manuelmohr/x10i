@@ -79,7 +79,6 @@ import polyglot.types.Ref;
 import polyglot.types.StructType;
 import polyglot.types.Type;
 import polyglot.types.Types;
-import polyglot.types.VarInstance;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import x10.ast.Async_c;
@@ -210,537 +209,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 	
 	/** current firm context */
-	private FirmContext firmContext = new FirmContext();
-
-	/**
-	 * Holds the corresponding target blocks for labeled continue and break statements.
-	 */
-	private class FirmLabel {
-
-		/**
-		 * Holds the target block for a labeled continue statement
-		 */
-		private Block continueBlock;
-
-		/**
-		 * Holds the target block for a labeled break statement
-		 */
-		private Block breakBlock;
-
-		/** Constructor */
-		public FirmLabel() {
-			
-		}
-
-		/**
-		 * Sets the target block for a labeled continue statement
-		 * @param block The target block
-		 */
-		public void setContinueBlock(Block block) {
-			continueBlock = block;
-		}
-
-		/**
-		 * Returns the target block for a labeled continue statement
-		 * @return The target block
-		 */
-		public Block getContinueBlock() {
-			assert continueBlock != null;
-			return continueBlock;
-		}
-
-		/**
-		 * Sets the target block for a labeled break statement
-		 * @param block The target block
-		 */
-		public void setBreakBlock(Block block) {
-			breakBlock = block;
-		}
-
-		/**
-		 * Returns the target block for a labeled break statement
-		 * @return The target block
-		 */
-		public Block getBreakBlock() {
-			assert breakBlock != null;
-			return breakBlock;
-		}
-	}
-
-	/**
-	 * Class that holds attributes (true and false blocks, continue blocks, break blocks etc.) for a new scope.
-	 * For every new scope we will clone the current (top) scope and set the adequate attributes for the new scope.
-	 */
-	private class FirmScope {
-
-		/**
-		 * Holds a reference to the upper FirmScope.
-		 */
-		FirmScope prev;
-
-		/**
-		 * Mapping between Labels (String) and the corresponding FirmLabels.
-		 */
-		private Map<String, FirmLabel> firmLabelMapper = new HashMap<String, FirmLabel>();
-
-		/** Block we will jump into if an expression evaluates to true */
-		private Block trueBlock;
-		
-		/** Block we will jump into if an expression evaluates to false */
-		private Block falseBlock;
-		
-		/** Block we will jump into if we reach a continue statement */
-		private Block continueBlock;
-		
-		/** Block we will jump into if we reach a break statement */
-		private Block breakBlock;
-		
-		/** Reference to the current switch cond node -> null if we are not in a switch statement */
-		private Node curSwitchCond;
-		
-		/** Proj number for the 'default' statement in a switch statement */
-		private long curSwitchDefaultProjNr;
-
-		/** constructor */
-		public FirmScope() {
-			
-		}
-
-		/** Sets the true block.
-		 * @param block The block to set */
-		public void setTrueBlock(Block block) {
-			trueBlock = block;
-		}
-
-		/** Returns the true block.
-		 * @return The true block */
-		public Block getTrueBlock() {
-			return trueBlock;
-		}
-
-		/** Sets the false block.
-		 * @param block The block to set */
-		public void setFalseBlock(Block block) {
-			falseBlock = block;
-		}
-
-		/** Returns the false block.
-		 * @return The false block */
-		public Block getFalseBlock() {
-			return falseBlock;
-		}
-
-		/** Sets the continue block.
-		 * @param block The block to set */
-		public void setContinueBlock(Block block) {
-			continueBlock = block;
-		}
-
-		/** Returns the continue block.
-		 * @return The continue block */
-		public Block getContinueBlock() {
-			assert continueBlock != null;
-			return continueBlock;
-		}
-
-		/** Sets the break block.
-		 * @param block The block to set */
-		public void setBreakBlock(Block block) {
-			breakBlock = block;
-		}
-
-		/** Returns the break block. Creates a new block, if the break block was
-		 * not previously set.
-		 * @return The break block */
-		public Block getBreakBlock() {
-			return breakBlock;
-		}
-
-		/** Returns true if the break block is set.
-		 *  @return True or false
-		 */
-		public boolean isBreakBlockSet() {
-			return breakBlock != null;
-		}
-
-		/** Sets the current switch condition node.
-		 * @param cond The condition to set
-		 */
-		public void setCurSwitchCond(Node cond) {
-			curSwitchCond = cond;
-		}
-
-		/** Returns the current switch condition node
-		 * @return The current switch condition node
-		 */
-		public Node getCurSwitchCond() {
-			assert curSwitchCond != null;
-			return curSwitchCond;
-		}
-
-		/** Sets the projection number for the 'default' statement in the current switch statement
-		 * @param projNr The projection number for the 'default' statement.
-		 */
-		public void setCurSwitchDefaultProjNr(long projNr) {
-			curSwitchDefaultProjNr = projNr;
-		}
-
-		/**
-		 * Returns the projection number of the 'default' label in the current switch statement
-		 * @return The projection number of the 'default' statement
-		 */
-		public long getCurSwitchDefaultProjNr() {
-			return curSwitchDefaultProjNr;
-		}
-
-		/**
-		 * Sets the target block for a labeled continue statement.
-		 * @param label The label of the continue statement.
-		 * @param block The target block for the continue statement
-		 */
-		public void setBlockForLabeledContinue(String label, Block block) {
-			FirmLabel firmLabel = getFirmLabel(label);
-			firmLabel.setContinueBlock(block);
-		}
-
-		/**
-		 * Returns the corresponding target block for a labeled continue block
-		 * @param label The label of the continue statement
-		 * @return The target block for the continue statement
-		 */
-		public Block getBlockForLabeledContinue(String label) {
-			FirmLabel firmLabel = getFirmLabel(label);
-			return firmLabel.getContinueBlock();
-		}
-
-		/**
-		 * Sets the target block for a labeled break statement.
-		 * @param label The label of the break statement.
-		 * @param block The target block for the break statement
-		 */
-		public void setBlockForLabeledBreak(String label, Block block) {
-			FirmLabel firmLabel = getFirmLabel(label);
-			firmLabel.setBreakBlock(block);
-		}
-
-		/**
-		 * Returns the corresponding target block for a labeled break block
-		 * @param label The label of the break statement
-		 * @return The target block for the break statement
-		 */
-		public Block getBlockForLabeledBreak(String label) {
-			FirmLabel firmLabel = getFirmLabel(label);
-			return firmLabel.getBreakBlock();
-		}
-
-		/**
-		 * Helper function. Traverse all FirmScopes upwards and try to find the
-		 * corresponding FirmLabel for the given string label.
-		 * @param label The label we are searching for
-		 * @return The corresponding FirmLabel or null if the given string label could not be found
-		 */
-		private FirmLabel getFirmLabelHelp(String label) {
-			if(!firmLabelMapper.containsKey(label)) {
-				if(prev != null) {
-					return prev.getFirmLabelHelp(label);
-				}
-				return null;
-
-			}
-			return firmLabelMapper.get(label);
-		}
-
-		/**
-		 * Returns the corresponding FirmLabel for the given string label
-		 * @param label The label we are searching for
-		 * @return The corresponding FirmLabel for the given string label
-		 */
-		private FirmLabel getFirmLabel(String label) {
-			FirmLabel firmLabel = getFirmLabelHelp(label);
-			assert firmLabel != null;
-
-			return firmLabel;
-		}
-
-		/**
-		 * Declare (Create) a new FirmLabel for the given string label in the current firm scope.
-		 * @param label The string label
-		 */
-		public void declFirmLabel(String label) {
-			assert !firmLabelMapper.containsKey(label);
-			firmLabelMapper.put(label, new FirmLabel());
-		}
-
-		@Override
-		public Object clone() {
-			FirmScope clonedScope  		= new FirmScope();
-			clonedScope.trueBlock     	= this.trueBlock;
-			clonedScope.falseBlock		= this.falseBlock;
-			clonedScope.continueBlock   = this.continueBlock;
-			clonedScope.breakBlock      = this.breakBlock;
-			// The local mapper needn`t be cloned
-
-			return clonedScope;
-		}
-	}
+	private X10FirmContext firmContext = new X10FirmContext();
 	
-	/** 
-	 * Class for saving variable instances (locals and fields) and the appropriate "firm" indices. 
-	 */
-	private static class VarEntry {
-		private int idx;
-		private VarInstance<?> var;
-		
-		private VarEntry(final VarInstance<?> var_, final int idx_) {
-			assert(var_ != null);
-			var = var_;
-			idx = idx_;
-		}
-		
-		/**
-		 * Creates a new var entry for a local instance
-		 * @param loc_ The local instance
-		 * @param idx_ The "local" index (firm) for the local variable
-		 * @return The created var entry. 
-		 */
-		public static VarEntry newVarEntryForLocalInstance(final LocalInstance loc_, final int idx_) {
-			return new VarEntry(loc_, idx_);
-		}
-		
-		/**
-		 * Creates a new var entry for a field instance
-		 * @param field_ The field instance
-		 * @return The created var entry.
-		 */
-		public static VarEntry newVarEntryForFieldInstance(final FieldInstance field_) {
-			return new VarEntry(field_, -1);
-		}
-		
-		/**
-		 * The index of the var entry -> -1 if the var entry is actually a field instance
-		 * @return The index of the local instance.
-		 */
-		public int getIdx() {
-			return idx;
-		}
-		
-		/**
-		 * Returns the var instance of the var key
-		 * @return The var instance
-		 */
-		public VarInstance<?> getVarInstance() {
-			return var;
-		}
-	}
-
-	/**
-	 * Class that holds attributes (scopes, mapping of local instance variables etc.) for a new method.
-	 * For every new method entry we will create a new firm context.
-	 */
-	private class FirmContext {
-		/** Holds the topmost firmScope. -> Push a dummy frame in the current FirmContext */
-		private FirmScope topFirmScope = new FirmScope();
-
-		/** Maps VarInstances to the appropriate "VarEntry" entries */
-		private Map<VarInstance<?>, VarEntry> varEntryMapper = new HashMap<VarInstance<?>, VarEntry>();
-		
-		/**
-		 * Reference to the current class type
-		 */
-		private X10ClassType curClass;
-
-		/**
-		 * Will hold the corresponding statement if we have reached a labeled statement. Otherwise null.
-		 */
-		private Stmt stmt;
-
-		/**
-		 * Will hold the corresponding label if we have reached a labeled statement. Otherwise null.
-		 */
-		private String label;
-		
-		/**
-		 * Reference to the upper firm context
-		 */
-		private FirmContext outer;
-		
-		/**
-		 * True if we are currently in a closure
-		 */
-		private boolean inClosure = false;
-		
-		/**
-		 * List with the class members which must be initialised explicitly in a constructor etc. 
-		 */
-		private List<ClassMember> initClassMembers = null;
-
-		/**
-		 * Create a new Firm context
-		 */
-		public FirmContext() {
-			
-		}
-		
-		/**
-		 * Sets the current class
-		 */
-		public void setCurClass(X10ClassType curClass) {
-			this.curClass = curClass;
-		}
-		
-		/**
-		 * Returns the current class
-		 */
-		public X10ClassType getCurClass() {
-			return curClass;
-		}
-		
-		/**
-		 * Sets the class members which must be intialised explicitly
-		 */
-		public void setInitClassMembers(List<ClassMember> members) {
-			assert(initClassMembers == null); // method should only be called once
-			if(initClassMembers != null) {
-				System.out.println("YES");
-			}
-			initClassMembers = members;
-		}
-		
-		public List<ClassMember> getInitClassMembers() {
-			assert(initClassMembers != null);
-			return initClassMembers;
-		}
-		
-		/**
-		 * Pushes a new firm context
-		 * @param newContext The new firm context which should be pushed
-		 * @return The new firm context which was pushed.
-		 */
-		public FirmContext pushFirmContext(FirmContext newContext) {
-			assert newContext != null;
-			newContext.outer = this;
-			return newContext;
-		}
-		
-		/**
-		 * Pops the topmost firm context
-		 * @return The upper firm context
-		 */
-		public FirmContext popFirmContext() {
-			assert outer != null;
-			return outer;
-		}
-		
-		/**
-		 * Marking that we are currently in a closure
-		 * @param in True if we are currently in a closure 
-		 */
-		public void setInClosure(boolean in) {
-			inClosure = in;
-		}
-		
-		/**
-		 * Checks if we are currently in a closure
-		 * @return True if we are currently in a closure
-		 */
-		public boolean isInClosure() {
-			return inClosure;
-		}
-		
-		/** Sets the "VarEntry" for a given variable (local variable or field instance)
-		 * @param entry The "VarEntry" for the given variable
-		 */
-		public void setVarEntry(VarEntry entry) {
-			assert !varEntryMapper.containsKey(entry.getVarInstance());
-			varEntryMapper.put(entry.getVarInstance(), entry);
-		}
-
-		/** Returns the "VarEntry" for a given variable (local variable or field instance)
-		 * @return The "VarEntry" of the given variable or null if the variable could not be found
-		 */
-		public VarEntry getVarEntry(VarInstance<?> var) {
-			VarEntry ret = varEntryMapper.get(var);
-			if(ret == null) {
-				if(outer != null) 
-					return outer.getVarEntry(var);
-				assert(false);
-				return null;
-			}
-			
-			return ret;
-		}
-		
-		/** Returns the "VarEntry" for a given instance variable in the current scope
-		 * @return The "VarEntry" of the given instance variable in the current scope or 
-		 * null if the instance variable could not be found.
-		 */
-		public VarEntry getVarEntryInThisScope(VarInstance<?> var) {
-			return varEntryMapper.get(var);
-		}
-
-		/** Pushes a new firm scope
-		 * @param scope The firm scope which should be pushed
-		 * @return The new firm scope
-		 */
-		public FirmScope pushFirmScope(FirmScope scope) {
-			scope.prev = topFirmScope;
-			topFirmScope = scope;
-			return scope;
-		}
-
-		/** Pops the topmost firm scope
-		 * @return The upper firm scope of the topmost firm scope
-		 */
-		public FirmScope popFirmScope() {
-			assert topFirmScope != null;
-			topFirmScope = topFirmScope.prev;
-			return topFirmScope;
-		}
-
-		/** Returns the topmost firm scope
-		 * @return Topmost firm scope
-		 */
-		public FirmScope getTopScope() {
-			assert topFirmScope != null;
-			return topFirmScope;
-		}
-
-		/**
-		 * Set the statement and label in a labeled statement
-		 * @param label The label of the labeled statement
-		 * @param stmt The statement of the labeled statement
-		 */
-		public void setLabeledStmt(String label, Stmt stmt) {
-			this.label = label;
-			this.stmt  = stmt;
-		}
-
-		/**
-		 * Resets the saved statement and label in the last seen labeled statement
-		 */
-		public void resetLabeledStmt() {
-			this.label = null;
-			this.stmt  = null;
-		}
-
-		/**
-		 * Returns the statement of the last seen labeled statement
-		 * @return The statement
-		 */
-		public Stmt getLabeledStmt() {
-			return stmt;
-		}
-
-		/**
-		 * Returns the label of the last seen labeled statement
-		 * @return The label
-		 */
-		public String getLabel() {
-			assert label != null;
-			return label;
-		}
-	}
-
 	/**
 	 * If n is not already a condition node, build an extra compare and condition node.
 	 * If n is a projection node create only a new condition node
@@ -749,7 +219,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 */
 	private Node makeCondition(Node n) {
 		if(n instanceof Proj || !n.getMode().equals(Mode.getT())) {
-			FirmScope topScope = firmContext.getTopScope();
+			X10FirmScope topScope = firmContext.getTopScope();
 
 			Block bTrue  = topScope.getTrueBlock();
 			Block bFalse = topScope.getFalseBlock();
@@ -803,8 +273,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		con.setCurrentBlock(cur);
 
-		FirmScope topScope = firmContext.getTopScope();
-		FirmScope newScope = (FirmScope)topScope.clone();
+		X10FirmScope topScope = firmContext.getTopScope();
+		X10FirmScope newScope = (X10FirmScope)topScope.clone();
 
 		firmContext.pushFirmScope(newScope);
 		{
@@ -893,7 +363,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		ClassBody_c body = (ClassBody_c) n.body();
 		X10ClassType classType = (X10ClassType)def.asType();
 		
-		FirmContext newFirmContext = new FirmContext();
+		X10FirmContext newFirmContext = new X10FirmContext();
 		firmContext = firmContext.pushFirmContext(newFirmContext);
 		
 		firmContext.setCurClass(classType);
@@ -923,45 +393,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		final List<ClassMember> members = n.members();
 		if(!members.isEmpty()) {
-			final List<ClassMember> inits = extractInits(members);
+			final List<ClassMember> inits = query.extractInits(members);
 			firmContext.setInitClassMembers(inits);
 			
 			for (ClassMember member : n.members())
 				visitAppropriate(member);
 		}
 	}
-
-	private List<ClassMember> extractInits(List<ClassMember> members)
-	{
-		final List<ClassMember> ret = new LinkedList<ClassMember>();
-
-	    for(ClassMember member : members) {
-	        if(member.memberDef().flags().isStatic())
-	            continue;
-	        if(!(member instanceof Initializer_c) && !(member instanceof FieldDecl_c))
-	            continue;
-	        if(member instanceof FieldDecl_c && (((FieldDecl_c)member).init() == null ||
-	            query.isSyntheticField(((FieldDecl_c)member).name().id().toString())))
-	            continue;
-	        if (member instanceof FieldDecl_c) {
-	            FieldDecl_c dec = (FieldDecl_c) member;
-	            if(dec.flags().flags().isStatic()) {
-	                X10ClassType container = (X10ClassType)dec.fieldDef().asInstance().container();
-	                if(((X10ClassDef)container.def()).typeParameters().size() != 0)
-	                    continue;
-	                if(query.isGlobalInit(dec))
-	                    continue;
-	            }
-	        }
-	        
-	        // This class members must be initialised
-	        ret.add(member);
-	    }
-	    
-	    return ret;
-	}
 	
-
 	private Entity getConstructorEntity(X10ConstructorInstance instance) {
 		Entity entity = constructorEntities.get(instance);
 		if (entity == null) {
@@ -1120,7 +559,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Construction savedConstruction = con;
 		con = new Construction(graph);
 		
-		FirmContext newFirmContext = new FirmContext();
+		X10FirmContext newFirmContext = new X10FirmContext();
 		
 		newFirmContext.setInClosure(closure);
 		
@@ -1146,14 +585,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			con.setVariable(idx, projParam);
 			
 			// map the local instance with the appropriate idx.
-			firmContext.setVarEntry(VarEntry.newVarEntryForLocalInstance(loc, idx));
+			firmContext.setVarEntry(X10VarEntry.newVarEntryForLocalInstance(loc, idx));
 			idx++;
 		}
 
 		// map all local variables.
 		for (LocalInstance loc : locals) {
 			// map the local instance with the appropriate idx.
-			firmContext.setVarEntry(VarEntry.newVarEntryForLocalInstance(loc, idx));
+			firmContext.setVarEntry(X10VarEntry.newVarEntryForLocalInstance(loc, idx));
 			idx++;
 		}
 
@@ -1286,7 +725,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				assert(!fieldFlags.isStatic());
 				FieldInstance fieldInst = fieldDecl.fieldDef().asInstance();
 				Node objectPointer = getThis(Mode.getP());
-				doFieldAssign(objectPointer, fieldInst, fieldDecl.init());
+				genFieldAssign(objectPointer, fieldInst, fieldDecl.init());
 			} else {
 				assert(false): "Illegal class member";
 			}
@@ -1412,7 +851,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return address;
 	}
 	
-	private Node doFieldLoad(Node objectPointer, FieldInstance instance) {
+	private Node genFieldLoad(Node objectPointer, FieldInstance instance) {
 		FieldInstance def = instance.def().asInstance();
 		Node address = getFieldAddress(objectPointer, instance);
 		firm.Type type = typeSystem.asFirmType(def.type());
@@ -1425,11 +864,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return result;
 	}
 	
-	private Node doStaticFieldLoad(FieldInstance instance) {
-		return doFieldLoad(null, instance);
+	private Node genStaticFieldLoad(FieldInstance instance) {
+		return genFieldLoad(null, instance);
 	}
 	
-	private Node doFieldAssign(Node objectPointer, FieldInstance instance, Node rightRet) {
+	private Node genFieldAssign(Node objectPointer, FieldInstance instance, Node rightRet) {
 		FieldInstance def = instance.def().asInstance();
 		Node address = getFieldAddress(objectPointer, instance);
 		firm.Type type = typeSystem.asFirmType(def.type());
@@ -1441,18 +880,18 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return rightRet;
 	}
 	
-	private Node doFieldAssign(Node objectPointer, FieldInstance instance, Expr expr) {
+	private Node genFieldAssign(Node objectPointer, FieldInstance instance, Expr expr) {
 		Node rightRet = visitExpression(expr);
-		doFieldAssign(objectPointer, instance, rightRet);
+		genFieldAssign(objectPointer, instance, rightRet);
 		return rightRet;
 	}
 	
-	private Node doStaticFieldAssign(FieldInstance instance, Expr expr) {
-		return doFieldAssign(null, instance, expr);
+	private Node genStaticFieldAssign(FieldInstance instance, Expr expr) {
+		return genFieldAssign(null, instance, expr);
 	}
 	
-	private Node doStaticFieldAssign(FieldInstance instance, Node rightRet) {
-		return doFieldAssign(null, instance, rightRet);
+	private Node genStaticFieldAssign(FieldInstance instance, Node rightRet) {
+		return genFieldAssign(null, instance, rightRet);
 	}
 	
 	/**
@@ -1535,7 +974,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Block bTrue  = con.newBlock();
 		Block bAfter = con.newBlock();
 		
-		Node retLeft  = doStaticFieldLoad(statusFieldInst);
+		Node retLeft  = genStaticFieldLoad(statusFieldInst);
 		Node retRight = con.newConst(new TargetValue(X10_STATIC_FIELD_STATUS_INITIALIZED, typeSystem.getFirmMode(typeSystem.Int())));
 		
 		Node cmp  = con.newCmp(retLeft, retRight);
@@ -1550,17 +989,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		bAfter.addPred(projFalse);
 		
 		con.setCurrentBlock(bTrue);
-		doStaticFieldAssign(fieldInst, dec.init());
+		genStaticFieldAssign(fieldInst, dec.init());
 		
 		Node nodeInitialized = con.newConst(new TargetValue(X10_STATIC_FIELD_STATUS_INITIALIZED, typeSystem.getFirmMode(typeSystem.Int())));
-		doStaticFieldAssign(statusFieldInst, nodeInitialized);
+		genStaticFieldAssign(statusFieldInst, nodeInitialized);
 		
 		bAfter.addPred(con.newJmp());
 		bTrue.mature();
 		con.setCurrentBlock(bAfter);
 		
 		Node mem = con.getCurrentMem();
-		Node retValue = doStaticFieldLoad(fieldInst);
+		Node retValue = genStaticFieldLoad(fieldInst);
 		Node retNode = con.newReturn(mem, new Node[]{retValue});
 
 		/* for error detection */
@@ -1580,7 +1019,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		FieldInstance instance = dec.fieldDef().asInstance();
 		typeSystem.asFirmType(instance.container());
 		
-		firmContext.setVarEntry(VarEntry.newVarEntryForFieldInstance(instance));
+		firmContext.setVarEntry(X10VarEntry.newVarEntryForFieldInstance(instance));
 
 		/* static fields may have initializers */
 		if (flags.isStatic()) {
@@ -1651,8 +1090,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		con.setCurrentBlockBad();
 
-		FirmScope topScope = firmContext.getTopScope();
-		FirmScope newScope = (FirmScope)topScope.clone();
+		X10FirmScope topScope = firmContext.getTopScope();
+		X10FirmScope newScope = (X10FirmScope)topScope.clone();
 
 		Block bBreak = null;
 
@@ -1712,7 +1151,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Node fallthrough 	= con.getCurrentBlock().isBad() ? null : con.newJmp();
 		Block block 		= con.newBlock();
 
-		FirmScope topScope 	  = firmContext.getTopScope();
+		X10FirmScope topScope 	  = firmContext.getTopScope();
 		Node switchCond       = topScope.getCurSwitchCond();
 		Block switchCondBlock = (Block)switchCond.getBlock();
 
@@ -1742,7 +1181,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		if(con.getCurrentBlock().isBad())
 			return;
 
-		FirmScope topScope = firmContext.getTopScope();
+		X10FirmScope topScope = firmContext.getTopScope();
 		Block target = null;
 		if (br.labelNode() != null) {
 			// labeled continue or break
@@ -1782,8 +1221,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		firmContext.setLabeledStmt(lab, stmt);
 
 		// Declare the label in the current firm scope
-		FirmScope topScope = firmContext.getTopScope();
-		FirmScope newScope = (FirmScope)topScope.clone();
+		X10FirmScope topScope = firmContext.getTopScope();
+		X10FirmScope newScope = (X10FirmScope)topScope.clone();
 
 		firmContext.pushFirmScope(newScope);
 		{
@@ -1804,7 +1243,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 			Local_c lhsLocal = (Local_c)lhs;
 			LocalInstance loc = lhsLocal.localInstance();
-			VarEntry var = firmContext.getVarEntry(loc);
+			X10VarEntry var = firmContext.getVarEntry(loc);
 
 			int idx = var.getIdx();
 			con.setVariable(idx, rightRet);
@@ -1813,7 +1252,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			Field_c field = (Field_c) lhs;
 			FieldInstance instance = field.fieldInstance();
 			Node objectPointer = visitExpression((Expr)field.target());
-			Node ret = doFieldAssign(objectPointer, instance, rhs);
+			Node ret = genFieldAssign(objectPointer, instance, rhs);
 			setReturnNode(ret);
 		} else {
 			throw new RuntimeException("Unexpected assignment target");
@@ -1846,7 +1285,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			LocalInstance loc = n.localDef().asInstance();
 			
 			Node initNode = visitExpression(initexpr);
-			VarEntry var = firmContext.getVarEntry(loc);
+			X10VarEntry var = firmContext.getVarEntry(loc);
 			int idx = var.getIdx();
 
 			con.setVariable(idx, initNode);
@@ -1899,8 +1338,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		bTrue.addPred(con.newJmp());
 		con.setCurrentBlock(bTrue);
 
-		FirmScope topScope  = firmContext.getTopScope();
-		FirmScope newScope  = (FirmScope)topScope.clone();
+		X10FirmScope topScope  = firmContext.getTopScope();
+		X10FirmScope newScope  = (X10FirmScope)topScope.clone();
 
 		firmContext.pushFirmScope(newScope);
 		{
@@ -1938,7 +1377,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		con.setCurrentBlock(bCond);
 
 		topScope  = firmContext.getTopScope();
-		newScope  = (FirmScope)topScope.clone();
+		newScope  = (X10FirmScope)topScope.clone();
 
 		firmContext.pushFirmScope(newScope);
 		{
@@ -1976,8 +1415,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		bCond.addPred(con.newJmp());
 		con.setCurrentBlock(bCond);
 
-		FirmScope topScope = firmContext.getTopScope();
-		FirmScope newScope = (FirmScope)topScope.clone();
+		X10FirmScope topScope = firmContext.getTopScope();
+		X10FirmScope newScope = (X10FirmScope)topScope.clone();
 
 		firmContext.pushFirmScope(newScope);
 		{
@@ -1993,7 +1432,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		con.setCurrentBlock(bTrue);
 
 		topScope = firmContext.getTopScope();
-		newScope = (FirmScope)topScope.clone();
+		newScope = (X10FirmScope)topScope.clone();
 
 		firmContext.pushFirmScope(newScope);
 		{
@@ -2053,8 +1492,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		con.setCurrentBlock(curBlock);
 
-		FirmScope topScope = firmContext.getTopScope();
-		FirmScope newScope = (FirmScope)topScope.clone();
+		X10FirmScope topScope = firmContext.getTopScope();
+		X10FirmScope newScope = (X10FirmScope)topScope.clone();
 
 		firmContext.pushFirmScope(newScope);
 		{
@@ -2086,8 +1525,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Block bAfter = con.newBlock();
 		Block bFalse = null; // block will only be created if we have an else stmt.
 
-		FirmScope topScope = firmContext.getTopScope();
-		FirmScope newScope = (FirmScope)topScope.clone();
+		X10FirmScope topScope = firmContext.getTopScope();
+		X10FirmScope newScope = (X10FirmScope)topScope.clone();
 
 		firmContext.pushFirmScope(newScope);
 		{
@@ -2162,53 +1601,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(X10Call_c n) {
 		/* determine called function */
-		X10MethodInstance methodInstance = (X10MethodInstance)n.methodInstance().def().asInstance();
-
-		Entity entity = getMethodEntity(methodInstance);
+		final X10MethodInstance methodInstance = (X10MethodInstance)n.methodInstance().def().asInstance();
+		final X10Flags flags = X10Flags.toX10Flags(methodInstance.flags());
+		final Entity entity = getMethodEntity(methodInstance);
+		final boolean isStatic = flags.isStatic();
+		final List<Expr> arguments = n.arguments();
 		
-		firm.MethodType type = (MethodType) entity.getType();
-		int param_count = type.getNParams();
-		List<Expr> arguments = n.arguments();
-			
-		if (arguments.size()+1 == param_count) {
-			/* arguments is immutable, so we construct a new list */
-			List<Expr> na = new LinkedList<Expr>();
-			na.add(0, (Expr)n.target());
-			na.addAll(arguments);
-			arguments = na;
-		}
-		assert arguments.size() == param_count : "parameters are off : "+arguments.size()+" vs "+param_count;
-		Node[] parameters = new Node[param_count];
-		for (int i=0; i<param_count; i++) {
-			parameters[i] = visitExpression(arguments.get(i));
-		}
-		
-		Node address;
-		if (methodInstance.flags().isStatic()) {
-			address = con.newSymConst(entity);			
-		} else {
-			address = con.newSel(parameters[0], entity);
-		}
-		
-		Node mem = con.getCurrentMem();
-		Node call = con.newCall(mem, address, parameters, type);
-		Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
-		con.setCurrentMem(newMem);
-
-		if (type.getNRess() == 0) {
-			return; /* no return value, we're done */
-		}
-		assert (type.getNRess() == 1); /* X10 does not support multiple return values */
-		firm.Type ret_type = type.getResType(0);
-		Node all_results = con.newProj(call, Mode.getT(), Call.pnTResult);
-		Mode mode = ret_type.getMode();
-		if (mode == null) {
-			/* classes do not have modes assigned, use pointer mode */
-			mode = Mode.getP();
-			// TODO structs have value semantics
-		}
-		Node ret = con.newProj(all_results, mode, 0);
-		setReturnNode(ret);
+		genX10Call(isStatic, entity, arguments, n.target());
+		/* setReturnNode is automatically set */
 	}
 
 	@Override
@@ -2258,14 +1658,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			Entity staticGetterMethod = getGetterMethodForStaticField(instance);
 			assert staticGetterMethod != null;
 			
-			doX10Call(true, staticGetterMethod, new ArrayList<Expr>(), null);
+			genX10StaticCall(staticGetterMethod, new ArrayList<Expr>());
 			// setReturnNode is set in doX10Call
 		} else if(flags.isStatic()) {
-			Node ret = doStaticFieldLoad(instance);
+			Node ret = genStaticFieldLoad(instance);
 			setReturnNode(ret);
 		} else {
 			Node objectPointer = visitExpression((Expr)n.target());
-			Node ret = doFieldLoad(objectPointer, instance);
+			Node ret = genFieldLoad(objectPointer, instance);
 			setReturnNode(ret);
 		}
 	}
@@ -2339,7 +1739,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(Local_c n) {
 		LocalInstance loc = n.localInstance();
-		VarEntry var = null;
+		X10VarEntry var = null;
 		
 		if(firmContext.isInClosure()) {
 			var = firmContext.getVarEntryInThisScope(loc);
@@ -2365,7 +1765,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(New_c n) {
 		Type type = n.objectType().type();
-		Node res = doNewAlloc(n.type(), type);
+		Node res = genNewAlloc(n.type(), type);
 
 		/* invoke class constructor */
 		X10ConstructorInstance_c instance = (X10ConstructorInstance_c) n.constructorInstance();
@@ -2723,9 +2123,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Entity entity = getMethodEntity(applyMethod);
         
 		/* Create an instance of the closure and save the current context. */
-        final Node objectPointer = doNewAlloc(closureType, closureType);
+        final Node objectPointer = genNewAlloc(closureType, closureType);
         for(LocalInstance loc : savedLocals) {
-    		VarEntry var = firmContext.getVarEntry(loc);
+    		X10VarEntry var = firmContext.getVarEntry(loc);
     		assert var.getIdx() != -1; /* must be a local var */
     		
     		Node rhs = con.getVariable(var.getIdx(), typeSystem.getFirmMode(var.getVarInstance().type()));
@@ -2757,13 +2157,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Entity ent = getClosureEntity(applyMethodInstance.signature());
 		assert ent != null;
 				
-		doX10Call(applyMethodInstance.flags().isStatic(), ent, c.arguments(), c.target());
+		genX10Call(applyMethodInstance.flags().isStatic(), ent, c.arguments(), c.target());
 	}
 
 	/**
 	 * Create the appropriate firm nodes for a "new" alloc. 
 	 */
-	private Node doNewAlloc(Type x10ResType, Type x10Type) {
+	private Node genNewAlloc(Type x10ResType, Type x10Type) {
 		firm.Type resType  = typeSystem.asFirmType(x10ResType);
 		firm.Type firmType = typeSystem.asFirmCoreType(x10Type);
 		Node mem = con.getCurrentMem();
@@ -2776,6 +2176,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return res;
 	}
 	
+	/** 
+	 * Creates the appropriate firm graph for a static call
+	 * @param entity The entity of the called method
+	 * @param args The arguments for the call
+	 */
+	private void genX10StaticCall(final Entity entity, final List<Expr> args) {
+		genX10Call(true, entity, args, null);
+	}
+	
 	/**
 	 * Creates the appropriate firm graph for a call. 
 	 * @param isStatic True if the called method is static (-> static binding)
@@ -2783,31 +2192,29 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param args The arguments of the method
 	 * @param target The target of the method call. 
 	 */
-	private void doX10Call(final boolean isStatic, final Entity entity, final List<Expr> args, final Expr target) {
+	private void genX10Call(final boolean isStatic, final Entity entity, final List<Expr> args, final Receiver target) {
 		
-		firm.MethodType type = (MethodType) entity.getType();
-		int param_count = type.getNParams();
+		final MethodType type = (MethodType) entity.getType();
+		final int param_count = type.getNParams();
 		List<Expr> arguments = args;
 
-		if (arguments.size()+1 == param_count) {
+		if (!isStatic) {
+			assert(target != null && target instanceof Expr);
 			/* arguments is immutable, so we construct a new list */
 			List<Expr> na = new LinkedList<Expr>();
-			na.add(0, target);
+			na.add(0, (Expr)target);
 			na.addAll(arguments);
 			arguments = na;
 		}
+		
 		assert arguments.size() == param_count : "parameters are off : "+arguments.size()+" vs "+param_count;
 		Node[] parameters = new Node[param_count];
+		
 		for (int i=0; i<param_count; i++) {
 			parameters[i] = visitExpression(arguments.get(i));
 		}
 		
-		Node address;
-		if (isStatic) {
-			address = con.newSymConst(entity);			
-		} else {
-			address = con.newSel(parameters[0], entity);
-		}
+		final Node address = (isStatic) ? con.newSymConst(entity) : con.newSel(parameters[0], entity);
 		
 		Node mem = con.getCurrentMem();
 		Node call = con.newCall(mem, address, parameters, type);
@@ -2817,15 +2224,19 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		if (type.getNRess() == 0) {
 			return; /* no return value, we're done */
 		}
+		
 		assert (type.getNRess() == 1); /* X10 does not support multiple return values */
+		
 		firm.Type ret_type = type.getResType(0);
 		Node all_results = con.newProj(call, Mode.getT(), Call.pnTResult);
 		Mode mode = ret_type.getMode();
+		
 		if (mode == null) {
 			/* classes do not have modes assigned, use pointer mode */
 			mode = Mode.getP();
 			// TODO structs have value semantics
 		}
+		
 		Node ret = con.newProj(all_results, mode, 0);
 		setReturnNode(ret);
 	}
@@ -2845,7 +2256,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	    if (op == Binary.EQ || op == Binary.NE) { // Added for testing purposes.
 	    	int modus = (op == Binary.EQ) ? Cmp.pnEq : Cmp.pnLg;
 
-	    	FirmScope curScope = firmContext.getTopScope();
+	    	X10FirmScope curScope = firmContext.getTopScope();
 	    	if(curScope.getTrueBlock() != null && curScope.getFalseBlock() != null ) {
 				Block bTrue  = curScope.getTrueBlock();
 				Block bFalse = curScope.getFalseBlock();
@@ -2893,7 +2304,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		// only '&&' and '||' are valid
 		// TODO: Add constant value evaluation
 
-		FirmScope curScope = firmContext.getTopScope();
+		X10FirmScope curScope = firmContext.getTopScope();
 
 		if(curScope.getTrueBlock() != null && curScope.getFalseBlock() != null) {
 			Block bCurTrue  = curScope.getTrueBlock();
@@ -2909,8 +2320,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				bFalse = con.newBlock();
 			}
 
-			FirmScope topScope = firmContext.getTopScope();
-			FirmScope newScope = (FirmScope)topScope.clone();
+			X10FirmScope topScope = firmContext.getTopScope();
+			X10FirmScope newScope = (X10FirmScope)topScope.clone();
 
 			firmContext.pushFirmScope(newScope);
 			{
@@ -2927,7 +2338,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				con.setCurrentBlock(bFalse);
 
 			topScope = firmContext.getTopScope();
-			newScope = (FirmScope)topScope.clone();
+			newScope = (X10FirmScope)topScope.clone();
 
 			Node ret = null;
 			firmContext.pushFirmScope(newScope);
