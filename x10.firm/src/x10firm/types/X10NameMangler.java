@@ -14,6 +14,7 @@ import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10MethodInstance;
 import x10.types.X10Struct;
+import x10.types.constraints.CConstraint;
 import polyglot.types.Type;
 
 /**
@@ -53,6 +54,7 @@ public class X10NameMangler {
 	private static final String MANGLED_THIS = "C1";
 	private static final String MANGLED_VTABLE = "TV";
 	private static final String MANGLED_TYPEINFO = "TI";
+	private static final String MANGLED_CONSTRAINED = "CO";
 	
 	/**
 	 * Initializes name substitutions for unary operators
@@ -252,7 +254,7 @@ public class X10NameMangler {
 		final Type ret = simplifyType(type);
 		
 		String tmp = tryPrimitiveType(ret);
-		if(tmp != null) return tmp;
+		if(tmp != null) return maybeConstrained(tmp, type);
 
 		StringBuilder buf = new StringBuilder();
 		
@@ -268,7 +270,7 @@ public class X10NameMangler {
 
 		buf.append(mangleType(ret, false));
 		
-		return buf.toString();
+		return maybeConstrained(buf.toString(), type);
 	}
 	
 	/**
@@ -441,6 +443,47 @@ public class X10NameMangler {
 		return ret;
 	}
 	
+	/** Mapping between constraints and the appropriate mangled name **/
+	private static Map<CConstraint, String> constrainedHashMap = new HashMap<CConstraint, String>();
+	
+	/** ID counter to create unique id for constrained mangling */
+	private static long uniqueID = 1;
+	
+	/**
+	 * Creates a new unique ID
+	 * @return A new unique ID
+	 */
+	private static long getUniqueID() {
+		return uniqueID++;
+	}
+	
+	/**
+	 * Checks if a given type is a constrained type and then returns the appropriate mangled name
+	 * If the given type is not actually a constrained type the given mangled base type name will be returned. 
+	 * 
+	 * @param mangledBaseType The mangled base type name of the given type
+	 * @param realType The real type -> Can be a constrained type
+	 * @return The mangled name. 
+	 */
+	private static String maybeConstrained(String mangledBaseType, final Type realType) {
+		if(realType instanceof ConstrainedType) {
+			ConstrainedType cc = (ConstrainedType)realType;
+			CConstraint co = cc.getRealXClause();
+			String tmp = constrainedHashMap.get(co);
+			if(tmp != null) return mangledBaseType + tmp;
+			
+			long id = getUniqueID();
+			StringBuilder buf = new StringBuilder();
+			buf.append(MANGLED_CONSTRAINED);
+			buf.append(id);
+			
+			String ret = buf.toString();
+			constrainedHashMap.put(co, ret);
+			return mangledBaseType + ret;
+		}
+		return mangledBaseType;
+	}
+	
 	/**
 	 * Mangle a given type
 	 * @param type The type which should be mangled
@@ -453,7 +496,7 @@ public class X10NameMangler {
 		final Type ret = simplifyType(type);
 		if(!embed) {
 			tmp = tryPrimitiveType(ret);
-			if(tmp != null) return tmp;
+			if(tmp != null) return maybeConstrained(tmp, type);
 		}
 
 		if(ret instanceof X10ClassType) { // a class type
@@ -462,7 +505,7 @@ public class X10NameMangler {
 			assert(false): "Unknown type in mangleType" + ret.getClass() + ": " + ret;
 		}
 		
-		return tmp;
+		return maybeConstrained(tmp, type);
 	}
 	
 	/**

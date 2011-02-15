@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
 import x10.types.ConstrainedType_c;
 import x10.types.X10ClassType;
@@ -24,7 +23,6 @@ import firm.PrimitiveType;
 import firm.Program;
 import firm.Type;
 import firm.bindings.binding_oo.ddispatch_binding;
-import firm.bindings.binding_typerep.ir_type_state;
 
 /**
  * Includes everything to map X10 types to Firm types
@@ -200,10 +198,10 @@ public class TypeSystem extends X10TypeSystem_c {
 		}
 		
 		/* create interfaces */
-//		for (polyglot.types.Type iface : classType.interfaces()) {
-//			Type firmIface = asFirmCoreType(iface);
-//			result.addSuperType(firmIface);
-//		}
+		for (polyglot.types.Type iface : classType.interfaces()) {
+			Type firmIface = asFirmCoreType(iface);
+			result.addSuperType(firmIface);
+		}
 
 		/* create fields */
 		for (FieldInstance field : classType.fields()) {
@@ -212,15 +210,12 @@ public class TypeSystem extends X10TypeSystem_c {
 		
 		OO.setClassVPtrEntity(result, getVptrEntity());
 		
-		if (! flags.isInterface() && ! flags.isStruct()) {
-			Entity vtable = new Entity(Program.getGlobalType(),
-					X10NameMangler.mangleVTable(classType),
-					Mode.getP().getType());
+		if (!flags.isInterface() && !flags.isStruct()) {
+			Entity vtable = new Entity(Program.getGlobalType(), X10NameMangler.mangleVTable(classType), Mode.getP().getType());
 			OO.setClassVTableEntity(result, vtable);
 		}
 		
-		Entity classInfoEntity = new Entity(Program.getGlobalType(),Ident.createUnique(className + "$"), 
-				Mode.getP().getType());
+		Entity classInfoEntity = new Entity(Program.getGlobalType(),Ident.createUnique(className + "$"), Mode.getP().getType());
 		
 		OO.setClassRTTIEntity(result, classInfoEntity);
 		

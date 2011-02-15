@@ -178,7 +178,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private static final String X10_SAVED_THIS_LITERAL = "saved_this";
 	
 	/** The current firm construction object */
-	private Construction con;
+	private OOConstruction con;
 
 	/** To return Firm nodes for constructing expressions */
 	private Node returnNode;
@@ -551,14 +551,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param owner The owner of the method
 	 * @return A reference to the current (saved) construction 
 	 */
-	private Construction initConstruction(Entity entity, boolean closure, List<LocalInstance> formals, List<LocalInstance> locals, boolean isStatic, X10ClassType owner) {
+	private OOConstruction initConstruction(Entity entity, boolean closure, List<LocalInstance> formals, List<LocalInstance> locals, boolean isStatic, X10ClassType owner) {
 		int nVars = formals.size() + locals.size();
 		if (!isStatic) {
 			nVars++;
 		}
 		
 		Graph graph = new Graph(entity, nVars);
-		Construction savedConstruction = con;
+		OOConstruction savedConstruction = con;
 		con = new OOConstruction(graph);
 		
 		X10FirmContext newFirmContext = new X10FirmContext();
@@ -606,7 +606,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param entity The method entity for which the construction should be finished
 	 * @param savedConstruction A reference to the previous construction 
 	 */
-	private void finishConstruction(Entity entity, Construction savedConstruction) {
+	private void finishConstruction(Entity entity, OOConstruction savedConstruction) {
 		// create Return node if there was no explicit return statement yet
 		if (!con.getCurrentBlock().isBad()) {
 			assert ((MethodType)entity.getType()).getNRess() == 0;
@@ -623,7 +623,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	private void constructGraph(Entity entity, CodeBlock code, boolean closure, List<LocalInstance> formals, List<LocalInstance> locals, boolean isStatic, X10ClassType owner) {		
-		Construction savedConstruction = initConstruction(entity, closure, formals, locals, isStatic, owner);
+		OOConstruction savedConstruction = initConstruction(entity, closure, formals, locals, isStatic, owner);
 		
 		// Walk body and construct graph
 		visitAppropriate(code.body());
@@ -715,11 +715,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(dec);
 		List<ClassMember> initClassMembers = firmContext.getInitClassMembers();
 		
-		Construction savedConstruction = initConstruction(entity, false, formals, locals, isStatic, owner);
+		OOConstruction savedConstruction = initConstruction(entity, false, formals, locals, isStatic, owner);
 		
 		// The instance variables must be initialized first
 		for(ClassMember member : initClassMembers) {
-			// TODO: How we will handler Initializer_c ???
+			// TODO: How we will handle Initializer_c ???
 			if(member instanceof FieldDecl_c) {
 				FieldDecl_c fieldDecl = (FieldDecl_c)member;
 				assert(fieldDecl.init() != null);
@@ -953,7 +953,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
     	typeSystem.addExtraStaticField(statusFieldInst);
 
         Entity staticFieldGetterMethod = getGetterMethodForStaticField(fieldInst);
-        Construction savedConstruction = initConstruction(staticFieldGetterMethod, false, new LinkedList<LocalInstance>(), new LinkedList<LocalInstance>(), true, contType);
+        OOConstruction savedConstruction = initConstruction(staticFieldGetterMethod, false, new LinkedList<LocalInstance>(), new LinkedList<LocalInstance>(), true, contType);
         Entity statusFieldEnt = typeSystem.getEntityForField(statusFieldInst);
         
         // Set the default "UNITIALIZED" value for "field".__status;
@@ -2462,15 +2462,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(X10Instanceof_c n) {
-		assert con instanceof OOConstruction;
-		
 		visitAppropriate(n.expr());
 		Node objPtr = getReturnNode();
 		Type type = n.compareType().typeRef().get();
 		firm.Type firmType = typeSystem.asFirmCoreType(type);
 		Node mem = con.getCurrentMem();
 		
-		Node instanceOf = ((OOConstruction)con).newInstanceOf(mem, objPtr, firmType);
+		Node instanceOf = con.newInstanceOf(mem, objPtr, firmType);
 
 		Node projM = con.newProj(instanceOf, Mode.getM(), InstanceOf.pnM);
 		con.setCurrentMem(projM);
