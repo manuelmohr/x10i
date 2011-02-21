@@ -119,6 +119,11 @@ public class X10ASTQuery {
 	             fd.init().type().isChar() || fd.init().type().isNull()));
 	}
 	
+	/**
+	 * Extracts all class members from a given class members list which must be manually initialized (val instanced fields) 
+	 * @param members A list with class members
+ 	 * @return The class members from the given list which must be manually initialized
+	 */
 	public List<ClassMember> extractInits(List<ClassMember> members)
 	{
 		final List<ClassMember> ret = new LinkedList<ClassMember>();

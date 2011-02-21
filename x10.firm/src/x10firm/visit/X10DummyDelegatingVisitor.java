@@ -76,7 +76,6 @@ import x10.ast.StmtSeq_c;
 import x10.ast.SubtypeTest_c;
 import x10.ast.Tuple_c;
 import x10.ast.TypeDecl_c;
-import x10.ast.TypeParamNode;
 import x10.ast.When_c;
 import x10.ast.X10Binary_c;
 import x10.ast.X10Call_c;
