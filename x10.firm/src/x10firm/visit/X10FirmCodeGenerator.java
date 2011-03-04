@@ -149,6 +149,7 @@ import firm.Mode;
 import firm.OO;
 import firm.PointerType;
 import firm.Program;
+import firm.Relation;
 import firm.TargetValue;
 import firm.bindings.binding_ircons.ir_linkage;
 import firm.bindings.binding_ircons.ir_where_alloc;
@@ -158,7 +159,6 @@ import firm.bindings.binding_typerep.ir_visibility;
 import firm.nodes.Alloc;
 import firm.nodes.Block;
 import firm.nodes.Call;
-import firm.nodes.Cmp;
 import firm.nodes.Cond;
 import firm.nodes.InstanceOf;
 import firm.nodes.Load;
@@ -173,16 +173,16 @@ import firm.nodes.Store;
 public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/** names of builtin functions */
 	private static final String X10_STRING_LITERAL = "x10_string_literal";
-	
+
 	/** name of saved this pointer in closure */
 	private static final String X10_SAVED_THIS_LITERAL = "saved_this";
-	
+
 	/** The current firm construction object */
 	private OOConstruction con;
 
 	/** To return Firm nodes for constructing expressions */
 	private Node returnNode;
-	
+
 	/** X10 Context */
 	private X10Context_c x10Context = null;
 
@@ -196,12 +196,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private final HashMap<X10MethodInstance, Entity> methodEntities = new HashMap<X10MethodInstance, Entity>();
 	/** mapping between X10ConstructorInstances and firm entities */
 	private final HashMap<X10ConstructorInstance, Entity> constructorEntities = new HashMap<X10ConstructorInstance, Entity>();
-	
+
 	/**
 	 * Closure id for generating unique closure names
 	 */
 	private static long closureId = 1;
-	
+
 	/**
 	 * Returns a unique closure name
 	 * @return A unique closure name
@@ -209,7 +209,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private static String getUniqueClosureName() {
 		return "Firm_Closure_" + closureId++;
 	}
-	
+
 	/** current firm context */
 	private X10FirmContext firmContext = new X10FirmContext();
 	
@@ -226,14 +226,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			Block bTrue  = topScope.getTrueBlock();
 			Block bFalse = topScope.getFalseBlock();
 
-			Node proj = n;
+			Node condition = n;
 			if(!(n instanceof Proj)) { // No projection, create an explicit compare and projection node.
 				Node one  = con.newConst(1, n.getMode());
-				Node cmp  = con.newCmp(n, one);
-				proj 	  = con.newProj(cmp, Mode.getb(), Cmp.pnEq);
+				Node cmp  = con.newCmp(n, one, Relation.Equal);
+				condition = cmp;
 			}
 
-			Node cond = con.newCond(proj);
+			Node cond = con.newCond(condition);
 
 			Node projTrue  = con.newProj(cond, Mode.getX(), Cond.pnTrue);
 			Node projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
@@ -245,12 +245,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 		return n;
 	}
-	
+
 	private Node makeExpressionCondition(final Expr e) {
 		Node ret = visitExpression(e);
 		return makeCondition(ret);
 	}
-	
+
 	/**
 	 * Evaluates the given expression and creates the appropriate firm nodes. Afterwards
 	 * it creates a new true (holds the value 1) and false (holds the value 0) block for
@@ -287,16 +287,16 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			makeExpressionCondition(E);
 		}
 		firmContext.popFirmScope();
-		
+
 		bTrue.mature();
 		bFalse.mature();
-		
+
 		Block phiBlock = con.newBlock();
 		phiBlock.addPred(jmp1);
 		phiBlock.addPred(jmp2);
 
 		con.setCurrentBlock(phiBlock);
-		
+
 		phiBlock.mature();
 
 		return con.newPhi(new Node[]{one, zero}, Mode.getb());
@@ -312,7 +312,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		this.typeSystem = typeSystem;
 		this.query      = new X10ASTQuery(typeSystem, compiler);
 		this.x10Context = new X10Context_c(typeSystem);
-		
+
 		X10NameMangler.setup(typeSystem);
 	}
 
@@ -430,20 +430,20 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 		return entity;
 	}
-	
+
 	/**
-	 * Returns the firm entity of a method which a given method instance maybe overwrites. 
+	 * Returns the firm entity of a method which a given method instance maybe overwrites.
 	 * @param instance The method instance which should be checked
 	 * @return The appropriate firm method entity or null if the given method instance doesn`t overwrite any other methods 
 	 * in the class hierarchy. 
 	 */
 	private Entity getMethodOverride(X10MethodInstance instance) {
 		X10Flags flags = X10Flags.toX10Flags(instance.flags());
-		// static methods can`t override other methods. 
+		// static methods can`t override other methods.
 		if(flags.isStatic()) return null;
-		
+
 		StructType cont = instance.container();
-		
+
 		boolean firstRun = true;
 		while(cont != null) {
 			if(!firstRun) {
@@ -455,20 +455,20 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			}
 
 			firstRun = false;
-			
+
 			StructType sup = null;
-			
-			// check if we have a super class. 
+
+			// check if we have a super class.
 			if(cont instanceof ObjectType) {
 				ObjectType objType = (ObjectType)cont;
 				if(objType.superClass() instanceof StructType) {
 					sup = (StructType)objType.superClass();
 				}
 			}
-			
+
 			cont = sup;
 		}
-		
+
 		return null;
 	}
 
@@ -502,11 +502,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			if (flags.isNative()) {
 				entity.setVisibility(ir_visibility.ir_visibility_external);
 			}
-			
+
 			Entity overwritten = getMethodOverride(instance);
-			if(overwritten != null) 
+			if(overwritten != null)
 				entity.addEntityOverwrites(overwritten);
-			
+
 			methodEntities.put(instance, entity);
 		}
 
@@ -519,25 +519,25 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 */
 	private List<LocalInstance> getAllLocalInstancesInCodeBlock(CodeBlock code) {
 		List<LocalInstance> ret = new LinkedList<LocalInstance>();
-		
+
 		if (code.body() == null)
 			return ret;
-		 
+
 		X10LocalDeclVisitor xLocalsVisitor = new X10LocalDeclVisitor();
 		xLocalsVisitor.visit(code.body());
-	
+
 		List<LocalDecl_c> matchesList = xLocalsVisitor.getLocals();
-		
+
 		if(matchesList.size() == 0)
 			return ret;
-			
+
 		for (LocalDecl_c c : matchesList) {
 			// extract the local instances from the found "LocalDecl_c`s"
 			LocalInstance locInstance = c.localDef().asInstance();
-			
+
 			ret.add(locInstance);
 		}
-		
+
 		return ret;
 	}
 	
@@ -556,7 +556,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		if (!isStatic) {
 			nVars++;
 		}
-		
+
 		Graph graph = new Graph(entity, nVars);
 		OOConstruction savedConstruction = con;
 		con = new OOConstruction(graph);
@@ -564,9 +564,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		X10FirmContext newFirmContext = new X10FirmContext();
 		
 		newFirmContext.setInClosure(closure);
-		
+
 		newFirmContext.setCurClass(owner);
-		
+
 		firmContext = firmContext.pushFirmContext(newFirmContext);
 
 		Node args = graph.getArgs();
@@ -585,7 +585,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			Mode mode = typeSystem.getFirmMode(loc.type());
 			Node projParam = con.newProj(args, mode, idx);
 			con.setVariable(idx, projParam);
-			
+
 			// map the local instance with the appropriate idx.
 			firmContext.setVarEntry(X10VarEntry.newVarEntryForLocalInstance(loc, idx));
 			idx++;
@@ -614,11 +614,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			Node ret = con.newReturn(mem, new Node[0]);
 			con.getGraph().getEndBlock().addPred(ret);
 		}
-		
+
 		con.finish();
-			
+
 		con = savedConstruction;
-		
+
 		firmContext = firmContext.popFirmContext();
 	}
 
@@ -638,7 +638,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		X10Flags          flags          = X10Flags.toX10Flags(methodInstance.flags());
 		Entity            entity         = getMethodEntity(methodInstance);
 
-		if (flags.isNative() || flags.isAbstract()) { 
+		if (flags.isNative() || flags.isAbstract()) {
 			/* native code is defined elsewhere, so nothing left to do */
 			return;
 		}
@@ -646,7 +646,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		List<LocalInstance> formals = methodInstance.formalNames();
 		boolean isStatic = flags.isStatic();
 		X10ClassType owner = (X10ClassType) methodInstance.container();
-		
+
 		// extract all formals and locals from the method.
 		List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(dec);
 		constructGraph(entity, dec, false, formals, locals, isStatic, owner);
@@ -710,7 +710,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		List<LocalInstance> formals = instance.formalNames();
 		boolean isStatic = flags.isStatic();
 		X10ClassType owner = (X10ClassType) instance.container();
-		
+
 		// extract all formals and locals from the method.
 		List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(dec);
 		List<ClassMember> initClassMembers = firmContext.getInitClassMembers();
@@ -1132,7 +1132,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 			bBreak.addPred(proj);
 		}
-		
+
 		if(bBreak != null)
 			bBreak.mature();
 
@@ -1172,7 +1172,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		if(fallthrough != null)
 			block.addPred(fallthrough);
-		
+
 		block.mature();
 
 		con.setCurrentBlock(block);
@@ -1239,7 +1239,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Expr lhs = asgn.left();
 		Expr rhs = asgn.right();
 
-		if(lhs instanceof Local_c) { // Assignment to a local variable -> Assignments to saved variables are not allowed in closures. 
+		if(lhs instanceof Local_c) { // Assignment to a local variable -> Assignments to saved variables are not allowed in closures.
 			Node leftRet  = visitExpression(lhs);
 			Node rightRet = visitExpression(rhs);
 
@@ -1285,7 +1285,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		if (initexpr != null) {
 			LocalInstance loc = n.localDef().asInstance();
-			
+
 			Node initNode = visitExpression(initexpr);
 			X10VarEntry var = firmContext.getVarEntry(loc);
 			int idx = var.getIdx();
@@ -1373,7 +1373,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 
 		bCond.addPred(con.newJmp());
-		
+
 		bCond.mature();
 
 		con.setCurrentBlock(bCond);
@@ -1389,7 +1389,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			makeExpressionCondition(n.cond());
 		}
 		firmContext.popFirmScope();
-		
+
 		bTrue.mature();
 		bFalse.mature();
 
@@ -1428,7 +1428,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			makeExpressionCondition(n.cond());
 		}
 		firmContext.popFirmScope();
-		
+
 		bTrue.mature();
 
 		con.setCurrentBlock(bTrue);
@@ -1450,12 +1450,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			visitAppropriate(body);
 		}
 		firmContext.popFirmScope();
-		
+
 		bFalse.mature();
 
 		if(!con.getCurrentBlock().isBad())
 			bCond.addPred(con.newJmp());
-		
+
 		bCond.mature();
 
 		con.setCurrentBlock(bFalse);
@@ -1505,16 +1505,16 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			makeExpressionCondition(n.cond());
 		}
 		firmContext.popFirmScope();
-		
+
 		bFalse.mature();
-		
+
 		// add a common phi block for the true and false expressions.
 		Block phiBlock = con.newBlock();
 		phiBlock.addPred(endIf);
 		phiBlock.addPred(endElse);
 
 		con.setCurrentBlock(phiBlock);
-		
+
 		phiBlock.mature();
 
 		Node ret = con.newPhi(new Node[]{trueExpr, falseExpr}, falseExpr.getMode());
@@ -1555,7 +1555,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			con.setCurrentBlock(bTrue);
 		else
 			endIf = con.newJmp();
-		
+
 		bTrue.mature();
 
 		if (n.alternative() != null) {
@@ -1574,7 +1574,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			else {
 				bAfter.addPred(con.newJmp());
 			}
-			
+
 			if(bFalse != null)
 				bFalse.mature();
 		}
@@ -1583,7 +1583,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		if(endIf != null)
 			bAfter.addPred(endIf);
-		
+
 		bAfter.mature();
 	}
 
@@ -1652,7 +1652,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Field_c n) {
 		FieldInstance instance = n.fieldInstance();
 		FieldInstance def = instance.def().asInstance();
-		
+
 		X10Flags flags = X10Flags.toX10Flags(def.flags());
 		
 		if(flags.isStatic() && !n.isConstant()) {
@@ -1671,11 +1671,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			setReturnNode(ret);
 		}
 	}
-	
+
 	/**
 	 * Returns the appropriate field instance from a given class type and field name (Only for closure implementation)
 	 * @param closureType The class type of the closure
-	 * @param name The name of the field (only the name, no type names etc.) 
+	 * @param name The name of the field (only the name, no type names etc.)
 	 * @return The appropriate field instance
 	 */
 	private FieldInstance getClosureFieldInstance(X10ClassType closureType, String name) {
@@ -1688,10 +1688,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
      		}
      	}
      	assert(fInst != null);
-     	
+
      	return fInst;
 	}
-	
+
 	/**
 	 * Generate the appropriate firm nodes for a field read operation in a closure
 	 * @param fieldName The name of the field
@@ -1701,7 +1701,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private Node doClosureFieldRead(String fieldName, X10ClassType closureType) {
 		FieldInstance fInst = getClosureFieldInstance(closureType, fieldName);
 		Entity entity = typeSystem.getEntityForField(fInst);
-		
+
 		firm.Mode mode = typeSystem.getFirmMode(closureType);
 		Node thisPointer = getThis(mode);
 		Node address = con.newSel(thisPointer, entity);
@@ -1713,10 +1713,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Node newMem = con.newProj(load, Mode.getM(), Load.pnM);
 		Node result = con.newProj(load, loadMode, Load.pnRes);
 		con.setCurrentMem(newMem);
-		
+
 		return result;
 	}
-	
+
 	/**
 	 * Generate the appropriate firm nodes for a field write operation in a closure
 	 * @param objectPointer The appropriate "this" node
@@ -1751,14 +1751,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				setReturnNode(ret);
 				return;
 			}
-			/* it`s actually a local instance in the closure 
-			   generate code for a normal local instance. 
-			   -> below else block 
-			*/ 
+			/* it`s actually a local instance in the closure
+			   generate code for a normal local instance.
+			   -> below else block
+			*/
 		} else {
 			var = firmContext.getVarEntry(loc);
 		}
-		
+
 		int idx = var.getIdx();
 		Node ret = con.getVariable(idx, typeSystem.getFirmMode(loc.type()));
 		setReturnNode(ret);
@@ -1969,31 +1969,31 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			throw new RuntimeException("Not implemented yet");
 		}
 	}
-    
-    
+
+
     /**
      * Mapping between the signature (!!!) of the "apply" method in a closure and the appropriate
      * entity of the super interface
      */
 	private static final Map<String, Entity> closureEntities = new HashMap<String, Entity>();
-	
-	/** 
+
+	/**
 	 * Create a new mapping between the signature of the "apply" method and the appropriate entity
 	 * of the super class (interface)
 	 */
 	private static void putClosureEntity(String sig, Entity ent) {
 		closureEntities.put(sig, ent);
 	}
-	
+
 	/**
-	 * Returns the appropriate entity for a given signature. 
+	 * Returns the appropriate entity for a given signature.
 	 * @param sig The signature of the "apply" method
 	 * @return The appropriate entity
 	 */
 	private static Entity getClosureEntity(String sig) {
 		return closureEntities.get(sig);
 	}
-	
+
 	/**
 	 * Helper function to create a new closure def class (see newClosureDef)
 	 * @param def The ClosureDef from which the closure class definition should be created
@@ -2002,17 +2002,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private X10ClassDef newClosureDefHelp(final ClosureDef def) {
         final Position pos = def.position();
 
-        X10ClassDef cd = new X10ClassDef_c(typeSystem, null) { 	
+        X10ClassDef cd = new X10ClassDef_c(typeSystem, null) {
             private static final long serialVersionUID = 4543620040069882230L;
             @Override
-            public boolean isFunction() { 
+            public boolean isFunction() {
                 return true;
             }
         };
-        
+
         // use a unique name for the closure class
         final String name = getUniqueClosureName();
-        
+
         // Get "Object" class and set it as the super class
         QName fullName = QName.make("x10.lang", "Object");
         Named n = typeSystem.systemResolver().check(fullName);
@@ -2040,55 +2040,55 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
         }
 
         // Instantiate the super type on the new parameters.
-        X10ClassType sup = (X10ClassType)ClosureSynthesizer.closureBaseInterfaceDef(typeSystem, numTypeParams, 
-        		numValueParams, 
-        		ci.returnType().isVoid(),
-        		def.formalNames(),
-        		def.guard())
-        		.asType();
+        X10ClassType sup = (X10ClassType)ClosureSynthesizer.closureBaseInterfaceDef(typeSystem, numTypeParams,
+				numValueParams,
+				ci.returnType().isVoid(),
+				def.formalNames(),
+				def.guard())
+			.asType();
 
         assert sup.x10Def().typeParameters().size() == typeArgs.size() : def + ", " + sup + ", " + typeArgs;
         sup = sup.typeArguments(typeArgs);
-        
+
         cd.addInterface(Types.ref(sup));
-        
+
         return cd;
 	}
-    
+
 	/**
 	 * Creates a new class definition for a closure
 	 * @param def The ClosureDef from which the closure class definition should be created
 	 * @param savedFields The field which should be saved in the closure class
 	 * @param needSavedThis True if a reference to the current class (upper) should be saved in the closure class
-	 * @return The created closure class definition. 
+	 * @return The created closure class definition.
 	 */
 	private X10ClassDef newClosureDef(final ClosureDef def, Set<LocalInstance> savedFields,
 			boolean needSavedThis) {
-		
+
 		X10ClassDef cd = newClosureDefHelp(def);
 		X10ClassType ct = (X10ClassType)cd.asType();
 		Position pos = cd.position();
-		
+
 		X10ClassType supInt = (X10ClassType)cd.interfaces().get(0).get();
 		X10MethodInstance supApplyMethInst = (X10MethodInstance)supInt.methods().get(0);
-		
+
 		Entity ent = getMethodEntity(supApplyMethInst);
 		putClosureEntity(supApplyMethInst.signature(), ent);
-		
-		// Copy the formal types from the method instance !!! and not from the method def. 
-		// Method def can have unresolved types. 
+
+		// Copy the formal types from the method instance !!! and not from the method def.
+		// Method def can have unresolved types.
 		List<Ref<? extends Type>> types = new LinkedList<Ref<? extends Type>>();
 		for(Type t : supApplyMethInst.formalTypes())
 			types.add(Types.ref(t));
-        
+
         // create the "apply" method.
-        final X10MethodDef mi = typeSystem.methodDef(pos, Types.ref(ct),
-        		Flags.PUBLIC, Types.ref(supApplyMethInst.returnType()),
-        		ClosureCall.APPLY, 
-        		types);
-        
+		final X10MethodDef mi = typeSystem.methodDef(pos, Types.ref(ct),
+				Flags.PUBLIC, Types.ref(supApplyMethInst.returnType()),
+				ClosureCall.APPLY,
+				types);
+
         cd.addMethod(mi);
-		
+
         // create the context of the closure
         for(LocalInstance loc : savedFields) {
             FieldDef fdef = typeSystem.fieldDef(pos, Types.ref(ct), Flags.PUBLIC, Types.ref(loc.type()), loc.name());
@@ -2100,40 +2100,40 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
         	FieldDef fdef = typeSystem.fieldDef(pos, Types.ref(ct), Flags.PUBLIC, Types.ref(firmContext.getCurClass()), Name.make(X10_SAVED_THIS_LITERAL));
         	cd.addField(fdef);
         }
-        
+
         return cd;
 	}
-	
+
 	@Override
 	public void visit(Closure_c n) {
 		ClosureDef def = n.closureDef();
 		ClosureInstance closureInstance = def.asInstance();
-		
+
 		List<LocalInstance> formals = closureInstance.formalNames();
-		
+
 		X10ClosureVisitor closureVisitor = new X10ClosureVisitor(formals);
 		closureVisitor.visit(n.body());
-		
+
 		List<LocalInstance> locals = closureVisitor.getLocals();
 		Set<LocalInstance> savedLocals = closureVisitor.getSavedLocalInstances();
 		boolean needSavedThis = closureVisitor.needSavedThis();
-		
+
 		X10ClassDef closureClassDef = newClosureDef(def, savedLocals, needSavedThis);
 		X10ClassType closureType = (X10ClassType)closureClassDef.asType();
         X10MethodInstance applyMethod = (X10MethodInstance)closureType.methods().get(0);
-        
+
 		Entity entity = getMethodEntity(applyMethod);
-        
+
 		/* Create an instance of the closure and save the current context. */
         final Node objectPointer = genNewAlloc(closureType, closureType);
         for(LocalInstance loc : savedLocals) {
     		X10VarEntry var = firmContext.getVarEntry(loc);
     		assert var.getIdx() != -1; /* must be a local var */
-    		
+
     		Node rhs = con.getVariable(var.getIdx(), typeSystem.getFirmMode(var.getVarInstance().type()));
         	doClosureFieldWrite(objectPointer, loc.def().name().toString(), closureType, rhs);
         }
-        
+
         if(needSavedThis) {
         	Node thisPointer = null;
         	if(firmContext.isInClosure()) {
@@ -2146,12 +2146,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
         	doClosureFieldWrite(objectPointer, X10_SAVED_THIS_LITERAL, closureType, thisPointer);
         }
-        
+
 		constructGraph(entity, n, true, formals, locals, false, closureType);
-		
+
 		setReturnNode(objectPointer);
 	}
-	
+
 	@Override
 	public void visit(ClosureCall_c c) {
 		/* determine called function */
@@ -2163,7 +2163,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	/**
-	 * Create the appropriate firm nodes for a "new" alloc. 
+	 * Create the appropriate firm nodes for a "new" alloc.
 	 */
 	private Node genNewAlloc(Type x10ResType, Type x10Type) {
 		firm.Type resType  = typeSystem.asFirmType(x10ResType);
@@ -2174,7 +2174,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Node newMem = con.newProj(alloc, Mode.getM(), Alloc.pnM);
 		Node res = con.newProj(alloc, resType.getMode(), Alloc.pnRes);
 		con.setCurrentMem(newMem);
-		
+
 		return res;
 	}
 	
@@ -2188,11 +2188,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 	
 	/**
-	 * Creates the appropriate firm graph for a call. 
+	 * Creates the appropriate firm graph for a call.
 	 * @param isStatic True if the called method is static (-> static binding)
 	 * @param entity The entity of the method
 	 * @param args The arguments of the method
-	 * @param target The target of the method call. 
+	 * @param target The target of the method call.
 	 */
 	private void genX10Call(final boolean isStatic, final Entity entity, final List<Expr> args, final Receiver target) {
 		
@@ -2249,29 +2249,27 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		// only '==', '!=', '&&' or '||' are allowed operators.
 		// all other operators are implemented by native calls.
 
-	    Expr left 			= B.left();
-	    Type l 				= left.type();
-	    Expr right 			= B.right();
-	    Type r 				= right.type();
-	    Binary.Operator op 	= B.operator();
+		Expr left 			= B.left();
+		Type l 				= left.type();
+		Expr right 			= B.right();
+		Type r 				= right.type();
+		Binary.Operator op 	= B.operator();
 
-	    if (op == Binary.EQ || op == Binary.NE) { // Added for testing purposes.
-	    	int modus = (op == Binary.EQ) ? Cmp.pnEq : Cmp.pnLg;
+		if (op == Binary.EQ || op == Binary.NE) { // Added for testing purposes.
+			Relation modus = (op == Binary.EQ) ? Relation.Equal : Relation.LessGreater;
 
-	    	X10FirmScope curScope = firmContext.getTopScope();
-	    	if(curScope.getTrueBlock() != null && curScope.getFalseBlock() != null ) {
+			X10FirmScope curScope = firmContext.getTopScope();
+			if(curScope.getTrueBlock() != null && curScope.getFalseBlock() != null ) {
 				Block bTrue  = curScope.getTrueBlock();
 				Block bFalse = curScope.getFalseBlock();
 
-	    		Node retLeft  = visitExpression(left);
-	    		Node retRight = visitExpression(right);
+				Node retLeft  = visitExpression(left);
+				Node retRight = visitExpression(right);
 
-	    		// no new firm scope needed
+				// no new firm scope needed
 
-				Node cmp  = con.newCmp(retLeft, retRight);
-				Node proj = con.newProj(cmp, Mode.getb(), modus);
-
-				Node cond = con.newCond(proj);
+				Node cmp  = con.newCmp(retLeft, retRight, modus);
+				Node cond = con.newCond(cmp);
 
 				Node projTrue  = con.newProj(cond, Mode.getX(), Cond.pnTrue);
 				Node projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
@@ -2281,19 +2279,19 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 				setReturnNode(cond);
 
-	    	} else {
-	    		Node ret = makeConditionalPhiTrailer(B);
-	    		setReturnNode(ret);
-	    	}
+			} else {
+				Node ret = makeConditionalPhiTrailer(B);
+				setReturnNode(ret);
+			}
 
-	    	return;
-	    } else if ((l.isNumeric() && r.isNumeric()) || (l.isBoolean() && r.isBoolean())) {
-	    	// delegate it to Binary_c
-	        visit((Binary_c)B);
-	        return;
-	    }
+			return;
+		} else if ((l.isNumeric() && r.isNumeric()) || (l.isBoolean() && r.isBoolean())) {
+			// delegate it to Binary_c
+			visit((Binary_c)B);
+			return;
+		}
 
-	    throw new RuntimeException("User-defined binary operators should have been desugared earier");
+		throw new RuntimeException("User-defined binary operators should have been desugared earier");
 	}
 
 	@Override
@@ -2351,7 +2349,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				ret = makeExpressionCondition(B.right());
 			}
 			firmContext.popFirmScope();
-			
+
 			if(op == Binary.COND_AND) {
 				bTrue.mature();
 			} else {
@@ -2364,12 +2362,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			setReturnNode(ret);
 		}
 	}
-	
+
 	@Override
 	public void visit(ParExpr_c n) {
 		visitAppropriate(n.expr());
 	}
-	
+
 	@Override
 	public void visit(TypeDecl_c n) {
 		throw new RuntimeException("Not implemented yet");
@@ -2379,12 +2377,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(LocalTypeDef_c n) {
 		throw new RuntimeException("Not implemented yet");
 	}
-	
+
 	@Override
 	public void visit(LocalClassDecl_c n) {
 		throw new RuntimeException("Local classes should have been removed by a separate pass");
 	}
-	
+
 	@Override
 	public void visit(PackageNode_c n) {
 		throw new RuntimeException("Not implemented yet");
@@ -2394,7 +2392,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Import_c n) {
 		throw new RuntimeException("Not implemented yet");
 	}
-	
+
 	@Override
 	public void visit(PropertyDecl_c n) {
 		throw new RuntimeException("Not implemented yet");
@@ -2409,17 +2407,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Assert_c n) {
 		throw new RuntimeException("Not implemented yet");
 	}
-	
+
 	@Override
 	public void visit(Formal_c n) {
 		throw new RuntimeException("Not implemented yet");
 	}
-	
+
 	@Override
 	public void visit(For_c n) {
 		throw new RuntimeException("Not implemented yet");
 	}
-	
+
 	@Override
 	public void visit(RegionMaker_c n) {
 		throw new RuntimeException("Not implemented yet");
@@ -2429,7 +2427,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(ConstantDistMaker_c n) {
 		throw new RuntimeException("Not implemented yet");
 	}
-	
+
 	@Override
 	public void visit(X10CanonicalTypeNode_c n) {
 		throw new RuntimeException("Not implemented yet");
@@ -2444,7 +2442,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Unary_c n) {
 		throw new RuntimeException("Not implemented yet");
 	}
-	
+
 	@Override
 	public void visit(Id_c n) {
 		throw new RuntimeException("Not implemented yet");
