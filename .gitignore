@@ -7,6 +7,9 @@
 /x10.dist/bin/daemon
 /x10.dist/bin/manager
 /x10.dist/bin/launcher
+/x10.dist/bin/X10Launcher
+/x10.dist/bin/apgas
+/x10.dist/bin/precommit
 /x10.dist/etc
 /x10.dist/include
 /x10.dist/lib
@@ -30,6 +33,7 @@
 /x10.runtime/src-cpp/libx10.mft
 /x10.runtime/src-cpp/libx10.so
 /x10.runtime/src-cpp/bdwgc
+/x10.runtime/src-cpp/libx10.properties
 /x10.runtime/x10rt/*.tgz
 /x10.runtime/x10rt/lib/
 /x10.runtime/x10rt/include/pgasrt.h
@@ -45,6 +49,8 @@
 /x10.runtime/x10rt/include/pgasrt_types.h
 /x10.runtime/x10rt/include/x10_x10rt_ActiveMessage.h
 /x10.runtime/x10rt/include/x10_x10rt_X10RT.h
+/x10.runtime/x10rt/include/x10_x10rt_MessageHandlers.h
+/x10.runtime/x10rt/include/x10_x10rt_TeamSupport.h
 /x10.runtime/x10rt/test/x10rt_basic.pgas_sockets*
 /x10.runtime/x10rt/test/x10rt_basic.sockets*
 /x10.runtime/x10rt/test/x10rt_basic.standalone*
@@ -60,3 +66,6 @@
 /x10.runtime/x10rt/pgas-20100916-linux_x86_g++4-sockets.tgz
 /x10.runtime/x10rt/bin
 /x10.runtime/x10rt/etc
+/x10.runtime/x10rt/sockets/X10Launcher
+
+/x10.wala/bin/
