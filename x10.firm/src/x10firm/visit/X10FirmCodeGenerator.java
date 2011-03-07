@@ -978,11 +978,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		Node retLeft  = genStaticFieldLoad(statusFieldInst);
 		Node retRight = con.newConst(new TargetValue(X10_STATIC_FIELD_STATUS_INITIALIZED, typeSystem.getFirmMode(typeSystem.Int())));
-		
-		Node cmp  = con.newCmp(retLeft, retRight);
-		Node proj = con.newProj(cmp, Mode.getb(), Cmp.pnLg);
 
-		Node cond = con.newCond(proj);
+		Node cmp  = con.newCmp(retLeft, retRight, Relation.LessGreater);
+
+		Node cond = con.newCond(cmp);
 
 		Node projTrue  = con.newProj(cond, Mode.getX(), Cond.pnTrue);
 		Node projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
