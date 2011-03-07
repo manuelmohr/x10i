@@ -11,7 +11,7 @@ import firm.nodes.Node;
  * For every new scope we will clone the current (top) scope and set the adequate attributes for the new scope.
  */
 class X10FirmScope {
-	
+
 	/**
 	 * Holds the corresponding target blocks for labeled continue and break statements.
 	 */
@@ -29,7 +29,7 @@ class X10FirmScope {
 
 		/** Constructor */
 		public X10FirmLabel() {
-			
+
 		}
 
 		/**
@@ -66,7 +66,7 @@ class X10FirmScope {
 			return bBlock;
 		}
 	}
-	
+
 	/**
 	 * Holds a reference to the upper FirmScope.
 	 */
@@ -79,27 +79,27 @@ class X10FirmScope {
 
 	/** Block we will jump into if an expression evaluates to true */
 	private Block trueBlock;
-	
+
 	/** Block we will jump into if an expression evaluates to false */
 	private Block falseBlock;
-	
+
 	/** Block we will jump into if we reach a continue statement */
 	private Block continueBlock;
-	
+
 	/** Block we will jump into if we reach a break statement */
 	private Block breakBlock;
-	
+
 	/** Reference to the current switch cond node -> null if we are not in a switch statement */
 	private Node curSwitchCond;
-	
+
 	/** Proj number for the 'default' statement in a switch statement */
 	private long curSwitchDefaultProjNr;
 
 	/** constructor */
 	public X10FirmScope() {
-		
+
 	}
-	
+
 	/**
 	 * Sets the upper scope
 	 * @param scope the upper scope
@@ -107,10 +107,9 @@ class X10FirmScope {
 	public void setPrev(X10FirmScope scope) {
 		prev = scope;
 	}
-	
+
 	/**
 	 * Returns the upper scope
-	 * @param The upper scope
 	 */
 	public X10FirmScope getPrev() {
 		return prev;

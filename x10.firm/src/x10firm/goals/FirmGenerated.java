@@ -2,11 +2,6 @@ package x10firm.goals;
 
 import java.io.IOException;
 
-import firm.Dump;
-import firm.Graph;
-import firm.Program;
-import firm.bindings.binding_irgopt;
-import firm.bindings.binding_iroptimize;
 import polyglot.ast.Node;
 import polyglot.frontend.Compiler;
 import polyglot.frontend.Job;
@@ -14,6 +9,10 @@ import polyglot.frontend.SourceGoal_c;
 import x10.extension.X10Ext;
 import x10firm.types.TypeSystem;
 import x10firm.visit.X10FirmCodeGenerator;
+import firm.Dump;
+import firm.Graph;
+import firm.Program;
+import firm.bindings.binding_iroptimize;
 
 /**
  * This defines the FirmGeneration goal (other people would say "phase")
@@ -39,19 +38,19 @@ public class FirmGenerated extends SourceGoal_c {
 		if (!((X10Ext) ast.ext()).subtreeValid()) {
 			return false;
 		}
-		
+
 		typeSystem.beforeGraphConstruction();
 
 		Compiler compiler = job().compiler();
 		final X10FirmCodeGenerator v = new X10FirmCodeGenerator(compiler,
 				typeSystem);
 		v.visitAppropriate(ast);
-		
+
 		try {
 			Dump.dumpTypeGraph("typegraph.vcg");
 		} catch (IOException e1) {
 		}
-		
+
 		for(Graph g : Program.getGraphs()) {
 			binding_iroptimize.optimize_cf(g.ptr);
 			Dump.dumpGraph(g, "--fresh");
