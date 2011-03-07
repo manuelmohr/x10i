@@ -1,4 +1,4 @@
-// Yoav added: IGNORE_FILE
+
 /*
  *  This file is part of the X10 project (http://x10-lang.org).
  *
@@ -35,13 +35,13 @@ public class CUDABlackScholes {
             opt_N:Int,
             R:Float,
             V:Float) {
-        val blocks = 480;
+        val blocks = p.isCUDA() ? 480 : 1;
         val threads = 128;
         finish async at (p) @CUDA @CUDADirectParams {
             //val blocks = CUDAUtilities.autoBlocks(),
             //    threads = CUDAUtilities.autoThreads();
-            for ([block] in 0..blocks-1) {
-                for ([thread] in 0..threads-1) async {
+            finish for ([block] in 0..(blocks-1)) async {
+                clocked finish for ([thread] in 0..(threads-1)) clocked async {
                     val tid = block * threads + thread;
                     val tids = blocks * threads;
                     for (var opt:Int=tid; opt < opt_N; opt+=tids) {
@@ -84,7 +84,6 @@ public class CUDABlackScholes {
 
         // Problem parameters
         val OPT_N = 4000000;
-        val NUM_ITERATIONS = 512;
         val RISKFREE = 0.02f;
         val VOLATILITY = 0.30f;
 
@@ -97,6 +96,7 @@ public class CUDABlackScholes {
         }
 
         val gpu = here.children().size==0 ? here : here.child(0);
+        val NUM_ITERATIONS = gpu==here ? 32 : 512;
         val cpu = here;
         val rand = new Random();
 
@@ -136,25 +136,25 @@ public class CUDABlackScholes {
         Console.OUT.println("Effective memory bandwidth: " + (5 * OPT_N * 4) * 1.0e-9f / (gpuTime * 1.0E-9f) + " GB/s");
         Console.OUT.println("Gigaoptions per second    : " + ((2 * OPT_N) * 1.0e-9f) / (gpuTime * 1.0e-9f));
 
-        CUDAUtilities.deleteRemoteArray(d_CallResult);
-        CUDAUtilities.deleteRemoteArray(d_PutResult);
-        CUDAUtilities.deleteRemoteArray(d_StockPrice);
-        CUDAUtilities.deleteRemoteArray(d_OptionStrike);
-        CUDAUtilities.deleteRemoteArray(d_OptionYears);
-
         // Read back GPU results
         finish {
             Array.asyncCopy(d_CallResult, 0, h_CallResultGPU, 0, OPT_N);
             Array.asyncCopy(d_PutResult, 0, h_PutResultGPU, 0, OPT_N);
         }
 
+        CUDAUtilities.deleteRemoteArray(d_CallResult);
+        CUDAUtilities.deleteRemoteArray(d_PutResult);
+        CUDAUtilities.deleteRemoteArray(d_StockPrice);
+        CUDAUtilities.deleteRemoteArray(d_OptionStrike);
+        CUDAUtilities.deleteRemoteArray(d_OptionYears);
+
         Console.OUT.println("Generating a second set of results at place " + cpu);
         doBlackScholes(cpu, 
-                new RemoteArray[Float](h_OptionYears),
-                new RemoteArray[Float](h_StockPrice),
-                new RemoteArray[Float](h_OptionStrike),
-                new RemoteArray[Float](h_CallResultCPU),
-                new RemoteArray[Float](h_PutResultCPU),
+                new RemoteArray[Float](h_OptionYears)   as RemoteArray[Float]{home==cpu && rank==1},
+                new RemoteArray[Float](h_StockPrice)    as RemoteArray[Float]{home==cpu && rank==1},
+                new RemoteArray[Float](h_OptionStrike)  as RemoteArray[Float]{home==cpu && rank==1},
+                new RemoteArray[Float](h_CallResultCPU) as RemoteArray[Float]{home==cpu && rank==1},
+                new RemoteArray[Float](h_PutResultCPU)  as RemoteArray[Float]{home==cpu && rank==1},
                 OPT_N,
                 RISKFREE,
                 VOLATILITY);

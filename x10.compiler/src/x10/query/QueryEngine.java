@@ -14,16 +14,15 @@ package x10.query;
 import polyglot.ast.Call;
 import polyglot.ast.Field;
 import polyglot.ast.Unary;
-import polyglot.types.ArrayType;
+import polyglot.types.JavaArrayType;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import x10.Configuration;
 import x10.ExtensionInfo;
 import x10.ast.SettableAssign;
 import x10.types.X10ClassType;
-import x10.types.X10Context;
-import x10.types.X10TypeMixin;
-import x10.types.X10TypeSystem;
+import polyglot.types.Context;
+import polyglot.types.TypeSystem;
 
 /**
  * A query engine for analysis results and other properties of various program

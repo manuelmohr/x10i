@@ -28,11 +28,12 @@ public class HeatTransfer_v2 {
     static val n = 3;
     static val epsilon = 1.0e-5;
 
-    static val BigD = Dist.makeBlock(new Array[Region(1){rect}][0..n+1, 0..n+1], 0);
+    static val BigD = Dist.makeBlock(new Array[Region(1){rect}][0..(n+1), 0..(n+1)], 0);
     static val D = BigD | (1..n)*(1..n);
     static val LastRow = (0..0)*(1..n);
     static val A = DistArray.make[Double](BigD,(p:Point)=>{ LastRow.contains(p) ? 1.0 : 0.0 });
     static val Temp = DistArray.make[Double](BigD);
+    static val Scratch = DistArray.make[Double](BigD);
 
     static def stencil_1([x,y]:Point(2)): Double {
         return ((at(A.dist(x-1,y)) A(x-1,y)) + 
@@ -49,7 +50,7 @@ public class HeatTransfer_v2 {
                 for (p:Point(2) in D | here)
                     Temp(p) = stencil_1(p);
 
-            delta = A.map(Temp, D.region, (x:Double,y:Double)=>Math.abs(x-y)).reduce(Math.max.(Double,Double), 0.0);
+            delta = A.map(Scratch, Temp, D.region, (x:Double,y:Double)=>Math.abs(x-y)).reduce(Math.max.(Double,Double), 0.0);
             finish ateach (p in D) A(p) = Temp(p);
         } while (delta > epsilon);
     }

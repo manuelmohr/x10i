@@ -17,7 +17,7 @@ import polyglot.util.Position;
 import polyglot.util.ErrorInfo;
 import polyglot.visit.NodeVisitor;
 import polyglot.frontend.Job;
-import polyglot.main.Report;
+import polyglot.main.Reporter;
 import polyglot.types.SemanticException;
 import x10.ast.AnnotationNode_c;
 import x10.ast.AssignPropertyCall;
@@ -25,24 +25,25 @@ import x10.ast.DepParameterExpr;
 import x10.ast.X10Formal_c;
 import x10.ast.Closure;
 import x10.ast.SettableAssign;
-import x10.errors.X10ErrorInfo;
 
 public class InstanceInvariantChecker extends NodeVisitor
 {
     private Job job;
+    private Reporter reporter;
 
     public InstanceInvariantChecker(Job job) {
         this.job = job;
+        this.reporter = job.extensionInfo().getOptions().reporter;
     }
 
     public Node visitEdgeNoOverride(Node parent, Node n) {
-    	if (Report.should_report("InstanceInvariantChecker", 2))
-    		Report.report(2, "Checking invariants for: " + n);
+    	if (reporter.should_report(Reporter.InstanceInvariantChecker, 2))
+    		reporter.report(2, "Checking invariants for: " + n);
     	String m = checkInvariants(n);
 
     	if (m!=null) {
     		String msg = m+("!")+(" n=")+(n).toString();
-    		job.compiler().errorQueue().enqueue(X10ErrorInfo.INVARIANT_VIOLATION_KIND,msg,n.position());
+    		job.compiler().errorQueue().enqueue(ErrorInfo.INVARIANT_VIOLATION_KIND,msg,n.position());
     	} else {
     	    n.del().visitChildren(this); // if there is an error, I don't recurse to the children
         }

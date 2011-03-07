@@ -14,6 +14,7 @@ package x10.types.constraints;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Collection;
 
 import polyglot.util.Copy;
 import x10.constraint.XFailure;
@@ -23,22 +24,26 @@ import x10.constraint.XVar;
 import x10.types.ConstrainedType;
 import x10.types.MacroType;
 import x10.types.ParameterType;
-import x10.types.ParameterType_c;
+
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
-import x10.types.X10Context;
+import polyglot.types.Context;
 import x10.types.X10ProcedureDef;
 import x10.types.X10ProcedureInstance;
-import x10.types.X10TypeMixin;
-import x10.types.X10TypeSystem;
+import x10.types.X10Context_c;
+import x10.types.TypeParamSubst;
+import polyglot.types.TypeSystem;
 import x10.types.ParameterType.Variance;
 import polyglot.types.Name;
-import polyglot.types.PrimitiveType;
+import polyglot.types.JavaPrimitiveType;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.types.Types;
 
 /**
+ * A TypeConstraint is a conjunction of constraints of the form T1 <: T2, or T1 == T2, 
+ * or T haszero.
+ * 
  * Todo: This needs to be fixed. The constraints in this have to be used to figure
  * out whether c is entailed. This needs a proper constraint representation, e.g.
  * X <: Y, Y <: Z |- X <: Z
@@ -51,112 +56,30 @@ public class TypeConstraint implements Copy, Serializable {
     private static final long serialVersionUID = -6305620393028945867L;
 
     List<SubtypeConstraint> terms;
-    boolean consistent;
 
     public TypeConstraint() {
         terms = new ArrayList<SubtypeConstraint>();
-        consistent = true;
     }
 
-    private void addTypeParameterBindings(X10ClassDef xcd, X10ClassType xct, Type ytype) throws XFailure {
-        if (ytype == null)
-            return;
 
-        if (ytype instanceof ConstrainedType) {
-            ConstrainedType ct = (ConstrainedType) ytype;
-            addTypeParameterBindings(xcd, xct, ct.baseType().get());
-        }
-
-        if (ytype instanceof MacroType) {
-            MacroType mt = (MacroType) ytype;
-            addTypeParameterBindings(xcd, xct, mt.definedType());
-        }
-
-        if (ytype instanceof X10ClassType) {
-            X10ClassType yct = (X10ClassType) ytype;
-            X10ClassDef ycd = yct.x10Def();
-            if (ycd == xcd) {
-                for (int i = 0; i < yct.typeArguments().size(); i++) {
-                    Type xt = xct.typeArguments().get(i);
-                    Type yt = yct.typeArguments().get(i);
-                    ParameterType.Variance v = xcd.variances().get(i);
-                    X10TypeSystem xts = (X10TypeSystem) xcd.typeSystem();
-                    switch (v) {
-                    case INVARIANT: {
-                        addTerm(new SubtypeConstraint(xt, yt, true));
-                        break;
-                    }
-                    case CONTRAVARIANT: {
-                        addTerm(new SubtypeConstraint(xt, yt, false));
-                        break;
-                    }
-                    case COVARIANT: {
-                        addTerm(new SubtypeConstraint(yt, xt, false));
-                        break;
-                    }
-                    }
-                }
-            }
-            else {
-                addTypeParameterBindings(xcd, xct, yct.superClass());
-                for (Type t: yct.interfaces()) {
-                    addTypeParameterBindings(xcd, xct, t);
-                }
-            }
-        }
-    }
 
     /**
-     * Add the binding xtype = ytype to this.
-     * @param xtype
-     * @param ytype
-     * @throws XFailure
-     */
-    public void addTypeParameterBindings(Type xtype, Type ytype) throws XFailure {
-    	if (xtype instanceof ParameterType) {
-    		X10TypeSystem xts = (X10TypeSystem) xtype.typeSystem();
-    		//	    XVar Xi = xts.xtypeTranslator().transTypeParam((ParameterType) xtype);
-    		//	    XTerm Yi = xts.xtypeTranslator().trans(ytype);
-    		//	    env.addBinding(Xi, Yi);
-    		addTerm(new SubtypeConstraint(ytype, xtype, false));
-    	}
-    	if (xtype instanceof X10ClassType) {
-    		X10ClassType xct = (X10ClassType) xtype;
-    		X10ClassDef xcd = xct.x10Def();
-    		addTypeParameterBindings(xcd, xct, ytype);
-    	}
-    	if (xtype instanceof ConstrainedType) {
-    		ConstrainedType ct = (ConstrainedType) xtype;
-    		addTypeParameterBindings(ct.baseType().get(), ytype);
-    	}
-    	if (xtype instanceof MacroType) {
-    		MacroType mt = (MacroType) xtype;
-    		addTypeParameterBindings(mt.definedType(), ytype);
-    	}
-    	if (xtype instanceof PrimitiveType) {
-    		// Nothing to do
-    	}
-    }
-
-    /**
-     * Returns the type constraint obtained by unifying the two types.
-     * The returned constraint will be inconsistent if the two types
-     * are not unifiable.
+     * Modifies "this" to match the unification of the two types.
+     * Returns true if the two types are unifiable.
      * @param t1
      * @param t2
      * @return
      */
-    public TypeConstraint unify(Type t1, Type t2, X10TypeSystem xts) {
-    	TypeConstraint result = this;
-    	final X10Context emptyContext = (X10Context) t1.typeSystem().emptyContext();
-    	t1 = X10TypeMixin.stripConstraints(t1);
-    	t2 = X10TypeMixin.stripConstraints(t2);   	
+    public boolean unify(Type t1, Type t2, TypeSystem xts) {
+    	final Context emptyContext = (Context) t1.typeSystem().emptyContext();
+    	t1 = Types.stripConstraints(t1);
+    	t2 = Types.stripConstraints(t2);   	
     	if (xts.typeEquals(t1, t2, emptyContext /*dummy*/))
-    			return this;
+            return true;
     	if ((t1 instanceof ParameterType) || (t2 instanceof ParameterType)) {
-    		result.addTerm(new SubtypeConstraint(t1, t2, SubtypeConstraint.EQUAL_KIND));
-    		if (! (result.consistent(emptyContext)))
-    			return result;
+    		addTerm(new SubtypeConstraint(t1, t2, SubtypeConstraint.Kind.EQUAL));
+    		if (! (consistent(emptyContext)))
+    			return false;
     	}
     	if ((t1 instanceof X10ClassType) && (t2 instanceof X10ClassType)) {
     		X10ClassType xt1 = (X10ClassType) t1;
@@ -164,52 +87,40 @@ public class TypeConstraint implements Copy, Serializable {
     		Type bt1 = xt1.x10Def().asType();
     		Type bt2 = xt2.x10Def().asType();
     		if (!xts.typeEquals(bt1,bt2, emptyContext)) {
-    			result.setInconsistent();
-    			return result;
+    			return false;
     		}
     		List<Type> args1 = xt1.typeArguments();
     		List<Type> args2 = xt2.typeArguments();
+    		if (args1 == null && args2 == null) {
+    		    return true;
+    		}
+    		if (args1 == null || args2 == null) {
+    		    return false;
+    		}
     		if (args1.size() != args2.size()) {
-    			result.setInconsistent();
-    			return result;
+    			return false;
     		}
     
     		for (int i=0; i < args1.size(); ++i) {
     			Type p1 = args1.get(i);
     			Type p2 = args2.get(i);
-    			result = unify(p1,p2,xts);
-    			if (! result.consistent(emptyContext)) {
-    				return result;
+    			boolean res = unify(p1,p2,xts);
+    			if (!res) {
+    				return false;
     			}
     		}
     	}
-    	return result;   			
+    	return true;
     }
-    public boolean entails(TypeConstraint c, X10Context xc) {
-        X10TypeSystem xts = (X10TypeSystem) xc.typeSystem();
-        for (SubtypeConstraint t : c.terms()) {
-            if (t.isEqualityConstraint()) {
-                if (!xts.typeEquals(t.subtype(), t.supertype(), xc)) {
-                    return false;
-                }
-            }
-            else if (t.isSubtypeConstraint()) {
-                if (!xts.isSubtype(t.subtype(), t.supertype(), xc)) {
-                    return false;
-                }
-            }
-            
-        }
-        return true;
-    }
-
     public List<SubtypeConstraint> terms() {
         return terms;
     }
 
     public TypeConstraint copy() {
         try {
-            return (TypeConstraint) super.clone();
+            final TypeConstraint res = (TypeConstraint) super.clone();
+            res.terms = new ArrayList<SubtypeConstraint>(terms);
+            return res;
         }
         catch (CloneNotSupportedException e) {
             assert false;
@@ -226,34 +137,33 @@ public class TypeConstraint implements Copy, Serializable {
         terms.add(c);
     }
 
-    public void addTerms(List<SubtypeConstraint> terms) {
+    public void addTerms(Collection<SubtypeConstraint> terms) {
         this.terms.addAll(terms);
     }
-    
-    public boolean consistent(X10Context context) {
-        if (consistent) {
-            X10Context xc = (X10Context) context;
-            X10TypeSystem ts = (X10TypeSystem) context.typeSystem();
-            for (SubtypeConstraint t : terms()) {
-                if (t.isEqualityConstraint()) {
-                    if (! ts.typeEquals(t.subtype(), t.supertype(), xc)) {
-                        consistent = false;
-                        return false;
-                    }
-                }
-                else if (t.isSubtypeConstraint()) {
-                    if (! ts.isSubtype(t.subtype(), t.supertype(), xc)) {
-                        consistent = false;
-                        return false;
-                    }
-                }
-            }
-        }
-        return consistent;
+
+    public boolean entails(TypeConstraint c, Context context) {
+        Context xc = ((X10Context_c)context).pushTypeConstraintWithContextTerms(this);  
+        return c.consistent(xc);
     }
 
-    public void setInconsistent() {
-        this.consistent = false;
+    public boolean consistent(Context context) {
+        TypeSystem ts = context.typeSystem();
+        for (SubtypeConstraint t : terms()) {
+            if (t.isEqualityConstraint()) {
+                if (! ts.typeEquals(t.subtype(), t.supertype(), context)) {
+                    return false;
+                }
+            }
+            else if (t.isSubtypeConstraint()) {
+                if (! ts.isSubtype(t.subtype(), t.supertype(), context)) {
+                    return false;
+                }
+            } else if (t.isHaszero()) {
+                if (!Types.isHaszero(t.subtype(),context))
+                    return false;
+            }
+        }
+        return true;
     }
 
     /*
@@ -277,12 +187,12 @@ public class TypeConstraint implements Copy, Serializable {
     }
 
 	public void checkTypeQuery( TypeConstraint query, XVar ythis, XVar xthis, XVar[] y, XVar[] x, 
-			 X10Context context) throws SemanticException {
+			 Context context) throws SemanticException {
 		 if (! consistent(context)) {
 	         throw new SemanticException("Call invalid; type environment is inconsistent.");
 	     }
 	    if (query != null) {
-	    	 if ( ! ((X10TypeSystem) context.typeSystem()).consistent(query, context)) {
+	    	 if ( ! ((TypeSystem) context.typeSystem()).consistent(query, context)) {
 	             throw new SemanticException("Type guard " + query + " cannot be established; inconsistent in calling context.");
 	         }
 	        TypeConstraint query2 = xthis==null ? query : query.subst(ythis, xthis);
@@ -295,21 +205,23 @@ public class TypeConstraint implements Copy, Serializable {
 		
 	}
 
-	public static <PI extends X10ProcedureInstance<?>> Type[] inferTypeArguments(PI me, Type thisType, List<Type> actuals, List<Type> formals, 
-			List<Type> typeFormals, X10Context context) throws SemanticException {
-	    X10TypeSystem xts = (X10TypeSystem) thisType.typeSystem();
+	public static <PI extends X10ProcedureInstance<?>> Type[] inferTypeArguments(PI me, 
+			Type thisType, List<Type> actuals, List<Type> formals, 
+			List<Type> typeFormals, Context context) throws SemanticException {
+	    TypeSystem xts = (TypeSystem) thisType.typeSystem();
 	
 	    TypeConstraint tenv = new TypeConstraint();
 	    CConstraint env = new CConstraint();
 	
-	    XVar ythis = X10TypeMixin.selfVar(thisType);
+	    ConstrainedType thisType1 = Types.toConstrainedType(thisType);
+	    XVar ythis = thisType instanceof ConstrainedType ? Types.selfVar((ConstrainedType) thisType) : null;
 	
 	    if (ythis == null) {
-	        CConstraint c = X10TypeMixin.xclause(thisType);
+	        CConstraint c = Types.xclause(thisType);
 	        c = (c == null) ? new CConstraint() : c.copy();
 	
 	        try {
-	            ythis = XTerms.makeUQV(); // xts.xtypeTranslator().genEQV(thisType, false);
+	            ythis = XTerms.makeUQV();  
 	            c.addSelfBinding(ythis);
 	            c.setThisVar(ythis);
 	        }
@@ -317,7 +229,7 @@ public class TypeConstraint implements Copy, Serializable {
 	            throw new SemanticException(e.getMessage(), me.position());
 	        }
 	
-	        thisType = X10TypeMixin.xclause(X10TypeMixin.baseType(thisType), c);
+	        thisType = Types.xclause(Types.baseType(thisType), c);
 	    }
 	
 	    assert actuals.size() == formals.size();
@@ -331,7 +243,7 @@ public class TypeConstraint implements Copy, Serializable {
 	    for (int i = 0; i < typeFormals.size(); i++) {
 	        Type xtype = typeFormals.get(i);
 	        xtype = xts.expandMacros(xtype);
-	        Type ytype = new ParameterType_c(xts, me.position(), Name.makeFresh(), Types.ref((X10ProcedureDef) me.def()));
+	        Type ytype = new ParameterType(xts, me.position(), Name.makeFresh(), Types.ref((X10ProcedureDef) me.def()));
 	
 	        // TODO: should enforce this statically
 	        if (! (xtype instanceof ParameterType))
@@ -354,12 +266,8 @@ public class TypeConstraint implements Copy, Serializable {
 	        // Be sure to copy the constraints since we use the self vars
 	        // in other constraints and don't want to conflate them if
 	        // realX returns the same constraint twice.
-	        final CConstraint yc = X10TypeMixin.realX(ytype).copy();
-	
-	        XVar xi;
-	        XVar yi;
-	
-	        yi = X10TypeMixin.selfVar(yc);
+	        final CConstraint yc = Types.realX(ytype).copy();
+	        XVar yi = Types.selfVar(yc);
 	
 	        if (yi == null) {
 	            // This must mean that yi was not final, hence it cannot occur in 
@@ -367,14 +275,12 @@ public class TypeConstraint implements Copy, Serializable {
 	            yi = XTerms.makeUQV(); // xts.xtypeTranslator().genEQV(ytype, false);
 	        }
 	
-	        try {
-	            tenv.addTypeParameterBindings(xtype, ytype);
-	        }
-	        catch (XFailure f) {
-	        }
+	      
+	        tenv.addTypeParameterBindings(xtype, ytype, false);
+	    
 	
-	        CConstraint xc = X10TypeMixin.realX(xtype).copy();
-	        xi = xts.xtypeTranslator().trans(me.formalNames().get(i), xtype);
+	       // CConstraint xc = X10TypeMixin.realX(xtype).copy();
+	        XVar xi = xts.xtypeTranslator().translate(me.formalNames().get(i));
 	
 	        x[i] = xi;
 	        y[i] = yi;
@@ -387,7 +293,7 @@ public class TypeConstraint implements Copy, Serializable {
 	        xthis = (XVar) ((X10ProcedureDef) me.def()).thisVar();
 	
 	    if (xthis == null)
-	        xthis = XTerms.makeLocal(XTerms.makeFreshName("this"));
+	        xthis = CTerms.makeThis(); // XTerms.makeLocal(XTerms.makeFreshName("this"));
 	
 	    try {
 	        expandTypeConstraints(tenv, context);
@@ -407,8 +313,116 @@ public class TypeConstraint implements Copy, Serializable {
 	
 	    return Y;
 	}
+	
+    /**
+     * Infer the type constraints to add from this, given <code>ytype <: xtype</code>. 
+     * The type constraints to be added are of the form given below, where
+     * <code>X</code> is a type parameter:
+     * <ul>
+     *  <li> <code>Type <: X</code>
+     *  <li> <code>X <: Type</code>
+     *  <li> <code>Type == X</code>
+     *  The algorithm proceeds as follows. From each formal type <code>xtype</code> and 
+     *  corresponding actual type <code>ytype</code>, we generate a set of type constraints thus:
+     *  
+     *  <ul>
+     *  <li> Replace <code>xtype</code> with <code> baseType(xtype)</code>. It is legitimate to strip the constraint, 
+     *  because the type constraint <code>S <: X{c}</code> or <code>S == X{c}</code> can be solved by
+     *  either <code>X==S</code> or <code>X==S{c}</code>. We choose to solve it with <code>S</code>.
+     *  <li> Do nothing and return if <code>xtype</code> is <code>null</code>. 
+     *  <li>If <code>xtype</code> is a class type, we call the helper <code>addTypeParameterBindings 
+     *  (X10ClassType xtype, Type ytype, boolean isEqual)</code>. This will case on <code>ytype</code>.
+     *  <li> If <code>xtype</code> is a <code>ParameterType</code>, <code>X</code>, then generate the 
+     *  constraint <code>ytype <: X </code> (if <code>isEqual</code>), else <code>ytype == X</code>.
+     *  </ul>
+     *  <p>
+     * @param xtype -- the formal type
+     * @param ytype -- the actual type
+     * @throws XFailure
+     */
+    void addTypeParameterBindings(Type xtype, Type ytype, boolean isEqual)  {
+    	xtype = Types.baseType(xtype);
+    	  if (xtype == null)
+          	return;
+    	if (xtype instanceof ParameterType) {
+    		// do not strip constraints from ytype
+    		addTerm(new SubtypeConstraint(ytype, xtype, isEqual)); 
+    		return;
+    	}
+    	if (xtype instanceof X10ClassType) {
+    		addTypeParameterBindings((X10ClassType) xtype, ytype, isEqual);
+    		return;
+    	}
+    }
+    /**
+     * This method is called only by <code>addTypeParameterBindings(xtype: Type, ytype: Type, boolean)</code>, once
+     * xtype is determined to be an <code>X10ClassType</code>.  Replace <code>ytype</code> with 
+     * <code>baseType(ytype)</code>. The constraint <code>{c}</code> can be ignored because we are trying
+     * to generate type constraints from <code>S{c} <: XClass</code>, and <code>{c}</code> does not play a role. 
+     * The only type constraints that will be generated will involve type-parameters occurring inside parameters of 
+     * <code>XClass</code>.
+     * <p>
+     * This leaves <code>xtype</code> and <code>ytype</code> as class types. Now compare the corresponding definitions. 
+     * If they are the same then determine if the types have parameters. Recursively generate constraints from the 
+     * corresponding pairs of parameters, depending on whether that position is invariant, covariant or contravariant.
+     * 
+     * <p> Otherwise (the definitions are not the same), repeat the process, replacing <code>ytype</code> successively 
+     * with its super type and with the interfaces it implements.
+     *
+     * @param xtype -- The formal type (may contain type parameters).
+     * @param ytype
+     * @param isEqual
+     * @throws XFailure
+     */
+    private void addTypeParameterBindings(X10ClassType xtype, Type ytype, boolean isEqual)  {
+    	ytype = Types.baseType(ytype);
+    	if (ytype == null)
+    		return;
+        if (ytype instanceof X10ClassType) {
+        	X10ClassDef xcd = xtype.x10Def();
+            X10ClassType yct = (X10ClassType) ytype;
+            X10ClassDef ycd = yct.x10Def();
+            if (ycd == xcd) {
+            	// Now we are in the case xct is Foo[S1,..,Sn] and ytype is Foo[T1,...,Tn]
+            	// This will generate for each i, Si <: Ti, Si == Ti or Ti <: Si depending on 
+            	// whether the i'th argument is contravariant, invariant or covariant.
+                if (xtype.typeArguments() != null && yct.typeArguments() != null) {
+                for (int i = 0; i < yct.typeArguments().size(); i++) {
+                    Type xt = xtype.typeArguments().get(i);
+                    Type yt = yct.typeArguments().get(i);
+                    ParameterType.Variance v = xcd.variances().get(i);
+                    switch (v) {
+                    case INVARIANT: {
+                    	addTypeParameterBindings(xt, yt, true);
+                        break;
+                    }
+                    case CONTRAVARIANT: {
+                    	addTypeParameterBindings(yt, xt, false);
+                        break;
+                    }
+                    case COVARIANT: {
+                    	addTypeParameterBindings(xt, yt, false);
+                        break;
+                    }
+                    }
+                }
+                }
+            }
+            else {
+                addTypeParameterBindings(xtype, yct.superClass(), isEqual);
+                for (Type t: yct.interfaces()) {
+                    addTypeParameterBindings(xtype, t, isEqual);
+                }
+            }
+        }
+        if (ytype instanceof ParameterType) { // can happen because of contravariance
+        	addTerm(new SubtypeConstraint(xtype, ytype, isEqual)); 
+        }
+    }
 
-	private static void expandTypeConstraints(TypeConstraint tenv, X10Context context) throws XFailure {
+
+
+	private static void expandTypeConstraints(TypeConstraint tenv, Context context) throws XFailure {
 	    List<SubtypeConstraint> originalTerms = new ArrayList<SubtypeConstraint>(tenv.terms());
 	    for (SubtypeConstraint term : originalTerms) {
 	        expandTypeConstraints(tenv, term, context);
@@ -438,10 +452,12 @@ public class TypeConstraint implements Copy, Serializable {
 	 *                                       A[T] <: B[S] && T??S   </td><td> X??Y (instantiate constraint on T and S) </td></tr><tr><td>
 	 * 5. exists Q s.t. A <: Q[X] <: B[Y] </td><td colspan="2"> ??? </td>
 	 * </tr></table>
-	 * FIXME: Only the equality case (1) and the same type case (3) are handled for now.
+	 * FIXME: Only the equality case (1) and the same type case (3) are handled for now.  Also "haszero" is not expanded.
 	 */
-	private static void expandTypeConstraints(TypeConstraint tenv, SubtypeConstraint term, X10Context context) throws XFailure {
-	    X10TypeSystem xts = (X10TypeSystem) context.typeSystem();
+	private static void expandTypeConstraints(TypeConstraint tenv, SubtypeConstraint term, Context context) throws XFailure {
+        if (term.isHaszero()) return;
+
+	    TypeSystem xts = (TypeSystem) context.typeSystem();
 	    Type b = xts.expandMacros(term.subtype());
 	    Type p = xts.expandMacros(term.supertype());
 	    if (!b.isClass() || !p.isClass()) return;
@@ -452,6 +468,7 @@ public class TypeConstraint implements Copy, Serializable {
 	    if (term.isEqualityConstraint()) {
 	        X10ClassDef def = sub.x10Def();
 	        if (def != sup.x10Def()) return; // skip case 2
+	        if (subTypeArgs == null || supTypeArgs == null) return;
 	        if (subTypeArgs.isEmpty() || subTypeArgs.size() != supTypeArgs.size()) return;
 	        for (int i = 0; i < subTypeArgs.size(); i++) {
 	            Type ba = subTypeArgs.get(i);
@@ -463,8 +480,10 @@ public class TypeConstraint implements Copy, Serializable {
 	        }
 	    }
 	    else {
+            assert term.isSubtypeConstraint();
 	        X10ClassDef def = sub.x10Def();
 	        if (def != sup.x10Def()) return; // FIXME: skip cases 4 and 5
+	        if (subTypeArgs == null || supTypeArgs == null) return;
 	        if (subTypeArgs.isEmpty() || subTypeArgs.size() != supTypeArgs.size()) return;
 	        List<Variance> variances = def.variances();
 	        for (int i = 0; i < subTypeArgs.size(); i++) {
@@ -489,14 +508,30 @@ public class TypeConstraint implements Copy, Serializable {
 	    }
 	}
 
-	private static <PI extends X10ProcedureInstance<?>> void inferTypeArguments(X10Context context, PI me, TypeConstraint tenv,
+	/**
+	 * Return in Y the result of inferring types for arguments to the call me. 
+	 * @param <PI>
+	 * @param context -- The context in which this call is being made
+	 * @param me  -- the PI against which this call is being made
+	 * @param tenv -- The type environment generated from this call (contains actualType <: formalType for each i)
+	 * @param X -- The list of types of the formals in me
+	 * @param Y -- The value of Y[i] is changed only if a type can be inferred
+	 * @param Z -- A copy of the input Y.
+	 * @param x -- formals for me
+	 * @param y -- names of actual arguments to the call
+	 * @param ythis -- name of the receiver in the calling environment
+	 * @param xthis -- formal name of the receiver
+	 * @throws SemanticException
+	 */
+	private static <PI extends X10ProcedureInstance<?>> void inferTypeArguments(Context context, PI me, TypeConstraint tenv,
 	        ParameterType[] X, Type[] Y, Type[] Z, XVar[] x, XVar[] y, XVar ythis, XVar xthis) throws SemanticException
 	{
-	    X10TypeSystem xts = (X10TypeSystem) me.typeSystem();
+	    TypeSystem xts = (TypeSystem) me.typeSystem();
 
-	    for (int i = 0; i < Y.length; i++) {
+	   Outer: for (int i = 0; i < Y.length; i++) {
 	        Type Yi = Y[i];
 
+	        List<Type> equal = new ArrayList<Type>();
 	        List<Type> upper = new ArrayList<Type>();
 	        List<Type> lower = new ArrayList<Type>();
 
@@ -507,27 +542,27 @@ public class TypeConstraint implements Copy, Serializable {
 	            Type m = worklist.get(j);
 	            for (SubtypeConstraint term : tenv.terms()) {
 	                SubtypeConstraint eq = term;
+	              
+                    if (term.isHaszero()) // haszero constraints do not participate in type inference
+                    	continue;
 	                Type sub = eq.subtype();
 	                Type sup = eq.supertype();
 	                if (term.isEqualityConstraint()) {
 	                    if (m.typeEquals(sub, context)) {
-	                        if (!upper.contains(sup))
-	                            upper.add(sup);
-	                        if (!lower.contains(sup))
-	                            lower.add(sup);
-	                        if (!worklist.contains(sup))
-	                            worklist.add(sup);
+	                    	if (! equal.contains(sup))
+	                    		equal.add(sup);
+	                    	if (! worklist.contains(sup))
+	                    		worklist.add(sup);
 	                    }
 	                    if (m.typeEquals(sup, context)) {
-	                        if (!upper.contains(sub))
-	                            upper.add(sub);
-	                        if (!lower.contains(sub))
-	                            lower.add(sub);
+	                        if (!equal.contains(sub))
+	                            equal.add(sub);
 	                        if (!worklist.contains(sub))
 	                            worklist.add(sub);
 	                    }
 	                }
 	                else {
+                        assert term.isSubtypeConstraint();
 	                    if (m.typeEquals(sub, context)) {
 	                        if (!upper.contains(sup))
 	                            upper.add(sup);
@@ -547,24 +582,67 @@ public class TypeConstraint implements Copy, Serializable {
 	        for (Type Xi : X) {
 	            upper.remove(Xi);
 	            lower.remove(Xi);
+	            equal.remove(Xi);
 	        }
 	        for (Type Zi : Z) {
 	            upper.remove(Zi);
 	            lower.remove(Zi);
+	            equal.remove(Zi);
 	        }
 
+	        Type equalBound = null;
+	        TypeSystem ts = context.typeSystem();
+	        for (Type t : equal) {
+	        	boolean valid = true;
+	        	for (Type s : equal) {
+	        		if (! ts.typeEquals(t,s, context)) {
+	        			valid = false;
+	        			break;
+	        		}
+	        	}
+	        	if (valid)
+	        		for (Type u : upper) {
+	        			if (! ts.isSubtype(t, u, context)) {
+	        				valid = false;
+	        				break;
+	        			}
+	        		}
+	        	if (valid) 
+	        		for (Type l : lower) {
+	        			if (! ts.isSubtype(l,t, context)) {
+	        				valid = false;
+	        				break;
+	        			}
+	        		}
+	        	if (valid)  {
+	        		Y[i] = t;
+	        	}
+	        	continue Outer; // We have found a solution for Y[i]
+	        }
 	        Type upperBound = null;
-	        Type lowerBound = null;
-
+	       
 	        for (Type t : upper) {
 	            if (t != null) {
 	                if (upperBound == null)
 	                    upperBound = t;
 	                else
-	                    upperBound = X10TypeMixin.meetTypes(xts, upperBound, t, context);
+	                    upperBound = Types.meetTypes(xts, upperBound, t, context);
 	            }
 	        }
-
+	        if (upperBound != null) {
+	        	boolean valid = true;
+	        	for (Type l : lower) {
+	        		if (! ts.isSubtype(l,upperBound, context)) {
+	        			valid = false;
+	        			break;
+	        		}
+	        	}
+	        	if (valid)  {
+	        		Y[i] = upperBound;
+	        	}
+	        	continue;
+	        }
+	        Type lowerBound = null;
 	        for (Type t : lower) {
 	            if (t != null) {
 	                if (lowerBound == null)
@@ -573,20 +651,15 @@ public class TypeConstraint implements Copy, Serializable {
 	                    lowerBound = xts.leastCommonAncestor(lowerBound, t, context);
 	            }
 	        }
+	        if (lowerBound != null) 
+	        	Y[i] = lowerBound;
 
-	        if (upperBound != null)
-	            Y[i] = upperBound;
-	        else if (lowerBound != null)
-	            Y[i] = lowerBound;
-	        else {
-	        	/*System.err.println("(Diagnostic) No constraint on type parameters. " 
-	        			 +
-	        			"Returning Any instead of throwing an exception."
-	        			 + (X[i] != null ? "\n\t: Position: " +  X[i].position().toString() : ""));
-	        			 */
-	        	Y[i] = xts.Any();
-	           // throw new SemanticException("Could not infer type for type parameter " + X[i] + ".", me.position());
-	        }
+	        //System.err.println("(Diagnostic) No constraint on type parameters. " +
+	        //        "Returning Any instead of throwing an exception."
+	        //        + (X[i] != null ? "\n\t: Position: " +  X[i].position().toString() : ""));
+	        //Y[i] = xts.Any();
+	        //throw new SemanticException("Could not infer type for type parameter " + X[i] + ".", me.position());
+
 	    }
 	}
 }

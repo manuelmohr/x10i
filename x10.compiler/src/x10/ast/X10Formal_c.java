@@ -35,7 +35,6 @@ import polyglot.types.Flags;
 import polyglot.types.LazyRef;
 import polyglot.types.LocalDef;
 import polyglot.types.LocalInstance;
-import polyglot.types.Name;
 import polyglot.types.Ref;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
@@ -51,22 +50,17 @@ import polyglot.visit.PrettyPrinter;
 import polyglot.visit.Translator;
 import polyglot.visit.TypeBuilder;
 import polyglot.visit.TypeCheckPreparer;
-import polyglot.visit.TypeChecker;
+import x10.errors.Errors;
 import x10.extension.X10Del;
-import x10.types.ConstrainedType_c;
-import x10.types.FunctionType;
-import x10.types.X10Context;
-import x10.types.X10LocalDef;
-import x10.types.X10LocalInstance;
-import x10.types.X10MethodInstance;
-import x10.types.X10ParsedClassType_c;
 
-import x10.types.X10TypeMixin;
-import x10.types.X10TypeSystem;
-import x10.types.checker.PlaceChecker;
+import x10.types.X10LocalDef;
+import polyglot.types.Types;
+import polyglot.types.TypeSystem_c;
+import x10.types.ConstrainedType;
 import x10.types.constraints.XConstrainedTerm;
 import x10.visit.X10PrettyPrinterVisitor;
-import x10.visit.X10Translator;
+import x10.constraint.XTerm;
+import x10.constraint.XLit;
 
 /**
  * An immutable representation of an X10Formal, which is of the form
@@ -77,7 +71,7 @@ import x10.visit.X10Translator;
  */
 public class X10Formal_c extends Formal_c implements X10Formal {
 	/* Invariant: vars != null */
-	protected List<Formal> vars;
+	protected List<Formal> vars;  // e.g., when exploding a point: def foo(p[i,j]:Point)
 	boolean unnamed;
 
 	public X10Formal_c(Position pos, FlagsNode flags, TypeNode type,
@@ -152,107 +146,188 @@ public class X10Formal_c extends Formal_c implements X10Formal {
 		}
 	}
 
-	 private String translateVars() {
-		StringBuffer sb = new StringBuffer();
-		if (! vars.isEmpty()) {
-			sb.append("[");
-			for (int i = 0; i < vars.size(); i++)
-				sb.append(i > 0 ? "," : "").append(vars.get(i).name().id());
-			sb.append("]");
-		}
-		return sb.toString();
+	private String translateVars() {
+	    StringBuffer sb = new StringBuffer();
+	    if (! vars.isEmpty()) {
+	        sb.append("[");
+	        for (int i = 0; i < vars.size(); i++)
+	            sb.append(i > 0 ? "," : "").append(vars.get(i).name().id());
+	        sb.append("]");
+	    }
+	    return sb.toString();
 	}
 
-	 @Override
-	 public Node buildTypes(TypeBuilder tb) throws SemanticException {
-	     X10Formal_c n = (X10Formal_c) super.buildTypes(tb);
+	@Override
+	public Node buildTypes(TypeBuilder tb) throws SemanticException {
+	    X10Formal_c n = (X10Formal_c) super.buildTypes(tb);
 
-	     X10LocalDef fi = (X10LocalDef) n.localDef();
+	    X10LocalDef fi = (X10LocalDef) n.localDef();
 
-	     List<AnnotationNode> as = ((X10Del) n.del()).annotations();
-	     if (as != null) {
-	         List<Ref<? extends Type>> ats = new ArrayList<Ref<? extends Type>>(as.size());
-	         for (AnnotationNode an : as) {
-	             ats.add(an.annotationType().typeRef());
-	         }
-	         fi.setDefAnnotations(ats);
-	     }
-	     
-	     return n;
-	 }
-	 
-	 public Node setResolverOverride(final Node parent, TypeCheckPreparer v) {
-	     final X10TypeSystem ts = (X10TypeSystem) v.typeSystem();
-	     final X10Context context = (X10Context) v.context();
-	     final ClassDef currClassDef = context.currentClassDef();
-	    
+	    List<AnnotationNode> as = ((X10Del) n.del()).annotations();
+	    if (as != null) {
+	        List<Ref<? extends Type>> ats = new ArrayList<Ref<? extends Type>>(as.size());
+	        for (AnnotationNode an : as) {
+	            ats.add(an.annotationType().typeRef());
+	        }
+	        fi.setDefAnnotations(ats);
+	    }
 
-	     Formal f = (Formal) this;
-	     X10LocalDef li = (X10LocalDef) f.localDef();
-	  
-	     if (f.type() instanceof UnknownTypeNode && parent instanceof Formal) {
-	    	   // We infer the types of exploded formals
-	         final UnknownTypeNode tn = (UnknownTypeNode) f.type();
-	         final LazyRef<Type> r = (LazyRef<Type>) tn.typeRef();
-	         r.setResolver(new Runnable() {
-	             public void run() {
-	                 Formal ff = (Formal) parent;
-	                 Type containerType = ff.type().type();
-	                 Type indexType = null;
-	                 
-	                 if (ts.isFunctionType(containerType)) {
-	                     List<Type> actualTypes = Collections.singletonList(ts.Int());
-
-	                     try {
-	                         // Find the most-specific function type.
-	                         X10MethodInstance mi = ts.findMethod(containerType, 
-	                        		 ts.MethodMatcher(containerType, ClosureCall.APPLY, 
-	                        				 Collections.<Type>emptyList(), actualTypes, context));
-	                         indexType = mi.returnType();
-	                    
-	                     }
-	                     catch (SemanticException e) {
-	                     }
-	                 }
-
-	                 if (indexType != null) {
-	                     r.update(indexType);
-	                     return;
-	                 }
-
-	                 r.update(ts.unknownType(tn.position()));
-	             }
-	         });
-	     } 
-	     return null;
-	 }
-	 
-
-	 @Override
-	 public Type declType() {
-		 return type.type();
-	 }
-	    
-	 @Override
-	 public Node typeCheckOverride(Node parent, ContextVisitor tc) throws SemanticException {
-		 NodeVisitor childtc = tc.enter(parent, this);
-
-		 XConstrainedTerm  pt = ((X10Context) ((ContextVisitor) childtc).context()).currentPlaceTerm();
-
-		 if (pt != null)
-			 ((X10LocalDef) localDef()).setPlaceTerm(pt.term());
-		 return null;
-	 }
-	 @Override
-	public Node typeCheck(ContextVisitor tc) throws SemanticException {
-	     X10Formal_c n = (X10Formal_c) super.typeCheck(tc);
-	     if (n.type() instanceof UnknownTypeNode || n.type().type() instanceof UnknownType) {
-	         throw new SemanticException("Could not infer type for formal parameter " + n.name() + ".", position());
-	     }
-	     if (n.type().type().isVoid())
-	         throw new SemanticException("Formal parameter cannot have type " + this.type().type() + ".", position());
-	     return n;
+	    return n;
 	}
+
+	public Node setResolverOverride(final Node parent, TypeCheckPreparer v) {
+	    final TypeSystem ts = (TypeSystem) v.typeSystem();
+	    final Context context = (Context) v.context();
+	    final ClassDef currClassDef = context.currentClassDef();
+
+
+	    Formal f = (Formal) this;
+	    X10LocalDef li = (X10LocalDef) f.localDef();
+
+	    if (f.type() instanceof UnknownTypeNode && parent instanceof Formal) {
+	        // We infer the types of exploded formals
+	        final UnknownTypeNode tn = (UnknownTypeNode) f.type();
+	        final LazyRef<Type> r = (LazyRef<Type>) tn.typeRef();
+	        r.setResolver(new Runnable() {
+	            public void run() {
+	                Formal ff = (Formal) parent;
+	                Type containerType = ff.type().type();
+	                final Type indexType;
+
+                    if (ts.isArray(containerType)) {
+                        indexType = TypeSystem_c.getArrayComponentType(containerType);
+                    } else {
+                        // must be a Point or we had complained when typeChecking the parent.
+                        indexType = ts.Int();
+                    }
+                    r.update(indexType); // It used to be: ts.unknownType(tn.position()), however now I complain in checkExplodedVars if the type of the parent is not Point nor Array, so no need to complain we cannot infer the type of the components. 
+	            }
+	        });
+	    } 
+	    return null;
+	}
+
+
+	@Override
+	public Type declType() {
+	    return type.type();
+	}
+
+	@Override
+	public Node typeCheckOverride(Node parent, ContextVisitor tc) {
+	    NodeVisitor childtc = tc.enter(parent, this);
+
+	    XConstrainedTerm  pt = ((Context) ((ContextVisitor) childtc).context()).currentPlaceTerm();
+
+	    if (pt != null)
+	        ((X10LocalDef) localDef()).setPlaceTerm(pt.term());
+	    return null;
+	}
+
+	@Override
+	public Node typeCheck(ContextVisitor tc) {
+	    // Check if the variable is multiply defined.
+	    Context c = tc.context();
+
+	    LocalInstance outerLocal = null;
+
+	    try {
+	        outerLocal = c.findLocal(li.name());
+	    }
+	    catch (SemanticException e) {
+	        // not found, so not multiply defined
+	    }
+
+	    if (outerLocal != null && ! li.equals(outerLocal.def()) && c.isLocal(li.name())) { // todo: give me a test case that shows this error?
+	        Errors.issue(tc.job(),
+	                new Errors.LocalVaraibleMultiplyDefined(name, outerLocal.position(), position()));
+	    }
+
+	    TypeSystem ts = tc.typeSystem();
+        final Type myType = this.type().type();
+
+	    try {
+	        ts.checkLocalFlags(flags().flags());
+	    }
+	    catch (SemanticException e) {
+	        Errors.issue(tc.job(), e, this);
+	    }
+        if (this.type() instanceof UnknownTypeNode || myType instanceof UnknownType) {
+	        Errors.issue(tc.job(),
+	                new Errors.CannotInferTypeForFormalParameter(this.name(), position()));
+	    } else
+	    if (myType.isVoid())
+	        Errors.issue(tc.job(),
+	                new Errors.FormalParameterCannotHaveType(myType, position()));
+        else {
+            checkExplodedVars(vars.size(), (Ref<Type>)this.type().typeRef(), position(), tc);
+        }
+
+	    return this;
+	}
+    public static void checkExplodedVars(int num, Ref<Type> ref, Position pos, ContextVisitor tc) {
+	    Context c = tc.context();
+	    TypeSystem ts = tc.typeSystem();
+        final Type myType = ref.get();
+
+        if (num>0) {
+            // check the type is a subtype of Point/Array, and that it's rank is vars.size()
+            final boolean isArray = ts.isArray(myType);
+            if (!ts.isSubtype(myType, ts.Point(), c) && !isArray)
+                Errors.issue(tc.job(), new Errors.OnlyTypePointOrArrayCanBeExploded(myType, pos));
+            else {
+                // make sure there is an init expr
+                ConstrainedType cType = Types.toConstrainedType(myType);
+                boolean okOrError = false;
+                if (isArray) {
+                    XTerm rank = cType.rank(c);
+                    XTerm size = cType.size(c);
+                    if (rank instanceof XLit && size instanceof XLit) {
+                        okOrError = true;
+                        int r = (Integer) ((XLit) rank).val();
+                        int s = (Integer) ((XLit) size).val();
+                        if (r!=1 || s!=num) {
+                            if (r!=1)
+                                Errors.issue(tc.job(), new SemanticException("The rank of the exploded Array is "+r+" but it should be 1", pos));
+                            else
+                                Errors.issue(tc.job(), new SemanticException("The size of the exploded Array is "+s+" but it should be "+num, pos));
+                        }
+                    }
+                } else {
+                    XTerm rank = cType.rank(c);
+                    if (rank instanceof XLit) {
+                        okOrError = true;
+                        int r = (Integer) ((XLit) rank).val();
+                        if (r!=num) {
+                            Errors.issue(tc.job(), new SemanticException("The rank of the exploded Point is "+r+" but it should be "+num, pos));
+                        }
+                    }
+                }
+                if (!okOrError) {
+                    if (isArray) {
+                        if (false) {
+                            // Just adding
+                            cType = cType.addRank(1).addSize(num);
+                            // is not enough, because it gives the type:
+                            //x10.array.Array[x10.lang.Int]{self.x10.array.Array#rank==1, self.x10.array.Array#size==2}
+                            // and we should get the type:
+                            //x10.array.Array[x10.lang.Int]{self.x10.array.Array#region.x10.array.Region#rank==1, self.x10.array.Array#region.x10.array.Region#rect==true, self.x10.array.Array#region.x10.array.Region#zeroBased==true, self.x10.array.Array#region.x10.array.Region#rail==true, self.x10.array.Array#rank==1, self.x10.array.Array#rect==true, self.x10.array.Array#zeroBased==true, self.x10.array.Array#rail==true, self.x10.array.Array#size==2, self!=null}
+                            // you can test it with this code:                            
+                            //{ val p[i,j]: Array[Int] = new Array[Int](2); } // ShouldNotBeERR: Message: Semantic Error: Method operator()(i0: x10.lang.Int){x10.array.Array#this.x10.array.Array#rank==1}[] in x10.array.Array[x10.lang.Int]{self.x10.array.Array#rank==1, self==p, p.x10.array.Array#size==2} cannot be called with arguments (x10.lang.Int{self==1}); Call invalid; calling environment does not entail the method guard.
+                        } else
+                            Errors.issue(tc.job(), new SemanticException("You can explode the Array only if it has the constraint {rank==1,size="+num+"}", pos));
+                    } else {
+                        cType = cType.addRank(num);
+                    }
+                    if (cType.constraint().get().consistent()) {
+                        ref.update(cType);
+                    } else {
+                        Errors.issue(tc.job(), new SemanticException("The type after adding the rank is inconsistent. The type before is "+myType+" and after adding {rank=="+(isArray ? "1,size=":"")+num+"} is "+cType, pos));
+                    }
+                }
+            }
+        }
+    }
 
     public String toString() {
 	StringBuffer sb = new StringBuffer();
@@ -355,7 +430,7 @@ public class X10Formal_c extends Formal_c implements X10Formal {
 	    TypeSystem ts = tc.typeSystem();
 	    NodeFactory nf = tc.nodeFactory();
 		if (vars == null || vars.isEmpty()) return null;
-		X10NodeFactory x10nf = (X10NodeFactory) nf;
+		NodeFactory x10nf = (NodeFactory) nf;
 		List<Stmt> stmts = new TypedList<Stmt>(new ArrayList<Stmt>(vars.size()), Stmt.class, false);
 		Local arrayBase =nf.Local(pos, name);
 		if (bli != null)
@@ -382,11 +457,11 @@ public class X10Formal_c extends Formal_c implements X10Formal {
 //	}
 	
 	public Context enterChildScope(Node child, Context c) {
-		X10Context cxt = (X10Context) c;
+		Context cxt = (Context) c;
 		if (child == this.type) {
 			TypeSystem ts = c.typeSystem();
 			LocalDef li = localDef();
-			cxt = (X10Context) cxt.copy();
+			cxt = (Context) cxt.shallowCopy();
 			cxt.addVariable(li.asInstance());
 			cxt.setVarWhoseTypeIsBeingElaborated(li);
 		}
@@ -419,14 +494,14 @@ public class X10Formal_c extends Formal_c implements X10Formal {
         Flags fs = flags.flags().clearFinal();
         if (!f) w.write("var ");
         w.write(fs.translate());
-        tr.print(this, name, w);
+        tr.print(this, name, w);  // todo: should we use translateVars() here?
         w.write(":");
         print(type, w, tr);
     }
 
     @Override
     public void translate(CodeWriter w, Translator tr) {
-        super.prettyPrint(w, tr);
+        super.prettyPrint(w, tr); // todo: why is it calling super and not the newly defined prettyPrint?
     }
 }
 

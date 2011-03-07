@@ -1,3 +1,20 @@
+/*
+ *  This file is part of the X10 project (http://x10-lang.org).
+ *
+ *  This file is licensed to You under the Eclipse Public License (EPL);
+ *  You may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *      http://www.opensource.org/licenses/eclipse-1.0.php
+ *
+ *  (C) Copyright IBM Corporation 2006-2010.
+ *
+ *  This file was written by Ben Herta for IBM: bherta@us.ibm.com
+ */
+
+#ifdef __CYGWIN__
+#undef __STRICT_ANSI__ // Strict ANSI mode is too strict in Cygwin
+#endif
+
 #include "TCP.h"
 
 #include <stdio.h>
@@ -12,10 +29,6 @@
 #include <errno.h>
 #include <assert.h>
 #include <unistd.h>
-
-#ifdef __CYGWIN__
-extern "C" int snprintf(char *, size_t, const char *, ...);
-#endif
 
 /* ****************************************************************** */
 /* ****************************************************************** */
@@ -118,7 +131,7 @@ int TCP::listen(unsigned * localPort, unsigned backlog)
 /* ****************************************************************** */
 /* ****************************************************************** */
 
-int TCP::accept(int fd)
+int TCP::accept(int fd, bool noDelay)
 {
 	int connFD;
 	sockaddr_in remoteAddress;
@@ -135,9 +148,12 @@ int TCP::accept(int fd)
 	assert(len == sizeof(remoteAddress));
 	assert(remoteAddress.sin_family == AF_INET);
 
-	int ndelay = 1;
-	if (setsockopt(connFD, IPPROTO_TCP, TCP_NODELAY, &ndelay, sizeof(ndelay)) < 0)
-		FATAL("Nodelay option not set");
+	if (noDelay)
+	{
+		int ndelay = 1;
+		if (setsockopt(connFD, IPPROTO_TCP, TCP_NODELAY, &ndelay, sizeof(ndelay)) < 0)
+			FATAL("Nodelay option not set");
+	}
 
 	return connFD;
 }
@@ -145,7 +161,7 @@ int TCP::accept(int fd)
 /* ****************************************************************** */
 /* ****************************************************************** */
 
-int TCP::connect(const char *host, unsigned port, unsigned retries)
+int TCP::connect(const char *host, unsigned port, unsigned retries, bool noDelay)
 {
 	int rc;
 	hostent *remoteInfo = gethostbyname(host);
@@ -175,24 +191,27 @@ int TCP::connect(const char *host, unsigned port, unsigned retries)
 		sleep(1);
 	}
 
-	int enable = 1;
-	rc = setsockopt(connectionFd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
-	if (rc < 0)
-		FATAL("Cannot set socket options on fd");
+	if (noDelay)
+	{
+		int enable = 1;
+		rc = setsockopt(connectionFd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
+		if (rc < 0)
+			FATAL("Cannot set socket options on fd");
+	}
 	return connectionFd;
 }
 
 /* ****************************************************************** */
 /* ****************************************************************** */
 
-int TCP::connect(const char * hostport, unsigned retries)
+int TCP::connect(const char * hostport, unsigned retries, bool noDelay)
 {
 	char hostport2[1000];
 	strcpy(hostport2, hostport);
 	char * c = strchr(hostport2, ':');
 	if (c == NULL) FATAL("Malformed host:port");
 	c[0] = '\0';
-	return connect(hostport2, atoi(c + 1), retries);
+	return connect(hostport2, atoi(c + 1), retries, noDelay);
 }
 
 /* ****************************************************************** */
@@ -202,7 +221,7 @@ void TCP::FATAL(const char * msg)
 {
 	fprintf(stderr, "FATAL Error %d : ", errno);
 	perror(msg);
-	exit(-1);
+	exit(8);
 }
 
 /* ****************************************************************** */

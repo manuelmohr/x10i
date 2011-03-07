@@ -11,39 +11,47 @@
 
 package x10.constraint;
 
+import x10.util.CollectionFactory;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A representation of an atomic formula op(t1,..., tn).
  * 
- * @author vijay
+ * @author vj
  *
  */
-public class XFormula extends XTerm {
-	    public final XName op;
-	    public final XName asExprOp;
+public class XFormula<T> extends XTerm {
+	    public final T op;
+	    public final T asExprOp;
 	    public List<XTerm> arguments;
+	    public final boolean isAtomicFormula;
 
 	    /**
 	     * Create a formula with the given op and given list of arguments.
 	     * @param op
 	     * @param args
 	     */
-	    public XFormula(XName op, XName opAsExpr, List<XTerm> args) {
-
+	    public XFormula(T op, T opAsExpr, List<XTerm> args, boolean isAtomicFormula) {
 	    	  this.op = op;
 	    	  this.asExprOp = opAsExpr;
-	        this.arguments = args;
+	          this.arguments = args;
+	          this.isAtomicFormula = isAtomicFormula;
 	    }
-	    public XFormula(XName op, XName opAsExpr, XTerm... args) {
+	    public XFormula(T op, T opAsExpr, boolean isAtomicFormula, XTerm... args) {
 	        this.op = op;
 	        this.asExprOp = opAsExpr;
+	        this.isAtomicFormula = isAtomicFormula;
 	        this.arguments = new ArrayList<XTerm>(args.length);
 	        for (XTerm arg : args) {
 	            this.arguments.add(arg);
 	        }
+	    }
+	    public boolean isAtomicFormula() {
+	        return isAtomicFormula;
 	    }
 	    public XTermKind kind() { return XTermKind.FN_APPLICATION;}
 	    public List<XEQV> eqvs() {
@@ -74,11 +82,11 @@ public class XFormula extends XTerm {
 	        return n;
 	    }
 
-	    public XName operator() {
+	    public Object operator() {
 	        return op;
 	    }
 	    
-	    public XName asExprOperator() {
+	    public Object asExprOperator() {
 	        return asExprOp;
 	    }
 
@@ -113,14 +121,14 @@ public class XFormula extends XTerm {
 	        }
 	        return false;
 	    }
-
-	    public XPromise internIntoConstraint(XConstraint c, XPromise last) throws XFailure {
+	    
+	    public XPromise internIntoConstraint(XConstraint c, XPromise last)  {
 	        assert last == null;
 	        // Evaluate left == right, if both are literals.
 	        XPromise result = c.lookup(this);
 	        if (result != null) // this term has already been interned.
 	            return result;
-	        HashMap<XName, XPromise> fields = new HashMap<XName, XPromise>();
+	        Map<Object, XPromise> fields = CollectionFactory.newHashMap();
 	        for (int i = 0; i < arguments.size(); i++) {
 	            XTerm arg = arguments.get(i);
 	            if (arg == null) {
@@ -129,7 +137,9 @@ public class XFormula extends XTerm {
 	            }
 	            	
 	            XPromise child = c.intern(arg);
-	            fields.put(new XNameWrapper<Integer>(i), child);
+	            if (c == null)
+	                return null;
+	            fields.put(new Integer(i), child);
 	        }
 	        // C_Local_c v = new C_Local_c(op);
 	        XTerm v = this;
@@ -180,7 +190,7 @@ public class XFormula extends XTerm {
 	        if (this == o)
 	            return true;
 	        if (o instanceof XFormula) {
-	            XFormula c = (XFormula) o;
+	            XFormula<?> c = (XFormula<?>) o;
 	            if (! c.op.equals(op))
 	            	return false;
 	            if (c.arguments().size() == arguments().size()) {

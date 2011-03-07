@@ -38,11 +38,9 @@ import polyglot.util.Position;
 import polyglot.visit.ContextVisitor;
 import x10.constraint.XConstraint;
 import x10.errors.Errors;
-import x10.types.X10Context;
-import x10.types.X10NamedType;
+import polyglot.types.Context;
 
-import x10.types.X10TypeMixin;
-import x10.types.X10TypeSystem;
+import polyglot.types.TypeSystem;
 import x10.types.checker.Converter;
 
 /**
@@ -61,12 +59,14 @@ public class X10Conditional_c extends Conditional_c implements X10Conditional {
         super(pos, cond, consequent, alternative);
     }
 
-    public Node typeCheck(ContextVisitor tc) throws SemanticException {
-        X10TypeSystem ts = (X10TypeSystem) tc.typeSystem();
+    public Node typeCheck(ContextVisitor tc) {
+        TypeSystem ts = (TypeSystem) tc.typeSystem();
         Context context = tc.context();
 
         if (! cond.type().isBoolean()) {
-            throw new SemanticException("Condition of ternary expression must be of type boolean.",cond.position());
+            Errors.issue(tc.job(),
+                    new Errors.TernaryExpressiongMustBeBoolean(cond.position()),
+                    this);
         }
 
         Expr e1 = consequent;
@@ -81,13 +81,23 @@ public class X10Conditional_c extends Conditional_c implements X10Conditional {
         if (ts.typeEquals(t1, t2, context))
             return type(t1);
 
-        if (ts.typeBaseEquals(t1, t2, context)) {
-            return type(X10TypeMixin.baseType(t1));
-        }
+        // def m(b:Boolean, x:Object{self!=null}, y:Object{self!=null}):Object{self!=null} {
+        //    val z:Object{self!=null} = b ? x : y; // should be ok, but the following test will return their baseType which is Object.
+        //Semantic Error: Cannot assign expression to target.
+        //     Expression: b ? x : y
+        //     Expected type: x10.lang.Object{self!=null}
+        //     Found type: x10.lang.Object
+        //if (ts.typeBaseEquals(t1, t2, context)) {
+        //    return type(Types.baseType(t1));
+        //}
 
         // Otherwise, if the second and third operands have numeric type, then
         // there are several cases:
         if (t1.isNumeric() && t2.isNumeric()) {
+            if (ts.typeBaseEquals(t1, t2, context)) { // we need it for: public static def max(a:UInt, b:UInt)= a<b?b:a;
+                return type(Types.baseType(t1));
+            }
+
             // - If one of the operands is of type byte and the other is of
             // type short, then the type of the conditional expression is
             // short.
@@ -130,14 +140,19 @@ public class X10Conditional_c extends Conditional_c implements X10Conditional {
             // operand types, and the type of the conditional expression is the
             // promoted type of the second and third operands. Note that binary
             // numeric promotion performs value set conversion (Sec. 5.1.8).
-            return type(ts.promote(t1, t2));
+            try {
+                return type(ts.promote(t1, t2));
+            } catch (SemanticException e) {
+                Errors.issue(tc.job(), e, this);
+                return type(ts.unknownType(position()));
+            }
         }
 
         // If one of the second and third operands is of the null type and the
         // type of the other is a reference type, then the type of the
         // conditional expression is that reference type.
-        if (t1.isNull() && X10TypeMixin.permitsNull(t2)) return type(t2);
-        if (t2.isNull() && X10TypeMixin.permitsNull(t1)) return type(t1);
+        if (t1.isNull() && Types.permitsNull(t2)) return type(t2);
+        if (t2.isNull() && Types.permitsNull(t1)) return type(t1);
 
         // If the second and third operands are of different reference types,
         // then it must be possible to convert one of the types to the other
@@ -156,13 +171,15 @@ public class X10Conditional_c extends Conditional_c implements X10Conditional {
 
         try {
             Type t = ts.leastCommonAncestor(t1, t2, context);
-            Expr n1 =  Converter.attemptCoercion(tc, e1, t);
-            Expr n2 =  Converter.attemptCoercion(tc, e2, t);
-            return consequent(n1).alternative(n2).type(t);
+            Expr n1 = Converter.attemptCoercion(tc, e1, t);
+            Expr n2 = Converter.attemptCoercion(tc, e2, t);
+            if (n1 != null && n2 != null)
+                return consequent(n1).alternative(n2).type(t);
         }
         catch (SemanticException e) {
         }
 
-        throw new Errors.TernaryConditionalTypeUndetermined(t1, t2, position());
+        Errors.issue(tc.job(), new Errors.TernaryConditionalTypeUndetermined(t1, t2, position()));
+        return this;
     }
 }

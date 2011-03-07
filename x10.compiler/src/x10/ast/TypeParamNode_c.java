@@ -19,7 +19,6 @@ import polyglot.ast.Term;
 import polyglot.ast.Term_c;
 import polyglot.types.Context;
 import polyglot.types.Def;
-import polyglot.types.Named;
 import polyglot.types.SemanticException;
 import polyglot.types.Types;
 import polyglot.types.Type;
@@ -30,11 +29,11 @@ import polyglot.visit.NodeVisitor;
 import polyglot.visit.PrettyPrinter;
 import polyglot.visit.TypeBuilder;
 import x10.types.ParameterType;
-import x10.types.ParameterType_c;
-import x10.types.X10Context;
+
+import polyglot.types.Context;
 import x10.types.X10Context_c;
 import x10.types.X10TypeEnv_c;
-import x10.types.X10TypeSystem;
+import polyglot.types.TypeSystem;
 
 public class TypeParamNode_c extends Term_c implements TypeParamNode {
 	protected Id name;
@@ -79,7 +78,7 @@ public class TypeParamNode_c extends Term_c implements TypeParamNode {
 	}
 
 	public Node buildTypes(TypeBuilder tb) throws SemanticException {
-		X10TypeSystem xts = (X10TypeSystem) tb.typeSystem();
+		TypeSystem xts = (TypeSystem) tb.typeSystem();
 		
 	        Def def = tb.def();
 	        
@@ -87,7 +86,7 @@ public class TypeParamNode_c extends Term_c implements TypeParamNode {
 //	            throw new SemanticException("Type parameter cannot occur outside method, constructor, closure, or type definition.", position());
 //	        }
 	        
-	        ParameterType t = new ParameterType_c(xts, position(), name.id(), Types.ref(def));
+	        ParameterType t = new ParameterType(xts, position(), name.id(), Types.ref(def));
 	        return type(t);
 	}
 
@@ -120,7 +119,7 @@ public class TypeParamNode_c extends Term_c implements TypeParamNode {
 	}
 	public List<Type> upperBounds() {
 		Type type = type();
-		X10TypeSystem ts = (X10TypeSystem) type.typeSystem();
+		TypeSystem ts = (TypeSystem) type.typeSystem();
 		X10Context_c xc = (X10Context_c) ts.emptyContext();
 		List<Type> results = new X10TypeEnv_c(xc).upperBounds(type, false);
 		return results;

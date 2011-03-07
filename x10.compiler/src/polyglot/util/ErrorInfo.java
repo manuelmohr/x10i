@@ -18,7 +18,14 @@ public class ErrorInfo
   public static final int SEMANTIC_ERROR      = 5;
   public static final int POST_COMPILER_ERROR = 6;
   public static final int DEBUG               = 7;
+  public static final int ERR_MARKER        = 8;  // A line was marked with @ERR
+  public static final int SHOULD_NOT_BE_ERR_MARKER    = 9;  // A line was marked with @ShouldNotBeERR
+  public static final int SHOULD_BE_ERR_MARKER    = 10; // A line was marked with @ShouldBeErr
+  public static final int INVARIANT_VIOLATION_KIND = 11;
 
+  public static boolean isErrorKind(int kind) {
+      return kind!=WARNING && kind!=DEBUG;
+  }
   protected static String[] errorStrings = {
     "Warning",
     "Internal Error",
@@ -27,7 +34,11 @@ public class ErrorInfo
     "Syntax Error",
     "Semantic Error",
     "Post-compiler Error",
-    "Debug"
+    "Debug",
+    "@ERR",
+    "@ShouldNotBeERR",
+    "@ShouldBeErr",
+    "AST invariant violation",
   };
 
   protected int kind;

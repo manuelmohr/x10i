@@ -11,14 +11,10 @@
 
 package x10.lang;
 
-import x10.compiler.Native;
-import x10.compiler.NativeRep;
-
 /**
  * The class Exception and its subclasses are a form of Throwable that indicates conditions that
  * a reasonable application might want to catch.
  */
-// @NativeRep("java", "java.lang.Exception", null, null)
 public class Exception extends Throwable {
 
     /**
@@ -47,6 +43,11 @@ public class Exception extends Throwable {
      * @param cause the cause
      */
     public def this(cause: Throwable) { super(cause); } 
+
+    /**
+     * Create a String representation of this Exception.
+     */
+    public def toString() = typeName() + ": " + getMessage();
 }
 
 // vim:tabstop=4:shiftwidth=4:expandtab

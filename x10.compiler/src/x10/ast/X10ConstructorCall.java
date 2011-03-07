@@ -18,7 +18,7 @@ import polyglot.ast.Expr;
 import polyglot.ast.TypeNode;
 import polyglot.types.ConstructorInstance;
 import x10.types.X10ConstructorInstance;
-import x10.types.X10MethodInstance;
+import x10.types.MethodInstance;
 
 public interface X10ConstructorCall extends ConstructorCall, X10ProcedureCall {
 	List<TypeNode> typeArguments();
@@ -30,4 +30,5 @@ public interface X10ConstructorCall extends ConstructorCall, X10ProcedureCall {
 	X10ConstructorCall arguments(List<Expr> arguments);
 	X10ConstructorInstance constructorInstance();
 	X10ConstructorCall constructorInstance(ConstructorInstance ci);
+	X10ConstructorCall target(Expr target);
 }

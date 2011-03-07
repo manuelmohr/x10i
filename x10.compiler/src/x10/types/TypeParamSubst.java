@@ -21,6 +21,7 @@ import polyglot.types.LazyRef;
 import polyglot.types.Ref;
 import polyglot.types.Type;
 import polyglot.types.Types;
+import polyglot.types.TypeSystem;
 import polyglot.util.Pair;
 import polyglot.util.Transformation;
 import polyglot.util.TransformingList;
@@ -44,18 +45,16 @@ import x10.types.constraints.TypeConstraint;
 public class TypeParamSubst {
 	private final List<? extends Type> typeArguments;
 	private final List<ParameterType> typeParameters;
-	private final X10TypeSystem ts;
+	private final TypeSystem ts;
 
-	private final boolean missingArgs;
 	private final boolean identityInstantiation;
 	private final boolean eager;
 
-	public TypeParamSubst(X10TypeSystem ts, List<? extends Type> tas, List<ParameterType> tps) {
+	public TypeParamSubst(TypeSystem ts, List<? extends Type> tas, List<ParameterType> tps) {
 	    this(ts, tas, tps, false);
 	}
 
-	public TypeParamSubst(X10TypeSystem ts, List<? extends Type> tas, List<ParameterType> tps, boolean eager) {
-		this.missingArgs = tps != null && tps.size() > 0 && tas == null;
+	public TypeParamSubst(TypeSystem ts, List<? extends Type> tas, List<ParameterType> tps, boolean eager) {
 		this.identityInstantiation = isIdentityInstantiation(tas, tps);
 		this.eager = eager;
 		tas = tas == null ? tps : tas;
@@ -112,7 +111,10 @@ public class TypeParamSubst {
 				return ct;
 			List<Type> typeArgs = ct.typeArguments();
 			List<ParameterType> tParams = ct.x10Def().typeParameters();
-			if (typeArgs.size() < tParams.size()) {
+			if (typeArgs == null && !tParams.isEmpty()) {
+			    typeArgs = new ArrayList<Type>(tParams);
+			}
+			if (typeArgs != null && typeArgs.size() < tParams.size()) {
 			    typeArgs = new ArrayList<Type>(typeArgs);
 			    // The def changed since the type was created; params were added
 			    for (int i = typeArgs.size(); i < tParams.size(); i++) {
@@ -129,7 +131,10 @@ public class TypeParamSubst {
 	}
 
 	private static boolean canReferToParams(X10ClassType t) {
-		if (t.typeArguments().size() != 0) {
+		// FIXME: to fix XTENLANG-2055, this should be false for null typeargs,
+		// but constructor and method def containers are not instantiated.
+		// TODO: (t.typeArguments() != null && t.typeArguments().size() != 0)
+		if (t.typeArguments() == null || t.typeArguments().size() != 0) {
 			return true;
 		}
 		if (t.isMember())
@@ -139,9 +144,6 @@ public class TypeParamSubst {
 		return false;
 	}
 
-	public boolean isMissingParameters() {
-		return missingArgs;
-	}
 	public boolean isIdentityInstantiation() {
 	    return identityInstantiation;
 	}
@@ -165,7 +167,7 @@ public class TypeParamSubst {
 	    return true;
 	}
 
-	//private Map<Object,Object> cache = new HashMap<Object, Object>();
+	//private Map<Object,Object> cache = CollectionFactory.newHashMap();
 
 	//@SuppressWarnings("unchecked") // Casting to a generic type parameter
 	public <T> T reinstantiate(T t) {
@@ -187,7 +189,7 @@ public class TypeParamSubst {
 		if (t instanceof Ref<?>) return (T) reinstantiateRef((Ref<?>) t);
 		if (t instanceof Type) return (T) reinstantiateType((Type) t);
 		if (t instanceof X10FieldInstance) return (T) reinstantiateFI((X10FieldInstance) t);
-		if (t instanceof X10MethodInstance) return (T) reinstantiateMI((X10MethodInstance) t);
+		if (t instanceof MethodInstance) return (T) reinstantiateMI((MethodInstance) t);
 		if (t instanceof X10ConstructorInstance) return (T) reinstantiateCI((X10ConstructorInstance) t);
 		if (t instanceof ClosureInstance) return (T) reinstantiateClosure((ClosureInstance) t);
 		if (t instanceof CConstraint) return (T) reinstantiateConstraint((CConstraint) t);
@@ -195,6 +197,7 @@ public class TypeParamSubst {
 		if (t instanceof TypeConstraint) return (T) reinstantiateTypeConstraint((TypeConstraint) t);
 		if (t instanceof X10LocalInstance) return (T) reinstantiateLI((X10LocalInstance) t);
 		//if (t instanceof X10LocalDef) return (T) reinstantiateLD((X10LocalDef) t);
+        assert false : t;
 		return t;
 	}
 
@@ -277,8 +280,8 @@ public class TypeParamSubst {
 			ParameterType pt = typeParameters.get(i);
 			Type at = typeArguments.get(i);
 
-			XTerm p = ts.xtypeTranslator().trans(pt);
-			XTerm a = ts.xtypeTranslator().trans(at);
+			XTerm p = ts.xtypeTranslator().translate(pt);
+			XTerm a = ts.xtypeTranslator().translate(at);
 
 			ys[i] = a;
 
@@ -286,7 +289,7 @@ public class TypeParamSubst {
 				xs[i] = (XVar) p;
 			}
 			else {
-				xs[i] = XTerms.makeLit(XTerms.makeName("error"));
+				xs[i] = XTerms.makeLit("error");
 			}
 		}
 
@@ -309,12 +312,12 @@ public class TypeParamSubst {
 		List<SubtypeConstraint> terms = new ArrayList<SubtypeConstraint>(c.terms().size());
 		for (SubtypeConstraint s : c.terms()) {
 			Type sub = s.subtype();
-			Type sup = s.supertype();
+			Type sup = s.isHaszero() ? null : s.supertype();
 			Type sub1 = reinstantiate(sub);
 			Type sup1 = reinstantiate(sup);
 			if (sub != sub1 || sup != sup1) {
 				changed = true;
-				s = new SubtypeConstraint(sub1, sup1, s.isEqualityConstraint());
+				s = new SubtypeConstraint(sub1, sup1, s.kind());
 			}
 			terms.add(s);
 		}
@@ -333,8 +336,8 @@ public class TypeParamSubst {
 			ParameterType pt = typeParameters.get(i);
 			Type at = typeArguments.get(0);
 
-			XTerm p = ts.xtypeTranslator().trans(pt);
-			XTerm a = ts.xtypeTranslator().trans(at);
+			XTerm p = ts.xtypeTranslator().translate(pt);
+			XTerm a = ts.xtypeTranslator().translate(at);
 
 			if (p instanceof XVar) {
 				t = t.subst(p, (XVar) a);
@@ -358,15 +361,15 @@ public class TypeParamSubst {
 		return new ReinstantiatedConstructorInstance(this, t.typeSystem(), t.position(), Types.ref(t.x10Def()), t);
 	}
 
-	private X10MethodInstance reinstantiateMI(X10MethodInstance t) {
+	private MethodInstance reinstantiateMI(MethodInstance t) {
 		if (eager) {
-		    X10MethodInstance mi = t;
-		    mi = (X10MethodInstance) mi.returnType(reinstantiate(mi.returnType()));
-		    mi = (X10MethodInstance) mi.formalTypes(reinstantiate(mi.formalTypes()));
+		    MethodInstance mi = t;
+		    mi = (MethodInstance) mi.returnType(reinstantiate(mi.returnType()));
+		    mi = (MethodInstance) mi.formalTypes(reinstantiate(mi.formalTypes()));
 		    //mi = (X10MethodInstance) mi.throwTypes(reinstantiate(mi.throwTypes()));
-		    mi = (X10MethodInstance) mi.container(reinstantiate(mi.container()));
-		    mi = (X10MethodInstance) mi.guard(reinstantiate(mi.guard()));
-		    mi = (X10MethodInstance) mi.typeGuard(reinstantiate(mi.typeGuard()));
+		    mi = (MethodInstance) mi.container(reinstantiate(mi.container()));
+		    mi = (MethodInstance) mi.guard(reinstantiate(mi.guard()));
+		    mi = (MethodInstance) mi.typeGuard(reinstantiate(mi.typeGuard()));
 		    return mi;
 		}
 		return new ReinstantiatedMethodInstance(this, t.typeSystem(), t.position(), Types.ref(t.x10Def()), t);
@@ -398,6 +401,8 @@ public class TypeParamSubst {
 		        return list;
 		    return res;
 		}
+		if (list == null)
+		    return null;
 		return new TransformingList<T, T>(list, new Transformation<T, T>() {
 			public T transform(T o) {
 				return reinstantiate(o);

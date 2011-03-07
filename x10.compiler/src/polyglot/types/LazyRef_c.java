@@ -1,27 +1,29 @@
 package polyglot.types;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
 
-import polyglot.frontend.*;
-import polyglot.frontend.Goal.Status;
 import polyglot.util.TypeInputStream;
+import polyglot.util.InternalCompilerError;
 
 public class LazyRef_c<T> extends AbstractRef_c<T> implements LazyRef<T>, Serializable {
 	private static final long serialVersionUID = -7466682011826272737L;
 
 	Runnable resolver;
 
-	/** Create a lazy ref initialized with error value v. */
+    /** Create a lazy ref initialized with error value v. */
 	public LazyRef_c(T v) {
-		this(v, new ErrorRunnable());
+		this(v, EMPTY_RESOLVER);
 	}
 
-	public static class ErrorRunnable implements Runnable {
+    public static Runnable EMPTY_RESOLVER = new Runnable() {
 		public void run() {
 		}
-	}
+	};
+    public static Runnable THROW_RESOLVER = new Runnable() {
+		public void run() {
+            throw new InternalCompilerError("This resolver should never be called! Use ref.update(...) before calling ref.get()");
+		}
+	};
 
 	/** Create a lazy ref initialized with error value v. */
 	public LazyRef_c(T v, Runnable resolver) {
@@ -38,6 +40,13 @@ public class LazyRef_c<T> extends AbstractRef_c<T> implements LazyRef<T>, Serial
 		this.resolver = resolver;
 	}
 
+	public boolean isThrowResolver() {
+		return this.resolver== THROW_RESOLVER;
+    }
+	public boolean isResolverSet() {
+		return this.resolver!= EMPTY_RESOLVER;
+	}
+
 	public T get() {
 		if (! known()) {
 			if (resolver == null) {
@@ -45,11 +54,7 @@ public class LazyRef_c<T> extends AbstractRef_c<T> implements LazyRef<T>, Serial
 			}
 
 			resolver.run();
-
-			if (! known()) {
-				// Should have already reported an error.
-			}
-			
+            resolver = null; // for garbage collection
 			known = true;
 		}
 

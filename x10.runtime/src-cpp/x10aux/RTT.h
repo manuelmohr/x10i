@@ -34,12 +34,12 @@
     static const x10aux::RuntimeType* getRTT() { if (!rtt.isInitialized) _initRTT(); return &rtt; } \
     static void _initRTT();
 
-#define RTT_CC_DECLS1(TYPE,NAME,P1)                             \
+#define RTT_CC_DECLS1(TYPE,NAME,KIND,P1)                        \
     x10aux::RuntimeType TYPE::rtt;                              \
     void TYPE::_initRTT() {                                     \
         if (rtt.initStageOne(&rtt)) return;                     \
         const x10aux::RuntimeType* parents[1] = {P1::getRTT()}; \
-        rtt.initStageTwo(NAME, 1, parents, 0, NULL, NULL);      \
+        rtt.initStageTwo(NAME, KIND, 1, parents, 0, NULL, NULL); \
     }
 
 namespace x10 {
@@ -47,7 +47,6 @@ namespace x10 {
         class NullType;
         class Reference;
         class String;
-        template<class T> class ValRail;
     }
 }
 
@@ -77,6 +76,7 @@ namespace x10aux {
         static RuntimeType ULongType;
 
         enum Variance { covariant, contravariant, invariant };
+        enum Kind { class_kind, struct_kind, interface_kind };
         
     public:
         const RuntimeType *canonical;
@@ -84,11 +84,13 @@ namespace x10aux {
         int paramsc;
         bool containsPtrs;
         bool isInitialized;
+        Kind kind;
         const RuntimeType **parents;
         const RuntimeType **params;
         Variance *variances;
         const char* fullTypeName;
         const char* baseName;
+        bool hasZ;
 
         // Initialization protocol.
         // (a) Call initStageOne before attempting to acquire the RTT
@@ -106,6 +108,7 @@ namespace x10aux {
         bool initStageOne(const RuntimeType* canonical_);
         
         void initStageTwo(const char* baseName_,
+                          Kind kind_,
                           int parsentsc_, const RuntimeType** parents_,
                           int paramsc_, const RuntimeType** params_, Variance* variances_);
 
@@ -130,6 +133,9 @@ namespace x10aux {
         // be scanned for pointers during the GC). Returning false incorrectly can cause memory corruption by hiding
         // pointers from the GC's scanning logic. 
         bool containsPointers() const { return containsPtrs; }
+
+        // Does the X10 type this RTT instance represents admit a 0 value?
+        bool hasZero() const { return hasZ; }
         
         static void initBooleanType();
         static void initByteType();
@@ -266,7 +272,6 @@ namespace x10aux {
     template<> inline const char *typeName<RuntimeType::Variance>() { return "Variance"; }
     template<> inline const char *typeName<x10::lang::Reference>() { return "interface"; }
     template<> inline const char *typeName<x10::lang::NullType>() { return "Null"; }
-    template<> inline const char *typeName<x10::lang::ValRail<x10aux::ref<x10::lang::String> > >() { return "ValRail[String]"; }
 #ifndef NO_IOSTREAM
     template<> inline const char *typeName<std::stringstream>() { return "std::stringstream"; }
 #endif
@@ -326,6 +331,10 @@ namespace x10aux {
 
     template<class T1,class T2> inline x10_boolean sametype() {
         return x10aux::getRTT<T1>()->equals(x10aux::getRTT<T2>());
+    }
+
+    template<class T> inline x10_boolean haszero() {
+        return x10aux::getRTT<T>()->hasZero();
     }
 
 }

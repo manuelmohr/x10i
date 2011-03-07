@@ -13,18 +13,19 @@ package x10.constraint;
 
 /**
  * Tagging formula for != constraints.
+ * Not treated as an atomic formula.
  * @author vj
  *
  */
 
 
-public class XDisEquals extends XFormula {
+public class XDisEquals extends XFormula<String> {
 
 
 	public XDisEquals(XTerm left, XTerm right) {
-		super(XTerms.disEqualsName, XTerms.asExprDisEqualsName, left, right);
+		super(XTerms.disEqualsName, XTerms.asExprDisEqualsName, false, left, right);
 	}
-	public XPromise internIntoConstraint(XConstraint c, XPromise last) throws XFailure {
+	public XPromise internIntoConstraint(XConstraint c, XPromise last)  {
 //	    XTerm left = left();
 //	    XTerm right = right();
 //	    if (left instanceof XLit && right instanceof XLit) {
@@ -35,7 +36,11 @@ public class XDisEquals extends XFormula {
 //	    }
 
 	    XPromise p = c.intern(left());
+	    if (p == null)
+	        return null;
 	    XPromise q = c.intern(right());
+	    if (q == null)
+	        return null;
 
 	    if (p instanceof XLit && q instanceof XLit) {
 	        if (p.equals(q))

@@ -13,15 +13,15 @@ package x10.ast;
 
 import java.util.List;
 
+import polyglot.ast.ClassBody;
+import polyglot.ast.Expr;
 import polyglot.ast.New;
 import polyglot.ast.TypeNode;
+import polyglot.types.ClassDef;
+import polyglot.types.ConstructorInstance;
+import x10.types.X10ClassDef;
+import x10.types.X10ConstructorInstance;
 
-public interface X10New extends New, X10ProcedureCall {
-	List<TypeNode> typeArguments();
+public interface X10New extends New {
 
-	X10New typeArguments(List<TypeNode> args);
-
-	boolean newOmitted();
-
-	X10New newOmitted(boolean val);
 }

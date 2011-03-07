@@ -1,5 +1,19 @@
-/* *********************************************************************** */
-/* *********************************************************************** */
+/*
+ *  This file is part of the X10 project (http://x10-lang.org).
+ *
+ *  This file is licensed to You under the Eclipse Public License (EPL);
+ *  You may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *      http://www.opensource.org/licenses/eclipse-1.0.php
+ *
+ *  (C) Copyright IBM Corporation 2006-2010.
+ *
+ *  This file was written by Ben Herta for IBM: bherta@us.ibm.com
+ */
+
+#ifdef __CYGWIN__
+#undef __STRICT_ANSI__ // Strict ANSI mode is too strict in Cygwin
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -32,7 +46,8 @@ void Launcher::Setup(int argc, char ** argv)
 
 	// check to see if we need to launch stuff, or if we need to execute the runtime.
 	// we just skip the launcher and run the program if the user hasn't set X10LAUNCHER_NPROCS
-	if (!getenv(X10LAUNCHER_NPROCS) || getenv(X10LAUNCHER_RUNTIME))
+	if (getenv(X10LAUNCHER_RUNTIME) || !getenv(X10_NPLACES) ||
+			(strcmp(getenv(X10_NPLACES), "1")==0 && !getenv(X10_HOSTFILE) && !getenv(X10_HOSTLIST)))
 		return;
 
 	_singleton = (Launcher *) malloc(sizeof(Launcher));
@@ -55,11 +70,12 @@ Launcher::Launcher()
 	memset(_ssh_command, 0, sizeof(_ssh_command));
 	strcpy(_ssh_command, "/usr/bin/ssh");
 	memset(_hostfname, 0, sizeof(_hostfname));
-	strcpy(_hostfname, "hostfile"); // default host file name
 	_nplaces = 1;
 	_hostlist = NULL;
 	_runtimePort = NULL;
 	_myproc = 0xFFFFFFFF;
+	_returncode = 0xFEEDC0DE;
+	_dieAt = 0;
 	_firstchildproc = 0;
 	_numchildren = 0;
 	_pidlst = NULL;
@@ -81,18 +97,20 @@ void Launcher::initialize(int argc, char ** argv)
 
 	_argc = argc;
 	_argv = argv;
-	realpath(argv[0], _realpath);
-	if (!getenv(X10LAUNCHER_NPROCS))
+	if (NULL==realpath(argv[0], _realpath)) {
+        perror("Resolving absolute path of executable");
+    }
+	if (!getenv(X10_NPLACES))
 	{
 		_nplaces = 1;
-		setenv(X10LAUNCHER_NPROCS, "1", 0);
+		setenv(X10_NPLACES, "1", 0);
 	}
 	else
-		_nplaces = atoi(getenv(X10LAUNCHER_NPROCS));
-	if (!getenv(X10LAUNCHER_MYID)) // TODO - need to set?
+		_nplaces = atoi(getenv(X10_NPLACES));
+	if (!getenv(X10_PLACE))
 		_myproc = 0xFFFFFFFF;
 	else
-		_myproc = atoi(getenv(X10LAUNCHER_MYID));
+		_myproc = atoi(getenv(X10_PLACE));
 
 	/* -------------------------------------------- */
 	/*  decide who my children are                  */
@@ -132,26 +150,91 @@ void Launcher::initialize(int argc, char ** argv)
 	/* ------------------------------------------------------------------ */
 	/* read host file name from environment; read and interpret host file */
 	/* ------------------------------------------------------------------ */
-	const char * hostfname = (const char *) getenv(X10LAUNCHER_HOSTFILE);
+	const char * hostfname = (const char *) getenv(X10_HOSTFILE);
+	const char * hostlist = (const char *) getenv(X10_HOSTLIST);
 	if (hostfname && strlen(hostfname) > 0)
 	{
-		if (strcmp("NONE", hostfname) != 0)
+		if (strlen(hostfname) > sizeof(_hostfname) - 10)
+			DIE("Launcher %u: host file name is too long", _myproc);
+		realpath(hostfname, _hostfname);
+		readHostFile();
+	}
+	else if (hostlist && strlen(hostlist) > 0)
+	{
+		int childLaunchers;
+		if (_myproc == 0xFFFFFFFF)
+			childLaunchers = 1;
+		else
+			childLaunchers = _numchildren;
+
+		_hostlist = (char **) malloc(sizeof(char *) * childLaunchers);
+		if (!_hostlist)
+			DIE("Launcher %u: hostname memory allocation failure", _myproc);
+
+		uint32_t currentNumber = 0;
+		const char* hostNameStart = hostlist;
+		bool skipped = false;
+		while (currentNumber < _firstchildproc+childLaunchers)
 		{
-			if (strlen(hostfname) > sizeof(_hostfname) - 10)
-				DIE("Launcher %u: host file name is too long", _myproc);
-			realpath(hostfname, _hostfname);
-			readHostFile();
+			bool endOfLine = false;
+			const char* hostNameEnd = strchr(hostNameStart, ',');
+			if (hostNameEnd == NULL)
+			{
+				if (!skipped && _firstchildproc > currentNumber)
+				{
+					skipped = true;
+					if (currentNumber == 0)
+						currentNumber = _firstchildproc;
+					else
+						currentNumber = ((_firstchildproc / currentNumber) * currentNumber)-1;
+					hostNameStart = hostlist;
+					continue;
+				}
+				else
+				{
+					hostNameEnd = hostNameStart+strlen(hostNameStart);
+					endOfLine = true;
+				}
+			}
+			else if (currentNumber < _firstchildproc)
+			{
+				currentNumber++;
+				hostNameStart = hostNameEnd+1;
+				continue;
+			}
+
+			int hlen = hostNameEnd-hostNameStart;
+			char * host = (char *) malloc(hlen+1);
+			if (!host)
+				DIE("Launcher %u: memory allocation failure", _myproc);
+			strncpy(host, hostNameStart, hlen);
+			host[hlen] = '\0';
+			_hostlist[currentNumber-_firstchildproc] = host;
+
+			#ifdef DEBUG
+				fprintf(stderr, "Launcher %u: launcher for place %i is on %s\n", _myproc, currentNumber, host);
+			#endif
+			if (endOfLine)
+				hostNameStart = hostlist;
+			else
+				hostNameStart = hostNameEnd+1;
+			currentNumber++;
 		}
 	}
-	else if (_myproc == 0xFFFFFFFF)
-		fprintf(stderr, "Warning: %s not defined.  Running %d places on localhost.  Setting %s=NONE will suppress this warning.\n", X10LAUNCHER_HOSTFILE, _nplaces, X10LAUNCHER_HOSTFILE);
+//	else if (_myproc == 0xFFFFFFFF)
+//		fprintf(stderr, "Warning: Neither %s nor %s has been set. Proceeding as if you had specified \"%s=localhost\".\n", X10_HOSTFILE, X10_HOSTLIST, X10_HOSTLIST);
 
 	connectToParentLauncher();
 
 	/* -------------------------------------------- */
 	/*  set up notification from dying processes    */
 	/* -------------------------------------------- */
+	// windows/cygwin seems to have problems with the return code saved in the SIGCHLD handler.
+	// better to just ignore them in realtime, and capture the necessary return codes at shutdown time.
+#ifndef __CYGWIN__
 	signal(SIGCHLD, Launcher::cb_sighandler_cld);
+#endif
+	signal(SIGTERM, Launcher::cb_sighandler_term);
 }
 
 /* *********************************************************************** */
@@ -178,6 +261,7 @@ void Launcher::readHostFile()
 		DIE("Launcher %u: hostname memory allocation failure", _myproc);
 
 	uint32_t lineNumber = 0;
+	bool skipped = false;
 	char buffer[5120];
 	while (lineNumber < _firstchildproc+childLaunchers)
 	{
@@ -187,8 +271,12 @@ void Launcher::readHostFile()
 			if (lineNumber == 0)
 				DIE("file \"%s\" can not be empty", _hostfname);
 			// hit the end of the file, so there are more places than lines
-			// I'm told we should wrap around when this happens
-			lineNumber = (_firstchildproc / lineNumber) * lineNumber;
+			// We wrap around, reusing hostnames when this happens
+			if (!skipped && _firstchildproc > lineNumber)
+			{ // don't read the same lines again and again.  Skip ahead.
+				skipped = true;
+				lineNumber = (_firstchildproc / lineNumber) * lineNumber;
+			}
 			rewind(fd);
 			continue;
 		}
@@ -234,6 +322,6 @@ void Launcher::DIE(const char * msg, ...)
 	fprintf(stderr, "%s\n", buffer);
 	if (errno != 0)
 		fprintf(stderr, "%s\n", strerror(errno));
-	exit(1);
+	exit(9);
 }
 

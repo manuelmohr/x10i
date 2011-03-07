@@ -71,7 +71,7 @@ public class KMeansSPMD {
 
             finish {
 
-                for ([slice] in 0..num_slices-1) {
+                for ([slice] in 0..(num_slices-1)) {
 
                     for (h in Place.places()) async at(h) {
 
@@ -91,14 +91,14 @@ public class KMeansSPMD {
                         val host_points = new Array[Float](num_slice_points_stride*dim, init);
                         val host_nearest = new Array[Float](num_slice_points);
 
-                        val host_clusters  = new Array[Float](0..num_clusters*dim-1, file_points);
+                        val host_clusters  = new Array[Float](num_clusters*dim, (i:int)=>file_points(i));
                         val host_cluster_counts = new Array[Int](num_clusters);
 
                         val start_time = System.currentTimeMillis();
 
-                        var compute_time:ULong = 0;
-                        var comm_time:ULong = 0;
-                        var barrier_time:ULong = 0;
+                        var compute_time:Long = 0;
+                        var comm_time:Long = 0;
+                        var barrier_time:Long = 0;
 
                         team.barrier(role);
 

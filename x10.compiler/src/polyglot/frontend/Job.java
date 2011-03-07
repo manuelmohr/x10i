@@ -13,6 +13,7 @@ import polyglot.ast.Node;
 import polyglot.ast.NodeFactory;
 import polyglot.types.TypeSystem;
 import polyglot.util.CodeWriter;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.visit.TypeBuilder;
 
 /**
@@ -40,12 +41,15 @@ public class Job
     /** True if all passes run so far have been successful. */
     protected boolean status;
 
-    /** Initial count of errors before running the current pass over the job. */
+    /** Initial count of errors before running the current pass over this job. */
     protected int initialErrorCount;
 
-    /** True if the the job has reported an error. */
+    /** True if this job has reported an error. */
     protected boolean reportedErrors;
 
+    /** True if this job was completely processed by the scheduler. */
+    protected boolean completed;
+    
     /** The <code>Source</code> that this <code>Job</code> represents. */
     protected Source source;
 
@@ -58,11 +62,12 @@ public class Job
         this.status = true;
         this.initialErrorCount = 0;
         this.reportedErrors = false;
+        this.completed = false;
     }
     
     public Map<Node,Node> nodeMemo() {
         if (nodeMemo == null) {
-            nodeMemo = new HashMap<Node,Node>();
+            nodeMemo = CollectionFactory.newHashMap();
         }
         return nodeMemo;
     }
@@ -90,6 +95,16 @@ public class Job
         return reportedErrors;
     }
 
+    /** True if all passes have been completed. */
+    void setCompleted(boolean value) {
+        completed = value;
+    }
+    
+    /** True if all passes have been completed. */
+    public boolean completed() {
+        return completed;
+    }
+    
     public void dump(CodeWriter cw) {
 	if (ast != null) {
 	    ast.dump(cw);
@@ -147,10 +162,7 @@ public class Job
     
     public Goal TypesInitialized(Scheduler scheduler) {
         if (TypesInitialized == null) {
-            Job job = this;
-            TypeSystem ts = job.extensionInfo().typeSystem();
-            NodeFactory nf = job.extensionInfo().nodeFactory();
-            TypesInitialized = new ForgivingVisitorGoal("TypesInitialized", job, new TypeBuilder(job, ts, nf)).intern(scheduler);
+            TypesInitialized = scheduler.constructTypesInitialized(this);
         }
         return TypesInitialized;
     }

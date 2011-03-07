@@ -64,6 +64,10 @@ public class Position implements Serializable, Copy
 //        return compilerGenerated(CALLER);
 //    }
 
+    public static Position compilerGenerated(Position pos) {
+        return pos==null ? COMPILER_GENERATED : pos.startOf().markCompilerGenerated();
+    }
+
     public boolean isCompilerGenerated() {
         return compilerGenerated;
     }
@@ -118,6 +122,7 @@ public class Position implements Serializable, Copy
 
     public Position(String path, String file, int line, int column, int endLine, int endColumn, int offset, int endOffset) {
         this.file = file;
+        assert (path == null || path.equals("")) : "Non-empty path in the position object";
         this.path = path;
         this.line = line;
         this.column = column;

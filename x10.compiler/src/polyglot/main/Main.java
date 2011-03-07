@@ -18,16 +18,18 @@ import polyglot.util.QuotedStringTokenizer;
 import java.io.*;
 import java.util.*;
 
+import x10.ExtensionInfo;
+
 /** Main is the main program of the extensible compiler. It should not
  * need to be replaced.
  */
 public class Main
 {
 
+  protected long startTime;
+  
   /** Source files specified on the command line */
   private Set<String> source;
-
-  public final static String verbose = "verbose";
 
   /* modifies args */
   protected ExtensionInfo getExtensionInfo(List<String> args) throws TerminationException {
@@ -82,14 +84,12 @@ public class Main
       start(argv, null, eq);
   }
 
-  public void start(String[] argv, ExtensionInfo ext, ErrorQueue eq) throws TerminationException {
-      source = new LinkedHashSet<String>();
-      
+  public Compiler getCompiler(String[] argv, ExtensionInfo ext, ErrorQueue eq, Set<String> source) {
       List<String> args = explodeOptions(argv);
       if (ext == null) {
           ext = getExtensionInfo(args);
       }
-      
+
       Options options = ext.getOptions();
 
       try {
@@ -105,6 +105,15 @@ public class Main
           throw new TerminationException(ue.exitCode);
       }
 
+      // TODO: until we can get rid of static Report, give it
+      //    the reporter
+      Report.initialize(options.reporter);
+
+      // Time as much of the setup as we can
+      ext.stats.initialize(ext, startTime);
+      ext.stats.startTiming("getCompiler", "getCompiler");
+      options.reporter.start_reporting(Reporter.verbose);
+
       if (eq == null) {
           eq = new StdErrorQueue(System.err,
                                  options.error_count,
@@ -113,16 +122,25 @@ public class Main
 
       Compiler compiler = new Compiler(ext, eq);
       Globals.initialize(compiler);
+      ext.stats.stopTiming();
+      return compiler;
+  }
+  
+  public void start(String[] argv, ExtensionInfo ext, ErrorQueue eq)
+			throws TerminationException {
+        startTime = System.nanoTime();
+        source = new LinkedHashSet<String>();
 
-      long time0 = System.currentTimeMillis();
+        Compiler compiler = getCompiler(argv, ext, eq, source);
+        boolean success = compiler.compileFiles(source);
 
-      if (!compiler.compileFiles(source)) {
-          throw new TerminationException(1);
-      }
+        x10.ExtensionInfo x10Info = (x10.ExtensionInfo) compiler.sourceExtension();
+        x10Info.stats.reportFrequency();
+        x10Info.stats.reportTime();
 
-      if (Report.should_report(verbose, 1)) {
-          reportTime("Total time=" + (System.currentTimeMillis() - time0), 1);
-      }
+        if (!success) {
+            throw new TerminationException(1);
+        }
   }
 
   private List<String> explodeOptions(String[] args) throws TerminationException {
@@ -163,7 +181,11 @@ public class Main
 
   public static void main(String args[]) {
       try {
+          //long time = - System.currentTimeMillis();
           new Main().start(args);
+          //time += System.currentTimeMillis();
+          //System.out.println(time + " ms");
+                             
       }
       catch (TerminationException te) {
           if (te.getMessage() != null)
@@ -201,15 +223,6 @@ public class Main
       }
     }
     return null;
-  }
-
-  static private Collection<String> timeTopics = new ArrayList<String>(1);
-  static {
-      timeTopics.add("time");
-  }
-
-  static private void reportTime(String msg, int level) {
-      Report.report(level, msg);
   }
 
   /**

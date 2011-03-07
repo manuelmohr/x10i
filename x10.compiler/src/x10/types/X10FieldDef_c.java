@@ -22,43 +22,45 @@ import polyglot.types.Flags;
 import polyglot.types.Name;
 import polyglot.types.QName;
 import polyglot.types.Ref;
-import polyglot.types.StructType;
+import polyglot.types.ContainerType;
 import polyglot.types.Type;
 import polyglot.types.TypeSystem;
 import polyglot.util.Position;
 import polyglot.util.TypedList;
+import x10.constraint.XTerms;
 import x10.constraint.XVar;
+import x10.types.constraints.CTerms;
 import x10.types.constraints.TypeConstraint;
 
-/**
- * An X10ConstructorInstance_c varies from a ConstructorInstance_c only in that it
- * maintains a returnType. If an explicit returnType is not declared in the constructor
- * then the returnType is simply a noClause variant of the container.
- * @author vj
- *
- */
 public class X10FieldDef_c extends FieldDef_c implements X10FieldDef {
     private static final long serialVersionUID = 6359052056959695361L;
 
     boolean isProperty;
-    XVar thisVar;
     
     public X10FieldDef_c(TypeSystem ts, Position pos,
-            Ref<? extends StructType> container,
+            Ref<? extends ContainerType> container,
             Flags flags, 
             Ref<? extends Type> type,
-            Name name, XVar thisVar) {
+            Name name, ThisDef thisDef) {
         super(ts, pos, container, flags, type, name);
         this.isProperty = false;
-        this.thisVar = thisVar;
+        this.thisDef = thisDef;
     }
     
     public XVar thisVar() {
-        return this.thisVar;
+        if (this.thisDef != null)
+            return this.thisDef.thisVar();
+        return CTerms.makeThis(); // Why #this instead of this?
     }
 
-    public void setThisVar(XVar thisVar) {
-        this.thisVar = thisVar;
+    ThisDef thisDef;
+
+    public ThisDef thisDef() {
+        return this.thisDef;
+    }
+
+    public void setThisDef(ThisDef thisDef) {
+        this.thisDef = thisDef;
     }
 
     // BEGIN ANNOTATION MIXIN

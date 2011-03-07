@@ -28,7 +28,6 @@ public abstract class AbstractExtensionInfo implements ExtensionInfo {
     protected NodeFactory nf = null;
     protected SourceLoader source_loader = null;
     protected TargetFactory target_factory = null;
-    protected Stats stats;
     protected Scheduler scheduler;
 
     public abstract String compilerName();
@@ -44,14 +43,6 @@ public abstract class AbstractExtensionInfo implements ExtensionInfo {
 
     protected Options createOptions() {
         return new Options(this);
-    }
-
-    /** Return a Stats object to accumulate and report statistics. */
-    public Stats getStats() {
-        if (this.stats == null) {
-            this.stats = new Stats(this);
-        }
-        return stats;
     }
 
     public Compiler compiler() {
@@ -113,7 +104,8 @@ public abstract class AbstractExtensionInfo implements ExtensionInfo {
         if (target_factory == null) {
             target_factory = new TargetFactory(getOptions().output_directory,
                                                getOptions().output_ext,
-                                               getOptions().output_stdout);
+                                               getOptions().output_stdout,
+                                               getOptions().reporter);
         }
 
         return target_factory;
@@ -165,10 +157,6 @@ public abstract class AbstractExtensionInfo implements ExtensionInfo {
 
     public String toString() {
         return getClass().getName();
-    }
-
-    public ClassFile createClassFile(File classFileSource, byte[] code){
-        return new ClassFile(classFileSource, code, this);
     }
 
     public FileSource createFileSource(File f, boolean user)

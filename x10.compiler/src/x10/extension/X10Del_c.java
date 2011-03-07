@@ -23,12 +23,12 @@ import polyglot.frontend.ExtensionInfo;
 import polyglot.types.Context;
 import polyglot.types.QName;
 import polyglot.types.Type;
-import polyglot.util.CollectionUtil;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.visit.NodeVisitor;
 import x10.ast.AnnotationNode;
 import x10.types.X10ClassType;
-import x10.types.X10Context;
-import x10.types.X10TypeSystem;
+import polyglot.types.Context;
+import polyglot.types.TypeSystem;
 
 /**
  * @author nystrom

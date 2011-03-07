@@ -30,14 +30,14 @@ import polyglot.ast.NodeFactory;
 import polyglot.ast.TypeNode;
 import polyglot.frontend.Globals;
 import polyglot.frontend.Job;
-import polyglot.main.Report;
+import polyglot.main.Reporter;
 import polyglot.types.ClassDef;
 import polyglot.types.ConstructorInstance;
 import polyglot.types.Context;
 import polyglot.types.Def;
 import polyglot.types.Matcher;
 import polyglot.types.MemberInstance;
-import polyglot.types.MethodInstance;
+
 import polyglot.types.Name;
 import polyglot.types.NoMemberException;
 import polyglot.types.ObjectType;
@@ -46,19 +46,20 @@ import polyglot.types.ProcedureInstance;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.types.TypeSystem;
+import polyglot.types.Types;
 import polyglot.util.ErrorInfo;
 import polyglot.util.Pair;
 import polyglot.util.Position;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.visit.ContextVisitor;
 import x10.Configuration;
 import x10.ExtensionInfo;
-import x10.ast.SemanticError;
+import x10.X10CompilerOptions;
 import x10.ast.X10CanonicalTypeNode;
 import x10.ast.X10CanonicalTypeNode_c;
 import x10.ast.X10Cast;
 import x10.ast.X10Cast_c;
 import x10.ast.X10New_c;
-import x10.ast.X10NodeFactory;
 import x10.ast.X10ProcedureCall;
 import x10.ast.X10New_c.MatcherMaker;
 import x10.constraint.XConstraint;
@@ -70,13 +71,13 @@ import x10.errors.Warnings;
 import x10.types.ParameterType;
 import x10.types.TypeParamSubst;
 import x10.types.X10ClassType;
-import x10.types.X10Context;
+import x10.types.MethodInstance;
+import polyglot.types.Context;
 import x10.types.X10ParsedClassType_c;
 import x10.types.X10ProcedureDef;
 import x10.types.X10ProcedureInstance;
-import x10.types.X10TypeMixin;
-import x10.types.X10TypeSystem;
-import x10.types.X10TypeSystem_c;
+import polyglot.types.TypeSystem;
+
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.TypeConstraint;
 import x10.util.Synthesizer;
@@ -110,13 +111,13 @@ public class Converter {
 	 * @return -- the expression constructed from e of type toType
 	 * @throws SemanticException If this is not possible
 	 */
-	public static Expr attemptCoercion(ContextVisitor tc, Expr e, Type toType) throws SemanticException {
+	public static Expr attemptCoercion(ContextVisitor tc, Expr e, Type toType) {
 		return attemptCoercion(false, tc, e, toType);
 	}
-	public static Expr attemptCoercion(boolean dynamicCallp, ContextVisitor tc,  Expr e, Type toType) throws SemanticException {
-		X10TypeSystem ts = (X10TypeSystem) tc.typeSystem();
+	public static Expr attemptCoercion(boolean dynamicCallp, ContextVisitor tc, Expr e, Type toType) {
+		TypeSystem ts = (TypeSystem) tc.typeSystem();
 		Type t1 = e.type();
-		t1 = PlaceChecker.ReplaceHereByPlaceTerm(t1, (X10Context) tc.context());
+		t1 = PlaceChecker.ReplaceHereByPlaceTerm(t1, (Context) tc.context());
 		if (ts.isSubtype(t1, toType, tc.context())) 
 			return e;
 		
@@ -124,41 +125,58 @@ public class Converter {
 		? ConversionType.UNKNOWN_CONVERSION
 		: ConversionType.CALL_CONVERSION; // ConversionType.UNKNOWN_IMPLICIT_CONVERSION;
 		
-		X10NodeFactory nf = (X10NodeFactory) tc.nodeFactory();
+		NodeFactory nf = (NodeFactory) tc.nodeFactory();
 
 		X10CanonicalTypeNode tn = (X10CanonicalTypeNode) nf.CanonicalTypeNode(e.position(), toType);
-		Expr result = check(nf.X10Cast(e.position(), tn, e, ct),tc); // FIXME
+		Expr result = typeCheckCast(nf.X10Cast(e.position(), tn, e, ct), tc);
 		
 		if (result instanceof X10Cast && ((X10Cast) result).conversionType()==ConversionType.CHECKED) {
 			// OK that succeeded. Now ensure that there is a depexpr created for the check.
 
-			CConstraint cn = X10TypeMixin.xclause(toType);
+			CConstraint cn = Types.xclause(toType);
 			if (cn.hasPlaceTerm()) {
 				// Failed to translate the constraint
-				// For now the only  possibility is the constraint refers
+				// For now the only possibility is the constraint refers
 				// to a variable synthesized by the compiler.
-				throw new Errors.CannotGenerateCast(e, e.position());
+				//throw new Errors.CannotGenerateCast(e, e.position());
+				return null;
 			}
-			
+
 			tn = new Synthesizer(nf, ts).makeCanonicalTypeNodeWithDepExpr(e.position(), toType, tc);
 			if (tn.type() != toType) {
 				// alright, now we actually synthesized a new depexpr. 
 				// lets splice it in.
-				result = check(nf.X10Cast(e.position(), tn, e, ct),tc); // FIXME
+				result = typeCheckCast(nf.X10Cast(e.position(), tn, e, ct), tc);
 			}
 			if (dynamicCallp) {
-				if (Configuration.STATIC_CALLS) {
-					throw new SemanticException("Expression " + e + " cannot be cast to type " + tn.type() + ".", e.position());
-				} else if (Configuration.VERBOSE_CALLS) {
-					Warnings.issue(tc.job(), Warnings.CastingExprToType(e, tn.type(), e.position()));
-				} else {
-					((ExtensionInfo) tc.job().extensionInfo()).incrWeakCallsCount();
+				if (!Warnings.dynamicCall(tc.job(),Warnings.CastingExprToType(e, tn.type(), e.position()))) {
+					//throw new SemanticException("Expression " + e + " cannot be cast to type " + tn.type() + ".", e.position());
+					return null;
 				}
 			}
 		}
 
-		
 		return result;
+	}
+
+	private static Expr typeCheckCast(X10Cast cast, ContextVisitor tc) {
+	    if (cast.castType() != null) {
+	        try {
+	            Types.checkMissingParameters(cast.castType());
+	        } catch (SemanticException e) {
+	            return null;
+	        }
+	    }
+	    try {
+	        Expr e = Converter.converterChain((X10Cast_c) cast, tc);
+	        assert e.type() != null;
+	        assert ! (e instanceof X10Cast_c) || ((X10Cast_c) e).conversionType() != Converter.ConversionType.UNKNOWN_CONVERSION;
+	        assert ! (e instanceof X10Cast_c) || ((X10Cast_c) e).conversionType() != Converter.ConversionType.UNKNOWN_IMPLICIT_CONVERSION;
+	        return e;
+	    } catch (SemanticException e) {
+	        return null;
+	    }
+	    //return cast;
 	}
 
 	/**
@@ -178,13 +196,14 @@ public class Converter {
 	public static <PD extends ProcedureDef, PI extends ProcedureInstance<PD>> Pair<PI, List<Expr>> 
 	tryImplicitConversions(X10ProcedureCall n,
 			ContextVisitor tc, Type targetType, List<PI> methods, X10New_c.MatcherMaker<PI> maker) throws SemanticException {
-		X10NodeFactory nf = (X10NodeFactory) tc.nodeFactory();
-		X10TypeSystem ts = (X10TypeSystem) tc.typeSystem();
-		X10Context xc = (X10Context) tc.context();
+		NodeFactory nf = (NodeFactory) tc.nodeFactory();
+		TypeSystem ts = (TypeSystem) tc.typeSystem();
+		Reporter reporter = ts.extensionInfo().getOptions().reporter;
+		Context xc = (Context) tc.context();
 		ClassDef currentClassDef = xc.currentClassDef();
 
 		List<PI> acceptable = new ArrayList<PI>();
-		Map<Def, List<Expr>> newArgs = new HashMap<Def, List<Expr>>();
+		Map<Def, List<Expr>> newArgs = CollectionFactory.newHashMap();
 
 		List<Type> typeArgs = new ArrayList<Type>(n.typeArguments().size());
 
@@ -196,8 +215,8 @@ public class Converter {
 			PI smi = i.next();
 			X10ProcedureInstance<?> xmi = (X10ProcedureInstance<?>) smi;
 
-			if (Report.should_report(Report.types, 3))
-				Report.report(3, "Trying " + smi);
+			if (reporter.should_report(Reporter.types, 3))
+				reporter.report(3, "Trying " + smi);
 
 			List<ParameterType> typeParameters = ((X10ProcedureDef) xmi.def()).typeParameters();
 			if (typeParameters.size() != typeArgs.size()) {
@@ -219,15 +238,11 @@ public class Converter {
 				Expr e = n.arguments().get(j);
 				Type toType = formals.get(j);
 
-				try {
-					Expr e2 = attemptCoercion(true, tc, e, toType);
-					transformedArgs.add(e2);
-					transformedArgTypes.add(e2.type());
-				}
-				catch (SemanticException ex) {
-					// Implicit cast not allowed here.
+				Expr e2 = attemptCoercion(true, tc, e, toType);
+				if (e2 == null)
 					continue METHOD;
-				}
+				transformedArgs.add(e2);
+				transformedArgTypes.add(e2.type());
 			}
 
 			try {
@@ -243,7 +258,7 @@ public class Converter {
 				PI raw = (PI) smi.def().asInstance();
 				if (smi instanceof MemberInstance<?>) {
 					Type container = ((MemberInstance<?>) smi).container();
-					Type base = X10TypeMixin.baseType(container);
+					Type base = Types.baseType(container);
 					if (base instanceof X10ClassType) {
 						X10ParsedClassType_c ct = (X10ParsedClassType_c) base;
 						raw = ct.subst().reinstantiate(raw);
@@ -262,7 +277,7 @@ public class Converter {
 				newArgs.put(smi2.def(), transformedArgs);
 			}
 			catch (SemanticException e) {
-				System.out.print("");
+				int q = 3;
 			}
 		}
 
@@ -312,15 +327,15 @@ public class Converter {
 	}
 
 	/** Return list of conversion functions needed to convert from fromType to toType */
-	public static Expr converterChain(final X10Cast_c cast, final ContextVisitor tc) throws SemanticException {
+	public static Expr converterChain(final X10Cast cast, final ContextVisitor tc) throws SemanticException {
 		try {
 			return Converter.checkCast(cast, tc);
 		}
 		catch (SemanticException e) {
 		}
 
-		X10TypeSystem ts = (X10TypeSystem) tc.typeSystem();
-		final X10NodeFactory nf = (X10NodeFactory) tc.nodeFactory();
+		TypeSystem ts = (TypeSystem) tc.typeSystem();
+		final NodeFactory nf = (NodeFactory) tc.nodeFactory();
 		final Context context = tc.context();
 
 		class Helper {
@@ -347,18 +362,18 @@ public class Converter {
 				}
 				else if (changed) {
 					X10ClassType ct2 = ct.typeArguments(accum);
-					Type newFrom = X10TypeMixin.xclause(X10TypeMixin.baseType(ct2), X10TypeMixin.xclause(fromType));
+					Type newFrom = Types.xclause(Types.baseType(ct2), Types.xclause(fromType));
 					if (fromType.typeEquals(newFrom, context)) {
 						assert false;
 					}
 					if (newFrom.isSubtype(toType, context))
 						return cast.expr();
-					X10Cast_c newCast = (X10Cast_c) nf.X10Cast(cast.position(), 
+					X10Cast newCast = nf.X10Cast(cast.position(), 
 							nf.CanonicalTypeNode(cast.position(), newFrom), cast.expr(), 
 							Converter.ConversionType.UNKNOWN_IMPLICIT_CONVERSION);
 					Expr newE = converterChain(newCast, tc);
 					assert newE.type() != null;
-					X10Cast_c newC = (X10Cast_c) cast.expr(newE);
+					X10Cast newC = (X10Cast) cast.expr(newE);
 					return Converter.checkCast(newC, tc); // FIXME
 				}
 
@@ -367,7 +382,7 @@ public class Converter {
 			}
 
 			void addSuperTypes(List<Type> l, Type t) {
-				Type b = X10TypeMixin.baseType(t);
+				Type b = Types.baseType(t);
 				if (! b.typeSystem().typeEquals(b, t, context)) {
 					l.add(b);
 				}
@@ -389,11 +404,11 @@ public class Converter {
 
 		// If the fromType has a covariant parameter,
 		// try supertypes of the corresponding argument type.
-		Type baseFrom = X10TypeMixin.baseType(fromType);
+		Type baseFrom = Types.baseType(fromType);
 
 		if (baseFrom instanceof X10ClassType) {
 			X10ClassType ct = (X10ClassType) baseFrom;
-			if (ct.typeArguments().size() > 0) {
+			if (ct.typeArguments() != null && ct.typeArguments().size() > 0) {
 				List<Type>[] alternatives = new List[ct.typeArguments().size()];
 				List<Type> newArgs = new ArrayList<Type>(ct.typeArguments().size());
 				for (int i = 0; i < ct.typeArguments().size(); i++) {
@@ -422,16 +437,17 @@ public class Converter {
 		throw new Errors.CannotConvertExprToType(cast.expr(), cast.conversionType(), toType, cast.position());
 	}
 
-	public static Expr checkCast(X10Cast_c cast, ContextVisitor tc) throws SemanticException {
-		X10TypeSystem_c ts = (X10TypeSystem_c) tc.typeSystem();
+	public static Expr checkCast(X10Cast cast, ContextVisitor tc) throws SemanticException {
+		X10CompilerOptions opts = (X10CompilerOptions) tc.job().extensionInfo().getOptions();
+		TypeSystem ts =  tc.typeSystem();
 		Type toType = cast.castType().type();
 		Type fromType = cast.expr().type();
-		X10NodeFactory nf = (X10NodeFactory) tc.nodeFactory();
-		X10Context context = (X10Context) tc.context();
+		NodeFactory nf = (NodeFactory) tc.nodeFactory();
+		Context context = (Context) tc.context();
 
 		if (ts.isUnknown(toType)) {
-		    if (Configuration.CHECK_INVARIANTS)
-			Errors.issue(tc.job(), new SemanticException("Complaining about UnknownType", cast.position()));
+		    if (opts.x10_config.CHECK_INVARIANTS)
+			Errors.issue(tc.job(), new Errors.UnknownType(cast.position()));
 		    return cast;
 		}
 
@@ -441,22 +457,22 @@ public class Converter {
 		if (ts.isSubtype(fromType, toType, context)) {
 		    // Add the clause self==x if the fromType's self binding is x,
 		    // since for these casts we know the result is identical to expr.
-		    XTerm sv = X10TypeMixin.selfBinding(fromType);
+		    XTerm sv = Types.selfBinding(fromType);
 		    if (sv != null) 
 		        try {
-		        toType = X10TypeMixin.addSelfBinding((Type) toType.copy(), sv);
+		        toType = Types.addSelfBinding((Type) toType.copy(), sv);
 		        } catch (XFailure f) {
-		            throw new SemanticError("Inconsistent type: " + toType + " {self==" + sv+"}", cast.position());
+		            throw new Errors.InconsistentTypeSelf(toType, sv, cast.position());
 		        }
 
 		    X10Cast n =  cast.conversionType(ConversionType.SUBTYPE);
 		    return n.type(toType);
 		}
 
-		Type baseFrom = X10TypeMixin.baseType(fromType);
-		Type baseTo = X10TypeMixin.baseType(toType);
-		XConstraint cFrom = X10TypeMixin.xclause(fromType);
-		XConstraint cTo = X10TypeMixin.xclause(toType);
+		Type baseFrom = Types.baseType(fromType);
+		Type baseTo = Types.baseType(toType);
+		XConstraint cFrom = Types.xclause(fromType);
+		XConstraint cTo = Types.xclause(toType);
 
 		if (cast.conversionType() != ConversionType.UNKNOWN_IMPLICIT_CONVERSION 
 				&& cast.conversionType() != ConversionType.CALL_CONVERSION) {
@@ -464,12 +480,12 @@ public class Converter {
 					&& ! ts.isParameterType(toType) 
 					&& ts.isCastValid(fromType, toType, context)) {
 				X10Cast n = cast.conversionType(ConversionType.CHECKED); 
-				XTerm sv = X10TypeMixin.selfBinding(fromType);
+				XTerm sv = Types.selfBinding(fromType);
 				if (sv != null) 
 				    try {
-				        toType = X10TypeMixin.addSelfBinding((Type) toType.copy(), sv);
+				        toType = Types.addSelfBinding((Type) toType.copy(), sv);
 				    } catch (XFailure f) {
-				        throw new SemanticError("Inconsistent type: " + toType + " {self==" + sv+"}", cast.position());
+				        throw new SemanticException("Inconsistent type: " + toType + " {self==" + sv+"}", cast.position());
 				    }
 				return n.type(toType);
 			}
@@ -489,9 +505,9 @@ public class Converter {
 					mi = ts.findMethod(toType, ts.MethodMatcher(toType, Converter.operator_as, 
 							Collections.singletonList(fromType), context));
 					Type miType = mi.returnType();
-					Type baseMiType = X10TypeMixin.baseType(miType);
+					Type baseMiType = Types.baseType(miType);
 					if (mi.flags().isStatic() && baseMiType.isSubtype(baseTo, context)
-							&& X10TypeMixin.areConsistent(miType, toType)) {
+							&& Types.areConsistent(miType, toType)) {
 						converter = mi;
 						// Do the conversion.
 						c = nf.Call(p, nf.CanonicalTypeNode(p, toType), nf.Id(p, mi.name()), e);
@@ -510,9 +526,9 @@ public class Converter {
 							Collections.singletonList(fromType), context));
 					
 					Type miType = mi.returnType();
-					Type baseMiType = X10TypeMixin.baseType(miType);
+					Type baseMiType = Types.baseType(miType);
 					if (mi.flags().isStatic() && baseMiType.isSubtype(baseTo, context)
-							&& X10TypeMixin.areConsistent(miType, toType)) {
+							&& Types.areConsistent(miType, toType)) {
 						converter = mi;
 						// Do the conversion.
 						c = nf.Call(p, nf.CanonicalTypeNode(p, toType), nf.Id(p, mi.name()), e);
@@ -525,9 +541,9 @@ public class Converter {
 						mi = ts.findMethod(fromType, ts.MethodMatcher(fromType, Converter.implicit_operator_as, 
 								Collections.singletonList(fromType), context));
 						Type miType = mi.returnType();
-						Type baseMiType = X10TypeMixin.baseType(miType);
+						Type baseMiType = Types.baseType(miType);
 						if (mi.flags().isStatic() && baseMiType.isSubtype(baseTo, context)
-								&& X10TypeMixin.areConsistent(miType, toType)) {
+								&& Types.areConsistent(miType, toType)) {
 							converter = mi;
 							c = nf.Call(p, nf.CanonicalTypeNode(p, fromType), nf.Id(p, mi.name()), e);
 							c = c.methodInstance(mi);
@@ -535,6 +551,12 @@ public class Converter {
 						}
 					} catch (SemanticException z) {
 					}
+                    // yoav todo: we check 3 conditions:
+                    // toType.operator_as(fromType)
+                    // toType.implicit_operator_as(fromType)
+                    // fromType.implicit_operator_as(fromType)
+                    // but we should also check:
+                    // fromType.operator_as(fromType)
 				}
 			}
 
@@ -542,7 +564,7 @@ public class Converter {
 
 				// Now, do a coercion if needed to check any additional constraints on the type.
 				if (! ts.isParameterType(fromType) && ! mi.returnType().isSubtype(toType, context)) {
-					X10Cast n = cast.conversionType(c, ConversionType.CHECKED); 
+					X10Cast n = cast.exprAndConversionType(c, ConversionType.CHECKED); 
 					return n.type(toType);
 				}
 				else {
@@ -577,17 +599,17 @@ public class Converter {
 	    }
 
 		// Added 03/28/10 to support new call conversion semantics.
-		if (ts.isSubtype(X10TypeMixin.baseType(fromType), X10TypeMixin.baseType(toType), context))
-			if (! Configuration.STATIC_CALLS)
+		if (ts.isSubtype(Types.baseType(fromType), Types.baseType(toType), context))
+			if (!opts.x10_config.STATIC_CALLS)
 				if (cast.conversionType() == ConversionType.CALL_CONVERSION 
 						&& ts.isCastValid(fromType, toType, context)) {
 					X10Cast n = cast.conversionType(ConversionType.CHECKED); 
-					XVar sv = X10TypeMixin.selfVarBinding(fromType); // FIXME: Vijay, can this be an XTerm?  -Bowen
+					XVar sv = Types.selfVarBinding(fromType); // FIXME: Vijay, can this be an XTerm?  -Bowen
 					if (sv != null)
 						try {
-							toType = X10TypeMixin.addSelfBinding((Type) toType.copy(), sv);
+							toType = Types.addSelfBinding((Type) toType.copy(), sv);
 						} catch (XFailure f) {
-							throw new SemanticError("Inconsistent type: " + toType + " {self==" + sv+"}", cast.position());
+							throw new SemanticException("Inconsistent type: " + toType + " {self==" + sv+"}", cast.position());
 						}
 						return n.type(toType);
 				}
@@ -595,7 +617,7 @@ public class Converter {
 	}
 		
 		   
-	    static Expr checkedConversionForTypeParameter(X10Cast_c cast, Type fromType, Type toType) {
+	    static Expr checkedConversionForTypeParameter(X10Cast cast, Type fromType, Type toType) {
 	        return cast.conversionType(ConversionType.CHECKED).type(toType);
 	    }
 	public static <T extends Node> T check(T n, ContextVisitor tc) throws SemanticException {

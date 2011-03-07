@@ -19,23 +19,22 @@ import polyglot.frontend.Job;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.types.TypeSystem;
+import polyglot.types.Types;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.NodeVisitor;
 import x10.ast.X10Cast;
-import x10.ast.X10NodeFactory;
 import x10.types.ConstrainedType;
-import x10.types.X10TypeMixin;
-import x10.types.X10TypeSystem;
+import polyglot.types.TypeSystem;
 
 public class CastRemover extends ContextVisitor {
     
-    private final X10TypeSystem xts;
-    private final X10NodeFactory xnf;
+    private final TypeSystem xts;
+    private final NodeFactory xnf;
     
     public CastRemover(Job job, TypeSystem ts, NodeFactory nf) {
         super(job, ts, nf);
-        xts = (X10TypeSystem) ts;
-        xnf = (X10NodeFactory) nf;
+        xts = (TypeSystem) ts;
+        xnf = (NodeFactory) nf;
     }
     
     @Override
@@ -54,7 +53,7 @@ public class CastRemover extends ContextVisitor {
             Expr expr = cast.expr();
             Type type = expr.type();
             // e.g. i:Int = (Int) j:Int{self==0} --> i:Int = j:Int{self==0};
-            if (assign.leftType().typeEquals(castType.type(), context) && castType.type().typeEquals(X10TypeMixin.baseType(type), context)) {
+            if (assign.leftType().typeEquals(castType.type(), context) && castType.type().typeEquals(Types.baseType(type), context)) {
                 return assign.right(expr);
             }
         }

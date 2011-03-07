@@ -8,11 +8,14 @@
 
 package polyglot.ast;
 
+import java.util.List;
+
 import polyglot.frontend.Globals;
 import polyglot.types.*;
 import polyglot.util.*;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.PrettyPrinter;
+import x10.errors.Errors;
 
 /**
  * An <code>Import</code> is an immutable representation of a Java
@@ -81,26 +84,25 @@ public class Import_c extends Node_c implements Import
         // Make sure the imported name exists.
         if (kind == PACKAGE && ts.systemResolver().packageExists(name))
             return this;
-        
-        Named n;
+
+        List<Type> tl;
         try {
-            n = ts.systemResolver().find(name);
+            tl = ts.systemResolver().find(name);
         }
         catch (SemanticException e) {
-            throw new SemanticException("Package or class " + name + " not found.");
+            throw new Errors.PackageOrClassNameNotFound(name, position);
         }
 
-        if (n instanceof Type) {
-            Type t = (Type) n;
+        for (Type t : tl) {
             if (t.isClass()) {
-        	ClassType ct = t.toClass();
-        	if (! ts.classAccessibleFromPackage(ct.def(), tc.context().package_())) {
-        	    throw new SemanticException("Class " + ct + " is not accessible.");
-        	}
+                ClassType ct = t.toClass();
+                if (! ts.classAccessibleFromPackage(ct.def(), tc.context().package_())) {
+                    throw new Errors.ClassNotAccessible(ct, position);
+                }
             }
         }
 
-	return this;
+        return this;
     }
 
     public String toString() {

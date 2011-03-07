@@ -92,6 +92,8 @@ namespace x10aux {
 
     x10_int num_threads();
 
+    x10_int max_threads();
+
     x10_boolean no_steals();
 
     x10_boolean static_threads();
@@ -108,7 +110,8 @@ namespace x10aux {
 
 namespace x10aux {
 
-    void run_at (place p, x10aux::ref<x10::lang::Reference> body);
+    void run_closure_at (place p, x10aux::ref<x10::lang::Reference> body);
+    void run_async_at (place p, x10aux::ref<x10::lang::Reference> body, x10aux::ref<x10::lang::Reference> fs);
 
     class serialization_buffer;
 
@@ -119,6 +122,12 @@ namespace x10aux {
                    serialization_buffer &buf, void *data, x10aux::copy_sz len);
 
     void cuda_put (place gpu, x10_ulong addr, void *var, size_t sz);
+
+    // teams
+    void *coll_enter();
+    void coll_handler(void *arg);
+    void *coll_enter2(void *arg);
+    void coll_handler2(x10rt_team t, void *arg);
 }
 #endif
 // vim:tabstop=4:shiftwidth=4:expandtab

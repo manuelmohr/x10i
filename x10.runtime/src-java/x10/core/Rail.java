@@ -37,15 +37,16 @@ public final class Rail<T> extends Ref implements AnyRail<T>, x10.lang.Settable<
         this.value = array;
     }
     
+
+    public IndexedMemoryChunk<T> raw() {
+        return new IndexedMemoryChunk<T>(type, length, value);
+    }
+
     public void copyToLocal(int src_off, Rail<T> dst, int dst_off, int len) {
         System.arraycopy(value, src_off, dst.value, dst_off, len);
     }
 
     public void copyFromLocal(int dst_off, Rail<T> src, int src_off, int len) {
-        System.arraycopy(src.value, src_off, value, dst_off, len);
-    }
-
-    public void copyFromLocal(int  dst_off, ValRail<T> src, int src_off, int len) {
         System.arraycopy(src.value, src_off, value, dst_off, len);
     }
 
@@ -61,7 +62,7 @@ public final class Rail<T> extends Ref implements AnyRail<T>, x10.lang.Settable<
 		}
 
 		public T next$G() {
-			return apply$G(i++);
+			return $apply$G(i++);
 		}
 	}
 
@@ -126,43 +127,45 @@ public final class Rail<T> extends Ref implements AnyRail<T>, x10.lang.Settable<
         return length;
     }
     
-    public T apply(Object i, Type t) {
-    	return apply$G((int)(Integer)i);
+    public T $apply(Object i, Type t) {
+    	return $apply$G((int)(Integer)i);
     }
 
-    public T apply$G(int i) {
+    public T $apply$G(int i) {
         return type.getArray(value, i);
     }
     
-    protected T set$(T v, Integer i) {
+    protected T $set$(T v, Integer i) {
     	return type.setArray(value, i, v);
     }
     
 //    public boolean isZero() {
 //    	boolean zero = true;
 //		for (int i = 0; i < length && zero; ++i) {
-//			zero &= apply$G(i) == type.zeroValue();
+//			zero &= $apply$G(i) == type.zeroValue();
 //		}
 //		return zero;
 //    }
     
-    public String toString() {
+    public java.lang.String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("[");
-        for (int i = 0; i < length; i++) {
+        sb.append("Rail(");
+        int sz = Math.min(length, 10);
+        for (int i = 0; i < sz; i++) {
             if (i > 0)
-                sb.append(", ");
-            sb.append(apply$G(i));
+                sb.append(",");
+            sb.append($apply$G(i));
         }
-        sb.append("]");
+        if (sz < length) sb.append("...(omitted " + (length - sz) + " elements)");
+        sb.append(")");
         return sb.toString();
     }
 
-    public T set(T v, Type t1, Integer i, Type t2) {
-        return set$G(v, (int)i);
+    public T $set(T v, Type t1, Integer i, Type t2) {
+        return $set$G(v, (int)i);
     }
 
-    public T set$G(T v, int i) {
+    public T $set$G(T v, int i) {
         return type.setArray(value, i, v);
     }
 
@@ -172,7 +175,7 @@ public final class Rail<T> extends Ref implements AnyRail<T>, x10.lang.Settable<
 
     public void reset(Fun_0_1<Integer,T> v) {
         for (int i=0; i<length; i++) {
-            set$G(v.apply(i, Types.INT), i);
+            $set$G(v.$apply(i, Types.INT), i);
         }
     }
 
@@ -216,7 +219,7 @@ public final class Rail<T> extends Ref implements AnyRail<T>, x10.lang.Settable<
         }
     ) {
         @Override
-        public String typeName() {
+        public java.lang.String typeName() {
             return "x10.lang.Rail";
         }
     };

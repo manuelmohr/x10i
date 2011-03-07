@@ -1,5 +1,19 @@
-/* *********************************************************************** */
-/* *********************************************************************** */
+/*
+ *  This file is part of the X10 project (http://x10-lang.org).
+ *
+ *  This file is licensed to You under the Eclipse Public License (EPL);
+ *  You may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *      http://www.opensource.org/licenses/eclipse-1.0.php
+ *
+ *  (C) Copyright IBM Corporation 2006-2010.
+ *
+ *  This file was written by Ben Herta for IBM: bherta@us.ibm.com
+ */
+
+#ifdef __CYGWIN__
+#undef __STRICT_ANSI__ // Strict ANSI mode is too strict in Cygwin
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -13,7 +27,12 @@
 #include <stdarg.h>
 #include <alloca.h>
 #include <arpa/inet.h>
-#include <time.h>
+#include <sched.h>
+#include <errno.h>
+
+#ifdef __MACH__
+#include <crt_externs.h>
+#endif
 
 #include "Launcher.h"
 #include "TCP.h"
@@ -39,7 +58,7 @@ int Launcher::setPort(uint32_t place, char* port)
 					fprintf(stderr, "Runtime %u connecting to launcher at \"%s\"\n", place, getenv(X10LAUNCHER_PARENT));
 				#endif
 
-				_parentLauncherControlLink = TCP::connect((const char *) getenv(X10LAUNCHER_PARENT), 10);
+				_parentLauncherControlLink = TCP::connect((const char *) getenv(X10LAUNCHER_PARENT), 10, true);
 			}
 			if (_parentLauncherControlLink <= 0)
 				return -1; // connection failed for some reason
@@ -194,14 +213,75 @@ void Launcher::startChildren()
 
 			if (id == _numchildren && _myproc != 0xFFFFFFFF)
 			{ // start up the local x10 runtime
-				unsetenv(X10LAUNCHER_HOSTFILE);
+				unsetenv(X10_HOSTFILE);
+				unsetenv(X10_HOSTLIST);
 				unsetenv(X10LAUNCHER_SSH);
 				setenv(X10LAUNCHER_PARENT, masterPort, 1);
 				setenv(X10LAUNCHER_RUNTIME, "1", 1);
+				chdir(getenv(X10LAUNCHER_CWD));
+
+				// check to see if we want to launch this in a debugger
+				char* which = getenv(X10LAUNCHER_DEBUG);
+				if (which != NULL)
+				{
+					char placenum[64];
+					strcpy(placenum, which);
+					char * colon = strchr(placenum, ':');
+					if (colon != NULL)
+						colon[0] = '\0';
+
+					// see if the launcher argument applies to this place
+					char* p;
+					errno = 0;
+					if (strcasecmp("all", placenum) == 0 || ((_myproc == (uint32_t)strtoul(placenum, &p, 10)) && !(errno != 0 || *p != 0 || p == placenum)))
+					{
+						// launch this runtime in a debugger
+						char** newargv;
+						if (colon == NULL)
+						{
+							#ifdef DEBUG
+								fprintf(stderr, "Runtime %u forked with gdb in an xterm.  Running exec.\n", _myproc);
+							#endif
+							newargv = (char**)alloca(8*sizeof(char*));
+							if (newargv == NULL)
+								DIE("Allocating space for exec-ing gdb runtime %d\n", _myproc);
+							char* title = (char*)alloca(32);
+							sprintf(title, "Place %u debug", _myproc);
+							newargv[0] = (char*)"xterm";
+							newargv[1] = (char*)"-T";
+							newargv[2] = title;
+							newargv[3] = (char*)"-e";
+							newargv[4] = (char*)"gdb";
+							newargv[5] = _argv[0];
+							newargv[6] = (char*)NULL;
+						}
+						else
+						{
+							colon[0] = ':';
+							#ifdef DEBUG
+								fprintf(stderr, "Runtime %u forked with a remote gdbserver at port %s.  Running exec.\n", _myproc, &colon[1]);
+							#endif
+							int numArgs = 0;
+							while (_argv[numArgs] != NULL)
+								numArgs++;
+							newargv = (char**)alloca((numArgs+3)*sizeof(char*));
+							if (newargv == NULL)
+								DIE("Allocating space for exec-ing gdb runtime %d\n", _myproc);
+							newargv[0] = (char*)"gdbserver";
+							newargv[1] = colon;
+							for (int i=0; i<numArgs; i++)
+								newargv[i+2] = _argv[i];
+							newargv[numArgs+2] = (char*)NULL;
+						}
+						if (execvp(newargv[0], newargv))
+							// can't get here, if the exec succeeded
+							DIE("Launcher %u: runtime exec with gdb failed", _myproc);
+					}
+				}
+
 				#ifdef DEBUG
 					fprintf(stderr, "Runtime %u forked.  Running exec.\n", _myproc);
 				#endif
-				chdir(getenv(X10LAUNCHER_CWD));
 				if (execvp(_argv[0], _argv))
 					// can't get here, if the exec succeeded
 					DIE("Launcher %u: runtime exec failed", _myproc);
@@ -216,7 +296,7 @@ void Launcher::startChildren()
 					setenv(X10LAUNCHER_PARENT, masterPort, 1);
 					char idString[24];
 					sprintf(idString, "%d", _firstchildproc+id);
-					setenv(X10LAUNCHER_MYID, idString, 1);
+					setenv(X10_PLACE, idString, 1);
 					#ifdef DEBUG
 						fprintf(stderr, "Launcher %u forked launcher %s on localhost.  Running exec.\n", _myproc, idString);
 					#endif
@@ -228,7 +308,7 @@ void Launcher::startChildren()
 	}
 
 	/* process manager invokes main loop */
-	handleRequestsLoop();
+	handleRequestsLoop(false);
 }
 
 
@@ -236,9 +316,10 @@ void Launcher::startChildren()
 /* this is the infinite loop that the process manager is executing.        */
 /* *********************************************************************** */
 
-void Launcher::handleRequestsLoop()
+void Launcher::handleRequestsLoop(bool onlyCheckForNewConnections)
 {
 	#ifdef DEBUG
+	if (!onlyCheckForNewConnections)
 		fprintf(stderr, "Launcher %u: main loop start\n", _myproc);
 	#endif
 	bool running = true;
@@ -250,6 +331,13 @@ void Launcher::handleRequestsLoop()
 		int fd_max = makeFDSets(&infds, NULL, &efds);
 		if (select(fd_max+1, &infds, NULL, &efds, &timeout) < 0)
 			break; // select error.  This can happen when we're in the middle of shutdown
+
+		if (_dieAt > 0)
+		{
+			time_t now = time(NULL);
+			if (now >= _dieAt)
+				break;
+		}
 
 		/* listener socket (new connections) */
 		if (_listenSocket >= 0)
@@ -265,6 +353,8 @@ void Launcher::handleRequestsLoop()
 			else if (FD_ISSET(_listenSocket, &infds))
 				handleNewChildConnection();
 		}
+		if (onlyCheckForNewConnections)
+			return;
 		/* parent control socket */
 		if (_parentLauncherControlLink >= 0)
 		{
@@ -274,7 +364,7 @@ void Launcher::handleRequestsLoop()
 				if (handleControlMessage(_parentLauncherControlLink) < 0)
 					running = handleDeadParent();
 		}
-		/* runtime and children output, stdout and stderr */
+		/* runtime and children control, stdout and stderr */
 		for (uint32_t i = 0; i <= _numchildren; i++)
 		{
 			if (_childControlLinks[i] >= 0)
@@ -307,23 +397,45 @@ void Launcher::handleRequestsLoop()
 	/* --------------------------------------------- */
 	/* end of main loop. kill & wait every process   */
 	/* --------------------------------------------- */
-	//cleanup:
 
-	#ifdef DEBUG
-		fprintf(stderr, "Launcher %u: killing sub-processes\n", _myproc);
-	#endif
+	signal(SIGCHLD, SIG_DFL); // disable the SIGCHLD handler
 
-	int status = 0;
-	for (uint32_t i = 0; i <= _numchildren; i++)
+	// save the return code for place 0.
+	int exitcode = _returncode; // exitcode is here to cover up any issues with using a static variable for the exit code, which may happen on Windows (and AIX?).
+	if ((_myproc==0 || _myproc==0xFFFFFFFF) && _pidlst[_numchildren] != -1)
 	{
-		#ifdef DEBUG
-			fprintf(stderr, "Launcher %u: killing pid=%d\n", _myproc, _pidlst[i]);
-		#endif
-		kill(_pidlst[i], SIGTERM);
-		waitpid(_pidlst[i], &status, WNOHANG); // status is the status of the last child (the local runtime)
+	    int status;
+ 		if (waitpid(_pidlst[_numchildren], &status, 0) == _pidlst[_numchildren])
+		{
+ 			exitcode = WEXITSTATUS(status);
+			#ifdef DEBUG
+			if (exitcode != 0)
+				fprintf(stderr, "Launcher %d: Non-zero return code from local runtime (pid=%d), status=%d (previous stored status=%d)\n", _myproc, _pidlst[_numchildren], exitcode, _returncode);
+			#endif
+			_pidlst[_numchildren] = -1;
+		}
 	}
+
 	// shut down any connections if they still exist
 	handleDeadParent();
+
+	// wait for and clean up any leftover launchers (prevent zombies)
+	for (uint32_t i = 0; i < _numchildren; i++)
+	{
+		if (_pidlst[i] != -1)
+		{
+			waitpid(_pidlst[i], NULL, 0);
+			_pidlst[i] = -1;
+		}
+	}
+
+	// take out the local runtime, if it's still kicking
+	if (_pidlst[_numchildren] != -1)
+	{
+		kill(_pidlst[_numchildren], SIGKILL);
+		waitpid(_pidlst[_numchildren], NULL, 0);
+		_pidlst[_numchildren] = -1;
+	}
 
 	// free up allocated memory (not really needed, since we're about to exit)
 	free(_hostlist);
@@ -331,7 +443,7 @@ void Launcher::handleRequestsLoop()
 	#ifdef DEBUG
 		fprintf(stderr, "Launcher %u: cleanup complete.  Goodbye!\n", _myproc);
 	#endif
-	exit(status);
+	exit(exitcode);
 }
 
 /* *********************************************************************** */
@@ -404,7 +516,7 @@ void Launcher::connectToParentLauncher(void)
 		#ifdef DEBUG
 			fprintf(stderr, "Launcher %u: connecting to parent via inherited port: %s\n", _myproc, masterport);
 		#endif
-		_parentLauncherControlLink = TCP::connect(masterport, 10);
+		_parentLauncherControlLink = TCP::connect(masterport, 10, true);
 	}
 
 	/* case 2: the SOCK_PARENT env. var is set */
@@ -413,7 +525,7 @@ void Launcher::connectToParentLauncher(void)
 		#ifdef DEBUG
 			fprintf(stderr, "Launcher %u: connecting to parent via: %s\n", _myproc, getenv(X10LAUNCHER_PARENT));
 		#endif
-		_parentLauncherControlLink = TCP::connect((const char *) getenv(X10LAUNCHER_PARENT), 10);
+		_parentLauncherControlLink = TCP::connect((const char *) getenv(X10LAUNCHER_PARENT), 10, true);
 	}
 
 	/* case 3: launcher=-1 has no parent. We don't connect */
@@ -448,7 +560,7 @@ void Launcher::handleNewChildConnection(void)
 		fprintf(stderr, "Launcher %u: new connection detected\n", _myproc);
 	#endif
 	/* accept the new connection and read off the rank */
-	int fd = TCP::accept(_listenSocket);
+	int fd = TCP::accept(_listenSocket, true);
 	if (fd < 0)
 	{
 		close(_listenSocket);
@@ -612,6 +724,11 @@ int Launcher::handleControlMessage(int fd)
 		{
 			case PORT_REQUEST:
 			{
+				while (_runtimePort == NULL)
+				{
+					sched_yield();
+					handleRequestsLoop(true);
+				}
 				m.to = m.from;
 				m.from = _myproc;
 				m.type = PORT_RESPONSE;
@@ -642,7 +759,26 @@ int Launcher::handleControlMessage(int fd)
 		}
 	}
 	else
+	{
 		ret = forwardMessage(&m, data);
+		if (ret < 0 && m.type == PORT_REQUEST)
+		{
+			// if we're here, then we were unable to forward the PORT_REQUEST message.  Send an error message back as the response.
+			#ifdef DEBUG
+				fprintf(stderr, "Launcher %u failed to forward a %s message to place %u.  Sending an error response.\n", _myproc, CTRL_MSG_TYPE_STRINGS[PORT_RESPONSE], m.to);
+			#endif
+
+			char* dead = (char*)alloca(64);
+			sprintf(dead, "LAUNCHER_%u_IS_NOT_RUNNING", m.to);
+			m.to = m.from;
+			m.from = _myproc;
+			m.type = PORT_RESPONSE;
+			m.datalen = strlen(dead);
+
+			TCP::write(fd, &m, sizeof(struct ctrl_msg));
+			TCP::write(fd, dead, m.datalen);
+		}
+	}
 	return ret;
 }
 
@@ -687,7 +823,7 @@ int Launcher::forwardMessage(struct ctrl_msg* message, char* data)
 	// figure out where to send it, by determining if we are on the chain between place 0 and the dest
 	uint32_t child=message->to, parent;
 
-	int destFD = -1;
+	int destID = -1;
 	if (child > _singleton->_myproc)
 	{
 		do
@@ -696,9 +832,9 @@ int Launcher::forwardMessage(struct ctrl_msg* message, char* data)
 			if (parent == _singleton->_myproc)
 			{
 				if (child == _singleton->_firstchildproc)
-					destFD = _childControlLinks[0];
+					destID = 0; //_childControlLinks[0];
 				else
-					destFD = _childControlLinks[1];
+					destID = 1; //_childControlLinks[1];
 				#ifdef DEBUG
 					fprintf(stderr, "Launcher %u: forwarding %s message to child launcher %u.\n", _myproc, CTRL_MSG_TYPE_STRINGS[message->type], child);
 				#endif
@@ -710,13 +846,30 @@ int Launcher::forwardMessage(struct ctrl_msg* message, char* data)
 		while (parent > _singleton->_myproc);
 	}
 
-	if (destFD == -1)
+	#ifdef DEBUG
+	if (destID == -1)
+		fprintf(stderr, "Launcher %u: forwarding %s message to parent launcher.\n", _myproc, CTRL_MSG_TYPE_STRINGS[message->type]);
+	#endif
+
+	int destFD = -1;
+	do
 	{
-		destFD = _parentLauncherControlLink;
-		#ifdef DEBUG
-			fprintf(stderr, "Launcher %u: forwarding %s message to parent launcher.\n", _myproc, CTRL_MSG_TYPE_STRINGS[message->type]);
-		#endif
+		if (destID == -1) destFD = _parentLauncherControlLink;
+		else if (destID == 0) destFD = _childControlLinks[0];
+		else if (destID == 1) destFD = _childControlLinks[1];
+
+		// verify that the link is valid.  It may not be, if we're just starting up
+		if (destFD == -1)
+		{
+			if (destID >= 0 && _pidlst[destID] == -1)
+				return -1; // this request is for a launcher that has DIED
+
+			sched_yield();
+			handleRequestsLoop(true);
+		}
 	}
+	while (destFD == -1);
+
 
 	int ret = TCP::write(destFD, message, sizeof(struct ctrl_msg));
 	if (ret < (int)sizeof(struct ctrl_msg))
@@ -736,27 +889,57 @@ int Launcher::forwardMessage(struct ctrl_msg* message, char* data)
 void Launcher::cb_sighandler_cld(int signo)
 {
 	int status;
-	wait(&status);
+	int pid=wait(&status);
 
-/*
-	int status, pid=wait(&status);
-
-	for (int i=0; i<_singleton->_numchildren+1; i++)
-	if (_singleton->_pidlst[i] == pid)
+	for (uint32_t i=0; i<=_singleton->_numchildren; i++)
 	{
-		_singleton->_actlst[i] = false;
-		#ifdef DEBUG
-			fprintf(stderr, "Launcher %d: SIGCHLD, killing proc=%d\n", _singleton->_myproc, _singleton->_childranks[i]));
-		#endif
+		if (_singleton->_pidlst[i] == pid)
+		{
+			_singleton->_pidlst[i] = -1;
+			if (i == _singleton->_numchildren)
+			{
+				#ifdef DEBUG
+				fprintf(stderr, "Launcher %d: SIGCHLD from runtime (pid=%d), status=%d\n", _singleton->_myproc, pid, WEXITSTATUS(status));
+				if (WEXITSTATUS(status) != 0)
+					fprintf(stderr, "Launcher %d: non-zero return code from local runtime (pid=%d), status=%d (previous stored status=%d)\n", _singleton->_myproc, pid, WEXITSTATUS(status), WEXITSTATUS(_singleton->_returncode));
+				#endif
+				_singleton->_returncode = WEXITSTATUS(status);
+				if (_singleton->_runtimePort)
+				{
+					free(_singleton->_runtimePort);
+					_singleton->_runtimePort = (char*)malloc(64);
+					sprintf(_singleton->_runtimePort, "PLACE_%u_IS_DEAD", _singleton->_myproc);
+				}
+			}
+			#ifdef DEBUG
+			else
+				fprintf(stderr, "Launcher %d: SIGCHLD from child launcher for place %d (pid=%d), status=%d\n", _singleton->_myproc, i+_singleton->_firstchildproc, pid, WEXITSTATUS(status));
+			#endif
 
-		if (i == _singleton->_numchildren)
-			for (int j=0; j<_singleton->_numchildren+1; j++)
-				_singleton->_actlst[j] = false;
+			break;
+		}
 	}
+	// limit our lifetime to a few seconds, to allow any children to shut down on their own. Then kill em' all.
+	if (_singleton->_dieAt == 0)
+		_singleton->_dieAt = 2+time(NULL);
+}
 
-	for (int j=0; j<_singleton->_numchildren+1; j++)
-		_singleton->_actlst[j] = false;
-*/
+void Launcher::cb_sighandler_term(int signo)
+{
+	#ifdef DEBUG
+		fprintf(stderr, "Launcher %d: got a SIGTERM\n", _singleton->_myproc);
+	#endif
+	for (uint32_t i = 0; i <= _singleton->_numchildren; i++)
+	{
+		if (_singleton->_pidlst[i] != -1)
+		{
+			#ifdef DEBUG
+				fprintf(stderr, "Launcher %u: killing pid=%d\n", _singleton->_myproc, _singleton->_pidlst[i]);
+			#endif
+			kill(_singleton->_pidlst[i], SIGTERM);
+		}
+	}
+	_singleton->_dieAt = 1; // die now.
 }
 
 
@@ -764,58 +947,194 @@ void Launcher::cb_sighandler_cld(int signo)
 /*          start a new child                                              */
 /* *********************************************************************** */
 
+static char *alloc_printf(const char *fmt, ...)
+{
+    va_list args;
+    char try_buf[1];
+    va_start(args, fmt);
+    size_t sz = vsnprintf(try_buf, 0, fmt, args);
+    va_end(args);
+    char *r = (char*)malloc(sz+1);
+    va_start(args, fmt);
+    size_t s1 = vsnprintf(r, sz+1, fmt, args);
+    (void) s1;
+    assert (s1 == sz);
+    va_end(args);
+    return r;
+}
+
+
+// this escaping is for BLAH in the case of the following bash script
+// echo "${VAR-BLAH}"
+// (the double quotes are important)
+static char *escape_various_things (const char *in)
+{
+    size_t sz = strlen(in);
+    size_t out_sz = sz+3;
+    char *out = static_cast<char*>(malloc(out_sz+1));
+    size_t out_cnt = 0;
+    for (size_t i=0 ; i<sz ; ++i) {
+        if (out_cnt+3 >= out_sz) {
+            out_sz = out_cnt+3;
+            out = static_cast<char*>(realloc(out, out_sz+1));
+        }
+        switch (in[i]) {
+            case '\'': // ' will break bash, turn it into "'" (note that \' does not work for some reason)
+            out[out_cnt++] = '"';
+            out[out_cnt++] = in[i];
+            out[out_cnt++] = '"';
+            break;
+
+            case '$': // escape these with an additional backslash
+            case '`':
+            case '\"':
+            case '\\':
+            out[out_cnt++] = '\\';
+
+            default: // everything else (probably) OK
+            out[out_cnt++] = in[i];
+            break;
+        }
+    }
+    out[out_cnt] = '\0';
+    return out;
+}
+
+// this escaping is for BLAH in the case of the following bash script
+// echo 'BLAH'
+static char *escape_various_things2 (const char *in)
+{
+    size_t sz = strlen(in);
+    size_t out_sz = sz+5;
+    char *out = static_cast<char*>(malloc(out_sz+1));
+    size_t out_cnt = 0;
+    for (size_t i=0 ; i<sz ; ++i) {
+        if (out_cnt+5 >= out_sz) {
+            out_sz = out_cnt+5;
+            out = static_cast<char*>(realloc(out, out_sz+1));
+        }
+        switch (in[i]) {
+            case '\'': // ' will break bash, turn it into "'" (but come out of the existing quote first)
+            out[out_cnt++] = '\'';
+            out[out_cnt++] = '"';
+            out[out_cnt++] = '\'';
+            out[out_cnt++] = '"';
+            out[out_cnt++] = '\'';
+            break;
+
+            default: // everything else (probably) OK
+            out[out_cnt++] = in[i];
+            break;
+        }
+    }
+    out[out_cnt] = '\0';
+    return out;
+}
+
+static char *alloc_env_assign(const char *var, const char *val)
+{
+    return alloc_printf("%s\"=${%s-%s}\"", var, var, escape_various_things(val));
+}
+
+static char *alloc_env_always_assign(const char *var, const char *val)
+{
+    return alloc_printf("%s='%s'", var, escape_various_things2(val));
+}
+
+// check with the environment variable name contains characters that bash does not allow (e.g. '.')
+bool is_env_var_valid (const char *var)
+{
+    // [a-zA-Z_]([a-zA-Z0-9_]*)
+
+    // number as first character not allowed
+    if (*var >= '0' && *var <= '9') return false;
+    for (const char *v=var ; *v != '\0' ; ++v) {
+        if (*v >= '0' && *v <= '9') continue;
+        if (*v >= 'A' && *v <= 'Z') continue;
+        if (*v >= 'a' && *v <= 'z') continue;
+        if (*v == '_') continue;
+        return false;
+    }
+    return true;
+}
+
 void Launcher::startSSHclient(uint32_t id, char* masterPort, char* remotehost)
 {
 	char * cmd = (char *) _realpath;
-	char ** argv = (char **) alloca (sizeof(char *) * (_argc+32));
+
+    // leak a bunch of memory, we're about to exec anyway and that will clean it up
+    // on all OS that we care about
+
+    // get an array of environment variables in the form "VAR=val"
+#ifdef __MACH__
+    char** environ = *_NSGetEnviron();
+#else
+    extern char **environ;
+#endif
+	// find out how many environment variables there are
+    unsigned environ_sz = 0;
+    while (environ[environ_sz]!=NULL) environ_sz++;
+
+	char ** argv = (char **) alloca (sizeof(char *) * (_argc+environ_sz+32));
 	int z = 0;
 	argv[z] = _ssh_command;
 	argv[++z] = remotehost;
-//	argv[++z] = (char *) "/usr/bin/env";
+    static char env_string[] = "env";
+	argv[++z] = env_string;
 
-	// deal with known runtime environment variables
-	const char* envVariables[] = {
-	"X10_ENABLE_ASSERTIONS", "X10_RXTX", "GC_PRINT_ADDRESS_MAP","X10_NO_ANSI_COLORS",
-	"X10RT_MPI_THREAD_MULTIPLE", "X10_DISABLE_DEALLOC", "X10_TRACE_ALLOC", "X10_TRACE_ALL",
-	"X10_TRACE_INIT", "X10_TRACE_X10RT", "X10_TRACE_NET", "X10_TRACE_SER", "X10_NTHREADS",
-	"X10RT_CUDA_DMA_SLICE", "X10RT_EMULATE_REMOTE_OP", "X10RT_EMULATE_COLLECTIVES",
-	"X10RT_MPI_THREAD_MULTIPLE", "X10_STATIC_THREADS", "X10_NO_STEALS", "X10RT_ACCELS"};
-	for (unsigned i=0; i<(sizeof envVariables)/sizeof(char*); i++)
-	{
-		char* ev = getenv(envVariables[i]);
-		if (ev != NULL)
-		{
-			#ifdef DEBUG
-				fprintf(stderr, "Launcher %u: copying environment variable %s=%s for child %u.\n", _myproc, envVariables[i], ev, id);
-			#endif
-			argv[++z] = (char*) alloca(32+sizeof(ev));
-			sprintf(argv[z], "%s=%s", envVariables[i], ev);
-		}
+    // deal with the environment variables
+    for (unsigned i=0 ; i<environ_sz ; ++i)
+    {
+        char *var = strdup(environ[i]);
+        *strchr(var,'=') = '\0';
+        if (!is_env_var_valid(var)) continue;
+        if (strcmp(var,X10_HOSTFILE)==0) continue;
+        if (strcmp(var,X10LAUNCHER_SSH)==0) continue;
+        if (strcmp(var,X10LAUNCHER_PARENT)==0) continue;
+        if (strcmp(var,X10_PLACE)==0) continue;
+		char* val = getenv(var);
+        assert(val!=NULL);
+        #ifdef DEBUG
+            fprintf(stderr, "Launcher %u: copying environment variable %s=%s for child %u.\n", _myproc, var, val, id);
+        #endif
+        bool x10_var = false;
+        if (strncmp(var, "X10_", 4)==0) x10_var = true;
+        if (strncmp(var, "X10RT_", 6)==0) x10_var = true;
+        if (strncmp(var, "X10LAUNCHER_", 12)==0) x10_var = true;
+        argv[++z] = x10_var ? alloc_env_always_assign(var,val) : alloc_env_assign(var, val);
 	}
 
-	// add on our own environment variables
-	argv[++z] = (char*) alloca(256);
-	sprintf(argv[z], X10LAUNCHER_HOSTFILE"=%s", _hostfname);
-	argv[++z] = (char*) alloca(256);
-	sprintf(argv[z], X10LAUNCHER_SSH"=%s", _ssh_command);
-	argv[++z] = (char*) alloca(1024);
-	sprintf(argv[z], X10LAUNCHER_PARENT"=%s", masterPort);
-	argv[++z] = (char*) alloca(100);
-	sprintf(argv[z], X10LAUNCHER_MYID"=%d", id);
-	argv[++z] = (char*) alloca(100);
-	sprintf(argv[z], X10LAUNCHER_NPROCS"=%d", _nplaces);
-	argv[++z] = (char*) alloca(1024);
-	sprintf(argv[z], X10LAUNCHER_CWD"=%s", getenv(X10LAUNCHER_CWD));
+	if (_hostfname != '\0')
+	{
+        argv[++z] = alloc_env_assign(X10_HOSTFILE, _hostfname);
+	}
+    argv[++z] = alloc_env_always_assign(X10LAUNCHER_SSH, _ssh_command);
+    argv[++z] = alloc_env_always_assign(X10LAUNCHER_PARENT, masterPort);
+    argv[++z] = alloc_env_always_assign(X10_PLACE, alloc_printf("%d",id));
 	argv[++z] = cmd;
+	//argv[++z] = "env";
 	for (int i = 1; i < _argc; i++)
-		argv[z + i] = _argv[i];
+	{
+		if (strchr(_argv[i], '$') != NULL)
+		{
+			// make sure ssh doesn't turn a $ into an env variable lookup
+			int l = strlen(_argv[i]);
+			argv[z+i] = (char*)alloca(l+3);
+			argv[z+i][0] = '\'';
+			strcpy(&argv[z+i][1], _argv[i]);
+			argv[z+i][l+1]='\'';
+			argv[z+i][l+2]='\0';
+		}
+		else
+			argv[z + i] = _argv[i];
+	}
 	argv[z + _argc] = NULL;
 
 	#ifdef DEBUG
 		fprintf(stderr, "Launcher %u exec-ing SSH process to start up launcher %u on %s.\n", _myproc, id, remotehost);
-		//for (int i=0; i<z+_argc; i++)
-		//	fprintf (stderr, " %s ", argv[i]);
-		//fprintf (stderr, "\n");
+		for (int i=0; i<z+_argc; i++)
+			fprintf (stderr, " %s ", argv[i]);
+		fprintf (stderr, "\n");
 	#endif
 
 	z = execvp(argv[0], argv);

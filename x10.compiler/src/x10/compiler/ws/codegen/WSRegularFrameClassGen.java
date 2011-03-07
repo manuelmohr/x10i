@@ -1,9 +1,22 @@
+/*
+ *  This file is part of the X10 project (http://x10-lang.org).
+ *
+ *  This file is licensed to You under the Eclipse Public License (EPL);
+ *  You may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *      http://www.opensource.org/licenses/eclipse-1.0.php
+ *
+ *  (C) Copyright IBM Corporation 2006-2010.
+ */
+
+
 package x10.compiler.ws.codegen;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import polyglot.ast.Binary;
 import polyglot.ast.Block;
@@ -16,23 +29,25 @@ import polyglot.ast.If;
 import polyglot.ast.LocalDecl;
 import polyglot.ast.Loop;
 import polyglot.ast.Node;
+import polyglot.ast.NodeFactory;
 import polyglot.ast.Stmt;
 import polyglot.ast.Switch;
 import polyglot.ast.Try;
 import polyglot.frontend.Job;
 import polyglot.types.ClassDef;
+import polyglot.types.ClassType;
 import polyglot.types.Flags;
 import polyglot.types.Name;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.util.Pair;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import x10.ast.Async;
 import x10.ast.Finish;
 import x10.ast.ForLoop;
 import x10.ast.When;
 import x10.ast.X10Formal;
 import x10.ast.X10Loop;
-import x10.ast.X10NodeFactory;
 import x10.compiler.ws.WSCodeGenerator;
 import x10.compiler.ws.WSTransformState;
 import x10.compiler.ws.util.AddIndirectLocalDeclareVisitor;
@@ -42,7 +57,7 @@ import x10.compiler.ws.util.TransCodes;
 import x10.compiler.ws.util.Triple;
 import x10.compiler.ws.util.WSCodeGenUtility;
 import x10.optimizations.ForLoopOptimizer;
-import x10.types.X10Context;
+import polyglot.types.Context;
 import x10.util.synthesizer.ClassSynth;
 import x10.util.synthesizer.CodeBlockSynth;
 import x10.util.synthesizer.ConstructorSynth;
@@ -61,10 +76,6 @@ import x10.util.synthesizer.SwitchSynth;
  * 
  */
 public class WSRegularFrameClassGen extends AbstractWSClassGen {
-    // general regular frame attributes
-    //List<LocalDecl> locals; // original method's all locals
-    Block codeBlock; // store all code block
-
     //this flag is set to true when genReturnCheckStmt() is called.
     //And set to false every time a new statement is processed.
     //In this cause, the original full coverage return was limited.
@@ -72,55 +83,24 @@ public class WSRegularFrameClassGen extends AbstractWSClassGen {
     //we need add an additional return to prevent the java path has no "return x" at the end of the method
     boolean isReturnPathChanged;
 
-    // constructor for called from all other places, normal regular frame/main
-    // frame/continuation frame
-    protected WSRegularFrameClassGen(Job job, X10NodeFactory xnf, X10Context xct, WSTransformState wsTransformState,
-            AbstractWSClassGen parent, String classNamePrefix) {
-        super(job, xnf, xct, wsTransformState, parent);
+    // method frames
+    protected WSRegularFrameClassGen(Job job, NodeFactory xnf, Context xct, WSTransformState wts,
+           String className, Stmt stmt, ClassDef outer, Flags flags, ClassType superType) {
+        super(job, xnf, xct, wts, className, superType, flags, outer,
+                WSCodeGenUtility.setSpeicalQualifier(stmt, outer, xnf));
         
-        int classSequenceId = (parent == null) ? -1 : parent.assignChildId();
-        className = (classSequenceId == -1) ? classNamePrefix : (classNamePrefix + classSequenceId);
-        classSynth = new ClassSynth(job, xnf, xct, wts.regularFrameType, className);
-
-        // note the flag should according to the method's type
-        if (parent != null) {
-            ClassDef classDef = parent.classSynth.getClassDef();
-            classSynth.setFlags(classDef.flags());
-            classSynth.setKind(classDef.kind());
-            classSynth.setOuter(parent.classSynth.getOuter());
-            this.frameDepth = parent.frameDepth + 1;
-        }
-        
-        addPCFieldToClass();        
-        //now prepare all kinds of method synthesizer
-        prepareMethodSynths();
+        addPCField();
     }
 
-    /**
-     * Constructor. All states grabbed from parent. And have code block with it.
-     * 
-     * @param parent
-     * @param codeBlock
-     * @param classNamePrefix
-     */
-    protected WSRegularFrameClassGen(AbstractWSClassGen parent, Stmt codeBody, String classNamePrefix) {
-        this(parent.job, parent.getX10NodeFactory(), parent.getX10Context(), parent.getWSTransformState(), parent, classNamePrefix);
-        this.codeBlock = codeBody == null ? null : synth.toBlock(codeBody); //switch frame will have null codeBody
+    // nested frames
+    protected WSRegularFrameClassGen(AbstractWSClassGen parent, Stmt stmt, String classNamePrefix) {
+        super(parent, parent, classNamePrefix, parent.wts.regularFrameType, stmt);
         
+        addPCField();
     }
 
-
-    protected void genClass() throws SemanticException {
-
-        genThreeMethods(); //fast,resume,back
-        genClassConstructor();
-        if (wts.realloc) genCopyConstructor(compilerPos); // copy constructors used for remap();
-        if (wts.realloc) genRemapMethod();
-        
-
-    }
-
-    protected void genThreeMethods() throws SemanticException {
+    @Override
+    protected void genMethods() throws SemanticException {
 
         Triple<CodeBlockSynth, SwitchSynth, SwitchSynth> bodyCodes = transformMethodBody();
 
@@ -134,9 +114,9 @@ public class WSRegularFrameClassGen extends AbstractWSClassGen {
 
 
         // need final process closure issues
-        fastBodySynth.addCodeProcessingJob(new ClosureDefReinstantiator(xts, this.getClassDef(), fastMSynth.getDef()));
+        fastBodySynth.addCodeProcessingJob(new ClosureDefReinstantiator(xts, xct, this.getClassDef(), fastMSynth.getDef()));
 
-        resumeBodySynth.addCodeProcessingJob(new ClosureDefReinstantiator(xts, this.getClassDef(), resumeMSynth.getDef()));
+        resumeBodySynth.addCodeProcessingJob(new ClosureDefReinstantiator(xts, xct, this.getClassDef(), resumeMSynth.getDef()));
 
         // add all references
         fastBodySynth.addCodeProcessingJob(new AddIndirectLocalDeclareVisitor(xnf, this.getRefToDeclMap()));
@@ -158,7 +138,7 @@ public class WSRegularFrameClassGen extends AbstractWSClassGen {
         int prePcValue = 0; // The current pc value. Will increase every time an
                             // inner class is created
 
-        HashSet<Name> localDeclaredVar = new HashSet<Name>(); //all locals with these names will not be replaced
+        Set<Name> localDeclaredVar = CollectionFactory.newHashSet(); //all locals with these names will not be replaced
         
         while (bodyStmts.size() > 0) {
 
@@ -450,7 +430,6 @@ public class WSRegularFrameClassGen extends AbstractWSClassGen {
     protected TransCodes transAsync(Stmt a, int prePcValue) throws SemanticException {
 
         TransCodes transCodes = new TransCodes(prePcValue + 1);
-//        classSynth.setSuperType(wts.continuationType); //make sure it is a continuation
 
         AbstractWSClassGen asyncClassGen = genChildFrame(wts.asyncFrameType, a, null);
         
@@ -631,10 +610,8 @@ public class WSRegularFrameClassGen extends AbstractWSClassGen {
         return returnCheck;
     }
 
-    protected ConstructorSynth genClassConstructor() throws SemanticException {
+    protected void genClassConstructor() throws SemanticException {
         // add all constructors
-        ConstructorSynth conSynth = classSynth.createConstructor(compilerPos);
-        conSynth.addAnnotation(genHeaderAnnotation());
         CodeBlockSynth conCodeSynth = conSynth.createConstructorBody(compilerPos);
 
         Expr upRef = conSynth.addFormal(compilerPos, Flags.FINAL, wts.frameType, "up");
@@ -642,7 +619,5 @@ public class WSRegularFrameClassGen extends AbstractWSClassGen {
         SuperCallSynth superCallSynth = conCodeSynth.createSuperCall(compilerPos, classSynth.getDef());
         superCallSynth.addArgument(wts.frameType, upRef);
         superCallSynth.addArgument(wts.finishFrameType, ffRef);
-
-        return conSynth;
     }
 }

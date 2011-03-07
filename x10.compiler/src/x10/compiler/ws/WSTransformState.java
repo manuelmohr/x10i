@@ -17,29 +17,34 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
+import polyglot.ast.Call;
 import polyglot.ast.ClassDecl;
+import polyglot.ast.CodeBlock;
+import polyglot.ast.ConstructorDecl;
+import polyglot.ast.MethodDecl;
 import polyglot.ast.Node;
+import polyglot.ast.NodeFactory;
 import polyglot.ast.SourceFile;
 import polyglot.ast.TopLevelDecl;
 import polyglot.frontend.Job;
 import polyglot.types.ClassDef;
 import polyglot.types.ClassType;
 import polyglot.types.MethodDef;
-import polyglot.types.MethodInstance;
+
 import polyglot.types.ProcedureDef;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.util.Pair;
+import x10.ast.Closure;
 import x10.ast.X10ClassDecl;
 import x10.ast.X10MethodDecl;
-import x10.ast.X10NodeFactory;
-import x10.compiler.ws.codegen.AbstractWSClassGen;
-import x10.compiler.ws.codegen.WSMainMethodClassGen;
-import x10.compiler.ws.codegen.WSMethodFrameClassGen;
 import x10.compiler.ws.util.WSCallGraph;
 import x10.compiler.ws.util.WSCallGraphNode;
-import x10.types.X10Context;
-import x10.types.X10TypeSystem;
+import x10.compiler.ws.util.WSTransformationContent;
+import x10.compiler.ws.util.WSTransformationContent.CallSiteType;
+import x10.compiler.ws.util.WSTransformationContent.MethodType;
+import polyglot.types.Context;
+import polyglot.types.TypeSystem;
 import x10.types.checker.PlaceChecker;
 import x10.util.synthesizer.MethodSynth;
 import x10.visit.X10PrettyPrinterVisitor;
@@ -84,36 +89,25 @@ public class WSTransformState {
     public final ClassType uninitializedType; //annotation type
     public final Boolean realloc; // whether or not to generate code for frame migration
 
-    private final WSCallGraph callGraph;
-
-    public WSTransformState(X10TypeSystem xts, X10NodeFactory xnf, String theLanguage){
-        if (theLanguage.equals("c++")) {
-            frameType = xts.load("x10.compiler.ws.Frame");
-            finishFrameType = xts.load("x10.compiler.ws.FinishFrame");
-            rootFinishType = xts.load("x10.compiler.ws.RootFinish");
-            mainFrameType = xts.load("x10.compiler.ws.MainFrame");
-            regularFrameType = xts.load("x10.compiler.ws.RegularFrame");
-            asyncFrameType = xts.load("x10.compiler.ws.AsyncFrame");
-            boxedBooleanType = xts.load("x10.compiler.ws.BoxedBoolean");
-            workerType = xts.load("x10.compiler.ws.Worker");
-            realloc = true;
-        } else {
-            frameType = xts.load("x10.compiler.ws.java.Frame");
-            finishFrameType = xts.load("x10.compiler.ws.java.FinishFrame");
-            rootFinishType = xts.load("x10.compiler.ws.java.RootFinish");
-            mainFrameType = xts.load("x10.compiler.ws.java.MainFrame");
-            regularFrameType = xts.load("x10.compiler.ws.java.RegularFrame");
-            asyncFrameType = xts.load("x10.compiler.ws.java.AsyncFrame");
-            boxedBooleanType = xts.load("x10.compiler.ws.java.BoxedBoolean");
-            workerType = xts.load("x10.compiler.ws.java.Worker");
-            realloc = false;
-        }
-        stackAllocateType = xts.load("x10.compiler.StackAllocate");
-        inlineType = xts.load("x10.compiler.InlineOnly");
-        transientType = xts.load("x10.compiler.Ephemeral");
-        headerType = xts.load("x10.compiler.Header");
-        uninitializedType = xts.load("x10.compiler.Uninitialized");
-        
+    private String theLanguage; //c++ or java path
+    private WSCallGraph callGraph;
+    private WSTransformationContent transTarget;
+    
+    public WSTransformState(TypeSystem xts, NodeFactory xnf, String theLanguage, WSTransformationContent transTarget){
+        this(xts, theLanguage);
+        this.transTarget = transTarget;
+        //Debug output;
+        System.out.println(transTarget);
+    }
+    
+    /**
+     * Used by WSCallGraphBarrier path. Use simple call graph analyzer to get concurrent content
+     * @param xts
+     * @param xnf
+     * @param theLanguage
+     */
+    public WSTransformState(TypeSystem xts, NodeFactory xnf, String theLanguage){
+        this(xts, theLanguage);
         callGraph = new WSCallGraph();
         
         //start to iterate the ast in jobs and build all;
@@ -147,12 +141,10 @@ public class WSTransformState {
         }
         
         //now do search
-        
         callGraph.doDFSMark();
         
         //debug print
         List<WSCallGraphNode> methods = callGraph.getAllParallelMethods();
-        
         System.out.println("[WS_INFO] Found Parallel Methods:");
         
         for(WSCallGraphNode node : methods){
@@ -166,9 +158,83 @@ public class WSTransformState {
                         cmd.toString());     
             }
         }
+        
+    }
+    
+    /**
+     * Only used to load the frame types;
+     * @param xts
+     * @param theLanguage
+     */
+    protected WSTransformState(TypeSystem xts, String theLanguage){
+    	this.theLanguage = theLanguage;
+        if (theLanguage.equals("c++")) {
+            frameType = xts.load("x10.compiler.ws.Frame");
+            finishFrameType = xts.load("x10.compiler.ws.FinishFrame");
+            rootFinishType = xts.load("x10.compiler.ws.RootFinish");
+            mainFrameType = xts.load("x10.compiler.ws.MainFrame");
+            regularFrameType = xts.load("x10.compiler.ws.RegularFrame");
+            asyncFrameType = xts.load("x10.compiler.ws.AsyncFrame");
+            boxedBooleanType = xts.load("x10.compiler.ws.BoxedBoolean");
+            workerType = xts.load("x10.compiler.ws.Worker");
+            realloc = true;
+        } else {
+            frameType = xts.load("x10.compiler.ws.java.Frame");
+            finishFrameType = xts.load("x10.compiler.ws.java.FinishFrame");
+            rootFinishType = xts.load("x10.compiler.ws.java.RootFinish");
+            mainFrameType = xts.load("x10.compiler.ws.java.MainFrame");
+            regularFrameType = xts.load("x10.compiler.ws.java.RegularFrame");
+            asyncFrameType = xts.load("x10.compiler.ws.java.AsyncFrame");
+            boxedBooleanType = xts.load("x10.compiler.ws.java.BoxedBoolean");
+            workerType = xts.load("x10.compiler.ws.java.Worker");
+            realloc = false;
+        }
+        stackAllocateType = xts.load("x10.compiler.StackAllocate");
+        inlineType = xts.load("x10.compiler.InlineOnly");
+        transientType = xts.load("x10.compiler.Ephemeral");
+        headerType = xts.load("x10.compiler.Header");
+        uninitializedType = xts.load("x10.compiler.Uninitialized");
     }
 
-    public boolean isTargetProcedure(ProcedureDef procedureDef) {
-       return callGraph.isParallel(procedureDef);
+
+    /**
+     * Get the backend used
+     * @return "c++" or "java"
+     */
+    public String getTheLanguage() {
+		return theLanguage;
+	}
+
+	public boolean isConcurrentCallSite(Call call){	
+    	return getCallSiteType(call) == CallSiteType.CONCURRENT_CALL;
+    }
+    
+    public CallSiteType getCallSiteType(Call call){
+    	if(transTarget != null){ //by wala
+    		return transTarget.getCallSiteType(call);
+    	}
+    	else{ //by call graph, only has concurrent or normal
+    		return callGraph.isParallel(call.methodInstance().def()) ? 
+    				CallSiteType.CONCURRENT_CALL : CallSiteType.NORMAL;
+    	}
+    }
+    
+    public MethodType getMethodType(CodeBlock codeBlock){
+    	if(transTarget != null){ //by wala
+    		return transTarget.getMethodType(codeBlock);
+    	}
+    	else{
+    		ProcedureDef procedureDef;
+    		if(codeBlock instanceof MethodDecl){
+    			procedureDef = ((MethodDecl)codeBlock).methodDef();
+    		}
+    		else if(codeBlock instanceof ConstructorDecl){
+    			procedureDef = ((ConstructorDecl)codeBlock).constructorDef();
+    		}
+    		else{ //it should be a closure
+    			procedureDef = ((Closure)codeBlock).closureDef();
+    		}
+    		return callGraph.isParallel(procedureDef) ? MethodType.BODYDEF_TRANSFORMATION : MethodType.NORMAL;
+    	}
     }
 }

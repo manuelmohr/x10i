@@ -14,6 +14,8 @@ package x10.types;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 import polyglot.ast.Expr;
 import polyglot.types.ClassDef;
@@ -24,20 +26,21 @@ import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
 import polyglot.types.Matcher;
 import polyglot.types.MemberInstance;
-import polyglot.types.MethodInstance;
-import polyglot.types.Named;
+
 import polyglot.types.ParsedClassType_c;
 import polyglot.types.Ref;
 import polyglot.types.SemanticException;
-import polyglot.types.StructType;
+import polyglot.types.ContainerType;
 import polyglot.types.Type;
 import polyglot.types.TypeObject;
 import polyglot.types.TypeSystem;
+import polyglot.types.Types;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import polyglot.util.Transformation;
 import polyglot.util.TransformingList;
 import polyglot.util.TypedList;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import x10.constraint.XFailure;
 import x10.constraint.XVar;
 import x10.types.constraints.CConstraint;
@@ -61,6 +64,53 @@ implements X10ParsedClassType
     private static final long serialVersionUID = -647880315275370901L;
 
     TypeParamSubst cacheSubst; // "subst" is just an auxiliary structure (cached to improve performance). It represents the typeArguments (thus it is nullified when assigning to typeArguments).
+
+    // We ignore all constraints (we only handle generics)
+    private Set<X10ParsedClassType_c> cacheDirectSupertypes = null;
+    private Set<X10ParsedClassType_c> cacheAllSupertypes = null;
+
+    private void clearCache() {
+        cacheSubst = null;
+        cacheDirectSupertypes = null;
+        cacheAllSupertypes = null;
+    }
+    
+    private void calcSuperTypes() {
+        cacheDirectSupertypes = CollectionFactory.newHashSet();
+        final Type superClass_ = superClass();
+        if (superClass_ !=null) {
+            final X10ParsedClassType_c superBase = Types.myBaseType(superClass_);
+            if (superBase!=null) cacheDirectSupertypes.add(superBase);
+        }
+        for (Type tn : interfaces()) {
+            final X10ParsedClassType_c superInterfaceBase = Types.myBaseType(tn);
+            if (superInterfaceBase!=null) cacheDirectSupertypes.add(superInterfaceBase);
+        }
+        
+        cacheAllSupertypes = CollectionFactory.newHashSet(cacheDirectSupertypes);
+        for (X10ParsedClassType_c t : cacheDirectSupertypes)
+            cacheAllSupertypes.addAll(t.allSuperTypes());
+    }
+    public Set<X10ParsedClassType_c> directSuperTypes() {
+        if (cacheDirectSupertypes==null) calcSuperTypes();
+        return cacheDirectSupertypes;
+    }
+    public Set<X10ParsedClassType_c> allSuperTypes() {
+        if (cacheAllSupertypes==null) calcSuperTypes();
+        final List<MethodInstance> list = methods();
+        return cacheAllSupertypes;
+    }
+
+    /**
+     * @return all methods defined in the class/interface including all inherited methods
+     */
+    public List<MethodInstance> getAllMethods() {
+        ArrayList<MethodInstance> res = new ArrayList<MethodInstance>(methods());
+        for (X10ParsedClassType_c supertype : allSuperTypes())
+            res.addAll(supertype.methods());
+        return res;
+    }
+
 
     public int hashCode() {
         return def.hashCode();
@@ -98,6 +148,12 @@ implements X10ParsedClassType
         return false;
     }
     
+    public X10ParsedClassType_c copy() {
+        X10ParsedClassType_c n = (X10ParsedClassType_c) super.copy();
+        n.clearCache();
+        return n;
+    }
+    
     public
     TypeParamSubst subst() {
         if (cacheSubst == null) {
@@ -105,30 +161,37 @@ implements X10ParsedClassType
             List<ParameterType> typeParameters = new ArrayList<ParameterType>();
             for (X10ParsedClassType_c c = this; c != null; c = (X10ParsedClassType_c) c.container()) {
                 List<ParameterType> tp = c.x10Def().typeParameters();
-                if (!tp.isEmpty() && c.typeArguments != null) {
-                    typeArguments.addAll(c.typeArguments);
+                List<Type> ta = c.typeArguments;
+                if (ta == null)
+                    ta = new ArrayList<Type>();
+                if (!tp.isEmpty() && !ta.isEmpty()) {
+                    typeArguments.addAll(ta);
                     typeParameters.addAll(tp);
                 }
-                if (!c.isMember())
+                if (!c.isMember() || (c.flags().isStatic() && ta.size() == tp.size()))
                     break;
             }
-            cacheSubst = new TypeParamSubst((X10TypeSystem) ts, typeArguments, typeParameters);
+            cacheSubst = new TypeParamSubst((TypeSystem) ts, typeArguments, typeParameters);
         }
         return cacheSubst;
     }
     
+    public boolean isMissingTypeArguments() {
+        List<ParameterType> tp = x10Def().typeParameters();
+        return (!tp.isEmpty() && (typeArguments == null || typeArguments.size() != tp.size()));
+    }
+    
     public X10ParsedClassType_c(ClassDef def) {
         super(def);
-        cacheSubst = null;
+        clearCache();
     }
 
     public X10ParsedClassType_c(TypeSystem ts, Position pos, Ref<? extends ClassDef> def) {
         super(ts, pos, def);
-        cacheSubst = null;
+        clearCache();
     }
  
 	public Type setFlags(Flags f) {
-		X10Flags xf = X10Flags.toX10Flags(f);
 		X10ParsedClassType_c c = (X10ParsedClassType_c) this.copy();
 		c.flags = flags().set(f);
 		/*if  (xf.isRooted() || xf.isStruct()) {
@@ -189,7 +252,7 @@ implements X10ParsedClassType
         return (X10ClassType) super.container();
     }
 
-    public X10ParsedClassType container(StructType container) {
+    public X10ParsedClassType container(ContainerType container) {
         return (X10ParsedClassType) super.container(container);
     }
 
@@ -208,7 +271,7 @@ implements X10ParsedClassType
 	@Override
 	public Type superClass() {
 	    Type sup = super.superClass();
-	    Type base = X10TypeMixin.baseType(sup);
+	    Type base = Types.baseType(sup);
 	    if (base instanceof X10ClassType) {
 	        XVar supVar = ((X10ClassType) base).x10Def().thisVar();
 	        XVar thisVar = x10Def().thisVar();
@@ -218,8 +281,6 @@ implements X10ParsedClassType
 	        catch (SemanticException e) {
 	        }
 	    }
-	    if (!hasParams())
-		return sup;
 	    TypeParamSubst subst = subst();
 	    return subst.reinstantiate(sup);
 	}
@@ -229,7 +290,7 @@ implements X10ParsedClassType
 	    List<Type> interfaces = super.interfaces();
 	    List<Type> newInterfaces = new ArrayList<Type>(interfaces.size());
 	    for (Type sup : interfaces) {
-	        Type base = X10TypeMixin.baseType(sup);
+	        Type base = Types.baseType(sup);
 	        if (base instanceof X10ClassType) {
 	            XVar supVar = ((X10ClassType) base).x10Def().thisVar();
 	            XVar thisVar = x10Def().thisVar();
@@ -242,53 +303,39 @@ implements X10ParsedClassType
 	        newInterfaces.add(sup);
 	    }
 
-	    if (!hasParams())
-	        return newInterfaces;
 	    TypeParamSubst subst = subst();
 	    return subst.reinstantiate(newInterfaces);
 	}
 
 	public boolean isIdentityInstantiation() {
-	    if (!hasParams())
-		return true;
-            TypeParamSubst subst = subst();
+	    TypeParamSubst subst = subst();
 	    return subst.isIdentityInstantiation();
 	}
 
 	@Override
 	public List<FieldInstance> fields() {
-	    if (!hasParams())
-	        return super.fields();
-            TypeParamSubst subst = subst();
+	    TypeParamSubst subst = subst();
 	    return subst.reinstantiate(super.fields());
 	}
 
 	@Override
 	public List<MethodInstance> methods() {
-	    if (!hasParams())
-	        return super.methods();
-            TypeParamSubst subst = subst();
+	    TypeParamSubst subst = subst();
 	    return subst.reinstantiate(super.methods());
 	}
 	@Override
 	public List<ConstructorInstance> constructors() {
-	    if (!hasParams())
-	        return super.constructors();
-            TypeParamSubst subst = subst();
+	    TypeParamSubst subst = subst();
 	    return subst.reinstantiate(super.constructors());
 	}
 	@Override
 	public List<MemberInstance<?>> members() {
-	    if (!hasParams())
-	        return super.members();
-            TypeParamSubst subst = subst();
+	    TypeParamSubst subst = subst();
 	    return subst.reinstantiate(super.members());
 	}
 	@Override
 	public List<ClassType> memberClasses() {
-	    if (!hasParams())
-	        return super.memberClasses();
-            TypeParamSubst subst = subst();
+	    TypeParamSubst subst = subst();
 	    return subst.reinstantiate(super.memberClasses());
 	}
 
@@ -318,18 +365,13 @@ implements X10ParsedClassType
 	
 	public List<Type> typeMembers() {
 	    List<Type> l = new TransformingList<TypeDef, Type>(x10Def().memberTypes(), new TypeDefAsMacroTypeTransform());
-	    if (!hasParams())
-	        return l;
-            TypeParamSubst subst = subst();
+	    TypeParamSubst subst = subst();
 	    return subst.reinstantiate(l);
 	}
 	
 	List<Type> typeArguments;
 	
 	public List<Type> typeArguments() {
-	    if (typeArguments == null) {
-		return TypedList.<Type>copyAndCheck(x10Def().typeParameters(), Type.class, true);
-	    }
 	    return typeArguments;
 	}
 	
@@ -341,19 +383,23 @@ implements X10ParsedClassType
 	public X10ParsedClassType typeArguments(List<Type> typeArgs) {
 	    if (typeArgs == this.typeArguments) return this;
 	    X10ParsedClassType_c n = (X10ParsedClassType_c) copy();
-	    n.typeArguments = TypedList.copyAndCheck(typeArgs, Type.class, false);
-	    try {
-	    n.thisVar = X10TypeMixin.getThisVar(typeArgs);
-	    } catch (XFailure z) {
-	    	throw new InternalCompilerError(z.toString() + " for type " + this);
+	    if (typeArgs == null) {
+	        n.typeArguments = null;
+	    } else {
+	        n.typeArguments = TypedList.copyAndCheck(typeArgs, Type.class, false);
+	        try {
+	            n.thisVar = Types.getThisVar(typeArgs);
+	        } catch (XFailure z) {
+	            throw new InternalCompilerError(z.toString() + " for type " + this);
+	        }
 	    }
-	    n.cacheSubst = null;
+        n.clearCache();
 	    return n;
 	}
 	
 	@Override
-	public Named memberTypeMatching(Matcher<Named> matcher) {
-	    Named n = super.memberTypeMatching(matcher);
+	public Type memberTypeMatching(Matcher<Type> matcher) {
+	    Type n = super.memberTypeMatching(matcher);
 	    if (n != null)
 	        return n;
 	    
@@ -364,12 +410,12 @@ implements X10ParsedClassType
 	    return null;
 	}
 	
-	public MacroType typeMemberMatching(Matcher<Named> matcher) {
+	public MacroType typeMemberMatching(Matcher<Type> matcher) {
 	    for (Type t : typeMembers()) {
 	        if (t instanceof MacroType) {
 	            MacroType mt = (MacroType) t;
 	            try {
-	                Named n = matcher.instantiate(mt);
+	                Type n = matcher.instantiate(mt);
 	                if (n instanceof MacroType)
 	                    return (MacroType) n;
 	            }
@@ -381,15 +427,15 @@ implements X10ParsedClassType
 	    return null;
 	}
 	
-	public String toString() {
+	public String typeToString() {
 		StringBuffer sb = new StringBuffer();
-		if (flags() != null) {
+		/*if (flags() != null) {
 			X10Flags f = X10Flags.toX10Flags(flags());
 
-		}
+		}*/
 		//	sb.append(flags().toString()).append(" ");
 
-		String sup = super.toString();
+		String sup = super.typeToString();
 		sb.append(sup);
 
 		if (propertyInitializers != null) {
@@ -404,13 +450,13 @@ implements X10ParsedClassType
 		return sb.toString();
 	}
 	    
-	public boolean isX10Struct() { 	return X10Flags.toX10Flags(flags()).isStruct(); }
+	public boolean isX10Struct() { 	return flags().isStruct(); }
 
-    public X10Struct makeX10Struct() {
+    public Type makeX10Struct() {
     	if (isX10Struct())
     		return this;
     	X10ParsedClassType_c c = (X10ParsedClassType_c) copy();
-    	c.setFlags(X10Flags.toX10Flags(flags()).Struct());
+    	c.setFlags(flags().Struct());
     	return c;
     	
     }
@@ -434,7 +480,7 @@ implements X10ParsedClassType
 		if (xClause == null) {
 			xClause = new CConstraint();
 			try {
-			xClause.setThisVar(X10TypeMixin.getThisVar(typeArguments()));
+			xClause.setThisVar(Types.getThisVar(typeArguments()));
 			} catch (XFailure f) {
 				xClause.setInconsistent();
 			}
@@ -449,13 +495,26 @@ implements X10ParsedClassType
 	public X10ParsedClassType instantiateTypeParametersExplicitly() {
 	    X10ParsedClassType pct = this;
 	    List<ParameterType> typeParameters = pct.x10Def().typeParameters();
-	    if (pct.isMember()) {
-	        X10ClassType container = ((X10ParsedClassType) pct.container()).instantiateTypeParametersExplicitly();
+	    List<Type> typeArguments = pct.typeArguments();
+	    if (typeArguments == null)
+	        typeArguments = new ArrayList<Type>();
+	    if (pct.isMember() && (!pct.flags().isStatic() || typeArguments.size() != typeParameters.size())) {
+	        X10ParsedClassType container = ((X10ParsedClassType) pct.container()).instantiateTypeParametersExplicitly();
 	        if (container != pct.container()) {
 	            pct = pct.container(container);
 	        }
+	        if (typeArguments.size() < typeParameters.size()) {
+	            typeArguments = new ArrayList<Type>(typeArguments);
+	            for (int i = typeArguments.size(); i < typeParameters.size(); i++) {
+	                typeArguments.add(typeParameters.get(i));
+	            }
+	        }
+	        if (typeArguments != pct.typeArguments()) {
+	            pct = pct.typeArguments(typeArguments);
+	        }
+	        pct = container.subst().reinstantiate(pct);
 	    }
-	    if (!typeParameters.isEmpty() && pct.typeArguments().equals(typeParameters)) {
+	    if (!typeParameters.isEmpty() && typeArguments.isEmpty()) {
 	        pct = pct.typeArguments(new ArrayList<Type>(typeParameters));
 	    }
 	    return pct;

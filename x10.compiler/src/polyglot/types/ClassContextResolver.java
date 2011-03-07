@@ -9,8 +9,9 @@ package polyglot.types;
 
 import java.util.*;
 
-import polyglot.main.Report;
+import polyglot.main.Reporter;
 import polyglot.util.*;
+import x10.util.CollectionFactory;
 
 /**
  * A <code>ClassContextResolver</code> looks up type names qualified with a class name.
@@ -19,6 +20,7 @@ import polyglot.util.*;
  */
 public class ClassContextResolver extends AbstractAccessControlResolver {
     protected Type type;
+    protected Reporter reporter;
     
     /**
      * Construct a resolver.
@@ -28,6 +30,7 @@ public class ClassContextResolver extends AbstractAccessControlResolver {
     public ClassContextResolver(TypeSystem ts, Type type) {
         super(ts);
         this.type = type;
+        this.reporter = ts.extensionInfo().getOptions().reporter;
     }
     
     public String toString() {
@@ -38,19 +41,19 @@ public class ClassContextResolver extends AbstractAccessControlResolver {
      * Find a type object in the context of the class.
      * @param name The name to search for.
      */
-    public Named find(Matcher<Named> matcher, Context context) throws SemanticException {
-	Name name = matcher.name();
+    public List<Type> find(Matcher<Type> matcher, Context context) throws SemanticException {
+        Name name = matcher.name();
 	
-        if (Report.should_report(TOPICS, 2))
-	    Report.report(2, "Looking for " + name + " in " + this);
-        
+        if (reporter.should_report(TOPICS, 2))
+	    reporter.report(2, "Looking for " + name + " in " + this);
+
         if (! (type instanceof ClassType)) {
             throw new NoClassException(name.toString(), type);
         }
         
         ClassType type = (ClassType) this.type;
 
-        Named m = null;
+        Type m = null;
 
         QName fullName = null;
         QName rawName = null;
@@ -62,46 +65,50 @@ public class ClassContextResolver extends AbstractAccessControlResolver {
         }
         
         if (fullName != null) {
+            List<Type> sr = null;
+
             // First check the system resolver.
-            m = ts.systemResolver().check(fullName);
+            sr = ts.systemResolver().check(fullName);
 
             // Try the raw class file name.
-            if (m == null) {
-                m = ts.systemResolver().check(rawName);
+            if (sr == null) {
+                sr = ts.systemResolver().check(rawName);
             }
-            
-            if (m == null) {
-        	// Go to disk, but only if there is no job for the type.
-        	// If there is a job, all members should be in the resolver
-        	// already.
-        	boolean useLoadedResolver = true;
-        	
-        	if (type instanceof ParsedTypeObject) {
-        	    ParsedTypeObject pto = (ParsedTypeObject) type;
-        	    if (pto.job() != null) {
-        		useLoadedResolver = false;
-        	    }
-        	}
-        	
-        	if (useLoadedResolver) {
-        	    try {
-        		m = ts.systemResolver().find(rawName);
-        	    }
-        	    catch (SemanticException e) {
-        		// Not found; will fall through to error handling code
-        	    }
-        	}
+
+            if (sr == null) {
+                // Go to disk, but only if there is no job for the type.
+                // If there is a job, all members should be in the resolver
+                // already.
+                boolean useLoadedResolver = true;
+
+                if (type instanceof ParsedTypeObject) {
+                    ParsedTypeObject pto = (ParsedTypeObject) type;
+                    if (pto.job() != null) {
+                        useLoadedResolver = false;
+                    }
+                }
+
+                if (useLoadedResolver) {
+                    try {
+                        sr = ts.systemResolver().find(rawName);
+                    }
+                    catch (SemanticException e) {
+                        // Not found; will fall through to error handling code
+                    }
+                }
             }
-            
+
             // If we found something, verify that it matches.
-            if (m != null) {
-        	try {
-        	    m = matcher.instantiate(m);
-        	}
-        	catch (SemanticException e) {
-        	    // Doesn't match; try again.
-        	    m = null;
-        	}
+            if (sr != null) {
+                for (Type q : sr) {
+                    try {
+                        m = matcher.instantiate(q);
+                        break;
+                    }
+                    catch (SemanticException e) {
+                        // Doesn't match; try again.
+                    }
+                }
             }
         }
         
@@ -126,7 +133,7 @@ public class ClassContextResolver extends AbstractAccessControlResolver {
         	                            " of " + type + ".");
             }
 
-            return mt.container(type);
+            return CollectionUtil.<Type>list(mt.container(type));
         }
 
         if (m instanceof MemberInstance<?>) {
@@ -143,22 +150,22 @@ public class ClassContextResolver extends AbstractAccessControlResolver {
             if (! canAccess(m, context.currentClassDef(), context)) {
         	throw new SemanticException("Cannot access member type \"" + m + "\".");
             }
-            return m;
+            return CollectionUtil.<Type>list(m);
         }
         
         // If we struck out, try the super types.
         
         // Collect all members of the super types.
         // Use a Set to eliminate duplicates.
-        Set<Named> acceptable = new HashSet<Named>();
+        Set<Type> acceptable = CollectionFactory.<Type>newHashSet();
         
         if (type.superClass() != null) {
             Type sup = type.superClass();
-            if (sup instanceof ClassType) {
+            if (sup instanceof ClassType && matcher.visit(sup)) {
                 Resolver r = ts.classContextResolver((ClassType) sup, context);
                 try {
-                    Named n = r.find(matcher);
-                    acceptable.add(n);
+                    List<Type> n = r.find(matcher);
+                    acceptable.addAll(n);
                 }
                 catch (SemanticException e) {
                 }
@@ -167,11 +174,11 @@ public class ClassContextResolver extends AbstractAccessControlResolver {
         
         for (Iterator<Type> i = type.interfaces().iterator(); i.hasNext(); ) {
             Type sup = (Type) i.next();
-            if (sup instanceof ClassType) {
+            if (sup instanceof ClassType && matcher.visit(sup)) {
                 Resolver r = ts.classContextResolver((ClassType) sup, context);
                 try {
-                    Named n = r.find(matcher);
-                    acceptable.add(n);
+                    List<Type> n = r.find(matcher);
+                    acceptable.addAll(n);
                 }
                 catch (SemanticException e) {
                 }
@@ -182,8 +189,8 @@ public class ClassContextResolver extends AbstractAccessControlResolver {
             throw new NoClassException(name.toString(), type);
         }
         else if (acceptable.size() > 1) {
-            Set<Type> containers = new HashSet<Type>(acceptable.size());
-            for (Named n : acceptable) {
+            Set<Type> containers = CollectionFactory.newHashSet(acceptable.size());
+            for (Type n : acceptable) {
                 if (n instanceof MemberInstance<?>) {
                     MemberInstance<?> mi = (MemberInstance<?>) n;
                     containers.add(mi.container());
@@ -211,15 +218,15 @@ public class ClassContextResolver extends AbstractAccessControlResolver {
         
         assert acceptable.size() == 1;
         
-        Named t = acceptable.iterator().next();
+        List<Type> t = new ArrayList<Type>(acceptable);
         
-        if (Report.should_report(TOPICS, 2))
-            Report.report(2, "Found member type " + t);
+        if (reporter.should_report(TOPICS, 2))
+            reporter.report(2, "Found member type " + t);
         
         return t;
     }
 
-    protected boolean canAccess(Named n, ClassDef accessor, Context context) {
+    protected boolean canAccess(Type n, ClassDef accessor, Context context) {
         if (n instanceof MemberInstance<?>) {
             return accessor == null || ts.isAccessible((MemberInstance<?>) n, context);
         }
@@ -234,6 +241,6 @@ public class ClassContextResolver extends AbstractAccessControlResolver {
     }
 
     private static final Collection<String> TOPICS = 
-            CollectionUtil.list(Report.types, Report.resolver);
+            CollectionUtil.list(Reporter.types, Reporter.resolver);
 
 }

@@ -27,7 +27,7 @@ public class HeatTransfer_v0 {
     static val n = 3;
     static val epsilon = 1.0e-5;
 
-    static val BigD = new Array[Region(1){self.rect}][0..n+1, 0..n+1] as Region(2);
+    static val BigD = new Array[Region(1){self.rect}][0..(n+1), 0..(n+1)] as Region(2);
     static val D = new Array[Region(1){self.rect}][1..n, 1..n] as Region(2);
     static val LastRow = new Array[Region(1){self.rect}][0..0, 1..n] as Region(2);
     static val A = new Array[Double](BigD,(p:Point)=>{ LastRow.contains(p) ? 1.0 : 0.0 });
@@ -40,11 +40,15 @@ public class HeatTransfer_v0 {
     def run() {
         var delta:Double = 1.0;
         do {
-            for (p in D) Temp(p) = stencil_1(p);
+            for (p in D) {
+                Temp(p) = stencil_1(p);
+            }
 
             delta = A.map[Double,Double](Temp, (x:Double,y:Double)=>Math.abs(x-y)).reduce(Math.max.(Double,Double), 0.0);
 
-            for (p in D) A(p) = Temp(p);
+            for (p in D) {
+                A(p) = Temp(p);
+            }
         } while (delta > epsilon);
     }
  

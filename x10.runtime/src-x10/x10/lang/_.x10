@@ -14,7 +14,6 @@ package x10.lang;
 
 // Members of the class x10.lang._ are imported automatically.
 public class _ {
-    public static type void = Void;
     public static type boolean = Boolean;
     public static type byte = Byte;
     public static type short = Short;
@@ -70,14 +69,13 @@ public class _ {
     public static type int32 = int;
     public static type int64 = long;
     
-    public static type GlobalRef[T](p:Place) = GlobalRef[T]{self.home==p};
+    public static type GlobalRef[T](p:Place) {T<:Object} = GlobalRef[T]{self.home==p};
     public static type Point(r: Int) = Point{self.rank==r};
     public static type Place(id:Int) = Place{self.id==id};
     public static type Place(p:Place) = Place{self==p};
     
     public static type Region(r:Int) = Region{self.rank==r};
     public static type Region(r:Region) = Region{self==r};
-    public static type RectRegion(r:Int) = RectRegion{self.rect && self.rank==r};
     public static type Range = Region{self.rect && self.rank==1};
     
     public static type Dist(r:Int)   = Dist{self.rank==r};

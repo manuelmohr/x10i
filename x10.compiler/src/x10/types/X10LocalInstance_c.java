@@ -78,19 +78,19 @@ public class X10LocalInstance_c extends LocalInstance_c implements X10LocalInsta
         assert rightType != null : "The type() for " + this + " at " + position() + " is null.";
         	rightType = PlaceChecker.ReplaceHereByPlaceTerm(rightType, x10Def().placeTerm());
         Flags flags = flags();
-        X10TypeSystem xts = (X10TypeSystem) ts;
+        TypeSystem xts = (TypeSystem) ts;
         if ((! flags.isFinal())|| xts.isUnknown(rightType)) {
         	return rightType;
         }
         // If the local variable is final, replace T by T{self==t}, 
         // do this even if depclause==null.
         try {
-        	CConstraint c = X10TypeMixin.xclause(rightType);
+        	CConstraint c = Types.xclause(rightType);
         	c = c==null? new CConstraint() : c.copy();
 
-        	XLocal var = xts.xtypeTranslator().trans(this.type(rightType), rightType);
+        	XLocal var = xts.xtypeTranslator().translate(this.type(rightType));
         	c.addSelfBinding(var);
-        	rightType = X10TypeMixin.xclause(X10TypeMixin.baseType(rightType), c);
+        	rightType = Types.xclause(Types.baseType(rightType), c);
 
         	assert rightType != null;
         	return rightType;
@@ -111,8 +111,9 @@ public class X10LocalInstance_c extends LocalInstance_c implements X10LocalInsta
         n.error = e;
         return n;
     }
+
     public String toString() {
-        String s = "local " + X10Flags.toX10Flags(flags()).prettyPrint() + name() + ": " + type();
+        String s = "local " + flags().prettyPrint() + name() + ": " + safeType();
         return s;
     }
 

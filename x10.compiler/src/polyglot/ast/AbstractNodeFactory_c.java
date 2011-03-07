@@ -21,9 +21,7 @@ import polyglot.util.StringUtil;
  */
 public abstract class AbstractNodeFactory_c implements NodeFactory
 {
-    public Disamb disamb() {
-        return new Disamb_c();
-    }
+    public abstract Disamb disamb();
 
     public Id Id(Position pos, String name) {
 	return Id(pos, Name.make(name));
@@ -255,10 +253,6 @@ public abstract class AbstractNodeFactory_c implements NodeFactory
 
     public final FieldDecl FieldDecl(Position pos, FlagsNode flags, TypeNode type, Id name) {
         return FieldDecl(pos, flags, type, name, null);
-    }
-
-    public final Field Field(Position pos, Id name) {
-        return Field(pos, null, name);
     }
 
     public final If If(Position pos, Expr cond, Stmt consequent) {

@@ -25,14 +25,14 @@ public class System {
      *
      * @return The current time in milliseconds.
      */
-    public static def currentTimeMillis() = Timer.milliTime();
+    public static def currentTimeMillis():Long = Timer.milliTime();
 
     /**
      * Provides the current time in nanoseconds, as precise as the system timers provide.
      *
      * @return The current time in nanoseconds.
      */
-    public static def nanoTime() = Timer.nanoTime();
+    public static def nanoTime():Long = Timer.nanoTime();
 
     /**
      * Terminates the application with a given exit code, as quickly as possible.
@@ -44,7 +44,7 @@ public class System {
      * @see #setExitCode(Int)
      */
     @Native("java", "java.lang.System.exit(#1)")
-    @Native("c++", "x10aux::system_utils::exit(#1)")
+    @Native("c++", "x10aux::system_utils::exit(#code)")
     static native def exit(code: Int): void;
 
     /**
@@ -56,7 +56,7 @@ public class System {
      * @see #exit(Int)
      * @see #setExitCode(Int)
      */
-    static def exit() = exit(-1);
+    static def exit():void = exit(-1);
 
     /**
      * Sets the system exit code.
@@ -64,7 +64,7 @@ public class System {
      * Can only be invoked in place 0.
      */
     @Native("java", "x10.runtime.impl.java.Runtime.setExitCode(#1)")
-    @Native("c++", "(x10aux::exitCode = (#1))")
+    @Native("c++", "(x10aux::exitCode = (#exitCode))")
     public static def setExitCode(exitCode: int){here==Place.FIRST_PLACE}: void {}
 
     /**
@@ -90,8 +90,24 @@ public class System {
      */
     // TODO: XTENLANG-180.  Provide full System properties API in straight X10
     @Native("java", "java.lang.System.setProperty(#1,#2)")
-    @Native("c++", "printf(\"not setting %s\\n\", (#1)->c_str())") // FIXME: Trivial definition to allow XRX compilation to go through.
+    @Native("c++", "printf(\"not setting %s\\n\", (#p)->c_str())") // FIXME: Trivial definition to allow XRX compilation to go through.
     public static native def setProperty(p:String,v:String):void;
 
-
+    /**
+     * Sleep for the specified number of milliseconds.
+     * [IP] NOTE: Unlike Java, x10 sleep() simply exits when interrupted.
+     * @param millis the number of milliseconds to sleep
+     * @return true if completed normally, false if interrupted
+     */
+    public static def sleep(millis:long):Boolean {
+        try {
+            Runtime.increaseParallelism();
+            Thread.sleep(millis);
+            Runtime.decreaseParallelism(1);
+            return true;
+        } catch (e:InterruptedException) {
+            Runtime.decreaseParallelism(1);
+            return false;
+        }
+    }
 }

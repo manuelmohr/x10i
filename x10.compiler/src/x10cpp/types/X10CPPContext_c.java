@@ -22,8 +22,8 @@ package x10cpp.types;
  * @see X10Context_c
  */
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import polyglot.ast.ClassMember;
 import polyglot.ast.Stmt;
@@ -32,11 +32,14 @@ import polyglot.types.TypeSystem;
 import polyglot.types.VarInstance;
 import x10.ast.PropertyDecl;
 import x10.types.X10ClassDef;
-import x10.types.X10Context;
+import x10.types.X10ClassType;
+import polyglot.types.Context;
+import x10.util.CollectionFactory;
 import x10.types.X10MethodDef;
 import x10.util.ClassifiedStream;
+import x10cpp.visit.ITable;
 
-public class X10CPPContext_c extends x10.types.X10Context_c implements X10Context {
+public class X10CPPContext_c extends x10.types.X10Context_c implements Context {
 
     // The global object is fresh for each brand new instance of the context,
     // but is aliased for each clone of the context (cloned via copy()).
@@ -58,7 +61,7 @@ public class X10CPPContext_c extends x10.types.X10Context_c implements X10Contex
      * To find the data in the current or ancestor context, use {@link #findData(String)}.
      * To add data to the current context, use {@link #addData(String, Object)}.
      */
-    protected HashMap<String, Object> data = new HashMap<String, Object>(1, 1.0f);
+    protected Map<String, Object> data = CollectionFactory.newHashMap(1, 1.0f);
 
     /** @see #data. */
     public <T> void addData(String key, T value) { data.put(key, value); }
@@ -137,10 +140,17 @@ public class X10CPPContext_c extends x10.types.X10Context_c implements X10Contex
     public String getStackAllocName() { return stackAllocName; }
     public void setStackAllocName(String s) { stackAllocName = s; }
     
+    // used internally, shallow
+    protected String embeddedFieldName = null;
+    public String getEmbeddedFieldName() { return embeddedFieldName; }
+    public void setEmbeddedFieldName(String s) { embeddedFieldName = s; }
+
     public boolean hasInits = false;
     
-    public ClassifiedStream templateFunctions = null;
+    public ClassifiedStream genericFunctions = null;
+    public ClassifiedStream genericFunctionClosures = null;
     public ClassifiedStream structHeader = null;
+    public ClassifiedStream closures = null;
 
 	public ArrayList<VarInstance<?>> variables = new ArrayList<VarInstance<?>>();
 
@@ -156,6 +166,19 @@ public class X10CPPContext_c extends x10.types.X10Context_c implements X10Contex
         return r;
     }
 
+    
+    private final Map<X10ClassType, ITable> cachedITables = CollectionFactory.newHashMap();
+    /**
+     * Find or construct the ITable instance for the argument X10 interface type.
+     */
+    public ITable getITable(X10ClassType interfaceType) {
+        ITable ans = cachedITables.get(interfaceType);
+        if (ans == null) {
+            ans = new ITable(interfaceType);
+            cachedITables.put(interfaceType, ans);
+        }
+        return ans;
+    }
     
     public X10CPPContext_c(TypeSystem ts) {
         super(ts);
@@ -231,13 +254,13 @@ public class X10CPPContext_c extends x10.types.X10Context_c implements X10Contex
 		}
 	}
     
-	public Object copy() {
-		X10CPPContext_c res = (X10CPPContext_c) super.copy();
+	public X10CPPContext_c shallowCopy() {
+		X10CPPContext_c res = (X10CPPContext_c) super.shallowCopy();
 		res.variables = new ArrayList<VarInstance<?>>();  // or whatever the initial value is
 		res.inClosure = false;
 		res.stackAllocateClosure = false;
 		res.closureOuter = null;
-		res.data = new HashMap<String, Object>(1, 1.0f);
+		res.data = CollectionFactory.newHashMap(1, 1.0f);
 		return res;
 	}
 

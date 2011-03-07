@@ -21,6 +21,7 @@
 
 #include <x10/lang/String.h>
 #include <x10/lang/Rail.h>
+#include <x10/lang/StringIndexOutOfBoundsException.h>
 
 #include <x10/array/Array.h>
 
@@ -31,11 +32,26 @@ using namespace std;
 using namespace x10::lang;
 using namespace x10aux;
 
+static void throwStringIndexOutOfBoundsException(x10_int index, x10_int length) {
+#ifndef NO_EXCEPTIONS
+    char *msg = alloc_printf("index = %ld; length = %ld", (long)index, ((long)length));
+    throwException(x10::lang::StringIndexOutOfBoundsException::_make(String::Lit(msg)));
+#endif
+}
+
+static inline void checkStringBounds(x10_int index, x10_int length) {
+#ifndef NO_BOUNDS_CHECKS
+    if (((x10_uint)index) >= ((x10_uint)length)) {
+        throwStringIndexOutOfBoundsException(index, length);
+    }
+#endif
+}
+
 x10aux::ref<String>
 String::_make(const char *content, bool steal) {
     x10aux::ref<String> this_ = new (x10aux::alloc<String>()) String();
     size_t len = strlen(content);
-    if (!steal) content = strdup(content);
+    if (!steal) content = string_utils::strdup(content);
     this_->_constructor(content,len);
     return this_;
 }
@@ -56,6 +72,21 @@ String::_make(x10aux::ref<Rail<x10_char> > rail, x10_int start, x10_int length) 
     char *content= x10aux::alloc<char>(length+1);
     for (i=0; i<length; i++) {
         content[i] = (char)((*rail)[start + i].v);
+    }
+    content[i] = '\0';
+
+    this_->_constructor(content, i);
+    return this_;
+}
+
+x10aux::ref<String>
+String::_make(x10aux::ref<x10::array::Array<x10_byte> > array, x10_int start, x10_int length) {
+    x10aux::ref<String> this_ = new (x10aux::alloc<String>()) String();
+    nullCheck(array);
+    x10_int i = 0;
+    char *content= x10aux::alloc<char>(length+1);
+    for (i=0; i<length; i++) {
+        content[i] = (char)(array->raw()[start + i]);
     }
     content[i] = '\0';
 
@@ -211,9 +242,9 @@ x10_int String::lastIndexOf(x10_char c, x10_int i) {
 
 ref<String> String::substring(x10_int start, x10_int end) {
 #ifndef NO_BOUNDS_CHECKS
-    if (start < 0) x10aux::throwArrayIndexOutOfBoundsException(start, FMGL(content_length));
-    if (start > end) x10aux::throwArrayIndexOutOfBoundsException(start, end);
-    if (((size_t)end) > FMGL(content_length)) x10aux::throwArrayIndexOutOfBoundsException(end, FMGL(content_length));
+    if (start < 0) throwStringIndexOutOfBoundsException(start, FMGL(content_length));
+    if (start > end) throwStringIndexOutOfBoundsException(start, end);
+    if (((size_t)end) > FMGL(content_length)) throwStringIndexOutOfBoundsException(end, FMGL(content_length));
 #endif
     size_t sz = end - start;
     char *str = x10aux::alloc<char>(sz+1);
@@ -223,17 +254,17 @@ ref<String> String::substring(x10_int start, x10_int end) {
     return String::Steal(str);
 }
 
-static ref<Rail<ref<String> > > split_all_chars(String* str) {
+static ref<x10::array::Array<ref<String> > > split_all_chars(String* str) {
     size_t sz = (size_t)str->length();
-    Rail<ref<String> > *rail = alloc_rail<ref<String>,Rail<ref<String> > > (sz);
+    ref<x10::array::Array<ref<String> > > array = x10::array::Array<ref<String> >::_make(sz);
     for (size_t i = 0; i < sz; ++i) {
-        rail->raw()[i] = str->substring(i, i+1);
+        array->__set(str->substring(i, i+1), i);
     }
-    return rail;
+    return array;
 }
 
 // FIXME: this does not treat pat as a regex
-ref<Rail<ref<String> > > String::split(ref<String> pat) {
+ref<x10::array::Array<ref<String> > > String::split(ref<String> pat) {
     nullCheck(pat);
     int l = pat->length();
     if (l == 0) // if splitting on an empty string, just return the chars
@@ -243,38 +274,38 @@ ref<Rail<ref<String> > > String::split(ref<String> pat) {
     while ((i = indexOf(pat, i+l)) != -1) {
         sz++;
     }
-    Rail<ref<String> > *rail = alloc_rail<ref<String>,Rail<ref<String> > > (sz);
+    ref<x10::array::Array<ref<String> > > array = x10::array::Array<ref <String> >::_make(sz);
     int c = 0;
-    int o = 0; // now build the rail
+    int o = 0; // now fill in the array
     while ((i = indexOf(pat, o)) != -1) {
-        rail->raw()[c++] = substring(o, i);
+        array->__set(substring(o, i), c++);
         o = i+l;
     }
-    rail->raw()[c++] = substring(o);
+    array->__set(substring(o), c++);
     assert (c == sz);
-    return rail;
+    return array;
 }
 
 x10_char String::charAt(x10_int i) {
-    x10aux::checkRailBounds(i, FMGL(content_length));
+    checkStringBounds(i, FMGL(content_length));
     return (x10_char) FMGL(content)[i];
 }
 
 
-ref<Rail<x10_char> > String::chars() {
+ref<x10::array::Array<x10_char> > String::chars() {
     x10_int sz = length();
-    Rail<x10_char> *rail = alloc_rail<x10_char,Rail<x10_char> > (sz);
+    ref<x10::array::Array<x10_char> > array = x10::array::Array<x10_char>::_make(sz);
     for (int i = 0; i < sz; ++i)
-        rail->raw()[i] = (x10_char) FMGL(content)[i]; // avoid bounds check
-    return rail;
+        array->__set((x10_char) FMGL(content)[i], i);
+    return array;
 }
 
-ref<Rail<x10_byte> > String::bytes() {
+ref<x10::array::Array<x10_byte> > String::bytes() {
     x10_int sz = length();
-    Rail<x10_byte> *rail = alloc_rail<x10_byte,Rail<x10_byte> > (sz);
+    ref<x10::array::Array<x10_byte> > array = x10::array::Array<x10_byte>::_make(sz);
     for (int i = 0; i < sz; ++i)
-        rail->raw()[i] = FMGL(content)[i]; // avoid bounds check
-    return rail;
+        array->__set(FMGL(content)[i], i); 
+    return array;
 }
 
 void String::_formatHelper(std::ostringstream &ss, char* fmt, ref<Any> p) {
@@ -320,7 +351,7 @@ ref<String> String::format(ref<String> format, ref<x10::array::Array<ref<Any> > 
     nullCheck(format);
     nullCheck(parms);
     //size_t len = format->FMGL(content_length);
-    char* orig = const_cast<char*>(format->c_str());
+    char* orig = string_utils::strdup(format->c_str());
     char* fmt = orig;
     char* next = NULL;
     for (x10_int i = 0; fmt != NULL; ++i, fmt = next) {
@@ -331,12 +362,13 @@ ref<String> String::format(ref<String> format, ref<x10::array::Array<ref<Any> > 
             ss << fmt;
             --i;
         } else {
-            const ref<Reference> p = parms->apply(i);
+            const ref<Reference> p = parms->__apply(i);
             _formatHelper(ss, fmt, p);
         }
         if (next != NULL)
             *next = '%';
     }
+    dealloc(orig);
     return String::Lit(ss.str().c_str());
 }
 
@@ -350,10 +382,6 @@ x10_boolean String::equals(ref<Any> p0) {
         return false;
     return true;
 }
-
-#ifdef __CYGWIN__
-extern "C" int strncasecmp(const char *, const char *, size_t);
-#endif
 
 /* FIXME: Unicode support */
 x10_boolean String::equalsIgnoreCase(ref<String> s) {
@@ -444,15 +472,7 @@ x10_boolean String::endsWith(ref<String> s) {
 }
 
 const serialization_id_t String::_serialization_id =
-    DeserializationDispatcher::addDeserializer(String::_deserializer<Reference>);
-
-// Specialized serialization
-void String::_serialize(x10aux::ref<String> this_, x10aux::serialization_buffer &buf) {
-    Object::_serialize_reference(this_, buf);
-    if (this_ != x10aux::null) {
-        this_->_serialize_body(buf);
-    }
-}
+    DeserializationDispatcher::addDeserializer(String::_deserializer<Reference>, x10aux::CLOSURE_KIND_NOT_ASYNC);
 
 void String::_serialize_body(x10aux::serialization_buffer& buf) {
     this->Object::_serialize_body(buf);
@@ -482,8 +502,8 @@ void String::_deserialize_body(x10aux::deserialization_buffer &buf) {
     _S_("Deserialized string was: \""<<this<<"\"");
 }
 
-Fun_0_1<x10_int, x10_char>::itable<String> String::_itable_Fun_0_1(&String::apply, 
-                                                                   &String::equals, &String::hashCode,
+Fun_0_1<x10_int, x10_char>::itable<String> String::_itable_Fun_0_1(&String::equals, &String::hashCode,
+                                                                   &String::__apply,                                                                    
                                                                    &String::toString, &String::typeName);
 Comparable<ref<String> >::itable<String> String::_itable_Comparable(&String::compareTo,
                                                                    &String::equals, &String::hashCode,
@@ -495,9 +515,16 @@ x10aux::itable_entry String::_itables[3] = {
     x10aux::itable_entry(NULL,  (void*)x10aux::getRTT<String>())
 };
 
+x10aux::RuntimeType String::rtt;
 
-
-
-RTT_CC_DECLS1(String, "x10.lang.String", Object)
+void String::_initRTT() {
+    if (rtt.initStageOne(&rtt)) return;
+    const x10aux::RuntimeType* parents[3] =
+        {Object::getRTT(),
+         Fun_0_1<x10_int, x10_char>::getRTT(),
+         Comparable<String>::getRTT() };
+    
+    rtt.initStageTwo("x10.lang.String", RuntimeType::class_kind, 3, parents, 0, NULL, NULL);
+}    
 
 // vim:tabstop=4:shiftwidth=4:expandtab

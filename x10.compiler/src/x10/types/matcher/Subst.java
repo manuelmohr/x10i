@@ -17,8 +17,9 @@ import java.util.List;
 import polyglot.types.LocalInstance;
 import polyglot.types.NullType;
 import polyglot.types.SemanticException;
-import polyglot.types.StructType;
+import polyglot.types.ContainerType;
 import polyglot.types.Type;
+import polyglot.types.Types;
 import polyglot.types.UnknownType;
 import x10.constraint.XFailure;
 import x10.constraint.XLocal;
@@ -32,10 +33,9 @@ import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10FieldInstance;
 import x10.types.X10LocalInstance;
-import x10.types.X10MethodInstance;
+import x10.types.MethodInstance;
 import x10.types.X10ParsedClassType;
-import x10.types.X10TypeMixin;
-import x10.types.X10TypeSystem;
+import polyglot.types.TypeSystem;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.TypeConstraint;
 
@@ -65,7 +65,7 @@ public class Subst {
         if (t == null)
             return null;
 
-        X10TypeSystem ts = (X10TypeSystem) t.typeSystem();
+        TypeSystem ts = (TypeSystem) t.typeSystem();
 
         t = ts.expandMacros(t);
 
@@ -74,7 +74,7 @@ public class Subst {
         if (t instanceof UnknownType)
             return t;
         if (t instanceof ParameterType) {
-            return X10TypeMixin.xclause(t, in);
+            return Types.xclause(t, in);
         }
         if (ts.isVoid(t)) {
             return t;
@@ -82,24 +82,27 @@ public class Subst {
         if (t instanceof X10ParsedClassType) {
             X10ParsedClassType ct = (X10ParsedClassType) t;
             List<Type> newArgs = new ArrayList<Type>();
+            if (ct.typeArguments() == null)
+                return ct;
             for (Type at : ct.typeArguments()) {
                 Type at2 = addIn(at, in);
                 newArgs.add(at2);
             }
             return ct.typeArguments(newArgs);
         }
-        Type base = X10TypeMixin.baseType(t);
-        CConstraint c = X10TypeMixin.xclause(t);
+        Type base = Types.baseType(t);
+        CConstraint c = Types.xclause(t);
         if (t==base)
             assert t != base;
 
         base = addIn(base, in);
 
         if (c != null) {
-            c = c.copy().addIn(in);
+            c = c.copy();
+            c.addIn(in);
         }
 
-        return X10TypeMixin.xclause(base, c);
+        return Types.xclause(base, c);
     }
 
     public static Type project(Type t, XVar v) {
@@ -107,7 +110,7 @@ public class Subst {
             return null;
 
 
-        X10TypeSystem ts = (X10TypeSystem) t.typeSystem();
+        TypeSystem ts = (TypeSystem) t.typeSystem();
 
         t = ts.expandMacros(t);
 
@@ -124,6 +127,8 @@ public class Subst {
         if (t instanceof X10ParsedClassType) {
             X10ParsedClassType ct = (X10ParsedClassType) t;
             List<Type> newArgs = new ArrayList<Type>();
+            if (ct.typeArguments() == null)
+                return ct;
             for (Type at : ct.typeArguments()) {
                 Type at2 = project(at, v);
                 newArgs.add(at2);
@@ -131,8 +136,8 @@ public class Subst {
             return ct.typeArguments(newArgs);
         }
 
-        Type base = X10TypeMixin.baseType(t);
-        CConstraint c = X10TypeMixin.xclause(t);
+        Type base = Types.baseType(t);
+        CConstraint c = Types.xclause(t);
         if (t == base) 
             assert t != base;
         base = project(base, v);
@@ -141,7 +146,7 @@ public class Subst {
             c = c.copy().project(v);
         }
 
-        return X10TypeMixin.xclause(base, c);
+        return Types.xclause(base, c);
     }
 
     /**
@@ -165,16 +170,18 @@ public class Subst {
         if (t == null)
             return null;
 
-        X10TypeSystem ts = (X10TypeSystem) t.typeSystem();
+        TypeSystem ts = (TypeSystem) t.typeSystem();
 
         t = ts.expandMacros(t);
 
-        Type base = X10TypeMixin.baseType(t);
-        CConstraint c = X10TypeMixin.xclause(t);
+        Type base = Types.baseType(t);
+        CConstraint c = Types.xclause(t);
 
 
         if (t instanceof X10ParsedClassType) {
             X10ParsedClassType ct = (X10ParsedClassType) t;
+            if (ct.typeArguments() == null)
+                return ct;
             List<Type> newArgs = new ArrayList<Type>();
             for (Type at : ct.typeArguments()) {
                 Type at2 = subst(at, y, x);
@@ -195,7 +202,7 @@ public class Subst {
                     throw new SemanticException("Cannot instantiate formal parameters on actuals.");
                 }
 
-                return X10TypeMixin.xclause(base, c);
+                return Types.xclause(base, c);
             }
 
 
@@ -204,14 +211,13 @@ public class Subst {
 
     public static Type subst(Type t, XTerm[] y, XVar[] x, Type[] Y, ParameterType[] X) throws SemanticException {
         if (t instanceof ConstrainedType) {
-            Type ct = t;
-            Type base = X10TypeMixin.baseType(ct);
-            CConstraint c = X10TypeMixin.xclause(ct);
-            Type newBase = subst(base, y, x, Y, X);
-            // if (x instanceof XSelf) {
-            // return X10TypeMixin.xclause(newBase, c);
-            // }
-            return X10TypeMixin.xclause(newBase, subst(c, y, x, Y, X));
+            ConstrainedType ct = (ConstrainedType) t;
+            Type base = Types.get(ct.baseType()); // do not call X10TypeMixin.baseType(ct); that will strip constraints in ct
+            base = subst(base, y, x, Y, X);
+            CConstraint c = Types.get(ct.constraint());
+            c =  subst(c, y, x, Y, X);
+           
+            return Types.xclause(base, c);
         }
         if (t instanceof ParameterType) {
             for (int i = 0; i < X.length; i++) {
@@ -236,6 +242,8 @@ public class Subst {
                 return ct;
             }
             else {
+                if (ct.typeArguments() == null)
+                    return ct;
                 List<Type> args = new ArrayList<Type>();
                 boolean changed = false;
                 for (Type ti : ct.typeArguments()) {
@@ -281,7 +289,7 @@ public class Subst {
     public static TypeConstraint subst(TypeConstraint t, Type Y, ParameterType X) throws SemanticException {
         if (t == null)
             return null;
-        TypeParamSubst subst = new TypeParamSubst((X10TypeSystem) Y.typeSystem(), Arrays.asList(Y), Arrays.asList(X));
+        TypeParamSubst subst = new TypeParamSubst((TypeSystem) Y.typeSystem(), Arrays.asList(Y), Arrays.asList(X));
         return subst.reinstantiate(t);
     }
 
@@ -347,7 +355,7 @@ public class Subst {
     public static X10FieldInstance subst(X10FieldInstance fi, XTerm[] y, XVar[] x) throws SemanticException {
         Type ft = subst(fi.type(), y, x);
         Type rt = subst(fi.rightType(), y, x);
-        StructType ct = (StructType) subst(fi.container(), y, x);
+        ContainerType ct = (ContainerType) subst(fi.container(), y, x);
         return (X10FieldInstance) fi.type(ft, rt).container(ct);
     }
 
@@ -382,7 +390,7 @@ public class Subst {
         if (newFormalTypes != formalTypes) {
             ci = ci.formalTypes(newFormalTypes);
         }
-        StructType ct = (StructType) subst(ci.container(), y, x);
+        ContainerType ct = (ContainerType) subst(ci.container(), y, x);
         if (ct != ci.container()) {
             ci =  (X10ConstructorInstance) ci.container(ct);
         }
@@ -400,7 +408,7 @@ public class Subst {
      * @return
      * @throws SemanticException 
      */
-    public static X10MethodInstance subst(X10MethodInstance mi, XTerm[] y, XVar[] x) throws SemanticException {
+    public static MethodInstance subst(MethodInstance mi, XTerm[] y, XVar[] x) throws SemanticException {
         Type returnType = mi.returnType();
         Type newReturnType = subst(returnType, y, x);
         if (newReturnType != returnType) {
@@ -411,14 +419,14 @@ public class Subst {
         if (newFormalTypes != formalTypes) {
             mi = mi.formalTypes(newFormalTypes);
         }
-        StructType ct = (StructType) subst(mi.container(), y, x);
+        ContainerType ct = (ContainerType) subst(mi.container(), y, x);
         if (ct != mi.container()) {
-            mi =  (X10MethodInstance) mi.container(ct);
+            mi =  (MethodInstance) mi.container(ct);
         }
         return mi;
     }
 
-    public static X10MethodInstance subst(X10MethodInstance mi, XTerm y, XVar x) throws SemanticException {
+    public static MethodInstance subst(MethodInstance mi, XTerm y, XVar x) throws SemanticException {
         return subst(mi, new XTerm[] { y }, new XVar[] { x });
     }
 

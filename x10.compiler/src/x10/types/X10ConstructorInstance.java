@@ -17,7 +17,7 @@ import polyglot.types.ConstructorDef;
 import polyglot.types.ConstructorInstance;
 import polyglot.types.Ref;
 import polyglot.types.SemanticException;
-import polyglot.types.StructType;
+import polyglot.types.ContainerType;
 import polyglot.types.Type;
 import x10.constraint.XConstraint;
 
@@ -26,7 +26,7 @@ public interface X10ConstructorInstance extends ConstructorInstance, X10Procedur
 	 * Return the depclause associated with the returntype of the constructor.
 	 * @return
 	 */
-	XConstraint constraint();
+	//XConstraint constraint();
 	
 	Type returnType();
 	X10ConstructorInstance returnType(Type retType);

@@ -18,6 +18,7 @@ import java.util.List;
 import polyglot.ast.CanonicalTypeNode;
 import polyglot.ast.Expr;
 import polyglot.ast.Node;
+import polyglot.ast.NodeFactory;
 import polyglot.ast.TypeNode;
 import polyglot.ast.TypeNode_c;
 import polyglot.types.Context;
@@ -40,10 +41,8 @@ import polyglot.visit.TypeChecker;
 import x10.extension.X10Del;
 import x10.extension.X10Del_c;
 import x10.types.X10ClassType;
-import x10.types.X10Context;
-import x10.types.X10TypeMixin;
-import x10.types.X10TypeSystem;
-import x10.types.X10TypeSystem_c;
+import polyglot.types.Context;
+import polyglot.types.TypeSystem;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.TypeConstraint;
 import x10.visit.X10TypeChecker;
@@ -95,7 +94,7 @@ public class AmbDepTypeNode_c extends TypeNode_c implements AmbDepTypeNode, AddF
     public Context enterChildScope(Node child, Context c) {
     	if (child == this.dep) {
     	    TypeSystem ts = c.typeSystem();
-    	    c = ((X10Context) c).pushDepType(base.typeRef());
+    	    c = ((Context) c).pushDepType(base.typeRef());
     	}
         Context cc = super.enterChildScope(child, c);
         return cc;
@@ -111,17 +110,9 @@ public class AmbDepTypeNode_c extends TypeNode_c implements AmbDepTypeNode, AddF
     	return (base != null ? base.toString() : "") + (dep != null ? dep.toString() : "");
     }
     
-    public void setResolver(Node parent, final TypeCheckPreparer v) {
-    	if (typeRef() instanceof LazyRef<?>) {
-    		LazyRef<Type> r = (LazyRef<Type>) typeRef();
-    		TypeChecker tc = new X10TypeChecker(v.job(), v.typeSystem(), v.nodeFactory(), v.getMemo());
-    		tc = (TypeChecker) tc.context(v.context().freeze());
-    		r.setResolver(new TypeCheckTypeGoal(parent, this, tc, r));
-    	}
-    }
-    public Node typeCheckOverride(Node parent, ContextVisitor tc) throws SemanticException {
-        X10TypeSystem_c ts = (X10TypeSystem_c) tc.typeSystem();
-        X10NodeFactory nf = (X10NodeFactory) tc.nodeFactory();
+    public Node typeCheckOverride(Node parent, ContextVisitor tc) {
+        TypeSystem ts =  tc.typeSystem();
+        NodeFactory nf = (NodeFactory) tc.nodeFactory();
 
         LazyRef<Type> sym = (LazyRef<Type>) this.type;
         assert sym != null;
@@ -135,31 +126,31 @@ public class AmbDepTypeNode_c extends TypeNode_c implements AmbDepTypeNode, AddF
             // Mark the type resolved to prevent us from trying to resolve this again and again.
             assert (false);
             sym.update(ts.unknownType(position()));
-            TypeNode result = postprocess(nf.CanonicalTypeNode(position(), sym), this, childtc);
-            return result.del().typeCheck(childtc);
+            X10CanonicalTypeNode result = postprocess(nf.CanonicalTypeNode(position(), sym), this, childtc);
+            return result.typeCheck(childtc);
         }
         
         DepParameterExpr constr = (DepParameterExpr) visitChild(dep, childtc);
         
         CConstraint c = Types.get(constr.valueConstraint());
-        t = X10TypeMixin.xclause(t, c);
+        t = Types.xclause(t, c);
         if (flags != null) {
-        	t = X10TypeMixin.processFlags(flags, t);
+        	t = Types.processFlags(flags, t);
         	flags = null;
         }
 
         sym.update(t);
 
-        CanonicalTypeNode result = nf.CanonicalTypeNode(position(), sym);
-        result = (CanonicalTypeNode) postprocess(result, this, childtc);
-        return (TypeNode) result.del().typeCheck(childtc);
+        X10CanonicalTypeNode result = nf.CanonicalTypeNode(position(), sym);
+        result = postprocess(result, this, childtc);
+        return (TypeNode) result.typeCheck(childtc);
     }
     
-    static TypeNode postprocess(CanonicalTypeNode result, TypeNode n, ContextVisitor childtc) throws SemanticException {
+    static X10CanonicalTypeNode postprocess(X10CanonicalTypeNode result, TypeNode n, ContextVisitor childtc) {
         n = (TypeNode) X10Del_c.visitAnnotations(n, childtc);
 
-        result = (CanonicalTypeNode) ((X10Del) result.del()).annotations(((X10Del) n.del()).annotations());
-        result = (CanonicalTypeNode) ((X10Del) result.del()).setComment(((X10Del) n.del()).comment());
+        result = (X10CanonicalTypeNode) ((X10Del) result.del()).annotations(((X10Del) n.del()).annotations());
+        result = (X10CanonicalTypeNode) ((X10Del) result.del()).setComment(((X10Del) n.del()).comment());
 
         return result;
     }

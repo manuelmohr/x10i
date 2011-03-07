@@ -69,7 +69,7 @@ interface XPromise extends Cloneable {
 	 * @return
 	 * @throws XFailure 
 	 */
-	XPromise intern(XVar[] vars, int index, XPromise last) throws XFailure;
+	XPromise intern(XVar[] vars, int index, XPromise last);
 
 	/**
 	 * vars and this must be as for intern. Return the node in the graph of constraint
@@ -88,7 +88,7 @@ interface XPromise extends Cloneable {
 	 * @param s
 	 * @return
 	 */
-	XPromise lookup(XName s)  ;
+	XPromise lookup(Object s)  ;
 
 	XPromise lookup();
 
@@ -101,7 +101,7 @@ interface XPromise extends Cloneable {
 	 * @param s -- the name of the field
 	 * @param child -- the s child of the source of the eq link.
 	 */
-	void addIn(XName s, XPromise child) throws XFailure;
+	void addIn(Object s, XPromise child) throws XFailure;
 	
 	/**
 	 * An eq link entering this has just been established. Now the 
@@ -146,7 +146,7 @@ interface XPromise extends Cloneable {
 	 * A node cannot both have disEquals bindings and be forwarded.
 	 * @return true iff this node has disEquals bindings.
 	 */
-	boolean hasDisBindings();
+	//boolean hasDisBindings();
 
 	/**
 	 * Is there a path from here to p? 
@@ -168,8 +168,8 @@ interface XPromise extends Cloneable {
 	 * @param result
 	 * @param oldSelf 
 	 */
-	void dump(XVar path, List<XTerm> result,  boolean dumpEQV, boolean hideFake);
-
+	//void dump(XVar path, List<XTerm> result,  boolean dumpEQV, boolean hideFake);
+	boolean visit(XVar path, boolean dumpEQV, boolean hideFake, XGraphVisitor xg);
 	/**
 	 * Return the term that labels this promise. This term is intended to be the canonical XTerm
 	 * labeling this promise, following the direct path from the root node.
@@ -202,15 +202,31 @@ interface XPromise extends Cloneable {
 	XPromise value();
 
 	/** Map from field names f to promises term().f */
-	Map<XName, XPromise> fields();
+	Map<Object, XPromise> fields();
 
 	/**
 	 * Replace a reference to any descendant that is equal to x with a reference to y.
-	 * @param y
-	 * @param x
+	 * @param env: mapping from x to y
 	 */
-	XPromise cloneRecursively(HashMap<XPromise, XPromise> env);
+	//XPromise cloneRecursively(Map<XPromise, XPromise> env);
 	
+	/**
+	 * Transfer the state of this to env(this). env(this) is guaranteed to be non-null.
+	 * If when transfering state, a promise p is encountered, check if p is in env.
+	 * If so, then stop and use env(p) as the transfered value of p. If not, then
+	 * create a new XPromise np through p.shallowCopy(), update env to point p to np,
+	 * and recursively call transfer on np with the updated env.
+	 * @param env
+	 */
+	void transfer(Map<XPromise, XPromise> env);
+	
+	/**
+	 * Return a shallow clone, no deep copying permitted. The clone must have
+	 * the same concrete type as this. The promise will be visited
+	 * subsequently (via transfer), to flesh out its data-structures
+	 * @return
+	 */
+	XPromise cloneShallow();
 	/**
 	 * The externally visible term (if any) that this term represents.
 	 * @return null -- if this promise is forwarded.

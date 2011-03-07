@@ -10,17 +10,18 @@ package polyglot.ast;
 
 import java.util.*;
 
-import polyglot.main.Report;
+import polyglot.main.Reporter;
 import polyglot.types.*;
 import polyglot.util.*;
 import polyglot.visit.*;
 import x10.errors.Errors;
-import x10.types.X10Flags;
+import x10.errors.Errors.InterfaceMethodsMustBePublic;
+import x10.types.MethodInstance;
 
 /**
  * A method declaration.
  */
-public class MethodDecl_c extends Term_c implements MethodDecl
+public abstract class MethodDecl_c extends Term_c implements MethodDecl
 {
     protected FlagsNode flags;
     protected TypeNode returnType;
@@ -156,88 +157,19 @@ public class MethodDecl_c extends Term_c implements MethodDecl
 	return body == n.body ? n : n.body(body);
     }
 
-    public Node buildTypesOverride(TypeBuilder tb) {
-        TypeSystem ts = tb.typeSystem();
+    public abstract Node buildTypesOverride(TypeBuilder tb);
 
-        ClassDef ct = tb.currentClass();
-        assert ct != null;
-
-	Flags flags = this.flags.flags();
-
-	if (ct.flags().isInterface()) {
-	    flags = flags.Public().Abstract();
-	}
-
-    // If the class is safe, mark all the methods safe. (what about ctors? this code should also be in ctors) 
-    // The method inherits the flags of the enclosing containers (only for safe. The other modifiers will be removed: pinned, nonblocking, sequential)
-    boolean shouldAddSafe = false;
-    if (!X10Flags.toX10Flags(flags).isSafe()) {
-        ClassDef container = ct;
-        while (container!=null) {
-            if (X10Flags.toX10Flags(container.flags()).isSafe())
-                shouldAddSafe = true;
-            Ref<? extends ClassDef> ref = container.outer();
-            if (ref==null) break;
-            container = ref.get();
-        }
-    }
-    MethodDecl_c n = this;
-    if (shouldAddSafe) {
-        // we need to change both the def and the decl
-        flags = X10Flags.toX10Flags(flags).Safe(); // these flags are for the def
-        n = (MethodDecl_c) n.flags(n.flags().flags(flags)); // changing the decl
-    }
-
-
-	MethodDef mi = createMethodDef(ts, ct, flags);
-        ct.addMethod(mi);
-	
-	TypeBuilder tbChk = tb.pushCode(mi);
-
-	final TypeBuilder tbx = tb;
-	final MethodDef mix = mi;
-	
-	n = (MethodDecl_c) n.visitSignature(new NodeVisitor() {
-            public Node override(Node n) {
-                return MethodDecl_c.this.visitChild(n, tbx.pushCode(mix));
-            }
-        });
-
-	List<Ref<? extends Type>> formalTypes = new ArrayList<Ref<? extends Type>>(n.formals().size());
-        for (Formal f : n.formals()) {
-             formalTypes.add(f.type().typeRef());
-        }
-
-
-        mi.setReturnType(n.returnType().typeRef());
-        mi.setFormalTypes(formalTypes);
-    
-        Block body = (Block) n.visitChild(n.body, tbChk);
-        
-        n = (MethodDecl_c) n.body(body);
-        return n.methodDef(mi);
-    }
-
-    protected MethodDef createMethodDef(TypeSystem ts, ClassDef ct, Flags flags) {
-	MethodDef mi = ts.methodDef(position(), Types.ref(ct.asType()), flags, returnType.typeRef(), name.id(),
-	                                 Collections.<Ref<? extends Type>>emptyList());
-	return mi;
-    }
+    protected abstract MethodDef createMethodDef(TypeSystem ts, ClassDef ct, Flags flags);
 
     public Context enterScope(Context c) {
-        if (Report.should_report(TOPICS, 5))
-	    Report.report(5, "enter scope of method " + name);
+        Reporter reporter = c.typeSystem().extensionInfo().getOptions().reporter;
+        if (reporter.should_report(TOPICS, 5))
+	        reporter.report(5, "enter scope of method " + name);
         c = c.pushCode(mi);
         return c;
     }
     
-    public Node visitSignature(NodeVisitor v) {
-        TypeNode returnType = (TypeNode) this.visitChild(this.returnType, v);
-        FlagsNode flags = (FlagsNode) this.visitChild(this.flags, v);
-        Id name = (Id) this.visitChild(this.name, v);
-        List<Formal> formals = this.visitList(this.formals, v);
-        return reconstruct(flags, returnType, name, formals,  this.body);
-    }
+    public abstract Node visitSignature(NodeVisitor v);
     
     /** Type check the declaration. */
     public Node typeCheckBody(Node parent, TypeChecker tc, TypeChecker childtc) throws SemanticException {
@@ -282,11 +214,12 @@ public class MethodDecl_c extends Term_c implements MethodDecl
 
 	if (tc.context().currentClass().flags().isInterface()) {
             if (flags.isProtected() || flags.isPrivate()) {
-                Errors.issue(tc.job(), new SemanticException("Interface methods must be public.", position()));
+                Errors.issue(tc.job(), 
+                		new Errors.InterfaceMethodsMustBePublic(position()));
             }
             
             if (flags.isStatic()) {
-        	Errors.issue(tc.job(), new SemanticException("Interface methods cannot be static.", position()));
+        	Errors.issue(tc.job(), new Errors.InterfaceMethodsCannobBeStatic(position()));
             }
         }
 
@@ -301,26 +234,26 @@ public class MethodDecl_c extends Term_c implements MethodDecl
         ClassType ct = container.toClass();
 
 	if (body == null && ! (flags.isAbstract() || flags.isNative())) {
-	    Errors.issue(tc.job(), new SemanticException("Missing method body.", position()));
+	    Errors.issue(tc.job(), new Errors.MissingMethodBody(position()));
 	}
 
         if (body != null && ct.flags().isInterface()) {
-	    Errors.issue(tc.job(), new SemanticException("Interface methods cannot have a body.", position()));
+	    Errors.issue(tc.job(), new Errors.InterfaceMethodsCannotHaveBody(position()));
         }
 
 	if (body != null && flags.isAbstract()) {
-	    Errors.issue(tc.job(), new SemanticException("An abstract method cannot have a body.", position()));
+	    Errors.issue(tc.job(), new Errors.AbstractMethodCannotHaveBody(position()));
 	}
 
 	if (body != null && flags.isNative()) {
-	    Errors.issue(tc.job(), new SemanticException("A native method cannot have a body.", position()));
+	    Errors.issue(tc.job(), new Errors.NativeMethodCannotHaveBody(position()));
 	}
 
         // check that inner classes do not declare static methods
         if (ct != null && flags.isStatic() && ct.isInnerClass()) {
             // it's a static method in an inner class.
             Errors.issue(tc.job(),
-                    new SemanticException("Inner classes cannot declare static methods.", position()));             
+                    new Errors.InnerClassesCannotDeclareStaticMethod(position()));             
         }
     }
 
@@ -328,13 +261,10 @@ public class MethodDecl_c extends Term_c implements MethodDecl
         TypeSystem ts = tc.typeSystem();
 
         MethodInstance mi = this.mi.asInstance();
-        for (Iterator<MethodInstance> j = mi.implemented(tc.context()).iterator(); j.hasNext(); ) {
-            MethodInstance mj = (MethodInstance) j.next();
-
+        for (MethodInstance mj : mi.implemented(tc.context()) ){
             if (! ts.isAccessible(mj, tc.context())) {
                 continue;
             }
-
             try {
                 ts.checkOverride(mi, mj, tc.context());
             } catch (SemanticException e) {
@@ -347,9 +277,7 @@ public class MethodDecl_c extends Term_c implements MethodDecl
         return ec.push(new ExceptionChecker.CodeTypeReporter("Method " + mi.signature())).push(methodDef().asInstance().throwTypes());
     }
 */
-    public String toString() {
-	return flags.flags().translate() + returnType + " " + name + "(...)";
-    }
+    public abstract String toString();
 
     /** Write the method to an output file. */
     public void prettyPrintHeader(CodeWriter w, PrettyPrinter tr) {
@@ -397,12 +325,12 @@ public class MethodDecl_c extends Term_c implements MethodDecl
     public void prettyPrint(CodeWriter w, PrettyPrinter tr) {
         prettyPrintHeader(w, tr);
 
-	if (body != null) {
-	    printSubStmt(body, w, tr);
-	}
-	else {
-	    w.write(";");
-	}
+        if (body != null) {
+        	printSubStmt(body, w, tr);
+        }
+        else {
+        	w.write(";");
+        }
     }
 
     public void dump(CodeWriter w) {
@@ -440,5 +368,5 @@ public class MethodDecl_c extends Term_c implements MethodDecl
     }
 
     private static final Collection<String> TOPICS = 
-            CollectionUtil.list(Report.types, Report.context);
+            CollectionUtil.list(Reporter.types, Reporter.context);
 }

@@ -28,12 +28,12 @@ import polyglot.types.Ref;
 import polyglot.types.Type;
 import polyglot.types.TypeSystem;
 import polyglot.types.Types;
-import polyglot.util.CollectionUtil;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import polyglot.util.Transformation;
 import polyglot.util.TransformingList;
-import x10.types.X10MethodInstance_c.NoClauseVariant;
+import x10.types.MethodInstance_c.NoClauseVariant;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.TypeConstraint;
 
@@ -54,7 +54,7 @@ public class ClosureInstance_c extends FunctionInstance_c<ClosureDef> implements
     FunctionType type;
 
     public FunctionType type() {
-	    X10TypeSystem xts = (X10TypeSystem) ts;
+	    TypeSystem xts = (TypeSystem) ts;
 	    assert false;
 	    if (type == null) {
 //		type = new ClosureType_c(xts, position(), this);
@@ -80,7 +80,7 @@ public class ClosureInstance_c extends FunctionInstance_c<ClosureDef> implements
     }
 
     public boolean moreSpecific(Type ct, ProcedureInstance<ClosureDef> p, Context context) {
-        return X10TypeMixin.moreSpecificImpl(ct, this, p, context);
+        return Types.moreSpecificImpl(ct, this, p, context);
     }
 
     public String signature() {
@@ -144,33 +144,6 @@ public class ClosureInstance_c extends FunctionInstance_c<ClosureDef> implements
         return (ClosureInstance) super.throwTypes(throwTypes);
     }
 
-    CConstraint guard;
-    
-    public CConstraint guard() {
-            if (guard == null)
-                    return Types.get(def().guard());
-            return guard;
-    }
-    
-    public ClosureInstance guard(CConstraint guard) {
-        ClosureInstance_c n = (ClosureInstance_c) copy();
-        n.guard = guard;
-        return n;
-    }
-
-    /** Constraint on type parameters. */
-    protected TypeConstraint typeGuard;
-    public TypeConstraint typeGuard() { 
-        if (typeGuard == null)
-            return Types.get(def().typeGuard());
-        return typeGuard;
-    }
-    public ClosureInstance typeGuard(TypeConstraint s) { 
-        ClosureInstance_c n = (ClosureInstance_c) copy();
-        n.typeGuard = s; 
-        return n;
-    }
-    
     public List<Type> typeParameters() {
         return Collections.emptyList();
     }

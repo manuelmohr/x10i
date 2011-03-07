@@ -16,11 +16,14 @@ package polyglot.frontend;
 import java.util.*;
 
 import polyglot.ast.Node;
+import polyglot.frontend.Compiler;
 import polyglot.frontend.Goal.Status;
-import polyglot.main.Report;
+import polyglot.main.Options;
+import polyglot.main.Reporter;
 import polyglot.types.*;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Option;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.visit.PostCompiled;
 
 
@@ -50,13 +53,15 @@ public abstract class Scheduler {
     protected ExtensionInfo extInfo;
 
     /** map used for interning goals. */
-    protected Map<Goal,Goal> internCache = new HashMap<Goal,Goal>();
+    protected Map<Goal,Goal> internCache = CollectionFactory.newHashMap(); // note that is not a cache in the sense that if you clear it the correctness of the compiler is compromised.
     
     // TODO: remove this, we only need to intern the goal status, not the goal itself.
     // Actually, the lazy ref to the goal status is the goal.  The run() method is the resolver for the lazy ref.
     public Goal intern(Goal goal) {
-        extInfo.getStats().accumulate("intern", 1);
-        extInfo.getStats().accumulate("intern:" + (goal instanceof VisitorGoal ? ((VisitorGoal) goal).v.getClass().getName() : goal.getClass().getName()), 1);
+        x10.ExtensionInfo x10Info = (x10.ExtensionInfo) extInfo;
+        x10Info.stats.incrFrequency("intern", 1);
+        x10Info.stats.incrFrequency("intern:"
+                + (goal instanceof VisitorGoal ? ((VisitorGoal) goal).v.getClass().getName() : goal.getClass().getName()), 1);
         Goal g = internCache.get(goal);
         if (g == null) {
             g = goal;
@@ -77,7 +82,7 @@ public abstract class Scheduler {
      */
     protected Map<Source, Option<Job>> jobs;
     
-    protected Collection<Job> commandLineJobs;
+    protected Collection<Job> commandLineJobs = Collections.emptyList();
     
     /** True if any pass has failed. */
     protected boolean failed;
@@ -93,8 +98,18 @@ public abstract class Scheduler {
         this.currentGoal = null;
     }
     
+    public ExtensionInfo extensionInfo() {
+        return this.extInfo;
+    }
+    
     public Collection<Job> commandLineJobs() {
         return this.commandLineJobs;
+    }
+
+    public Collection<Source> sources;
+    public void clearAll(Collection<Source> sources) {
+        this.sources = sources;
+        setFailed(false);
     }
     
     public void setCommandLineJobs(Collection<Job> c) {
@@ -107,9 +122,11 @@ public abstract class Scheduler {
 
     protected void completeJob(Job job) {
         if (job != null) {
+            job.setCompleted(true);
             jobs.put(job.source(), COMPLETED_JOB);
-            if (Report.should_report(Report.frontend, 1)) {
-                Report.report(1, "Completed job " + job);
+            Reporter reporter = extInfo.getOptions().reporter;
+            if (reporter.should_report(Reporter.frontend, 1)) {
+                reporter.report(1, "Completed job " + job);
             }
         }
     }
@@ -177,8 +194,9 @@ public abstract class Scheduler {
     	catch (CyclicDependencyException e) {
     	}
 
-        if (Report.should_report(Report.frontend, 1))
-            Report.report(1, "Finished all passes for " + this.getClass().getName() + " -- " +
+    	Reporter reporter = extInfo.getOptions().reporter;
+        if (reporter.should_report(Reporter.frontend, 1))
+            reporter.report(1, "Finished all passes for " + this.getClass().getName() + " -- " +
                         (okay ? "okay" : "failed"));
 
         return okay;
@@ -289,16 +307,18 @@ public abstract class Scheduler {
     protected boolean runPass(Goal goal) throws CyclicDependencyException {
         Job job = goal instanceof SourceGoal ? ((SourceGoal) goal).job() : null;
                 
-        if (extInfo.getOptions().disable_passes.contains(goal.name())) {
-            if (Report.should_report(Report.frontend, 1))
-                Report.report(1, "Skipping pass " + goal);
+        Options options = extInfo.getOptions();
+        Reporter reporter = options.reporter;
+        if (options.disable_passes.contains(goal.name())) {
+            if (reporter.should_report(Reporter.frontend, 1))
+                reporter.report(1, "Skipping pass " + goal);
             
             goal.update(Goal.Status.SUCCESS);
             return true;
         }
         
-        if (Report.should_report(Report.frontend, 1))
-            Report.report(1, "Running pass for " + goal);
+        if (reporter.should_report(Reporter.frontend, 1))
+            reporter.report(1, "Running pass for " + goal);
 
         if (reached(goal)) {
             throw new InternalCompilerError("Cannot run a pass for completed goal " + goal);
@@ -307,7 +327,7 @@ public abstract class Scheduler {
         boolean result = false;
 
         if (true || job == null || job.status()) {
-            Report.start_reporting(goal.name());
+            reporter.start_reporting(goal.name());
 
             if (job != null) {
 				    // We're starting to run the pass. 
@@ -317,37 +337,34 @@ public abstract class Scheduler {
             
             Goal oldGoal = currentGoal;
             currentGoal = goal;
-            
-            long t = System.currentTimeMillis();
             String key = goal.toString();
+            x10.ExtensionInfo x10Info = (x10.ExtensionInfo) extInfo;
+            x10Info.stats.startTiming(goal.name(), key);
 
-            extInfo.getStats().accumulate(key + " attempts", 1);
-            extInfo.getStats().accumulate("total goal attempts", 1);
+            x10Info.stats.incrFrequency(key + " attempts", 1);
+            x10Info.stats.incrFrequency("total goal attempts", 1);
             
             try {
                 result = goal.runTask();
 
                 if (result && goal.getCached() == Goal.Status.RUNNING) {
-                    extInfo.getStats().accumulate(key + " reached", 1);
-                    extInfo.getStats().accumulate("total goal reached", 1);
+                    x10Info.stats.incrFrequency(key + " reached", 1);
+                    x10Info.stats.incrFrequency("total goal reached", 1);
 
                     goal.update(Status.SUCCESS);
 
-                    if (Report.should_report(Report.frontend, 1))
-                        Report.report(1, "Completed pass for " + goal);
+                    if (reporter.should_report(Reporter.frontend, 1))
+                        reporter.report(1, "Completed pass for " + goal);
                 }
                 else {
-                    extInfo.getStats().accumulate(key + " unreached", 1);
-                    extInfo.getStats().accumulate("total goal unreached", 1);
+                    x10Info.stats.incrFrequency(key + " unreached", 1);
+                    x10Info.stats.incrFrequency("total goal unreached", 1);
 
-                    if (Report.should_report(Report.frontend, 1))
-                        Report.report(1, "Completed (unreached) pass for " + goal);
+                    if (reporter.should_report(Reporter.frontend, 1))
+                        reporter.report(1, "Completed (unreached) pass for " + goal);
                 }
             }
             finally {
-                t = System.currentTimeMillis() - t;
-                extInfo.getStats().accumulate(key, t);
-
                 currentGoal = oldGoal;
                 
                 if (job != null) {
@@ -360,11 +377,15 @@ public abstract class Scheduler {
 				    }
 				}
 
-                Report.stop_reporting(goal.name());
+                reporter.stop_reporting(goal.name());
+
+                x10Info.stats.stopTiming();
             }
 
             // pretty-print this pass if we need to.
-            if (job != null && extInfo.getOptions().print_ast.contains(goal.name())) {
+            if (job != null &&
+                (extInfo.getOptions().print_ast.contains(goal.name()) ||
+                 extInfo.getOptions().print_ast.contains("printall"))) {
                 System.err.println("--------------------------------" +
                                    "--------------------------------");
                 System.err.println("Pretty-printing AST for " + job +
@@ -374,7 +395,9 @@ public abstract class Scheduler {
             }
 
             // dump this pass if we need to.
-            if (job != null && extInfo.getOptions().dump_ast.contains(goal.name())) {
+            if (job != null && 
+                (extInfo.getOptions().dump_ast.contains(goal.name()) ||
+                 extInfo.getOptions().dump_ast.contains("dumpall"))) {
                 System.err.println("--------------------------------" +
                                    "--------------------------------");
                 System.err.println("Dumping AST for " + job +
@@ -390,8 +413,8 @@ public abstract class Scheduler {
         
         // Record the progress made before running the pass and then update
         // the current progress.
-        if (Report.should_report(Report.frontend, 1)) {
-            Report.report(1, "Finished " + goal +
+        if (reporter.should_report(Reporter.frontend, 1)) {
+            reporter.report(1, "Finished " + goal +
                           " status=" + statusString(result));
         }
         
@@ -483,9 +506,10 @@ public abstract class Scheduler {
 
             // record the job in the map and the worklist.
             jobs.put(source, new Option.Some<Job>(job));
-    
-            if (Report.should_report(Report.frontend, 4)) {
-                Report.report(4, "Adding job for " + source + " at the " +
+
+            Reporter reporter = extInfo.getOptions().reporter;
+            if (reporter.should_report(Reporter.frontend, 4)) {
+                reporter.report(4, "Adding job for " + source + " at the " +
                     "request of goal " + currentGoal);
             }
         }
@@ -540,6 +564,7 @@ public abstract class Scheduler {
     public abstract Goal Parsed(Job job);
     public abstract Goal ImportTableInitialized(Job job);
     public abstract Goal TypesInitialized(Job job);
+    protected abstract Goal constructTypesInitialized(Job job);
     public abstract Goal TypesInitializedForCommandLineBarrier();
     public abstract Goal PreTypeCheck(Job job);
     public abstract Goal TypeChecked(Job job);

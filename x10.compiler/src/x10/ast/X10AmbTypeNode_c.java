@@ -13,12 +13,14 @@ package x10.ast;
 
 import java.util.Collections;
 
+import polyglot.ast.AmbTypeNode;
 import polyglot.ast.AmbTypeNode_c;
 import polyglot.ast.CanonicalTypeNode;
 import polyglot.ast.Disamb;
 import polyglot.ast.Expr;
 import polyglot.ast.Id;
 import polyglot.ast.Node;
+import polyglot.ast.NodeFactory;
 import polyglot.ast.PackageNode;
 import polyglot.ast.Prefix;
 import polyglot.ast.TypeNode;
@@ -36,6 +38,7 @@ import polyglot.util.CodeWriter;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import polyglot.visit.ContextVisitor;
+import polyglot.visit.NodeVisitor;
 import polyglot.visit.PrettyPrinter;
 import polyglot.visit.TypeCheckPreparer;
 import polyglot.visit.TypeChecker;
@@ -44,12 +47,10 @@ import x10.extension.X10Del;
 import x10.extension.X10Del_c;
 import x10.types.MacroType;
 import x10.types.X10ClassType;
-import x10.types.X10Context;
-import x10.types.X10Flags;
+import polyglot.types.Context;
+
 import x10.types.X10ParsedClassType;
-import x10.types.X10TypeMixin;
-import x10.types.X10TypeSystem;
-import x10.types.X10TypeSystem_c;
+import polyglot.types.TypeSystem;
 import x10.visit.X10TypeChecker;
 
 /**
@@ -57,17 +58,23 @@ import x10.visit.X10TypeChecker;
  * dot-separated list of identifiers that must resolve to a type.
  */
 public class X10AmbTypeNode_c extends AmbTypeNode_c implements X10AmbTypeNode, AddFlags {
-  public X10AmbTypeNode_c(Position pos, Prefix qual, Id name) {
-    super(pos, qual, name);
-    assert(name != null); // qual may be null
-  }
+	
+	protected Prefix prefix;
+	protected Id name;
+	
+	public X10AmbTypeNode_c(Position pos, Prefix qual, Id name) {
+		super(pos, qual, name);
+		assert(name != null); // qual may be null
+		this.prefix = qual;
+		this.name = name;
+	}
   
   protected TypeNode disambiguateAnnotation(ContextVisitor tc) throws SemanticException {
       Position pos = position();
 
-      X10TypeSystem ts = (X10TypeSystem) tc.typeSystem();
-      X10NodeFactory nf = (X10NodeFactory) tc.nodeFactory();
-      X10Context c = (X10Context) tc.context();
+      TypeSystem ts = (TypeSystem) tc.typeSystem();
+      NodeFactory nf = (NodeFactory) tc.nodeFactory();
+      Context c = (Context) tc.context();
 
       if (! c.inAnnotation())
 	  return null;
@@ -88,7 +95,7 @@ public class X10AmbTypeNode_c extends AmbTypeNode_c implements X10AmbTypeNode, A
 	      if (t instanceof X10ParsedClassType) {
 		  X10ParsedClassType ct = (X10ParsedClassType) t;
 		  if (ct.flags().isInterface()) {
-		      return postprocess((CanonicalTypeNode) tn, this, tc);
+		      return postprocess((X10CanonicalTypeNode) tn, this, tc);
 		  }
 	      }
 
@@ -110,8 +117,8 @@ public class X10AmbTypeNode_c extends AmbTypeNode_c implements X10AmbTypeNode, A
       Position pos = position();
       ContextVisitor tc = ar;
     
-      X10TypeSystem_c ts = (X10TypeSystem_c) tc.typeSystem();
-      X10NodeFactory nf = (X10NodeFactory) tc.nodeFactory();
+      TypeSystem ts =  tc.typeSystem();
+      NodeFactory nf = (NodeFactory) tc.nodeFactory();
     
       try {
 	  TypeNode tn = disambiguateAnnotation(tc);
@@ -190,7 +197,7 @@ public class X10AmbTypeNode_c extends AmbTypeNode_c implements X10AmbTypeNode, A
               Goal resolver = tc.job().extensionInfo().scheduler().LookupGlobalType(sym);
               resolver.update(Goal.Status.SUCCESS);
               sym.setResolver(resolver);
-              return postprocess((CanonicalTypeNode) tn, this, ar);   
+              return postprocess((X10CanonicalTypeNode) tn, this, ar);   
           }
     
           ex = new SemanticException("Could not find type \"" +(prefix == null ? name.toString() : prefix.toString() + "." + name.toString()) +"\".", pos);
@@ -208,22 +215,12 @@ public class X10AmbTypeNode_c extends AmbTypeNode_c implements X10AmbTypeNode, A
       return nf.CanonicalTypeNode(position(), sym);
   }
   
-  @Override
-  public void setResolver(Node parent, final TypeCheckPreparer v) {
-  	if (typeRef() instanceof LazyRef<?>) {
-  		LazyRef<Type> r = (LazyRef<Type>) typeRef();
-  		TypeChecker tc = new X10TypeChecker(v.job(), v.typeSystem(), v.nodeFactory(), v.getMemo());
-  		tc = (TypeChecker) tc.context(v.context().freeze());
-  		r.setResolver(new TypeCheckTypeGoal(parent, this, tc, r));
-  	}
-  }
-  static TypeNode postprocess(CanonicalTypeNode result, TypeNode n, ContextVisitor childtc) 
-  throws SemanticException {
+  static TypeNode postprocess(X10CanonicalTypeNode result, TypeNode n, ContextVisitor childtc) {
 	  Flags  f = ((X10AmbTypeNode_c) n).flags;
 	  if (f != null) {
 		  LazyRef<Type> sym = (LazyRef<Type>) result.typeRef();
 		  Type t =  Types.get(sym);
-		  t = X10TypeMixin.processFlags(f, t);
+		  t = Types.processFlags(f, t);
 	      sym.update(t);
 	  }
       return AmbDepTypeNode_c.postprocess(result, n, childtc);
@@ -249,4 +246,42 @@ public class X10AmbTypeNode_c extends AmbTypeNode_c implements X10AmbTypeNode, A
 	  this.flags = f;
   }
  
+
+  public Id name() {
+      return this.name;
+  }
+  
+  public AmbTypeNode name(Id name) {
+      X10AmbTypeNode_c n = (X10AmbTypeNode_c) copy();
+      n.name = name;
+      return n;
+  }
+  
+  public Prefix prefix() {
+    return this.prefix;
+  }
+
+  public AmbTypeNode prefix(Prefix prefix) {
+    X10AmbTypeNode_c n = (X10AmbTypeNode_c) copy();
+    n.prefix = prefix;
+    return n;
+  }
+
+  protected AmbTypeNode_c reconstruct(Prefix qual, Id name) {
+    if (qual != this.prefix || name != this.name) {
+      X10AmbTypeNode_c n = (X10AmbTypeNode_c) copy();
+      n.prefix = qual;
+      n.name = name;
+      return n;
+    }
+
+    return this;
+  }
+
+  public Node visitChildren(NodeVisitor v) {
+      Prefix prefix = (Prefix) visitChild(this.prefix, v);
+      Id name = (Id) visitChild(this.name, v);
+      return reconstruct(prefix, name);
+  }
+
 }

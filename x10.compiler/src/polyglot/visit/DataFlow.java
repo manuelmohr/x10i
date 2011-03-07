@@ -13,10 +13,14 @@ import java.util.*;
 import polyglot.ast.*;
 import polyglot.frontend.Globals;
 import polyglot.frontend.Job;
-import polyglot.main.Report;
+import polyglot.frontend.Compiler;
+import polyglot.main.Reporter;
 import polyglot.types.*;
 import polyglot.util.*;
 import polyglot.visit.FlowGraph.*;
+import x10.ExtensionInfo;
+import x10.errors.Errors;
+import x10.util.CollectionFactory;
 
 /**
  * Abstract dataflow Visitor, to allow simple dataflow equations to be easily
@@ -418,8 +422,8 @@ public abstract class DataFlow extends ErrorHandlingVisitor
         this.dataflow((CodeNode) cd);
     }
 
-    public void reportError(String msg, Position p) {
-        errorQueue().enqueue(ErrorInfo.SEMANTIC_ERROR,msg,p);
+    public void reportError(SemanticException msg) {
+        Errors.issue(job, msg);
     }
     public void dataflow(CodeNode cd) {
         // only bother to do the flow analysis if the body is not null...
@@ -431,31 +435,28 @@ public abstract class DataFlow extends ErrorHandlingVisitor
                 // Build the control flow graph.
                 CFGBuilder v = createCFGBuilder(ts, g);
 
-                long t1 = System.currentTimeMillis();
-                
+                x10.ExtensionInfo x10Info = (x10.ExtensionInfo) job().extensionInfo();
+                x10Info.stats.startTiming("DataFlow.dataflow", "DataFlow.dataflow");
                 try {
                     hadCFG_Error = false;
                     v.visitGraph();
                 }
                 catch (CFGBuildError e) {
                     hadCFG_Error = true;
-                    if (reportCFG_Errors) reportError(e.message(), e.position());
+                    if (reportCFG_Errors) reportError(new Errors.ControlFlowGraphError(e.getMessage(), e.position));
                     return;
                 }
-
-                long t2 = System.currentTimeMillis();
-                
+                finally {
+                    x10Info.stats.stopTiming();
+                }
+                    
+                x10Info.stats.startTiming("DataFlow.cfg.build", "DataFlow.cfg.build");
                 dataflow(g);
+                x10Info.stats.stopTiming();
 
-                long t3 = System.currentTimeMillis();
-
+                x10Info.stats.startTiming("DataFlow.post", "DataFlow.post");
                 post(g, cd);
-                
-                long t4 = System.currentTimeMillis();
-
-                job().extensionInfo().getStats().accumulate("DataFlow.cfg.build", (t2-t1));
-                job().extensionInfo().getStats().accumulate("DataFlow.dataflow", (t3-t2));
-                job().extensionInfo().getStats().accumulate("DataFlow.post", (t4-t3));
+                x10Info.stats.stopTiming();
 
                 // push the CFG onto the stack if we are dataflowing on entry
                 if (dataflowOnEntry)
@@ -493,7 +494,7 @@ public abstract class DataFlow extends ErrorHandlingVisitor
 // First, topologically sort the nodes (put in postorder)
 	int n = 0;
 	LinkedList<Frame> stack = new LinkedList<Frame>();
-	Set<Peer> reachable = new HashSet<Peer>();
+	Set<Peer> reachable = CollectionFactory.newHashSet();
 	for (Peer peer : start) {
 	  if (!reachable.contains(peer)) {
 	    reachable.add(peer);
@@ -520,12 +521,12 @@ public abstract class DataFlow extends ErrorHandlingVisitor
 // appending it to "by_scc".
 	Peer[] by_scc = new Peer[n];
 	int[] scc_head = new int[n];
-	Set<Peer> visited = new HashSet<Peer>();
+	Set<Peer> visited = CollectionFactory.newHashSet();
 	int head = 0;
 	for (int i=n-1; i>=0; i--) {
 	    if (!visited.contains(sorted[i])) {
 		// First, find all the nodes in the SCC
-		Set<Peer> SCC = new HashSet<Peer>();
+		Set<Peer> SCC = CollectionFactory.newHashSet();
 		visited.add(sorted[i]);
 		stack.add(new Frame(sorted[i], false));
 		while (stack.size() != 0) {
@@ -546,7 +547,7 @@ public abstract class DataFlow extends ErrorHandlingVisitor
 		// Now, topologically sort the SCC (as much as possible)
 		// and place into by_scc[head..head+scc_size-1]
 		stack.add(new Frame(sorted[i], true));
-		Set<Peer> revisited = new HashSet<Peer>();
+		Set<Peer> revisited = CollectionFactory.newHashSet();
 		revisited.add(sorted[i]);
 		int scc_size = SCC.size();
 		int nsorted = 0;
@@ -573,15 +574,15 @@ public abstract class DataFlow extends ErrorHandlingVisitor
 		head = head + scc_size;
 	    }
 	}
-	if (Report.should_report(Report.dataflow, 2)) {
+	if (reporter.should_report(Reporter.dataflow, 2)) {
 	    for (int j = 0; j < n; j++) {
 		switch(scc_head[j]) {
-		    case -1: Report.report(2, j + "[HEAD] : " + by_scc[j]); break;
-		    case -2: Report.report(2, j + "       : " + by_scc[j]); break;
-		    default: Report.report(2, j + " ->"+ scc_head[j] + " : " + by_scc[j]);
+		    case -1: reporter.report(2, j + "[HEAD] : " + by_scc[j]); break;
+		    case -2: reporter.report(2, j + "       : " + by_scc[j]); break;
+		    default: reporter.report(2, j + " ->"+ scc_head[j] + " : " + by_scc[j]);
 		}
 		for (Edge edge : by_scc[j].succs()) {
-		    Report.report(3, "     successor: " + edge.getTarget());
+		    reporter.report(3, "     successor: " + edge.getTarget());
 		}
 	    }
 	}
@@ -593,8 +594,8 @@ public abstract class DataFlow extends ErrorHandlingVisitor
      * Perform the dataflow on the flowgraph provided.
      */
     protected void dataflow(FlowGraph graph) {
-	if (Report.should_report(Report.dataflow, 1)) {
-	    Report.report(1, "Finding strongly connected components");
+	if (reporter.should_report(Reporter.dataflow, 1)) {
+	    reporter.report(1, "Finding strongly connected components");
 	}
 	Pair<Peer[], int[]> pair = findSCCs(graph);
 	Peer[] by_scc = pair.fst();
@@ -606,8 +607,8 @@ public abstract class DataFlow extends ErrorHandlingVisitor
 	   begins with a -1 and ends with the index of
 	   the beginning of the SCC.
 	*/
-	if (Report.should_report(Report.dataflow, 1)) {
-	    Report.report(1, "Iterating dataflow equations");
+	if (reporter.should_report(Reporter.dataflow, 1)) {
+	    reporter.report(1, "Iterating dataflow equations");
 	}
 
 	int current = 0;
@@ -669,8 +670,8 @@ public abstract class DataFlow extends ErrorHandlingVisitor
 		current++;
 	    }
         }
-	if (Report.should_report(Report.dataflow, 1)) {
-	    Report.report(1, "Done.");
+	if (reporter.should_report(Reporter.dataflow, 1)) {
+	    reporter.report(1, "Done.");
 	}
     }
 
@@ -767,12 +768,12 @@ public abstract class DataFlow extends ErrorHandlingVisitor
      * been performed.
      */
     protected void post(FlowGraph graph, Term root) {
-        if (Report.should_report(Report.cfg, 2)) {
+        if (reporter.should_report(Reporter.cfg, 2)) {
             dumpFlowGraph(graph, root);
         }
         
         // Check the nodes in approximately flow order.
-        Set<Peer> uncheckedPeers = new HashSet<Peer>(graph.peers());
+        Set<Peer> uncheckedPeers = CollectionFactory.newHashSet(graph.peers());
         LinkedList<Peer> peersToCheck = new LinkedList<Peer>(graph.startPeers());
         while (!peersToCheck.isEmpty()) {
             Peer p = (Peer) peersToCheck.removeFirst();
@@ -837,7 +838,7 @@ public abstract class DataFlow extends ErrorHandlingVisitor
      *           <code>Item i</code>.
      */
     public static final Map<EdgeKey, Item> itemToMap(Item i, Set<EdgeKey> edgeKeys) {
-        Map<EdgeKey, Item> m = new HashMap<EdgeKey, Item>();
+        Map<EdgeKey, Item> m = CollectionFactory.newHashMap();
         for (EdgeKey o : edgeKeys) {
             m.put(o, i);
         }
@@ -872,7 +873,7 @@ public abstract class DataFlow extends ErrorHandlingVisitor
     protected static final Map<EdgeKey, Item>
     itemsToMap(Item trueItem, Item falseItem, Item remainingItem, Set<EdgeKey> edgeKeys)
     {
-        Map<EdgeKey, Item> m = new HashMap<EdgeKey, Item>();
+        Map<EdgeKey, Item> m = CollectionFactory.newHashMap();
         
         for (EdgeKey k : edgeKeys) {
             if (FlowGraph.EDGE_KEY_TRUE.equals(k)) {
@@ -1095,7 +1096,7 @@ public abstract class DataFlow extends ErrorHandlingVisitor
         
         BoolItem results = navigator.navigate(booleanCond, startingItem);
         
-        Map<EdgeKey, Item> m = new HashMap<EdgeKey, Item>();
+        Map<EdgeKey, Item> m = CollectionFactory.newHashMap();
         m.put(FlowGraph.EDGE_KEY_TRUE, results.trueItem);
         m.put(FlowGraph.EDGE_KEY_FALSE, results.falseItem);
         
@@ -1272,21 +1273,21 @@ public abstract class DataFlow extends ErrorHandlingVisitor
         }
 
 
-        Report.report(2, "digraph DataFlow" + name + " {");
-        Report.report(2, "  label=\"Dataflow: " + name + "\\n" + rootName +
+        reporter.report(2, "digraph DataFlow" + name + " {");
+        reporter.report(2, "  label=\"Dataflow: " + name + "\\n" + rootName +
             "\"; fontsize=20; center=true; ratio=auto; size = \"8.5,11\";");
 
         // Loop around the nodes...
         for (Peer p : graph.peers()) {
             // dump out this node
-            Report.report(2,
+            reporter.report(2,
                           p.hashCode() + " [ label = \"" +
                           StringUtil.escape(p.node.toString()) + "\\n(" + 
                           StringUtil.escape(StringUtil.getShortNameComponent(p.node.getClass().getName()))+ ")\" ];");
             
             // dump out the successors.
             for (Edge q : p.succs) {
-                Report.report(2,
+                reporter.report(2,
                               q.getTarget().hashCode() + " [ label = \"" +
                               StringUtil.escape(q.getTarget().node.toString()) + " (" + 
                               StringUtil.escape(StringUtil.getShortNameComponent(q.getTarget().node.getClass().getName()))+ ")\" ];");
@@ -1297,11 +1298,11 @@ public abstract class DataFlow extends ErrorHandlingVisitor
                 else {
                     label += "\\n[no dataflow available]";
                 }
-                Report.report(2, p.hashCode() + " -> " + q.getTarget().hashCode() + 
+                reporter.report(2, p.hashCode() + " -> " + q.getTarget().hashCode() + 
                               " [label=\"" + label + "\"];");
             }
             
         }
-        Report.report(2, "}");
+        reporter.report(2, "}");
     }
 }

@@ -23,7 +23,7 @@ import polyglot.types.Flags;
 import polyglot.types.LocalDef;
 import polyglot.types.LocalInstance;
 import polyglot.types.MemberInstance;
-import polyglot.types.MethodInstance;
+
 import polyglot.types.ObjectType;
 import polyglot.types.Package;
 import polyglot.types.ProcedureInstance;
@@ -31,7 +31,7 @@ import polyglot.types.Ref;
 import polyglot.types.Resolver;
 import polyglot.types.SemanticException;
 import polyglot.types.Name;
-import polyglot.types.StructType;
+import polyglot.types.ContainerType;
 import polyglot.types.Type;
 import polyglot.types.TypeObject;
 import polyglot.types.TypeSystem;
@@ -39,16 +39,16 @@ import polyglot.types.Types;
 import polyglot.types.UnknownType;
 import polyglot.types.UpcastTransform;
 import polyglot.types.TypeSystem_c.TypeEquals;
-import polyglot.util.CollectionUtil;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import polyglot.util.Transformation;
 import polyglot.util.TransformingList;
 import polyglot.util.TypedList;
-import x10.constraint.XNameWrapper;
 import x10.constraint.XTerms;
 import x10.constraint.XVar;
 import x10.types.constraints.CConstraint;
+import x10.types.constraints.CTerms;
 import x10.types.constraints.TypeConstraint;
 
 /**
@@ -84,7 +84,7 @@ public class MacroType_c extends ParametrizedType_c implements MacroType {
 	}
 
 	@Override
-	public MacroType container(StructType container) {
+	public MacroType container(ContainerType container) {
 		return (MacroType) super.container(container);
 	}
 	
@@ -93,22 +93,17 @@ public class MacroType_c extends ParametrizedType_c implements MacroType {
 		return (MacroType) super.flags(flags);
 	}
 
-	public boolean isX10Struct() {
-		return ((X10TypeSystem) typeSystem()).isStructType(this);
-	}
-	
-	public Type setFlags(Flags f) {
-		X10Flags xf = X10Flags.toX10Flags(f);
+	public Type setFlags(Flags xf) {
 		MacroType_c c = (MacroType_c) this.copy();
 		if (c.flags == null)
-			c.flags = X10Flags.toX10Flags(Flags.NONE);
-		c.flags = (xf.isStruct()) ? X10Flags.toX10Flags(c.flags).Struct() : c.flags;
+			c.flags = Flags.NONE;
+		c.flags = (xf.isStruct()) ? c.flags.Struct() : c.flags;
 		return c;
 	}
 	public Type clearFlags(Flags f) {
 		MacroType_c c = (MacroType_c) this.copy();
 		if (c.flags == null)
-			c.flags = X10Flags.toX10Flags(Flags.NONE);
+			c.flags = Flags.NONE;
 		c.flags = c.flags.clear(f);
 		return c;
 	}
@@ -211,7 +206,8 @@ public class MacroType_c extends ParametrizedType_c implements MacroType {
 	public MacroType newFormalTypes(List<Type> formalTypes) {
 	    return formalTypes(formalTypes);
 	}
-	
+
+    // todo: this guard&typeGuard is duplicated code similar to ProcedureInstance_c
 	public CConstraint guard() {
 		if (guard == null)
 			return Types.get(def().guard());
@@ -223,6 +219,11 @@ public class MacroType_c extends ParametrizedType_c implements MacroType {
 		t.guard = guard;
 		return (MacroType) t;
 	}
+
+    public boolean checkGuardAtRuntime() { return false; }
+    public MacroType_c checkGuardAtRuntime(boolean check) {
+        throw new RuntimeException("The guard for a MacroType cannot be dynamically checked (at runtime)");
+    }
 	
 	    /** Constraint on type parameters. */
 	    protected TypeConstraint typeGuard;
@@ -242,7 +243,7 @@ public class MacroType_c extends ParametrizedType_c implements MacroType {
 			return Types.get(def().definedType());
 		Ref<? extends Type> dt = definedType;
 		definedType = Types.ref(typeSystem().unknownType(position())); // guard against recursion
-		Type t = X10TypeMixin.processFlags(flags(), Types.get(dt));
+		Type t = Types.processFlags(flags(), Types.get(dt));
 		definedType = dt;
 		return t;
 	}
@@ -273,8 +274,8 @@ public class MacroType_c extends ParametrizedType_c implements MacroType {
 
 		public XVar transform(Integer i) {
 			final Ref<? extends Type> r = formalTypes.get(i);
-			LocalDef li = formalNames.get(i);
-			XVar v = XTerms.makeLocal(new XNameWrapper<LocalDef>(li, li.name().toString()));
+			X10LocalDef li = (X10LocalDef) formalNames.get(i);
+			XVar v = CTerms.makeLocal(li);
 			return v;
 		}
 	}
@@ -284,7 +285,9 @@ public class MacroType_c extends ParametrizedType_c implements MacroType {
 			Type t = r.get();
 			if (t instanceof ParameterType) {
 				ParameterType pt = (ParameterType) t;
-				return XTerms.makeLocal(new XNameWrapper<String>(pt.name().toString()));
+				// TODO: Replace with XTerms.makeUQV(pt.name().toString());
+				return XTerms.makeUQV(pt.name().toString());
+				// return XTerms.makeLocal(new XNameWrapper<String>(pt.name().toString()));
 			}
 			throw new InternalCompilerError("Cannot translate non-parameter type into var.", t.position());
 		}
@@ -295,7 +298,7 @@ public class MacroType_c extends ParametrizedType_c implements MacroType {
 	    return "type";
 	}
 	
-	public String toString() {
+	public String typeToString() {
 	    StringBuilder sb = new StringBuilder();
 	    sb.append(signature());
 	    if (definedType != null && definedType.known()) {
@@ -308,7 +311,7 @@ public class MacroType_c extends ParametrizedType_c implements MacroType {
 	public String signature() {
 	    StringBuffer sb = new StringBuffer();
 	    TypeDef d = def.getCached();
-	    Ref<? extends StructType> cont = d.container();
+	    Ref<? extends ContainerType> cont = d.container();
 	    if (cont != null) {
 		Type t = cont.getCached();
 		if (t != null) {
@@ -357,8 +360,8 @@ public class MacroType_c extends ParametrizedType_c implements MacroType {
 	@Override
 	public List<FieldInstance> fields() {
 		Type base = definedType();
-		if (base instanceof StructType) {
-			return ((StructType) base).fields();
+		if (base instanceof ContainerType) {
+			return ((ContainerType) base).fields();
 		}
 		return Collections.emptyList();
 	}
@@ -375,8 +378,8 @@ public class MacroType_c extends ParametrizedType_c implements MacroType {
 	@Override
 	public List<MethodInstance> methods() {
 		Type base = definedType();
-		if (base instanceof StructType) {
-			return ((StructType) base).methods();
+		if (base instanceof ContainerType) {
+			return ((ContainerType) base).methods();
 		}
 		return Collections.emptyList();
 	}
@@ -401,7 +404,7 @@ public class MacroType_c extends ParametrizedType_c implements MacroType {
 	
 
 	public boolean moreSpecific(Type ct, ProcedureInstance<TypeDef> p, Context context) {
-	    return X10TypeMixin.moreSpecificImpl(ct, this, p, context);
+	    return Types.moreSpecificImpl(ct, this, p, context);
 	}
 	
 	public Type returnType() {

@@ -21,11 +21,9 @@
 #include <x10/lang/Fun_0_1.h>
 #include <x10/lang/Comparable.h>
 
-#ifdef __CYGWIN__
-extern "C" char *strdup (const char *);
-#endif
 namespace x10 {
-
+    namespace array { template<class T> class Array; }
+    
     namespace lang {
 
         template<class T> class Rail;
@@ -59,8 +57,13 @@ namespace x10 {
                 this->FMGL(content_length) = content_length;
                 return this;
             }
+            static x10aux::ref<String> _make() {
+                return Lit("");
+            }
             static x10aux::ref<String> _make(x10aux::ref<String> s);
             static x10aux::ref<String> _make(x10aux::ref<Rail<x10_char> > rail,
+                                             x10_int start, x10_int length);
+            static x10aux::ref<String> _make(x10aux::ref<x10::array::Array<x10_byte> > array,
                                              x10_int start, x10_int length);
             static x10aux::ref<String> _make(x10aux::ref<x10::array::Array<x10_char> > array,
                                              x10_int start, x10_int length);
@@ -113,19 +116,16 @@ namespace x10 {
                 return substring(start, this->length());
             }
 
-            x10aux::ref<Rail<x10aux::ref<String> > > split(x10aux::ref<String> pat);
+            x10aux::ref<x10::array::Array<x10aux::ref<String> > > split(x10aux::ref<String> pat);
 
             // Forwarding method needed so that String can be used in Generic contexts (T <: (nat)=>char)
-            x10_char apply(x10_int i) { return charAt(i); }
+            x10_char __apply(x10_int i) { return charAt(i); }
             
             x10_char charAt(x10_int i);
 
-            x10aux::ref<Rail<x10_char> > chars();
+            x10aux::ref<x10::array::Array<x10_char> > chars();
 
-            x10aux::ref<Rail<x10_byte> > bytes();
-
-            static void _serialize(x10aux::ref<String> this_,
-                                   x10aux::serialization_buffer &buf);
+            x10aux::ref<x10::array::Array<x10_byte> > bytes();
 
             static const x10aux::serialization_id_t _serialization_id;
 
@@ -136,8 +136,6 @@ namespace x10 {
             template<class T> static x10aux::ref<T> _deserializer(x10aux::deserialization_buffer &buf);
 
             void _deserialize_body(x10aux::deserialization_buffer &buf);
-
-            template<class T> static x10aux::ref<T> _deserialize(x10aux::deserialization_buffer &buf);
 
             virtual void _destructor();
 
@@ -162,7 +160,9 @@ namespace x10 {
 
             String () : FMGL(content)(NULL) { }
             virtual ~String () {
+                #ifndef X10_USE_BDWGC
                 x10aux::dealloc(FMGL(content));
+                #endif
             }
         };
 
@@ -191,18 +191,6 @@ namespace x10 {
             buf.record_reference(this_);
             this_->_deserialize_body(buf);
             return this_;
-        }
-
-        // Specialized deserialization
-        template<class T> x10aux::ref<T> String::_deserialize(x10aux::deserialization_buffer &buf) {
-            Object::_reference_state rr = Object::_deserialize_reference_state(buf);
-            if (0 == rr.ref) {
-                return x10aux::null;
-            } else {
-                x10aux::ref<String> res = String::_deserializer<String>(buf);
-                _S_("Deserialized a "<<ANSI_SER<<ANSI_BOLD<<"class"<<ANSI_RESET<<" x10::lang::String");
-                return res;
-            }
         }
 
     } // namespace x10::lang

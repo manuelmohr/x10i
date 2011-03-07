@@ -11,12 +11,13 @@ import java.util.*;
 
 import polyglot.ast.*;
 import polyglot.frontend.Job;
-import polyglot.main.Report;
+import polyglot.main.Reporter;
 import polyglot.types.SemanticException;
 import polyglot.types.TypeSystem;
 import polyglot.util.InternalCompilerError;
 import polyglot.visit.DataFlow.Item;
 import polyglot.visit.FlowGraph.EdgeKey;
+import x10.errors.Errors;
 
 /**
  * Visitor which checks that all statements must be reachable
@@ -147,8 +148,7 @@ public class ReachChecker extends DataFlow
 
                if ((n instanceof Block && ((Block) n).statements().isEmpty()) ||
                    (n instanceof Stmt && ! (n instanceof CompoundStmt))) {
-                   reportError("Unreachable statement.",
-                                               n.position());
+                   reportError(new Errors.UnreachableStatement(n.position()));
                }
            }
            
@@ -175,8 +175,7 @@ public class ReachChecker extends DataFlow
                         // there will only be one peer for an initializer,
                         // as it cannot occur in a finally block.
                         if (isInitializer && !dfi.normalReachable) {
-                            reportError("Initializers must be able to complete normally.",
-                                                        n.position());
+                            reportError(new Errors.InitializersMustCompleteNormally(n.position()));
                         }
 
                         if (dfi.reachable) {
@@ -206,10 +205,10 @@ public class ReachChecker extends DataFlow
     public void post(FlowGraph graph, Term root) {
         // There is no need to do any checking in this method, as this will
         // be handled by leaveCall and checkReachability.
-        if (Report.should_report(Report.cfg, 2)) {
+        if (reporter.should_report(Reporter.cfg, 2)) {
             dumpFlowGraph(graph, root);
         }
-    } 
+    }
 
     public void check(FlowGraph graph, Term n, boolean entry, 
             Item inItem, Map<EdgeKey, Item> outItems) {

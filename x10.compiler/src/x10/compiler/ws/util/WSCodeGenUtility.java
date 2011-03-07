@@ -1,9 +1,22 @@
+/*
+ *  This file is part of the X10 project (http://x10-lang.org).
+ *
+ *  This file is licensed to You under the Eclipse Public License (EPL);
+ *  You may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *      http://www.opensource.org/licenses/eclipse-1.0.php
+ *
+ *  (C) Copyright IBM Corporation 2006-2010.
+ */
+
+
 package x10.compiler.ws.util;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import polyglot.ast.Assign;
 import polyglot.ast.Block;
@@ -17,6 +30,7 @@ import polyglot.ast.LocalAssign;
 import polyglot.ast.LocalDecl;
 import polyglot.ast.New;
 import polyglot.ast.Node;
+import polyglot.ast.NodeFactory;
 import polyglot.ast.Receiver;
 import polyglot.ast.Return;
 import polyglot.ast.Special;
@@ -24,27 +38,36 @@ import polyglot.ast.Stmt;
 import polyglot.ast.TypeNode;
 import polyglot.types.ClassDef;
 import polyglot.types.ClassType;
+import polyglot.types.Flags;
+import polyglot.types.LocalDef;
 import polyglot.types.MethodDef;
-import polyglot.types.MethodInstance;
 import polyglot.types.Name;
 import polyglot.types.ProcedureDef;
+import polyglot.types.Ref;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
+import polyglot.types.Types;
 import polyglot.util.Pair;
 import polyglot.util.Position;
+import polyglot.util.CollectionUtil; 
+import x10.util.CollectionFactory;
 import polyglot.visit.NodeVisitor;
 import x10.ast.Async;
 import x10.ast.Closure;
 import x10.ast.ClosureCall;
 import x10.ast.Finish;
-import x10.ast.Future;
 import x10.ast.PlacedClosure;
 import x10.ast.StmtSeq;
 import x10.ast.When;
-import x10.ast.X10NodeFactory;
+import x10.ast.X10Call;
 import x10.compiler.ws.WSTransformState;
-import x10.types.X10Context;
-import x10.types.X10TypeSystem;
+import x10.types.ClosureDef;
+import x10.types.MethodInstance;
+import x10.types.X10ClassDef;
+import x10.types.X10ClassType;
+import x10.types.X10MethodDef;
+import polyglot.types.Context;
+import polyglot.types.TypeSystem;
 
 /**
  * @author Haichuan
@@ -57,20 +80,33 @@ public class WSCodeGenUtility {
     private static String getMethodName(MethodDef methodDef){
         return methodDef.name().toString();
     }
+    
 
-    static HashMap<ClassType, HashMap<String, Integer>> container2MethodNameMap;
+    static Map<ClassType, Map<String, Integer>> container2MethodNameMap;
     //              classType         methodName, number
+    
+    /**
+     * Form the closure's name by line & column number. Should be identical for a inner class
+     * @param closure
+     * @return
+     */
+    public static String getClosureBodyClassName(Closure closure){
+    	Position pos = closure.position();
+    	String posStr =  "L" + pos.line() + "_" + pos.column();   	
+        String tempName = "_$Closure_" + posStr;
+        return tempName;
+    }
     
     public static String getMethodBodyClassName(MethodDef methodDef){
         if(container2MethodNameMap == null){
-            container2MethodNameMap = new HashMap<ClassType, HashMap<String, Integer>>();
+            container2MethodNameMap = CollectionFactory.newHashMap();
         }
         String tempName = "_$" + getMethodName(methodDef);
         ClassType classType = (ClassType) methodDef.container().get();
        
-        HashMap<String, Integer> nameNumberMap = container2MethodNameMap.get(classType);
+        Map<String, Integer> nameNumberMap = container2MethodNameMap.get(classType);
         if(nameNumberMap == null){
-            nameNumberMap = new HashMap<String, Integer>();
+            nameNumberMap = CollectionFactory.newHashMap();
             nameNumberMap.put(tempName, 1);
             container2MethodNameMap.put(classType, nameNumberMap);
             return tempName;
@@ -302,15 +338,92 @@ public class WSCodeGenUtility {
         return result;
     }
     
-    static public boolean needAsContinuationFrame(Block block, X10Context xct){
+    
+    /**
+     * Transform original call's def to ws call's def
+     * e.g. foo(abc:int) -> foo_F(w:Worker, up:Frame, abc:int);
+     * @param methodDef original method def
+     * @param wts WSTransformState
+     * @return
+     */
+    static public X10MethodDef createWSCallMethodDef(MethodDef methodDef, WSTransformState wts){
+    	
+        X10ClassType containerClassType = (X10ClassType) methodDef.container().get();
+        X10ClassDef containerClassDef = containerClassType.x10Def();
         
-        for(Stmt s : block.statements()){
-            if(s instanceof Async
-            || identifyAssignByAsyncCall(s, xct) != null ){
-                return true;
-            }
+        List<Ref<? extends Type>> formalTypes = new ArrayList<Ref<? extends Type>>();
+        formalTypes.add(Types.ref(wts.workerType));
+        formalTypes.add(Types.ref(wts.frameType));
+        formalTypes.add(Types.ref(wts.finishFrameType));
+        for(Ref<? extends Type> f : methodDef.formalTypes()){
+            formalTypes.add(f); //all formals are added in
         }
-        return false;
+        
+        TypeSystem xts = methodDef.typeSystem();
+        
+        X10MethodDef mDef = (X10MethodDef) xts.methodDef(methodDef.position(), 
+                Types.ref(containerClassDef.asType()),                
+                methodDef.flags(), 
+                methodDef.returnType(), 
+                Name.make(WSCodeGenUtility.getMethodFastPathName(methodDef)), 
+                formalTypes);
+
+        List<LocalDef> formalNames = new ArrayList<LocalDef>();
+        Name workerName = Name.make("worker");
+        LocalDef workerLDef = methodDef.typeSystem().localDef(methodDef.position(), Flags.FINAL, Types.ref(wts.workerType), workerName);
+        Name upName = Name.make("up");
+        LocalDef upLDef = methodDef.typeSystem().localDef(methodDef.position(), Flags.FINAL, Types.ref(wts.frameType), upName);
+        Name ffName = Name.make("ff");
+        LocalDef ffLDef = methodDef.typeSystem().localDef(methodDef.position(), Flags.FINAL, Types.ref(wts.finishFrameType), ffName);
+        formalNames.add(workerLDef);
+        formalNames.add(upLDef);
+        formalNames.add(ffLDef);
+        for(LocalDef f : methodDef.formalNames()){
+            formalNames.add(f); //all formals are added in
+        }
+        mDef.setFormalNames(formalNames);
+    	return mDef;
+    }
+    
+    /**
+     * 
+     * Replace original call, e.g. fib(n) with generated WS call
+     *  --> fib_fast(worker, this, this, 1, n);
+     * The newArgs are worker/this/this/1
+     * @param xnf node factory
+     * @param aCall Original call
+     * @param methodDef the new methodDef
+     * @param newArgTypes additional arguments's types
+     * @param newArgs additional arguments, including worker/frame/upframe
+     * @return new method call
+     */
+    public static X10Call replaceMethodCallWithWSMethodCall(NodeFactory xnf, X10Call aCall, X10MethodDef methodDef, 
+                                                  List<Expr> newArgs){
+    	
+        //for arguments & new method instance's formal types
+        ArrayList<Expr> args = new ArrayList<Expr>(newArgs);
+        args.addAll(aCall.arguments());
+        ArrayList<Type> argTypes = new ArrayList<Type>();
+        for(Expr e : newArgs){
+        	argTypes.add(e.type());
+        }
+        argTypes.addAll(aCall.methodInstance().formalTypes());
+        
+        //for the name
+        Name name = methodDef.name(); //new name
+        
+        //new method instance with original properties
+        MethodInstance mi = methodDef.asInstance();
+        mi = mi.formalTypes(argTypes);
+        mi = mi.returnType(aCall.methodInstance().returnType());
+        mi = (MethodInstance) mi.container(aCall.methodInstance().container());
+        
+        //build new call
+        aCall = (X10Call) aCall.methodInstance(mi);
+        aCall = (X10Call) aCall.name(xnf.Id(aCall.name().position(), name));
+        aCall = (X10Call) aCall.arguments(args);
+        aCall.type(methodDef.returnType().get());
+        return aCall;
     }
     
     
@@ -320,9 +433,9 @@ public class WSCodeGenUtility {
      * The assign is the assign, but the call is just the return part of the future
      * @param s
      * @return Pair<Assign, Call> pair. If null, not such an expression
-     */
-    static public Pair<Assign, Call> identifyAssignByAsyncCall(Stmt s, X10Context context){
-        X10TypeSystem xts = (X10TypeSystem) context.typeSystem();
+     * /
+    static public Pair<Assign, Call> identifyAssignByAsyncCall(Stmt s, Context context){
+        TypeSystem xts = (TypeSystem) context.typeSystem();
         Pair<Assign, Call> result = null;
         if(s instanceof Eval){
             
@@ -359,6 +472,7 @@ public class WSCodeGenUtility {
         }
         return result;
     }
+    */
     
     
     /**
@@ -368,7 +482,7 @@ public class WSCodeGenUtility {
      * @param s
      * @return
      */
-    static public Stmt seqStmtsToBlock(X10NodeFactory xnf, Stmt s){
+    static public Stmt seqStmtsToBlock(NodeFactory xnf, Stmt s){
         if(s instanceof StmtSeq){
             return xnf.Block(s.position(),((StmtSeq)s).statements());
         }
@@ -412,7 +526,7 @@ public class WSCodeGenUtility {
      * @param xnf
      * @return
      */
-    static public Stmt setSpeicalQualifier(Stmt s, ClassDef outerDef, X10NodeFactory xnf){
+    static public Stmt setSpeicalQualifier(Stmt s, ClassDef outerDef, NodeFactory xnf){
         SpecialQualifierSetter sqs = new SpecialQualifierSetter(xnf, outerDef);
         
         return (Stmt) s.visit(sqs);
@@ -486,7 +600,7 @@ public class WSCodeGenUtility {
             
             if (n instanceof Finish
                     //|| n instanceof Future //Future is translated from Async
-                    || n instanceof PlacedClosure // is An abstraction for future(p) Expr and at(p) Expr
+                    || n instanceof PlacedClosure // is An abstraction for at(p) Expr
                     || n instanceof Async  //direct async
                     || n instanceof When) {
                 isConcurrent = true;
@@ -598,7 +712,7 @@ public class WSCodeGenUtility {
 
                 if((wsState != null)){
                     Call aCall = (Call)n;
-                    if(wsState.isTargetProcedure(aCall.methodInstance().def())){
+                    if(wsState.isConcurrentCallSite(aCall)){
                         complexCallNum++;
                     }
                 }
@@ -650,7 +764,7 @@ public class WSCodeGenUtility {
     static class SpecialQualifierSetter extends NodeVisitor{
         //protected ClassDef outerDef;
         TypeNode  tn ;
-        public SpecialQualifierSetter(X10NodeFactory xnf, ClassDef outerDef){
+        public SpecialQualifierSetter(NodeFactory xnf, ClassDef outerDef){
            tn = xnf.CanonicalTypeNode(Position.COMPILER_GENERATED, outerDef.asType());
         }
         

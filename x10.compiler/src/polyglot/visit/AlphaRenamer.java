@@ -14,6 +14,7 @@ import polyglot.types.LocalDef;
 import polyglot.types.Name;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.UniqueID;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 
 /**
  * The <code>AlphaRenamer</code> runs over the AST and alpha-renames any local
@@ -32,6 +33,8 @@ public class AlphaRenamer extends NodeVisitor {
   // Tracks the set of variables known to be fresh.
   protected Set<Name> freshVars;
 
+  protected Map<Name,Name> labelMap;
+
 
   /**
    * Creates a visitor for alpha-renaming locals.
@@ -40,11 +43,12 @@ public class AlphaRenamer extends NodeVisitor {
    **/
   public AlphaRenamer() {
     this.setStack = new Stack<Set<Name>>();
-    this.setStack.push( new HashSet<Name>() );
+    this.setStack.push( CollectionFactory.<Name>newHashSet() );
 
-    this.oldNamesMap = new HashMap<LocalDef, Name>();
-    this.renamingMap = new HashMap<Name,Name>();
-    this.freshVars = new HashSet<Name>();
+    this.oldNamesMap = CollectionFactory.newHashMap();
+    this.renamingMap = CollectionFactory.newHashMap();
+    this.labelMap = CollectionFactory.newHashMap();
+    this.freshVars = CollectionFactory.newHashSet();
   }
 
   /** Map from local def to old names. */
@@ -52,10 +56,12 @@ public class AlphaRenamer extends NodeVisitor {
       return oldNamesMap;
   }
 
+  public static final String LABEL_PREFIX = "label ";
+
   public NodeVisitor enter( Node n ) {
     if ( n instanceof Block ) {
       // Push a new, empty set onto the stack.
-      setStack.push( new HashSet<Name>() );
+      setStack.push( CollectionFactory.<Name>newHashSet() );
     }
 
     if ( n instanceof LocalDecl ) {
@@ -73,6 +79,20 @@ public class AlphaRenamer extends NodeVisitor {
       }
     }
 
+    if ( n instanceof Labeled ) {
+      Labeled l = (Labeled) n;
+      Name name = l.labelNode().id();
+      Name key = Name.make(LABEL_PREFIX+name.toString());
+      if ( !freshVars.contains(key) ) {
+        Name name_ = Name.makeFresh(name);
+        Name key_ = Name.make(LABEL_PREFIX+name_.toString());
+
+        freshVars.add(key_);
+
+        setStack.peek().add(key);
+        labelMap.put(key, name_);
+      }
+    }
     return this;
   }
 
@@ -82,6 +102,7 @@ public class AlphaRenamer extends NodeVisitor {
       // entries from the renaming map.
       Set<Name> s = setStack.pop();
       renamingMap.keySet().removeAll(s);
+      labelMap.keySet().removeAll(s);
       return n;
     }
 
@@ -112,8 +133,7 @@ public class AlphaRenamer extends NodeVisitor {
       }
 
       if ( !renamingMap.containsKey(name) ) {
-	throw new InternalCompilerError( "Unexpected error encountered while "
-					 + "alpha-renaming." );
+	throw new InternalCompilerError( "Unexpected error encountered while alpha-renaming." );
       }
 
       // Update the local instance as necessary.
@@ -124,6 +144,43 @@ public class AlphaRenamer extends NodeVisitor {
 	  li.setName(newName);
       }
       return l.name(l.name().id(newName));
+    }
+
+    if ( n instanceof Branch ) {
+      // Rename the label if its name is in the renaming map.
+      Branch b = (Branch)n;
+
+      if (b.labelNode() == null) {
+        return n;
+      }
+
+      Name name = b.labelNode().id();
+      Name key = Name.make(LABEL_PREFIX+name.toString());
+
+      if ( !labelMap.containsKey(key) ) {
+        return n;
+      }
+        
+      Name newName = labelMap.get(key);
+
+      return b.labelNode(b.labelNode().id(newName));
+    }
+
+    if ( n instanceof Labeled ) {
+      Labeled l = (Labeled) n;
+      Name name = l.labelNode().id();
+      Name key = Name.make(LABEL_PREFIX+name.toString());
+
+      if ( freshVars.contains(key) ) {
+        return n;
+      }
+
+      if ( !labelMap.containsKey(key) ) {
+        throw new InternalCompilerError( "Unexpected error encountered while alpha-renaming." );
+      }
+
+      Name newName = labelMap.get(key);
+      return l.labelNode(l.labelNode().id(newName));
     }
 
     return n;

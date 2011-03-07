@@ -21,6 +21,7 @@ import polyglot.ast.Expr;
 import polyglot.ast.Local;
 import polyglot.ast.LocalDecl;
 import polyglot.ast.Node;
+import polyglot.ast.NodeFactory;
 import polyglot.ast.Receiver;
 import polyglot.ast.Stmt;
 import polyglot.types.ClassDef;
@@ -30,10 +31,10 @@ import polyglot.types.Name;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.util.Position;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.visit.NodeVisitor;
 import x10.ast.AnnotationNode;
-import x10.ast.X10NodeFactory;
-import x10.types.X10Context;
+import polyglot.types.Context;
 
 /**
  * Synthesizer to construct a code block
@@ -73,7 +74,7 @@ public class CodeBlockSynth extends AbstractStateSynth implements IStmtSynth{
     protected Block block; //the result
     protected AbstractStateSynth containerSynth; //The current block's parent
     protected List<IStmtSynth> stmtSythns; //all synthesizers for generate the code block
-    protected HashMap<String, Local> localVarMap; //name to local var map
+    protected Map<String, Local> localVarMap; //name to local var map
     
     protected List<NodeVisitor> codeProcessingJobs;   
     /**
@@ -83,11 +84,11 @@ public class CodeBlockSynth extends AbstractStateSynth implements IStmtSynth{
      * @param containerSynth
      * @param pos
      */
-    public CodeBlockSynth(X10NodeFactory xnf, X10Context xct, AbstractStateSynth containerSynth, Position pos) {
+    public CodeBlockSynth(NodeFactory xnf, Context xct, AbstractStateSynth containerSynth, Position pos) {
         super(xnf, xct, pos);
         this.containerSynth = containerSynth;
         stmtSythns = new ArrayList<IStmtSynth>();
-        localVarMap = new HashMap<String, Local>(); 
+        localVarMap = CollectionFactory.newHashMap();
     }
     
     /**
@@ -96,7 +97,7 @@ public class CodeBlockSynth extends AbstractStateSynth implements IStmtSynth{
      * @param xct
      * @param pos
      */
-    public CodeBlockSynth(X10NodeFactory xnf, X10Context xct, Position pos) {
+    public CodeBlockSynth(NodeFactory xnf, Context xct, Position pos) {
         this(xnf, xct, null, pos);
     }
     

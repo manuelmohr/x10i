@@ -17,15 +17,14 @@ import polyglot.types.ErrorRef_c;
 import polyglot.types.FieldInstance;
 import polyglot.types.FieldInstance_c;
 import polyglot.types.Flags;
-import polyglot.types.Named;
 import polyglot.types.Ref;
-import polyglot.types.ReferenceType;
+
 import polyglot.types.SemanticException;
-import polyglot.types.StructType;
+import polyglot.types.ContainerType;
 import polyglot.types.Type;
 import polyglot.types.TypeSystem;
 import polyglot.types.Types;
-import polyglot.util.CollectionUtil;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import x10.constraint.XFailure;
@@ -81,7 +80,7 @@ public class X10FieldInstance_c extends FieldInstance_c implements X10FieldInsta
     }
     
     @Override
-    public X10FieldInstance container(StructType container) {
+    public X10FieldInstance container(ContainerType container) {
         if (container == this.container) return this;
         return (X10FieldInstance) super.container(container);
     }
@@ -89,7 +88,7 @@ public class X10FieldInstance_c extends FieldInstance_c implements X10FieldInsta
     Type rightType;
 
     public Type rightType() {
-        X10TypeSystem xts = (X10TypeSystem) ts;
+        TypeSystem xts = (TypeSystem) ts;
         
         // vj: Force a recomputation if rightType is UnknownType.
         // this.type() may have changed -- though this.type might not!!
@@ -109,26 +108,26 @@ public class X10FieldInstance_c extends FieldInstance_c implements X10FieldInsta
                     rightType = t;
                 }
                 else {
-                    CConstraint rc = X10TypeMixin.xclause(t);
+                    CConstraint rc = Types.xclause(t);
                     if (rc == null)
                         rc = new CConstraint();
 
                     XTerm receiver;
 
                     if (flags.isStatic()) {
-                        receiver = xts.xtypeTranslator().trans(container());
+                        receiver = xts.xtypeTranslator().translate(container());
                     }
                     else {
                         receiver = x10Def().thisVar();
                         assert receiver != null;
                     }
 
-                    try {
+                   try {
                         CConstraint c = rc.copy();
 
                         // ### pass in the type rather than letting XField call fi.type();
                         // otherwise, we'll get called recursively.
-                        XTerm self = xts.xtypeTranslator().trans(c, receiver, this, t);
+                        XTerm self = xts.xtypeTranslator().translate(receiver, this);
                         // Add {self = receiver.field} clause.
                         c.addSelfBinding(self);
                         if (receiver instanceof XVar) {
@@ -136,13 +135,10 @@ public class X10FieldInstance_c extends FieldInstance_c implements X10FieldInsta
                         	c.setThisVar((XVar) receiver);
                         }
 
-                        rightType = X10TypeMixin.xclause(X10TypeMixin.baseType(t), c);
+                        rightType = Types.xclause(Types.baseType(t), c);
                     }
                     catch (XFailure f) {
                         throw new InternalCompilerError("Could not add self binding: " + f.getMessage(), f);
-                    }
-                    catch (SemanticException f) {
-                        throw new InternalCompilerError(f);
                     }
                 }
             }
@@ -170,21 +166,17 @@ public class X10FieldInstance_c extends FieldInstance_c implements X10FieldInsta
     }
     public String containerString() {
 	Type container = container();
-	container = X10TypeMixin.baseType(container);
+	container = Types.baseType(container);
 	if (container instanceof FunctionType) {
 	    return "(" + container.toString() + ")";
 	}
-	if (container instanceof Named) {
-	    Named n = (Named) container;
-	    return n.fullName().toString();
-	}
-	return container.toString();
+	return container.fullName().toString();
     }
 
     public String toString() {
 	Type type = type();
 	String typeString = type != null ? type.toString() : def().type().toString();
-	String s = "field " + X10Flags.toX10Flags(flags()).prettyPrint() + containerString() + "." + name() + ": " + typeString;
+	String s = "field " + flags().prettyPrint() + containerString() + "." + name() + ": " + typeString;
 	return s;
     }
 

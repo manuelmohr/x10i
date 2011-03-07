@@ -22,8 +22,26 @@ import x10.compiler.Incomplete;
 import x10.util.IndexedMemoryChunk;
 
 /**
- * This class represents an array with raw chunk in each place,
- * initialized at its place of access via a PlaceLocalHandle.
+ * <p>A distributed array (DistArray) defines a mapping from {@link Point}s to data 
+ * values of some type T. The Points in the DistArray's domain are defined by
+ * specifying a {@link Region} over which the Array is defined.  Attempting to access 
+ * a data value at a Point not included in the Array's Region will result in a 
+ * {@link ArrayIndexOutOfBoundsException} being raised. The array's distribution ({@link Dist})
+ * defines a mapping for the Points in the DistArray's region to Places. This defines
+ * the Place where the data element for each Point is actually stored. Attempting to access
+ * a data element from any other place will result in a {@link BadPlaceException} being
+ * raised.</p>
+ *
+ * <p>The closely related class {@link Array} is used to define 
+ * non-distributed arrays where the data values for the Points in the 
+ * array's domain are all stored in a single place.  Although it is possible to
+ * use a DistArray to store data in only a single place by creating a "constant distribution",
+ * an Array will significantly outperform a DistArray with a constant distribution.</p>
+ *
+ * @see Point
+ * @see Region
+ * @see Dist
+ * @see Array
  */
 public class DistArray[T] (
     /**
@@ -34,22 +52,10 @@ public class DistArray[T] (
              Iterable[Point(dist.region.rank)]
 {
 
-    private static class LocalState[T] {
-        val layout:RectLayout;
-        val raw:IndexedMemoryChunk[T];
-
-        def this(l:RectLayout, r:IndexedMemoryChunk[T]) {
-            layout = l;
-            raw = r;
-        }
-    };
-
-
-   //
-    // properties
+    //
+    // property methods that forward to dist and dist.region
     //
 
-    // region via dist
     /**
      * The region this array is defined over.
      */
@@ -60,311 +66,637 @@ public class DistArray[T] (
      */
     public property rank: int = dist.rank;
 
+    // Need a trivial wrapper class because PlaceLocalHandle[T] requires that T <: Object
+    protected static class LocalState[T](data:IndexedMemoryChunk[T]) {
+      public def this(c:IndexedMemoryChunk[T]) { property(c); }
+    }
+    /** The place-local backing storage for the DistArray */
+    protected val localHandle:PlaceLocalHandle[LocalState[T]];
+    /** Can the backing storage be obtained from cachedRaw? */
+    protected transient var cachedRawValid:boolean;
+    /** Cached pointer to the backing storage */
+    protected transient var cachedRaw:IndexedMemoryChunk[T];
+    
     /**
-     * Is this array defined over a rectangular region?
+     * Method to acquire a pointer to the backing storage for the 
+     * array's data in the current place.
      */
-    public property rect: boolean = dist.rect;
+    protected final def raw():IndexedMemoryChunk[T] {
+        if (!cachedRawValid) {
+            cachedRaw = localHandle().data;
+            x10.util.concurrent.Fences.storeStoreBarrier();
+	    cachedRawValid = true;
+        }
+        return cachedRaw;
+    }
+
 
     /**
-     * Is this array's region zero-based?
-     */
-    public property zeroBased: boolean = dist.zeroBased;
-
-    // dist
-    /**
-     * Is this array's region a "rail" (one-dimensional contiguous zero-based)?
-     */
-    public property rail: boolean = dist.rail;
-
-    /**
-     * Is this array's distribution "unique" (at most one point per place)?
-     */
-    public property unique: boolean = dist.unique;
-
-    /**
-     * Is this array's distribution "constant" (all points map to the same place)?
-     */
-    public property constant: boolean = dist.constant;
-
-    /**
-     * If this array's distribution is "constant", the place all points map to (or null).
-     */
-    public property onePlace: Place = dist.onePlace;
-
-
- 
-
-    //
-    // factories for dist arrays 
-    //
-
-    /**
-     * Create a mutable array over the given distribution and default initial values for elements.
+     * Create a zero-initialized distributed array over the argument distribution.
      *
-     * @param T the element type
      * @param dist the given distribution
-     * @return a mutable array with the given distribution.
-     * @see #make[T](Region)
-     * @see #make[T](Dist, (Point)=>T)
+     * @return the newly created DistArray
      */
-    public static def make[T](dist: Dist)= new DistArray[T](dist);
+    public static def make[T](dist:Dist) {T haszero} = new DistArray[T](dist);
+
+    // TODO: consider making this constructor public
+    def this(dist: Dist) {T haszero} : DistArray[T]{self.dist==dist} {
+        property(dist);
+
+        val plsInit:()=>LocalState[T] = () => {
+            val localRaw = IndexedMemoryChunk.allocate[T](dist.maxOffset()+1, true);
+            return new LocalState(localRaw);
+        };
+
+        localHandle = PlaceLocalHandle.make[LocalState[T]](dist, plsInit);
+    }
+
 
     /**
-     * Create a mutable array over the given distribution.
-     * Executes the given initializer function for each element of the array.
+     * Create a distributed array over the argument distribution whose elements
+     * are initialized by executing the given initializer function for each 
+     * element of the array in the place where the argument Point is mapped.
      *
-     * @param T the element type
      * @param dist the given distribution
      * @param init the initializer function
-     * @return a mutable array with the given distribution.
+     * @return the newly created DistArray
      * @see #make[T](Dist)
-     * @see #make[T](Region, (Point)=>T)
      */
-    public static def make[T](dist: Dist, init: (Point(dist.rank))=>T)= new DistArray[T](dist, init);
+    public static def make[T](dist:Dist, init:(Point(dist.rank))=>T)= new DistArray[T](dist, init);
+
+    // TODO: consider making this constructor public
+    def this(dist:Dist, init:(Point(dist.rank))=>T):DistArray[T]{self.dist==dist} {
+        property(dist);
+
+        val plsInit:()=>LocalState[T] = () => {
+            val localRaw = IndexedMemoryChunk.allocate[T](dist.maxOffset()+1);
+            val reg = dist.get(here);
+            for (pt in reg) {
+               localRaw(dist.offset(pt)) = init(pt);
+            }
+            return new LocalState(localRaw);
+        };
+
+        localHandle = PlaceLocalHandle.make[LocalState[T]](dist, plsInit);
+    }
 
 
+    /**
+     * Create a distributed array over the argument distribution whose elements
+     * are initialized to the given initial value.
+     *
+     * @param dist the given distribution
+     * @param init the initial value
+     * @return the newly created DistArray
+     * @see #make[T](Dist)
+     */
+    public static def make[T](dist:Dist, init:T)= new DistArray[T](dist, init);
 
+    // TODO: consider making this constructor public
+    def this(dist:Dist, init:T):DistArray[T]{self.dist==dist} {
+        property(dist);
 
-    private val localHandle:PlaceLocalHandle[LocalState[T]];
-    final protected def raw():IndexedMemoryChunk[T] = localHandle().raw;
-    final protected def layout() = localHandle().layout;
+        val plsInit:()=>LocalState[T] = () => {
+            val localRaw = IndexedMemoryChunk.allocate[T](dist.maxOffset()+1);
+            val reg = dist.get(here);
+            for (pt in reg) {
+                localRaw(dist.offset(pt)) = init;
+            }
+            return new LocalState(localRaw);
+        };
 
-
-    public final def apply(pt: Point(rank)): T {
-        if (CompilerFlags.checkBounds() && !region.contains(pt)) {
-            raiseBoundsError(pt);
-        }
-        if (CompilerFlags.checkPlace() && dist(pt) != here) {
-            raisePlaceError(pt);
-        }
-        return raw()(layout().offset(pt));
+        localHandle = PlaceLocalHandle.make[LocalState[T]](dist, plsInit);
     }
 
     /**
-     * @deprecated
+     * Create a DistArray that views the same backing data
+     * as the argument DistArray using a different distribution.</p>
+     * 
+     * An unchecked invariant for this to be correct is that for every 
+     * point p in d, <code>d.offset(p) == a.dist.offset(p)</code>.  
+     * This invariant is too expensive to be checked dynamically, so it simply must
+     * be respected by the DistArray code that calls this constructor.
      */
-    public final def get(pt: Point(rank)): T = apply(pt);
-
-    final public def apply(i0: int){rank==1}: T {
-        if (CompilerFlags.checkBounds() && !region.contains(i0)) {
-            raiseBoundsError(i0);
-        }
-        if (CompilerFlags.checkPlace() && dist(i0) != here) {
-            raisePlaceError(i0);
-        }
-        return raw()(layout().offset(i0));
+    protected def this(a:DistArray[T], d:Dist):DistArray[T]{self.dist==d} {
+        property(d);
+        localHandle = PlaceLocalHandle.make[LocalState[T]](d, ()=>a.localHandle());
     }
 
-    final public def apply(i0: int, i1: int){rank==2}: T {
-        if (CompilerFlags.checkBounds() && !region.contains(i0, i1)) {
-            raiseBoundsError(i0, i1);
-        }
-        if (CompilerFlags.checkPlace() && dist(i0, i1) != here) {
-            raisePlaceError(i0,i1);
-        }
-        return raw()(layout().offset(i0,i1));
+    /**
+     * Create a DistArray from a distribution and a PlaceLocalHandle[LocalState[T]]
+     * This constructor is intended for internal use only by operations such as 
+     * map to enable them to complete with only 1 collective operation instead of 2.
+     */
+    protected def this(d:Dist, pls:PlaceLocalHandle[LocalState[T]]) {
+        property(d);
+        localHandle = pls;
+    }
+    
+    
+    /**
+     * Return the element of this array corresponding to the given point.
+     * The rank of the given point has to be the same as the rank of this array.
+     * If the distribution does not map the given Point to the current place,
+     * then a BadPlaceException will be raised.
+     * 
+     * @param pt the given point
+     * @return the element of this array corresponding to the given point.
+     * @see #operator(Int)
+     * @see #set(T, Point)
+     */
+    public final operator this(pt:Point(rank)): T {
+        val offset = dist.offset(pt);
+        return raw()(offset);
     }
 
-    final public def apply(i0: int, i1: int, i2: int){rank==3}: T {
-        if (CompilerFlags.checkBounds() && !region.contains(i0, i1, i2)) {
-            raiseBoundsError(i0, i1, i2);
-        }
-        if (CompilerFlags.checkPlace() && dist(i0,i1,i2) != here) {
-            raisePlaceError(i0,i1,i2);
-        }
-        return raw()(layout().offset(i0,i1,i2));
+    /**
+     * Return the element of this array corresponding to the given index.
+     * Only applies to one-dimensional arrays.
+     * Functionally equivalent to indexing the array via a one-dimensional point.
+     * If the distribution does not map the specified index to the current place,
+     * then a BadPlaceException will be raised.
+     * 
+     * @param i0 the given index in the first dimension
+     * @return the element of this array corresponding to the given index.
+     * @see #operator(Point)
+     * @see #set(T, Int)
+     */
+    public final operator this(i0:int){rank==1}: T {
+        val offset = dist.offset(i0);
+        return raw()(offset);
     }
 
-    final public def apply(i0: int, i1: int, i2: int, i3: int){rank==4}: T {
-        if (CompilerFlags.checkBounds() && !region.contains(i0, i1, i2, i3)) {
-            raiseBoundsError(i0, i1, i2, i3);
-        }
-        if (CompilerFlags.checkPlace() && dist(i0,i1,i2,i3) != here) {
-            raisePlaceError(i0,i1,i2,i3);
-        }
-        return raw()(layout().offset(i0,i1,i2,i3));
+    /**
+     * Return the element of this array corresponding to the given pair of indices.
+     * Only applies to two-dimensional arrays.
+     * Functionally equivalent to indexing the array via a two-dimensional point.
+     * If the distribution does not map the specified index to the current place,
+     * then a BadPlaceException will be raised.
+     * 
+     * @param i0 the given index in the first dimension
+     * @param i1 the given index in the second dimension
+     * @return the element of this array corresponding to the given pair of indices.
+     * @see #operator(Point)
+     * @see #set(T, Int, Int)
+     */
+    public final operator this(i0:int, i1:int){rank==2}: T {
+        val offset = dist.offset(i0, i1);
+        return raw()(offset);
+    }
+
+    /**
+     * Return the element of this array corresponding to the given triple of indices.
+     * Only applies to three-dimensional arrays.
+     * Functionally equivalent to indexing the array via a three-dimensional point.
+     * If the distribution does not map the specified index to the current place,
+     * then a BadPlaceException will be raised.
+     *
+     * @param i0 the given index in the first dimension
+     * @param i1 the given index in the second dimension
+     * @param i2 the given index in the third dimension
+     * @return the element of this array corresponding to the given triple of indices.
+     * @see #operator(Point)
+     * @see #set(T, Int, Int, Int)
+     */
+    public final operator this(i0:int, i1:int, i2:int){rank==3}: T {
+        val offset = dist.offset(i0, i1, i2);
+        return raw()(offset);
+    }
+
+    /**
+     * Return the element of this array corresponding to the given quartet of indices.
+     * Only applies to four-dimensional arrays.
+     * Functionally equivalent to indexing the array via a four-dimensional point.
+     * If the distribution does not map the specified index to the current place,
+     * then a BadPlaceException will be raised.
+     * 
+     * @param i0 the given index in the first dimension
+     * @param i1 the given index in the second dimension
+     * @param i2 the given index in the third dimension
+     * @param i3 the given index in the fourth dimension
+     * @return the element of this array corresponding to the given quartet of indices.
+     * @see #operator(Point)
+     * @see #set(T, Int, Int, Int, Int)
+     */
+    public final operator this(i0:int, i1:int, i2:int, i3:int){rank==4}: T {
+        val offset = dist.offset(i0, i1, i2, i3);
+        return raw()(offset);
     }
 
 
-    // XXXX settable order
-    public final def set(v: T, pt: Point(rank)): T {
-        if (CompilerFlags.checkBounds() && !region.contains(pt)) {
-            raiseBoundsError(pt);
-        }
-        if (CompilerFlags.checkPlace() && dist(pt) != here) {
-            raisePlaceError(pt);
-        }
-        val r = raw();
-        r(layout().offset(pt)) = v;
+    /**
+     * Set the element of this array corresponding to the given point to the given value.
+     * Return the new value of the element.
+     * The rank of the given point has to be the same as the rank of this array.
+     * If the distribution does not map the specified index to the current place,
+     * then a BadPlaceException will be raised.
+     * 
+     * @param v the given value
+     * @param pt the given point
+     * @return the new value of the element of this array corresponding to the given point.
+     * @see #operator(Point)
+     * @see #set(T, Int)
+     */    
+    public final operator this(pt: Point(rank))=(v: T): T {
+        val offset = dist.offset(pt);
+        raw()(offset) = v;
         return v;
     }
 
-    final public def set(v: T, i0: int){rank==1}: T {
-        if (CompilerFlags.checkBounds() && !region.contains(i0)) {
-            raiseBoundsError(i0);
-        }
-        if (CompilerFlags.checkPlace() && dist(i0) != here) {
-            raisePlaceError(i0);
-        }
-        raw()(layout().offset(i0)) = v;
+    /**
+     * Set the element of this array corresponding to the given index to the given value.
+     * Return the new value of the element.
+     * Only applies to one-dimensional arrays.
+     * Functionally equivalent to setting the array via a one-dimensional point.
+     * If the distribution does not map the specified index to the current place,
+     * then a BadPlaceException will be raised.
+     * 
+     * @param v the given value
+     * @param i0 the given index in the first dimension
+     * @return the new value of the element of this array corresponding to the given index.
+     * @see #operator(Int)
+     * @see #set(T, Point)
+     */    
+    public final operator this(i0: int)=(v: T){rank==1}: T {
+        val offset = dist.offset(i0);
+        raw()(offset) = v;
         return v;
     }
 
-    final public def set(v: T, i0: int, i1: int){rank==2}: T {
-        if (CompilerFlags.checkBounds() && !region.contains(i0, i1)) {
-            raiseBoundsError(i0, i1);
-        }
-        if (CompilerFlags.checkPlace() && dist(i0,i1) != here) {
-            raisePlaceError(i0,i1);
-        }
-        raw()(layout().offset(i0,i1)) = v;
+    /**
+     * Set the element of this array corresponding to the given pair of indices to the given value.
+     * Return the new value of the element.
+     * Only applies to two-dimensional arrays.
+     * Functionally equivalent to setting the array via a two-dimensional point.
+     * If the distribution does not map the specified index to the current place,
+     * then a BadPlaceException will be raised.
+     * 
+     * @param v the given value
+     * @param i0 the given index in the first dimension
+     * @param i1 the given index in the second dimension
+     * @return the new value of the element of this array corresponding to the given pair of indices.
+     * @see #operator(Int, Int)
+     * @see #set(T, Point)
+     */
+    public final operator this(i0: int, i1: int)=(v: T){rank==2}: T {
+        val offset = dist.offset(i0, i1);
+        raw()(offset) = v;
         return v;
     }
 
-    final public def set(v: T, i0: int, i1: int, i2: int){rank==3}: T {
-        if (CompilerFlags.checkBounds() && !region.contains(i0, i1, i2)) {
-            raiseBoundsError(i0, i1, i2);
-        }
-        if (CompilerFlags.checkPlace() && dist(i0,i1,i2) != here) {
-            raisePlaceError(i0,i1,i2);
-        }
-        raw()(layout().offset(i0,i1,i2)) = v;
+    /**
+     * Set the element of this array corresponding to the given triple of indices to the given value.
+     * Return the new value of the element.
+     * Only applies to three-dimensional arrays.
+     * Functionally equivalent to setting the array via a three-dimensional point.
+     * If the distribution does not map the specified index to the current place,
+     * then a BadPlaceException will be raised.
+     * 
+     * @param v the given value
+     * @param i0 the given index in the first dimension
+     * @param i1 the given index in the second dimension
+     * @param i2 the given index in the third dimension
+     * @return the new value of the element of this array corresponding to the given triple of indices.
+     * @see #operator(Int, Int, Int)
+     * @see #set(T, Point)
+     */
+    public final operator this(i0: int, i1: int, i2: int)=(v: T){rank==3}: T {
+        val offset = dist.offset(i0,i1,i2);
+        raw()(offset) = v;
         return v;
     }
 
-    final public def set(v: T, i0: int, i1: int, i2: int, i3: int){rank==4}: T {
-        if (CompilerFlags.checkBounds() && !region.contains(i0, i1, i2, i3)) {
-            raiseBoundsError(i0, i1, i2, i3);
-        }
-        if (CompilerFlags.checkPlace() && dist(i0,i1,i2,i3) != here) {
-            raisePlaceError(i0,i1,i2,i3);
-        }
-        raw()(layout().offset(i0,i1,i2,i3)) = v;
+    /**
+     * Set the element of this array corresponding to the given quartet of indices to the given value.
+     * Return the new value of the element.
+     * Only applies to four-dimensional arrays.
+     * Functionally equivalent to setting the array via a four-dimensional point.     * If the distribution does not map the specified index to the current place,
+     * then a BadPlaceException will be raised.
+     * 
+     * 
+     * @param v the given value
+     * @param i0 the given index in the first dimension
+     * @param i1 the given index in the second dimension
+     * @param i2 the given index in the third dimension
+     * @param i3 the given index in the fourth dimension
+     * @return the new value of the element of this array corresponding to the given quartet of indices.
+     * @see #operator(Int, Int, Int, Int)
+     * @see #set(T, Point)
+     */
+    public final operator this(i0: int, i1: int, i2: int, i3: int)=(v: T){rank==4}: T {
+        val offset = dist.offset(i0,i1,i2,i3);
+        raw()(offset) = v;
         return v;
     }
-
-    def this(dist: Dist, init: (Point(dist.rank))=>T): DistArray[T]{self.dist==dist} {
-        property(dist);
-
-        val plsInit:()=>LocalState[T] = () => {
-            val region = dist.get(here);
-            val localLayout = RectLayout(region);
-            val localRaw = IndexedMemoryChunk.allocate[T](localLayout.size());
-
-            for (pt  in region) {
-               localRaw(localLayout.offset(pt)) = init(pt as Point(dist.rank));
-            }
-
-            return new LocalState[T](localLayout, localRaw);
-        };
-
-        localHandle = PlaceLocalHandle.make[LocalState[T]](dist, plsInit);
-    }
-    def this(dist: Dist): DistArray[T]{self.dist==dist} {
-        property(dist);
-
-        val plsInit:()=>LocalState[T] = () => {
-            val region = dist.get(here);
-            val localLayout = RectLayout(region);
-            val localRaw = IndexedMemoryChunk.allocate[T](localLayout.size(), true);
-
-	    return new LocalState[T](localLayout, localRaw);
-        };
-
-        localHandle = PlaceLocalHandle.make[LocalState[T]](dist, plsInit);
-    }
-
 
     /*
      * restriction view
      */
 
-    public def restriction(d: Dist(rank)) {
+    /**
+     * Return a DistArray that access the same backing storage
+     * as this array, but only over the Points in the argument
+     * distribtion.</p>
+     * 
+     * For this operation to be semantically sound, it should
+     * be the case that for every point p in d, 
+     * <code>this.dist.offset(p) == d.offset</code>.
+     * This invariant is not statically or dynamically checked;
+     * but must be ensured by the caller's of this API. 
+     * 
+     * @param d the Dist to use as the restriction
+     */
+    public def restriction(d:Dist(rank)) {
         return new DistArray[T](this, d) as DistArray[T](rank);
     }
 
-    def this(a: DistArray[T], d: Dist):DistArray{self.dist==d} {
-    	property(d);
-    	localHandle = PlaceLocalHandle.make[LocalState[T]](d,
-    			() => a.localHandle());
-    }
-
-
-///// TODO: BELOW HERE IS CODE PULLED IN FROM BaseArray.  Need to reorgzinze this.
-
-    //
-    // views
-    //
-
+    /**
+     * Return a DistArray that is defined over the same distribution
+     * and backing storage as this DistArray instance, but is 
+     * restricted to only allowing access to those points that are
+     * contained in the argument region r.
+     * 
+     * @param r the Region to which to restrict the array
+     */
     public def restriction(r: Region(rank)): DistArray[T](rank) {
         return restriction(dist.restriction(r) as Dist(rank));
     }
 
+    /**
+     * Return a DistArray that is defined over the same distribution
+     * and backing storage as this DistArray instance, but is 
+     * restricted to only allowing access to those points that are
+     * mapped by the defining distripution to the argument Place. 
+     * 
+     * @param p the Place to which to restrict the array
+     */
     public def restriction(p: Place): DistArray[T](rank) {
         return restriction(dist.restriction(p) as Dist(rank));
     }
 
-
-    //
-    // operations
-    //
-
-    public def map(op:(T)=>T): DistArray[T](dist)
-        = make[T](dist, ((p:Point)=>op(this(p as Point(rank)))));
-
-    public def map(r:Region(rank), op:(T)=>T): DistArray[T]
-        = make[T](dist | r, ((p:Point)=>op(this(p as Point(rank)))));
-
-
-    public def map(src:DistArray[T](this.dist), op:(T,T)=>T):DistArray[T](dist)
-        = make[T](dist, ((p:Point)=>op(this(p as Point(rank)), src(p as Point(rank)))));
-
-    public def map(src:DistArray[T](this.dist), r:Region(rank), op:(T,T)=>T):DistArray[T](rank)
-        = make[T]((dist | r) as Dist(rank), ((p:Point)=>op(this(p as Point(rank)), src(p as Point(rank)))));
-
-    public def reduce(op:(T,T)=>T, unit:T):T {
-        // scatter
-        // TODO: recode using Team collective APIs to improve scalability
-        // TODO: optimize scatter inner loop for locally rect regions
-        val results = Rail.make[T](dist.numPlaces(), (p:Int) => unit);
-	finish for (where in dist.places()) {
-	    async {
-                results(where.id) = at (where) {
-                    var localRes:T = unit;
-                    for (pt in dist(where)) {
-                        localRes = op(localRes, this(pt));
-                    }
-                    localRes
-                };
-            };
-        }
-
-        // gather
-        var result: T = unit;
-        for (var i:int = 0; i<results.length; i++) {
-            result = op(result, results(i));
-        }
-
-        return result;
-    }            
-
-    @Incomplete public def scan(op:(T,T)=>T, unit:T): DistArray[T](dist) {
-        throw new UnsupportedOperationException();
-    }
-
-
-    //
-    // ops
-    //
-
+    /**
+     * Return a DistArray that is defined over the same distribution
+     * and backing storage as this DistArray instance, but is 
+     * restricted to only allowing access to those points that are
+     * contained in the argument region r.
+     * 
+     * @param r the Region to which to restrict the array
+     */
     public operator this | (r: Region(rank)) = restriction(r);
+    
+    /**
+     * Return a DistArray that is defined over the same distribution
+     * and backing storage as this DistArray instance, but is 
+     * restricted to only allowing access to those points that are
+     * mapped by the defining distripution to the argument Place. 
+     * 
+     * @param p the Place to which to restrict the array
+     */
     public operator this | (p: Place) = restriction(p);
 
 
-    public def toString(): String {
-        return "Array(" + dist + ")";
+    //
+    // Bulk operations
+    //
+
+    /**
+     * Fill all elements of the array to contain the argument value.
+     * 
+     * @param v the value with which to fill the array
+     */
+    public def fill(v:T) {
+        finish for (where in dist.places()) {
+            async at (where) {
+                val imc = raw();
+                val reg = dist.get(here);
+                for (pt in reg) {
+                    imc(dist.offset(pt)) = v;
+                }
+            }
+        }
+    }
+    
+    /**
+     * Map the function onto the elements of this array
+     * constructing a new result array such that for all points <code>p</code>
+     * in <code>this.dist</code>,
+     * <code>result(p) == op(this(p))</code>.<p>
+     * 
+     * @param op the function to apply to each element of the array
+     * @return a new array with the same distribution as this array where <code>result(p) == op(this(p))</code>
+     */
+    public final def map[U](op:(T)=>U):DistArray[U](this.dist) {
+        val plh = PlaceLocalHandle.make[LocalState[U]](dist, ()=> {
+            val srcImc = raw();
+            val newImc = IndexedMemoryChunk.allocate[U](dist.maxOffset()+1);
+            val reg = dist.get(here);
+            for (pt in reg) {
+                val offset = dist.offset(pt);
+                newImc(offset) = op(srcImc(offset));
+            }
+            return new LocalState[U](newImc);
+        });
+        return new DistArray[U](dist, plh);                       
     }
 
+    /**
+     * Map the given function onto the elements of this array
+     * storing the results in the dst array such that for all points <code>p</code>
+     * in <code>this.dist</code>,
+     * <code>dst(p) == op(this(p))</code>.<p>
+     * 
+     * @param dst the destination array for the results of the map operation
+     * @param op the function to apply to each element of the array
+     * @return dst after applying the map operation.
+     */
+    public final def map[U](dst:DistArray[U](this.dist), op:(T)=>U):DistArray[U](dist){self==dst} {
+        finish {
+            for (where in dist.places()) {
+                async at(where) {
+                    val reg = dist.get(here);
+                    val srcImc = raw();
+                    val dstImc = dst.raw();
+                    for (pt in reg) {
+                        val offset = dist.offset(pt);
+                        dstImc(offset) = op(srcImc(offset));
+                    }
+                }
+            }
+        }
+        return dst;
+    }
+    
+    /**
+     * Map the given function onto the elements of this array
+     * storing the results in the dst array for the subset of points included
+     * in the filter region such that for all points <code>p</code>
+     * in <code>filter</code>,
+     * <code>dst(p) == op(this(p))</code>.<p>
+     * 
+     * @param dst the destination array for the results of the map operation
+     * @param op the function to apply to each element of the array
+     * @param filter the region to use as a filter on the map operation
+     * @return dst after applying the map operation.
+     */
+    public final def map[U](dst:DistArray[U](this.dist), filter:Region(rank), op:(T)=>U):DistArray[U](dist){self==dst} {
+        finish {
+            for (where in dist.places()) {
+                async at(where) {
+                    val reg = dist.get(here);
+                    val freg = reg && filter;
+                    val srcImc = raw();
+                    val dstImc = dst.raw();
+                    for (pt in freg) {
+                        val offset = dist.offset(pt);
+                        dstImc(offset) = op(srcImc(offset));
+                    }
+                }
+            }
+        }
+        return dst;
+    }
+    
+    /**
+     * Map the given function onto the elements of this array
+     * and the other src array, storing the results in a new result array 
+     * such that for all points <code>p</code> in <code>this.dist</code>,
+     * <code>result(p) == op(this(p), src(p))</code>.<p>
+     * 
+     * @param src the other src array
+     * @param op the function to apply to each element of the array
+     * @return a new array with the same distribution as this array containing the result of the map
+     */
+    public final def map[S,U](src:DistArray[U](this.dist), op:(T,U)=>S):DistArray[S](dist) {
+        val plh = PlaceLocalHandle.make[LocalState[S]](dist, ()=> {
+            val src1Imc = raw();
+            val src2Imc = src.raw();
+            val newImc = IndexedMemoryChunk.allocate[S](dist.maxOffset()+1);
+            val reg = dist.get(here);
+            for (pt in reg) {
+                val offset = dist.offset(pt);
+                newImc(offset) = op(src1Imc(offset), src2Imc(offset));
+            }
+            return new LocalState[S](newImc);
+        });
+        return new DistArray[S](dist, plh);                       
+    }
+    
+    /**
+     * Map the given function onto the elements of this array
+     * and the other src array, storing the results in the given dst array 
+     * such that for all points <code>p</code> in <code>this.dist</code>,
+     * <code>dst(p) == op(this(p), src(p))</code>.<p>
+     * 
+     * @param dst the destination array for the map operation
+     * @param src the second source array for the map operation
+     * @param op the function to apply to each element of the array
+     * @return destination after applying the map operation.
+     */
+    public final def map[S,U](dst:DistArray[S](this.dist), src:DistArray[U](this.dist), op:(T,U)=>S):DistArray[S](dist) {
+        finish {
+            for (where in dist.places()) {
+                async at(where) {
+                    val reg = dist.get(here);
+                    val src1Imc = raw();
+                    val src2Imc = src.raw();
+                    val dstImc = dst.raw();
+                    for (pt in reg) {
+                        val offset = dist.offset(pt);
+                        dstImc(offset) = op(src1Imc(offset), src2Imc(offset));
+                    }
+                }
+            }
+        }
+        return dst;
+    }
+ 
+    /**
+     * Map the given function onto the elements of this array
+     * and the other src array, storing the results in the given dst array 
+     * such that for all points in the filter region <code>p</code> in <code>filter</code>,
+     * <code>dst(p) == op(this(p), src(p))</code>.<p>
+     * 
+     * @param dst the destination array for the map operation
+     * @param src the second source array for the map operation
+     * @param op the function to apply to each element of the array
+     * @param filter the region to use to select the subset of points to include in the map
+     * @return destination after applying the map operation.
+     */
+    public final def map[S,U](dst:DistArray[S](this.dist), src:DistArray[U](this.dist), filter:Region(rank), op:(T,U)=>S):DistArray[S](dist) {
+        finish {
+            for (where in dist.places()) {
+                async at(where) {
+                    val reg = dist.get(here);
+                    val freg = reg && filter;
+                    val src1Imc = raw();
+                    val src2Imc = src.raw();
+                    val dstImc = dst.raw();
+                    for (pt in freg) {
+                        val offset = dist.offset(pt);
+                        dstImc(offset) = op(src1Imc(offset), src2Imc(offset));
+                    }
+                }
+            }
+        }
+        return dst;
+    }
+
+    /**
+     * Reduce this array using the given function and the given initial value.
+     * Each element of the array will be given as an argument to the reduction
+     * function exactly once, but in an arbitrary order.  The reduction function
+     * may be applied concurrently to implement a parallel reduction.
+     * 
+     * @param op the reduction function
+     * @param unit the given initial value
+     * @return the final result of the reduction.
+     * @see #map((T)=>S)
+     * @see #reduce(U,T)=>U,(U,U)=>U,U)
+     */
+    public final def reduce(op:(T,T)=>T, unit:T):T  = reduce[T](op, op, unit);
+    
+    /**
+     * Reduce this array using the given function and the given initial value.
+     * Each element of the array will be given as an argument to the reduction
+     * function exactly once, but in an arbitrary order.  The reduction function
+     * may be applied concurrently to implement a parallel reduction.
+     * 
+     * @param lop the local reduction function
+     * @param gop the global reduction function
+     * @param unit the given initial value
+     * @return the final result of the reduction.
+     * @see #map((T)=>S)
+     */
+    public final def reduce[U](lop:(U,T)=>U, gop:(U,U)=>U, unit:U):U {
+        // Could use collecting finish after XTENLANG-2364 is resolved
+        // instead of building up an explicit result array
+        val results = new Array[U](Place.MAX_PLACES, unit);
+        finish {
+            for (where in dist.places()) {
+                async {
+                    results(where.id) = at (where) {
+                        val reg = dist.get(here);
+                        var localRes:U = unit;
+                        val imc = raw();
+                        for (pt in reg) {
+                           localRes = lop(localRes, imc(dist.offset(pt)));
+                        }
+                        localRes
+                    };
+                };
+            }
+        }
+
+        var result:U = results(0);
+        for ([i] in 1..(results.size()-1)) {
+            result = gop(result, results(i));
+        }
+        return result;
+    }
+
+    public def toString(): String {
+        return "DistArray(" + dist + ")";
+    }
 
     /**
      * Return an iterator over the points in the region of this array.
@@ -373,40 +705,6 @@ public class DistArray[T] (
      * @see x10.lang.Iterable[T]#iterator()
      */
     public def iterator(): Iterator[Point(rank)] = region.iterator() as Iterator[Point(rank)];
-
-
-    private @NoInline @NoReturn def raiseBoundsError(i0:int) {
-        throw new ArrayIndexOutOfBoundsException("point (" + i0 + ") not contained in array");
-    }    
-    private @NoInline @NoReturn def raiseBoundsError(i0:int, i1:int) {
-        throw new ArrayIndexOutOfBoundsException("point (" + i0 + ", "+i1+") not contained in array");
-    }    
-    private @NoInline @NoReturn def raiseBoundsError(i0:int, i1:int, i2:int) {
-        throw new ArrayIndexOutOfBoundsException("point (" + i0 + ", "+i1+", "+i2+") not contained in array");
-    }    
-    private @NoInline @NoReturn def raiseBoundsError(i0:int, i1:int, i2:int, i3:int) {
-        throw new ArrayIndexOutOfBoundsException("point (" + i0 + ", "+i1+", "+i2+", "+i3+") not contained in array");
-    }    
-    private @NoInline @NoReturn def raiseBoundsError(pt:Point(rank)) {
-        throw new ArrayIndexOutOfBoundsException("point " + pt + " not contained in array");
-    }    
-
-
-    private @NoInline @NoReturn def raisePlaceError(i0:int) {
-        throw new BadPlaceException("point (" + i0 + ") not defined at " + here);
-    }    
-    private @NoInline @NoReturn def raisePlaceError(i0:int, i1:int) {
-        throw new BadPlaceException("point (" + i0 + ", "+i1+") not defined at " + here);
-    }    
-    private @NoInline @NoReturn def raisePlaceError(i0:int, i1:int, i2:int) {
-        throw new BadPlaceException("point (" + i0 + ", "+i1+", "+i2+") not defined at " + here);
-    }    
-    private @NoInline @NoReturn def raisePlaceError(i0:int, i1:int, i2:int, i3:int) {
-        throw new BadPlaceException("point (" + i0 + ", "+i1+", "+i2+", "+i3+") not defined at " + here);
-    }    
-    private @NoInline @NoReturn def raisePlaceError(pt:Point(rank)) {
-        throw new BadPlaceException("point " + pt + " not defined at " + here);
-    }    
 }
 
 // vim:tabstop=4:shiftwidth=4:expandtab

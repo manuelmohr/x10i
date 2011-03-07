@@ -1,6 +1,3 @@
-/**
- * 
- */
 /*
  *  This file is part of the X10 project (http://x10-lang.org).
  *
@@ -27,16 +24,16 @@ import polyglot.types.ErrorRef_c;
 import polyglot.types.LocalDef;
 import polyglot.types.LocalInstance;
 import polyglot.types.MethodDef;
-import polyglot.types.MethodInstance;
 import polyglot.types.ProcedureInstance;
 import polyglot.types.Ref;
-import polyglot.types.ReferenceType;
+
 import polyglot.types.SemanticException;
-import polyglot.types.StructType;
+import polyglot.types.ContainerType;
 import polyglot.types.Type;
 import polyglot.types.TypeSystem;
 import polyglot.types.Types;
-import polyglot.util.CollectionUtil;
+import polyglot.types.UpcastTransform;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import polyglot.util.Transformation;
@@ -72,7 +69,7 @@ public class X10ConstructorInstance_c extends ConstructorInstance_c implements X
     
     @Override
     public boolean moreSpecific(Type ct, ProcedureInstance<ConstructorDef> p, Context context) {
-        return X10TypeMixin.moreSpecificImpl(ct, this, p, context);
+        return Types.moreSpecificImpl(ct, this, p, context);
     }
 
     public X10ConstructorDef x10Def() {
@@ -94,7 +91,7 @@ public class X10ConstructorInstance_c extends ConstructorInstance_c implements X
     /* (non-Javadoc)
      * @see x10.types.X10ConstructorInstance#depClause()
      */
-    public CConstraint constraint() { return X10TypeMixin.realX(returnType()); }
+   // public CConstraint constraint() { return Types.realX(returnType()); }
 
     public Ref<? extends Type> returnType;
     
@@ -128,35 +125,9 @@ public class X10ConstructorInstance_c extends ConstructorInstance_c implements X
     }
 
     @Override
-    public X10ConstructorInstance container(StructType container) {
+    public X10ConstructorInstance container(ContainerType container) {
         if (container == this.container) return this;
         return (X10ConstructorInstance) super.container(container);
-    }
-
-    CConstraint guard;
-    
-    /** Constraint on formal parameters. */
-    public CConstraint guard() {
-        if (guard == null) 
-            return Types.get(x10Def().guard());
-        return guard;
-    }
-
-    public X10ConstructorInstance guard(CConstraint c) {
-        if (c == this.guard) return this;
-        X10ConstructorInstance_c n = (X10ConstructorInstance_c) copy();
-        n.guard = c;
-        return n;
-    }
-
-    /** Constraint on type parameters. */
-    protected TypeConstraint typeGuard;
-    public TypeConstraint typeGuard() { return typeGuard; }
-    public X10ConstructorInstance typeGuard(TypeConstraint s) {
-        if (s == this.typeGuard) return this;
-        X10ConstructorInstance_c n = (X10ConstructorInstance_c) copy();
-        n.typeGuard = s; 
-        return n;
     }
     
     
@@ -167,9 +138,9 @@ public class X10ConstructorInstance_c extends ConstructorInstance_c implements X
     }
     
     public List<Type> typeParameters() {
-        return Collections.emptyList();
+        return Collections.<Type>emptyList();
 // [IP] TODO
-//        return ((X10ParsedClassType) this.container()).typeArguments();
+//        return new TransformingList<ParameterType, Type>(((X10ParsedClassType) this.container()).x10Def().typeParameters(), new UpcastTransform<Type, ParameterType>());
     }
 
     public X10ConstructorInstance typeParameters(List<Type> typeParameters) {
@@ -225,7 +196,7 @@ public class X10ConstructorInstance_c extends ConstructorInstance_c implements X
     }
 
     public String toString() {
-	    String s = designator() + " " + X10Flags.toX10Flags(flags()).prettyPrint() + container() + "." + signature();
+	    String s = designator() + " " + flags().prettyPrint() + signature();
 
 	
 	    return s;
@@ -233,7 +204,9 @@ public class X10ConstructorInstance_c extends ConstructorInstance_c implements X
     
     public String signature() {
         StringBuilder sb = new StringBuilder();
-        sb.append("this");
+        sb.append(container().toString());
+        sb.append(".");
+        sb.append(TypeSystem.CONSTRUCTOR_NAME);
         // [IP] Constructors don't have type parameters, they inherit them from the container.
         //List<String> params = new ArrayList<String>();
         //List<Type> typeParameters = typeParameters();

@@ -30,11 +30,6 @@ public class SemanticException extends Exception {
         super(cause);
     }
 
-    public SemanticException(Position position) {
-	super();
-	this.position = position;
-    }
-
     public SemanticException(String m) {
         super(m);
     }
@@ -48,6 +43,9 @@ public class SemanticException extends Exception {
 		this.position = position;
     }
 
+    public void setPosition(Position p) {
+    	position = p;
+    }
     public Position position() {
     	return position;
     }
@@ -69,7 +67,7 @@ public class SemanticException extends Exception {
             return this;
         }
         if (! init) {
-            fillInStackTrace = Report.should_report("trace", 1);
+            fillInStackTrace = Report.trace;
             init = true;
             if (! fillInStackTrace) {
                 return this;

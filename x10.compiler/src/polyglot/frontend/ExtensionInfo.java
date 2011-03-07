@@ -39,11 +39,6 @@ public interface ExtensionInfo {
     Options getOptions();
 
     /**
-     * Return a Stats object to accumulate and report statistics.
-     */ 
-    Stats getStats();
-
-    /**
      * Initialize the extension with a particular compiler.  This must
      * be called after the compiler is initialized, but before the compiler
      * starts work.
@@ -88,9 +83,6 @@ public interface ExtensionInfo {
 
     /** Get a parser for this language extension. */
     Parser parser(Reader reader, FileSource source, ErrorQueue eq);
-
-    /** Create class file */ 
-    ClassFile createClassFile(File classFileSource, byte[] code);
 
     /** Create file source for a file. The main purpose is to allow
         the character encoding to be defined. */

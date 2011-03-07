@@ -18,19 +18,20 @@ import java.util.List;
  * @author vj
  *
  */
-public class XField extends XVar {
+public class XField<T> extends XVar {
 
     public XVar receiver;
-    public XName field;
+    public T field;
+    
     // used by XPromise_c to determine if this field should occur in the output
-    // representation of a constraint or not. 
+    // representation of a constraint or not. hidden true for fake fields.
     private boolean hidden;
 
-    public XField(XVar receiver, XName field) {
+    protected XField(XVar receiver, T field) {
         this(receiver, field, false);
     }
 
-    public XField(XVar receiver, XName field, boolean hidden) {
+    protected XField(XVar receiver, T field, boolean hidden) {
         super();
         this.receiver = receiver;
         this.field = field;
@@ -50,7 +51,7 @@ public class XField extends XVar {
         if (newReceiver == receiver) {
             return this;
         }
-        XField result = clone();
+        XField<T> result = clone();
         result.receiver = newReceiver;
         return result;
     }
@@ -59,10 +60,13 @@ public class XField extends XVar {
         return receiver().eqvs();
     }
 
-    public XName field() {
+    public T field() {
         return field;
     }
 
+    public XField<T> copy(XVar newReceiver) {
+        return new XField<T>(newReceiver, field, hidden);
+    }
     public String name() {
         return field.toString();
     }
@@ -79,10 +83,11 @@ public class XField extends XVar {
         return receiver.hashCode() + field.hashCode();
     }
 
+    @SuppressWarnings("unchecked")
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o instanceof XField) {
-            XField other = (XField) o;
+            XField<T> other = (XField<T>) o;
             return receiver.equals(other.receiver) && field.equals(other.field);
         }
         return false;
@@ -98,9 +103,10 @@ public class XField extends XVar {
         return receiver().hasEQV();
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public XField clone() {
-        XField n = (XField) super.clone();
+    public XField<T> clone() {
+        XField<T> n = (XField<T>) super.clone();
         n.vars = null;
         return n;
     }
@@ -120,7 +126,7 @@ public class XField extends XVar {
         return vars[0];
     }
 
-    public boolean prefixes(XTerm t) {
+  /*  public boolean prefixes(XTerm t) {
         if (equals(t))
             return true;
         if (!(t instanceof XVar))
@@ -132,17 +138,18 @@ public class XField extends XVar {
         }
         return result;
     }
-
+*/
+    @SuppressWarnings("unchecked")
     protected void initVars() {
         int count = 0;
-        for (XVar source = this; source instanceof XField; source = ((XField) source).receiver())
+        for (XVar source = this; source instanceof XField; source = ((XField<T>) source).receiver())
             count++;
         vars = new XVar[count + 1];
         XVar f = this;
         for (int i = count; i >= 0; i--) {
             vars[i] = f;
             if (i > 0)
-                f = ((XField) f).receiver();
+                f = ((XField<T>) f).receiver();
         }
     }
 }

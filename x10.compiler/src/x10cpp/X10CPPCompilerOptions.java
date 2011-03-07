@@ -21,15 +21,32 @@ import java.util.Set;
 import polyglot.frontend.ExtensionInfo;
 import polyglot.main.Main;
 import polyglot.main.UsageError;
+import polyglot.util.CollectionUtil;
+import x10.util.CollectionFactory;
 import x10.config.ConfigurationError;
 import x10.config.OptionError;
 
 public class X10CPPCompilerOptions extends x10.X10CompilerOptions {
 
-    public String executable_path = null;
+    public final Configuration x10cpp_config;
+    
+    /**
+     * Enable gprof-style profiling by passing -pg to the 
+     * post compiler & linker.
+     */
+    public boolean pg = false;
+    
+    /**
+     * Enable profiling with google performance tools
+     */
+    public boolean gpt = false;
 
+    public final List<String> extraPreArgs = new ArrayList<String>();
+    public final List<String> extraPostArgs = new ArrayList<String>();
+    
     public X10CPPCompilerOptions(ExtensionInfo extension) {
         super(extension);
+        x10cpp_config = new Configuration();
     }
 
     protected int parseCommand(String args[], int index, Set<String> source) 
@@ -37,17 +54,30 @@ public class X10CPPCompilerOptions extends x10.X10CompilerOptions {
     {
         int i = super.parseCommand(args, index, source);
         if (i != index) return i;
+        
+        if (args[i].equals("-pg")) {
+            pg = true;
+            return ++i;
+        }
+        
+        if (args[i].equals("-gpt")) {
+            gpt = true;
+            return ++i;
+        }
 
-        if (args[i].equals("-o")) {
-            index++;
-            executable_path = args[index];
-            index++;
-            return index;
+        if (args[i].equals("-cxx-prearg")) {
+            extraPreArgs.add(args[++i]);
+            return ++i;
+        }
+ 
+        if (args[i].equals("-cxx-postarg")) {
+            extraPostArgs.add(args[++i]);
+            return ++i;
         }
 
         // FIXME: [IP] allow overriding super's option processing
         try {
-            Configuration.parseArgument(args[index]);
+            x10cpp_config.parseArgument(args[index]);
             return ++index;
         }
         catch (OptionError e) { }
@@ -60,8 +90,13 @@ public class X10CPPCompilerOptions extends x10.X10CompilerOptions {
 	 */
 	public void usage(PrintStream out) {
 		super.usage(out);
-        usageForFlag(out, "-o path", "set generated executable path (for the post-compiler)");
-		String[][] options = Configuration.options();
+		
+        usageForFlag(out, "-pg", "generate code with additional instrumentation to write profile data in gprof format");
+        usageForFlag(out, "-gpt", "link the google perftools library to the generated executable");
+        usageForFlag(out, "-cxx-prearg <arg>", "Add <arg> to the C++ compilation command line before the list of files");
+        usageForFlag(out, "-cxx-postarg <arg>", "Add <arg> to the C++ compilation command line after the list of files");
+
+		String[][] options = x10cpp_config.options();
 		for (int i = 0; i < options.length; i++) {
 			String[] optinfo = options[i];
 			String optflag = "-"+optinfo[0]+"="+optinfo[1];
@@ -88,7 +123,7 @@ public class X10CPPCompilerOptions extends x10.X10CompilerOptions {
 	    super.usageForFlag(out, flag, description);
 	}
 	
-	private Set<String> compilationUnits = new HashSet<String>();
+	private Set<String> compilationUnits = CollectionFactory.newHashSet();
     
 	public Set<String> compilationUnits() { return compilationUnits; }	
 }

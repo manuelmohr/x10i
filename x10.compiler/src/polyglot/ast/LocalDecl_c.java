@@ -3,16 +3,18 @@
  *
  * Copyright (c) 2000-2007 Polyglot project group, Cornell University
  * Copyright (c) 2006-2007 IBM Corporation
- * 
+ *
  */
 
 package polyglot.ast;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import polyglot.types.*;
 import polyglot.util.CodeWriter;
+import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import polyglot.visit.*;
 
@@ -20,7 +22,7 @@ import polyglot.visit.*;
  * A <code>LocalDecl</code> is an immutable representation of the declaration
  * of a local variable.
  */
-public class LocalDecl_c extends Stmt_c implements LocalDecl {
+public abstract class LocalDecl_c extends Stmt_c implements LocalDecl {
     protected FlagsNode flags;
     protected TypeNode type;
     protected Id name;
@@ -37,11 +39,11 @@ public class LocalDecl_c extends Stmt_c implements LocalDecl {
         this.name = name;
         this.init = init;
     }
-    
+
     public List<Def> defs() {
         return Collections.<Def>singletonList(li);
     }
-    
+
     /** Get the type of the declaration. */
     public Type declType() {
         return type.type();
@@ -71,12 +73,12 @@ public class LocalDecl_c extends Stmt_c implements LocalDecl {
         n.type = type;
         return n;
     }
-    
+
     /** Get the name of the declaration. */
     public Id name() {
         return name;
     }
-    
+
     /** Set the name of the declaration. */
     public LocalDecl name(Id name) {
         LocalDecl_c n = (LocalDecl_c) copy();
@@ -110,7 +112,7 @@ public class LocalDecl_c extends Stmt_c implements LocalDecl {
     public LocalDef localDef() {
         return li;
     }
-    
+
     public VarDef varDef() {
         return li;
     }
@@ -140,7 +142,10 @@ public class LocalDecl_c extends Stmt_c implements LocalDecl {
 
     /**
      * Add the declaration of the variable as we enter the scope of the
-     * intializer
+     * intializer.
+     * In Java and X10 you can write this code:
+     * int i= (i=2)+4; int i= (i=2)+i, j=3+i+(j=2);
+     * var i:Int = (i=2)+4;
      */
     public Context enterChildScope(Node child, Context c) {
         if (child == init) {
@@ -187,37 +192,13 @@ public class LocalDecl_c extends Stmt_c implements LocalDecl {
         if (outerLocal != null && c.isLocal(li.name())) {
             throw new SemanticException("Local variable \"" + name + "\" multiply defined. Previous definition at " + outerLocal.position() + ".", position());
         }
-        
+
         return super.typeCheckEnter(tc);
     }
-    
+
     /** Type check the declaration. */
-    public Node typeCheck(ContextVisitor tc) throws SemanticException {
-        TypeSystem ts = tc.typeSystem();
+    public abstract Node typeCheck(ContextVisitor tc) throws SemanticException;
 
-        try {
-            ts.checkLocalFlags(flags.flags());
-        }
-        catch (SemanticException e) {
-            throw new SemanticException(e.getMessage(), position());
-        }
-
-        if (init != null) {
-            if (init instanceof ArrayInit) {
-                ((ArrayInit) init).typeCheckElements(tc, type.type());
-            }
-            else {
-                if (! ts.isImplicitCastValid(init.type(), type.type(), tc.context()) &&
-                    ! ts.typeEquals(init.type(), type.type(), tc.context()) &&
-                    ! ts.numericConversionValid(type.type(), init.constantValue(), tc.context())) {
-                    throw new SemanticException("The type of the variable initializer \"" + init.type() + "\" does not match that of the declaration \"" + type.type() + "\".", init.position());
-                }
-            }
-        }
-        
-        return this;
-    }
-    
     public Node checkConstants(ContextVisitor tc) throws SemanticException {
         if (init == null || ! init.isConstant() || ! li.flags().isFinal()) {
             li.setNotConstant();
@@ -228,53 +209,12 @@ public class LocalDecl_c extends Stmt_c implements LocalDecl {
 
         return this;
     }
-    
-    public Type childExpectedType(Expr child, AscriptionVisitor av) {
-        if (child == init) {
-            TypeSystem ts = av.typeSystem();
 
-            // If the RHS is an integral constant, we can relax the expected
-            // type to the type of the constant.
-            if (ts.numericConversionValid(type.type(), child.constantValue(), av.context())) {
-                return child.type();
-            }
-            else {
-                return type.type();
-            }
-        }
+    public abstract Type childExpectedType(Expr child, AscriptionVisitor av);
 
-        return child.type();
-    }
+    public abstract String toString();
 
-    public String toString() {
-        return flags.flags().translate() + type + " " + name +
-                (init != null ? " = " + init : "") + ";";
-    }
-
-    public void prettyPrint(CodeWriter w, PrettyPrinter tr) {
-        boolean printSemi = tr.appendSemicolon(true);
-        boolean printType = tr.printType(true);
-
-        print(flags, w, tr);
-        if (printType) {
-            print(type, w, tr);
-            w.write(" ");
-        }
-        tr.print(this, name, w);
-
-        if (init != null) {
-            w.write(" =");
-            w.allowBreak(2, " ");
-            print(init, w, tr);
-        }
-
-        if (printSemi) {
-            w.write(";");
-        }
-
-        tr.printType(printType);
-        tr.appendSemicolon(printSemi);
-    }
+    public abstract void prettyPrint(CodeWriter w, PrettyPrinter tr);
 
     public void dump(CodeWriter w) {
         super.dump(w);
@@ -301,6 +241,5 @@ public class LocalDecl_c extends Stmt_c implements LocalDecl {
 
         return succs;
     }
-    
 
 }

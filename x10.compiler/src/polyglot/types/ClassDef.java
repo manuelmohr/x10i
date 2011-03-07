@@ -11,17 +11,20 @@ import java.util.List;
 
 import polyglot.frontend.Job;
 import polyglot.frontend.Source;
-import polyglot.util.Enum;
 import polyglot.util.Position;
+import x10.types.ParameterType;
+import x10.types.TypeDef;
+import x10.types.X10ClassType;
+import x10.types.X10FieldDef;
+import x10.types.constraints.CConstraint;
+import x10.types.constraints.TypeConstraint;
 
 /**
  * A <code>ParsedClassType</code> represents a class loaded from a source file.
  * <code>ParsedClassType</code>s are mutable.
  */
 public interface ClassDef extends MemberDef
-{
-    ClassType asType();
-    
+{    
     Name name();
     QName fullName();
 
@@ -30,17 +33,25 @@ public interface ClassDef extends MemberDef
     public void inStaticContext(boolean inStaticContext);
     public boolean inStaticContext();
     
-    public static class Kind extends Enum {
-        private static final long serialVersionUID = 2700062381999037549L;
-        public Kind(String name) {
-            super(name);
+    public static enum Kind {
+        TOP_LEVEL("top-level"),
+        MEMBER("member"),
+        LOCAL("local"),
+        ANONYMOUS("anonymous");
+
+        public final String name;
+        private Kind(String name) {
+            this.name = name;
         }
+        @Override public String toString() {
+            return name;
+        }                  
     }
 
-    public static final Kind TOP_LEVEL = new Kind("top-level");
-    public static final Kind MEMBER = new Kind("member");
-    public static final Kind LOCAL = new Kind("local");
-    public static final Kind ANONYMOUS = new Kind("anonymous");
+    public static final Kind TOP_LEVEL = Kind.TOP_LEVEL;
+    public static final Kind MEMBER = Kind.MEMBER;
+    public static final Kind LOCAL = Kind.LOCAL;
+    public static final Kind ANONYMOUS = Kind.ANONYMOUS;
 
     /** Get the class's kind. */
     Kind kind();
@@ -195,4 +206,58 @@ public interface ClassDef extends MemberDef
      * Set the class's kind.
      */
     void kind(Kind kind);
+    
+    /** The root clause for a ClassDef is the conjunction of the invariant
+     * for the class, with the invariants for its superclass and the 
+     * interfaces it implements, and for each property f:C{c},
+     * the constraint c[self.f/self,self/this]
+     * @return
+     */
+	CConstraint getRootClause();
+	
+    //void setRootClause(Ref<CConstraint> c);
+    
+    /**
+     * Throw a SemanticException if the real clause is invalid.
+     * (The real clause would have been discovered to be invalid
+     * during its computation, and the reason would have been
+     * recorded as an exception. That exception is thrown.)
+     * @throws SemanticException
+     */
+    void checkRealClause() throws SemanticException;
+    
+    /** The class invariant. */
+    Ref<CConstraint> classInvariant();
+    void setClassInvariant(Ref<CConstraint> classInvariant);
+
+    Ref<TypeConstraint> typeBounds() ;
+    void setTypeBounds(Ref<TypeConstraint> c) ;
+
+    /** Properties defined in the class.  Subset of fields(). */
+    List<X10FieldDef> properties();
+    
+    List<ParameterType.Variance> variances();
+    List<ParameterType> typeParameters();
+    void addTypeParameter(ParameterType p, ParameterType.Variance v);
+    
+    /** Add a member type to the class. */
+    List<TypeDef> memberTypes();
+    
+    /** Add a member type to the class. */
+    void addMemberType(TypeDef t);
+    
+    /**
+     * Is this the class def for an X10 struct?
+     * @return
+     */
+    boolean isStruct();
+    /**
+     * Is this the class def for an X10 function?
+     */
+    boolean isFunction();
+    X10ClassType asType();
+    /**
+     * Does this class def have a custom deserialization constructor defined?
+     */
+    boolean hasDeserializationConstructor(Context context);
 }

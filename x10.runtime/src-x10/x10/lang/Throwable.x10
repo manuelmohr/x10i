@@ -17,17 +17,15 @@ import x10.compiler.NativeRep;
 import x10.io.Printer;
 import x10.io.Console;
 
-@NativeRep("java", "x10.runtime.impl.java.X10Throwable", null, "x10.runtime.impl.java.X10Throwable._RTT")
-// @NativeRep("java", "java.lang.RuntimeException", null, null)
+@NativeRep("java", "x10.core.Throwable", null, "x10.core.Throwable._RTT")
 @NativeRep("c++", "x10aux::ref<x10::lang::Throwable>", "x10::lang::Throwable", null)
 public class Throwable {
     @Native("java", "#0.getCause()")
-    @Native("c++", "(#0)->getCause()")
-
+    @Native("c++", "(#this)->getCause()")
     val cause:Throwable;
 
     @Native("java", "#0.getMessage()")
-    @Native("c++", "(#0)->getMessage()")
+    @Native("c++", "(#this)->getMessage()")
     val message: String;
 
     public def this() = this("");
@@ -39,36 +37,36 @@ public class Throwable {
     public def this(cause: Throwable) = this("", cause);
     public def this(message: String, cause: Throwable): Throwable {
         super();
-    	this.cause = cause;
+        	this.cause = cause;
         this.message = message;
     }
     
     @Native("java", "#0.getMessage()")
-    @Native("c++", "(#0)->getMessage()")
+    @Native("c++", "(#this)->getMessage()")
     public def getMessage() = message;
     
     @Native("java", "#0.getCause()")
-    @Native("c++", "(#0)->getCause()")
+    @Native("c++", "(#this)->getCause()")
     public final def getCause():Throwable = cause;
     
     @Native("java", "#0.toString()")
-    @Native("c++", "x10aux::to_string(#0)")
+    @Native("c++", "x10aux::to_string(#this)")
     public def toString() = typeName() + ": " + getMessage();
    
     @Native("java", "x10.core.ThrowableUtilities.getStackTrace(#0)")
-    @Native("c++", "(#0)->getStackTrace()")
+    @Native("c++", "(#this)->getStackTrace()")
     public final native def getStackTrace() : Rail[String];
 
     @Native("java", "#0.printStackTrace()")
-    @Native("c++", "(#0)->printStackTrace()")
-    public native def printStackTrace() : Void;
+    @Native("c++", "(#this)->printStackTrace()")
+    public native def printStackTrace() : void;
     
     @Native("java", "x10.core.ThrowableUtilities.printStackTrace(#0, #1)")
-    @Native("c++",  "(#0)->printStackTrace(#1)")
-    public native def printStackTrace(p: Printer) : Void;
+    @Native("c++",  "(#this)->printStackTrace(#p)")
+    public native def printStackTrace(p: Printer) : void;
 
     @Native("java", "#0.fillInStackTrace()")
-    @Native("c++", "(#0)->fillInStackTrace()")
+    @Native("c++", "(#this)->fillInStackTrace()")
     public native def fillInStackTrace() : Throwable;
 
     /*

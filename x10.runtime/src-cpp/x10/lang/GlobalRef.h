@@ -78,7 +78,7 @@ template<class T> void x10::lang::GlobalRef<T>::_serialize(x10::lang::GlobalRef<
     buf.write(this_->value);
     #if defined(X10_USE_BDWGC) || defined(X10_DEBUG_REFERENCE_LOGGER)
     if (this_->location == x10aux::here) {
-        if (!this_->apply().isNull()) logGlobalReference(this_->apply());
+        if (!this_->__apply().isNull()) logGlobalReference(this_->__apply());
     }
     #endif
 }
@@ -94,6 +94,10 @@ template<class T> x10_boolean x10::lang::GlobalRef<T>::_struct_equals(x10aux::re
         return false;
     }
     return _struct_equals(x10aux::class_cast<x10::lang::GlobalRef<T> >(that));
+}
+
+template<class T> x10_boolean x10::lang::GlobalRef<T>::_struct_equals(x10::lang::GlobalRef<T> that) { 
+    return (location == that->location) && x10aux::struct_equals(value, that->value);
 }
 
 template<class T> x10aux::ref<x10::lang::String> x10::lang::GlobalRef<T>::toString() {
@@ -125,7 +129,7 @@ template<class T> void x10::lang::GlobalRef<T>::_initRTT() {
     const x10aux::RuntimeType* params[1] = { x10aux::getRTT<T>()};
     x10aux::RuntimeType::Variance variances[1] = { x10aux::RuntimeType::invariant};
     const char *baseName = "x10.lang.GlobalRef";
-    rtt.initStageTwo(baseName, 2, parents, 1, params, variances);
+    rtt.initStageTwo(baseName, x10aux::RuntimeType::struct_kind, 2, parents, 1, params, variances);
 }
 #endif // X10_LANG_GLOBALREF_IMPLEMENTATION
 #endif // __X10_LANG_GLOBALREF_NODEPS

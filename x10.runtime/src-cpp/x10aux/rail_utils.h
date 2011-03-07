@@ -82,7 +82,7 @@ namespace x10aux {
     }
 
 // platform-specific min rail alignment
-#ifdef _POWER
+#if defined(_POWER) || defined(__bgp__)
 #define X10_MIN_RAIL_ALIGNMENT 16
 #else
 #define X10_MIN_RAIL_ALIGNMENT ((x10_int)sizeof(x10_double))
@@ -114,19 +114,6 @@ namespace x10aux {
         _M_("In alloc_rail<"<<getRTT<T>()->name()
                             <<","<<getRTT<R>()->name()<<">"
             <<": rail = " << (void*)rail << "; length = " << length);
-        return rail;
-    }
-
-    template<class T, class R> R* alloc_pinned_rail(x10_int length) {
-        bool containsPtrs = x10aux::getRTT<T>()->containsPtrs;
-        R* uninitialized_rail = x10aux::alloc<R>(sizeof(R), containsPtrs);
-        T* raw_data = (T*) x10aux::alloc_internal_pinned(length*sizeof(T));
-        R *rail = new (uninitialized_rail) R(length, (T*)raw_data);
-        _M_("In alloc_pinned_rail<"<<getRTT<T>()->name()
-                            <<","<<getRTT<R>()->name()<<">"
-            <<": rail = " << (void*)rail << "; length = " << length);
-
-        rail->x10::lang::Object::_constructor();
         return rail;
     }
 

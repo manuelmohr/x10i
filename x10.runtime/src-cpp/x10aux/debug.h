@@ -62,7 +62,6 @@ struct _X10sourceFile
 struct _X10toCPPxref
 {
     uint16_t _X10index;       // Index of X10 file name in _X10sourceList
-    uint16_t _X10method;      // Index into _X10methodNameList of the X10 method (see Method Mapping)
     uint32_t _CPPindex;       // Index of C++ file name in _X10strings
     uint32_t _X10line;        // Line number of X10 source file line
     uint32_t _CPPfromLine;    // First line number of C++ line range
@@ -72,7 +71,6 @@ struct _X10toCPPxref
 struct _CPPtoX10xref
 {
     uint16_t _X10index;       // Index of X10 file name in _X10sourceList
-    uint16_t _X10method;      // Index into _X10methodNameList of the X10 method (see Method Mapping)
     uint32_t _CPPindex;       // Index of C++ file name in _X10strings
     uint32_t _X10line;        // Line number of X10 line
     uint32_t _CPPfromLine;    // First line number of C++ line range
@@ -90,6 +88,7 @@ struct _X10methodName
                                  // of the corresponding argument in _X10strings
     uint16_t _x10argCount;       // The number of X10 arguments
     uint16_t _lineIndex;         // Index into _CPPtoX10xrefList of the first line of the method
+    uint16_t _lastX10Line;       // The last line number of the method, in the original X10 source
 };
 
 struct _X10LocalVarMap
@@ -130,7 +129,7 @@ struct _X10ClosureMap
   uint32_t _x10index;         // Index of X10 file name in _X10sourceList
   uint32_t _x10startLine; // the start line of the closure definition in the X10 source
   uint32_t _x10endLine; // the end line of the closure definition in the X10 source
-  const struct _X10TypeMember* const _x10members; // pointer to an array of individual member types
+  const struct _X10TypeMember* _x10members; // pointer to an array of individual member types
 };
 
 struct _X10ArrayMap
@@ -176,6 +175,7 @@ struct _MetaDebugInfo_t {
   unsigned x10classMapListSize;   // the size in bytes of the X10 class mapping list
   unsigned x10closureMapListSize; // the size in bytes of the X10 async closure mapping list
   unsigned x10arrayMapListSize;   // the size in bytes of the X10 array mapping list
+  unsigned x10refMapListSize;     // the size in bytes of the X10 reference mapping list
 
   const char*                   x10strings;        // The string table
   const struct _X10sourceFile*  x10sourceList;     // The list of X10 source files
@@ -186,12 +186,21 @@ struct _MetaDebugInfo_t {
   const struct _X10ClassMap*    x10classMapList;   // The class mapping list
   const struct _X10ClosureMap*  x10closureMapList; // The async closure mapping list
   const struct _X10ArrayMap*    x10arrayMapList;   // The array mapping list
+  const struct _X10RefMap*      x10refMapList;     // The reference mapping list
 };
 
 //extern void _X10_Entry_Hook();     // A hook at the start of every X10 method.
 //extern void _X10_Exit_Hook();      // A hook at the end of every X10 method.
 extern void _X10_STATEMENT_HOOK();   // A hook at the start of every X10 executable statement.
                                      // Follows any method start hook, and precedes any method end hook.
+
+#ifdef __APPLE__
+#define _X10_DEBUG_SECTION section(".section __DWARF,_X10_DEBUG,regular,debug")
+#define _X10_DEBUG_DATA_SECTION section(".section __DWARF,_X10_DEBUG_DATA,regular,debug")
+#else
+#define _X10_DEBUG_SECTION section("_X10_DEBUG")
+#define _X10_DEBUG_DATA_SECTION section("_X10_DEBUG_DATA")
+#endif
 
 #endif //X10AUX_DEBUG_H
 // vim:tabstop=4:shiftwidth=4:expandtab

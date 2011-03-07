@@ -19,6 +19,7 @@ import polyglot.ast.FlagsNode;
 import polyglot.ast.Formal;
 import polyglot.ast.Id;
 import polyglot.ast.Node;
+import polyglot.ast.NodeFactory;
 import polyglot.ast.Term;
 import polyglot.ast.Term_c;
 import polyglot.ast.TypeNode;
@@ -29,7 +30,6 @@ import polyglot.types.Flags;
 import polyglot.types.LazyRef;
 import polyglot.types.LocalDef;
 import polyglot.types.MemberDef;
-import polyglot.types.Named;
 import polyglot.types.Package;
 import polyglot.types.QName;
 import polyglot.types.Ref;
@@ -47,16 +47,15 @@ import x10.constraint.XFailure;
 import x10.constraint.XVar;
 import x10.errors.Errors;
 import x10.extension.X10Del_c;
-import x10.types.AnnotatedType;
 import x10.types.ConstrainedType;
 import x10.types.MacroType;
 import x10.types.ParameterType;
 import x10.types.TypeDef;
 import x10.types.TypeDef_c;
 import x10.types.X10ClassDef;
+import x10.types.X10ClassType;
 import x10.types.X10ParsedClassType;
-import x10.types.X10TypeMixin;
-import x10.types.X10TypeSystem;
+import polyglot.types.TypeSystem;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.CConstraint;
 
@@ -172,30 +171,33 @@ public class TypeDecl_c extends Term_c implements TypeDecl {
 	}
 	
 	public Context enterScope(Context c) {
-	    return c.pushCode(typeDef);
+	    c = c.pushCode(typeDef);
+	    if (!c.inStaticContext() && typeDef.thisDef() != null)
+	        c.addVariable(typeDef.thisDef().asInstance());
+	    return c;
 	}
 
 	public Context enterChildScope(Node child, Context c) {
-	        if (child != type) {
-	            // Push formals so they're in scope in the types of the other formals.
-	            c = c.pushBlock();
-	            for (TypeParamNode f : typeParams) {
-	                f.addDecls(c);
-	            }
-	            for (Formal f : formals) {
-	                f.addDecls(c);
-	            }
+	    if (child != type) {
+	        // Push formals so they're in scope in the types of the other formals.
+	        c = c.pushBlock();
+	        for (TypeParamNode f : typeParams) {
+	            f.addDecls(c);
 	        }
+	        for (Formal f : formals) {
+	            f.addDecls(c);
+	        }
+	    }
 
-	        return super.enterChildScope(child, c);
+	    return super.enterChildScope(child, c);
 	}
 
 	private static final boolean ALLOW_TOP_LEVEL_TYPEDEFS = false;
     
 	@Override
 	public Node buildTypesOverride(TypeBuilder tb) {
-		final X10TypeSystem ts = (X10TypeSystem) tb.typeSystem();
-		X10NodeFactory nf = (X10NodeFactory) tb.nodeFactory();
+		final TypeSystem ts = (TypeSystem) tb.typeSystem();
+		NodeFactory nf = (NodeFactory) tb.nodeFactory();
 		
 		X10ClassDef ct = (X10ClassDef) tb.currentClass();
 		Package package_ = tb.currentPackage();
@@ -205,7 +207,7 @@ public class TypeDecl_c extends Term_c implements TypeDecl {
 		
 		if (topLevel && !ALLOW_TOP_LEVEL_TYPEDEFS) {
 		    Errors.issue(tb.job(),
-		                 new SemanticException("Type definitions must be static class or interface members.  This is a limitation of the current implementation.", position()));
+		                 new Errors.TypeDefinitionMustBeStaticClassOrInterfaceMembers(position()));
 		}
 /*
 		if (ALLOW_TOP_LEVEL_TYPEDEFS) {
@@ -234,7 +236,7 @@ public class TypeDecl_c extends Term_c implements TypeDecl {
 
 		// FIXME: also check if the current method is static
 		XVar thisVar = ct == null ? null : ct.thisVar();
-		Ref<ClassType> container = ct == null ? null : Types.ref(ct.asType());
+		Ref<X10ClassType> container = ct == null ? null : Types.ref(ct.asType());
 		Flags flags = local ? Flags.NONE : this.flags().flags();
 		if (topLevel)
 		    flags = flags.Static();
@@ -246,7 +248,7 @@ public class TypeDecl_c extends Term_c implements TypeDecl {
 		if (!local) {
 		    if (ct == null) {
 		        Errors.issue(tb.job(),
-		                     new SemanticException("Could not find enclosing class or package for type definition \"" + name.id() + "\".", position()));
+		                     new Errors.CouldNotFindEnclosingClass(name.id(), position()));
 		    } else {
 		        ct.addMemberType(typeDef);
 		    }
@@ -271,12 +273,12 @@ public class TypeDecl_c extends Term_c implements TypeDecl {
 		for (Formal f : n.formals()) {
 		    final Formal f2 = f;
 		    final LazyRef<CConstraint> cref = Types.<CConstraint>lazyRef(new CConstraint());
-		    Type t = X10TypeMixin.xclause(f.type().typeRef(), cref);
+		    ConstrainedType t = ConstrainedType.xclause(f.type().typeRef(), cref);
 		    cref.setResolver(new Runnable() {
 		        public void run() {
 		            CConstraint c = new CConstraint();
 		            try {
-		                c.addSelfBinding(ts.xtypeTranslator().trans(f2.localDef().asInstance()));
+		                c.addSelfBinding(ts.xtypeTranslator().translate(f2.localDef().asInstance()));
 		            }
 		            catch (XFailure e) {
 		            }
@@ -310,9 +312,9 @@ public class TypeDecl_c extends Term_c implements TypeDecl {
 		// Otherwise, we'll search through the container.
 		if (!local && ct != null && ct.asType().isGloballyAccessible() && formalTypes.size() == 0 && typeParameters.size() == 0) {
 		    if (ALLOW_TOP_LEVEL_TYPEDEFS) {
-		        if (ct.name().equals(X10TypeSystem.DUMMY_PACKAGE_CLASS_NAME) && ct.package_() != null)
+		        if (ct.name().equals(TypeSystem.DUMMY_PACKAGE_CLASS_NAME) && ct.package_() != null)
 		            ts.systemResolver().install(QName.make(ct.package_().get().fullName(), name.id()), typeDef.asType());
-		        else if (ct.name().equals(X10TypeSystem.DUMMY_PACKAGE_CLASS_NAME) && ct.package_() == null)
+		        else if (ct.name().equals(TypeSystem.DUMMY_PACKAGE_CLASS_NAME) && ct.package_() == null)
 		            ts.systemResolver().install(QName.make(null, name.id()), typeDef.asType());
 		    }
 
@@ -323,9 +325,17 @@ public class TypeDecl_c extends Term_c implements TypeDecl {
 	}
 	
 	@Override
-	public Node typeCheck(ContextVisitor tc) throws SemanticException {
-	    checkCycles(type.type());
-	    X10MethodDecl_c.dupFormalCheck(typeParams, formals);
+	public Node typeCheck(ContextVisitor tc) {
+	    try {
+	        checkCycles(type.type());
+	    } catch (SemanticException z) {
+	        Errors.issue(tc.job(), z, this);
+	    }
+	    try {
+	        X10MethodDecl_c.dupFormalCheck(typeParams, formals);
+	    } catch (SemanticException z) {
+	        Errors.issue(tc.job(), z, this);
+	    }
 	    return this;
 	}
 
@@ -333,7 +343,7 @@ public class TypeDecl_c extends Term_c implements TypeDecl {
 	    if (type instanceof MacroType) {
 		MacroType mt = (MacroType) type;
 		if (mt.def() == typeDef) {
-		    throw new SemanticException("Recursive type definition; type definition depends on itself.", position());
+		    throw new Errors.RecursiveTypeDefinition(position());
 		}
 	    }
 	    if (type instanceof ConstrainedType) {
@@ -345,10 +355,6 @@ public class TypeDecl_c extends Term_c implements TypeDecl {
 		checkCycles(ct.superClass());
 		for (Type t : ct.interfaces())
 		    checkCycles(t);
-	    }
-	    if (type instanceof AnnotatedType) {
-		AnnotatedType ct = (AnnotatedType) type;
-		checkCycles(ct.baseType());
 	    }
 	}
 

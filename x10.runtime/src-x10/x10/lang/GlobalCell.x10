@@ -32,7 +32,7 @@ public class GlobalCell[T] {
      *
      * @return the current value stored in the Cell.
      */
-    public def apply() =  at (root) root().value;
+    public operator this() =  at (root) root().value;
 
     /**
      * Set the value stored in the Cell to the new value.
@@ -40,7 +40,7 @@ public class GlobalCell[T] {
      *
      * @param x the new value
      */
-    public def apply(x:T) { at(root) root().value = x; }
+    public operator this(x:T) { at(root) root().value = x; }
 
     /**
      * Set the value stored in the Cell to the new value.
@@ -49,6 +49,7 @@ public class GlobalCell[T] {
      * @param x the new value
      * @return the new value stored in the Cell.
      */
+    public operator this()=(x:T) { set(x); }
     public def set(x:T) { 
     	at(root) { 
     		root().value = x; 
@@ -63,7 +64,7 @@ public class GlobalCell[T] {
      * @param x the given value
      * @return a new Cell with the given value stored in it.
      */
-    public static def make[T](x:T)= (new GlobalCell[T](new Cell[T](x)));
+    public static def make[T](x:T)= (new GlobalCell[T](x));
 
 
     /**

@@ -19,36 +19,31 @@ import polyglot.ast.TypeNode;
 import polyglot.types.Flags;
 import polyglot.types.LocalDef;
 import polyglot.types.MethodDef_c;
-import polyglot.types.MethodInstance;
+
 import polyglot.types.Name;
 import polyglot.types.QName;
 import polyglot.types.Ref;
-import polyglot.types.ReferenceType;
+
 import polyglot.types.SemanticException;
 import polyglot.types.Name;
-import polyglot.types.StructType;
+import polyglot.types.ContainerType;
 import polyglot.types.Type;
 import polyglot.types.TypeSystem;
 import polyglot.types.Types;
 import polyglot.types.UnknownType;
-import polyglot.util.CollectionUtil;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.util.Position;
 import polyglot.util.TypedList;
 import x10.constraint.XConstraint;
 import x10.constraint.XFailure;
+import x10.constraint.XTerms;
 import x10.constraint.XVar;
 import x10.constraint.XTerm;
 import x10.constraint.XVar;
 import x10.types.constraints.CConstraint;
+import x10.types.constraints.CTerms;
 import x10.types.constraints.TypeConstraint;
 
-/**
- * An X10ConstructorInstance_c varies from a ConstructorInstance_c only in that it
- * maintains a returnType. If an explicit returnType is not declared in the constructor
- * then the returnType is simply a noClause variant of the container.
- * @author vj
- *
- */
 public class X10MethodDef_c extends MethodDef_c implements X10MethodDef {
     private static final long serialVersionUID = -9049001281152283179L;
 
@@ -60,13 +55,13 @@ public class X10MethodDef_c extends MethodDef_c implements X10MethodDef {
     Ref<? extends Type> offerType;
 
     public X10MethodDef_c(TypeSystem ts, Position pos,
-            Ref<? extends StructType> container,
+            Ref<? extends ContainerType> container,
             Flags flags, 
             Ref<? extends Type> returnType,
             Name name,
             List<ParameterType> typeParams,
             List<Ref<? extends Type>> formalTypes,
-            XVar thisVar,
+            ThisDef thisDef,
             List<LocalDef> formalNames,
             Ref<CConstraint> guard,
             Ref<TypeConstraint> typeGuard,
@@ -74,25 +69,32 @@ public class X10MethodDef_c extends MethodDef_c implements X10MethodDef {
             Ref<XTerm> body) {
         super(ts, pos, container, flags, returnType, name, formalTypes);
         this.typeParameters = TypedList.copyAndCheck(typeParams, ParameterType.class, true);
-        this.thisVar = thisVar;
         this.formalNames = TypedList.copyAndCheck(formalNames, LocalDef.class, true);
         this.guard = guard;
         this.typeGuard = typeGuard;
+        this.thisDef = thisDef;
         this.body = body;
         this.offerType = offerType;
     }
 
-    XVar thisVar;
     public XVar thisVar() {
-        return this.thisVar;
+        if (this.thisDef != null)
+            return this.thisDef.thisVar();
+        return CTerms.makeThis(); // Why #this instead of this?
     }
-    
+
+    ThisDef thisDef;
+
+    public ThisDef thisDef() {
+        return this.thisDef;
+    }
+
+    public void setThisDef(ThisDef thisDef) {
+        this.thisDef = thisDef;
+    }
 
     public Ref<? extends Type> offerType() {
     	return this.offerType;
-    }
-    public void setThisVar(XVar thisVar) {
-        this.thisVar = thisVar;
     }
 
     public List<LocalDef> formalNames() {
@@ -202,14 +204,14 @@ public class X10MethodDef_c extends MethodDef_c implements X10MethodDef {
     @Override
     public MethodInstance asInstance() {
         if (asInstance == null) {
-            asInstance = new X10MethodInstance_c(ts, position(), Types.<X10MethodDef>ref(this));
+            asInstance = new MethodInstance_c(ts, position(), Types.<X10MethodDef>ref(this));
         }
-        return asInstance;
+        return (MethodInstance) asInstance;
     }
     
-    public static boolean hasVar(Type type, XVar var) {
+/*    public static boolean hasVar(Type type, XVar var) {
 	    if (type instanceof ConstrainedType) {
-		    XConstraint rc = X10TypeMixin.realX(type);
+		    XConstraint rc = Types.realX(type);
 		    if (rc != null && rc.hasVar(var))
 			    return true;
 		    ConstrainedType ct = (ConstrainedType) type;
@@ -229,9 +231,9 @@ public class X10MethodDef_c extends MethodDef_c implements X10MethodDef {
 	    }
 	    return false;
     }
-    
+    */
 	public String toString() {
-		String s = designator() + " " + X10Flags.toX10Flags(flags()).prettyPrint() + container() + "." + 
+		String s = designator() + " " + flags().prettyPrint() + container() + "." + 
 		signature() + (guard() != null ? guard() : "") 
 		+ ": " + returnType();
 

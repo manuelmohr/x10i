@@ -9,9 +9,10 @@ package polyglot.types;
 
 import java.util.*;
 
-import polyglot.main.Report;
+import polyglot.main.Reporter;
 import polyglot.util.*;
-import polyglot.util.Enum;
+import x10.types.MethodInstance;
+import x10.util.CollectionFactory;
 
 /**
  * This class maintains a context for looking up named variables, types,
@@ -23,28 +24,39 @@ import polyglot.util.Enum;
  * Each context object contains maps from names to variable, type, and
  * method objects declared in that scope.
  */
-public class Context_c implements Context
+public abstract class Context_c implements Context
 {
     protected Context outer;
     protected TypeSystem ts;
+    protected Reporter reporter;
 
-    public static class Kind extends Enum {
-        private static final long serialVersionUID = 711415714966041239L;
-        public Kind(String name) {
-            super(name);
+    public static enum Kind {
+        BLOCK("block"),
+        CLASS("class"),
+        CODE("code"),
+        OUTER("outer"),
+        SOURCE("source");
+
+        public final String name;
+        private Kind(String name) {
+            this.name = name;
         }
+        @Override public String toString() {
+            return name;
+        }               
     }
     
-    public static final Kind BLOCK = new Kind("block");
-    public static final Kind CLASS = new Kind("class");
-    public static final Kind CODE = new Kind("code");
-    public static final Kind OUTER = new Kind("outer");
-    public static final Kind SOURCE = new Kind("source");
+    public static final Kind BLOCK = Kind.BLOCK;
+    public static final Kind CLASS = Kind.CLASS;
+    public static final Kind CODE = Kind.CODE;
+    public static final Kind OUTER = Kind.OUTER;
+    public static final Kind SOURCE = Kind.SOURCE;
     
     public Context_c(TypeSystem ts) {
         this.ts = ts;
         this.outer = null;
         this.kind = OUTER;
+        this.reporter = ts.extensionInfo().getOptions().reporter;
     }
     
     public boolean isBlock() { return kind == BLOCK; }
@@ -57,9 +69,10 @@ public class Context_c implements Context
         return ts;
     }
 
-    public Object copy() {
+    public Context_c shallowCopy() {
         try {
-            return super.clone();
+            return (Context_c) super.clone();
+            // it's a shallow copy cause we do not copy types or vars or deep copy the outer. that's what we do in freeze.
         }
         catch (CloneNotSupportedException e) {
             throw new InternalCompilerError("Java clone() weirdness.");
@@ -67,14 +80,17 @@ public class Context_c implements Context
     }
     
     public Context freeze() {
-        Context_c c = (Context_c) this.copy();
-        c.types = types != null ? new HashMap<Name, Named>(types) : null;
-        c.vars = vars != null ? new HashMap<Name, VarInstance<?>>(vars) : null;
+        if (true) return this;
+        // todo: is freezing actually needed anymore? (the guard in closures might be a problem...)
+        Context_c c =  this.shallowCopy();
+        c.types = types != null ? CollectionFactory.newHashMap(types) : null;
+        c.vars = vars != null ? CollectionFactory.newHashMap(vars) : null;
+        c.outer = outer != null ? outer.freeze() : null;
         return c;
     }
 
     protected Context_c push() {
-        Context_c v = (Context_c) this.copy();
+        Context_c v = this.shallowCopy();
         v.outer = this;
         v.types = null;
         v.vars = null;
@@ -89,7 +105,7 @@ public class Context_c implements Context
     protected ClassType type;
     protected ClassDef scope;
     protected CodeDef code;
-    protected Map<Name,Named> types;
+    protected Map<Name,Type> types;
     protected Map<Name,VarInstance<?>> vars;
     protected boolean inCode;
 
@@ -137,17 +153,17 @@ public class Context_c implements Context
      * Looks up a method with name "name" and arguments compatible with
      * "argTypes".
      */
-    public MethodInstance findMethod(TypeSystem_c.MethodMatcher matcher) throws SemanticException {
-        if (Report.should_report(TOPICS, 3))
-          Report.report(3, "find-method " + matcher.signature() + " in " + this);
+    public MethodInstance SUPER_findMethod(TypeSystem_c.MethodMatcher matcher) throws SemanticException {
+        if (reporter.should_report(TOPICS, 3))
+          reporter.report(3, "find-method " + matcher.signature() + " in " + this);
 
         // Check for any method with the appropriate name.
         // If found, stop the search since it shadows any enclosing
         // classes method of the same name.
         if (this.currentClass() != null &&
             ts.hasMethodNamed(this.currentClass(), matcher.name())) {
-            if (Report.should_report(TOPICS, 3))
-              Report.report(3, "find-method " + matcher.signature() + " -> " +
+            if (reporter.should_report(TOPICS, 3))
+              reporter.report(3, "find-method " + matcher.signature() + " -> " +
                                 this.currentClass());
 
             // Found a class that has a method of the right name.
@@ -165,7 +181,7 @@ public class Context_c implements Context
     /**
      * Gets a local of a particular name.
      */
-    public LocalInstance findLocal(Name name) throws SemanticException {
+    public LocalInstance SUPER_findLocal(Name name) throws SemanticException {
 	VarInstance<?> vi = findVariableSilent(name);
 
 	if (vi instanceof LocalInstance) {
@@ -178,15 +194,15 @@ public class Context_c implements Context
     /**
      * Finds the class which added a field to the scope.
      */
-    public ClassType findFieldScope(Name name) throws SemanticException {
-        if (Report.should_report(TOPICS, 3))
-          Report.report(3, "find-field-scope " + name + " in " + this);
+    public ClassType SUPER_findFieldScope(Name name) throws SemanticException {
+        if (reporter.should_report(TOPICS, 3))
+          reporter.report(3, "find-field-scope " + name + " in " + this);
 
         VarInstance<?> vi = findVariableInThisScope(name);
 
         if (vi instanceof FieldInstance) {
-            if (Report.should_report(TOPICS, 3))
-              Report.report(3, "find-field-scope " + name + " in " + vi);
+            if (reporter.should_report(TOPICS, 3))
+              reporter.report(3, "find-field-scope " + name + " in " + vi);
             return type;
         }
 
@@ -199,14 +215,14 @@ public class Context_c implements Context
 
     /** Finds the class which added a method to the scope.
      */
-    public ClassType findMethodScope(Name name) throws SemanticException {
-        if (Report.should_report(TOPICS, 3))
-          Report.report(3, "find-method-scope " + name + " in " + this);
+    public ClassType SUPER_findMethodScope(Name name) throws SemanticException {
+        if (reporter.should_report(TOPICS, 3))
+          reporter.report(3, "find-method-scope " + name + " in " + this);
 
         if (this.currentClass() != null &&
             ts.hasMethodNamed(this.currentClass(), name)) {
-            if (Report.should_report(TOPICS, 3))
-              Report.report(3, "find-method-scope " + name + " -> " +
+            if (reporter.should_report(TOPICS, 3))
+              reporter.report(3, "find-method-scope " + name + " -> " +
                                 this.currentClass());
             return this.currentClass();
         }
@@ -221,7 +237,7 @@ public class Context_c implements Context
     /**
      * Gets a field of a particular name.
      */
-    public FieldInstance findField(Name name) throws SemanticException {
+    public FieldInstance SUPER_findField(Name name) throws SemanticException {
 	VarInstance<?> vi = findVariableSilent(name);
 
 	if (vi instanceof FieldInstance) {
@@ -231,8 +247,8 @@ public class Context_c implements Context
                 throw new SemanticException("Field " + name + " not accessible.");
 	    }
 
-            if (Report.should_report(TOPICS, 3))
-              Report.report(3, "find-field " + name + " -> " + fi);
+            if (reporter.should_report(TOPICS, 3))
+              reporter.report(3, "find-field " + name + " -> " + fi);
 	    return fi;
 	}
 
@@ -246,8 +262,8 @@ public class Context_c implements Context
         VarInstance<?> vi = findVariableSilent(name);
 
 	if (vi != null) {
-            if (Report.should_report(TOPICS, 3))
-              Report.report(3, "find-var " + name + " -> " + vi);
+            if (reporter.should_report(TOPICS, 3))
+              reporter.report(3, "find-var " + name + " -> " + vi);
             return vi;
 	}
 
@@ -258,14 +274,14 @@ public class Context_c implements Context
      * Gets a local or field of a particular name.
      */
     public VarInstance<?> findVariableSilent(Name name) {
-        if (Report.should_report(TOPICS, 3))
-          Report.report(3, "find-var " + name + " in " + this);
+        if (reporter.should_report(TOPICS, 3))
+          reporter.report(3, "find-var " + name + " in " + this);
 
         VarInstance<?> vi = findVariableInThisScope(name);
 
         if (vi != null) {
-            if (Report.should_report(TOPICS, 3))
-              Report.report(3, "find-var " + name + " -> " + vi);
+            if (reporter.should_report(TOPICS, 3))
+              reporter.report(3, "find-var " + name + " -> " + vi);
             return vi;
         }
 
@@ -284,28 +300,28 @@ public class Context_c implements Context
         return "(" + kind + " " + mapsToString() + " " + outer + ")";
     }
 
-    public Context pop() {
+    public Context SUPER_pop() {
         return outer;
     }
 
     /**
      * Finds the definition of a particular type.
      */
-    public Named find(Matcher<Named> matcher) throws SemanticException {
-	if (Report.should_report(TOPICS, 3))
-            Report.report(3, "find-type " + matcher.signature() + " in " + this);
+    public List<Type> find(Matcher<Type> matcher) throws SemanticException {
+	if (reporter.should_report(TOPICS, 3))
+            reporter.report(3, "find-type " + matcher.signature() + " in " + this);
 
         if (isOuter())
             return ts.systemResolver().find(QName.make(null, matcher.name())); // NOTE: looking up a short name
         if (isSource())
             return it.find(matcher);
 
-        Named type = findInThisScope(matcher);
+        Type type = findInThisScope(matcher);
 
         if (type != null) {
-            if (Report.should_report(TOPICS, 3))
-              Report.report(3, "find " + matcher.signature() + " -> " + type);
-            return type;
+            if (reporter.should_report(TOPICS, 3))
+              reporter.report(3, "find " + matcher.signature() + " -> " + type);
+            return CollectionUtil.<Type>list(type);
         }
 
         if (outer != null) {
@@ -340,9 +356,9 @@ public class Context_c implements Context
      * @return A new context with a new scope and which maps the short name
      * of type to type.
      */
-    public Context pushClass(ClassDef classScope, ClassType type) {
-        if (Report.should_report(TOPICS, 4))
-          Report.report(4, "push class " + classScope + " " + classScope.position());
+    public Context SUPER_pushClass(ClassDef classScope, ClassType type) {
+        if (reporter.should_report(TOPICS, 4))
+          reporter.report(4, "push class " + classScope + " " + classScope.position());
         Context_c v = push();
         v.kind = CLASS;
         v.scope = classScope;
@@ -360,9 +376,9 @@ public class Context_c implements Context
     /**
      * pushes an additional block-scoping level.
      */
-    public Context pushBlock() {
-        if (Report.should_report(TOPICS, 4))
-          Report.report(4, "push block");
+    public Context SUPER_pushBlock() {
+        if (reporter.should_report(TOPICS, 4))
+          reporter.report(4, "push block");
         Context_c v = push();
         v.kind = BLOCK;
         return v;
@@ -371,9 +387,9 @@ public class Context_c implements Context
     /**
      * pushes an additional static scoping level.
      */
-    public Context pushStatic() {
-        if (Report.should_report(TOPICS, 4))
-          Report.report(4, "push static");
+    public Context SUPER_pushStatic() {
+        if (reporter.should_report(TOPICS, 4))
+          reporter.report(4, "push static");
         Context_c v = push();
         v.staticContext = true;
         return v;
@@ -383,13 +399,13 @@ public class Context_c implements Context
      * enters a method
      */
     public Context pushCode(CodeDef ci) {
-        if (Report.should_report(TOPICS, 4))
-          Report.report(4, "push code " + ci.position());
+        if (reporter.should_report(TOPICS, 4))
+          reporter.report(4, "push code " + ci.position());
         Context_c v = push();
         v.kind = CODE;
         v.code = ci;
         v.inCode = true;
-        v.staticContext = ci instanceof MemberDef && ((MemberDef) ci).flags().isStatic();
+        v.staticContext = ci.staticContext();
         return v;
     }
 
@@ -425,14 +441,14 @@ public class Context_c implements Context
     /**
      * Gets current class
      */
-    public ClassType currentClass() {
+    public ClassType SUPER_currentClass() {
         return type;
     }
 
     /**
      * Gets current class
      */
-    public ClassDef currentClassDef() {
+    public ClassDef SUPER_currentClassDef() {
         return scope;
     }
 
@@ -440,33 +456,37 @@ public class Context_c implements Context
      * Adds a symbol to the current scoping level.
      */
     public void addVariable(VarInstance<?> vi) {
-        if (Report.should_report(TOPICS, 3))
-          Report.report(3, "Adding " + vi.name() + " to context.");
+        if (reporter.should_report(TOPICS, 3))
+          reporter.report(3, "Adding " + vi.name() + " to context.");
         addVariableToThisScope(vi);
     }
 
     /**
      * Adds a named type object to the current scoping level.
      */
-    public void addNamed(Named t) {
-        if (Report.should_report(TOPICS, 3))
-          Report.report(3, "Adding type " + t.name() + " to context.");
+    public void addNamed(Type t) {
+        if (reporter.should_report(TOPICS, 3))
+          reporter.report(3, "Adding type " + t.name() + " to context.");
         addNamedToThisScope(t);
     }
 
-    public Named findInThisScope(Matcher<Named> matcher) {
-	Name name = matcher.name();
-	
-        Named t = null;
+    public Type findInThisScope(Matcher<Type> matcher) {
+        Name name = matcher.name();
+        
+        Type t = null;
         
         if (types != null) {
-            t = (Named) types.get(name);
+            t = types.get(name);
 
             if (t != null) {
         	try {
         	    t = matcher.instantiate(t);
         	}
         	catch (SemanticException e) {
+                // todo: we might have this exception:
+                // SemanticException: Call invalid; calling environment does not entail the method guard.
+                // therefore we should report the error or store it.
+                // Because we ignore it, the error message for TypedefConstraint3c_MustFailCompile is horrible!
         	    t = null;
         	}
             }
@@ -484,7 +504,8 @@ public class Context_c implements Context
         
         if (t == null && isClass()) {
             try {
-        	t = ts.classContextResolver(this.currentClass(), this).find(matcher);
+        	List<Type> res = ts.classContextResolver(this.currentClass(), this).find(matcher);
+            t = SystemResolver.first(res);
             }
             catch (SemanticException e) {
             }
@@ -493,8 +514,8 @@ public class Context_c implements Context
         return t;
     }
 
-    public void addNamedToThisScope(Named type) {
-        if (types == null) types = new HashMap<Name, Named>();
+    public void addNamedToThisScope(Type type) {
+        if (types == null) types = CollectionFactory.<Name, Type>newHashMap();
         types.put(type.name(), type);
     }
 
@@ -524,11 +545,11 @@ public class Context_c implements Context
     }
 
     public void addVariableToThisScope(VarInstance<?> var) {
-        if (vars == null) vars = new HashMap<Name,VarInstance<?>>();
+        if (vars == null) vars = CollectionFactory.newHashMap();
         vars.put(var.name(), var);
     }
 
     private static final Collection<String> TOPICS = 
-                CollectionUtil.list(Report.types, Report.context);
+                CollectionUtil.list(Reporter.types, Reporter.context);
 
 }

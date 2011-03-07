@@ -10,14 +10,16 @@ package polyglot.frontend;
 import java.io.*;
 import java.util.*;
 
-import polyglot.main.Report;
+import polyglot.main.Reporter;
 import polyglot.types.QName;
 import polyglot.util.FileUtil;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 
 /** A <code>SourceLoader</code> is responsible for loading source files. */
 public class SourceLoader
 {
     protected ExtensionInfo sourceExt;
+    protected Reporter reporter;
     protected List<File> sourcePath;
 
     /** 0 if unknown, 1 if case insensitive, -1 if not. */
@@ -28,10 +30,11 @@ public class SourceLoader
     protected Map<Object,Source> loadedSources;
 
     public SourceLoader(ExtensionInfo sourceExt, List<File> sourcePath) {
-	this.sourcePath = sourcePath;
-	this.sourceExt = sourceExt;
+        this.sourcePath = sourcePath;
+        this.sourceExt = sourceExt;
+        this.reporter = sourceExt.getOptions().reporter;
         this.caseInsensitive = 0;
-        this.loadedSources = new HashMap<Object, Source>();
+        this.loadedSources = CollectionFactory.newHashMap();
     }
 
     /** Load a source from a specific file. */
@@ -86,8 +89,8 @@ public class SourceLoader
             }
         }
         
-        if (Report.should_report(Report.loader, 2))
-            Report.report(2, "Loading class from " + sourceFile);
+        if (reporter.should_report(Reporter.loader, 2))
+            reporter.report(2, "Loading class from " + sourceFile);
 
         Resource r = new FileResource(sourceFile);
         FileSource s = (FileSource) loadedSources.get(fileKey(r));
@@ -133,7 +136,7 @@ public class SourceLoader
     
     private ClassPathResourceLoader pathloader() {
 	if (pathloader == null)
-	    pathloader = new ClassPathResourceLoader(sourcePath);
+	    pathloader = new ClassPathResourceLoader(sourcePath,reporter);
 	return pathloader;
     }
         
@@ -150,8 +153,8 @@ public class SourceLoader
             Resource r = loader.loadResource(fileName);
             if (r != null) {
         	try {
-        	    if (Report.should_report(Report.loader, 2))
-        		Report.report(2, "Loading " + className + " from " + r);
+        	    if (reporter.should_report(Reporter.loader, 2))
+        	        reporter.report(2, "Loading " + className + " from " + r);
         	    FileSource s = sourceExt.createFileSource(r, false);
         	    loadedSources.put(fileKey(r), s);
         	    return s;

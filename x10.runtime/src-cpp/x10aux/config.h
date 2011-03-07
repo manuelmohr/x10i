@@ -12,6 +12,10 @@
 #ifndef X10AUX_CONFIG_H
 #define X10AUX_CONFIG_H
 
+#ifdef __CYGWIN__
+#undef __STRICT_ANSI__ // Strict ANSI mode is too strict in Cygwin
+#endif
+
 /*
  * The following performance macros are supported:
  *   NO_EXCEPTIONS     - remove all exception-related code
@@ -28,14 +32,14 @@
  * The following debugging macros are supported:
  *   TRACE_REF         - trace reference operations
  *   TRACE_CAST        - trace casts
+ *   TRACE_ALLOC       - trace allocation operations
  *   TRACE_ENV_VAR     - turn on support for the tracing variables listed below
- *   REF_STRIP_TYPE    - experimental option: erase the exact content type in references
  *
  * Note, tracing is not actually enabled unless the following environment variables are defined:
- *   X10_TRACE_ALLOC       - trace allocation operations
  *   X10_TRACE_INIT        - trace x10 class initialization
  *   X10_TRACE_X10RT       - trace x10rt invocations
  *   X10_TRACE_SER         - trace serialization operations
+ *   X10_TRACE_STATIC_INIT - trace static initialization
  *   X10_TRACE_ALL         - all of the above
  */
 
@@ -54,9 +58,15 @@
 #ifndef NO_ASSERTIONS
 #define NO_ASSERTIONS
 #endif//NO_ASSERTIONS
-#endif
+#ifndef NDEBUG
+#define NDEBUG
+#endif//NDEBUG
+#ifndef NO_TRACING
+#define NO_TRACING
+#endif//NO_TRACING
+#endif//NO_CHECKS
 
-#ifndef NDEBUG 
+#ifndef NO_TRACING
 #ifndef TRACE_ENV_VAR
 #define TRACE_ENV_VAR
 #endif//TRACE_ENV_VAR
@@ -89,6 +99,7 @@
    // end workaround
 #endif
 #include <stdint.h>
+#include <stdio.h>
 
 #include <x10aux/pragmas.h>
 
@@ -137,21 +148,21 @@ namespace x10aux {
     void init_config_bools (void);
     extern bool use_ansi_colors_;
     extern bool disable_dealloc_;
-    extern bool trace_alloc_;
     extern bool trace_init_;
     extern bool trace_x10rt_;
     extern bool trace_ser_;
+    extern bool trace_static_init_;
 
     extern inline bool use_ansi_colors()
     { if (!init_config_bools_done) init_config_bools() ; return use_ansi_colors_; }
-    extern inline bool trace_alloc()
-    { if (!init_config_bools_done) init_config_bools() ; return trace_alloc_; }
     extern inline bool trace_init()
     { if (!init_config_bools_done) init_config_bools() ; return trace_init_; }
     extern inline bool trace_x10rt()
     { if (!init_config_bools_done) init_config_bools() ; return trace_x10rt_; }
     extern inline bool trace_ser()
     { if (!init_config_bools_done) init_config_bools() ; return trace_ser_; }
+    extern inline bool trace_static_init()
+    { if (!init_config_bools_done) init_config_bools() ; return trace_static_init_; }
 
     extern x10_int here;
     extern bool x10rt_initialized;
@@ -197,9 +208,9 @@ namespace x10aux {
 #define ANSI_SER ANSI_CYAN
 #define ANSI_X10RT ANSI_BLUE
 
-#if !defined(NO_IOSTREAM) && defined(TRACE_ENV_VAR)
+#if !defined(NO_IOSTREAM) && defined(TRACE_ALLOC)
 #include <stdio.h>
-#define _M_(x) _MAYBE_DEBUG_MSG(ANSI_ALLOC,"MM",x,::x10aux::trace_alloc())
+#define _M_(x) _DEBUG_MSG(ANSI_ALLOC,"MM",x)
 #else
 #define _M_(x)
 #endif
@@ -236,6 +247,15 @@ namespace x10aux {
 
 #if !defined(NO_IOSTREAM) && defined(TRACE_ENV_VAR)
 #include <stdio.h>
+#define _SI_(x) _MAYBE_DEBUG_MSG(ANSI_SER,"SI",x,::x10aux::trace_static_init())
+#define _SId_(x) x
+#else
+#define _SI_(x)
+#define _SId_(x)
+#endif
+
+#if !defined(NO_IOSTREAM) && defined(TRACE_ENV_VAR)
+#include <stdio.h>
 #define _X_(x) _MAYBE_DEBUG_MSG(ANSI_X10RT,"XX",x,::x10aux::trace_x10rt())
 #else
 #define _X_(x)
@@ -260,6 +280,12 @@ namespace x10aux {
 
 //combine __FILE__ and __LINE__ without using sprintf or other junk
 #define __FILELINE__ __FILE__ ":" __TOKEN_STRING_DEREF(__LINE__) 
+
+#define UNIMPLEMENTED(m) do { \
+        fprintf(stderr, "Aborting due to unimplemented function %s at %s\n",m,__FILELINE__); \
+        abort();                                                        \
+} while (0)
+
 
 // Debug support
 #include <x10aux/debug.h>

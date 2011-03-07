@@ -12,12 +12,13 @@ package x10c.visit;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import polyglot.ast.Assign;
 import polyglot.ast.Block;
 import polyglot.ast.Call;
-import polyglot.ast.ConstructorCall;
 import polyglot.ast.Eval;
 import polyglot.ast.Expr;
 import polyglot.ast.FloatLit;
@@ -35,7 +36,7 @@ import polyglot.types.Context;
 import polyglot.types.Flags;
 import polyglot.types.LocalInstance;
 import polyglot.types.MethodDef;
-import polyglot.types.MethodInstance;
+
 import polyglot.types.Name;
 import polyglot.types.QName;
 import polyglot.types.Ref;
@@ -43,44 +44,49 @@ import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.types.TypeSystem;
 import polyglot.types.Types;
+import polyglot.types.VarDef;
+import polyglot.types.VarInstance;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.NodeVisitor;
 import x10.ast.AtExpr;
 import x10.ast.AtStmt;
+import x10.ast.ClosureCall;
+import x10.ast.SettableAssign;
 import x10.ast.X10Binary_c;
 import x10.ast.X10CanonicalTypeNode;
-import x10.ast.X10IntLit_c;
-import x10.ast.X10NodeFactory;
 import x10.ast.X10Unary_c;
+import x10.types.EnvironmentCapture;
 import x10.types.X10ConstructorInstance;
-import x10.types.X10Context;
 import x10.types.X10LocalDef;
+import x10.types.MethodInstance;
 import x10.types.X10ParsedClassType;
-import x10.types.X10TypeMixin;
-import x10.types.X10TypeSystem;
 import x10.types.checker.Converter;
 
 public class VarsBoxer extends ContextVisitor {
-    private static final String POSTFIX_BOXED_VAR = "$boxed";
 
-    private static final QName GLOBAL_REF = QName.make("x10.lang.GlobalRef");
+    private static final String POSTFIX_BOXED_VAR = "$b";
+    private static final QName LOCAL_VAR = QName.make("x10.compiler.LocalVar");
+    private static final Name GET = Name.make("get");
+    private static final Name SET = Name.make("set");
     
-    private final X10TypeSystem xts;
-    private final X10NodeFactory xnf;
-    private X10ParsedClassType globalRefType;
+    private final TypeSystem xts;
+    private final NodeFactory xnf;
+    private final Map<X10LocalDef,X10LocalDef> defToDef = CollectionFactory.newHashMap();
+    private X10ParsedClassType localVarType;
     
     public VarsBoxer(Job job, TypeSystem ts, NodeFactory nf) {
         super(job, ts, nf);
-        xts = (X10TypeSystem) ts;
-        xnf = (X10NodeFactory) nf;
+        xts = (TypeSystem) ts;
+        xnf = (NodeFactory) nf;
     }
     
     @Override
     public NodeVisitor begin() {
         try {
-            globalRefType = (X10ParsedClassType) xts.typeForName(GLOBAL_REF);
+            localVarType = (X10ParsedClassType) xts.typeForName(LOCAL_VAR);
         } catch (SemanticException e) {
             throw new InternalCompilerError("Something is terribly wrong", e);
         }
@@ -97,18 +103,20 @@ public class VarsBoxer extends ContextVisitor {
             final List<Name> outerLocals = new ArrayList<Name>();
             
             AtStmt atSt = (AtStmt) n;
-            atSt = atSt.body((Stmt) atSt.body().visit(createAtVisitor(context2, privatizations, outerLocals)));
+            List<VarInstance<? extends VarDef>> caps = atSt.atDef().capturedEnvironment();
+            atSt = atSt.body((Stmt) atSt.body().visit(createAtExtraNodeVisitor(context2, privatizations, caps, atSt.atDef())));
+            atSt = atSt.body((Stmt) atSt.body().visit(createAtOuterVarAccessVisitor(context2, outerLocals, caps)));
             
             if (outerLocals.size() > 0 || privatizations.size() > 0) {
                 List<Stmt> newBody = new ArrayList<Stmt>();
                 
-                addPrivatizationDeclToBody(context2, privatizations, outerLocals, newBody);
+                addPrivatizationDeclToBody(atSt.atDef(), context2, privatizations, outerLocals, newBody);
                 
-                Stmt body = addBoxValWriteBackCallToBody(context2, atSt);
+                Stmt body = addBoxValWriteBackCallToBody(context2, atSt, outerLocals);
                 
                 newBody.add(body);
                 
-                atSt = atSt.body(xnf.StmtSeq(Position.COMPILER_GENERATED, newBody));
+                atSt = atSt.body(xnf.Block(Position.COMPILER_GENERATED, newBody));
                 
                 List<Stmt> stmts1 = addOuterNodes(context2, privatizations, outerLocals, atSt);
 
@@ -128,14 +136,17 @@ public class VarsBoxer extends ContextVisitor {
                 final List<LocalDecl> privatizations = new ArrayList<LocalDecl>();
                 final List<Name> outerLocals = new ArrayList<Name>();
                 
-                atEx = (AtExpr) atEx.body((Block) atEx.body().visit(createAtVisitor(context2, privatizations, outerLocals)));
+                List<VarInstance<? extends VarDef>> caps = atEx.closureDef().capturedEnvironment();
                 
+                atEx = (AtExpr) atEx.body((Block) atEx.body().visit(createAtExtraNodeVisitor(context2, privatizations, caps, atEx.closureDef())));
+                atEx = (AtExpr) atEx.body((Block) atEx.body().visit(createAtOuterVarAccessVisitor(context2, outerLocals, caps)));
+
                 if (outerLocals.size() > 0 || privatizations.size() > 0) {
                     List<Stmt> newBody = new ArrayList<Stmt>();
                     
-                    addPrivatizationDeclToBody(context2, privatizations, outerLocals, newBody);
+                    addPrivatizationDeclToBody(atEx.closureDef(), context2, privatizations, outerLocals, newBody);
                     
-                    Stmt body = addBoxValWriteBackCallToBody(context2, atEx);
+                    Stmt body = addBoxValWriteBackCallToBody(context2, atEx, outerLocals);
                     
                     newBody.add(body);
                     
@@ -155,19 +166,19 @@ public class VarsBoxer extends ContextVisitor {
 
     // add write back call to box val in the body
     // TODO optimize write back once when returning the body
-    private Stmt addBoxValWriteBackCallToBody(Context context2, AtStmt atSt) {
-        Stmt body = (Stmt) atSt.body().visit(createAddWriteBackCallVisitor(context2));
+    private Stmt addBoxValWriteBackCallToBody(Context context2, AtStmt atSt, List<Name> outerLocals) {
+        Stmt body = (Stmt) atSt.body().visit(createAddWriteBackCallVisitor(context2, outerLocals));
         return body;
     }
 
     // add write back call to box val in the body
     // TODO optimize write back once when returning the body
-    private Stmt addBoxValWriteBackCallToBody(Context context2, AtExpr atEx) {
-        Stmt body = (Stmt) atEx.body().visit(createAddWriteBackCallVisitor(context2));
+    private Stmt addBoxValWriteBackCallToBody(Context context2, AtExpr atEx, List<Name> outerLocals) {
+        Stmt body = (Stmt) atEx.body().visit(createAddWriteBackCallVisitor(context2, outerLocals));
         return body;
     }
 
-    public ContextVisitor createAddWriteBackCallVisitor(Context context2) {
+    private ContextVisitor createAddWriteBackCallVisitor(Context context2, final List<Name> outerLocals) {
         return new ContextVisitor(job, ts, nf) {
             public Node override(Node parent, Node n) {
                 if (n instanceof AtStmt || n instanceof AtExpr) {
@@ -179,8 +190,8 @@ public class VarsBoxer extends ContextVisitor {
                 if (n instanceof LocalAssign) {
                     LocalAssign la = (LocalAssign) n;
                     Local local = la.local();
-                    if (!context.isLocal(local.name().id())) {
-                        LocalInstance libox = createBoxLocalDef(Position.COMPILER_GENERATED, local.localInstance()).asInstance();
+                    if (outerLocals.contains(local.name().id())) {
+                        LocalInstance libox = getBoxLocalDef(Position.COMPILER_GENERATED, local.localInstance()).asInstance();
                         return createSetCall(Position.COMPILER_GENERATED, local.localInstance(), libox, la);
                     }
                 }
@@ -190,23 +201,23 @@ public class VarsBoxer extends ContextVisitor {
                     if (expr instanceof Local) {
                         Local local = (Local) expr;
                         if (unary.operator() == X10Unary_c.PRE_DEC || unary.operator() == X10Unary_c.PRE_INC) {
-                            if (!context.isLocal(local.name().id())) {
-                                LocalInstance libox = createBoxLocalDef(Position.COMPILER_GENERATED, local.localInstance()).asInstance();
+                            if (outerLocals.contains(local.name().id())) {
+                                LocalInstance libox = getBoxLocalDef(Position.COMPILER_GENERATED, local.localInstance()).asInstance();
                                 return createSetCall(Position.COMPILER_GENERATED, local.localInstance(), libox, unary);
                             }
                         }
                         else if (unary.operator() == X10Unary_c.POST_INC) {
-                            if (!context.isLocal(local.name().id())) {
-                                LocalInstance libox = createBoxLocalDef(Position.COMPILER_GENERATED, local.localInstance()).asInstance();
+                            if (outerLocals.contains(local.name().id())) {
+                                LocalInstance libox = getBoxLocalDef(Position.COMPILER_GENERATED, local.localInstance()).asInstance();
                                 Expr one = getLiteral(Position.COMPILER_GENERATED, local.type(), 1);
-                                return xnf.Binary(Position.COMPILER_GENERATED, createSetCall(Position.COMPILER_GENERATED, local.localInstance(), libox, xnf.Binary(Position.COMPILER_GENERATED, unary, X10Binary_c.ADD, one).type(local.type())), X10Binary_c.SUB, one);
+                                return xnf.Binary(Position.COMPILER_GENERATED, createSetCall(Position.COMPILER_GENERATED, local.localInstance(), libox, xnf.Binary(Position.COMPILER_GENERATED, unary, X10Binary_c.ADD, one).type(local.type())), X10Binary_c.SUB, one).type(local.type());
                             }
                         }
                         else if (unary.operator() == X10Unary_c.POST_DEC) {
-                            if (!context.isLocal(local.name().id())) {
-                                LocalInstance libox = createBoxLocalDef(Position.COMPILER_GENERATED, local.localInstance()).asInstance();
+                            if (outerLocals.contains(local.name().id())) {
+                                LocalInstance libox = getBoxLocalDef(Position.COMPILER_GENERATED, local.localInstance()).asInstance();
                                 Expr one = getLiteral(Position.COMPILER_GENERATED, local.type(), 1);
-                                return xnf.Binary(Position.COMPILER_GENERATED, createSetCall(Position.COMPILER_GENERATED, local.localInstance(), libox, xnf.Binary(Position.COMPILER_GENERATED, unary, X10Binary_c.SUB, one).type(local.type())), X10Binary_c.ADD, one);
+                                return xnf.Binary(Position.COMPILER_GENERATED, createSetCall(Position.COMPILER_GENERATED, local.localInstance(), libox, xnf.Binary(Position.COMPILER_GENERATED, unary, X10Binary_c.SUB, one).type(local.type())), X10Binary_c.ADD, one).type(local.type());
                             }
                         }
                         return n;
@@ -219,16 +230,16 @@ public class VarsBoxer extends ContextVisitor {
 
     // copied from Desugarer
     private Expr getLiteral(Position pos, Type type, long val) throws SemanticException {
-        type = X10TypeMixin.baseType(type);
+        type = Types.baseType(type);
         Expr lit = null;
         if (xts.isIntOrLess(type)) {
             lit = xnf.IntLit(pos, IntLit.INT, val);
         } else if (xts.isLong(type)) {
             lit = xnf.IntLit(pos, IntLit.LONG, val);
         } else if (xts.isUInt(type)) {
-            lit = xnf.IntLit(pos, X10IntLit_c.UINT, val);
+            lit = xnf.IntLit(pos, IntLit.UINT, val);
         } else if (xts.isULong(type)) {
-            lit = xnf.IntLit(pos, X10IntLit_c.ULONG, val);
+            lit = xnf.IntLit(pos, IntLit.ULONG, val);
         } else if (xts.isFloat(type)) {
             lit = xnf.FloatLit(pos, FloatLit.FLOAT, val);
         } else if (xts.isDouble(type)) {
@@ -247,11 +258,11 @@ public class VarsBoxer extends ContextVisitor {
     }
     
     // add decls for privatization
-    private void addPrivatizationDeclToBody(Context context2, final List<LocalDecl> privatizations,
+    private void addPrivatizationDeclToBody(EnvironmentCapture ec, Context context2, final List<LocalDecl> privatizations,
                                      final List<Name> outerLocals, List<Stmt> stmts) throws SemanticException {
-        for1:for (Name name : outerLocals) {
+        for (Name name : outerLocals) {
             LocalInstance li = context2.findLocal(name);
-            stmts.add(createDeclForPrivatization(Position.COMPILER_GENERATED, li));
+            stmts.add(createDeclForPrivatization(Position.COMPILER_GENERATED, ec, li));
         }
     }
 
@@ -284,40 +295,17 @@ public class VarsBoxer extends ContextVisitor {
         return stmts1;
     }
 
-    private ContextVisitor createAtVisitor(Context context2, final List<LocalDecl> privatizations,
-                                          final List<Name> outerLocals) {
+    private ContextVisitor createAtExtraNodeVisitor(Context context2, final List<LocalDecl> privatizations,
+                                          final List<VarInstance<? extends VarDef>> caps, final EnvironmentCapture ec) {
         return new ContextVisitor(job, ts, nf) {
             public Node override(Node parent, Node n) {
-                if (n instanceof AtStmt || n instanceof AtExpr) { // TODO async
+                if (n instanceof AtStmt || n instanceof AtExpr) {
                     return n;
                 }
                 return null;
             };
             
             public Node leaveCall(Node parent, Node old, Node n, NodeVisitor v) throws SemanticException {
-                // check access node to outer var 
-                if (n instanceof Local) {
-                    Local local = (Local) n;
-                    X10Context xcontext = (X10Context) context;
-                    Name name = local.name().id();
-                    if (parent instanceof LocalAssign) {
-                        if (((LocalAssign) parent).right() instanceof Call) {
-                            Call call = (Call) ((LocalAssign) parent).right();
-                            Receiver receiver = call.target();
-                            if (receiver instanceof Local) {
-                                if (((Local) receiver).name().id().toString().endsWith(POSTFIX_BOXED_VAR)) {
-                                    if (!context.isLocal(((LocalAssign) parent).local().name().id())) {
-                                        return n;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    // TODO 
-                    if (!xcontext.isLocal(name) && !local.flags().isFinal() && !outerLocals.contains(name) && !name.toString().endsWith(POSTFIX_BOXED_VAR)) {
-                        outerLocals.add(name);
-                    }
-                }
                 // check privatization node and remove
                 if (n instanceof LocalDecl) {
                     LocalDecl ldecl = (LocalDecl) n;
@@ -327,7 +315,8 @@ public class VarsBoxer extends ContextVisitor {
                     } catch (SemanticException e) {
                         return n;
                     }
-                    if (!context.isLocal(li.name())) {
+                    if (containsCapturedEnv(caps, li)) {
+                        replaceCapturedEnv(Position.COMPILER_GENERATED, ec, li);
                         privatizations.add(ldecl);
                         return null;
                     }
@@ -340,7 +329,7 @@ public class VarsBoxer extends ContextVisitor {
                         Receiver receiver = call.target();
                         if (receiver instanceof Local) {
                             if (((Local) receiver).name().id().toString().endsWith(POSTFIX_BOXED_VAR)) {
-                                if (!context.isLocal(((LocalAssign) e).local().name().id())) {
+                                if (containsCapturedEnv(caps, ((LocalAssign) e).local().localInstance())) {
                                     return null;
                                 }
                             }
@@ -348,87 +337,165 @@ public class VarsBoxer extends ContextVisitor {
                     }
                 }
                 return n;
-            };
+            }
         }.context(context2);
     }
 
-    private LocalDecl createBoxDecl(final Position cg, Name name, LocalInstance li) {
-        List<Type> typeArgs = new ArrayList<Type>();
-        typeArgs.add(li.type());
-        X10ParsedClassType grt = globalRefType.typeArguments(typeArgs);
-        X10CanonicalTypeNode tn = xnf.X10CanonicalTypeNode(cg, grt);
+    private ContextVisitor createAtOuterVarAccessVisitor(Context context2, final List<Name> outerLocals,
+                                          final List<VarInstance<? extends VarDef>> caps) {
+        return new ContextVisitor(job, ts, nf) {
+            public Node override(Node parent, Node n) {
+                if (n instanceof AtStmt || n instanceof AtExpr) {
+                    return n;
+                }
+                return null;
+            };
+            
+            public Node leaveCall(Node parent, Node old, Node n, NodeVisitor v) throws SemanticException {
+                if (n instanceof Local) {
+                    Local local = (Local) n;
+                    Name name = local.name().id();
+                    if (parent instanceof LocalAssign) {
+                        if (((LocalAssign) parent).right() instanceof Call) {
+                            Call call = (Call) ((LocalAssign) parent).right();
+                            Receiver receiver = call.target();
+                            if (receiver instanceof Local) {
+                                if (((Local) receiver).name().id().toString().endsWith(POSTFIX_BOXED_VAR)) {
+                                    if (containsCapturedEnv(caps, ((LocalAssign) parent).local().localInstance())) {
+                                        return n;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (containsCapturedEnv(caps, local.localInstance()) && !local.flags().isFinal() && !outerLocals.contains(name) && !name.toString().endsWith(POSTFIX_BOXED_VAR)) {
+                        outerLocals.add(name);
+                    }
+                }
+                return n;
+            }
+        }.context(context2);
+    }
+
+    private static boolean containsCapturedEnv(final List<VarInstance<? extends VarDef>> caps, LocalInstance li) {
+        for (VarInstance<? extends VarDef> vi : caps) {
+            if (vi.def().equals(li.def())) return true;
+        }
+        return false;
+    }
+    
+    private LocalDecl createBoxDecl(final Position pos, Name name, LocalInstance li) {
+        X10ParsedClassType lvt = createLocalVarType(li);
+        X10CanonicalTypeNode tn = xnf.X10CanonicalTypeNode(pos, lvt);
         
-        LocalDecl ldecl = xnf.LocalDecl(cg, xnf.FlagsNode(cg, Flags.FINAL), tn, xnf.Id(cg, name.toString() + POSTFIX_BOXED_VAR));
+        LocalDecl ldecl = xnf.LocalDecl(pos, xnf.FlagsNode(pos, Flags.FINAL), tn, xnf.Id(pos, name.toString() + POSTFIX_BOXED_VAR));
         
-        X10LocalDef localDef = createBoxLocalDef(cg, li);
+        X10LocalDef localDef = getBoxLocalDef(pos, li);
         
         ldecl = ldecl.localDef(localDef);
         
-        Local local = xnf.Local(cg, xnf.Id(cg, name)).localInstance(li);
+        Local local = (Local) xnf.Local(pos, xnf.Id(pos, name)).localInstance(li).type(li.type());
         List<Expr> args = new ArrayList<Expr>();
         args.add(local);
         
         X10ConstructorInstance ci;
         try {
-            ci = xts.findConstructor(globalRefType, xts.ConstructorMatcher(globalRefType, globalRefType.typeArguments(), context));
+            ci = xts.findConstructor(lvt, xts.ConstructorMatcher(lvt, lvt.typeArguments(), context));
         } catch (SemanticException e) {
             throw new InternalCompilerError(""); // TODO
         }
-        ci = (X10ConstructorInstance) ci.container(grt);
-        New new1 = (New) xnf.New(cg, tn, args).constructorInstance(ci).type(globalRefType);
+        ci = (X10ConstructorInstance) ci.container(lvt);
+        New new1 = (New) xnf.New(pos, tn, args).constructorInstance(ci).type(lvt);
         
         ldecl = ldecl.init(new1);
         return ldecl;
     }
 
-    private X10LocalDef createBoxLocalDef(final Position pos, LocalInstance li) {
-        X10LocalDef localDef = xts.localDef(pos, li.flags(), Types.ref(li.type()), xnf.Id(pos, li.name().toString() + POSTFIX_BOXED_VAR).id());
-        return localDef;
+    private X10LocalDef getBoxLocalDef(final Position pos, LocalInstance li) {
+        X10LocalDef def = (X10LocalDef) li.def();
+        if (defToDef.containsKey(def)) {
+            return defToDef.get(def);
+        }
+        else {
+            X10ParsedClassType lvt = createLocalVarType(li);
+            X10LocalDef localDef = xts.localDef(pos, li.flags(), Types.ref(lvt), Name.make(li.name().toString() + POSTFIX_BOXED_VAR));
+            defToDef.put(def, localDef);
+            return localDef;
+        }
     }
 
-    private LocalDecl createDeclForPrivatization(final Position pos, LocalInstance li) {
+    private LocalDecl createDeclForPrivatization(final Position pos, EnvironmentCapture ec, LocalInstance li) {
         LocalDecl ldecl = xnf.LocalDecl(pos, xnf.FlagsNode(pos, li.flags()), xnf.X10CanonicalTypeNode(pos, li.type()), xnf.Id(pos, li.name()));
-        ldecl = ldecl.localDef(xts.localDef(pos, li.flags(), Types.ref(li.type()), li.name()));
+        ldecl = ldecl.localDef(li.def());
+        X10LocalDef boxld = getBoxLocalDef(pos, li);
+        LocalInstance boxli = boxld.asInstance();
+        replaceCapturedEnv(pos, ec, li);
         
-        Call call = createGetCall(pos, li, createBoxLocalDef(pos, li).asInstance());
+        Call call = createGetCall(pos, li, boxli);
         ldecl = ldecl.init(call);
         return ldecl;
     }
+    
+    private void replaceCapturedEnv(final Position pos, EnvironmentCapture ec, LocalInstance li) {
+        List<VarInstance<? extends VarDef>> newEnv = new ArrayList<VarInstance<? extends VarDef>>();
+        for (VarInstance<? extends VarDef> vi : ec.capturedEnvironment()) {
+            if (vi.equals(li)) {
+                newEnv.add(getBoxLocalDef(pos, li).asInstance());
+            } else {
+                newEnv.add(vi);
+            }
+        }
+        ec.setCapturedEnvironment(newEnv);
+    }
 
     private Call createGetCall(final Position pos, LocalInstance lilocal, LocalInstance libox) {
-        Name mname = Name.make("apply");
+        Name mname = GET;
         
-        List<Type> typeArgs = new ArrayList<Type>();
-        typeArgs.add(lilocal.type());
-        X10ParsedClassType grt = globalRefType.typeArguments(typeArgs);
+        X10ParsedClassType lvt = createLocalVarType(lilocal);
         
-        MethodDef md = xts.methodDef(pos, Types.ref(grt), Flags.FINAL, Types.ref(globalRefType.typeArguments().get(0)), mname, Collections.<Ref<? extends Type>>emptyList());
+        MethodDef md = xts.methodDef(pos, Types.ref(lvt), Flags.FINAL, Types.ref(lilocal.type()), mname, Collections.<Ref<? extends Type>>emptyList());
         MethodInstance mi = md.asInstance();
         
-        Local local = xnf.Local(pos, xnf.Id(pos, lilocal.name().toString() + POSTFIX_BOXED_VAR));
+        Local local = (Local) xnf.Local(pos, xnf.Id(pos, lilocal.name().toString() + POSTFIX_BOXED_VAR)).type(libox.type());
         return (Call) xnf.Call(pos, local.localInstance(libox), xnf.Id(pos, mname)).methodInstance(mi).type(lilocal.type());
     }
     
     private Call createSetCall(final Position pos, LocalInstance lilocal, LocalInstance libox, Expr arg) {
-        Name mname = Name.make("set");
+        Name mname = SET;
         
         List<Ref<? extends Type>> argTypes = new ArrayList<Ref<? extends Type>>();
         argTypes.add(Types.ref(arg.type()));
 
-        List<Type> typeArgs = new ArrayList<Type>();
-        typeArgs.add(lilocal.type());
-        X10ParsedClassType grt = globalRefType.typeArguments(typeArgs);
+        X10ParsedClassType lvt = createLocalVarType(lilocal);
         
-        MethodDef md = xts.methodDef(pos, Types.ref(grt), Flags.FINAL, Types.ref(globalRefType.typeArguments().get(0)), mname, argTypes);
+        MethodDef md = xts.methodDef(pos, Types.ref(lvt), Flags.FINAL, Types.ref(localVarType.x10Def().typeParameters().get(0)), mname, argTypes);
         MethodInstance mi = md.asInstance();
         
-        Local local = xnf.Local(pos, xnf.Id(pos, lilocal.name().toString() + POSTFIX_BOXED_VAR)).localInstance(libox);
+        Local local = (Local) xnf.Local(pos, xnf.Id(pos, lilocal.name().toString() + POSTFIX_BOXED_VAR)).localInstance(libox).type(libox.type());
         
         return (Call) xnf.Call(pos, local, xnf.Id(pos, mname), arg).methodInstance(mi).type(lilocal.type());
     }
 
+    private Call createApplyCall(final Position pos, LocalInstance lilocal, LocalInstance libox) {
+        Name mname = ClosureCall.APPLY;
+        
+        X10ParsedClassType lvt = createLocalVarType(lilocal);
+        
+        MethodDef md = xts.methodDef(pos, Types.ref(lvt), Flags.FINAL, Types.ref(lilocal.type()), mname, Collections.<Ref<? extends Type>>emptyList());
+        MethodInstance mi = md.asInstance();
+        
+        Local local = (Local) xnf.Local(pos, xnf.Id(pos, lilocal.name().toString() + POSTFIX_BOXED_VAR)).type(libox.type());
+        return (Call) xnf.Call(pos, local.localInstance(libox), xnf.Id(pos, mname)).methodInstance(mi).type(lilocal.type());
+    }
+
     private LocalAssign createWriteBack(final Position cg, LocalInstance li, LocalDecl ldecl) {
-        LocalAssign la = (LocalAssign) xnf.LocalAssign(cg, (Local) xnf.Local(cg, xnf.Id(cg, li.name())).localInstance(li).type(li.type()), Assign.ASSIGN, createGetCall(cg, li, ldecl.localDef().asInstance())).type(li.type());
+        LocalAssign la = (LocalAssign) xnf.LocalAssign(cg, (Local) xnf.Local(cg, xnf.Id(cg, li.name())).localInstance(li).type(li.type()), Assign.ASSIGN, createApplyCall(cg, li, ldecl.localDef().asInstance())).type(li.type());
         return la;
+    }
+
+    private X10ParsedClassType createLocalVarType(LocalInstance li) {
+        List<Type> typeArgs = new ArrayList<Type>();
+        typeArgs.add(li.type());
+        return localVarType.typeArguments(typeArgs);
     }
 }

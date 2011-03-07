@@ -18,12 +18,13 @@ import polyglot.ast.Expr;
 import polyglot.ast.Node;
 import polyglot.ast.NodeFactory;
 import polyglot.frontend.Job;
-import polyglot.main.Report;
+import polyglot.main.Reporter;
 import polyglot.types.SemanticException;
 import polyglot.types.TypeSystem;
 import polyglot.types.UnknownType;
 import polyglot.util.ErrorInfo;
 import polyglot.util.Position;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.NodeVisitor;
 import polyglot.visit.TypeChecker;
@@ -35,14 +36,13 @@ import x10.errors.Errors;
  */
 public class X10TypeChecker extends TypeChecker {
 
-	Map<Node,Node> memo;
 	/**
 	 * @param job
 	 * @param ts
 	 * @param nf
 	 */
 	private X10TypeChecker(Job job, TypeSystem ts, NodeFactory nf) {
-	    this(job, ts, nf, new HashMap<Node, Node>());
+	    this(job, ts, nf, CollectionFactory.<Node, Node>newHashMap());
 	}
 	/**
 	 * @param job
@@ -58,30 +58,27 @@ public class X10TypeChecker extends TypeChecker {
 		super(job, ts, nf, memo);
 		this.extensionInfo = (x10.ExtensionInfo) job.extensionInfo();
 		this.memo = memo;
-		this.isFragmentChecker = isFragmentChecker;
 	}
-	boolean isFragmentChecker = false;
-	public boolean isFragmentChecker() { return isFragmentChecker;}
 	
 	private x10.ExtensionInfo extensionInfo;
 	
+	// TODO: record the top-level node in a memo only if typechecking a fragment
 	public Node override(Node parent, Node n) {
 	    Node n_ = memo.get(n);
-	    n_ = null;
 	    if (n_ != null) {
 	        this.addDecls(n_);
 	        return n_;
 	    }
 
 	    try {
-	        if (Report.should_report(Report.visit, 2))
-	            Report.report(2, ">> " + this + "::override " + n);
+	        if (reporter.should_report(reporter.visit, 2))
+	            reporter.report(2, ">> " + this + "::override " + n);
 
 	        Node m = n.del().typeCheckOverride(parent, this);
 
 	        if (m != null) {
-	            memo.put(n, m);
-	            memo.put(m, m);
+//	            memo.put(n, m);
+//	            memo.put(m, m);
 	        }
 
 	        return m;
@@ -113,9 +110,9 @@ public class X10TypeChecker extends TypeChecker {
 	        m = m.del().typeCheck(tc);
 	        m = m.del().checkConstants(tc);
 	        // Record the new node in the memo table.
-	        memo.put(old, m);
-	        memo.put(n, m);
-	        memo.put(m, m);
+//	        memo.put(old, m);
+//	        memo.put(n, m);
+//	        memo.put(m, m);
 	        return m;
 	    } catch (SemanticException z) {
 	        boolean newp = extensionInfo.errorSet().add(z);

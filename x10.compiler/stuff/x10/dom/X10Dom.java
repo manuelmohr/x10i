@@ -105,6 +105,7 @@ import x10.types.constr.Constraint;
 import x10.types.constr.Constraint_c;
 import x10.types.constr.Promise;
 import x10.types.constr.Promise_c;
+import x10.types.constraints.CConstraint;
 import polyglot.frontend.Source;
 import polyglot.types.ArrayType;
 import polyglot.types.ClassType;
@@ -149,7 +150,7 @@ public class X10Dom {
 			return tagMap;
 		}
 		
-		tagMap = new HashMap<String,Lens>();
+		tagMap = CollectionFactory.newHashMap();
 
 		tagMap.put("Boolean", new BooleanLens());
 		tagMap.put("Byte", new ByteLens());
@@ -375,7 +376,7 @@ public class X10Dom {
 		public Map<K,V> fromXML(DomReader v, Element e) {
 			if (e == null)
 				return Collections.<K,V>emptyMap();
-			Map<K,V> r = new HashMap<K,V>();
+			Map<K,V> r = CollectionFactory.newHashMap();
 			for (org.w3c.dom.Node child = e.getFirstChild(); child != null; child = child.getNextSibling()) {
 				if (child instanceof Element) {
 					Entry<K,V> x = new EntryLens<K,V>(klens, vlens).fromXML(v, (Element) child);
@@ -686,7 +687,7 @@ public class X10Dom {
 	
 	public class FlagsLens implements Lens<Flags> {
 		public Flags fromXML(DomReader v, Element e) {
-			Set fs = new HashSet();
+			Set fs = CollectionFactory.newHashSet;
 			fs.add(Flags.PUBLIC);
 			fs.add(Flags.PRIVATE);
 			fs.add(Flags.PROTECTED);
@@ -1380,7 +1381,7 @@ public class X10Dom {
 			Type qualifier = get(new TypeRefLens(), e, "qualifier", v);
 			Boolean isThis = get(new BooleanLens(), e, "this", v);
 			Boolean isSuper = get(new BooleanLens(), e, "super", v);
-			Boolean isSelf = get(new BooleanLens(), e, "self", v);
+			Boolean isSelf = get(new BooleanLens(), e, CConstraint.SELF_VAR_PREFIX, v);
 			C_Special.C_Kind kind = isThis ? C_Special.THIS :
 				(isSuper ? C_Special.SUPER : C_Special.SELF);
 			return new C_Special_c(type, qualifier, kind);
@@ -1392,7 +1393,7 @@ public class X10Dom {
 			gen(v, "qualifier", n.qualifier());
 			gen(v, "this", n.kind() == C_Special.THIS);
 			gen(v, "super", n.kind() == C_Special.SUPER);
-			gen(v, "self", n.kind() == C_Special.SELF);
+			gen(v, CConstraint.SELF_VAR_PREFIX, n.kind() == C_Special.SELF);
 		}
 	}
 	
@@ -2065,7 +2066,7 @@ public class X10Dom {
 		
 		public Object fromXML(DomReader v, Element e) {
 			String tag = e.getTagName();
-			Map<String,Object> m = new HashMap<String,Object>();
+			Map<String,Object> m = CollectionFactory.newHashMap();
 			
 			for (org.w3c.dom.Node x = e.getFirstChild(); x != null; x = x.getNextSibling()) {
 				if (x instanceof Element) {

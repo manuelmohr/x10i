@@ -16,7 +16,7 @@ import java.util.List;
 import polyglot.types.ClassType;
 import polyglot.types.ConstructorDef;
 import polyglot.types.Ref;
-import polyglot.types.ReferenceType;
+
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import x10.types.constraints.CConstraint;
@@ -28,6 +28,9 @@ public interface X10ConstructorDef extends ConstructorDef, X10ProcedureDef {
      */
     void setReturnType(Ref<? extends Type> t);
     
+    boolean derivedReturnType();
+    void derivedReturnType(boolean r);
+
     /** Return type associated with the constructor. */
     Ref<? extends Type> returnType();
     

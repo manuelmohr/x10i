@@ -25,15 +25,17 @@ public final class GrowableRail<T> extends Ref implements x10.lang.Indexable<Int
     private Object array;
     private int length;
 
-    public String toString() {
+    public java.lang.String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("[");
-        for (int i = 0; i < length; i++) {
+        sb.append("GrowableRail(");
+        int sz = Math.min(length, 10);
+        for (int i = 0; i < sz; i++) {
             if (i > 0)
-                sb.append(", ");
-            sb.append(apply$G(i));
+                sb.append(",");
+            sb.append($apply$G(i));
         }
-        sb.append("]");
+        if (sz < length) sb.append("...(omitted " + (length - sz) + " elements)");
+        sb.append(")");
         return sb.toString();
     }
 
@@ -47,11 +49,11 @@ public final class GrowableRail<T> extends Ref implements x10.lang.Indexable<Int
         this.length = 0;
     }
 
-    public T set(T v, Type t1, Integer i, Type t2) {
-        return set$G(v, (int)i);
+    public T $set(T v, Type t1, Integer i, Type t2) {
+        return $set$G(v, (int)i);
     }
 
-    public T set$G(T v, int i) {
+    public T $set$G(T v, int i) {
         grow(i+1);
         /*
         assert i >= 0 : i + " < 0";
@@ -86,7 +88,7 @@ public final class GrowableRail<T> extends Ref implements x10.lang.Indexable<Int
 
     public void removeLast() {
         if (array instanceof Object[])
-            set$G(null, length-1);
+            $set$G(null, length-1);
         length--;
         shrink(length+1);
     }
@@ -117,16 +119,16 @@ public final class GrowableRail<T> extends Ref implements x10.lang.Indexable<Int
         }
 
         public T next$G() {
-            return apply$G(i++);
+            return $apply$G(i++);
         }
     }
 
     private void grow(int newSize) {
         if (newSize <= size())
             return;
-        newSize = Math.max(newSize, size()*2);
-        newSize = Math.max(newSize, length);
-        newSize = Math.max(newSize, 8);
+        newSize = java.lang.Math.max(newSize, size()*2);
+        newSize = java.lang.Math.max(newSize, length);
+        newSize = java.lang.Math.max(newSize, 8);
         Object tmp = elementType.makeArray(newSize);
         System.arraycopy(array, 0, tmp, 0, length);
         array = tmp;
@@ -135,17 +137,17 @@ public final class GrowableRail<T> extends Ref implements x10.lang.Indexable<Int
     private void shrink(int newSize) {
         if (newSize > size()/2 || newSize < 8)
             return;
-        newSize = Math.max(newSize, length);
-        newSize = Math.max(newSize, 8);
+        newSize = java.lang.Math.max(newSize, length);
+        newSize = java.lang.Math.max(newSize, 8);
         Object tmp = elementType.makeArray(newSize);
         System.arraycopy(array, 0, tmp, 0, length);
         array = tmp;
     }
 
-    public T apply(Object i, Type t) {
-        return apply$G((int)(Integer)i);
+    public T $apply(Object i, Type t) {
+        return $apply$G((int)(Integer)i);
     }
-    public T apply$G(int i) {
+    public T $apply$G(int i) {
         /*
         assert i >= 0 : i + " < 0";
         assert i < length: i + " >= length==" + length;
@@ -187,7 +189,7 @@ public final class GrowableRail<T> extends Ref implements x10.lang.Indexable<Int
         }
     ) {
         @Override
-        public String typeName() {
+        public java.lang.String typeName() {
             return "x10.lang.GrowableRail";
         }
     };

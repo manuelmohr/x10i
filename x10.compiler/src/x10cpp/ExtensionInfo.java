@@ -16,20 +16,22 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 import java.util.List;
 
 import polyglot.ast.NodeFactory;
 import polyglot.frontend.AllBarrierGoal;
 import polyglot.frontend.BarrierGoal;
 import polyglot.frontend.Compiler;
+import polyglot.frontend.ForgivingVisitorGoal;
 import polyglot.frontend.Globals;
 import polyglot.frontend.Goal;
 import polyglot.frontend.Job;
+import polyglot.frontend.JobExt;
 import polyglot.frontend.OutputGoal;
 import polyglot.frontend.Scheduler;
 import polyglot.frontend.VisitorGoal;
 import polyglot.main.Options;
-import polyglot.main.Report;
 import polyglot.types.MemberClassResolver;
 import polyglot.types.SemanticException;
 import polyglot.types.TopLevelResolver;
@@ -39,6 +41,8 @@ import polyglot.visit.ContextVisitor;
 import polyglot.visit.PostCompiled;
 import polyglot.util.InternalCompilerError;
 import x10.Configuration;
+import x10.visit.ExternAnnotationVisitor;
+import x10.X10CompilerOptions;
 import x10.ExtensionInfo.X10Scheduler.ValidatingVisitorGoal;
 import x10.ast.X10NodeFactory_c;
 import x10.optimizations.Optimizer;
@@ -49,6 +53,7 @@ import x10.visit.X10InnerClassRemover;
 import x10cpp.ast.X10CPPDelFactory_c;
 import x10cpp.ast.X10CPPExtFactory_c;
 import x10cpp.postcompiler.CXXCommandBuilder;
+import x10cpp.postcompiler.PrecompiledLibrary;
 import x10cpp.types.X10CPPSourceClassResolver;
 import x10cpp.types.X10CPPTypeSystem_c;
 import x10cpp.visit.X10CPPTranslator;
@@ -74,53 +79,34 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 	}
 
 	protected TypeSystem createTypeSystem() {
-		return new X10CPPTypeSystem_c();
+		return new X10CPPTypeSystem_c(this);
 	}
 
 	@Override
     protected void initTypeSystem() {
-        // Inline from superclass, replacing SourceClassResolver
-        try {
-            if (Configuration.MANIFEST == null) {
-                String[] MANIFEST_LOCATIONS = CXXCommandBuilder.MANIFEST_LOCATIONS;
-                for (int i = 0; i < MANIFEST_LOCATIONS.length; i++) {
-                    File x10lang_m = new File(MANIFEST_LOCATIONS[i]+"/"+CXXCommandBuilder.MANIFEST);
-                    if (!x10lang_m.exists())
-                        continue;
-                    Configuration.MANIFEST = x10lang_m.getPath();
-                }
-            }
-            // FIXME: [IP] HACK
-            if (Report.should_report("manifest", 1))
-                Report.report(1, "Manifest is "+Configuration.MANIFEST);
-            if (Configuration.MANIFEST != null) {
-                try {
-                    FileReader fr = new FileReader(Configuration.MANIFEST);
-                    BufferedReader br = new BufferedReader(fr);
-                    String file = "";
-                    while ((file = br.readLine()) != null)
-                        if (file.endsWith(".x10") || file.endsWith(".jar")) // FIXME: hard-codes the source extension.
-                            manifest.add(file);
-                } catch (IOException e) { }
-            }
-            TopLevelResolver r =
-                new X10CPPSourceClassResolver(compiler, this, getOptions().constructFullClasspath(),
-                                              getOptions().compile_command_line_only,
-                                              getOptions().ignore_mod_times);
+	    X10CPPCompilerOptions opts = (X10CPPCompilerOptions) getOptions();
+	    // Inline from superclass, replacing SourceClassResolver
+	    for (PrecompiledLibrary pco : opts.x10libs) {
+	        pco.updateManifset(manifest, this);
+	    }
 
+	    TopLevelResolver r =
+	        new X10CPPSourceClassResolver(compiler, this, getOptions().constructFullClasspath(),
+	                                      getOptions().compile_command_line_only,
+	                                      getOptions().ignore_mod_times);
 
-            // Resolver to handle lookups of member classes.
-            if (true || TypeSystem.SERIALIZE_MEMBERS_WITH_CONTAINER) {
-                MemberClassResolver mcr = new MemberClassResolver(ts, r, true);
-                r = mcr;
-            }
+	    // Resolver to handle lookups of member classes.
+	    if (true || TypeSystem.SERIALIZE_MEMBERS_WITH_CONTAINER) {
+	        MemberClassResolver mcr = new MemberClassResolver(ts, r, true);
+	        r = mcr;
+	    }
 
-            ts.initialize(r, this);
-        }
-        catch (SemanticException e) {
-            throw new InternalCompilerError(
-                "Unable to initialize type system: " + e.getMessage(), e);
-        }
+	    ts.initialize(r);
+	}
+
+    @Override
+    public JobExt jobExt() {
+        return new X10CPPJobExt();
     }
 
     // =================================
@@ -133,6 +119,11 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 	public static class X10CPPScheduler extends x10.ExtensionInfo.X10Scheduler {
 		protected X10CPPScheduler(ExtensionInfo extInfo) {
 			super(extInfo);
+		}
+
+		@Override
+		public ExtensionInfo extensionInfo() {
+		    return (ExtensionInfo) this.extInfo;
 		}
 
 		@Override
@@ -162,19 +153,37 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		}
 		@Override
 		public List<Goal> goals(Job job) {
-		    List<Goal> goals = super.goals(job);
-		    StaticNestedClassRemover(job).addPrereq(InnerClassRemover(job));
-		    for (Goal g: Optimizer.goals(this, job, ExpressionFlattener(job))) {
-		        StaticNestedClassRemover(job).addPrereq(g);
+		    List<Goal> superGoals = super.goals(job);
+            ArrayList<Goal> goals = new ArrayList<Goal>(superGoals.size()+1);
+            for (Goal g : superGoals) {
+                if (g == NativeClassVisitor(job)) {
+                    goals.add(ExternAnnotationVisitor(job));
+                }
+                goals.add(g);
+            }
+		    FinallyEliminator(job).addPrereq(Lowerer(job));
+		    for (Goal g: Optimizer.goals(this, job)) {
+		        FinallyEliminator(job).addPrereq(g);
 		    }
+		    StaticNestedClassRemover(job).addPrereq(FinallyEliminator(job));
 		    return goals;
 		}
+
+	       public Goal ExternAnnotationVisitor(Job job) {
+	           TypeSystem ts = extInfo.typeSystem();
+	           NodeFactory nf = extInfo.nodeFactory();
+	           return new ForgivingVisitorGoal("NativeAnnotation", job, new ExternAnnotationVisitor(job, ts, nf, nativeAnnotationLanguage())).intern(this);
+	       }
 	}
 
 	// TODO: [IP] Override targetFactory() (rather, add createTargetFactory to polyglot)
 
-	protected Options createOptions() {
+	protected X10CPPCompilerOptions createOptions() {
 		return new X10CPPCompilerOptions(this);
+	}
+
+	public X10CPPCompilerOptions getOptions() {
+	    return (X10CPPCompilerOptions) super.getOptions();
 	}
 }
 // vim:tabstop=4:shiftwidth=4:expandtab

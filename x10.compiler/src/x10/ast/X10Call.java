@@ -19,18 +19,7 @@ import polyglot.ast.Expr;
 import polyglot.ast.Id;
 import polyglot.ast.Receiver;
 import polyglot.ast.TypeNode;
-import polyglot.types.MethodInstance;
-import x10.types.X10MethodInstance;
+import x10.types.MethodInstance;
 
-public interface X10Call extends Call {
-	List<TypeNode> typeArguments();
-
-	X10Call typeArguments(List<TypeNode> args);
-
-	X10Call target(Receiver target);
-	X10Call name(Id name);
-	X10Call targetImplicit(boolean targetImplicit);
-	X10Call arguments(List<Expr> arguments);
-	X10MethodInstance methodInstance();
-	X10Call methodInstance(MethodInstance mi);
+public interface X10Call extends Call, X10ProcedureCall {  // todo: delete me!
 }

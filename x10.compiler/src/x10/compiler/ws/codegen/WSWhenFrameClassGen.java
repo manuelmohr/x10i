@@ -1,3 +1,15 @@
+/*
+ *  This file is part of the X10 project (http://x10-lang.org).
+ *
+ *  This file is licensed to You under the Eclipse Public License (EPL);
+ *  You may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *      http://www.opensource.org/licenses/eclipse-1.0.php
+ *
+ *  (C) Copyright IBM Corporation 2006-2010.
+ */
+
+
 package x10.compiler.ws.codegen;
 
 import polyglot.ast.Assign;
@@ -26,18 +38,12 @@ import x10.util.synthesizer.SwitchSynth;
  *
  */
 public class WSWhenFrameClassGen extends WSRegularFrameClassGen {
-
-    When whenStmt;
+    protected final When whenStmt;
     
     public WSWhenFrameClassGen(AbstractWSClassGen parent, When whenStmt) {
-        super(parent, whenStmt.stmt(), 
+        super(parent, whenStmt.stmt(),
               WSCodeGenUtility.getWhenClassName(parent.getClassName()));
-        
         this.whenStmt = whenStmt;
-        
-        //when class's parent is WhenFrame
-        classSynth.setSuperType(wts.regularFrameType);
-
     }
     
     
@@ -46,7 +52,8 @@ public class WSWhenFrameClassGen extends WSRegularFrameClassGen {
      * Besides the fast/resume/back, it needs a condition method
      * @see x10.compiler.ws.codegen.WSRegularFrameClassGen#genThreeMethods()
      */
-    protected void genThreeMethods() throws SemanticException { 
+    @Override
+    protected void genMethods() throws SemanticException { 
         //firstly translate the bodies
         Triple<CodeBlockSynth, SwitchSynth, SwitchSynth> bodyCodes = transformMethodBody();
         
@@ -59,11 +66,11 @@ public class WSWhenFrameClassGen extends WSRegularFrameClassGen {
         backBodySynth.addStmt(bodyCodes.third());
         
         //need final process closure issues
-        fastBodySynth.addCodeProcessingJob(new ClosureDefReinstantiator(xts,
+        fastBodySynth.addCodeProcessingJob(new ClosureDefReinstantiator(xts, xct,
                                                                         this.getClassDef(),
                                                                         fastMSynth.getDef()));
         
-        resumeBodySynth.addCodeProcessingJob(new ClosureDefReinstantiator(xts,
+        resumeBodySynth.addCodeProcessingJob(new ClosureDefReinstantiator(xts, xct,
                                                                         this.getClassDef(),
                                                                         resumeMSynth.getDef()));
         //add all references

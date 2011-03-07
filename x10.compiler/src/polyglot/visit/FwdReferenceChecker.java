@@ -7,12 +7,12 @@
 
 package polyglot.visit;
 
-import java.util.HashSet;
 import java.util.Set;
 
 import polyglot.ast.*;
 import polyglot.frontend.Job;
 import polyglot.types.*;
+import x10.util.CollectionFactory;
 
 /** Visitor which ensures that field intializers and initializers do not
  * make illegal forward references to fields.
@@ -28,21 +28,21 @@ public class FwdReferenceChecker extends ContextVisitor
     }
 
     private boolean inInitialization = false;
-    private Set<FieldDef> declaredFields = new HashSet<FieldDef>();
+    private Set<FieldDef> declaredFields = CollectionFactory.newHashSet();
     
     protected NodeVisitor enterCall(Node n) throws SemanticException {
         if (n instanceof FieldDecl) {
             FieldDecl fd = (FieldDecl)n;
             if (fd.flags().flags().isStatic()) {
-            FwdReferenceChecker frc = (FwdReferenceChecker)this.copy();
-            frc.declaredFields = new HashSet<FieldDef>(declaredFields);
+            FwdReferenceChecker frc = (FwdReferenceChecker)this.shallowCopy();
+            frc.declaredFields = CollectionFactory.newHashSet(declaredFields);
             declaredFields.add(fd.fieldDef());
             frc.inInitialization = true;
             return frc;
             }
         }
         else if (n instanceof Initializer && ((Initializer)n).flags().flags().isStatic()) {
-            FwdReferenceChecker frc = (FwdReferenceChecker)this.copy();
+            FwdReferenceChecker frc = (FwdReferenceChecker)this.shallowCopy();
             frc.inInitialization = true;
             return frc;
         }
@@ -59,7 +59,7 @@ public class FwdReferenceChecker extends ContextVisitor
                 //
                 
                 ClassType currentClass = context().currentClass();
-                StructType fContainer = f.fieldInstance().container();
+                ContainerType fContainer = f.fieldInstance().container();
 
                 if (f.fieldInstance().flags().isStatic() &&
                     currentClass.typeEquals(fContainer, context) &&

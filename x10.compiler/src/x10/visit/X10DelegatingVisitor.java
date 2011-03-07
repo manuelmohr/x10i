@@ -96,23 +96,17 @@ import x10.ast.AtEach_c;
 import x10.ast.AtExpr_c;
 import x10.ast.AtStmt_c;
 import x10.ast.Atomic_c;
-import x10.ast.Await_c;
 import x10.ast.ClosureCall_c;
 import x10.ast.Closure_c;
-import x10.ast.ConstantDistMaker_c;
 import x10.ast.DepParameterExpr_c;
 import x10.ast.Finish_c;
 import x10.ast.ForLoop_c;
-import x10.ast.Future_c;
+import x10.ast.HasZeroTest_c;
 import x10.ast.Here_c;
 import x10.ast.LocalTypeDef_c;
 import x10.ast.Next_c;
 import x10.ast.ParExpr_c;
-import x10.ast.PlaceCast_c;
 import x10.ast.PropertyDecl_c;
-import x10.ast.Range_c;
-import x10.ast.RegionMaker_c;
-import x10.ast.Region_c;
 import x10.ast.SettableAssign_c;
 import x10.ast.StmtExpr_c;
 import x10.ast.StmtSeq_c;
@@ -139,7 +133,6 @@ import x10.ast.X10FloatLit_c;
 import x10.ast.X10Formal_c;
 import x10.ast.X10If_c;
 import x10.ast.X10Instanceof_c;
-import x10.ast.X10IntLit_c;
 import x10.ast.X10LocalDecl_c;
 import x10.ast.X10Local_c;
 import x10.ast.X10Loop_c;
@@ -205,7 +198,6 @@ public class X10DelegatingVisitor {
 		if (n instanceof Catch_c) { visit((Catch_c)n); return; }
 		if (n instanceof Case_c) { visit((Case_c)n); return; }
 		if (n instanceof Branch_c) { visit((Branch_c)n); return; }
-		if (n instanceof Await_c) { visit((Await_c)n); return; }
 		if (n instanceof Atomic_c) { visit((Atomic_c)n); return; }
 		if (n instanceof AtStmt_c) { visit((AtStmt_c)n); return; }
 		if (n instanceof Async_c) { visit((Async_c)n); return; }
@@ -228,11 +220,9 @@ public class X10DelegatingVisitor {
 		if (n instanceof Unary_c) { visit((Unary_c)n); return; }
 		if (n instanceof Tuple_c) { visit((Tuple_c)n); return; }
 		if (n instanceof SubtypeTest_c) { visit((SubtypeTest_c)n); return; }
+		if (n instanceof HasZeroTest_c) { visit((HasZeroTest_c)n); return; }
 		if (n instanceof X10Special_c) { visit((X10Special_c)n); return; }
 		if (n instanceof Special_c) { visit((Special_c)n); return; }
-		if (n instanceof Region_c) { visit((Region_c)n); return; }
-		if (n instanceof Range_c) { visit((Range_c)n); return; }
-		if (n instanceof PlaceCast_c) { visit((PlaceCast_c)n); return; }
 		if (n instanceof ParExpr_c) { visit((ParExpr_c)n); return; }
 		if (n instanceof NewArray_c) { visit((NewArray_c)n); return; }
 		if (n instanceof X10New_c) { visit((X10New_c)n); return; }
@@ -241,7 +231,7 @@ public class X10DelegatingVisitor {
 		if (n instanceof Local_c) { visit((Local_c)n); return; }
 		if (n instanceof X10StringLit_c) { visit((X10StringLit_c)n); return; }
 		if (n instanceof StringLit_c) { visit((StringLit_c)n); return; }
-		if (n instanceof X10IntLit_c) { visit((X10IntLit_c)n); return; }
+		if (n instanceof IntLit_c) { visit((IntLit_c)n); return; }
 		if (n instanceof IntLit_c) { visit((IntLit_c)n); return; }
 		if (n instanceof X10CharLit_c) { visit((X10CharLit_c)n); return; }
 		if (n instanceof CharLit_c) { visit((CharLit_c)n); return; }
@@ -263,8 +253,6 @@ public class X10DelegatingVisitor {
 		if (n instanceof Conditional_c) { visit((Conditional_c)n); return; }
 		if (n instanceof X10Cast_c) { visit((X10Cast_c)n); return; }
 		if (n instanceof Cast_c) { visit((Cast_c)n); return; }
-		if (n instanceof RegionMaker_c) { visit((RegionMaker_c)n); return; }
-		if (n instanceof ConstantDistMaker_c) { visit((ConstantDistMaker_c)n); return; }
 		if (n instanceof X10Call_c) { visit((X10Call_c)n); return; }
 		if (n instanceof Call_c) { visit((Call_c)n); return; }
 		if (n instanceof X10Binary_c) { visit((X10Binary_c)n); return; }
@@ -279,7 +267,6 @@ public class X10DelegatingVisitor {
 		if (n instanceof ArrayAccess_c) { visit((ArrayAccess_c)n); return; }
 		if (n instanceof AmbExpr_c) { visit((AmbExpr_c)n); return; }
 		if (n instanceof AtExpr_c) { visit((AtExpr_c)n); return; }
-		if (n instanceof Future_c) { visit((Future_c)n); return; }
 		if (n instanceof Closure_c) { visit((Closure_c)n); return; }
 		if (n instanceof ClosureCall_c) { visit((ClosureCall_c)n); return; }
 		if (n instanceof StmtExpr_c) { visit((StmtExpr_c)n); return; }
@@ -339,8 +326,6 @@ public class X10DelegatingVisitor {
 					public void visit(X10Binary_c n) { visit((Binary_c)n); }
 				public void visit(Call_c n) { visit((Expr_c)n); }
 					public void visit(X10Call_c n) { visit((Call_c)n); }
-						public void visit(ConstantDistMaker_c n) { visit((X10Call_c)n); }
-						public void visit(RegionMaker_c n) { visit((X10Call_c)n); }
 				public void visit(Cast_c n) { visit((Expr_c)n); }
 					public void visit(X10Cast_c n) { visit((Cast_c)n); }
 				public void visit(Conditional_c n) { visit((Expr_c)n); }
@@ -362,7 +347,6 @@ public class X10DelegatingVisitor {
 						public void visit(CharLit_c n) { visit((NumLit_c)n); }
 							public void visit(X10CharLit_c n) { visit((CharLit_c)n); }
 						public void visit(IntLit_c n) { visit((NumLit_c)n); }
-							public void visit(X10IntLit_c n) { visit((IntLit_c)n); }
 					public void visit(StringLit_c n) { visit((Lit_c)n); }
 						public void visit(X10StringLit_c n) { visit((StringLit_c)n); }
 				public void visit(Local_c n) { visit((Expr_c)n); }
@@ -371,18 +355,15 @@ public class X10DelegatingVisitor {
 					public void visit(X10New_c n) { visit((New_c)n); }
 				public void visit(NewArray_c n) { visit((Expr_c)n); }
 				public void visit(ParExpr_c n) { visit((Expr_c)n); }
-				public void visit(PlaceCast_c n) { visit((Expr_c)n); }
-				public void visit(Range_c n) { visit((Expr_c)n); }
-				public void visit(Region_c n) { visit((Expr_c)n); }
 				public void visit(Special_c n) { visit((Expr_c)n); }
 					public void visit(X10Special_c n) { visit((Special_c)n); }
 				public void visit(SubtypeTest_c n) { visit((Expr_c)n); }
+				public void visit(HasZeroTest_c n) { visit((Expr_c)n); }
 				public void visit(Tuple_c n) { visit((Expr_c)n); }
 				public void visit(Unary_c n) { visit((Expr_c)n); }
 					public void visit(X10Unary_c n) { visit((Unary_c)n); }
 				public void visit(Closure_c n) { visit((Expr_c)n); }
 					public void visit(AtExpr_c n) { visit((Expr_c)n); }
-					public void visit(Future_c n) { visit((Closure_c)n); }
 				public void visit(ClosureCall_c n) { visit((Expr_c)n); }
 				public void visit(StmtExpr_c n) { visit((Expr_c)n); }
 			public void visit(FieldDecl_c n) { visit((Term_c)n); }
@@ -403,7 +384,6 @@ public class X10DelegatingVisitor {
 				public void visit(AtStmt_c n) { visit((Stmt_c)n); }
 				public void visit(Async_c n) { visit((Stmt_c)n); }
 				public void visit(Atomic_c n) { visit((Stmt_c)n); }
-				public void visit(Await_c n) { visit((Stmt_c)n); }
 				public void visit(Branch_c n) { visit((Stmt_c)n); }
 				public void visit(Case_c n) { visit((Stmt_c)n); }
 				public void visit(Catch_c n) { visit((Stmt_c)n); }

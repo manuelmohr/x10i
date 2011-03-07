@@ -41,13 +41,13 @@ import polyglot.ast.Stmt;
 import polyglot.ast.TypeNode;
 import polyglot.ast.Unary;
 import polyglot.types.ClassType;
-import polyglot.types.Context;
 import polyglot.types.Name;
 import polyglot.types.NoClassException;
 import polyglot.types.QName;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.types.TypeSystem;
+import polyglot.types.Types;
 import polyglot.util.ErrorInfo;
 import polyglot.util.InternalCompilerError;
 import polyglot.visit.InnerClassRemover;
@@ -60,10 +60,11 @@ import x10.ast.X10CanonicalTypeNode_c;
 import x10.extension.X10Ext;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
-import x10.types.X10MethodInstance;
-import x10.types.X10TypeMixin;
-import x10.types.X10TypeSystem;
-import x10.types.X10TypeSystem_c;
+import x10.types.X10MethodDef;
+import x10.types.MethodInstance;
+import polyglot.types.TypeSystem;
+
+import x10.util.HierarchyUtils;
 import x10cpp.Configuration;
 import x10cpp.types.X10CPPContext_c;
 
@@ -95,42 +96,15 @@ public class ASTQuery {
         return false;
     }
 
-    private static boolean seenMain = false; // FIXME: non-reentrant
-    private static boolean warnedAboutMain = false; // FIXME: non-reentrant
-    boolean isMainMethod(MethodDecl dec) {
-        final X10TypeSystem ts = (X10TypeSystem) dec.returnType().type().typeSystem();
-        X10ClassType container = (X10ClassType) dec.methodDef().asInstance().container();
-        Context context = tr.context();
-        assert (container.isClass());
-        boolean result =
-            (Configuration.MAIN_CLASS == null ||
-                    container.fullName().toString().equals(Configuration.MAIN_CLASS)) &&
-            dec.name().toString().equals("main") &&
-            dec.flags().flags().isPublic() &&
-            dec.flags().flags().isStatic() &&
-            dec.returnType().type().isVoid() &&
-            (dec.formals().size() == 1) &&
-            ts.isSubtype(((Formal)dec.formals().get(0)).type().type(),
-                         ts.Array(ts.String()),
-                         context);
-        if (result) {
-            boolean dash_c = tr.job().extensionInfo().getOptions().post_compiler == null;
-            if (seenMain && !warnedAboutMain && !dash_c && Configuration.MAIN_CLASS == null) {
-                tr.job().compiler().errorQueue().enqueue(ErrorInfo.SEMANTIC_ERROR,
-                                                         "Multiple main() methods encountered.  " +
-                                                         "Please specify MAIN_CLASS.");
-                warnedAboutMain = true;
-            }
-            seenMain = true;
-        }
-        return result;
+    public boolean isMainMethod(X10MethodDef md) {
+        return HierarchyUtils.isMainMethod(md, tr.context());
     }
 
     boolean hasAnnotation(Node dec, String name) {
-        return hasAnnotation((X10TypeSystem) tr.typeSystem(), dec, name);
+        return hasAnnotation((TypeSystem) tr.typeSystem(), dec, name);
     }
 
-	public static boolean hasAnnotation(X10TypeSystem ts, Node dec, String name) {
+	public static boolean hasAnnotation(TypeSystem ts, Node dec, String name) {
 		try {
 			if (annotationNamed(ts, dec, name) != null)
 				return true;
@@ -147,7 +121,7 @@ public class ASTQuery {
 		// Nate's code. This one.
 		if (o.ext() instanceof X10Ext) {
 			X10Ext ext = (X10Ext) o.ext();
-			X10ClassType baseType = (X10ClassType) ts.systemResolver().find(QName.make(name));
+			Type baseType = ts.systemResolver().findOne(QName.make(name));
 			List<X10ClassType> ats = ext.annotationMatching(baseType);
 			if (ats.size() > 1) {
 				throw new SemanticException("Expression has more than one " + name + " annotation.", o.position());
@@ -160,68 +134,7 @@ public class ASTQuery {
 		return null;
 	}
 
-	boolean isClockMaker(Call_c n) {
-		if (n.isTargetImplicit())
-			return false;
-		Receiver target = n.target();
-		if (!(target instanceof Field_c))
-			return false;
-		Field_c f = (Field_c) target;
-		if (!(f.target() instanceof X10CanonicalTypeNode_c))
-			return false;
-		X10CanonicalTypeNode_c t = (X10CanonicalTypeNode_c) f.target();
-		X10TypeSystem xts = (X10TypeSystem) tr.typeSystem();
-		if (!xts.isClock(t.type()) || !f.name().equals("factory"))
-			return false;
-		if (n.arguments().size() != 0)
-			return false;
-		if (!n.name().equals("clock"))
-			return false;
-		return true;
-	}
-
-	boolean isBlockDistMaker(Call_c n) {
-		if (n.isTargetImplicit())
-			return false;
-		Receiver target = n.target();
-		if (!(target instanceof Field_c))
-			return false;
-		Field_c f = (Field_c) target;
-		if (!(f.target() instanceof X10CanonicalTypeNode_c))
-			return false;
-		X10CanonicalTypeNode_c t = (X10CanonicalTypeNode_c) f.target();
-		X10TypeSystem_c xts = (X10TypeSystem_c) tr.typeSystem();
-		if (!xts.isDistribution(t.type()) || !f.name().equals("factory"))
-			return false;
-		// TODO: detect other distribution constructors
-		if (n.arguments().size() != 1)
-			return false;
-		if (!n.name().equals("block"))
-			return false;
-		return true;
-	}
-
-	boolean isPointMaker(Call_c n) {
-		if (n.isTargetImplicit())
-			return false;
-		Receiver target = n.target();
-		if (!(target instanceof Field_c))
-			return false;
-		Field_c f = (Field_c) target;
-		if (!(f.target() instanceof X10CanonicalTypeNode_c))
-			return false;
-		X10CanonicalTypeNode_c t = (X10CanonicalTypeNode_c) f.target();
-		X10TypeSystem xts = (X10TypeSystem) tr.typeSystem();
-		if (!xts.isPoint(t.type()) || !f.name().equals("factory"))
-			return false;
-		if (n.arguments().size() < 1)
-			return false;
-		if (!n.name().equals("point"))
-			return false;
-		return true;
-	}
-
-	static final ArrayList<X10MethodInstance> knownAsyncArrayCopyMethods = new ArrayList<X10MethodInstance>();
+	static final ArrayList<MethodInstance> knownAsyncArrayCopyMethods = new ArrayList<MethodInstance>();
 
 	/* -- SPMD compilation --
 	boolean isAsyncArrayCopy(Call_c n) {
@@ -247,10 +160,10 @@ public class ASTQuery {
 	*/
 
 
-	static final ArrayList<X10MethodInstance> knownArrayCopyMethods = new ArrayList<X10MethodInstance>();
+	static final ArrayList<MethodInstance> knownArrayCopyMethods = new ArrayList<MethodInstance>();
 
 	boolean isAsyncArrayCopy(Async_c n) {
-		X10TypeSystem ts = (X10TypeSystem) tr.typeSystem();
+		TypeSystem ts = (TypeSystem) tr.typeSystem();
 		X10CPPContext_c context = (X10CPPContext_c) tr.context();
 		if (knownArrayCopyMethods.size() == 0) {
 			try {
@@ -320,8 +233,8 @@ public class ASTQuery {
 	}
 	public static String getCppRepParam(X10ClassDef def, int i) {
 		try {
-			X10TypeSystem xts = (X10TypeSystem) def.typeSystem();
-			Type rep = (Type) xts.systemResolver().find(QName.make("x10.compiler.NativeRep"));
+			TypeSystem xts = (TypeSystem) def.typeSystem();
+			Type rep = xts.systemResolver().findOne(QName.make("x10.compiler.NativeRep"));
 			List<Type> as = def.annotationsMatching(rep);
 			for (Type at : as) {
 				assertNumberOfInitializers(at, 4);
@@ -336,7 +249,7 @@ public class ASTQuery {
 	}
 
 	public static void assertNumberOfInitializers(Type at, int len) {
-	    at = X10TypeMixin.baseType(at);
+	    at = Types.baseType(at);
 	    if (at instanceof X10ClassType) {
 	        X10ClassType act = (X10ClassType) at;
 	        assert len == act.propertyInitializers().size();
@@ -353,7 +266,7 @@ public class ASTQuery {
 	}
 
 	public static Object getPropertyInit(Type at, int index) {
-	    at = X10TypeMixin.baseType(at);
+	    at = Types.baseType(at);
 	    if (at instanceof X10ClassType) {
 	        X10ClassType act = (X10ClassType) at;
 	        if (index < act.propertyInitializers().size()) {

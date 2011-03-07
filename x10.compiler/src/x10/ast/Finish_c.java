@@ -25,7 +25,7 @@ import polyglot.util.Position;
 import polyglot.visit.CFGBuilder;
 import polyglot.visit.NodeVisitor;
 import polyglot.visit.PrettyPrinter;
-import x10.types.X10Context;
+import polyglot.types.Context;
 
 /** An immutable class representing the X10 finish S construct.
  *  No special type-checking rules. 
@@ -60,6 +60,7 @@ public class Finish_c extends Stmt_c implements Finish {
 	
     /** Set the body of the statement. */
     public Finish body(Stmt body) {
+	if (body == this.body) return this;
 	Finish_c n = (Finish_c) copy();
 	n.body = body;
 	return n;
@@ -68,7 +69,7 @@ public class Finish_c extends Stmt_c implements Finish {
     @Override
 	public Context enterChildScope(Node child, Context c) {
     	c = super.enterChildScope(child,c);
-        c=((X10Context) c).pushFinishScope(clocked);
+        c=((Context) c).pushFinishScope(clocked);
     	addDecls(c);
     	return c;
 	}
@@ -100,6 +101,7 @@ public class Finish_c extends Stmt_c implements Finish {
     /** Visit the children of the statement. */
     public Node visitChildren( NodeVisitor v ) {
 	Stmt body = (Stmt) visitChild(this.body, v);
+	// TODO: reconstruct
 	return body(body);
     }
 

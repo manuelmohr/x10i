@@ -12,7 +12,6 @@
 package x10.rtt;
 
 import java.lang.reflect.Array;
-import java.util.List;
 
 import x10.core.Any;
 
@@ -22,18 +21,18 @@ public class RuntimeType<T> implements Type<T> {
     
     Type<?>[] parents;
     Class<?> base;
-    Variance[] variances = null;
+    Variance[] variances;
     
     public RuntimeType(Class<?> c) {
         this.base = c;
     }
     
-    public RuntimeType(Class<?> c, Variance... variances) {
+    public RuntimeType(Class<?> c, Variance[] variances) {
         this.base = c;
         this.variances = variances;
     }
 
-    public RuntimeType(Class<?>c, Type<?>[] parents) {
+    public RuntimeType(Class<?> c, Type<?>[] parents) {
         this.base = c;
         this.parents = parents;
     }
@@ -42,6 +41,18 @@ public class RuntimeType<T> implements Type<T> {
         this.base = c;
         this.variances = variances;
         this.parents = parents;
+    }
+
+    public Class<?> getJavaClass() {
+        return base;
+    }
+    
+    public Variance[] getVariances() {
+        return variances;
+    }
+    
+    public Type<?>[] getParents() {
+        return parents;
     }
     
     public String toString() {
@@ -71,19 +82,15 @@ public class RuntimeType<T> implements Type<T> {
         }
         if (o instanceof ParameterizedType) {
             ParameterizedType<?> pt = (ParameterizedType<?>) o;
-            if (pt.getRuntimeType().isSuperType(pt.getParams(), (RuntimeType<?>) this, null)) {
+            if (pt.getRuntimeType().isSuperType(pt.getParams(), this, null)) {
                 return true;
             }
         }
         return false;
     }
 
-    public List<Type<?>> getTypeParameters() {
-        return null;
-    }
-
-    public Type<T> reinstantiate(List<Type<?>> parms) {
-        return this;
+    public boolean hasZero() {
+        return true;
     }
 
     public boolean instanceof$(Object o) {
@@ -118,6 +125,10 @@ public class RuntimeType<T> implements Type<T> {
         else if (base.isInstance(o)) { // i.e. type of o != This
             return checkParents(o, params);
         }
+        else if (o instanceof String || o instanceof Number) {
+            // @NativeRep'ed type
+            return checkParents(o, params);
+        }
         else {
             return false;
         }
@@ -145,6 +156,7 @@ public class RuntimeType<T> implements Type<T> {
             }
             return instantiateCheck(params, rtt, any);
         }
+        /*
         else if (o instanceof String) {
             // @NativeRep'ed String type (the one with parents info)
             RuntimeType<?> rtt = (RuntimeType<?>) Types.getNativeRepRTT(o);
@@ -153,6 +165,12 @@ public class RuntimeType<T> implements Type<T> {
         else if (o instanceof Number) {
             // @NativeRep'ed numeric type
             return false;
+        }
+        */
+        else if (null != Types.getNativeRepRTT(o)) {
+            // @NativeRep'ed types to raw Java classes (e.g. String, Integer, etc.)
+            RuntimeType<?> rtt = Types.getNativeRepRTT(o);
+            return instantiateCheck(params, rtt, o);
         }
         return false;
     }
@@ -168,7 +186,7 @@ public class RuntimeType<T> implements Type<T> {
                         Type<?>[] newParamsT = new Type<?>[paramsT.length];
                         for (int i = 0; i < paramsT.length; i ++ ) {
                             if (paramsT[i] != null && paramsT[i] instanceof UnresolvedType) {
-                                int index = ((UnresolvedType) paramsT[i]).index;
+                                int index = ((UnresolvedType) paramsT[i]).getIndex();
                                 assert(index == -1);
                                 newParamsT[i] = rtt;
                             }
@@ -197,7 +215,7 @@ public class RuntimeType<T> implements Type<T> {
                         Type<?>[] newParamsT = new Type<?>[paramsT.length];
                         for (int i = 0; i < paramsT.length; i ++ ) {
                             if (paramsT[i] != null && paramsT[i] instanceof UnresolvedType) {
-                                int index = ((UnresolvedType) paramsT[i]).index;
+                                int index = ((UnresolvedType) paramsT[i]).getIndex();
                                 newParamsT[i]= index == -1 ? rtt : any.getParam(index);
                             }
                             else {
@@ -228,7 +246,7 @@ public class RuntimeType<T> implements Type<T> {
                         Type<?>[] newParamsT = new Type<?>[paramsT.length];
                         for (int i = 0; i < paramsT.length; i ++ ) {
                             if (paramsT[i] != null && paramsT[i] instanceof UnresolvedType) {
-                                int index = ((UnresolvedType) paramsT[i]).index;
+                                int index = ((UnresolvedType) paramsT[i]).getIndex();
                                 newParamsT[i] = index == -1 ? rtt : paramsRTT[index];
                             }
                             else {
@@ -274,10 +292,6 @@ public class RuntimeType<T> implements Type<T> {
         else {
             return false;
         }
-    }
-    
-    public Class<?> getJavaClass() {
-        return base;
     }
     
     public Object makeArray(int length) {
@@ -330,7 +344,7 @@ public class RuntimeType<T> implements Type<T> {
                 str += ((Any) o).getParam(i).typeName();
             }
         }
-        str += ")=>Void";
+        str += ")=>void";
         return str;
     }
     protected final String typeNameForOthers(Object o) {
@@ -460,7 +474,11 @@ public class RuntimeType<T> implements Type<T> {
             return true;
         }
         else if (base.isInstance(o)) {
-            return checkParents(o, param1, param2);
+            return checkParents(o, param0, param1, param2);
+        }
+        else if (o instanceof String || o instanceof Number) {
+            // @NativeRep'ed type
+            return checkParents(o, param0, param1, param2);
         }
         else {
             return false;

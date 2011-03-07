@@ -13,7 +13,7 @@ package x10.array;
 
 import x10.io.Printer;
 
-public abstract class Mat[+T](rows:Int, cols:Int){T <: Row} 
+abstract class Mat[T](rows:Int, cols:Int){T <: Row} 
     implements (Int)=>T, Iterable[T] {
 
     private val mat:Array[T](1);
@@ -23,7 +23,7 @@ public abstract class Mat[+T](rows:Int, cols:Int){T <: Row}
         this.mat = mat;
     }
 
-    public def apply(i:Int) = mat(i);
+    public operator this(i:Int) = mat(i);
 
     public def iterator() = mat.values().iterator();
 

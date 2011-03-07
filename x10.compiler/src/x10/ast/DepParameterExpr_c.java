@@ -38,9 +38,10 @@ import polyglot.visit.PrettyPrinter;
 import polyglot.visit.TypeBuilder;
 import polyglot.visit.TypeCheckPreparer;
 import polyglot.visit.TypeChecker;
-import x10.types.X10Context;
-import x10.types.X10TypeMixin;
-import x10.types.X10TypeSystem;
+import x10.errors.Errors;
+import polyglot.types.Context;
+import polyglot.types.TypeSystem;
+import polyglot.types.LazyRef_c;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.TypeConstraint;
 import x10.visit.X10TypeChecker;
@@ -80,7 +81,7 @@ public class DepParameterExpr_c extends Node_c implements DepParameterExpr {
     }
     @Override
     public Context enterChildScope(Node child, Context c) {
-    	X10Context xc = (X10Context) c;
+    	Context xc = (Context) c;
     	if (child instanceof Formal) {
     		// pop the dep type
     		c = c.pop();
@@ -94,7 +95,7 @@ public class DepParameterExpr_c extends Node_c implements DepParameterExpr {
     			for (Formal f : formals) {
     				f.addDecls(c);
     			}
-    			c = ((X10Context) c).pushDepType(t);
+    			c = ((Context) c).pushDepType(t);
     		}
     	}
 
@@ -162,6 +163,11 @@ public class DepParameterExpr_c extends Node_c implements DepParameterExpr {
     	return n;
       }
 
+    // This is a challenge because DepParam is used both in methods and closures
+    // (for closures we shouldn't create a resolver, but for methods we should but without freezing).
+    // C:\cygwin\home\Yoav\intellij\sourceforge\x10.tests\examples\Issues\XTENLANG_2330.x10
+    // C:\cygwin\home\Yoav\intellij\sourceforge\x10.tests\examples\Constructs\Place\At_MustFailCompile.x10
+    // C:\cygwin\home\Yoav\intellij\sourceforge\x10.tests\examples\Misc\x10\frontend\tests\FrontEndTests_MustFailCompile.x10
       public void setResolver(Node parent, final TypeCheckPreparer v) {
     	  TypeChecker tc = new X10TypeChecker(v.job(), v.typeSystem(), v.nodeFactory(), v.getMemo());
     	  tc = (TypeChecker) tc.context(v.context().freeze());
@@ -177,12 +183,12 @@ public class DepParameterExpr_c extends Node_c implements DepParameterExpr {
     	      xr.setResolver(new TypeCheckFragmentGoal<TypeConstraint>(parent, this, tc, xr, false));
     	  }
       }
-    
+
     @Override
     public Node disambiguate(ContextVisitor ar) throws SemanticException {
     	DepParameterExpr_c n = (DepParameterExpr_c) super.disambiguate(ar);
     	
-    	if (((X10Context) ar.context()).inAnnotation() && condition == null) {
+    	if (((Context) ar.context()).inAnnotation() && condition == null) {
     		return n.condition(Collections.<Expr>emptyList());
     	}
 
@@ -192,8 +198,8 @@ public class DepParameterExpr_c extends Node_c implements DepParameterExpr {
     /** Type check the statement. 
      */
     @Override
-    public Node typeCheck(ContextVisitor tc) throws SemanticException {
-        X10TypeSystem ts = (X10TypeSystem) tc.typeSystem();
+    public Node typeCheck(ContextVisitor tc) {
+        TypeSystem ts = (TypeSystem) tc.typeSystem();
         //Report.report(1, "DepParameterExpr: Typechecking " + this + this.getClass() + " " + condition);
         
         if (condition == null) {
@@ -213,8 +219,8 @@ public class DepParameterExpr_c extends Node_c implements DepParameterExpr {
             Type t = e.type();
 
             if (! t.isBoolean())
-                throw new SemanticError("The type of the constraint "+ e 
-                                        + " must be boolean, not " + t + ".", position());
+                Errors.issue(tc.job(),
+                        new Errors.TypeConstraintMustBeBoolean(e, t, position()));
 
             if (e instanceof Binary) {
                 Binary b = (Binary) e;
@@ -227,7 +233,7 @@ public class DepParameterExpr_c extends Node_c implements DepParameterExpr {
 
             NodeFactory nf = tc.nodeFactory();
             
-            if (X10TypeMixin.isTypeConstraintExpression(e)) {
+            if (Types.isTypeConstraintExpression(e)) {
                 if (types == null)
                     types = e;
                 else
@@ -242,12 +248,12 @@ public class DepParameterExpr_c extends Node_c implements DepParameterExpr {
         }
         
         try {
-            CConstraint xvc = ts.xtypeTranslator().constraint(formals, values, (X10Context) tc.context());
+            CConstraint xvc = ts.xtypeTranslator().constraint(formals, values, (Context) tc.context());
             ((LazyRef<CConstraint>) valueConstraint).update(xvc);
         } catch (SemanticException e) { }
 
         try {
-            TypeConstraint xtc = ts.xtypeTranslator().typeConstraint(formals, types, (X10Context) tc.context());
+            TypeConstraint xtc = ts.xtypeTranslator().typeConstraint(formals, types, (Context) tc.context());
             ((LazyRef<TypeConstraint>) typeConstraint).update(xtc);
         } catch (SemanticException e) { }
         

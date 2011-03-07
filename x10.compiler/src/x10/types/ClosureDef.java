@@ -16,9 +16,11 @@ import java.util.List;
 import polyglot.types.ClassType;
 import polyglot.types.CodeInstance;
 import polyglot.types.FunctionDef;
-import polyglot.types.MethodInstance;
+
 import polyglot.types.Ref;
 import polyglot.types.Type;
+import polyglot.types.VarDef;
+import polyglot.types.VarInstance;
 import polyglot.util.Position;
 
 import x10.types.constraints.XConstrainedTerm;
@@ -32,7 +34,7 @@ import x10.types.constraints.XConstrainedTerm;
  * @author vj
  *
  */
-public interface ClosureDef extends FunctionDef, X10Def, X10ProcedureDef {
+public interface ClosureDef extends FunctionDef, X10Def, X10ProcedureDef, EnvironmentCapture {
     
     ClosureInstance asInstance();
     public FunctionType asType();
@@ -42,9 +44,6 @@ public interface ClosureDef extends FunctionDef, X10Def, X10ProcedureDef {
      * @return
      */
     public ClosureDef position(Position pos);
-    /** Set a flag indicating we should infer the return type. */
-    boolean inferReturnType();
-    void inferReturnType(boolean r);
 
     Ref<? extends CodeInstance<?>> methodContainer();
     void setMethodContainer(Ref<? extends CodeInstance<?>> mi);
@@ -54,6 +53,9 @@ public interface ClosureDef extends FunctionDef, X10Def, X10ProcedureDef {
     
     //List<ParameterType> typeParameters();
     void setTypeParameters(List<ParameterType> typeParameters);
+    
+    boolean staticContext();
+    void setStaticContext(boolean v);
     
     
     /**

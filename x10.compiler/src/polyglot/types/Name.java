@@ -2,9 +2,11 @@ package polyglot.types;
 
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.Map;
 
 import polyglot.util.StringUtil;
 import polyglot.util.UniqueID;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 
 public class Name  implements Serializable {
     private static final long serialVersionUID = -899548430558751316L;
@@ -17,7 +19,7 @@ public class Name  implements Serializable {
         this.hash = hash;
     }
 
-    static HashMap<String,Name> internCache = new HashMap<String,Name>();
+    static Map<String,Name> internCache = CollectionFactory.newHashMap();
     static int count = 0;
     
     public static Name makeFresh() {
@@ -35,8 +37,12 @@ public class Name  implements Serializable {
     }
     
     public static Name make(String name) {
+        if (! StringUtil.isNameShort(name))
 	assert StringUtil.isNameShort(name);
+	return makeUnchecked(name);
+    }
 
+    public static Name makeUnchecked(String name) {
 	synchronized (internCache) {
 	    Name n = internCache.get(name);
 
@@ -53,9 +59,8 @@ public class Name  implements Serializable {
     public final void equals(final QName o) { }
 
     public boolean equals(Object o) {
-	if (o == null)
-	    return false;
-	assert o instanceof Name;
+        if (o == null)
+            return false;
         return this == o;
     }
 

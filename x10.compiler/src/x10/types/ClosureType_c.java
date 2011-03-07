@@ -30,16 +30,16 @@ import polyglot.types.LocalInstance;
 import polyglot.types.Matcher;
 import polyglot.types.MethodAsTypeTransform;
 import polyglot.types.MethodDef;
-import polyglot.types.MethodInstance;
-import polyglot.types.Named;
+
 import polyglot.types.Package;
 import polyglot.types.Ref;
 import polyglot.types.Resolver;
 import polyglot.types.Name;
-import polyglot.types.StructType;
+import polyglot.types.ContainerType;
 import polyglot.types.Type;
 import polyglot.types.TypeObject;
 import polyglot.types.Types;
+import polyglot.types.TypeSystem;
 import polyglot.types.ClassDef.Kind;
 import polyglot.util.CodeWriter;
 import polyglot.util.InternalCompilerError;
@@ -61,12 +61,17 @@ public class ClosureType_c extends X10ParsedClassType_c implements FunctionType 
 
 //    protected ClosureInstance ci;
 
-    public ClosureType_c(final X10TypeSystem ts, Position pos, final X10ClassDef def) {
+    public ClosureType_c(final TypeSystem ts, Position pos, final X10ClassDef def) {
 	super(ts, pos, Types.ref(def));
     }
     
-    public X10MethodInstance applyMethod() {
-        return (X10MethodInstance) methods().get(0);
+    public MethodInstance applyMethod() {
+        try {
+        return (MethodInstance) methods().get(0);
+        } catch (Exception z) {
+            System.out.println("check.");
+            return null;
+        }
     }
     
     public Type returnType() {
@@ -91,8 +96,10 @@ public class ClosureType_c extends X10ParsedClassType_c implements FunctionType 
 
     
     @Override
-    public String toString() {
-        X10MethodInstance mi = applyMethod();
+    public String typeToString() {
+        MethodInstance mi = applyMethod();
+        if (mi==null) // this could happen if the method is installed before the type is properly formed, e.g. in -report types=2 execution.
+            return "???"; 
         StringBuilder sb = new StringBuilder();
         List<LocalInstance> formals = mi.formalNames();
         for (int i=0; i < formals.size(); ++i) {
@@ -116,10 +123,6 @@ public class ClosureType_c extends X10ParsedClassType_c implements FunctionType 
         return "(" + sb.toString() + ")" + (guard==null? "" : guard) + "=> " + mi.returnType();
     }
 
-	@Override
-	public boolean equalsImpl(TypeObject t) {
-		return super.equalsImpl(t);
-	}
 
 	@Override
 	public int hashCode() {

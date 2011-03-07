@@ -28,18 +28,34 @@ namespace x10 {
             static void _initRTT();
 
             template <class I> struct itable {
-                itable(void(I::*apply)(),
-                       x10_boolean (I::*equals)(x10aux::ref<x10::lang::Any>),
+                itable(x10_boolean (I::*equals)(x10aux::ref<x10::lang::Any>),
                        x10_int (I::*hashCode)(),
+                       void(I::*__apply)(),
                        x10aux::ref<x10::lang::String> (I::*toString)(),
                        x10aux::ref<x10::lang::String> (I::*typeName)()
-                    ) : apply(apply), equals(equals), hashCode(hashCode), toString(toString), typeName(typeName) {}
-                void (I::*apply)();
+                    ) : equals(equals), hashCode(hashCode), __apply(__apply), toString(toString), typeName(typeName) {}
                 x10_boolean (I::*equals)(x10aux::ref<x10::lang::Any>);
                 x10_int (I::*hashCode)();
+                void (I::*__apply)();
                 x10aux::ref<x10::lang::String> (I::*toString)();
                 x10aux::ref<x10::lang::String> (I::*typeName)();
             };
+
+            static void __apply(x10aux::ref<x10::lang::Reference> recv) {
+                return (recv.operator->()->*(x10aux::findITable<VoidFun_0_0>(recv->_getITables())->__apply))();
+            }
+            static x10_boolean equals(x10aux::ref<x10::lang::Reference> recv, x10aux::ref<x10::lang::Any> arg1) {
+                return (recv.operator->()->*(x10aux::findITable<VoidFun_0_0>(recv->_getITables())->equals))(arg1);
+            }
+            static x10_int hashCode(x10aux::ref<x10::lang::Reference> recv) {
+                return (recv.operator->()->*(x10aux::findITable<VoidFun_0_0>(recv->_getITables())->hashCode))();
+            }
+            static x10aux::ref<x10::lang::String> toString(x10aux::ref<x10::lang::Reference> recv) {
+                return (recv.operator->()->*(x10aux::findITable<VoidFun_0_0>(recv->_getITables())->toString))();
+            }
+            static x10aux::ref<x10::lang::String> typeName(x10aux::ref<x10::lang::Reference> recv) {
+                return (recv.operator->()->*(x10aux::findITable<VoidFun_0_0>(recv->_getITables())->typeName))();
+            }
         };
     }
 }

@@ -24,7 +24,7 @@ import x10.compiler.Global;
  *
  *
  */
-public class Future[+T] implements ()=>T {
+public class Future[T] implements ()=>T { // Future can't be covariant [+T]  because of: result = new GrowableRail[T]();
 	private val root = GlobalRef[Future[T]](this);
     /**
      * Latch for signaling and wait
@@ -58,7 +58,7 @@ public class Future[+T] implements ()=>T {
      * Return true if this activity has completed.
      */
     public def forced():boolean = at (root) root().latch();
-    public def apply():T = force();
+    public operator this():T = force();
 
     /**
      * Wait for the completion of this activity and return the computed value.
@@ -70,12 +70,7 @@ public class Future[+T] implements ()=>T {
     @Pinned private def forceLocal():T {
     	 latch.await();
          if (exception.length() > 0) {
-             val e = exception(0);
-             if (e instanceof Error)
-                 throw e as Error;
-             if (e instanceof RuntimeException)
-                 throw e as RuntimeException;
-             assert false;
+             throw exception(0);
          }
          return result(0);
     }

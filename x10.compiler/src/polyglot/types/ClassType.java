@@ -17,7 +17,7 @@ import java.util.List;
 public interface ClassType extends Importable, ObjectType, MemberInstance<ClassDef>, Use<ClassDef>
 {
     ClassType flags(Flags flags);
-    ClassType container(StructType container);
+    ClassType container(ContainerType container);
     
     /**
      * A resolver to access member classes of the class.
@@ -85,8 +85,8 @@ public interface ClassType extends Importable, ObjectType, MemberInstance<ClassD
     List<ClassType> memberClasses();
 
     /** Returns the member class with the given name, or null. */
-    ClassType memberClassMatching(Matcher<Named> name);
-    Named memberTypeMatching(Matcher<Named> matcher);
+    ClassType memberClassMatching(Matcher<Type> name);
+    Type memberTypeMatching(Matcher<Type> matcher);
     
     /** Return true if the class is strictly contained in <code>outer</code>. */
     boolean isEnclosed(ClassType outer);

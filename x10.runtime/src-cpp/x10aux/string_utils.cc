@@ -29,18 +29,9 @@ ref<Array<ref<String> > >x10aux::convert_args(int ac, char **av) {
     ref<Array<ref<String> > > arr(Array<ref<String> >::_make(x10_argc));
     for (int i = 1; i < ac; i++) {
         ref<String> val = String::Lit(av[i]);
-        arr->set(val, i-1);
+        arr->__set(val, i-1);
     }
     return arr;
-}
-
-ref<String> x10aux::vrc_to_string(ref<Rail<x10_char> > v) {
-    nullCheck(v);
-    char *str = alloc<char>(v->FMGL(length)+1);
-    for (int i = 0; i < v->FMGL(length); ++i)
-        str[i] = (*v)[i].v;
-    str[v->FMGL(length)] = '\0';
-    return String::Steal(str);
 }
 
 ref<String> x10aux::string_utils::lit(const char* s) {
@@ -50,5 +41,21 @@ ref<String> x10aux::string_utils::lit(const char* s) {
 const char* x10aux::string_utils::cstr(ref<String> s) {
     return s->c_str();
 }
+
+char * x10aux::string_utils::strdup(const char* old) {
+#ifdef X10_USE_BDWGC
+    int len = strlen(old);
+    char *ans = x10aux::alloc<char>(len+1);
+    memcpy(ans, old, len);
+    ans[len] = 0;
+    return ans;
+#else
+    return ::strdup(old);
+#endif
+}
+
+
+
+
 
 // vim:tabstop=4:shiftwidth=4:expandtab

@@ -19,7 +19,7 @@ import x10.errors.Errors;
  * A <code>ConstructorDecl</code> is an immutable representation of a
  * constructor declaration as part of a class body.
  */
-public class ConstructorDecl_c extends Term_c implements ConstructorDecl
+public abstract class ConstructorDecl_c extends Term_c implements ConstructorDecl
 {
     protected FlagsNode flags;
     protected Id name;
@@ -183,11 +183,7 @@ public class ConstructorDecl_c extends Term_c implements ConstructorDecl
         return n.constructorDef(ci);
     }
 
-    protected ConstructorDef createConstructorDef(TypeSystem ts, ClassDef ct, Flags flags) {
-	ConstructorDef ci = ts.constructorDef(position(), Types.ref(ct.asType()), flags,
-                                              Collections.<Ref<? extends Type>>emptyList());
-	return ci;
-    }
+    protected abstract ConstructorDef createConstructorDef(TypeSystem ts, ClassDef ct, Flags flags);
 
     public Context enterScope(Context c) {
         return c.pushCode(ci);
@@ -209,7 +205,7 @@ public class ConstructorDecl_c extends Term_c implements ConstructorDecl
     }
 
     /** Type check the constructor. */
-    public Node typeCheck(ContextVisitor tc) throws SemanticException {
+    public Node typeCheck(ContextVisitor tc) {
         TypeSystem ts = tc.typeSystem();
 
 
@@ -223,19 +219,20 @@ public class ConstructorDecl_c extends Term_c implements ConstructorDecl
 	ClassType ct = c.currentClass();
 	
 	if (ct.flags().isInterface()) {
-	    Errors.issue(tc.job(),
-	            new SemanticException("Cannot declare a constructor inside an interface.",position()));
+	    Errors.issue(tc.job(), 
+	    		new Errors.CannotDeclareConstructorInInterface(position()));
 	}
 	
 	if (ct.isAnonymous()) {
 	    Errors.issue(tc.job(),
-	            new SemanticException("Cannot declare a constructor inside an anonymous class.",position()));
+	            new Errors.CannotDeclareConstructorInAnonymousClass(position()));
 	}
 	
 	Name ctName = ct.name();
 	
 	if (! ctName.equals(name.id())) {
-	    Errors.issue(tc.job(),new SemanticException("Constructor name \"" + name +"\" does not match name of containing class \"" + ctName + "\".", position()));
+	    Errors.issue(tc.job(), 
+	    		new Errors.ConstructorNameDoesNotMatchContainingClassName(name, ctName, position()));
 	}
 	
 	Flags flags = flags().flags();
@@ -248,60 +245,20 @@ public class ConstructorDecl_c extends Term_c implements ConstructorDecl
 	}
 	
 	if (body == null && ! flags.isNative()) {
-	    Errors.issue(tc.job(), new SemanticException("Missing constructor body.", position()));
+	    Errors.issue(tc.job(), new Errors.MissingConstructorBody(position()));
 	}
 	
 	if (body != null && flags.isNative()) {
-	    Errors.issue(tc.job(), new SemanticException("A native constructor cannot have a body.", position()));
+	    Errors.issue(tc.job(), new Errors.NativeConstructorCannotHaveABody(position()));
 	}
 	
 	return this;
     }
 
-    public String toString() {
-        return flags.flags().translate() + name + "(...)";
-    }
+    public abstract String toString();
 
     /** Write the constructor to an output file. */
-    public void prettyPrintHeader(CodeWriter w, PrettyPrinter tr) {
-        w.begin(0);
-        
-        tr.print(this, flags, w);
-        tr.print(this, name, w);
-        w.write("(");
-
-        w.begin(0);
-
-        for (Iterator<Formal> i = formals.iterator(); i.hasNext(); ) {
-            Formal f = i.next();
-            print(f, w, tr);
-
-            if (i.hasNext()) {
-                w.write(",");
-                w.allowBreak(0, " ");
-            }
-        }
-
-        w.end();
-        w.write(")");
-/*
-        if (! throwTypes().isEmpty()) {
-            w.allowBreak(6);
-            w.write("throws ");
-
-            for (Iterator<TypeNode> i = throwTypes().iterator(); i.hasNext(); ) {
-                TypeNode tn = i.next();
-                print(tn, w, tr);
-
-                if (i.hasNext()) {
-                    w.write(",");
-                    w.allowBreak(4, " ");
-                }
-            }
-        }
-*/
-        w.end();
-    }
+    public abstract void prettyPrintHeader(CodeWriter w, PrettyPrinter tr);
 
     public void prettyPrint(CodeWriter w, PrettyPrinter tr) {
         prettyPrintHeader(w, tr);

@@ -8,18 +8,24 @@
 
 package polyglot.ast;
 
+import java.util.List;
+
 import polyglot.frontend.Globals;
 import polyglot.frontend.Goal;
 import polyglot.types.*;
 import polyglot.types.Package;
 import polyglot.util.Position;
 import polyglot.visit.ContextVisitor;
+import x10.errors.Errors;
+import x10.extension.X10Ext;
+import x10.types.MethodInstance;
+import x10.ast.X10CanonicalTypeNode;
 
 /**
  * Utility class which is used to disambiguate ambiguous
  * AST nodes (Expr, Type, Receiver, Qualifier, Prefix).
  */
-public class Disamb_c implements Disamb
+public abstract class Disamb_c implements Disamb
 {
     protected ContextVisitor v;
     protected Position pos;
@@ -60,8 +66,7 @@ public class Disamb_c implements Disamb
         c = v.context();
 
         if (prefix instanceof Ambiguous) {
-            throw new SemanticException(
-                "Cannot disambiguate node with ambiguous prefix.");
+            throw new Errors.CannotDisambiguateNodeWithAmbiguousPrefix(pos);
         }
 
         Node result = null;
@@ -90,28 +95,30 @@ public class Disamb_c implements Disamb
     protected Node disambiguatePackagePrefix(PackageNode pn) throws SemanticException {
         Resolver pc = ts.packageContextResolver(pn.package_().get());
 
-        Named n;
-        
+        List<Type> n;
+
         try {
             n = pc.find(ts.TypeMatcher(name.id()));
         }
         catch (SemanticException e) {
             n = null;
         }
-        
+
         Qualifier q = null;
 
-        if (n instanceof Qualifier) {
-            q = (Qualifier) n;
+        if (n != null) {
+            for (Type t : n) {
+                if (t.isClass()) {
+                    q = t;
+                    break;
+                }
+            }
         }
-        else if (n == null) {
-	    Package p = ts.createPackage(pn.package_(), name.id());
-	    q = p;
-	}
-	else {
-            return null;
+        if (q == null) {
+            Package p = ts.createPackage(pn.package_(), name.id());
+            q = p;
         }
-        
+
         if (q.isPackage() && packageOK()) {
             return nf.PackageNode(pos, Types.ref(q.toPackage()));
         }
@@ -146,16 +153,17 @@ public class Disamb_c implements Disamb
         // Try member classes.
         if (t.isClass() && typeOK()) {
             Resolver tc = t.toClass().resolver();
-            Named n;
+            List<Type> tl;
             try {
-                n = tc.find(ts.MemberTypeMatcher(t, name.id(), c));
+                tl = tc.find(ts.MemberTypeMatcher(t, name.id(), c));
             }
             catch (NoClassException e) {
                 return null;
             }
-            if (n instanceof Type) {
-                Type type = (Type) n;
-                return makeTypeNode(type);
+            for (Type n : tl) {
+                if (n.isClass()) {
+                    return makeTypeNode(n);
+                }
             }
         }
 
@@ -170,51 +178,7 @@ public class Disamb_c implements Disamb
         return null;
     }
 
-    protected Node disambiguateNoPrefix() throws SemanticException {
-        if (exprOK()) {
-            // First try local variables and fields.
-            VarInstance<?> vi = c.findVariableSilent(name.id());
-            
-            if (vi != null) {
-                Node n = disambiguateVarInstance(vi);
-                if (n != null) return n;
-            }
-        }
-        
-        // no variable found. try types.
-        if (typeOK()) {
-            try {
-                Named n = c.find(ts.TypeMatcher(name.id()));
-                if (n instanceof Type) {
-                    Type type = (Type) n;
-                    return makeTypeNode(type);
-                }
-            } catch (NoClassException e) {
-                if (!name.id().toString().equals(e.getClassName())) {
-                    // hmm, something else must have gone wrong
-                    // rethrow the exception
-                    throw e;
-                }
-
-                // couldn't find a type named name. 
-                // It must be a package--ignore the exception.
-            }
-        }
-
-        // Must be a package then...
-        if (packageOK()) {
-            try {
-        	Package p = ts.packageForName(QName.make(null, name.id()));
-        	return nf.PackageNode(pos, Types.ref(p));
-            }
-            catch (SemanticException e) {
-            }
-            Package p = ts.createPackage(QName.make(null, name.id()));
-            return nf.PackageNode(pos, Types.ref(p));
-        }
-
-        return null;
-    }
+    protected abstract Node disambiguateNoPrefix() throws SemanticException;
 
     protected Node disambiguateVarInstance(VarInstance<?> vi) throws SemanticException {
         if (vi instanceof FieldInstance) {
@@ -228,59 +192,9 @@ public class Disamb_c implements Disamb
         return null;
     }
 
-    protected Receiver makeMissingFieldTarget(FieldInstance fi) throws SemanticException {
-	Receiver r;
-	
-	if (fi.flags().isStatic()) {
-	    r = nf.CanonicalTypeNode(pos.startOf(), fi.container());
-	} else {
-	    // The field is non-static, so we must prepend with
-	    // "this", but we need to determine if the "this"
-	    // should be qualified.  Get the enclosing class which
-	    // brought the field into scope.  This is different
-	    // from fi.container().  fi.container() returns a super
-	    // type of the class we want.
-	    ClassType scope = c.findFieldScope(name.id());
-	    assert scope != null;
-	    
-	    if (! ts.typeEquals(scope, c.currentClass(), c)) {
-		r = (Special) nf.This(pos.startOf(), nf.CanonicalTypeNode(pos.startOf(), scope)).del().typeCheck(v);
-	    }
-	    else {
-		r = (Special) nf.This(pos.startOf()).del().typeCheck(v);
-	    }
-	    
-	}
-	
-	return r;
-    }
+    protected abstract Receiver makeMissingFieldTarget(FieldInstance fi) throws SemanticException;
     
-    protected Receiver makeMissingMethodTarget(MethodInstance mi) throws SemanticException {
-        Receiver r;
-
-        if (mi.flags().isStatic()) {
-            r = nf.CanonicalTypeNode(pos.startOf(), mi.container());
-        } else {
-            // The field is non-static, so we must prepend with
-            // "this", but we need to determine if the "this"
-            // should be qualified.  Get the enclosing class which
-            // brought the field into scope.  This is different
-            // from fi.container().  fi.container() returns a super
-            // type of the class we want.
-            ClassType scope = c.findMethodScope(name.id());
-            assert scope != null;
-
-	    if (! ts.typeEquals(scope, c.currentClass(), c)) {
-		r = (Special) nf.This(pos.startOf(), nf.CanonicalTypeNode(pos.startOf(), scope)).del().typeCheck(v);
-	    }
-	    else {
-		r = (Special) nf.This(pos.startOf()).del().typeCheck(v);
-	    }
-            
-        }
-
-        return r;
-    }
+    protected abstract Receiver makeMissingMethodTarget(MethodInstance mi) throws SemanticException;
 
     protected boolean typeOK() {
         return ! (amb instanceof Expr) &&
@@ -302,25 +216,25 @@ public class Disamb_c implements Disamb
     }
 
     protected Node makeTypeNode(Type t) {
-	if (amb instanceof TypeNode) {
-	    TypeNode tn = (TypeNode) amb;
-	    if (tn.typeRef() instanceof LazyRef<?>) {
-		LazyRef<Type> sym = (LazyRef<Type>) tn.typeRef();
-		sym.update(t);
+        CanonicalTypeNode res = null;
+	    if (amb instanceof TypeNode) {
+            TypeNode tn = (TypeNode) amb;
+            if (tn.typeRef() instanceof LazyRef<?>) {
+                LazyRef<Type> sym = (LazyRef<Type>) tn.typeRef();
+                sym.update(t);
 
-		// Reset the resolver goal to one that can run when the ref is deserialized.
-		Goal resolver = v.job().extensionInfo().scheduler().LookupGlobalType(sym);
-		resolver.update(Goal.Status.SUCCESS);
-		sym.setResolver(resolver);
+                // Reset the resolver goal to one that can run when the ref is deserialized.
+                Goal resolver = v.job().extensionInfo().scheduler().LookupGlobalType(sym);
+                resolver.update(Goal.Status.SUCCESS);
+                sym.setResolver(resolver);
 
-		return nf.CanonicalTypeNode(pos, sym);
-	    }
-	}
-
-	return nf.CanonicalTypeNode(pos, t);
+                res = nf.CanonicalTypeNode(pos, sym);
+	        }
+        }
+        if (res==null) res = nf.CanonicalTypeNode(pos, t);
+        final Node node = res.ext((X10Ext) amb.ext().copy());
+        return node;
     }
     
-    public String toString() {
-        return "Disamb(" + amb.getClass().getName() + ": " + amb + ")";
-    }
+    public abstract String toString();
 }

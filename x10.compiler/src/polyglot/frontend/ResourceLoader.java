@@ -13,9 +13,10 @@ import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import polyglot.main.Report;
+import polyglot.main.Reporter;
 import polyglot.util.FileUtil;
 import polyglot.util.InternalCompilerError;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 
 /**
  * We implement our own class loader.  All this pain is so
@@ -40,25 +41,41 @@ public class ResourceLoader
      */
     protected Map<File, Set<String>> dirContentsCache;
 
-    protected final static Object not_found = new Object();
+    /**
+     * Cache File.canRead()
+     */
+    protected Map<File, Boolean> dirCanRead = CollectionFactory.newHashMap();
 
-    public ResourceLoader() {
-        this.zipCache = new HashMap<File, Object>();
-        this.dirContentsCache = new HashMap<File, Set<String>>();
-        this.dirCache = new HashSet<String>();
+    protected final static Object not_found = new Object();
+    
+    protected Reporter reporter;
+
+    public ResourceLoader(Reporter reporter) {
+        this.zipCache = CollectionFactory.newHashMap();
+        this.dirContentsCache = CollectionFactory.newHashMap();
+        this.dirCache = CollectionFactory.newHashSet();
+        this.reporter = reporter;
     }
 
+    private boolean canRead(File dir) {
+        Boolean res = dirCanRead.get(dir);
+        if (res==null) {
+            res = dir.canRead();
+            dirCanRead.put(dir,res);
+        }
+        return res;
+    }
     /**
      * Return true if the package name exists under the directory or file
      * <code>dir</code>.
      */
     public boolean dirExists(File dir, String name) {
-        if (Report.should_report(verbose, 3)) {
-	    Report.report(3, "looking in " + dir + " for " +
+        if (reporter.should_report(Reporter.loader, 3)) {
+           reporter.report(3, "looking in " + dir + " for " +
                              name.replace('.', File.separatorChar));
         }
 
-        if (!dir.canRead())
+        if (!canRead(dir))
             return false;
 
         try {
@@ -98,11 +115,11 @@ public class ResourceLoader
      */
     public Resource loadResource(File dir, String name)
     {
-        if (Report.should_report(verbose, 3)) {
-	    Report.report(3, "looking in " + dir + " for " + name);
+        if (reporter.should_report(Reporter.loader, 3)) {
+            reporter.report(3, "looking in " + dir + " for " + name);
         }
 	
-        if (!dir.canRead())
+        if (!canRead(dir))
             return null;
         
         try {
@@ -120,7 +137,7 @@ public class ResourceLoader
             // ignore the exception.
         }
         catch (IOException e) {
-            throw new InternalCompilerError(e);
+            throw new InternalCompilerError("Error while processing "+dir, e);
         }
 
         return null;
@@ -142,8 +159,8 @@ public class ResourceLoader
                 }
                 else {
                     // get the zip and put it in the cache.
-                    if (Report.should_report(verbose, 2))
-                        Report.report(2, "Opening zip " + dir);
+                    if (reporter.should_report(Reporter.loader, 2))
+                        reporter.report(2, "Opening zip " + dir);
 		    if (dir.getName().endsWith(".jar")) {
 			zip = new JarFile(dir);
 		    }
@@ -173,13 +190,13 @@ public class ResourceLoader
 
     Resource loadFromZip(File source, ZipFile zip, String fileName) throws IOException {
 	String entryName = fileName.replace(File.separatorChar, '/');
-        if (Report.should_report(verbose, 2))
-            Report.report(2, "Looking for " + entryName + " in " + zip.getName());
+        if (reporter.should_report(Reporter.loader, 2))
+            reporter.report(2, "Looking for " + entryName + " in " + zip.getName());
         if (zip != null) {
             ZipEntry entry = zip.getEntry(entryName);
             if (entry != null) {
-                if (Report.should_report(verbose, 3))
-                    Report.report(3, "found zip entry " + entry);
+                if (reporter.should_report(Reporter.loader, 3))
+                    reporter.report(3, "found zip entry " + entry);
                 Resource c = new ZipResource(source, zip, entryName);
                 return c;
             }
@@ -196,7 +213,7 @@ public class ResourceLoader
 	}
         Set<String> dirContents = dirContentsCache.get(dir);
         if (dirContents == null) {
-            dirContents = new HashSet<String>();
+            dirContents = CollectionFactory.newHashSet();
             dirContentsCache.put(dir, dirContents);
             if (dir.exists() && dir.isDirectory()) {
                 String[] contents = dir.list();
@@ -223,19 +240,13 @@ public class ResourceLoader
         }
 
 
-        if (Report.should_report(verbose, 3))
-            Report.report(3, "found " + file);
-	if (Report.should_report(verbose, 3))
-	Report.report(3, "defining class " + name);
+        if (reporter.should_report(Reporter.loader, 3)) {
+            reporter.report(3, "found " + file);
+            reporter.report(3, "defining class " + name);
+        }
 	
 	Resource c = new FileResource(file);
         return c;
     }
-    
-    protected static Collection<String> verbose;
 
-    static {
-        verbose = new HashSet<String>();
-        verbose.add("loader");
-    }
 }

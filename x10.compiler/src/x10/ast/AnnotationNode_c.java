@@ -24,8 +24,8 @@ import polyglot.visit.PrettyPrinter;
 import polyglot.visit.Translator;
 import x10.errors.Errors;
 import x10.types.X10ClassType;
-import x10.types.X10Context;
-import x10.types.X10TypeSystem;
+import polyglot.types.Context;
+import polyglot.types.TypeSystem;
 
 /**
  * A node representing an annotation.  Every X10 Node has an associated list of AnnotationNodes.
@@ -54,7 +54,7 @@ public class AnnotationNode_c extends Node_c implements AnnotationNode {
 	}
 	
 	public X10ClassType annotationInterface() {
-		return (X10ClassType) annotationType().type();
+		return (X10ClassType) annotationType().type().toClass();
 	}
 	
 	@Override
@@ -69,7 +69,7 @@ public class AnnotationNode_c extends Node_c implements AnnotationNode {
 	@Override
 	public Context enterChildScope(Node child, Context c) {
 		c = c.pushBlock();
-		((X10Context) c).setAnnotation();
+		((Context) c).setAnnotation();
 		return super.enterChildScope(child, c);
 	}
 	
@@ -86,9 +86,9 @@ public class AnnotationNode_c extends Node_c implements AnnotationNode {
 	@Override
 	public Node typeCheck(ContextVisitor tc) {
 //		System.out.println("Type checking " + this);
-		X10TypeSystem xts = (X10TypeSystem) tc.typeSystem();
+		TypeSystem xts = (TypeSystem) tc.typeSystem();
 		if (!xts.hasUnknown(tn.type()) && !(tn.type().isClass() && tn.type().toClass().flags().isInterface())) {
-			Errors.issue(tc.job(), new SemanticException("Annotation must be an interface type.", position()));
+			Errors.issue(tc.job(), new Errors.AnnotationMustBeInterfacetype(position()));
 		}
 		
 		return this;

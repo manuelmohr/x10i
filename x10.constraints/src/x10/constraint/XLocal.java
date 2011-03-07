@@ -16,30 +16,22 @@ import java.util.List;
 
 /**
  * The representation of a local variable reference in the constraint system.
- * The name of the local variable is supplied by an XName.
+ * The name of the local variable is supplied by an XName. Two XLocal's are equal
+ * if their contained XName's are equal.
  * 
  * @author vj
  * 
  */
-public class XLocal extends XVar  {
-	public final XName name;
-
-	public XLocal(XName name) {
+public class XLocal<T> extends XVar  {
+    
+	public final T name;
+	public XLocal(T name) {
+	    assert name != null;
 		this.name = name;
 	}
-	public XTermKind kind() { return XTermKind.LOCAL;}
-	public XVar[] vars() {
-		return new XVar[] { this };
-	}
 	
-	public List<XEQV> eqvs() {
-	    return Collections.emptyList();
-	}
 
-	public XVar rootVar() {
-		return this;
-	}
-
+	@Override
 	public int hashCode() {
 		return name.hashCode();
 	}
@@ -58,7 +50,7 @@ public class XLocal extends XVar  {
 		return false;
 	}
 
-	public XName name() {
+	public T name() {
 		return name;
 	}
 
@@ -72,6 +64,7 @@ public class XLocal extends XVar  {
 		return s;
 	}
 
+	/*
 	public boolean prefixes(XTerm t) {
 		if (equals(t))
 			return true;
@@ -81,8 +74,6 @@ public class XLocal extends XVar  {
 
 		return vars.length > 0 && equals(vars[0]);
 	}
-
-	public void variables(List<XVar> vars) {
-		vars.add(this);
-	}
+*/
+	
 }

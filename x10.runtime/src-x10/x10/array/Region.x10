@@ -25,13 +25,23 @@ import x10.compiler.TempNoInline_3;
  * so on. The set of points in a region may be iterated over.
  */
 public abstract class Region(
+    /**
+     * The rank of this region.
+     */
     rank: int,
+    /**
+     * Is the region rectangular?
+     */
     rect: boolean,
-    zeroBased: boolean
+    /**
+     * Is the region zero-based?
+     */
+    zeroBased: boolean,
+    /**
+     * Is the region rank 1, rectangular, and zero-based?
+     */
+    rail: boolean
 ) implements Iterable[Point(rank)] {
-
-    property rail = rank==1 && rect && zeroBased;
-    property region = this; // structural affinity w/ Dist, Array for compiler
 
     //
     // factories
@@ -41,14 +51,14 @@ public abstract class Region(
      * Construct an empty region of the specified rank.
      */
 
-    public static @TempNoInline_0 def makeEmpty(rank: int): Region(rank) = new EmptyRegion(rank);
+    public static @TempNoInline_0 def makeEmpty(rank: int): Region(rank){self!=null} = new EmptyRegion(rank);
      
     /**
      * Construct an unbounded region of a given rank that contains all
      * points of that rank.
      */
 
-    public static def makeFull(rank: int): Region(rank) = new FullRegion(rank);
+    public static def makeFull(rank: int): Region(rank){self !=null} = new FullRegion(rank);
     
     /**
      * Construct a region of rank 0 that contains the single point of
@@ -88,7 +98,7 @@ public abstract class Region(
 	   if (minArg.size != maxArg.size) throw new IllegalArgumentException("min and max not equal size ("+minArg.size+" != "+maxArg.size+")");
     	   val rank = minArg.size;
            val pmb = new PolyMatBuilder(rank); 
-           for ([i] in 0..rank-1) {
+           for ([i] in 0..(rank-1)) {
         	   // add -1*x(i) + minArg(i) <= 0, i.e. x(i) >= minArg(i)
         	   val r = new PolyRow(Point.make(rank, (j:Int) => i==j ? -1 : 0), minArg(i));
         	   pmb.add(r);
@@ -219,6 +229,11 @@ public abstract class Region(
      * raw() method of Array or DistArray.
      */
     public abstract def indexOf(Point):Int;
+    
+    public def indexOf(i0:int) = indexOf(Point.make(i0));
+    public def indexOf(i0:int, i1:int) = indexOf(Point.make(i0, i1));
+    public def indexOf(i0:int, i1:int, i2:int) = indexOf(Point.make(i0,i1,i2));
+    public def indexOf(i0:int, i1:int, i2:int, i3:int) = indexOf(Point.make(i0,i1,i2,i3));
 
 
     //
@@ -318,7 +333,7 @@ public abstract class Region(
      * are a point in that region.
      */
 
-    abstract public def product(that: Region): Region;
+    abstract public def product(that: Region): Region{self!=null};
 
     /**
      * Returns the region shifted by a Point (vector). The Point has
@@ -355,35 +370,6 @@ public abstract class Region(
      */
 
     public abstract def iterator(): Iterator[Point(rank)];
-
-
-    /**
-     * The Scanner class supports efficient scanning. Usage:
-     *
-     *    for (s:Scanner in r.scanners()) {
-     *        int min0 = s.min(0);
-     *        int max0 = s.max(0);
-     *        for (var i0:int=min0; i0<=max0; i0++) {
-     *            s.set(0,i0);
-     *            int min1 = s.min(1);
-     *            int max1 = s.max(1);
-     *            for (var i1:int=min1; i1<=max1; i1++) {
-     *                ...
-     *            }
-     *        }
-     *    }
-     *
-     */
-
-    public static interface Scanner {
-        def set(axis: int, position: int): void;
-        def min(axis: int): int;
-        def max(axis: int): int;
-    }
-
-    public abstract def scanners(): Iterator[Scanner];
-
-    // public def scan() = new x10.array.PolyScanner(this);
 
 
     //
@@ -435,7 +421,22 @@ public abstract class Region(
 
     protected def this(r: int, t: boolean, z: boolean)
         :Region{self.rank==r, self.rect==t, self.zeroBased==z} {
-        property(r, t, z);
+        property(r, t, z, (r == 1) && t && z);
     }
+
+    /**
+     * Constructs a distribution over this region that maps
+     * every point in the region to the specified place.
+     * @param p the given place
+     * @return a "constant" distribution over this region that maps to p.
+     */
+    public operator this -> (p:Place) = Dist.makeConstant(this, p);
+
+    /**
+     * Returns true if this region contains a given point.
+     * @param p the given point
+     * @return true if p is in this region.
+     */
+    public operator (p:Point) in this = this.contains(p);
 }
 

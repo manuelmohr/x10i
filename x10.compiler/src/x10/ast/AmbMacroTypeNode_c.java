@@ -25,6 +25,7 @@ import polyglot.ast.Id;
 import polyglot.ast.Local;
 import polyglot.ast.NamedVariable;
 import polyglot.ast.Node;
+import polyglot.ast.NodeFactory;
 import polyglot.ast.Prefix;
 import polyglot.ast.TypeNode;
 import polyglot.frontend.Globals;
@@ -35,7 +36,6 @@ import polyglot.types.Flags;
 import polyglot.types.LazyRef;
 import polyglot.types.LocalDef;
 import polyglot.types.Name;
-import polyglot.types.Named;
 import polyglot.types.QName;
 import polyglot.types.Ref;
 import polyglot.types.SemanticException;
@@ -43,7 +43,7 @@ import polyglot.types.Type;
 import polyglot.types.TypeSystem;
 import polyglot.types.Types;
 import polyglot.util.CodeWriter;
-import polyglot.util.CollectionUtil;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import polyglot.util.TypedList;
@@ -56,25 +56,25 @@ import polyglot.visit.TypeChecker;
 import x10.constraint.XTerms;
 import x10.constraint.XVar;
 import x10.errors.Errors;
+import x10.errors.Warnings;
 import x10.extension.X10Del;
 import x10.extension.X10Del_c;
 import x10.types.MacroType;
 import x10.types.ParameterType;
 import x10.types.TypeDef_c;
 import x10.types.X10ClassType;
-import x10.types.X10Context;
+import polyglot.types.Context;
 import x10.types.X10Def;
 import x10.types.X10ParsedClassType;
-import x10.types.X10TypeMixin;
-import x10.types.X10TypeSystem;
-import x10.types.X10TypeSystem_c;
+import polyglot.types.TypeSystem;
+
 import x10.types.X10Use;
 import x10.visit.X10TypeChecker;
 import x10.visit.ChangePositionVisitor;
 import x10.types.checker.VarChecker;
 
 
-public class AmbMacroTypeNode_c extends AmbTypeNode_c implements AmbMacroTypeNode, AddFlags {
+public class AmbMacroTypeNode_c extends X10AmbTypeNode_c implements AmbMacroTypeNode, AddFlags {
    
     protected List<TypeNode> typeArgs;
     protected List<Expr> args;
@@ -127,15 +127,7 @@ public class AmbMacroTypeNode_c extends AmbTypeNode_c implements AmbMacroTypeNod
         return n;
     }
     
-    @Override
-    public void setResolver(Node parent, final TypeCheckPreparer v) {
-    	if (typeRef() instanceof LazyRef<?>) {
-    		LazyRef<Type> r = (LazyRef<Type>) typeRef();
-    		TypeChecker tc = new X10TypeChecker(v.job(), v.typeSystem(), v.nodeFactory(), v.getMemo());
-    		tc = (TypeChecker) tc.context(v.context().freeze());
-    		r.setResolver(new TypeCheckTypeGoal(parent, this, tc, r));
-    	}
-    }
+    
     public Node visitChildren(NodeVisitor v) {
         Prefix prefix = (Prefix) visitChild(this.prefix, v);
         Id name = (Id) visitChild(this.name, v);
@@ -151,9 +143,9 @@ public class AmbMacroTypeNode_c extends AmbTypeNode_c implements AmbMacroTypeNod
     protected TypeNode disambiguateAnnotation(ContextVisitor tc) throws SemanticException {
         Position pos = position();
         
-        X10TypeSystem ts = (X10TypeSystem) tc.typeSystem();
-        X10NodeFactory nf = (X10NodeFactory) tc.nodeFactory();
-        X10Context c = (X10Context) tc.context();
+        TypeSystem ts = (TypeSystem) tc.typeSystem();
+        NodeFactory nf = (NodeFactory) tc.nodeFactory();
+        Context c = (Context) tc.context();
         
         if (! c.inAnnotation())
             return null;
@@ -218,9 +210,9 @@ public class AmbMacroTypeNode_c extends AmbTypeNode_c implements AmbMacroTypeNod
         try {
             MacroType mt = null;
             
-            X10TypeSystem ts = (X10TypeSystem) tc.typeSystem();
-            X10NodeFactory nf = (X10NodeFactory) tc.nodeFactory();
-            X10Context c = (X10Context) tc.context();
+            TypeSystem ts = (TypeSystem) tc.typeSystem();
+            NodeFactory nf = (NodeFactory) tc.nodeFactory();
+            Context c = (Context) tc.context();
 
             List<Type> typeArgs = new ArrayList<Type>(this.typeArgs.size());
 
@@ -236,9 +228,12 @@ public class AmbMacroTypeNode_c extends AmbTypeNode_c implements AmbMacroTypeNod
             
             if (prefix == null) {
                 // Search the context.
-                Named n = c.find(ts.TypeDefMatcher(null, name.id(), typeArgs, argTypes, c));
-                if (n instanceof MacroType) {
-                    mt = (MacroType) n;
+                List<Type> tl = c.find(ts.TypeDefMatcher(null, name.id(), typeArgs, argTypes, c));
+                for (Type n : tl) {
+                    if (n instanceof MacroType) {
+                        mt = (MacroType) n;
+                        break;
+                    }
                 }
             }
             else {
@@ -250,6 +245,8 @@ public class AmbMacroTypeNode_c extends AmbTypeNode_c implements AmbMacroTypeNod
             }
             
             if (mt != null) {
+                Warnings.wasGuardChecked(tc,mt,this);
+
                 LazyRef<Type> sym = (LazyRef<Type>) type;
                 sym.update(mt);
                 
@@ -267,7 +264,7 @@ public class AmbMacroTypeNode_c extends AmbTypeNode_c implements AmbMacroTypeNod
         // Otherwise, look for a simply-named type.
         try {
             Disamb disamb = tc.nodeFactory().disamb();
-	    Node n = disamb.disambiguate(this, tc, pos, prefix, name);
+            Node n = disamb.disambiguate(this, tc, pos, prefix, name);
 
             if (n instanceof TypeNode) {
         	TypeNode tn = (TypeNode) n;
@@ -283,9 +280,9 @@ public class AmbMacroTypeNode_c extends AmbTypeNode_c implements AmbMacroTypeNod
         throw ex;
     }
     
-    public Node typeCheckOverride(Node parent, ContextVisitor tc) throws SemanticException {
-        X10TypeSystem_c ts = (X10TypeSystem_c) tc.typeSystem();
-        X10NodeFactory nf = (X10NodeFactory) tc.nodeFactory();
+    public Node typeCheckOverride(Node parent, ContextVisitor tc) {
+        TypeSystem ts =  tc.typeSystem();
+        NodeFactory nf = (NodeFactory) tc.nodeFactory();
         
         AmbMacroTypeNode_c n = this;
         
@@ -310,7 +307,7 @@ public class AmbMacroTypeNode_c extends AmbTypeNode_c implements AmbMacroTypeNod
         try {
             tn = n.disambiguateAnnotation(childtc);
             if (tn != null)
-                return postprocess((CanonicalTypeNode) tn, n, childtc);
+                return postprocess((X10CanonicalTypeNode) tn, n, childtc);
         }
         catch (SemanticException e) {
             // Mark the type resolved to prevent us from trying to resolve this again and again.
@@ -343,32 +340,36 @@ public class AmbMacroTypeNode_c extends AmbTypeNode_c implements AmbMacroTypeNod
             n = (AmbMacroTypeNode_c) n.args(Collections.<Expr>emptyList());
         }
         
-        if (t instanceof X10Use<?> && ((X10Use<?>) t).error() != null) {
-            Errors.issue(tc.job(), ((X10Use<?>) t).error(), n);
-        }
+        if (t instanceof X10Use<?>) Warnings.checkErrorAndGuard(tc,((X10Use<?>) t), n);
 
         if (! typeArgs.isEmpty()) {
             if (t instanceof X10ParsedClassType) {
         	X10ParsedClassType ct = (X10ParsedClassType) t;
         	int numParams = ct.x10Def().typeParameters().size();
         	if (numParams > 0) {
-        	    if (numParams == typeArgs.size()) {
-        		List<Type> typeArgsTypes = new ArrayList<Type>(numParams);
-        		for (TypeNode tni : typeArgs) {
-        		    typeArgsTypes.add(tni.type());
-        		}
-        		t = ct.typeArguments(typeArgsTypes);
-        		n = (AmbMacroTypeNode_c) n.typeArgs(Collections.<TypeNode>emptyList());
-        		typeArgs = Collections.<TypeNode>emptyList();
+        	    if (numParams != typeArgs.size()) {
+        	        Errors.issue(tc.job(),
+        	                new Errors.NumberTypeArgumentsNotSameAsNumberTypeParameters(typeArgs.size(), ct.fullName(), numParams, n.position()));
+        	        typeArgs = new ArrayList<TypeNode>(typeArgs);
+        	        while (numParams < typeArgs.size()) {
+        	            typeArgs.remove(typeArgs.size()-1);
+        	        }
+        	        while (numParams > typeArgs.size()) {
+        	            typeArgs.add(nf.CanonicalTypeNode(Position.COMPILER_GENERATED, ts.Any()));
+        	        }
         	    }
-        	    else {
-        	        throw new SemanticException("Number of type arguments (" + typeArgs.size() + ") for " + ct.fullName() + " is not the same as number of type parameters (" + numParams + ").", n.position());
+        	    List<Type> typeArgsTypes = new ArrayList<Type>(numParams);
+        	    for (TypeNode tni : typeArgs) {
+        	        typeArgsTypes.add(tni.type());
         	    }
+        	    t = ct.typeArguments(typeArgsTypes);
+        	    n = (AmbMacroTypeNode_c) n.typeArgs(Collections.<TypeNode>emptyList());
+        	    typeArgs = Collections.<TypeNode>emptyList();
         	}
             }
         }
         if (n.flags != null) {
-        	t = X10TypeMixin.processFlags(n.flags, t);
+        	t = Types.processFlags(n.flags, t);
         	n.flags = null;
         }
 
@@ -379,28 +380,29 @@ public class AmbMacroTypeNode_c extends AmbTypeNode_c implements AmbMacroTypeNod
         /*if (! n.typeArgs().isEmpty() || ! n.args().isEmpty())
             throw new SemanticException("Could not find or instantiate type \"" + n + "\".", position());
          */   
-        CanonicalTypeNode result = nf.CanonicalTypeNode(n.position(), sym);
+        X10CanonicalTypeNode result = nf.CanonicalTypeNode(n.position(), sym);
         return postprocess(result, n, childtc);   
     }
     
-    public static Node postprocess(CanonicalTypeNode result, AmbMacroTypeNode_c n, ContextVisitor childtc) throws SemanticException {
+    public static Node postprocess(X10CanonicalTypeNode result, AmbMacroTypeNode_c n, ContextVisitor childtc) {
     	n = (AmbMacroTypeNode_c) X10Del_c.visitAnnotations(n, childtc);
 
-    	result = (CanonicalTypeNode) ((X10Del) result.del()).annotations(((X10Del) n.del()).annotations());
-    	result = (CanonicalTypeNode) ((X10Del) result.del()).setComment(((X10Del) n.del()).comment());
-    	result = (CanonicalTypeNode) result.del().typeCheck(childtc);
+    	result = (X10CanonicalTypeNode) ((X10Del) result.del()).annotations(((X10Del) n.del()).annotations());
+    	result = (X10CanonicalTypeNode) ((X10Del) result.del()).setComment(((X10Del) n.del()).comment());
+    	result = (X10CanonicalTypeNode) result.typeCheck(childtc);
     	{
     	    VarChecker ac = (VarChecker) new VarChecker(childtc.job()).context(childtc.context());
     	    try {
     	        result.visit(ac);
     	    } catch (InternalCompilerError e) {
-    	        throw new SemanticException(e.getMessage(), e.position());
+    	        Errors.issue(childtc.job(),
+    	                new Errors.GeneralError(e.getMessage(), e.position()), result);
     	    }
     	    
     	    if (ac.error != null) {
-    	        throw ac.error;
+    	        Errors.issue(childtc.job(), ac.error, result);
     	    }
-    	} 
+    	}
     	return result;
     }
     

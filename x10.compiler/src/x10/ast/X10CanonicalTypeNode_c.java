@@ -49,17 +49,16 @@ import x10.extension.X10Del;
 import x10.types.ClosureDef;
 import x10.types.ClosureType_c;
 import x10.types.ConstrainedType;
-import x10.types.ConstrainedType_c;
+
 import x10.types.ParameterType;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
-import x10.types.X10Context;
-import x10.types.X10Flags;
-import x10.types.X10ParsedClassType_c;
+import polyglot.types.Context;
+
+import x10.types.X10ParsedClassType;
 import x10.types.XTypeTranslator;
 
-import x10.types.X10TypeMixin;
-import x10.types.X10TypeSystem;
+import polyglot.types.TypeSystem;
 import x10.types.constraints.CConstraint;
 import x10.visit.X10TypeChecker;
 
@@ -69,12 +68,11 @@ import x10.visit.X10TypeChecker;
  * @author vj
  *
  */
-public class X10CanonicalTypeNode_c extends CanonicalTypeNode_c implements X10CanonicalTypeNode,
-AddFlags {
+public class X10CanonicalTypeNode_c extends CanonicalTypeNode_c implements X10CanonicalTypeNode, AddFlags {
 	
-	  public X10CanonicalTypeNode_c(Position pos, Type type) {
-			this(pos, Types.<Type>ref(type));
-		    }
+    public X10CanonicalTypeNode_c(Position pos, Type type) {
+	this(pos, Types.<Type>ref(type));
+    }
     public X10CanonicalTypeNode_c(Position pos, Ref<? extends Type> type) {
 	super(pos, type);
     }
@@ -85,9 +83,9 @@ AddFlags {
     }
   
     @Override
-    public Node typeCheck(ContextVisitor tc) throws SemanticException {
-	X10Context c = (X10Context) tc.context();
-	X10TypeSystem ts = (X10TypeSystem) tc.typeSystem();
+    public Node typeCheck(ContextVisitor tc) {
+	Context c = (Context) tc.context();
+	TypeSystem ts = (TypeSystem) tc.typeSystem();
 
 	// Expand, and transfer flags from the type node to the type.
 	Type t = Types.get(type);
@@ -95,13 +93,11 @@ AddFlags {
 	t = ts.expandMacros(t);
 	Type xt =  t;
 	if (flags != null) {
-		xt = X10TypeMixin.processFlags(X10Flags.toX10Flags(flags), xt);
+		xt = Types.processFlags(flags, xt);
 		flags = null;
 	}
 	((Ref<Type>) type).update(xt);
-	
-	
-	
+
 	if (t instanceof ParameterType) {
 	    ParameterType pt = (ParameterType) t;
 	    Def def = Types.get(pt.def());
@@ -121,17 +117,20 @@ AddFlags {
 	        }
 	    }
 	    if (p.inStaticContext() && def instanceof ClassDef && ! inConstructor) {
-	        throw new SemanticException("Cannot refer to type parameter "+ pt.fullName() + " of " + def + " from a static context.", position());
+	        Errors.issue(tc.job(),
+	                new Errors.CannotReferToTypeParameterFromStaticContext(pt, def, position()));
 	    }
 	    if (flags != null && ! flags.equals(Flags.NONE)) {
-	    	throw new SemanticException("Cannot qualify type parameter "+ pt.fullName() + " of " + def + " with flags " + flags + ".", position());
+	    	Errors.issue(tc.job(),
+	    	        new Errors.CannotQualifyTypeParameter(pt, def, flags, position()));
 	    }
 	}
-	
-	
-	checkType(tc.context(), t, position());
-	
-	
+
+	try {
+	    checkType(tc.context(), t, position());
+	} catch (SemanticException e) {
+	    Errors.issue(tc.job(), e, this);
+	}
 
 	List<AnnotationNode> as = ((X10Del) this.del()).annotations();
 	if (as != null && !as.isEmpty()) {
@@ -151,33 +150,45 @@ AddFlags {
 	    tref.update(newType);
 	}
 
-	return super.typeCheck(tc);
+	Node n = this;
+	try {
+	    n = super.typeCheck(tc);
+	} catch (SemanticException e) {
+	    Errors.issue(tc.job(), e, this);
+	}
+	return n;
     }
-    
+
+    // todo: C:\cygwin\home\Yoav\intellij\sourceforge\x10.tests\examples\Benchmarks\SeqArray1.x10
+    // C:\cygwin\home\Yoav\intellij\sourceforge\x10.tests\examples\Benchmarks\SeqArray2b.x10
+    // C:\cygwin\home\Yoav\intellij\sourceforge\x10.tests\examples\Constructs\Array\Array1.x10
     @Override
     public void setResolver(Node parent, final TypeCheckPreparer v) {
     	if (typeRef() instanceof LazyRef<?>) {
     		LazyRef<Type> r = (LazyRef<Type>) typeRef();
-    		TypeChecker tc = new X10TypeChecker(v.job(), v.typeSystem(), v.nodeFactory(), v.getMemo());
-    		tc = (TypeChecker) tc.context(v.context().freeze());
-    		r.setResolver(new TypeCheckTypeGoal(parent, this, tc, r));
+    		if (!r.isResolverSet()) {
+    		    TypeChecker tc = new X10TypeChecker(v.job(), v.typeSystem(), v.nodeFactory(), v.getMemo());
+                // similarly to TypeNode_c, freezing is not needed.
+    		    tc = (TypeChecker) tc.context(v.context().freeze());
+    		    r.setResolver(new X10TypeCheckTypeGoal(parent, this, tc, r));
+    		}
     	}
     }
     @Override
     public Node conformanceCheck(ContextVisitor tc) {
         Type t = type();
         
-        XConstraint c = X10TypeMixin.realX(t);
+        XConstraint c = Types.realX(t);
         
         if (! c.consistent()) {
             Errors.issue(tc.job(),
-                    new SemanticException("Invalid type; the real clause of " + t + " is inconsistent.", position()));
+                    new Errors.InvalidType(t, position()));
         }
         
-        X10TypeSystem ts = (X10TypeSystem) t.typeSystem();
+        TypeSystem ts = (TypeSystem) t.typeSystem();
         
-        if (! ts.consistent(t, (X10Context) tc.context())) {
-            Errors.issue(tc.job(), new SemanticException("Type " + t + " is inconsistent.", position()));
+        if (! ts.consistent(t, tc.context())) {
+            Errors.issue(tc.job(), new Errors.TypeIsconsistent(t,position()));
         }
         
         return this;
@@ -201,7 +212,7 @@ AddFlags {
 	    X10ClassType ct = (X10ClassType) t;
         X10ClassDef def = ct.x10Def();
         final List<Type> typeArgs = ct.typeArguments();
-        final int typeArgNum = typeArgs.size();
+        final int typeArgNum = typeArgs == null ? 0 : typeArgs.size();
         final List<ParameterType> typeParam = def.typeParameters();
         final int typeParamNum = typeParam.size();
 
@@ -210,14 +221,11 @@ AddFlags {
         // But that is not true for a static method, e.g., Array.make(...)
         // so instead we do this check in all other places (e.g., field access, method definitions, new calls, etc)
         // But I can check it if there are typeArguments.
-
-        // typeArgNum>0 is wrong, cause by default we get typeArgs from our def, so that condition is always true
-        // Instead I use: typeParamNum!=typeArgNum
-        if (typeParamNum!=typeArgNum) X10TypeMixin.checkMissingParameters(t,pos);
+        if (typeArgNum > 0) Types.checkMissingParameters(t,pos);
         
 	    for (int j = 0; j < typeArgNum; j++) {
 	        Type actualType = typeArgs.get(j);
-	        X10TypeMixin.checkMissingParameters(actualType,pos);
+	        Types.checkMissingParameters(actualType,pos);
             
 	        ParameterType correspondingParam = typeParam.get(j);
 	        if (actualType.isVoid()) {
@@ -286,10 +294,11 @@ AddFlags {
             w.write("<unknown-type>");
         } else {
             type.get().print(w);
-            if (extras && X10TypeMixin.baseType(type.get()) instanceof X10ParsedClassType_c
-                    && !(X10TypeMixin.baseType(type.get()) instanceof ClosureType_c)) {
-                List<Type> typeArguments = ((X10ParsedClassType_c) X10TypeMixin.baseType(type.get())).typeArguments();
-                if (typeArguments.size() > 0) {
+            final X10ParsedClassType baseType = Types.myBaseType(type.get());
+            if (extras && baseType!=null
+                    && !(baseType instanceof ClosureType_c)) {
+                List<Type> typeArguments = baseType.typeArguments();
+                if (typeArguments != null && typeArguments.size() > 0) {
                     w.write("[");
                     w.allowBreak(2, 2, "", 0); // miser mode
                     w.begin(0);
@@ -306,8 +315,8 @@ AddFlags {
                     w.end();
                 }
             }
-            if (extras && type.get() instanceof ConstrainedType_c) {
-                ((ConstrainedType_c) type.get()).printConstraint(w);
+            if (extras && type.get() instanceof ConstrainedType) {
+                ((ConstrainedType) type.get()).printConstraint(w);
             }
        }
       }

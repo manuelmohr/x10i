@@ -12,6 +12,7 @@
 package x10.ast;
 
 import java.util.Collections;
+import java.util.List;
 
 import polyglot.ast.Ambiguous;
 import polyglot.ast.Call;
@@ -20,6 +21,7 @@ import polyglot.ast.Expr;
 import polyglot.ast.Field;
 import polyglot.ast.Id;
 import polyglot.ast.Node;
+import polyglot.ast.NodeFactory;
 import polyglot.ast.PackageNode;
 import polyglot.ast.Receiver;
 import polyglot.ast.Special;
@@ -30,8 +32,6 @@ import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
 import polyglot.types.LocalInstance;
 import polyglot.types.MemberInstance;
-import polyglot.types.MethodInstance;
-import polyglot.types.Named;
 import polyglot.types.NoClassException;
 import polyglot.types.Package;
 import polyglot.types.QName;
@@ -46,13 +46,13 @@ import polyglot.visit.ContextVisitor;
 import x10.extension.X10Del;
 import x10.types.ClosureDef;
 import x10.types.X10ClassType;
-import x10.types.X10Context;
+import polyglot.types.Context;
 import x10.types.X10FieldInstance;
-import x10.types.X10Flags;
-import x10.types.X10MethodInstance;
-import x10.types.X10NamedType;
-import x10.types.X10TypeMixin;
-import x10.types.X10TypeSystem;
+
+import x10.types.MethodInstance;
+
+import polyglot.types.TypeSystem;
+import polyglot.types.TypeSystem_c;
 import x10.types.checker.Checker;
 
 public class X10Disamb_c extends Disamb_c {
@@ -64,18 +64,21 @@ public class X10Disamb_c extends Disamb_c {
 	
 	@Override
 	protected Node disambiguateNoPrefix() throws SemanticException {
-	    X10Context c = (X10Context) this.c;
-	    X10TypeSystem ts = (X10TypeSystem) this.ts;
+        if (name.id()== TypeSystem_c.voidName)
+			return makeTypeNode(ts.Void());
+
+	    Context c = (Context) this.c;
+	    TypeSystem ts = (TypeSystem) this.ts;
 	    
 	    if (c.inDepType()) {
-	    	X10NamedType t = c.currentDepType();
+	    	Type t = c.currentDepType();
 	    	
 	    	if (exprOK()) {
 	    		// First try local variables.
 	    		VarInstance<?> vi = c.pop().findVariableSilent(name.id());
 
 	    		if (vi != null && vi.def() == c.varWhoseTypeIsBeingElaborated()) {
-	    		    Expr e = ((X10NodeFactory) nf).Self(pos); 
+	    		    Expr e = ((NodeFactory) nf).Self(pos); 
 	    		    e = e.type(t);
 	    		    return e;
 	    		}
@@ -94,7 +97,7 @@ public class X10Disamb_c extends Disamb_c {
 	    		catch (SemanticException ex) {
 	    		}
 
-	    		if (fi != null && vi instanceof FieldInstance && !c.inStaticContext()) {
+	    		if (fi != null && vi instanceof FieldInstance && !c.inStaticContext() && !fi.flags().isStatic() && !vi.flags().isStatic()) {
 	    		    Receiver e = makeMissingFieldTarget((FieldInstance) vi);
 	    		    throw new SemanticException("Ambiguous reference to field " + this.name + "; both self." + name + " and " + e + "." + name + " match.", pos);
 	    		}
@@ -131,8 +134,8 @@ public class X10Disamb_c extends Disamb_c {
 
 	    		// Now try 0-ary property methods.
 	    		try {
-	    		    X10MethodInstance mi = ts.findMethod(t, ts.MethodMatcher(t, this.name.id(), Collections.<Type>emptyList(), c));
-	    		    if (X10Flags.toX10Flags(mi.flags()).isProperty()) {
+	    		    MethodInstance mi = ts.findMethod(t, ts.MethodMatcher(t, this.name.id(), Collections.<Type>emptyList(), c));
+	    		    if (mi.flags().isProperty()) {
 	    		        Call call = nf.Call(pos, makeMissingPropertyTarget(mi, t), this.name);
 	    		        call = call.methodInstance(mi);
 	    		        Type ftype = Checker.rightType(mi.rightType(), mi.x10Def(), call.target(), c);
@@ -160,7 +163,7 @@ public class X10Disamb_c extends Disamb_c {
 
 	        if (vi instanceof FieldInstance) {
 	            FieldInstance fi = (FieldInstance) vi;
-	            X10TypeSystem xts = (X10TypeSystem) v.typeSystem();
+	            TypeSystem xts = (TypeSystem) v.typeSystem();
 	            Context p = c;
 	            // FIXME: [IP] should we pop back to the right context before proceeding?
 	            //while (p.pop() != null && ((p.currentClass() != null && !xts.typeEquals(p.currentClass(), fi.container(), p)) || p.currentCode() instanceof ClosureDef))
@@ -176,8 +179,8 @@ public class X10Disamb_c extends Disamb_c {
     		
     		// Now try 0-ary property methods.
     		try {
-    		    X10MethodInstance mi = (X10MethodInstance) c.findMethod(ts.MethodMatcher(null, name.id(), Collections.<Type>emptyList(), c));
-    		    if (X10Flags.toX10Flags(mi.flags()).isProperty()) {
+    		    MethodInstance mi =  c.findMethod(ts.MethodMatcher(null, name.id(), Collections.<Type>emptyList(), c));
+    		    if (mi.flags().isProperty()) {
     			Call call = nf.Call(pos, makeMissingMethodTarget(mi), this.name);
     			call = call.methodInstance(mi);
                         Type ftype = Checker.rightType(mi.rightType(), mi.x10Def(), call.target(), c);
@@ -191,22 +194,24 @@ public class X10Disamb_c extends Disamb_c {
 
 	    // no variable found. try types.
 	    if (typeOK()) {
-		try {
-			Named n = c.find(ts.TypeMatcher(name.id()));
-			if (n instanceof Type) {
-				Type type = (Type) n;
-				return makeTypeNode(type);
-			}
-		} catch (NoClassException e1) {
-		    if (!name.id().toString().equals(e1.getClassName())) {
-			// hmm, something else must have gone wrong
-			// rethrow the exception
-			throw e1;
-		    }
+	        try {
+	            List<Type> n = c.find(ts.TypeMatcher(name.id()));
+	            if (n.size() > 1) {
+	                throw new SemanticException("Ambiguous type "+name.id()+"\nPossible matches: "+n, pos);
+	            }
+	            for (Type type : n) {
+	                return makeTypeNode(type);
+	            }
+	        } catch (NoClassException e1) {
+	            if (!name.id().toString().equals(e1.getClassName())) {
+	                // hmm, something else must have gone wrong
+	                // rethrow the exception
+	                throw e1;
+	            }
 
-		    // couldn't find a type named name. 
-		    // It must be a package--ignore the exception.
-		}
+	            // couldn't find a type named name. 
+	            // It must be a package--ignore the exception.
+	        }
 	    }
 
 	    // Must be a package then...
@@ -242,12 +247,12 @@ public class X10Disamb_c extends Disamb_c {
 	    
 		Type t = e.type();
 
-	        X10Context xc = (X10Context) this.c;
+	        Context xc = (Context) this.c;
 
 		// If in a class header, don't search the supertypes of this class.
 		if (xc.inSuperTypeDeclaration()) {
 		    Type tType = t;
-		    Type tBase = X10TypeMixin.baseType(tType);
+		    Type tBase = Types.baseType(tType);
 		    if (tBase instanceof X10ClassType) {
 			X10ClassType tCt = (X10ClassType) tBase;
 			    
@@ -281,8 +286,8 @@ public class X10Disamb_c extends Disamb_c {
 		    }
 		    // Now try 0-ary property methods.
 		    try {
-			X10MethodInstance mi = (X10MethodInstance) ts.findMethod(e.type(), ts.MethodMatcher(e.type(), name.id(), Collections.<Type>emptyList(), c));
-			if (X10Flags.toX10Flags(mi.flags()).isProperty()) {
+			MethodInstance mi = (MethodInstance) ts.findMethod(e.type(), ts.MethodMatcher(e.type(), name.id(), Collections.<Type>emptyList(), c));
+			if (mi.flags().isProperty()) {
 			    Call call = nf.Call(pos, e, this.name);
 			    call = call.methodInstance(mi);
 			    Type ftype = Checker.rightType(mi.rightType(), mi.x10Def(), call.target(), c);
@@ -313,9 +318,9 @@ public class X10Disamb_c extends Disamb_c {
 
 	public static Receiver makeMissingFieldTarget(FieldInstance fi, Position pos, ContextVisitor v) {
 	    Receiver r = null;
-	    X10NodeFactory nf = (X10NodeFactory) v.nodeFactory();
-	    X10TypeSystem ts = (X10TypeSystem) v.typeSystem();
-        X10Context c = (X10Context) v.context();
+	    NodeFactory nf = (NodeFactory) v.nodeFactory();
+	    TypeSystem ts = (TypeSystem) v.typeSystem();
+        Context c = (Context) v.context();
         ClassType cur = c.currentClass();
 
 	    try {
@@ -359,7 +364,7 @@ public class X10Disamb_c extends Disamb_c {
 	protected Receiver makeMissingMethodTarget(MethodInstance mi) throws SemanticException {
 	    Receiver r;
 
-	    X10Context c = (X10Context) this.c;
+	    Context c = (Context) this.c;
 	    ClassType cur  =c.currentClass();
 	    if (c.inSuperTypeDeclaration())
 	        cur = c.supertypeDeclarationType().asType();
@@ -396,7 +401,7 @@ public class X10Disamb_c extends Disamb_c {
 	    else {
 		// The field is non-static, so we must prepend with self.
 		
-		Expr e = ((X10NodeFactory) nf).Self(pos); 
+		Expr e = ((NodeFactory) nf).Self(pos); 
 		e = e.type(currentDepType);
 		r = e;
 	    }

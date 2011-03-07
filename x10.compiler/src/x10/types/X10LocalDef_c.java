@@ -28,13 +28,6 @@ import polyglot.util.TypedList;
 import x10.constraint.XTerm;
 import x10.types.constraints.TypeConstraint;
 
-/**
- * An X10ConstructorInstance_c varies from a ConstructorInstance_c only in that it
- * maintains a returnType. If an explicit returnType is not declared in the constructor
- * then the returnType is simply a noClause variant of the container.
- * @author vj
- *
- */
 public class X10LocalDef_c extends LocalDef_c implements X10LocalDef {
     private static final long serialVersionUID = 1790685273653374213L;
 
@@ -73,11 +66,10 @@ public class X10LocalDef_c extends LocalDef_c implements X10LocalDef {
 	return "local " + flags.translate() + name + ": " + type + cvStr;
     }
 
-    XTerm placeTerm;
+    private XTerm placeTerm;
     public XTerm placeTerm() { return placeTerm;}
-    // keep only the first
+    // FIXME Yoav: keep only the first is a bad strategy because these place terms are used in other types, and other constructs (like AtStmt_c)
     public void setPlaceTerm(XTerm pt) {
-    	
     	if (placeTerm == null)
     		placeTerm = pt;
     	//else 

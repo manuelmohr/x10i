@@ -3,7 +3,7 @@ package polyglot.frontend;
 import java.util.*;
 
 import polyglot.frontend.Goal.Status;
-import polyglot.main.Report;
+import polyglot.main.Reporter;
 import polyglot.types.LazyRef_c;
 import polyglot.util.StringUtil;
 
@@ -11,8 +11,9 @@ public abstract class AbstractGoal_c extends LazyRef_c<Goal.Status> implements G
 	private static final long serialVersionUID = 39827248332800427L;
 
 	String name;
-	public List<Goal> prereqs;
+	private List<Goal> prereqs;
 	protected Scheduler scheduler = null;
+	private List<GoalListener> listeners;
 
 	public final Goal intern(Scheduler scheduler) {
 		this.scheduler = scheduler;
@@ -20,21 +21,42 @@ public abstract class AbstractGoal_c extends LazyRef_c<Goal.Status> implements G
 	}
 
 	protected AbstractGoal_c() {
+        this(null);
+	}
+	protected AbstractGoal_c(String name) {
 		super(Status.NEW);
-		this.name = StringUtil.getShortNameComponent(getClass().getName().replace('$', '.'));
+		this.name = name==null ? StringUtil.getShortNameComponent(getClass().getName().replace('$', '.')) : name;
 		setResolver(this);
 	}
 
-	protected AbstractGoal_c(String name) {
-		super(Status.NEW);
-		this.name = name;
-		setResolver(this);
+	public boolean addListener(GoalListener listener) {
+		Goal g = this;
+		if (scheduler != null)
+			g = this.intern(scheduler);
+		if (g != this)
+			return g.addListener(listener);
+
+		boolean adding = true;
+		if (listeners == null) {
+			listeners = new ArrayList<GoalListener>();
+		} else {
+			for (GoalListener l : listeners) {
+				if (l == listener) {
+					adding = false;
+					break;
+				}
+			}
+		}
+		if (adding)
+			listeners.add(listener);
+		return adding;
 	}
 
 	public void run() {
 		AbstractGoal_c goal = this;
-		if (Report.should_report(Report.frontend, 2))
-			Report.report(2, "Running to goal " + goal);
+		Reporter reporter = scheduler.extensionInfo().getOptions().reporter;
+		if (reporter.should_report(reporter.frontend, 2))
+			reporter.report(2, "Running to goal " + goal);
 		
 		LinkedList<Goal> worklist = new LinkedList<Goal>(prereqs());
 
@@ -47,8 +69,8 @@ public abstract class AbstractGoal_c extends LazyRef_c<Goal.Status> implements G
 			if (g.getCached() == Goal.Status.SUCCESS)
 			    continue;
 			    
-			if (Report.should_report(Report.frontend, 4))
-				Report.report(4, "running prereq: " + g + "->" + goal);
+			if (reporter.should_report(reporter.frontend, 4))
+				reporter.report(4, "running prereq: " + g + "->" + goal);
 			
 			Status s = g.get();
 
@@ -91,18 +113,23 @@ public abstract class AbstractGoal_c extends LazyRef_c<Goal.Status> implements G
 		
 		boolean recursive = oldStatus == Status.RUNNING_RECURSIVE;
 
-		if (Report.should_report(Report.frontend, 4))
-			Report.report(4, "running goal " + goal);
+		if (reporter.should_report(reporter.frontend, 4))
+			reporter.report(4, "running goal " + goal);
 
-		if (Report.should_report(Report.frontend, 5)) {
+		if (reporter.should_report(reporter.frontend, 5)) {
 			if (scheduler.currentGoal() != null) {
-				Report.report(5, "CURRENT = " + scheduler.currentGoal());
-				Report.report(5, "SPAWN   = " + goal);
+				reporter.report(5, "CURRENT = " + scheduler.currentGoal());
+				reporter.report(5, "SPAWN   = " + goal);
 			}
 		}
 
 		boolean result = false;
 		try {
+			if (listeners != null) {
+			    for (GoalListener l : listeners) {
+			        l.taskStarted(this);
+			    }
+			}
 			result = scheduler.runPass(this);
 			if (state() == Goal.Status.RUNNING_WILL_FAIL)
 			    result = false;

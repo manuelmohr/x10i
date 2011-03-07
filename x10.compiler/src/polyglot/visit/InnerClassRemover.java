@@ -9,12 +9,13 @@ import java.util.Map;
 
 import polyglot.ast.*;
 import polyglot.frontend.Job;
-import polyglot.main.Report;
+import polyglot.main.Reporter;
 import polyglot.types.*;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Pair;
 import polyglot.util.Position;
 import polyglot.util.UniqueID;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 
 // TODO:
 //Convert closures to anon
@@ -24,7 +25,7 @@ import polyglot.util.UniqueID;
 //Dup inner member to static
 //Remove inner member
 
-public class InnerClassRemover extends ContextVisitor {
+public abstract class InnerClassRemover extends ContextVisitor {
     // Name of field used to carry a pointer to the enclosing class.
     public static final Name OUTER_FIELD_NAME = Name.make("out$");
 
@@ -32,7 +33,7 @@ public class InnerClassRemover extends ContextVisitor {
         super(job, ts, nf);
     }
 
-    protected Map<ClassDef, FieldDef> outerFieldInstance = new HashMap<ClassDef, FieldDef>();
+    protected Map<ClassDef, FieldDef> outerFieldInstance = CollectionFactory.newHashMap();
     
     /** Get a reference to the enclosing instance of the current class that is of type containerClass */
     Expr getContainer(Position pos, Expr this_, ClassType currentClass, ClassType containerClass) {
@@ -47,10 +48,7 @@ public class InnerClassRemover extends ContextVisitor {
         return getContainer(pos, f, currentContainer, containerClass);
     }
     
-    protected ContextVisitor localClassRemover() {
-    	LocalClassRemover lcv = new LocalClassRemover(this);
-    	return lcv;
-    }
+    protected abstract ContextVisitor localClassRemover();
 
     public Node override(Node parent, Node n) {
         if (n instanceof SourceFile) {
@@ -58,7 +56,7 @@ public class InnerClassRemover extends ContextVisitor {
             lcv = (ContextVisitor) lcv.begin();
             lcv = (ContextVisitor) lcv.context(context);
 
-            if (Report.should_report("innerremover", 1)) {
+            if (reporter.should_report(Reporter.innerremover, 1)) {
             	System.out.println(">>> output ----------------------");
             	n.prettyPrint(System.out);
             	System.out.println("<<< output ----------------------");
@@ -66,7 +64,7 @@ public class InnerClassRemover extends ContextVisitor {
 
             n = n.visit(lcv);
 
-            if (Report.should_report("innerremover", 1)) {
+            if (reporter.should_report(Reporter.innerremover, 1)) {
             	System.out.println(">>> locals removed ----------------------");
             	n.prettyPrint(System.out);
             	System.out.println("<<< locals removed ----------------------");
@@ -74,7 +72,7 @@ public class InnerClassRemover extends ContextVisitor {
 
             n = this.visitEdgeNoOverride(parent, n);
 
-            if (Report.should_report("innerremover", 1)) {
+            if (reporter.should_report(Reporter.innerremover, 1)) {
             	System.out.println(">>> inners removed ----------------------");
             	n.prettyPrint(System.out);
             	System.out.println("<<< inners removed ----------------------");
@@ -444,7 +442,7 @@ public class InnerClassRemover extends ContextVisitor {
 
                 newMembers.add(td);
 
-                adjustConstrutorFormals(td.constructorDef(), newFormals);
+                adjustConstructorFormals(td.constructorDef(), newFormals);
             }
             else {
                 newMembers.add(m);
@@ -455,7 +453,7 @@ public class InnerClassRemover extends ContextVisitor {
         return cd.body(b);
     }
 
-    protected void adjustConstrutorFormals(ConstructorDef ci, List<Formal> newFormals) {
+    protected void adjustConstructorFormals(ConstructorDef ci, List<Formal> newFormals) {
         List<Ref<? extends Type>> newFormalTypes = new ArrayList<Ref<? extends Type>>();
         for (Formal f : newFormals) {
             newFormalTypes.add(f.type().typeRef());

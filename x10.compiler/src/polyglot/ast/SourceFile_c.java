@@ -14,6 +14,7 @@ import polyglot.frontend.Source;
 import polyglot.types.*;
 import polyglot.util.*;
 import polyglot.visit.*;
+import x10.util.CollectionFactory;
 
 /**
  * A <code>SourceFile</code> is an immutable representations of a Java
@@ -30,7 +31,7 @@ public class SourceFile_c extends Node_c implements SourceFile
 
     public SourceFile_c(Position pos, PackageNode package_, List<Import> imports, List<TopLevelDecl> decls) {
 	super(pos);
-	assert(imports != null && decls != null && ! decls.isEmpty()); // package_ may be null, imports empty
+	assert(imports != null && decls != null); // package_ may be null, imports empty
 	this.package_ = package_;
 	this.imports = TypedList.copyAndCheck(imports, Import.class, true);
 	this.decls = TypedList.copyAndCheck(decls, TopLevelDecl.class, true);
@@ -169,7 +170,7 @@ public class SourceFile_c extends Node_c implements SourceFile
 
     /** Type check the source file. */
     public Node typeCheck(ContextVisitor tc) throws SemanticException {
-	Set<Name> names = new HashSet<Name>();
+	Set<Name> names = CollectionFactory.newHashSet();
 	boolean hasPublic = false;
 
 	for (TopLevelDecl d : decls) {

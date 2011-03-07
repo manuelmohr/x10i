@@ -11,10 +11,10 @@
 
 package x10.util;
 
-import java.util.*;
+
 import java.util.ArrayList;
 import java.util.List;
-import java.util.HashSet;
+import java.util.*;
 
 import polyglot.ast.*;
 import polyglot.types.Flags;
@@ -24,20 +24,21 @@ import polyglot.types.Name;
 import polyglot.types.QName;
 import polyglot.types.Ref;
 import polyglot.types.Type;
+import polyglot.types.TypeSystem;
 import polyglot.types.Types;
 import polyglot.util.Position;
+import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.visit.TypeBuilder;
 import x10.ast.*;
-import x10.constraint.XName;
-import x10.constraint.XNameWrapper;
 import x10.constraint.XVar;
 import x10.constraint.XTerms;
 import x10.types.*;
+import x10.types.constraints.CTerms;
 import x10.extension.X10Ext;
 import x10cpp.visit.SharedVarsMethods;
 
 public class Struct {
-    private final static java.util.Set<String> ignoreTypes = new HashSet<String>();
+    private final static java.util.Set<String> ignoreTypes = CollectionFactory.newHashSet();
 
     static {
         ignoreTypes.add("Boolean");
@@ -56,7 +57,7 @@ public class Struct {
     }
 
     public static X10ClassDecl_c addStructMethods(TypeBuilder tb, X10ClassDecl_c n) {
-        final X10TypeSystem_c xts = (X10TypeSystem_c) tb.typeSystem();
+        final TypeSystem xts =  tb.typeSystem();
         final X10ClassDef cd = (X10ClassDef) n.classDef();
         X10ParsedClassType ct = (X10ParsedClassType) cd.asType();
 
@@ -69,12 +70,12 @@ public class Struct {
         interfacesList.add(xts.lazyAny());
         cd.setInterfaces(interfacesList);
 
-       final Position pos = X10NodeFactory_c.compilerGenerated(n.body());
+       final Position pos = Position.compilerGenerated(n.body().position());
 
-       String fullNameWithThis = fullName + "#this";
+       //String fullNameWithThis = fullName + "#this";
        //String fullNameWithThis = "this";
-       XName thisName = new XNameWrapper<Object>(new Object(), fullNameWithThis);
-       XVar thisVar = XTerms.makeLocal(thisName);
+     //  XName thisName = new XNameWrapper<Object>(new Object(), fullNameWithThis);
+       XVar thisVar = CTerms.makeThis(ct); // CTerms.makeThis(fullNameWithThis); // XTerms.makeLocal(thisName);
 
 
 
@@ -165,8 +166,8 @@ public class Struct {
                 fields.add(field);
            }
 
-        final Flags flags = X10Flags.SAFE.Public().Final();
-        final X10NodeFactory nf = (X10NodeFactory)tb.nodeFactory();
+        final Flags flags = Flags.PUBLIC.Final();
+        final NodeFactory nf = tb.nodeFactory();
         final TypeNode intTypeNode = nf.TypeNodeFromQualifiedName(pos,QName.make("x10.lang","Int"));
         final TypeNode boolTypeNode = nf.TypeNodeFromQualifiedName(pos,QName.make("x10.lang","Boolean"));
         final TypeNode placeTypeNode = nf.TypeNodeFromQualifiedName(pos,QName.make("x10.lang","Place"));
@@ -199,11 +200,11 @@ public class Struct {
         */
 
         {
-            X10Flags nativeFlags = X10Flags.toX10Flags(Flags.PUBLIC.Native().Final()).Safe();
+            Flags nativeFlags = Flags.PUBLIC.Native().Final();
             ArrayList<AnnotationNode> natives;
             Formal formal;
-           // In the Java backend, some structs (like Int) are mapped to primitives (like int)
-           // So I must add a native annotation on this method.
+            // In the Java backend, some structs (like Int) are mapped to primitives (like int)
+            // So I must add a native annotation on this method.
 
             //@Native("java", "x10.rtt.Types.typeName(#0)")
             //@Native("c++", "x10aux::type_name(#0)")
@@ -238,19 +239,19 @@ public class Struct {
         }
         if (!seenHashCode) {
             // final public global safe def hashCode():Int {
-            //  var result:Int = 0;
-            //  result = 31*result + FIELD1.hashCode();
+            //  var result:Int = 1;
+            //  result = 8191*result + FIELD1.hashCode();
             //  ...
             //  return result;
             // }
             bodyStmts = new ArrayList<Stmt>();
-            bodyStmts.add(nf.LocalDecl(pos, nf.FlagsNode(pos,Flags.NONE), intTypeNode,nf.Id(pos,"result"),nf.IntLit(pos, IntLit.INT,0)));
+            bodyStmts.add(nf.LocalDecl(pos, nf.FlagsNode(pos,Flags.NONE), intTypeNode,nf.Id(pos,"result"),nf.IntLit(pos, IntLit.INT,1)));
             final Local target = nf.Local(pos, nf.Id(pos, "result"));
             for (FieldDecl fi : fields) {
                 String name = fi.name().toString();
                 bodyStmts.add(nf.Eval(pos,nf.Assign(pos, target, Assign.ASSIGN,
                     nf.Binary(pos,
-                        nf.Binary(pos,nf.IntLit(pos,IntLit.INT,31),Binary.MUL,target),
+                        nf.Binary(pos,nf.IntLit(pos,IntLit.INT,8191),Binary.MUL,target),
                         Binary.ADD,
                         nf.Call(pos,nf.Field(pos,nf.This(pos),nf.Id(pos,name)),nf.Id(pos,"hashCode"))))));
             }
@@ -304,7 +305,7 @@ public class Struct {
 
        return n;
     }
-    private static ArrayList<AnnotationNode> createNative(X10NodeFactory nf,Position pos, String java, String cpp) {
+    private static ArrayList<AnnotationNode> createNative(NodeFactory nf,Position pos, String java, String cpp) {
         ArrayList<AnnotationNode> res = new ArrayList<AnnotationNode>(2);
         for (int i=0; i<2; i++) {
             List<Expr> list = new ArrayList<Expr>(2);

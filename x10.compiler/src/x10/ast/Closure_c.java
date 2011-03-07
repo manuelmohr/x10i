@@ -26,8 +26,7 @@ import polyglot.ast.NodeFactory;
 import polyglot.ast.Precedence;
 import polyglot.ast.Term;
 import polyglot.ast.TypeNode;
-import polyglot.frontend.Globals;
-import polyglot.main.Report;
+import polyglot.main.Reporter;
 import polyglot.types.ClassDef;
 import polyglot.types.ClassType;
 import polyglot.types.CodeDef;
@@ -37,12 +36,13 @@ import polyglot.types.FieldDef;
 import polyglot.types.Flags;
 import polyglot.types.LazyRef;
 import polyglot.types.LocalDef;
-import polyglot.types.MethodInstance;
 import polyglot.types.Ref;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.types.TypeSystem;
 import polyglot.types.Types;
+import polyglot.types.VarDef;
+import polyglot.types.VarInstance;
 import polyglot.util.CodeWriter;
 import polyglot.util.CollectionUtil;
 import polyglot.util.Position;
@@ -54,22 +54,17 @@ import polyglot.visit.NodeVisitor;
 import polyglot.visit.PrettyPrinter;
 import polyglot.visit.TypeBuilder;
 import polyglot.visit.TypeCheckPreparer;
-import polyglot.visit.TypeChecker;
-import x10.constraint.XConstraint;
-import x10.constraint.XVar;
-import x10.constraint.XTerms;
 import x10.errors.Errors;
 import x10.types.ClosureDef;
+import x10.types.EnvironmentCapture;
+import x10.types.ThisDef;
 import x10.types.X10ClassDef;
-import x10.types.X10Context;
+import x10.types.MethodInstance;
 import x10.types.X10MemberDef;
-import x10.types.X10TypeMixin;
-import x10.types.X10TypeSystem;
-import x10.types.X10TypeSystem_c;
+import polyglot.types.LazyRef_c;
 import x10.types.checker.PlaceChecker;
 import x10.types.checker.VarChecker;
 import x10.util.ClosureSynthesizer;
-import x10.visit.X10TypeChecker;
 
 /**
  * An implementation of a closure literal in the source text.
@@ -82,24 +77,24 @@ import x10.visit.X10TypeChecker;
  */
 public class Closure_c extends Expr_c implements Closure {
 	//  List<TypeParamNode> typeParameters;
-	List<Formal> formals;
-	TypeNode returnType;
-	Block body;
-	MethodInstance container;
-	ClosureDef closureDef;
-	ClassType typeContainer;
-	DepParameterExpr guard;
+	protected List<Formal> formals;
+	protected TypeNode returnType;
+	protected Block body;
+	protected MethodInstance container;
+	protected ClosureDef closureDef;
+	protected ClassType typeContainer;
+	protected DepParameterExpr guard;
 
 	private static final Collection<String> TOPICS = 
-		CollectionUtil.list(Report.types, Report.context);
+		CollectionUtil.list(Reporter.types, Reporter.context);
 
 	public Closure_c(Position pos) {
 		super(pos);
 	}
 
-	TypeNode hasType;
-	TypeNode offerType;
-	public Closure_c(X10NodeFactory nf, Position pos,  List<Formal> formals, 
+	protected TypeNode hasType;
+	protected TypeNode offerType;
+	public Closure_c(NodeFactory nf, Position pos,  List<Formal> formals, 
 			TypeNode returnType, DepParameterExpr guard,  TypeNode offerType, Block body) {
 		super(pos);
 		//	this.typeParameters = TypedList.copyAndCheck(typeParams, TypeParamNode.class, true);
@@ -238,7 +233,7 @@ public class Closure_c extends Expr_c implements Closure {
 	}
 
 	public Node buildTypesOverride(TypeBuilder tb) {
-		X10TypeSystem ts = (X10TypeSystem) tb.typeSystem();
+		TypeSystem ts = (TypeSystem) tb.typeSystem();
 
 		X10ClassDef ct = (X10ClassDef) tb.currentClass();
 		assert ct != null;
@@ -252,7 +247,7 @@ public class Closure_c extends Expr_c implements Closure {
 
 		if (! (def instanceof CodeDef)) {
 			Errors.issue(tb.job(),
-			             new SemanticException("Closure cannot occur outside code body.", position()));
+			             new Errors.CannotOccurOutsideCodeBody(Errors.CannotOccurOutsideCodeBody.Element.Closure, position()));
 			// Fake it
 			def = ts.initializerDef(position(), Types.ref(ct.asType()), Flags.STATIC);
 		}
@@ -260,13 +255,13 @@ public class Closure_c extends Expr_c implements Closure {
 		CodeDef code = (CodeDef) def;
 
 		// Get the enclosing this variable.
-		XVar thisVar; // = XTerms.makeLocal(XTerms.makeFreshName("this"));
+		ThisDef thisDef;
 
 		if (code instanceof X10MemberDef) {
-			thisVar = ((X10MemberDef) code).thisVar();
+			thisDef = ((X10MemberDef) code).thisDef();
 		}
 		else {
-			thisVar = ct.thisVar();
+			thisDef = ct.thisDef();
 		}
 
 		ClosureDef mi = ts.closureDef(position(), 
@@ -274,12 +269,14 @@ public class Closure_c extends Expr_c implements Closure {
 				Types.ref(code.asInstance()), 
 				returnType.typeRef(),
 				Collections.<Ref<? extends Type>>emptyList(),
-				thisVar,
+				thisDef,
 				Collections.<LocalDef>emptyList(), 
 				null, 
 				//null, 
 				
 				offerType == null ? null : offerType.typeRef());
+		mi.setStaticContext(code.staticContext());
+		
 		if (returnType() instanceof UnknownTypeNode) {
 			mi.inferReturnType(true);
 		}
@@ -316,8 +313,9 @@ public class Closure_c extends Expr_c implements Closure {
 		// mi.setTypeParameters(Collections.EMPTY_LIST);
 		mi.setFormalTypes(formalTypes);
 
-		if (code instanceof X10MemberDef)
-			assert mi.thisVar() == ((X10MemberDef) code).thisVar();
+		if (code instanceof X10MemberDef) {
+			assert mi.thisDef() == ((X10MemberDef) code).thisDef();
+		}
 
 		if (returnType instanceof UnknownTypeNode && body == null) {
 			Errors.issue(tb.job(),
@@ -328,12 +326,11 @@ public class Closure_c extends Expr_c implements Closure {
 	}
 
 	public Context enterScope(Context c) {
-		if (Report.should_report(TOPICS, 5))
-			Report.report(5, "enter scope of closure at " + position());
+	    Reporter reporter = c.typeSystem().extensionInfo().getOptions().reporter;
+		if (reporter.should_report(TOPICS, 5))
+			reporter.report(5, "enter scope of closure at " + position());
 		// TODO maybe we want a new type of "code context thingy" that is not a type system object, but can live on the Context stack.
 		c = c.pushCode(closureDef);
-		if (c.pop().inStaticContext())
-			c = c.pushStatic();
 		return c;
 	}
 
@@ -355,6 +352,10 @@ public class Closure_c extends Expr_c implements Closure {
 			}
 		}
 
+		if (child == body && offerType != null && offerType.typeRef().known()) {
+		    c = c.pushCollectingFinishScope(offerType.type());
+		}
+
 		return super.enterChildScope(child, c);
 	}
 
@@ -368,11 +369,10 @@ public class Closure_c extends Expr_c implements Closure {
 			childv = childv.enter(this, tn);
 
 			if (childv instanceof TypeCheckPreparer) {
-				TypeCheckPreparer tcp = (TypeCheckPreparer) childv;
 				final LazyRef<Type> r = (LazyRef<Type>) tn.typeRef();
-				TypeChecker tc = new X10TypeChecker(v.job(), v.typeSystem(), v.nodeFactory(), v.getMemo());
-				tc = (TypeChecker) tc.context(tcp.context().freeze());
-				r.setResolver(new TypeCheckReturnTypeGoal(this, body(), tc, r));
+
+                // THROW_RESOLVER also tells UnknownTypeNode_c not to try and infer its type (because we visit the returnType first, then the closure)
+				r.setResolver(LazyRef_c.THROW_RESOLVER); // this resolver should never be called (we update the return type when inferring the closure body).
 			}
 		}
 		return super.setResolverOverride(parent, v);
@@ -380,7 +380,7 @@ public class Closure_c extends Expr_c implements Closure {
 
 	@Override
 	public Node typeCheck(ContextVisitor tc) {
-		X10TypeSystem_c xts = (X10TypeSystem_c) tc.typeSystem();
+		TypeSystem xts = tc.typeSystem();
 
 		Context c = tc.context();
 		Closure_c n = this;
@@ -396,31 +396,44 @@ public class Closure_c extends Expr_c implements Closure {
 
 		if (n.returnType() instanceof UnknownTypeNode) {
 			NodeFactory nf = tc.nodeFactory();
-			X10TypeSystem ts = (X10TypeSystem) tc.typeSystem();
-			// Body had no return statement.  Set to void.
+			TypeSystem ts = (TypeSystem) tc.typeSystem();
 			Ref<Type> tr = ((Ref<Type>) n.returnType().typeRef());
 			Type t = tr.getCached();
-			if (ts.isUnknown(t)) {
+			if (!tr.known() && ts.isUnknown(t)) {
+				// Body had no return statement.  Set to void.
 				t = ts.Void();
 			}
 			tr.update(t);
 			n = (Closure_c) n.returnType(nf.CanonicalTypeNode(n.returnType().position(), t));
-
 		}
 
 		// Create an anonymous subclass of the closure type.
 		ClosureDef def = n.closureDef;
+		//if (!def.capturedEnvironment().isEmpty()) {
+		//    System.out.println(this.position() + ": " + this + " captures "+def.capturedEnvironment());
+		//}
+		propagateCapturedEnvironment(c, def);
 		ClassDef cd = ClosureSynthesizer.closureAnonymousClassDef(xts, def);
 		n = (Closure_c) n.type(cd.asType());
 		if (hasType != null) {
 			final TypeNode h = (TypeNode) n.visitChild(n.hasType, tc);
-			Type hasType = PlaceChecker.ReplaceHereByPlaceTerm(h.type(), ( X10Context ) tc.context());
+			Type hasType = PlaceChecker.ReplaceHereByPlaceTerm(h.type(), ( Context ) tc.context());
 			n = n.hasType(h);
 			if (!xts.isSubtype(n.returnType().type(), hasType, tc.context())) {
 				Errors.issue(tc.job(), new Errors.TypeIsNotASubtypeOfTypeBound(type, hasType, position()));
 			}
 		}
 		return n;
+	}
+
+	// Propagate the captured variables to the parent closure (if any)
+	public static void propagateCapturedEnvironment(Context c, EnvironmentCapture def) {
+		for (VarInstance<? extends VarDef> vi : def.capturedEnvironment()) {
+		    Context o = c;
+		    while (o.currentCode() == def)
+		        o = o.pop().popToCode();
+		    o.recordCapturedVariable(vi);
+		}
 	}
 
 	@Override

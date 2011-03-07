@@ -38,7 +38,7 @@ import polyglot.types.ErrorRef_c;
 import polyglot.types.Flags;
 import polyglot.types.Matcher;
 import polyglot.types.MethodDef;
-import polyglot.types.MethodInstance;
+
 import polyglot.types.SemanticException;
 import polyglot.types.Name;
 import polyglot.types.Type;
@@ -60,11 +60,11 @@ import polyglot.visit.Translator;
 import polyglot.visit.TypeBuilder;
 import polyglot.visit.TypeChecker;
 import x10.errors.Errors;
+import x10.errors.Warnings;
 import x10.types.X10ClassDef;
-import x10.types.X10MethodInstance;
-import x10.types.X10TypeMixin;
-import x10.types.X10TypeSystem;
-import x10.types.X10TypeSystem_c;
+import x10.types.MethodInstance;
+import polyglot.types.TypeSystem;
+
 import x10.types.checker.Checker;
 import x10.types.checker.Converter;
 import x10.types.matcher.DumbMethodMatcher;
@@ -90,10 +90,8 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
 	 * @param op
 	 * @param right
 	 */
-    public SettableAssign_c(X10NodeFactory nf, Position pos, Expr array, List<Expr> index, Operator op, Expr right) {
+    public SettableAssign_c(NodeFactory nf, Position pos, Expr array, List<Expr> index, Operator op, Expr right) {
 		super(nf, pos, op, right);
-		if (index.size() < 1)
-		assert index.size() >= 1;
 		this.array = array;
 		this.index = index;
 	}
@@ -169,7 +167,7 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
    	}
    	
    	public Type childExpectedType(Expr child, AscriptionVisitor av) {
-   		X10TypeSystem ts = (X10TypeSystem) av.typeSystem();
+   		TypeSystem ts = (TypeSystem) av.typeSystem();
    		
    		if (child == array) {
    			return ts.Settable();
@@ -178,21 +176,21 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
    		return child.type();
    	}
 	
-	X10MethodInstance mi;
-	X10MethodInstance ami;
+	MethodInstance mi;
+	MethodInstance ami; // the apply method is searched even for SettableAssign if the operator is not "=", e.g., a(1) += 2; If it is just assignment, then ami will be null, e.g., a(1)=2;
 	
-	public X10MethodInstance methodInstance() {
+	public MethodInstance methodInstance() {
 	    return mi;
 	}
-	public SettableAssign methodInstance(X10MethodInstance mi) {
+	public SettableAssign methodInstance(MethodInstance mi) {
 	    SettableAssign_c n = (SettableAssign_c) copy();
 	    n.mi = mi;
 	    return n;
 	}
-	public X10MethodInstance applyMethodInstance() {
+	public MethodInstance applyMethodInstance() {
 	    return ami;
 	}
-	public SettableAssign applyMethodInstance(X10MethodInstance ami) {
+	public SettableAssign applyMethodInstance(MethodInstance ami) {
 	    SettableAssign_c n = (SettableAssign_c) copy();
 	    n.ami = ami;
 	    return n;
@@ -202,25 +200,25 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
 	public Node buildTypes(TypeBuilder tb) throws SemanticException {
 	    SettableAssign_c n = (SettableAssign_c) super.buildTypes(tb);
 
-	    X10TypeSystem ts = (X10TypeSystem) tb.typeSystem();
+	    TypeSystem ts = (TypeSystem) tb.typeSystem();
 
-	    X10MethodInstance mi = ts.createMethodInstance(position(), new ErrorRef_c<MethodDef>(ts, position(), "Cannot get MethodDef before type-checking settable assign."));
-	    X10MethodInstance ami = ts.createMethodInstance(position(), new ErrorRef_c<MethodDef>(ts, position(), "Cannot get MethodDef before type-checking settable assign."));
+	    MethodInstance mi = ts.createMethodInstance(position(), new ErrorRef_c<MethodDef>(ts, position(), "Cannot get MethodDef before type-checking settable assign."));
+	    MethodInstance ami = ts.createMethodInstance(position(), new ErrorRef_c<MethodDef>(ts, position(), "Cannot get MethodDef before type-checking settable assign."));
 	    return n.methodInstance(mi).applyMethodInstance(ami);
 	}
 
 	static Pair<MethodInstance,List<Expr>> tryImplicitConversions(X10Call_c n, ContextVisitor tc,
 	        Type targetType, List<Type> typeArgs, List<Type> argTypes) throws SemanticException {
-	    final X10TypeSystem ts = (X10TypeSystem) tc.typeSystem();
+	    final TypeSystem ts = (TypeSystem) tc.typeSystem();
 	    final Context context = tc.context();
 
 	    List<MethodInstance> methods = ts.findAcceptableMethods(targetType,
-	            new DumbMethodMatcher(targetType, Name.make("set"), typeArgs, argTypes, context));
+	            new DumbMethodMatcher(targetType, SettableAssign.SET, typeArgs, argTypes, context));
 
 	    Pair<MethodInstance,List<Expr>> p = Converter.<MethodDef,MethodInstance>tryImplicitConversions(n, tc,
 	            targetType, methods, new X10New_c.MatcherMaker<MethodInstance>() {
 	        public Matcher<MethodInstance> matcher(Type ct, List<Type> typeArgs, List<Type> argTypes) {
-	            return ts.MethodMatcher(ct, Name.make("set"), typeArgs, argTypes, context);
+	            return ts.MethodMatcher(ct, SettableAssign.SET, typeArgs, argTypes, context);
 	        }
 	    });
 
@@ -228,12 +226,12 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
 	}
 
 	@Override
-	public Assign typeCheckLeft(ContextVisitor tc) throws SemanticException {
-		X10TypeSystem ts = (X10TypeSystem) tc.typeSystem();
-		X10NodeFactory nf = (X10NodeFactory) tc.nodeFactory();
-		X10TypeSystem xts = ts;
+	public Assign typeCheckLeft(ContextVisitor tc) {
+		TypeSystem ts = (TypeSystem) tc.typeSystem();
+		NodeFactory nf = (NodeFactory) tc.nodeFactory();
+		TypeSystem xts = ts;
 
-		X10MethodInstance mi = null;
+		MethodInstance mi = null;
 
 		List<Type> typeArgs = Collections.<Type>emptyList();
 		List<Type> actualTypes = new ArrayList<Type>(index.size()+1);
@@ -253,43 +251,51 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
 		    try {
 		        X10Call_c n = (X10Call_c) nf.X10Call(position(), array, nf.Id(position(), SET), Collections.<TypeNode>emptyList(), args);
 		        Pair<MethodInstance,List<Expr>> p = tryImplicitConversions(n, tc, array.type(), typeArgs, actualTypes);
-		        mi = (X10MethodInstance) p.fst();
+		        mi =  p.fst();
 		        args = p.snd();
 		    }
 		    catch (SemanticException e) {
-		        if (mi.error() instanceof Errors.CannotGenerateCast)
-		            throw mi.error();
-		        Type bt = X10TypeMixin.baseType(array.type());
+		        if (mi.error() instanceof Errors.CannotGenerateCast) {
+		            throw new InternalCompilerError("Unexpected cast error", mi.error());
+		        }
+		        Type bt = Types.baseType(array.type());
 		        boolean arrayP = xts.isX10Array(bt) || xts.isX10DistArray(bt);
-		        Errors.issue(tc.job(), new Errors.CannotAssignToElement(leftToString(), arrayP, right, X10TypeMixin.arrayElementType(array.type()), position(), mi.error()));
+		        Errors.issue(tc.job(), new Errors.CannotAssignToElement(leftToString(), arrayP, right, Types.arrayElementType(array.type()), position(), mi.error()));
 		    }
 		}
+        Warnings.wasGuardChecked(tc,mi,this);
 
-		X10MethodInstance ami = null;
+		MethodInstance ami = null;
 
 		actualTypes = new ArrayList<Type>(mi.formalTypes());
 		actualTypes.remove(0);
 
 		// First try to find the method without implicit conversions.
 		ami = Checker.findAppropriateMethod(tc, array.type(), ClosureCall.APPLY, typeArgs, actualTypes);
-		if (ami.error() != null) {
-		    Type bt = X10TypeMixin.baseType(array.type());
-		    boolean arrayP = xts.isX10Array(bt) || xts.isX10DistArray(bt);
-		    Errors.issue(tc.job(), new Errors.CannotAssignToElement(leftToString(), arrayP, right, X10TypeMixin.arrayElementType(array.type()), position(), ami.error()));
-		}
+
+
 
 		if (op != Assign.ASSIGN) {
+            if (ami.error() != null) { // it's an error only if op is not =, e.g., a(1)+=1;
+                Type bt = Types.baseType(array.type());
+                boolean arrayP = xts.isX10Array(bt) || xts.isX10DistArray(bt);
+                Errors.issue(tc.job(), new Errors.CannotAssignToElement(leftToString(), arrayP, right, Types.arrayElementType(array.type()), position(), ami.error()));
+            }
+            Warnings.wasGuardChecked(tc,ami,this);
+            // First try to find the method without implicit conversions.
 		    X10Call_c left = (X10Call_c) nf.X10Call(position(), array, nf.Id(position(),
 		            ClosureCall.APPLY), Collections.<TypeNode>emptyList(),
 		            index).methodInstance(ami).type(ami.returnType());
 		    X10Binary_c n = (X10Binary_c) nf.Binary(position(), left, op.binaryOperator(), right);
 		    X10Call c = X10Binary_c.desugarBinaryOp(n, tc);
-		    X10MethodInstance cmi = (X10MethodInstance) c.methodInstance();
+		    MethodInstance cmi = (MethodInstance) c.methodInstance();
 		    if (cmi.error() != null) {
-		        Type bt = X10TypeMixin.baseType(array.type());
+		        Type bt = Types.baseType(array.type());
 		        boolean arrayP = xts.isX10Array(bt) || xts.isX10DistArray(bt);
-		        throw new Errors.CannotPerformAssignmentOperation(leftToString(), arrayP, op.toString(), right, X10TypeMixin.arrayElementType(array.type()), position(), cmi.error());
+		        Errors.issue(tc.job(),
+		                new Errors.CannotPerformAssignmentOperation(leftToString(), arrayP, op.toString(), right, Types.arrayElementType(array.type()), position(), cmi.error()));
 		    }
+            Warnings.wasGuardChecked(tc,cmi,this);
 		}
 
 		if (mi.flags().isStatic() ) {
@@ -366,6 +372,7 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
 	        }
 	    }
 
+	    w.write (")");
 	    w.write(" ");
 	    w.write(op.toString());
 	    w.write(" ");
@@ -373,8 +380,6 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
 	    print(right, w, tr);
 
 	    w.end();
-
-	    w.write (")");
 	}
 
 	public String leftToString() {

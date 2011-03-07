@@ -44,7 +44,7 @@ final class FullRegion extends Region{rect} {
         };
     }
     public def intersection(that: Region(rank)): Region(rank) = that;
-    public def product(that: Region): Region/*(this.rank+that.rank)*/{
+    public def product(that: Region):Region{self != null} /*: Region(this.rank+that.rank)*/{
         @TempNoInline_0
         if (that.isEmpty()) {
             return Region.makeEmpty(rank+that.rank);
@@ -69,10 +69,6 @@ final class FullRegion extends Region{rect} {
     public def contains(p:Point):Boolean = true;
     public def toString() = "full(" + rank + ")";
 
-
-    public def scanners():Iterator[Region.Scanner] {
-        throw new UnboundedRegionException("scanners not supported");
-    }
 
     public def iterator():Iterator[Point(rank)] {
         throw new UnboundedRegionException("iterator not supported");

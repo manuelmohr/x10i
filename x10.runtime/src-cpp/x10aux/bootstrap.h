@@ -25,13 +25,11 @@
 #include <x10/lang/Throwable.h>
 
 #include <x10/lang/Thread.h>
+#include <x10/lang/Runtime__Worker.h>
 #include <x10/lang/Closure.h>
 
 #include <stdio.h>
 
-#ifdef __CYGWIN__
-extern "C" int setlinebuf(FILE *);
-#endif
 namespace x10 { namespace array { template<class T> class Array; } }
 
 namespace x10aux {
@@ -46,7 +44,7 @@ namespace x10aux {
         virtual x10aux::itable_entry* _getITables() { return _itables; }
 
         // closure body
-        void apply () {
+        void __apply () {
             // Initialise the static fields of x10 classes.
             x10aux::InitDispatcher::runInitializers();
         }
@@ -85,7 +83,7 @@ namespace x10aux {
         virtual x10aux::itable_entry* _getITables() { return _itables; }
 
         // closure body
-        void apply () {
+        void __apply () {
             // Invoke the application main().
             main(args);
         }
@@ -122,7 +120,7 @@ namespace x10aux {
 #ifdef X10_USE_BDWGC
         GC_INIT();
 #endif
-        x10aux::ref<x10::array::Array<x10aux::ref<x10::lang::String> > > args = x10aux::null;
+        x10aux::ref<x10::array::Array<x10aux::ref<x10::lang::String> > > args = X10_NULL;
 
 #ifndef NO_EXCEPTIONS
         try {
@@ -131,7 +129,7 @@ namespace x10aux {
 
             // Initialise enough state to make this 'main' thread look like a normal x10 thread
             // (e.g. make Thread::CurrentThread work properly).
-            x10::lang::Thread::_make(x10aux::null, x10aux::string_utils::lit("thread-main"));
+            x10::lang::Runtime__Worker::_make((x10_int)0);
             x10aux::initialize_xrx();
 
             args = x10aux::convert_args(ac, av);
@@ -141,15 +139,16 @@ namespace x10aux {
                 x10aux::ref<StaticInitClosure>(new (x10aux::alloc<x10::lang::VoidFun_0_0>(sizeof(x10aux::StaticInitClosure)))
                                                x10aux::StaticInitClosure());
 
-            // Construct closure to invoke the user's "public static def main(Array[String]) : Void"
+            // Construct closure to invoke the user's "public static def main(Array[String]) : void"
             // if at place 0 otherwise wait for asyncs.
             x10aux::ref<x10::lang::VoidFun_0_0> main_closure =
                 x10aux::ref<BootStrapClosure>(new (x10aux::alloc<x10::lang::VoidFun_0_0>(sizeof(x10aux::BootStrapClosure)))
                                               x10aux::BootStrapClosure(T::main,args));
 
+            x10aux::DeserializationDispatcher::registerHandlers();
             Runtime::start(init_closure, main_closure); // use XRX
-            //init_closure->apply(); // bypass XRX
-            //main_closure->apply(); // bypass XRX
+            //init_closure->__apply(); // bypass XRX
+            //main_closure->__apply(); // bypass XRX
             //sleep(3);
 
 #ifndef NO_EXCEPTIONS

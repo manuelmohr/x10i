@@ -11,16 +11,28 @@
 
 package x10.runtime.impl.java;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 
-public abstract class Runtime implements Runnable {
-	private String[] args;
+import x10.core.ThrowableUtilities;
+import x10.rtt.RuntimeType;
+import x10.rtt.Type;
+import x10.runtime.impl.java.Thread;
+import x10.x10rt.X10RT;
+
+public abstract class Runtime implements x10.core.fun.VoidFun_0_0 {
+    public RuntimeType<?> getRTT() { return null; }
+    public Type<?> getParam(int i) { return null; }
+
+    private String[] args;
 
 	/**
 	 * Body of main java thread
 	 */
 	protected void start(final String[] args) {
 		this.args = args;
+		
 
 		// load libraries
 		String property = System.getProperty("x10.LOAD");
@@ -29,14 +41,21 @@ public abstract class Runtime implements Runnable {
 			for (int i = libs.length-1; i>=0; i--) System.loadLibrary(libs[i]);
 		}
 
+		// @MultiVM, the following is right ?? 
+		// FIXME:  By here it is already too late because statics in Runtime 
+		//         refer to X10RT. Need to restructure this so that we can call
+		//         X10RT.init explicitly from here.
+		X10RT.init();
+		
 		java.lang.Runtime.getRuntime().addShutdownHook(new java.lang.Thread() {
 		    public void run() { System.out.flush(); }
 		});
 
 		// start and join main x10 thread in place 0
-		Thread thread = new Thread(0, this, "thread-main");
-		thread.start();
-		try { thread.join(); } catch (InterruptedException e) {}
+		x10.lang.Runtime.Worker worker = new x10.lang.Runtime.Worker(0);
+		worker.body = this;
+		worker.start();
+		try { worker.join(); } catch (InterruptedException e) {}
 
 		// shutdown
 		System.exit(exitCode);
@@ -45,17 +64,70 @@ public abstract class Runtime implements Runnable {
 	/**
 	 * Body of main x10 thread
 	 */
-	public void run() {
-		try { Class.forName("x10.lang.Place"); } catch (ClassNotFoundException e) { }
+	public void $apply() {
+//		try { Class.forName("x10.lang.Place"); } catch (ClassNotFoundException e) { }
+
+		// preload classes by default
+		if (!Boolean.getBoolean("x10.NO_PRELOAD_CLASSES")) {
+		    // System.out.println("start preloading of classes");
+		    Class<?> userMain = this.getClass().getEnclosingClass();
+		    x10.runtime.impl.java.PreLoader.preLoad(userMain,
+                                                  Boolean.getBoolean("x10.PRELOAD_STRINGS"));
+		}
 
 		// build up Array[String] for args
-		x10.array.Array<String> aargs = new x10.array.Array<String>(x10.rtt.Types.STRING, args.length);
+		final x10.array.Array<String> aargs = new x10.array.Array<String>(x10.rtt.Types.STRING, args.length);
 		for (int i=0; i<args.length; i++) {
-		    aargs.set_0_$$x10$array$Array_T$G(args[i], i);
+		    aargs.$set_0_$$x10$array$Array_T$G(args[i], i);
 		}
-		
+
 		// execute root x10 activity
-		main(aargs);
+        try {
+            // start xrx
+            x10.lang.Runtime.start(
+            // static init activity
+            new x10.core.fun.VoidFun_0_0() {
+                public void $apply() {
+                    // execute X10-level static initialization
+                    x10.runtime.impl.java.InitDispatcher.runInitializer();
+                }
+
+                public x10.rtt.RuntimeType<?> getRTT() {
+                    return _RTT;
+                }
+
+                public x10.rtt.Type<?> getParam(int i) {
+                    return null;
+                }
+            },
+            // body of main activity
+            new x10.core.fun.VoidFun_0_0() {
+                public void $apply() {
+                    // catch and rethrow checked exceptions (closures cannot throw checked exceptions)
+                    try {
+                        // execute root x10 activity
+                        runtimeCallback(aargs);
+                    } catch (java.lang.RuntimeException e) {
+                        throw e;
+                    } catch (java.lang.Error e) {
+                        throw e;
+                    } catch (java.lang.Throwable t) {
+                        throw new x10.runtime.impl.java.WrappedThrowable(t);
+                    }
+                }
+
+                public x10.rtt.RuntimeType<?> getRTT() {
+                    return _RTT;
+                }
+
+                public x10.rtt.Type<?> getParam(int i) {
+                    return null;
+                }
+            });
+        } catch (java.lang.Throwable t) {
+            t.printStackTrace();
+            setExitCode(1);
+        }
 	}
 
 	/**
@@ -63,7 +135,7 @@ public abstract class Runtime implements Runnable {
 	 * - start xrx runtime
 	 * - run main activity
 	 */
-	public abstract void main(x10.array.Array<java.lang.String> args);
+	public abstract void runtimeCallback(x10.array.Array<java.lang.String> args);
 
 	/**
 	 * Application exit code
@@ -90,75 +162,106 @@ public abstract class Runtime implements Runnable {
 	/**
 	 * The number of places in the system
 	 */
-	public static final int MAX_PLACES = Integer.getInteger("x10.NUMBER_OF_LOCAL_PLACES", 4);
+	public static int MAX_PLACES = X10RT.numPlaces();
 
 	/**
 	 * The number of threads to allocate in the thread pool
 	 */
 	public static final int INIT_THREADS = Integer.getInteger("x10.INIT_THREADS", java.lang.Runtime.getRuntime().availableProcessors());
 
+    /**
+     * The maximal size of the thread pool
+     */
+    public static final int MAX_THREADS = Integer.getInteger("x10.MAX_THREADS", 1000);
+
 	/**
 	 * Whether or not to start more threads while blocking
 	 */
 	public static final boolean STATIC_THREADS = Boolean.getBoolean("x10.STATIC_THREADS");
 
-	/**
-	 * Synchronously executes body at place(id) without copy
-	 */
-	public static void runAtLocal(int id, x10.core.fun.VoidFun_0_0 body) {
-		final Thread thread = Thread.currentThread();
-		final int ret = thread.home().id;
-		thread.home(id); // update thread place
-		try {
-			body.apply();
-		} finally {
-			thread.home(ret); // restore thread place
-		}
-	}
+    /**
+     * Trace serialization
+     */
+    public static final boolean TRACE_SER = Boolean.getBoolean("x10.TRACE_SER");
 
     /**
      * Synchronously executes body at place(id)
      */
-    public static void runAt(int id, x10.core.fun.VoidFun_0_0 body) {
-        try {
-            // copy body
-            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-            new java.io.ObjectOutputStream(baos).writeObject(body);
-            body = (x10.core.fun.VoidFun_0_0) new java.io.ObjectInputStream(new java.io.ByteArrayInputStream(baos.toByteArray())).readObject();
-        } catch (java.io.IOException e) {
-            e.printStackTrace();
-            throw new WrappedRuntimeException(e);
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-            throw new WrappedRuntimeException(e);
-        }
-        runAtLocal(id, body);
+    public static void runClosureAt(int place, x10.core.fun.VoidFun_0_0 body) {
+    	runAt(place, body);
     }
 
     /**
      * Synchronously executes body at place(id)
      */
-    public static x10.core.fun.VoidFun_0_0 deepCopy(x10.core.fun.VoidFun_0_0 body) {
+    public static void runClosureCopyAt(int place, x10.core.fun.VoidFun_0_0 body) {
+        runAt(place, body);
+    }
+
+    /**
+     * Copy body (same place)
+     */
+    public static <T> T deepCopy(T body) {
         try {
             // copy body
+            long startTime = 0L;
+            if (TRACE_SER) {
+                startTime = System.nanoTime();
+            }
             java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-            new java.io.ObjectOutputStream(baos).writeObject(body);
-            body = (x10.core.fun.VoidFun_0_0) new java.io.ObjectInputStream(new java.io.ByteArrayInputStream(baos.toByteArray())).readObject();
+            java.io.ObjectOutputStream oos = new java.io.ObjectOutputStream(baos);
+            oos.writeObject(body);
+            oos.close();
+            byte[] ba = baos.toByteArray();
+            if (TRACE_SER) {
+                long endTime = System.nanoTime();
+                System.out.println("Serializer: serialized " + ba.length + " bytes in " + (endTime - startTime) / 1000 + " microsecs.");
+            }
+            java.io.ObjectInputStream ois = new java.io.ObjectInputStream(new java.io.ByteArrayInputStream(ba)); 
+            body = (T) ois.readObject();
+            ois.close();
         } catch (java.io.IOException e) {
-            e.printStackTrace();
-            throw new WrappedRuntimeException(e);
+            x10.core.Throwable xe = ThrowableUtilities.getCorrespondingX10Exception(e);
+            xe.printStackTrace();
+            throw xe;
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
-            throw new WrappedRuntimeException(e);
+            throw new java.lang.Error(e);
         }
         return body;
     }
 
+    // @MultiVM, add this method 
+    public static void runAt(int place, x10.core.fun.VoidFun_0_0 body) {
+		try {
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			(new java.io.ObjectOutputStream(baos)).writeObject(body);
+			byte[] msg = baos.toByteArray();
+			int msgLen = baos.size();
+			if (X10RT.VERBOSE) System.out.println("@MultiVM: sendJavaRemote");
+			x10.x10rt.MessageHandlers.runClosureAtSend(place, msgLen, msg);
+		} catch (java.io.IOException e){
+			e.printStackTrace();
+            throw new x10.runtime.impl.java.WrappedThrowable(e);
+		} finally {
+			if (X10RT.VERBOSE) System.out.println("@MULTIVM: finally section");
+		}
+	}
+
 	/**
-	 * Return true if place(id) is local to this node
+	 * @MultiVM: Return true if place(id) is local to this node
 	 */
 	public static boolean local(int id) {
-		return true; // single process implementation
+		int hereId = X10RT.here();
+		return (hereId == id);
+	}
+	
+	
+	/**
+	 *  @MultiVM: mapped to Runtime.x10 -> event_probe(): void
+	 */
+	public static void eventProbe(){
+		X10RT.probe();
 	}
 
 	/**

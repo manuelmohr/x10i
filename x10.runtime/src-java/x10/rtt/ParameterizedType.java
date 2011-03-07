@@ -1,7 +1,6 @@
 package x10.rtt;
 
-import java.util.Arrays;
-import java.util.List;
+import x10.core.Any;
 
 
 public final class ParameterizedType<T> implements Type<T>{
@@ -17,10 +16,6 @@ public final class ParameterizedType<T> implements Type<T>{
         return params;
     }
 
-    public final List<Type<?>> getTypeParameters() {
-        return Arrays.asList(params);
-    }
-
     public ParameterizedType(RuntimeType<T> rtt, Type<?>... params) {
         this.rtt = rtt;
         this.params = params;
@@ -30,17 +25,17 @@ public final class ParameterizedType<T> implements Type<T>{
         if (this == o) return true;
         if (o == Types.ANY) return true;
         if (o == Types.OBJECT) return !Types.isStructType(this);
-        if (!o.getJavaClass().isAssignableFrom(rtt.base)) {
+        if (!o.getJavaClass().isAssignableFrom(rtt.getJavaClass())) {
             return false;
         }
         if (o instanceof ParameterizedType) {
             ParameterizedType<?> pt = (ParameterizedType<?>) o;
-            if (pt.getRuntimeType().isSuperType(pt.params, (RuntimeType<?>) rtt, params)) {
+            if (pt.getRuntimeType().isSuperType(pt.params, rtt, params)) {
                 return true;
             }
         }
         else if (o instanceof RuntimeType) {
-            if (((RuntimeType<?>) o).isSuperType(null, (RuntimeType<?>) rtt, params)) {
+            if (((RuntimeType<?>) o).isSuperType(null, rtt, params)) {
                 return true;
             }
         }
@@ -56,7 +51,7 @@ public final class ParameterizedType<T> implements Type<T>{
         if (this == o) return true;
         if (o instanceof ParameterizedType<?>) {
             ParameterizedType<?> t = (ParameterizedType<?>) o;
-            if (!rtt.base.equals(t.getJavaClass())) {
+            if (!rtt.getJavaClass().equals(t.getJavaClass())) {
                 return false;
             }
             Type<?>[] parameters = t.params;
@@ -94,18 +89,15 @@ public final class ParameterizedType<T> implements Type<T>{
         return rtt.makeArray(elems);
     }
 
-    public final Type<T> reinstantiate(List<Type<?>> parms) {
-        return rtt.reinstantiate(parms);
-    }
-
     public final T setArray(Object array, int i, T v) {
         return rtt.setArray(array, i, v);
     }
 
     public final String toString() {
-        return rtt.toString();
+        return typeName();
     }
 
+    // Note: this method does not resolve UnresolvedType at runtime
     public final String typeName() {
         String str = rtt.typeName();
         str += "[";
@@ -114,6 +106,59 @@ public final class ParameterizedType<T> implements Type<T>{
             str += params[i].typeName();
         }
         str += "]";
+        return str;
+    }
+
+    private static final String printType(Type<?> t, Object o) {
+        if (t instanceof UnresolvedType) {
+            int index = ((UnresolvedType) t).getIndex();
+            if (index >= 0) {
+                t = ((Any) o).getParam(index);
+            } else {
+                t = ((Any) o).getRTT();
+            }
+        }
+        
+        if (t instanceof ParameterizedType) {
+            return ((ParameterizedType<?>) t).typeName(o);
+        } else {
+            return t.typeName();
+        }
+    }
+    
+    public final String typeName(Object o) {
+        String str = rtt.typeName();
+        str += "[";
+        for (int i = 0; i < params.length; i ++) {
+            if (i != 0) str += ",";
+            str += printType(params[i], o);
+        }
+        str += "]";
+        return str;
+    }
+
+    // called from Static{Void}FunType.typeName(Object)
+    public final String typeNameForFun(Object o) {
+        String str = "(";
+        int i;
+        for (i = 0; i < params.length - 1; i++) {
+            if (i != 0) str += ",";
+            str += printType(params[i], o);
+        }
+        str += ")=>";
+        str += printType(params[i], o);
+        return str;
+    }
+
+    public final String typeNameForVoidFun(Object o) {
+        String str = "(";
+        if (params != null && params.length > 0) {
+            for (int i = 0; i < params.length; i++) {
+                if (i != 0) str += ",";
+                str += printType(params[i], o);
+            }
+        }
+        str += ")=>void";
         return str;
     }
     

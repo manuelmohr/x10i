@@ -11,6 +11,8 @@
 
 package x10.core;
 
+import x10.core.fun.VoidFun_0_0;
+import x10.lang.UnsupportedOperationException;
 import x10.rtt.RuntimeType;
 import x10.rtt.RuntimeType.Variance;
 import x10.rtt.Type;
@@ -20,34 +22,148 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
     public final Object value;
     public final Type<T> type;
 
+    public IndexedMemoryChunk(Type<T> type) {
+        this(type, 0, null);
+    }
     public IndexedMemoryChunk(Type<T> type, int length, Object value) {
         this.length = length;
         this.type = type;
         this.value = value;
     }
 
-    private IndexedMemoryChunk(Type<T> type, int length) {
+    private IndexedMemoryChunk(Type<T> type, int length, boolean zeroed) {
         this(type, length, type.makeArray(length));
+        if (zeroed) {
+            if (!x10.rtt.Types.hasNaturalZero(type)) {
+                Object zeroValue = x10.rtt.Types.zeroValue(type);
+                java.util.Arrays.fill((Object[]) value, zeroValue);
+            }
+        }
     }
 
-    public static <T> IndexedMemoryChunk<T> allocate(Type<T> type, int length) {
-        return new IndexedMemoryChunk<T>(type, length);
+    public static <T> IndexedMemoryChunk<T> allocate(Type<T> type, int length, boolean zeroed) {
+        return new IndexedMemoryChunk<T>(type, length, zeroed);
     }
 
-    public T apply$G(int i) {
+    public java.lang.String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("IndexedMemoryChunk(");
+        int sz = Math.min(length, 10);
+        for (int i = 0; i < sz; i++) {
+            if (i > 0)
+                sb.append(",");
+            sb.append($apply$G(i));
+        }
+        if (sz < length) sb.append("...(omitted " + (length - sz) + " elements)");
+        sb.append(")");
+        return sb.toString();
+    }
+
+    public T $apply$G(int i) {
         return type.getArray(value, i);
     }
 
-    public void set(T v, int i) {
+    public void $set(T v, int i) {
         type.setArray(value, i, v);
     }
 
-    public void _copyToLocal(int srcIndex, IndexedMemoryChunk<T> dst, int dstIndex, int numElems) {
-        System.arraycopy(value, srcIndex, dst.value, dstIndex, numElems);
+    public static <T> void asyncCopy(IndexedMemoryChunk<T> src, final int srcIndex, 
+                                     final RemoteIndexedMemoryChunk<T> dst, final int dstIndex,
+                                     final int numElems) {
+        // extra copy here simplifies logic and allows us to do this entirely at the Java level.
+        // We'll eventually need to optimize this by writing custom native/JNI code instead of treating
+        // it as just another async to execute remotely.
+        final Object dataToCopy;
+        if (numElems == src.length) {
+            dataToCopy = src.getBackingArray();
+        } else {
+            dataToCopy = allocate(src.type, numElems, false).getBackingArray();
+            System.arraycopy(src.value, srcIndex, dataToCopy, 0, numElems);
+        }
+        
+        VoidFun_0_0 copyBody = new VoidFun_0_0() {
+            int dstId = dst.id;
+            Object srcData = dataToCopy;
+            
+            public RuntimeType<?> getRTT() { return VoidFun_0_0._RTT; }
+            public Type<?> getParam(int i) { return null; }
+            
+            public void $apply() {
+                Object dstData = RemoteIndexedMemoryChunk.getValue(dstId);
+                System.arraycopy(srcData, 0, dstData, dstIndex, numElems);
+            }
+        };
+        
+        x10.lang.Runtime.runAsync(dst.home, copyBody);
     }
 
-    public void _copyFromLocal(int dstIndex, IndexedMemoryChunk<T> src, int srcIndex, int numElems) {
-        System.arraycopy(src.value, srcIndex, value, dstIndex, numElems);
+    public static <T> void asyncCopy(IndexedMemoryChunk<T> src, int srcIndex, 
+                                     RemoteIndexedMemoryChunk<T> dst, int dstIndex,
+                                     int numElems, VoidFun_0_0 notifier) {
+        throw new UnsupportedOperationException("asyncCopy with notifier not implemented for multivm");
+        // notifier.$apply();
+    }
+
+    public static <T> void asyncCopy(final RemoteIndexedMemoryChunk<T> src, final int srcIndex, 
+                                     IndexedMemoryChunk<T> dst, final int dstIndex,
+                                     final int numElems) {
+        // A really bad implementation!  Leaks dst!!  Non-optimized copies! Extra distributed async/finish traffic!
+        final RemoteIndexedMemoryChunk<T> dstWrapper = RemoteIndexedMemoryChunk.wrap(dst);
+        final int srcId = src.id;
+        
+        VoidFun_0_0 copyBody1 = new VoidFun_0_0() {
+            
+            public RuntimeType<?> getRTT() { return VoidFun_0_0._RTT; }
+            public Type<?> getParam(int i) { return null; }
+            
+            public void $apply() {
+                // This body runs at src's home.  It accesses the data for src and then does
+                // another async back to dstWrapper's home to transfer the data.
+                Object srcData = RemoteIndexedMemoryChunk.getValue(srcId);
+                 
+                // extra copy here simplifies logic and allows us to do this entirely at the Java level.
+                // We'll eventually need to optimize this by writing custom native/JNI code instead of treating
+                // it as just another async to execute remotely.
+                final Object dataToCopy;
+                if (numElems == src.length) {
+                    dataToCopy = srcData;
+                } else {
+                    dataToCopy = allocate(src.type, numElems, false).getBackingArray();
+                    System.arraycopy(srcData, srcIndex, dataToCopy, 0, numElems);
+                }
+                
+                VoidFun_0_0 copyBody2 = new VoidFun_0_0() {
+                    int dstId = dstWrapper.id;
+                    Object srcData = dataToCopy;
+                    
+                    public RuntimeType<?> getRTT() { return VoidFun_0_0._RTT; }
+                    public Type<?> getParam(int i) { return null; }
+                    
+                    public void $apply() {
+                        // This body runs back at dst's home.  It does the actual assignment of values.
+                        Object dstData = RemoteIndexedMemoryChunk.getValue(dstId);
+                        System.arraycopy(srcData, 0, dstData, dstIndex, numElems);
+                    }
+                };
+                
+                x10.lang.Runtime.runAsync(dstWrapper.home, copyBody2);
+            }
+        };
+        
+        x10.lang.Runtime.runAsync(src.home, copyBody1);
+    }
+
+    public static <T> void asyncCopy(RemoteIndexedMemoryChunk<T> src, int srcIndex, 
+                                     IndexedMemoryChunk<T> dst, int dstIndex,
+                                     int numElems, VoidFun_0_0 notifier) {
+        throw new UnsupportedOperationException("asyncCopy with notifier not implemented for multivm");
+        // notifier.$apply();
+    }
+
+    public static <T> void copy(IndexedMemoryChunk<T> src, int srcIndex, 
+                                IndexedMemoryChunk<T> dst, int dstIndex,
+                                int numElems) {
+        System.arraycopy(src.value, srcIndex, dst.value, dstIndex, numElems);
     }
 
     @Override
@@ -57,10 +173,10 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
 
     public static final RuntimeType<IndexedMemoryChunk<?>> _RTT = new RuntimeType<IndexedMemoryChunk<?>>(
         IndexedMemoryChunk.class,
-        Variance.INVARIANT
+        new RuntimeType.Variance[] { Variance.INVARIANT }
     ) {
         @Override
-        public String typeName() {
+        public java.lang.String typeName() {
             return "x10.util.IndexedMemoryChunk";
         }
     };
@@ -89,6 +205,8 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
     public double[] getDoubleArray() { return (double[]) value; }
     public Object[] getObjectArray() { return (Object[]) value; }
 
+    // this is broken
+    /*
     public Object[] getBoxedArray() {
         if (value instanceof boolean[]) {
             boolean[] a = (boolean[]) value;
@@ -132,5 +250,6 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
         }
         return (Object[]) value;
     }
+    */
 
 }

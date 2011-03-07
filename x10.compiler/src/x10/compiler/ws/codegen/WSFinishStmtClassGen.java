@@ -1,3 +1,15 @@
+/*
+ *  This file is part of the X10 project (http://x10-lang.org).
+ *
+ *  This file is licensed to You under the Eclipse Public License (EPL);
+ *  You may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *      http://www.opensource.org/licenses/eclipse-1.0.php
+ *
+ *  (C) Copyright IBM Corporation 2006-2010.
+ */
+
+
 package x10.compiler.ws.codegen;
 
 import polyglot.ast.Block;
@@ -23,50 +35,17 @@ import x10.util.synthesizer.SwitchSynth;
  * 
  */
 public class WSFinishStmtClassGen extends AbstractWSClassGen {
-
-    protected Finish finish;
-
-    public WSFinishStmtClassGen(AbstractWSClassGen parent, Finish finish) {
-        super(parent.job, parent.getX10NodeFactory(), parent.getX10Context(), parent.getWSTransformState(),
-              parent);
-
-        this.finish = finish;
-
-        // className like "_fib_finish_1";
-        className = WSCodeGenUtility.getFinishStmtClassName(parent.getClassName())
-                    + parent.assignChildId();
-        classSynth = new ClassSynth(job, xnf, xct, wts.finishFrameType, className);
-        classSynth.setKind(ClassDef.MEMBER);
-        //note the flag should according to the method's type
-        ClassDef classDef = parent.classSynth.getClassDef();
-        classSynth.setFlags(classDef.flags());    
-        classSynth.setKind(classDef.kind());
-        classSynth.setOuter(parent.classSynth.getOuter());
-        this.frameDepth = parent.frameDepth + 1;
+    public WSFinishStmtClassGen(AbstractWSClassGen parent, Finish finishStmt) {
+        super(parent, parent,
+                WSCodeGenUtility.getFinishStmtClassName(parent.getClassName()),
+                parent.wts.finishFrameType, finishStmt.body());
         
-        addPCFieldToClass();        
-        //now prepare all kinds of method synthesizer
-        prepareMethodSynths();
+        if(WSOptimizeConfig.OPT_PC_FIELD == 0){
+            addPCField();
+        }
     }
 
-    @Override
-    public void genClass() throws SemanticException {
-
-        genClassConstructors();
-
-        if (wts.realloc) genRemapMethod();
-        
-        genThreeMethods(); //fast, resume, back
-    }
-
-    protected void genClassConstructors() throws SemanticException {
-        //finishstmt class doesn't have fields
-        //gen copy constructor
-        if (wts.realloc) genCopyConstructor(compilerPos);
-        
-        //now generate another con
-        ConstructorSynth conSynth = classSynth.createConstructor(compilerPos);
-        conSynth.addAnnotation(genHeaderAnnotation());
+    protected void genClassConstructor() throws SemanticException {
         Expr upRef = conSynth.addFormal(compilerPos, Flags.FINAL, wts.frameType, "up"); //up:Frame!
         
         CodeBlockSynth codeBlockSynth = conSynth.createConstructorBody(compilerPos);
@@ -74,35 +53,32 @@ public class WSFinishStmtClassGen extends AbstractWSClassGen {
         superCallSynth.addArgument(wts.frameType, upRef);
     }
 
-    protected void genThreeMethods() throws SemanticException {
+    @Override
+    protected void genMethods() throws SemanticException {
         
         CodeBlockSynth fastBodySynth = fastMSynth.getMethodBodySynth(compilerPos);
         CodeBlockSynth resumeBodySynth = resumeMSynth.getMethodBodySynth(compilerPos);
         CodeBlockSynth backBodySynth = backMSynth.getMethodBodySynth(compilerPos);
         
-        Expr pcRef = synth.makeFieldAccess(compilerPos, getThisRef(), PC, xct);
-        
-        SwitchSynth resumeSwitchSynth = resumeBodySynth.createSwitchStmt(compilerPos, pcRef);
-        SwitchSynth backSwitchSynth = backBodySynth.createSwitchStmt(compilerPos, pcRef);        
-        
-        //
-        Block finishBody;
-        if(finish.body() instanceof Block){
-            finishBody = (Block) finish.body();
-        }
-        else{
-            finishBody = xnf.Block(finish.body().position(), finish.body());
-        }
-        
-        AbstractWSClassGen childFrameGen = genChildFrame(wts.regularFrameType, finishBody, WSCodeGenUtility.getBlockFrameClassName(getClassName()));
+
+        AbstractWSClassGen childFrameGen = genChildFrame(wts.regularFrameType, codeBlock, WSCodeGenUtility.getBlockFrameClassName(getClassName()));
         TransCodes callCodes = this.genInvocateFrameStmts(1, childFrameGen);
         
         //now add codes to three path;
+        //fast path
         fastBodySynth.addStmts(callCodes.first());
-        resumeSwitchSynth.insertStatementsInCondition(0, callCodes.second());
-        if(callCodes.third().size() > 0){ //only assign call has back
-            backSwitchSynth.insertStatementsInCondition(0, callCodes.third());
-            backSwitchSynth.insertStatementInCondition(0, xnf.Break(compilerPos));
+        
+        //resume/back path
+        if(WSOptimizeConfig.OPT_PC_FIELD == 0){
+            Expr pcRef = synth.makeFieldAccess(compilerPos, getThisRef(), PC, xct);
+            
+            SwitchSynth resumeSwitchSynth = resumeBodySynth.createSwitchStmt(compilerPos, pcRef);
+            SwitchSynth backSwitchSynth = backBodySynth.createSwitchStmt(compilerPos, pcRef);      
+            resumeSwitchSynth.insertStatementsInCondition(0, callCodes.second());
+            if(callCodes.third().size() > 0){ //only assign call has back
+                backSwitchSynth.insertStatementsInCondition(callCodes.getPcValue(), callCodes.third());
+                backSwitchSynth.insertStatementInCondition(callCodes.getPcValue(), xnf.Break(compilerPos));
+            }
         }
    }
 
