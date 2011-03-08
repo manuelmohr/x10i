@@ -6,6 +6,7 @@ import polyglot.ast.Node;
 import polyglot.frontend.Compiler;
 import polyglot.frontend.Job;
 import polyglot.frontend.SourceGoal_c;
+import polyglot.visit.Translator;
 import x10.extension.X10Ext;
 import x10firm.types.TypeSystem;
 import x10firm.visit.X10FirmCodeGenerator;
@@ -40,10 +41,11 @@ public class FirmGenerated extends SourceGoal_c {
 		}
 
 		typeSystem.beforeGraphConstruction();
+		final Translator tr = new Translator(job(), typeSystem, null, null);
 
 		Compiler compiler = job().compiler();
 		final X10FirmCodeGenerator v = new X10FirmCodeGenerator(compiler,
-				typeSystem);
+				typeSystem, tr);
 		v.visitAppropriate(ast);
 
 		try {

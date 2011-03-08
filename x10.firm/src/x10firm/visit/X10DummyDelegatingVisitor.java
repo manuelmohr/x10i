@@ -57,19 +57,15 @@ import x10.ast.AtEach_c;
 import x10.ast.AtExpr_c;
 import x10.ast.AtStmt_c;
 import x10.ast.Atomic_c;
-import x10.ast.Await_c;
 import x10.ast.ClosureCall_c;
 import x10.ast.Closure_c;
-import x10.ast.ConstantDistMaker_c;
 import x10.ast.Finish_c;
 import x10.ast.ForLoop_c;
-import x10.ast.Future_c;
 import x10.ast.Here_c;
 import x10.ast.LocalTypeDef_c;
 import x10.ast.Next_c;
 import x10.ast.ParExpr_c;
 import x10.ast.PropertyDecl_c;
-import x10.ast.RegionMaker_c;
 import x10.ast.SettableAssign_c;
 import x10.ast.StmtExpr_c;
 import x10.ast.StmtSeq_c;
@@ -89,11 +85,11 @@ import x10.ast.X10Unary_c;
 import x10.visit.X10DelegatingVisitor;
 
 /**
- * A "dummy" visitor which visits all "AST" nodes. 
+ * A "dummy" visitor which visits all "AST" nodes.
  *
  */
 public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
-	
+
 	@Override
 	public void visit(Node n) {
 		visitAppropriate(n);
@@ -312,18 +308,6 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 	}
 
 	@Override
-	public void visit(RegionMaker_c n) {
-		for(Expr e : n.arguments())
-			visitAppropriate(e);
-	}
-
-	@Override
-	public void visit(ConstantDistMaker_c n) {
-		for(Expr e : n.arguments())
-			visitAppropriate(e);
-	}
-
-	@Override
 	public void visit(Field_c n) {
 		visitAppropriate(n.target());
 	}
@@ -371,7 +355,7 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(BooleanLit_c literal) {
-		
+
 	}
 
 	@Override
@@ -420,12 +404,6 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 	}
 
 	@Override
-	public void visit(Await_c n) {
-		if(n.expr() != null)
-			visitAppropriate(n.expr());
-	}
-
-	@Override
 	public void visit(Next_c n) {
 
 	}
@@ -436,9 +414,9 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 			visitAppropriate(n.formal());
 		if(n.domain() != null)
 			visitAppropriate(n.domain());
-		
+
 		visitAppropriate(n.body());
-		
+
 		for(Stmt s : n.locals())
 			visitAppropriate(s);
 	}
@@ -466,7 +444,7 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Here_c n) {
-		
+
 	}
 
 	@Override
@@ -476,9 +454,9 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(X10Special_c n) {
-		
+
 	}
-	
+
 	@Override
 	public void visit(Closure_c n) {
 		visitAppropriate(n.body());
@@ -544,12 +522,6 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 			visitAppropriate(e);
 		for(Stmt s : n.stmts())
 			visitAppropriate(s);
-	}
-
-	@Override
-	public void visit(Future_c n) {
-		if(n.place() != null)
-			visitAppropriate(n.place());
 	}
 
 	@Override

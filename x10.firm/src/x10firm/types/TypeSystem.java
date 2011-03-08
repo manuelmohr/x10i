@@ -4,13 +4,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import polyglot.frontend.ExtensionInfo;
 import polyglot.types.FieldInstance;
-import x10.types.ConstrainedType_c;
+import polyglot.types.Flags;
+import x10.types.ConstrainedType;
+import x10.types.MethodInstance;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
-import x10.types.X10Flags;
-import x10.types.X10MethodInstance;
-import x10.types.X10TypeSystem_c;
+import x10c.types.X10CTypeSystem_c;
 import firm.ClassType;
 import firm.Entity;
 import firm.Ident;
@@ -30,7 +31,12 @@ import firm.bindings.binding_oo.ddispatch_binding;
  * XXX While the mapping is static, the X10 type system is not,
  * because the runtime is loaded dynamically.
  */
-public class TypeSystem extends X10TypeSystem_c {
+public class TypeSystem extends X10CTypeSystem_c {
+
+	/** @param extInfo	language extension this type system is for */
+	public TypeSystem(ExtensionInfo extInfo) {
+		super(extInfo);
+	}
 
 	/** Maps polyglot types to firm types. */
 	private Map<polyglot.types.Type, Type> firmCoreTypes = new HashMap<polyglot.types.Type, Type>();
@@ -41,7 +47,7 @@ public class TypeSystem extends X10TypeSystem_c {
 
 	/** All class instances share the same location for the vptr (the pointer to the vtable) */
 	private Entity vptrEntity;
-	
+
 	/**
 	 * Creates a method type (= a member function). So we in addition to the
 	 * type we need the flags to determine if it is static and the owner class
@@ -49,31 +55,29 @@ public class TypeSystem extends X10TypeSystem_c {
 	 * @param methodInstance	an X10 method instance, for which a Firm type is needed
 	 * @return	corresponding Firm type
 	 */
-	public firm.MethodType asFirmType(X10MethodInstance methodInstance) {
-		final List<polyglot.types.Type> formalTypes
-			= methodInstance.formalTypes();
-		final X10Flags flags = X10Flags.toX10Flags(methodInstance.flags());
+	public firm.MethodType asFirmType(MethodInstance methodInstance) {
+		final List<polyglot.types.Type> formalTypes = methodInstance.formalTypes();
+		final Flags flags = methodInstance.flags();
 		final boolean isStatic = flags.isStatic();
 		final int nParameters = formalTypes.size() + (isStatic ? 0 : 1);
 		final int nResults = methodInstance.returnType() == Void() ? 0 : 1;
-		final X10ClassType owner = (X10ClassType) methodInstance.container();
 		final Type[] parameterTypes = new firm.Type[nParameters];
 		final Type[] resultTypes = new firm.Type[nResults];
 
 		int p = 0;
 		if (!isStatic) {
+			final X10ClassType owner = (X10ClassType) formalTypes.get(0);
 			Type thisType = asFirmType(owner);
 			parameterTypes[p++] = thisType;
 		}
-		for (polyglot.types.Type type : formalTypes) {
-			parameterTypes[p++] = asFirmType(type);
+		for (polyglot.types.Type t : formalTypes) {
+			parameterTypes[p++] = asFirmType(t);
 		}
 		assert (p == nParameters);
 
 		if (nResults > 0) {
 			assert nResults == 1;
-			polyglot.types.Type type = methodInstance.returnType();
-			resultTypes[0] = asFirmType(type);
+			resultTypes[0] = asFirmType(methodInstance.returnType());
 		}
 
 		return new firm.MethodType(parameterTypes, resultTypes);
@@ -109,11 +113,7 @@ public class TypeSystem extends X10TypeSystem_c {
 	 * @return corresponding Firm method type
 	 */
 	public firm.Type asFirmType(polyglot.types.Type type) {
-		/* strip type-constraints */
-		polyglot.types.Type baseType = type;
-		while (baseType instanceof ConstrainedType_c) {
-			baseType = ((ConstrainedType_c)baseType).baseType().get();
-		}
+		polyglot.types.Type baseType = stripTypeConstraints(type);
 
 		firm.Type result = firmTypes.get(baseType);
 		if (result != null)
@@ -128,10 +128,10 @@ public class TypeSystem extends X10TypeSystem_c {
 
 		/* currently we should never produce types without modes here */
 		assert result.getMode() != null;
-		
+
 		return result;
 	}
-	
+
 	private Entity getVptrEntity() {
 		if (vptrEntity == null) {
 			firm.Type pointerType = Mode.getP().getType();
@@ -139,14 +139,14 @@ public class TypeSystem extends X10TypeSystem_c {
 		}
 		return vptrEntity;
 	}
-	
+
 	/**
 	 * Adds a new field to the type system
 	 * @param field The field which should be added
 	 * @param klass The defining class of the field
 	 */
 	private void addField(FieldInstance field, firm.Type klass) {
-		X10Flags fieldFlags = X10Flags.toX10Flags(field.flags());
+		Flags fieldFlags = field.flags();
 		/* properties have no "real" data in the object */
 		if (fieldFlags.isProperty())
 			return;
@@ -158,7 +158,7 @@ public class TypeSystem extends X10TypeSystem_c {
 		OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 		fieldMap.put(field, entity);
 	}
-	
+
 	/**
 	 * Adds a new static field instance to the type system
 	 * @param field The field instance which should be added
@@ -173,19 +173,19 @@ public class TypeSystem extends X10TypeSystem_c {
 	private firm.Type createClassType(X10ClassType classType) {
 		String className = X10NameMangler.mangleTypeObjectWithDefClass(classType);
 		ClassType result = new ClassType(className);
-		X10Flags flags   = X10Flags.toX10Flags(classType.flags());
+		Flags flags   = classType.flags();
 
 		/* put the class into the core types already, because we could
 		 * have a field referencing ourself */
 		firmCoreTypes.put(classType, result);
-		
+
 		/* create supertypes */
 		polyglot.types.Type superType = classType.superClass();
 		if (superType != null) {
 			Type firmSuperType = asFirmCoreType(superType);
 			result.addSuperType(firmSuperType);
 			new Entity(result, "$super", firmSuperType);
-			
+
 		} else if (flags.isStruct()) {
 			/* no superclass */
 		} else if(flags.isInterface()) {
@@ -196,7 +196,7 @@ public class TypeSystem extends X10TypeSystem_c {
 			assert classType.toString().equals("x10.lang.Object");
 			getVptrEntity().setOwner(result);
 		}
-		
+
 		/* create interfaces */
 		for (polyglot.types.Type iface : classType.interfaces()) {
 			Type firmIface = asFirmCoreType(iface);
@@ -207,18 +207,18 @@ public class TypeSystem extends X10TypeSystem_c {
 		for (FieldInstance field : classType.fields()) {
 			addField(field, result);
 		}
-		
+
 		OO.setClassVPtrEntity(result, getVptrEntity());
-		
+
 		if (!flags.isInterface() && !flags.isStruct()) {
 			Entity vtable = new Entity(Program.getGlobalType(), X10NameMangler.mangleVTable(classType), Mode.getP().getType());
 			OO.setClassVTableEntity(result, vtable);
 		}
-		
+
 		Entity classInfoEntity = new Entity(Program.getGlobalType(),Ident.createUnique(className + "$"), Mode.getP().getType());
-		
+
 		OO.setClassRTTIEntity(result, classInfoEntity);
-		
+
 		result.layoutFields();
 		result.finishLayout();
 
@@ -239,11 +239,7 @@ public class TypeSystem extends X10TypeSystem_c {
 	 * This variant does not return the "native"-type even if there is one.
 	 */
 	public firm.Type asFirmCoreType(polyglot.types.Type type) {
-		/* strip type-constraints */
-		polyglot.types.Type baseType = type;
-		while (baseType instanceof ConstrainedType_c) {
-			baseType = ((ConstrainedType_c)baseType).baseType().get();
-		}
+		polyglot.types.Type baseType = stripTypeConstraints(type);
 
 		firm.Type result = firmCoreTypes.get(baseType);
 		if (result != null)
@@ -257,6 +253,19 @@ public class TypeSystem extends X10TypeSystem_c {
 			throw new java.lang.RuntimeException("No implement to get firm type for: " + baseType);
 		}
 		return result;
+	}
+
+	/**
+	 * @param type
+	 * @return
+	 */
+	private polyglot.types.Type stripTypeConstraints(polyglot.types.Type type) {
+		/* strip type-constraints */
+		polyglot.types.Type baseType = type;
+		while (baseType instanceof ConstrainedType) {
+			baseType = ((ConstrainedType)baseType).baseType().get();
+		}
+		return baseType;
 	}
 
 	/**

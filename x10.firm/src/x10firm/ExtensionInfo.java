@@ -1,17 +1,17 @@
 package x10firm;
 
+import polyglot.frontend.Scheduler;
+import x10.X10CompilerOptions;
+import x10firm.types.TypeSystem;
 import firm.Firm;
 import firm.OO;
-import polyglot.frontend.Scheduler;
-import polyglot.main.Options;
-import x10firm.types.TypeSystem;
 
 /**
  * Defines our extension (Firm backend in X10 compiler) within the Polyglot framework
  *
  */
 public class ExtensionInfo extends x10.ExtensionInfo {
-	
+
 	/**
 	 * Initializes our extension.
 	 * E.g. loads the native libFirm via JNA.
@@ -19,7 +19,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 	public ExtensionInfo() {
 		Firm.init();
 		OO.init();
-	} 
+	}
 
 	@Override
 	public String compilerName() {
@@ -38,11 +38,11 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 
 	@Override
 	protected polyglot.types.TypeSystem createTypeSystem() {
-		return new TypeSystem();
+		return new TypeSystem(this);
 	}
 
 	@Override
-	protected Options createOptions() {
+	protected X10CompilerOptions createOptions() {
 		return new CompilerOptions(this);
 	}
 }

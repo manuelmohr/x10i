@@ -13,41 +13,32 @@ import polyglot.ast.FieldDecl_c;
 import polyglot.ast.FloatLit;
 import polyglot.ast.Initializer_c;
 import polyglot.ast.IntLit;
-import polyglot.ast.MethodDecl;
 import polyglot.ast.Return;
 import polyglot.ast.Stmt;
 import polyglot.ast.Unary;
-import polyglot.types.Context;
-import polyglot.util.ErrorInfo;
+import polyglot.visit.Translator;
 import x10.ast.Closure;
 import x10.ast.ClosureCall;
 import x10.ast.ParExpr;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
-import x10cpp.Configuration;
-import x10firm.types.TypeSystem;
+import x10.types.X10MethodDef;
+import x10.util.HierarchyUtils;
 
 /**
- * Our main class for AST queries. 
+ * Our main class for AST queries.
  */
 public class X10ASTQuery {
+	private final Translator tr;
 
-	/** Reference to the type system */
-	private final TypeSystem typeSystem;
-	
-	/** Reference to the main polyglot compiler */
-	private final polyglot.frontend.Compiler compiler;
-	
 	/**
 	 * X10ASTQuery Constructor
-	 * @param typeSystem_ Reference to the type system
-	 * @param compiler_ Reference to the main polyglot compiler 
+	 * @param tr	some translator
 	 */
-	public X10ASTQuery(TypeSystem typeSystem_, polyglot.frontend.Compiler compiler_) {
-		this.typeSystem = typeSystem_;
-		this.compiler   = compiler_;
+	public X10ASTQuery(Translator tr) {
+		this.tr = tr;
 	}
-	
+
 	/**
 	 * Returns true if a given expression is constant
 	 * @param e The expression which should be checked
@@ -95,7 +86,7 @@ public class X10ASTQuery {
 	    }
 	    return false;
 	}
-	
+
 	/**
 	 * Checks if a given field name is a synthetic field
 	 * @param name The field name which should be checked
@@ -105,11 +96,11 @@ public class X10ASTQuery {
 		if (name.startsWith("jlc$")) return true;
 		return false;
 	}
-    
+
     /**
      * Checks if a given field decl is global init (static and the init expression must be constant)
      * @param fd The field decl which should be checked
-     * @return True if the given field decl is a global init field decl. 
+     * @return True if the given field decl is a global init field decl.
      */
 	private boolean isGlobalInit(FieldDecl_c fd) {
 	    return (fd.init() != null &&
@@ -118,9 +109,9 @@ public class X10ASTQuery {
 	            (fd.init().type().isNumeric() || fd.init().type().isBoolean() ||
 	             fd.init().type().isChar() || fd.init().type().isNull()));
 	}
-	
+
 	/**
-	 * Extracts all class members from a given class members list which must be manually initialized (val instanced fields) 
+	 * Extracts all class members from a given class members list which must be manually initialized (val instanced fields)
 	 * @param members A list with class members
  	 * @return The class members from the given list which must be manually initialized
 	 */
@@ -146,48 +137,21 @@ public class X10ASTQuery {
 	                    continue;
 	            }
 	        }
-	        
+
 	        // This class members must be initialised
 	        ret.add(member);
 	    }
-	    
+
 	    return ret;
 	}
-	
-    private boolean seenMain = false;
-    private boolean warnedAboutMain = false;
+
     /** test if a method is the main method (the one we start first when the
      * program runs)
      * Note: This code is copied from the ASTQuery class. (It doesn't have the
      * public modifier there so we can't use it directly. Also ASTQuery
      * unnecessarily depends on a Translator which we don't have)
      */
-	public boolean isMainMethod(MethodDecl dec) {
-		X10ClassType container = (X10ClassType) dec.methodDef().asInstance()
-				.container();
-		Context context = null;
-		assert (container.isClass());
-		boolean result = (Configuration.MAIN_CLASS == null || container
-				.fullName().toString().equals(Configuration.MAIN_CLASS))
-				&& dec.name().toString().equals("main")
-				&& dec.flags().flags().isPublic()
-				&& dec.flags().flags().isStatic()
-				&& dec.returnType().type().isVoid()
-				&& (dec.formals().size() == 1)
-				&& typeSystem.isSubtype(dec.formals().get(0).type()
-						.type(), typeSystem.Array(typeSystem.String()), context);
-		if (result) {
-			boolean dash_c = compiler.sourceExtension().getOptions().post_compiler == null;
-			if (seenMain && !warnedAboutMain && !dash_c
-					&& Configuration.MAIN_CLASS == null) {
-				compiler.errorQueue().enqueue(
-						ErrorInfo.SEMANTIC_ERROR,
-						"Multiple main() methods encountered.  "
-								+ "Please specify MAIN_CLASS.");
-				warnedAboutMain = true;
-			}
-			seenMain = true;
-		}
-		return result;
-	}
+    public boolean isMainMethod(X10MethodDef md) {
+        return HierarchyUtils.isMainMethod(md, tr.context());
+    }
 }
