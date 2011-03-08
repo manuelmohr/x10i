@@ -4,5 +4,6 @@
 	<classpathentry excluding="x10/constraint/test/**|x10/constraint/tests/" kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/3"/>
+	<classpathentry kind="lib" path="/x10.dist/lib/x10c.jar"/>
 	<classpathentry kind="output" path="classes"/>
 </classpath>

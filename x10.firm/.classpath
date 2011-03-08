@@ -7,5 +7,6 @@
 	<classpathentry kind="lib" path="/jFirm/lib/jna.jar" sourcepath="/jFirm/lib/jna-src-full.zip"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/x10.constraints"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/liboo"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/x10.common"/>
 	<classpathentry kind="output" path="classes"/>
 </classpath>
