@@ -66,7 +66,7 @@ public class TypeSystem extends X10CTypeSystem_c {
 
 		int p = 0;
 		if (!isStatic) {
-			final X10ClassType owner = (X10ClassType) formalTypes.get(0);
+			final X10ClassType owner = (X10ClassType) methodInstance.container();
 			Type thisType = asFirmType(owner);
 			parameterTypes[p++] = thisType;
 		}
