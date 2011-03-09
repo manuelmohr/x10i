@@ -1601,9 +1601,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final Flags flags = methodInstance.flags();
 		final Entity entity = getMethodEntity(methodInstance);
 		final boolean isStatic = flags.isStatic();
+		boolean isFinal = flags.isFinal();
+		final X10ClassType owner = (X10ClassType) methodInstance.container();
+		if (owner != null && owner.isX10Struct()) {
+			isFinal = true;
+		}
 		final List<Expr> arguments = n.arguments();
 
-		genX10Call(isStatic, entity, arguments, n.target());
+		genX10Call(isStatic, isFinal, entity, arguments, n.target());
 		/* setReturnNode is automatically set */
 	}
 
@@ -2155,7 +2160,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Entity ent = getClosureEntity(applyMethodInstance.signature());
 		assert ent != null;
 
-		genX10Call(applyMethodInstance.flags().isStatic(), ent, c.arguments(), c.target());
+		final boolean isFinal = false;
+		genX10Call(applyMethodInstance.flags().isStatic(), isFinal, ent, c.arguments(), c.target());
 	}
 
 	/**
@@ -2180,23 +2186,25 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param args The arguments for the call
 	 */
 	private void genX10StaticCall(final Entity entity, final List<Expr> args) {
-		genX10Call(true, entity, args, null);
+		/* Note: static implies final */
+		genX10Call(true, true, entity, args, null);
 	}
 
 	/**
 	 * Creates the appropriate firm graph for a call.
-	 * @param isStatic True if the called method is static (-> static binding)
+	 * @param isStatic True if the called method is static (static binding, no this parameter)
+	 * @param isFinal  True if the called method is final (static binding)
 	 * @param entity The entity of the method
 	 * @param args The arguments of the method
 	 * @param target The target of the method call.
 	 */
-	private void genX10Call(final boolean isStatic, final Entity entity, final List<Expr> args, final Receiver target) {
+	private void genX10Call(final boolean isStatic, final boolean isFinal, final Entity entity, final List<Expr> args, final Receiver target) {
 
 		final MethodType type = (MethodType) entity.getType();
 		final int param_count = type.getNParams();
 		List<Expr> arguments = args;
 
-		if (!isStatic) {
+		if (!isStatic) { /* insert implicit first argument 'this' */
 			assert(target != null && target instanceof Expr);
 			/* arguments is immutable, so we construct a new list */
 			List<Expr> na = new LinkedList<Expr>();
@@ -2212,7 +2220,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			parameters[i] = visitExpression(arguments.get(i));
 		}
 
-		final Node address = (isStatic) ? con.newSymConst(entity) : con.newSel(parameters[0], entity);
+		final Node address = (isStatic || isFinal) ? con.newSymConst(entity) : con.newSel(parameters[0], entity);
 
 		Node mem = con.getCurrentMem();
 		Node call = con.newCall(mem, address, parameters, type);
