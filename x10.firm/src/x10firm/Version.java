@@ -3,7 +3,7 @@ package x10firm;
 /**
  * Polyglot requires thisa class to specify the version of our extension
  */
-public class Version extends polyglot.main.Version {
+public class Version extends x10.Version {
 	@Override
 	public String name() {
 		return "x10firm";
