@@ -10,8 +10,6 @@ fi
 MYDIR=`dirname "$ME"`
 X10_TOP="${MYDIR}/../.."
 
-[ -z "$JAVA" ] && JAVA="java"
-
 # prepare classpath
 classpath=""
 append_classpath() {
@@ -40,7 +38,9 @@ export LD_LIBRARY_PATH="$JNA_LIBRARY_PATH"
 # and for our OS/X friends
 export DYLD_LIBRARY_PATH="$JNA_LIBRARY_PATH"
 
-# Execute compiler
-args="-extclass x10firm.ExtensionInfo -sourcepath ${X10_TOP}/x10.dist/lib/x10.jar"
-command="$JAVA -Xmx512m -ea -classpath ${classpath} ${java_args} polyglot.main.Main"
-$command $args "$@"
+# The following is from x10c++
+export X10_DIST="${MYDIR}/.."
+export CP_OVERRIDE="${classpath}:"
+export DEXT="x10firm.ExtensionInfo"
+
+exec "${X10_DIST}/bin/x10c" "$@"
