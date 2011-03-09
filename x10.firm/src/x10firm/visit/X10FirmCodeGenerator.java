@@ -512,7 +512,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 *  @param code    method/constructor code
 	 *  @param locals  Will hold all found locals.
 	 */
-	private List<LocalInstance> getAllLocalInstancesInCodeBlock(CodeBlock code) {
+	private static List<LocalInstance> getAllLocalInstancesInCodeBlock(CodeBlock code) {
 		List<LocalInstance> ret = new LinkedList<LocalInstance>();
 
 		if (code.body() == null)
