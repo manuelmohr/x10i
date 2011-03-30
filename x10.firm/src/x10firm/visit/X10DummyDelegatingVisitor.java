@@ -52,6 +52,7 @@ import polyglot.ast.Throw_c;
 import polyglot.ast.Try_c;
 import polyglot.ast.Unary_c;
 import polyglot.ast.While_c;
+import x10.ast.AssignPropertyCall_c;
 import x10.ast.Async_c;
 import x10.ast.AtEach_c;
 import x10.ast.AtExpr_c;
@@ -85,11 +86,10 @@ import x10.ast.X10Unary_c;
 import x10.visit.X10DelegatingVisitor;
 
 /**
- * A "dummy" visitor which visits all "AST" nodes.
- *
+ * A "dummy" visitor which visits all "AST" nodes. 
  */
 public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
-
+	
 	@Override
 	public void visit(Node n) {
 		visitAppropriate(n);
@@ -131,6 +131,12 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 	@Override
 	public void visit(Import_c n) {
 
+	}
+	
+	@Override
+	public void visit(AssignPropertyCall_c n) {
+		for(Expr arg : n.arguments())
+			visitAppropriate(arg);
 	}
 
 	@Override
@@ -355,7 +361,7 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(BooleanLit_c literal) {
-
+		
 	}
 
 	@Override
@@ -414,9 +420,9 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 			visitAppropriate(n.formal());
 		if(n.domain() != null)
 			visitAppropriate(n.domain());
-
+		
 		visitAppropriate(n.body());
-
+		
 		for(Stmt s : n.locals())
 			visitAppropriate(s);
 	}
@@ -444,7 +450,7 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Here_c n) {
-
+		
 	}
 
 	@Override
@@ -454,9 +460,9 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(X10Special_c n) {
-
+		
 	}
-
+	
 	@Override
 	public void visit(Closure_c n) {
 		visitAppropriate(n.body());

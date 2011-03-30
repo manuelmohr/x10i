@@ -1,65 +1,18 @@
 package x10firm.visit;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import firm.Entity;
+
 import polyglot.ast.ClassMember;
 import polyglot.ast.Stmt;
-import polyglot.types.FieldInstance;
 import polyglot.types.LocalInstance;
 import polyglot.types.VarInstance;
 import x10.types.X10ClassType;
-
-/** 
- * Class for saving variable instances (locals and fields) and the appropriate "firm" indices. 
- */
-class X10VarEntry {
-	private int idx;
-	private VarInstance<?> var;
-	
-	private X10VarEntry(final VarInstance<?> var_, final int idx_) {
-		assert(var_ != null);
-		var = var_;
-		idx = idx_;
-	}
-	
-	/**
-	 * Creates a new var entry for a local instance
-	 * @param loc_ The local instance
-	 * @param idx_ The "local" index (firm) for the local variable
-	 * @return The created var entry. 
-	 */
-	public static X10VarEntry newVarEntryForLocalInstance(final LocalInstance loc_, final int idx_) {
-		return new X10VarEntry(loc_, idx_);
-	}
-	
-	/**
-	 * Creates a new var entry for a field instance
-	 * @param field_ The field instance
-	 * @return The created var entry.
-	 */
-	public static X10VarEntry newVarEntryForFieldInstance(final FieldInstance field_) {
-		return new X10VarEntry(field_, -1);
-	}
-	
-	/**
-	 * The index of the var entry -> -1 if the var entry is actually a field instance
-	 * @return The index of the local instance.
-	 */
-	public int getIdx() {
-		return idx;
-	}
-	
-	/**
-	 * Returns the var instance of the var key
-	 * @return The var instance
-	 */
-	public VarInstance<?> getVarInstance() {
-		return var;
-	}
-}
-
+import x10.types.X10ProcedureInstance;
 
 /**
  * Class that holds attributes (scopes, mapping of local instance variables etc.) for a new method.
@@ -76,6 +29,11 @@ public class X10FirmContext {
 	 * Reference to the current class type
 	 */
 	private X10ClassType curClass;
+	
+	/** 
+	 * Reference to the current procedure type
+	 */
+	private X10ProcedureInstance<?> curProcedure;
 
 	/**
 	 * Will hold the corresponding statement if we have reached a labeled statement. Otherwise null.
@@ -111,6 +69,7 @@ public class X10FirmContext {
 	
 	/**
 	 * Sets the current class
+	 * @param curClass The current class
 	 */
 	public void setCurClass(X10ClassType curClass) {
 		this.curClass = curClass;
@@ -124,22 +83,36 @@ public class X10FirmContext {
 	}
 	
 	/**
-	 * Sets the class members which must be intialised explicitly
+	 * Sets the current procedure
+	 * @param procedure The current procedure
+	 */
+	public void setCurProcedure(final X10ProcedureInstance<?> procedure) {
+		this.curProcedure = procedure;
+	}
+	
+	/**
+	 * Returns the current procedure
+	 * @return The current procedure
+	 */
+	public X10ProcedureInstance<?> getCurProcedure() {
+		return curProcedure;
+	}
+	
+	/**
+	 * Sets the class members which must be intialized explicitly
 	 */
 	public void setInitClassMembers(List<ClassMember> members) {
 		assert(initClassMembers == null); // method should only be called once
-		if(initClassMembers != null) {
-			System.out.println("YES");
-		}
 		initClassMembers = members;
 	}
 	
 	/**
 	 * Returns all class members which must be manually initialized
-	 * @return A list with all class members which must be manually intialized. 
+	 * @return A list with all class members which must be manually initialized. 
 	 */
 	public List<ClassMember> getInitClassMembers() {
-		assert(initClassMembers != null);
+		if(initClassMembers == null)
+			return new ArrayList<ClassMember>();
 		return initClassMembers;
 	}
 	
@@ -186,27 +159,12 @@ public class X10FirmContext {
 		assert !varEntryMapper.containsKey(entry.getVarInstance());
 		varEntryMapper.put(entry.getVarInstance(), entry);
 	}
-
-	/** Returns the "VarEntry" for a given variable (local variable or field instance)
-	 * @return The "VarEntry" of the given variable or null if the variable could not be found
-	 */
-	public X10VarEntry getVarEntry(VarInstance<?> var) {
-		X10VarEntry ret = varEntryMapper.get(var);
-		if(ret == null) {
-			if(outer != null) 
-				return outer.getVarEntry(var);
-			assert(false);
-			return null;
-		}
-		
-		return ret;
-	}
 	
 	/** Returns the "VarEntry" for a given instance variable in the current scope
 	 * @return The "VarEntry" of the given instance variable in the current scope or 
 	 * null if the instance variable could not be found.
 	 */
-	public X10VarEntry getVarEntryInThisScope(VarInstance<?> var) {
+	public X10VarEntry getVarEntry(VarInstance<?> var) {
 		return varEntryMapper.get(var);
 	}
 
@@ -273,3 +231,82 @@ public class X10FirmContext {
 	}
 }
 
+/** 
+ * Class for saving variable instances (locals and fields) and the appropriate "firm" indices. 
+ */
+class X10VarEntry {
+	/**
+	 * Type of a normal variable -> can be set and accessed with setVariable and getVariable and has a unique index
+	 */
+	public static final int VARIABLE = 0x1;
+	
+	/**
+	 * A normal (local) struct variable
+	 */
+	public static final int STRUCT   = 0x3;
+	
+	private Entity entity;
+	private int type;
+	private int idx;
+	private VarInstance<?> var;
+	
+	private X10VarEntry(final VarInstance<?> var, final int idx, final int type, final Entity entity) {
+		assert(var != null);
+		assert(type == VARIABLE || type == STRUCT);
+		
+		this.var = var;
+		this.idx = idx;
+		this.type = type;
+		this.entity = entity;
+	}
+	
+	/**
+	 * Returns the type of the var entry
+	 */
+	public int getType() {
+		return type;
+	}
+	
+	/**
+	 * Creates a new var entry for a local instance
+	 * @param loc The local instance
+	 * @param idx The "local" index (firm) for the local variable
+	 * @return The created var entry. 
+	 */
+	public static X10VarEntry newVarEntryForLocalVariable(final LocalInstance loc, final int idx) {
+		return new X10VarEntry(loc, idx, VARIABLE, null);
+	}
+	
+	/**
+	 * Creates a new var entry for a local struct instance
+	 * @param loc The local struct instance
+	 * @return The created var entry. 
+	 */
+	public static X10VarEntry newVarEntryForStructVariable(final LocalInstance loc, final Entity entity) {
+		return new X10VarEntry(loc, -1, STRUCT, entity);
+	}
+	
+	/**
+	 * The index of the var entry -> -1 if the var entry is actually a field instance
+	 * @return The index of the local instance.
+	 */
+	public int getIdx() {
+		return idx;
+	}
+	
+	/** Returns the entity of the var entry
+	 * 
+	 */
+	public Entity getEntity() {
+		assert(type == STRUCT);
+		return entity;
+	}
+	
+	/**
+	 * Returns the var instance of the var key
+	 * @return The var instance
+	 */
+	public VarInstance<?> getVarInstance() {
+		return var;
+	}
+}

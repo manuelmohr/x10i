@@ -11,6 +11,8 @@ import polyglot.ast.LocalDecl_c;
 import polyglot.ast.Local_c;
 import polyglot.types.LocalInstance;
 import x10.ast.Closure_c;
+import x10.types.ClosureDef;
+import x10.types.ClosureInstance;
 
 /**
  * Visitor that visits a closure body ast node and collects all
@@ -22,7 +24,7 @@ public class X10ClosureVisitor extends X10DummyDelegatingVisitor {
 	/**
 	 * The formals of the closures. 
 	 */
-	private List<LocalInstance> formals;
+	private List<LocalInstance> formals = new LinkedList<LocalInstance>();
 	
 	/**
 	 * Will hold all local instances of the closure
@@ -41,10 +43,10 @@ public class X10ClosureVisitor extends X10DummyDelegatingVisitor {
 	
 	/**
 	 * Constructor
-	 * @param formals_ All formals of the closure
+	 * @param formals All formals of the closure
 	 */
-	public X10ClosureVisitor(final List<LocalInstance> formals_) {
-		formals = formals_;
+	public X10ClosureVisitor(final List<LocalInstance> formals) {
+		this.formals.addAll(formals);
 	}
 	
 	/**
@@ -73,13 +75,13 @@ public class X10ClosureVisitor extends X10DummyDelegatingVisitor {
 	
 	@Override
 	public void visit(LocalDecl_c n) {
-		LocalInstance loc = n.localDef().asInstance();
+		final LocalInstance loc = n.localDef().asInstance();
 		assert !locals.contains(loc);
 		
 		// collect all "real" local instances in the closure
 		locals.add(loc);
 		
-		Expr initexpr = n.init();
+		final Expr initexpr = n.init();
 
 		if (initexpr != null)
 			visitAppropriate(initexpr);
@@ -87,9 +89,9 @@ public class X10ClosureVisitor extends X10DummyDelegatingVisitor {
 	
 	@Override
 	public void visit(Local_c n) {
-		LocalInstance loc = n.localInstance();
+		final LocalInstance loc = n.localInstance();
 		
-		// don`t include local instances to the context of the closure
+		// don`t include local instances
 		// which are actually "real" local instances. 
 		if(!locals.contains(loc) && !formals.contains(loc))
 			savedLocals.add(loc);
@@ -97,7 +99,14 @@ public class X10ClosureVisitor extends X10DummyDelegatingVisitor {
 	
 	@Override
 	public void visit(Closure_c n) {
-		/* DO NOTHING -> Don`t visit inner closures */
+		// inner closures -> we must watch out for the formals of the inner closures -> append the formals 
+		// of the inner closure to the current formals
+		final ClosureDef def = n.closureDef();
+		final ClosureInstance closureInstance = def.asInstance();
+		
+		formals.addAll(closureInstance.formalNames());
+		// and now visit the inner closure
+		visitAppropriate(n.body());
 	}
 	
 	@Override

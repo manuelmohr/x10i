@@ -7,6 +7,7 @@ import polyglot.frontend.Compiler;
 import polyglot.frontend.Job;
 import polyglot.frontend.SourceGoal_c;
 import polyglot.visit.Translator;
+import x10.ast.X10NodeFactory_c;
 import x10.extension.X10Ext;
 import x10firm.types.TypeSystem;
 import x10firm.visit.X10FirmCodeGenerator;
@@ -25,15 +26,27 @@ public class FirmGenerated extends SourceGoal_c {
 	 * Remember the typeSystem until the code generator is actually invoked.
 	 */
 	private final TypeSystem typeSystem;
+	
+	/**
+	 * Remember the node factory until the code generator is actually invoked
+	 */
+	private final X10NodeFactory_c nodeFactory;
 
 	/** Constructor */
-	public FirmGenerated(Job job, TypeSystem typeSystem) {
+	public FirmGenerated(final Job job, final TypeSystem typeSystem, final X10NodeFactory_c nodeFactory) {
 		super("FirmGenerated", job);
 		this.typeSystem = typeSystem;
+		this.nodeFactory = nodeFactory;
 	}
+	
+	private static boolean hasRun = false;
 
 	@Override
 	public boolean runTask() {
+		// TODO: should not be necessary...
+		if(hasRun) return true;
+		hasRun = true;
+		
 		Node ast = job().ast();
 		assert (ast != null);
 		if (!((X10Ext) ast.ext()).subtreeValid()) {
@@ -41,11 +54,12 @@ public class FirmGenerated extends SourceGoal_c {
 		}
 
 		typeSystem.beforeGraphConstruction();
+		
 		final Translator tr = new Translator(job(), typeSystem, null, null);
 
 		Compiler compiler = job().compiler();
 		final X10FirmCodeGenerator v = new X10FirmCodeGenerator(compiler,
-				typeSystem, tr);
+				typeSystem, nodeFactory, tr);
 		v.visitAppropriate(ast);
 
 		try {

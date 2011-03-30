@@ -26,19 +26,20 @@ import x10.types.X10MethodDef;
 import x10.util.HierarchyUtils;
 
 /**
- * Our main class for AST queries.
+ * Our main class for AST queries. 
  */
 public class X10ASTQuery {
+	
 	private final Translator tr;
-
+	
 	/**
 	 * X10ASTQuery Constructor
-	 * @param tr	some translator
+	 * @param tr Translator
 	 */
-	public X10ASTQuery(Translator tr) {
+	public X10ASTQuery(final Translator tr) {
 		this.tr = tr;
 	}
-
+	
 	/**
 	 * Returns true if a given expression is constant
 	 * @param e The expression which should be checked
@@ -86,7 +87,7 @@ public class X10ASTQuery {
 	    }
 	    return false;
 	}
-
+	
 	/**
 	 * Checks if a given field name is a synthetic field
 	 * @param name The field name which should be checked
@@ -96,11 +97,11 @@ public class X10ASTQuery {
 		if (name.startsWith("jlc$")) return true;
 		return false;
 	}
-
+    
     /**
      * Checks if a given field decl is global init (static and the init expression must be constant)
      * @param fd The field decl which should be checked
-     * @return True if the given field decl is a global init field decl.
+     * @return True if the given field decl is a global init field decl. 
      */
 	private boolean isGlobalInit(FieldDecl_c fd) {
 	    return (fd.init() != null &&
@@ -109,9 +110,9 @@ public class X10ASTQuery {
 	            (fd.init().type().isNumeric() || fd.init().type().isBoolean() ||
 	             fd.init().type().isChar() || fd.init().type().isNull()));
 	}
-
+	
 	/**
-	 * Extracts all class members from a given class members list which must be manually initialized (val instanced fields)
+	 * Extracts all class members from a given class members list which must be manually initialized (val instanced fields) 
 	 * @param members A list with class members
  	 * @return The class members from the given list which must be manually initialized
 	 */
@@ -137,21 +138,21 @@ public class X10ASTQuery {
 	                    continue;
 	            }
 	        }
-
+	        
 	        // This class members must be initialised
 	        ret.add(member);
 	    }
-
+	    
 	    return ret;
 	}
-
+	
     /** test if a method is the main method (the one we start first when the
      * program runs)
      * Note: This code is copied from the ASTQuery class. (It doesn't have the
      * public modifier there so we can't use it directly. Also ASTQuery
      * unnecessarily depends on a Translator which we don't have)
      */
-    public boolean isMainMethod(X10MethodDef md) {
-        return HierarchyUtils.isMainMethod(md, tr.context());
-    }
+	public boolean isMainMethod(X10MethodDef md) {
+		return HierarchyUtils.isMainMethod(md, tr.context());
+	}
 }

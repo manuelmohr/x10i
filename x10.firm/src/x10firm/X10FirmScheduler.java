@@ -3,6 +3,7 @@ package x10firm;
 import polyglot.frontend.Goal;
 import polyglot.frontend.Job;
 import x10.ExtensionInfo.X10Scheduler;
+import x10.ast.X10NodeFactory_c;
 import x10firm.goals.AsmEmitted;
 import x10firm.goals.FirmGenerated;
 import x10firm.goals.GoalSequence;
@@ -49,8 +50,9 @@ class X10FirmScheduler extends X10Scheduler {
 	public Goal CodeGenerated(Job job) {
 
 		final TypeSystem typeSystem = (TypeSystem) extInfo.typeSystem();
+		final X10NodeFactory_c nodeFactory = (X10NodeFactory_c)extInfo.nodeFactory();
 
-		final Goal firm_generated = new FirmGenerated(job, typeSystem);
+		final Goal firm_generated = new FirmGenerated(job, typeSystem, nodeFactory);
 		firm_generated.intern(this);
 
 		final Goal optimized_firm = new OptimizedFirm(job, typeSystem);

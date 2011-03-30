@@ -5,6 +5,9 @@ import polyglot.frontend.SourceGoal_c;
 import x10firm.OOSupport;
 import x10firm.types.TypeSystem;
 import firm.Backend;
+import firm.Dump;
+import firm.Graph;
+import firm.Program;
 import firm.Util;
 
 /**
@@ -28,11 +31,18 @@ public class OptimizedFirm extends SourceGoal_c {
 
 	@Override
 	public boolean runTask() {
+		// TODO: should not be necessary...
 		if(hasRun) return true;
 		hasRun = true;
+		typeSystem.finishTypeSystem();
 		OOSupport.lowerOO(typeSystem);
 		Util.lowerSels();
 		Backend.lowerForTarget();
+		
+		for(Graph g : Program.getGraphs()) {
+			Dump.dumpGraph(g, "--lower");
+		}
+		
 		return true;
 	}
 }
