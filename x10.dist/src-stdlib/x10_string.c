@@ -1,6 +1,6 @@
 #include "x10_string.h"
 
-#define X10_ALLOC_STRING(len) (x10_string *)XMALLOC(sizeof(x10_string) + (((len) + 1) * sizeof(x10_char)))
+#define X10_ALLOC_STRING(len) (x10_string *)X10_MALLOC(sizeof(x10_string) + (((len) + 1) * sizeof(x10_char)))
 
 static x10_string *x10_string_from_wide_buf(const size_t len, const x10_char *wchars) {
 	// TODO memory management/garbage collection

@@ -11,35 +11,40 @@
 #include <assert.h>
 #include <stdio.h>
 
-#define T_OBJECT 		 (1)
-#define T_STRING		 (2)
-#define T_CONSOLE		 (3)
-#define T_PRINTER		 (4)
-#define T_INT			 (5)
-#define T_UINT			 (6)
-#define T_LONG			 (7)
-#define T_ULONG			 (8)
-#define T_SHORT			 (9)
-#define T_USHORT		(10)
-#define T_BYTE			(11)
-#define T_UBYTE			(12)
-#define T_BOOLEAN		(13)
-#define T_CHAR			(14)
-#define T_FLOAT			(15)
-#define T_DOUBLE		(16)
+#define T_OBJECT 		 (1L << 0)
+#define T_STRING		 (1L << 1)
+#define T_CONSOLE		 (1L << 2)
+#define T_PRINTER		 (1L << 3)
+#define T_INT			 (1L << 4)
+#define T_UINT			 (1L << 5)
+#define T_LONG			 (1L << 6)
+#define T_ULONG			 (1L << 7)
+#define T_SHORT			 (1L << 8)
+#define T_USHORT		 (1L << 10)
+#define T_BYTE			 (1L << 11)
+#define T_UBYTE			 (1L << 12)
+#define T_BOOLEAN		 (1L << 13)
+#define T_CHAR			 (1L << 14)
+#define T_FLOAT			 (1L << 15)
+#define T_DOUBLE		 (1L << 16)
 
 // TODO: Vtable etc
-// locking with first bit of type -> onodera locks
-#define X10_OBJECT_HEADER \
+typedef struct {
 	uintptr_t type;
+} x10_object_header;
 
-#define X10_TYPE(o) 		((o)->type)
+#define X10_OBJECT_HEADER \
+	x10_object_header head;
+
+#define X10_OBJECT_HEAD(o)      ((x10_object_header *)(o))
+
+#define X10_TYPE(o) 		(X10_OBJECT_HEAD(o)->type)
 #define X10_INIT_TYPE(o,t) 	X10_TYPE(o) = (t)
 
 // TODO: more to come
 #define X10_INIT_OBJECT(o,t) 	X10_INIT_TYPE(o,t)
 
-#define X10_CHECK_TYPE(o,t)     (X10_TYPE(o) == (t))
+#define X10_CHECK_TYPE(o,t)     ((X10_TYPE(o) & (t)) != 0)
 
 typedef void   			x10_any;
 
@@ -88,9 +93,11 @@ typedef struct x10_double_w 	x10_double_w;
 
 #define X10_NULL   NULL
 
-#define XMALLOC(s)   malloc(s)
+#define X10_MALLOC(s)   	malloc(s)
+#define X10_REALLOC(v,s)	realloc((v), (s))
+#define X10_FREE(o)		// DO NOTHING
 
-#define X10_ALLOC_OBJECT(o) (o *)XMALLOC(sizeof(o))
+#define X10_ALLOC_OBJECT(o) (o *)X10_MALLOC(sizeof(o))
 
 #define UNUSED(s) (void)(s)
 
