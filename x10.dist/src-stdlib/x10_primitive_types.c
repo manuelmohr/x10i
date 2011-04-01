@@ -1,4 +1,4 @@
-#include "x10_primitive_types.h"
+#include "x10.h"
 
 #define BINOP(name, type, op)  \
 	type name(type a, type b) { return a op b; }

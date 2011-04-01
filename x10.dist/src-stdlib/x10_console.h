@@ -3,10 +3,6 @@
 
 #include "x10.h"
 
-struct x10_console {
-	X10_OBJECT_HEADER
-};
-
 // static "OUT" and "ERR" fields of the printer
 X10_EXTERN x10_printer *_ZN3x102io7Console3OUTE;
 X10_EXTERN x10_printer *_ZN3x102io7Console3ERRE;

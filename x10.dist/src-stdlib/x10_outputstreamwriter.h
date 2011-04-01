@@ -3,9 +3,5 @@
 
 #include "x10.h"
 
-struct x10_outputstreamwriter {
-	X10_OBJECT_HEADER
-};
-
 #endif // X10_OUTPUTSTREAMWRITER_H_
 
