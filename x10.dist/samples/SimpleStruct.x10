@@ -12,18 +12,18 @@ struct Pair {
 	}
 
 	public def print() {
-		SimpleLib.print(666);
+		SimpleLib.print("Pair print start");
 		SimpleLib.print(first);
 		SimpleLib.print(second);
-		SimpleLib.print(666);
+		SimpleLib.print("Pair print end");
 		myTestPair.print();
 	}
 
 	public def print(x: Pair2) {
-		SimpleLib.print(555);
+		SimpleLib.print("Pair print2 start");
 		SimpleLib.print(x.first);
 		SimpleLib.print(x.second);
-		SimpleLib.print(555);
+		SimpleLib.print("Pair print2 end");
 	}
 
 	public def copy(x: Pair) : TestPair {
@@ -41,10 +41,10 @@ struct Pair2 {
 	}
 
 	public def print() {
-		SimpleLib.print(111);
+		SimpleLib.print("Pair2 print start");
 		SimpleLib.print(first);
 		SimpleLib.print(second);
-		SimpleLib.print(111);
+		SimpleLib.print("Pair2 print end");
 	}
 
 	public def copy(x: Pair) {
@@ -64,10 +64,10 @@ class TestPair {
 	}
 
 	public def print() {
-		SimpleLib.print(777);
+		SimpleLib.print("TestPair print start");
 		SimpleLib.print(first);
 		SimpleLib.print(second);
-		SimpleLib.print(777);
+		SimpleLib.print("TestPair print end");
 		pair.print();
 	}
 }
@@ -85,6 +85,8 @@ class SimpleStruct {
 	public static def main(Array[String]) : void {
 		val x: Pair = Pair(8,9);
 		x.print();
+
+		SimpleLib.print("HelloWorld".length());
 
 		val y: TestPair = x.copy(x);
 		y.print();

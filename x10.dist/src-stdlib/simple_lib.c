@@ -1,54 +1,57 @@
-#include <stdint.h>
-#include <stdbool.h>
-#include <inttypes.h>
-#include <stdio.h>
-#include <wchar.h>
+#include "x10.h"
+#include "x10_string.h"
 
-void _ZN9SimpleLib5printEx(int64_t v)
+void _ZN9SimpleLib5printEx(x10_long v)
 {
-	printf("%"PRIi64"\n", v);
+	wprintf(L"%"PRIi64"\n", v);
 }
-void _ZN9SimpleLib5printEy(uint64_t v)
+void _ZN9SimpleLib5printEy(x10_ulong v)
 {
-	printf("%"PRIu64"\n", v);
+	wprintf(L"%"PRIu64"\n", v);
 }
-void _ZN9SimpleLib5printEi(int32_t v)
+void _ZN9SimpleLib5printEi(x10_int v)
 {
-	printf("%"PRIi32"\n", v);
+	wprintf(L"%"PRIi32"\n", v);
 }
-void _ZN9SimpleLib5printEj(uint32_t v)
+void _ZN9SimpleLib5printEj(x10_uint v)
 {
-	printf("%"PRIu32"\n", v);
+	wprintf(L"%"PRIu32"\n", v);
 }
-void _ZN9SimpleLib5printEs(int16_t v)
+void _ZN9SimpleLib5printEs(x10_short v)
 {
-	printf("%"PRIi16"\n", v);
+	wprintf(L"%"PRIi16"\n", v);
 }
-void _ZN9SimpleLib5printEt(uint16_t v)
+void _ZN9SimpleLib5printEt(x10_ushort v)
 {
-	printf("%"PRIu16"\n", v);
+	wprintf(L"%"PRIu16"\n", v);
 }
-void _ZN9SimpleLib5printEa(int8_t v)
+void _ZN9SimpleLib5printEa(x10_byte v)
 {
-	printf("%"PRIi8"\n", v);
+	wprintf(L"%"PRIi8"\n", v);
 }
-void _ZN9SimpleLib5printEh(uint8_t v)
+void _ZN9SimpleLib5printEh(x10_ubyte v)
 {
-	printf("%"PRIu8"\n", v);
+	wprintf(L"%"PRIu8"\n", v);
 }
-void _ZN9SimpleLib5printEDi(wchar_t v)
+void _ZN9SimpleLib5printEDi(x10_char v)
 {
-	printf("%lc\n", v);
+	wprintf(L"%lc\n", v);
 }
-void _ZN9SimpleLib5printEf(float v)
+void _ZN9SimpleLib5printEf(x10_float v)
 {
-	printf("%f\n", v);
+	wprintf(L"%f\n", v);
 }
-void _ZN9SimpleLib5printEd(double v)
+void _ZN9SimpleLib5printEd(x10_double v)
 {
-	printf("%f\n", v);
+	wprintf(L"%f\n", v);
 }
-void _ZN9SimpleLib5printEb(bool v)
+void _ZN9SimpleLib5printEb(x10_boolean v)
 {
-	printf("%s\n", v ? "true" : "false");
+	wprintf(L"%ls\n", v ? L"true" : L"false");
 }
+
+void _ZN9SimpleLib5printEPN3x104lang6StringE(x10_string *str)
+{
+	wprintf(L"%ls\n", str->buf);
+}
+

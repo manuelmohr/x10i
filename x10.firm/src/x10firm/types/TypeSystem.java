@@ -130,7 +130,7 @@ public class TypeSystem extends X10CTypeSystem_c {
         	
         	for(final MethodDef mDef : intervaceDef.methods())  {
         		
-        		/* DELETE ME START: (Need template support) */
+				/* DELETE ME START: "following methods are not supported yet" */
         		final MethodInstance mi = mDef.asInstance();
     			final String x = mi.name().toString();
     			if(x.equals("compareTo") || x.equals("toString") || x.equals("hashCode") || x.equals("equals") ||
@@ -269,10 +269,11 @@ public class TypeSystem extends X10CTypeSystem_c {
 	
 	/**
 	 * True if the given type is handled as a primitive type in firm. 
-	 * @param type The type which should be checked
+	 * @param type_ The type which should be checked
 	 * @return True if the given type is handled as a primitive type. 
 	 */
-	public boolean isFirmPrimitiveType(final polyglot.types.Type type) {
+	public boolean isFirmPrimitiveType(final polyglot.types.Type type_) {
+		final polyglot.types.Type type = simplifyType(type_);
 		return equalTypes(type, Int())     || equalTypes(type, UInt())   ||
 		   	   equalTypes(type, Long())    || equalTypes(type, ULong())  ||
 		   	   equalTypes(type, Byte())    || equalTypes(type, UByte())  ||

@@ -36,12 +36,12 @@ struct Vector3(x:Double, y:Double, z:Double) implements VectorFace {
         public def length2 () = x*x + y*y + z*z;
 
 	public def print() {
-		SimpleLib.print(666);
+		SimpleLib.print("Vector3 print start");
 		SimpleLib.print(getX());
 		SimpleLib.print(getY());
 		SimpleLib.print(getZ());
 		SimpleLib.print(length());
-		SimpleLib.print(666);
+		SimpleLib.print("Vector3 print end");
 	}
 }
 
@@ -72,12 +72,12 @@ class Vector3Class(x:Double, y:Double, z:Double) implements VectorFace {
         public def length2 () = x*x + y*y + z*z;
 
 	public def print() {
-		SimpleLib.print(666);
+		SimpleLib.print("Vector3Class print start");
 		SimpleLib.print(getX());
 		SimpleLib.print(getY());
 		SimpleLib.print(getZ());
 		SimpleLib.print(length());
-		SimpleLib.print(666);
+		SimpleLib.print("Vector3Class print end");
 	}
 }
 
@@ -113,15 +113,18 @@ class SimpleStruct2 {
 
 		// assignment copying and autoboxing
 		vv = v2 = v3 = v4;
-		SimpleLib.print(44441);
+		SimpleLib.print("Assignment autoboxing vv.print start");
 		vv.print();
-		SimpleLib.print(44441);
+		SimpleLib.print("Assignment autoboxing vv.print end");
+		SimpleLib.print("Assignment autoboxing v2.print start");
 		v2.print();
-		SimpleLib.print(4444);
+		SimpleLib.print("Assignment autoboxing v2.print end");
+		SimpleLib.print("Assignment autoboxing v3.print start");
 		v3.print();
-		SimpleLib.print(4444);
+		SimpleLib.print("Assignment autoboxing v3 print end");
+		SimpleLib.print("Assignment autoboxing v4.print start");
 		v4.print();
-		SimpleLib.print(4444);
+		SimpleLib.print("Assignment autoboxing v4 print end");
 
 		// constructor autoboxing
 		val vector4 = Vector3(vector.sub(Vector3(3.0, 4.0, .5)), vector2.neg(), vector2.add(vector3));
@@ -130,7 +133,7 @@ class SimpleStruct2 {
 		// primitive autoboxing
 		val xx: Any = 123;
 
-		SimpleLib.print(123);
+		SimpleLib.print("Class assignment");
 		val y: VectorFace = new Vector3Class(1.0, 2.0, 3.0);
 
 		var u: VectorFace = null;

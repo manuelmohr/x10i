@@ -3,8 +3,10 @@
 
 #include "x10.h"
 
-typedef x10_object x10_printer;
+struct x10_printer {
+	X10_OBJECT_HEADER
+};
 
-X10_EXTERN void _ZN3x102io7Printer7printlnEPN3x104lang3AnyE(x10_any);
+X10_EXTERN void _ZN3x102io7Printer7printlnEPN3x104lang3AnyE(x10_any *);
 
 #endif // X10_PRINTER_H_

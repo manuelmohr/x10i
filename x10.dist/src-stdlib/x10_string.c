@@ -1,26 +1,34 @@
 #include "x10_string.h"
 
-const x10_string *_Z18x10_string_literalEJPN6StringEP6JArrayIjE(const x10_char_int length, const x10_char *wchars) {
-	// TODO memory management/garbage collection
-	// FIXME assumes that buf is const
-	x10_string *str = (x10_string *)XMALLOC(x10_string);
+#define X10_ALLOC_STRING(len) (x10_string *)XMALLOC(sizeof(x10_string) + (((len) + 1) * sizeof(x10_char)))
 
-	assert (str != NULL); // TODO out of memory exception?!
-	str->len = length;
-	str->buf = wchars;
+static x10_string *x10_string_from_wide_buf(const size_t len, const x10_char *wchars) {
+	// TODO memory management/garbage collection
+	x10_string *str = X10_ALLOC_STRING(len);
+	assert(str != NULL); // TODO out of memory exception?!
+
+	X10_INIT_OBJECT(str, T_STRING);
+	
+	X10_STRING_LEN(str) = len;
+	memcpy((void *)X10_STRING_BUF(str), (const void *)wchars, len * sizeof(x10_char));
+	X10_STRING_BUF(str)[len] = L'\0';
+
 	return str;
 }
 
-void _ZN7Printer7printlnEJvPN3AnyE(x10_string *self, x10_any any) {
-	// FIXME Any is not String in general!
-	x10_string *str = (x10_string *)any;
-	x10_char_int i;
-
-	(void)self;
-
-	for(i = 0; i < str->len; i++) {
-	   putchar(str->buf[i]);
-	}
-	
-	putchar('\n');
+x10_string *x10_string_from_wide_chars(const x10_char *wchars)
+{
+	assert(wchars != NULL);
+	return x10_string_from_wide_buf(wcslen(wchars), wchars);
 }
+
+x10_string *x10_string_literal(size_t len, x10_char *wchars) {
+	return x10_string_from_wide_buf(len, wchars);
+}
+
+// String methods
+X10_EXTERN x10_int _ZN3x104lang6String6lengthEv(x10_string *self)
+{
+	return X10_STRING_LEN(self);
+}
+

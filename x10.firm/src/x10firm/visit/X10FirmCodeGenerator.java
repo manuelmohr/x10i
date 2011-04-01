@@ -269,21 +269,21 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 */
 	private Node makeConditionalPhiTrailer(final Expr E) {
 
-	    Block cur    = con.getCurrentBlock();
-		Block bTrue  = con.newBlock();
-		Block bFalse = con.newBlock();
+	    final Block cur    = con.getCurrentBlock();
+		final Block bTrue  = con.newBlock();
+		final Block bFalse = con.newBlock();
 
 		con.setCurrentBlock(bTrue);
-		Node jmp1 = con.newJmp();
-		Node one  = con.newConst(1, Mode.getb());
+		final Node jmp1 = con.newJmp();
+		final Node one  = con.newConst(1, Mode.getb());
 
 		con.setCurrentBlock(bFalse);
-		Node jmp2 = con.newJmp();
-		Node zero = con.newConst(0, Mode.getb());
+		final Node jmp2 = con.newJmp();
+		final Node zero = con.newConst(0, Mode.getb());
 
 		con.setCurrentBlock(cur);
 
-		X10FirmScope topScope = firmContext.getTopScope();
+		final X10FirmScope topScope = firmContext.getTopScope();
 		X10FirmScope newScope = (X10FirmScope)topScope.clone();
 
 		firmContext.pushFirmScope(newScope);
@@ -299,7 +299,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		bTrue.mature();
 		bFalse.mature();
 
-		Block phiBlock = con.newBlock();
+		final Block phiBlock = con.newBlock();
 		phiBlock.addPred(jmp1);
 		phiBlock.addPred(jmp2);
 
@@ -310,7 +310,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return con.newPhi(new Node[]{one, zero}, Mode.getb());
 	}
 	
-	
+	/**
+	 * Calculates a unique mapping between local instances and firm entities. 
+	 * @param locals A list with local instances
+	 * @return The unique mapping between local instances and firm enities. 
+	 */
 	private Map<LocalInstance, Entity> calculatEntityMappingForLocals(final List<LocalInstance> locals) {
 		Map<LocalInstance, Entity> map = new HashMap<LocalInstance, Entity>();
 		final firm.Type frameType = con.getGraph().getFrameType();
@@ -418,8 +422,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final ClassBody body = n.body();
 		final List<ClassMember> members = body.members();
 		if(!members.isEmpty()) {
+			final List<ClassMember> inits = query.extractInits(members);
+			firmContext.setInitClassMembers(inits);
+			
 			for (ClassMember member : body.members()) {
-				/* DELETE ME START: (Need template support) */
+				/* DELETE ME START: "following methods are not supported yet" */
 				if(member instanceof MethodDecl_c) {
 					MethodDecl_c meth = (MethodDecl_c)member;
 					X10MethodDef def              = (X10MethodDef)meth.methodDef();
@@ -1737,9 +1744,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(X10Call_c n) {
 		/* determine called function */
 		final MethodInstance methodInstance = n.methodInstance();
-		
 		final Node ret = genX10Call(methodInstance, n.arguments(), n.target(), false);
-		
 		setReturnNode(ret);
 	}
 
@@ -2107,7 +2112,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	private Node createStringSymConst(String value) {
 		final ClassType global_type = Program.getGlobalType();
-		final firm.Type elem_type = typeSystem.asFirmType(typeSystem.Int()); /* XXX always wide chars */
+		final firm.Type elem_type = typeSystem.asFirmType(typeSystem.Char()); 
 		final ArrayType type = new ArrayType(1, elem_type);
 
 		final Ident id = Ident.createUnique("str.%u");
@@ -2375,9 +2380,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(ClosureCall_c c) {
 		/* determine called function */
 		final MethodInstance applyMethodInstance = c.closureInstance();
-		final Entity ent = getClosureEntity(applyMethodInstance.signature());
-		assert ent != null;
-
 		final Node ret = genX10Call(applyMethodInstance, c.arguments(), c.target(), true);
 		setReturnNode(ret);
 	}
@@ -2432,7 +2434,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/**
 	 * Creates the appropriate firm graph for a call.
 	 * @param mi The method instance
-	 * @param entity The entity of the method
 	 * @param args The arguments of the method
 	 * @param target The target of the method call.
 	 * @return The return node or null if the call doesn`t have a return value
@@ -2442,6 +2443,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final boolean isStatic = flags.isStatic();
 		final boolean isFinal  = flags.isFinal();
 		final boolean isNative = flags.isNative();
+		final boolean isStruct = typeSystem.isStructType(mi.container());
+		final boolean isStaticBinding = (isStatic || isFinal || isNative || isStruct);
 		final Entity entity = (closure) ? getClosureEntity(mi.signature()) : getMethodEntity(mi);
 		
 		final MethodType type = (MethodType) entity.getType();
@@ -2465,7 +2468,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		for(int i=0; i < param_count; i++)
 			parameters[i] = visitExpression(arguments.get(i));
 		
-		final Node address = (isStatic || isFinal || isNative) ? con.newSymConst(entity) : con.newSel(parameters[0], entity);
+		final Node address = (isStaticBinding) ? con.newSymConst(entity) : con.newSel(parameters[0], entity);
 
 		final Node mem = con.getCurrentMem();
 		final Node call = con.newCall(mem, address, parameters, type);

@@ -119,6 +119,7 @@ class SimpleClosure {
 	public static uu : Int = 233;
 	
 	public def start() {
+		SimpleLib.print("Hello");
 		val closure1 = mI(e);
 		SimpleLib.print(666);
 		SimpleLib.print(closure1(2,3));
