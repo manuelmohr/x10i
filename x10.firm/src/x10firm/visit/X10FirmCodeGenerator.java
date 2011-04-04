@@ -457,14 +457,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private Entity getConstructorEntity(X10ConstructorInstance instance) {
 		Entity entity = constructorEntities.get(instance);
 		if (entity == null) {
-			final X10ClassType owner = (X10ClassType) instance.container();
 			final String name = X10NameMangler.mangleTypeObjectWithDefClass(instance);
 			final Flags flags = instance.flags();
 
-			final firm.Type ownerFirm = typeSystem.asFirmCoreType(owner);
 			final firm.Type type      = typeSystem.asFirmType(instance);
 
-			entity = new Entity(ownerFirm, name, type);
+			entity = new Entity(Program.getGlobalType(), name, type);
 			entity.setLdIdent(name);
 
 			if (flags.isAbstract()) {
