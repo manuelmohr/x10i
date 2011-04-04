@@ -100,13 +100,7 @@ public class TypeSystem extends X10CTypeSystem_c {
         final String name = getUniqueBoxingName(type.name().toString());
 
         // Get the "Object" class and set it as the super class
-        final QName fullName = QName.make("x10.lang", "Object");
-        final List<polyglot.types.Type> types = systemResolver().check(fullName);
-        assert(types != null && types.size() == 1);
-        
-        final Named n = types.get(0);
-        
-        final X10ClassType objectType = (X10ClassType)n;
+        final X10ClassType objectType = getObjectType();
 
         cd.position(pos);
         cd.name(Name.make(name));
@@ -548,5 +542,17 @@ public class TypeSystem extends X10CTypeSystem_c {
 		Type nullRefType = new PointerType(unknown);
 		firmTypes.put(Null(), nullRefType);
 		/* Note: there is no sensible firmCoreType for Null() */
+	}
+
+	/**
+	 * @return	a class type for x10.lang.Object
+	 */
+	public X10ClassType getObjectType() {
+		final QName fullName = QName.make("x10.lang", "Object");
+	    final List<polyglot.types.Type> types = systemResolver().check(fullName);
+	    assert(types != null && types.size() == 1);
+	    final Named n = types.get(0);
+	    final X10ClassType objectType = (X10ClassType)n;
+		return objectType;
 	}
 }

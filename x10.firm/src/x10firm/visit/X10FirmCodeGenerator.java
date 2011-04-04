@@ -76,9 +76,7 @@ import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
 import polyglot.types.LocalInstance;
 import polyglot.types.Name;
-import polyglot.types.Named;
 import polyglot.types.ObjectType;
-import polyglot.types.QName;
 import polyglot.types.Ref;
 import polyglot.types.Type;
 import polyglot.types.Types;
@@ -2226,11 +2224,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
         final String name = getUniqueClosureName();
 
         // Get "Object" class and set it as the super class
-        final QName fullName = QName.make("x10.lang", "Object");
-        final List<Type> types = typeSystem.systemResolver().check(fullName);
-        assert(types != null && types.size() == 1);
-        final Named n = types.get(0);
-        final X10ClassType objectType = (X10ClassType)n;
+        final X10ClassType objectType = typeSystem.getObjectType();
 
         cd.position(pos);
         cd.name(Name.make(name));
