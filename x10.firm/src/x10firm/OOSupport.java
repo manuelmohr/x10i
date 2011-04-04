@@ -12,8 +12,8 @@ public final class OOSupport {
 	private OOSupport() { }
 
 
-	/** 
-	 * lowers object oriented constructs 
+	/**
+	 * lowers object oriented constructs
 	 */
 	@SuppressWarnings("unused")
 	public static void lowerOO(TypeSystem typeSystem) {

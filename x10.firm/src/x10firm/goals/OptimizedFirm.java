@@ -23,7 +23,7 @@ public class OptimizedFirm extends SourceGoal_c {
 		super("OptimizedFirm", job);
 		this.typeSystem = typeSystem;
 	}
-	
+
 	private static boolean hasRun = false;
 
 	@Override
@@ -35,13 +35,13 @@ public class OptimizedFirm extends SourceGoal_c {
 		OOSupport.lowerOO(typeSystem);
 		Util.lowerSels();
 		Backend.lowerForTarget();
-		
+
 		/*
 		for(Graph g : Program.getGraphs()) {
 			Dump.dumpGraph(g, "--lower");
 		}
 		*/
-		
+
 		return true;
 	}
 }

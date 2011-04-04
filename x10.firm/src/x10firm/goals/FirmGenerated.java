@@ -26,7 +26,7 @@ public class FirmGenerated extends SourceGoal_c {
 	 * Remember the typeSystem until the code generator is actually invoked.
 	 */
 	private final TypeSystem typeSystem;
-	
+
 	/**
 	 * Remember the node factory until the code generator is actually invoked
 	 */
@@ -38,7 +38,7 @@ public class FirmGenerated extends SourceGoal_c {
 		this.typeSystem = typeSystem;
 		this.nodeFactory = nodeFactory;
 	}
-	
+
 	private static boolean hasRun = false;
 
 	@Override
@@ -46,7 +46,7 @@ public class FirmGenerated extends SourceGoal_c {
 		// TODO: should not be necessary...
 		if(hasRun) return true;
 		hasRun = true;
-		
+
 		Node ast = job().ast();
 		assert (ast != null);
 		if (!((X10Ext) ast.ext()).subtreeValid()) {
@@ -54,7 +54,7 @@ public class FirmGenerated extends SourceGoal_c {
 		}
 
 		typeSystem.beforeGraphConstruction();
-		
+
 		final Translator tr = new Translator(job(), typeSystem, null, null);
 
 		Compiler compiler = job().compiler();

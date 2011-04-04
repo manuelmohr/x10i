@@ -8,39 +8,39 @@ import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
 import polyglot.types.LocalInstance;
 import polyglot.types.Package;
+import polyglot.types.Type;
 import polyglot.types.TypeObject;
 import x10.types.ConstrainedType;
 import x10.types.MethodInstance;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 import x10.types.constraints.CConstraint;
-import polyglot.types.Type;
 
 /**
  * Name mangler which mangles X10 type objects to unique names
  */
 public class X10NameMangler {
-	
+
 	/**
 	 * Reference to the type system
 	 */
 	private static TypeSystem typeSystem;
-	
+
 	/**
 	 * Mapping of primitive types
 	 */
 	private static Map<Type, String> primMangleTable = new HashMap<Type, String>();
-	
+
 	/**
-	 * Substitution table for method names. 
+	 * Substitution table for method names.
 	 */
 	private static Map<String, String> nameSubst = new HashMap<String, String>();
-	
-	/** 
+
+	/**
 	 * Substitution table for unary operators.
 	 */
 	private static Map<String, String> unOpSubst = new HashMap<String, String>();
-	
+
 	private static final String MANGLE_PREFIX = "_Z";
 	private static final String MANGLE_SUFFIX = "";
 	private static final String QUAL_START = "N";
@@ -54,7 +54,7 @@ public class X10NameMangler {
 	private static final String MANGLED_VTABLE = "TV";
 	private static final String MANGLED_TYPEINFO = "TI";
 	private static final String MANGLED_CONSTRAINED = "CO";
-	
+
 	/**
 	 * Initializes name substitutions for unary operators
 	 */
@@ -66,7 +66,7 @@ public class X10NameMangler {
 		unOpSubst.put("operator!", "v3unt");
 		unOpSubst.put("operator~", "v3uti");
 	}
-	
+
 	/**
 	 * Initializes name substitutions
 	 */
@@ -105,20 +105,20 @@ public class X10NameMangler {
 		nameSubst.put("operator||",  "oo");
 		nameSubst.put("operator++",  "pp");
 		nameSubst.put("operator--",  "mm");
-		
+
 		/* this is our addition */
 		nameSubst.put("operator>>>", "v3rbs");
-		
+
 		/* inverse operators -> same as the upper operators with a 'v' <digit> 'i' prefix
-		 * our own additions 
+		 * our own additions
 		 */
 		Map<String, String> invNameSubs = new HashMap<String, String>();
 		for(String key : nameSubst.keySet())
 			invNameSubs.put("inverse_" + key, "v3i" + nameSubst.get(key));
-		
+
 		// our own addition for -> closure apply operator
 		nameSubst.put("operator()",  "apply");
-		
+
 		nameSubst.putAll(invNameSubs);
 
 		nameSubst.put("operator_as", "cv");
@@ -129,9 +129,9 @@ public class X10NameMangler {
 		/* constructor */
 		nameSubst.put("this", MANGLED_THIS);
 	}
-	
-	/** 
-	 * Initializes mapping between primitive types and the appropriate name mangles. 
+
+	/**
+	 * Initializes mapping between primitive types and the appropriate name mangles.
 	 */
 	private static void setupPrimitiveTypeNameMangling() {
 		primMangleTable.put(typeSystem.Long(),    "x");
@@ -149,7 +149,7 @@ public class X10NameMangler {
 	}
 
 	/**
-	 * Initializes the name mangler. 
+	 * Initializes the name mangler.
 	 * @param typeSystem_ Reference to the type system
 	 */
 	public static void setup(final TypeSystem typeSystem_) {
@@ -158,7 +158,7 @@ public class X10NameMangler {
 		setupNameSubstitutions();
 		setupPrimitiveTypeNameMangling();
 	}
-	
+
 	/**
 	 * Tries to mangle a given primitive type
 	 * @param type The primitive type which should be mangled
@@ -167,7 +167,7 @@ public class X10NameMangler {
 	private static String tryPrimitiveType(final Type type) {
 		return primMangleTable.get(type);
 	}
-	
+
 	/**
 	 * Tries to mangle a given string
 	 * @param name The string which should be mangled
@@ -176,7 +176,7 @@ public class X10NameMangler {
 	private static String tryNameSubsitution(final String name) {
 		return nameSubst.get(name);
 	}
-	
+
 	/**
 	 * Tries to mangle a given string (unary)
 	 * @param name The string which should be mangled
@@ -185,7 +185,7 @@ public class X10NameMangler {
 	private static String tryUnOpSubsitution(final String name) {
 		return unOpSubst.get(name);
 	}
-	
+
 	/**
 	 * Mangles a given string
 	 * @param name The string which should be mangled
@@ -200,7 +200,7 @@ public class X10NameMangler {
 		}
 		return buf.toString();
 	}
-	
+
 	/**
 	 * Mangles a given method name
 	 * @param name The method name which should be mangled
@@ -211,33 +211,33 @@ public class X10NameMangler {
 		if(name.startsWith("operator")) {
 			final List<Type> formals = meth.formalTypes();
 			final Flags flags = meth.flags();
-			if((flags.isStatic() && formals.size() == 1) || 
+			if((flags.isStatic() && formals.size() == 1) ||
 			  (!flags.isStatic() && formals.size() == 0)) { // try unary
 				String tmp = tryUnOpSubsitution(name);
 				if(tmp != null) return tmp;
 			}
 		}
-		
+
 		final String tmp = tryNameSubsitution(name);
 		if(tmp != null) return tmp;
 		return mangleName(name);
 	}
-	
+
 	/**
-	 * Mangles a given package 
+	 * Mangles a given package
 	 * @param pack The package which should be mangled
 	 * @return The mangled name of the given package
 	 */
 	private static String manglePackage(final Package pack) {
 		StringBuilder buf = new StringBuilder();
 		final String []splits = pack.toString().split("\\.");
-		for(String split : splits) 
+		for(String split : splits)
 			buf.append(mangleName(split));
 		return buf.toString();
 	}
-	
+
 	/**
-	 * Mangles a local instance as a argument 
+	 * Mangles a local instance as a argument
 	 * @param type The type which should be mangled
 	 * @return The mangled name of the given local instance as a argument
 	 */
@@ -246,22 +246,22 @@ public class X10NameMangler {
 		buf.append(mangleParameter(loc.type()));
 		return buf.toString();
 	}
-	
+
 	/**
-	 * Mangles a given type as an argument 
+	 * Mangles a given type as an argument
 	 * @param type The type which should be mangled
 	 * @return The mangled name of the given type
 	 */
 	private static String mangleParameter(final Type type) {
-		
+
 		final Type ret = typeSystem.simplifyType(type);
-		
+
 		String tmp = tryPrimitiveType(ret);
 		if(tmp != null) return maybeConstrained(tmp, type);
 
 		StringBuilder buf = new StringBuilder();
-		
-		boolean passAsRef = true; // only "real" classes not structs are passed as references. 
+
+		boolean passAsRef = true; // only "real" classes not structs are passed as references.
 		if(ret instanceof X10ClassType) {
 			X10ClassType struct = (X10ClassType)ret;
 			if(struct.isX10Struct())
@@ -272,10 +272,10 @@ public class X10NameMangler {
 			buf.append(MANGLED_POINTER_REF);
 
 		buf.append(mangleType(ret, false));
-		
+
 		return maybeConstrained(buf.toString(), type);
 	}
-	
+
 	/**
 	 * Mangles a given type as a return type
 	 * @param type The type which should be mangled
@@ -285,21 +285,21 @@ public class X10NameMangler {
 		// same as mangleArgument
 		return mangleParameter(type);
 	}
-	
+
 	/**
-	 * Mangles a given type as a type parameter (Generics) 
+	 * Mangles a given type as a type parameter (Generics)
 	 * @param type The type which should be mangled
-	 * @return The mangled name of the given type 
+	 * @return The mangled name of the given type
 	 */
 	private static String mangleTypeParameter(final Type type) {
 		// same as mangle type without embedding
 		return mangleType(type, false);
 	}
-	
+
 	/**
-	 * Mangles a given class type 
+	 * Mangles a given class type
 	 * @param clazz The class type which name should be mangled
-	 * @param embed True if the given class type is embedded. 
+	 * @param embed True if the given class type is embedded.
 	 * @return The mangled name of the given class type
 	 */
 	private static String mangleClassType(final X10ClassType clazz, final boolean embed) {
@@ -322,10 +322,10 @@ public class X10NameMangler {
         } else {
         	assert(false): "Unknown class type" + clazz;
         }
-        
+
         buf.append(mangleName(clazz.name().toString()));
-        
-        final List<? extends Type> typeArgs = clazz.typeArguments() != null ? clazz.typeArguments() : 
+
+        final List<? extends Type> typeArgs = clazz.typeArguments() != null ? clazz.typeArguments() :
         									  								  clazz.x10Def().typeParameters();
         if(!typeArgs.isEmpty()) {
     		buf.append(TYPEARG_START);
@@ -333,13 +333,13 @@ public class X10NameMangler {
     			buf.append(mangleTypeParameter(type));
     		buf.append(TYPEARG_END);
         }
-        
+
         if(needQualiEnd)
         	buf.append(QUAL_END);
-        
+
 		return buf.toString();
 	}
-	
+
 	/**
 	 * Mangles a given method instance
 	 * @param method The method instance which should be mangled
@@ -348,7 +348,7 @@ public class X10NameMangler {
 	 */
 	private static String mangleMethodInstance(final MethodInstance method, final boolean mangleDefiningClass) {
 		StringBuilder buf = new StringBuilder();
-		
+
 		if(mangleDefiningClass) {
 			if(method.container() != null) {
 				buf.append(QUAL_START);
@@ -359,43 +359,43 @@ public class X10NameMangler {
 		} else {
 			buf.append(mangleMethodName(method));
 		}
-		
-		boolean needMangledRet = false; // return type must also be mangled if we have type parameters. 
-		final List<? extends Type> typeArgs = method.typeParameters() != null ? method.typeParameters() : 
+
+		boolean needMangledRet = false; // return type must also be mangled if we have type parameters.
+		final List<? extends Type> typeArgs = method.typeParameters() != null ? method.typeParameters() :
 																				method.x10Def().typeParameters();
 		if(!typeArgs.isEmpty()) {
 			needMangledRet = true;
 			buf.append(TYPEARG_START);
-			for(Type type : method.typeParameters()) 
+			for(Type type : method.typeParameters())
 				buf.append(mangleTypeParameter(type));
 			buf.append(TYPEARG_END);
 		}
-		
+
 		final List<LocalInstance> formals = method.formalNames();
 		if(!formals.isEmpty()) {
-			for(LocalInstance form : formals) 
+			for(LocalInstance form : formals)
 				buf.append(mangleArgument(form));
 		} else {
 			buf.append(MANGLED_VOID_TYPE);
 		}
-		
+
 		if(needMangledRet) {
 			buf.append(mangleReturn(method.returnType()));
 		}
-		
+
 		return buf.toString();
 	}
-	
+
 	/**
 	 * Mangles a given field instance
 	 * @param field The field instance which should be mangled
-	 * @param defClass True if the definining class of the field should also be mangled. 
+	 * @param defClass True if the definining class of the field should also be mangled.
 	 * @return The mangled name of the given field instance
 	 */
 	private static String mangleFieldInstance(final FieldInstance field, final boolean defClass) {
 		StringBuilder buf = new StringBuilder();
 		assert(field.container() != null);
-		
+
 		if(defClass) {
 			buf.append(QUAL_START);
 			buf.append(mangleType(field.container(), true));
@@ -404,10 +404,10 @@ public class X10NameMangler {
 		} else {
 			buf.append(mangleName(field.name().toString()));
 		}
-		
+
 		return buf.toString();
 	}
-	
+
 	/**
 	 * Mangles a given constructor instance
 	 * @param cons The constructor instance which should be mangled
@@ -416,15 +416,15 @@ public class X10NameMangler {
 	private static String mangleConstructorInstance(final X10ConstructorInstance cons) {
 		StringBuilder buf = new StringBuilder();
 		assert(cons.container() != null);
-		
+
 		buf.append(QUAL_START);
 		buf.append(mangleType(cons.container(), true));
 		buf.append(MANGLED_CONSTRUCTOR);
 		buf.append(QUAL_END);
-		
+
 		final List<LocalInstance> forms = cons.formalNames();
 		if(!forms.isEmpty()) {
-			for(LocalInstance form : forms) 
+			for(LocalInstance form : forms)
 				buf.append(mangleArgument(form));
 		} else {
 			buf.append(MANGLED_VOID_TYPE);
@@ -432,13 +432,13 @@ public class X10NameMangler {
 
 		return buf.toString();
 	}
-	
+
 	/** Mapping between constraints and the appropriate mangled name **/
 	private static Map<CConstraint, String> constrainedHashMap = new HashMap<CConstraint, String>();
-	
+
 	/** ID counter to create unique id for constrained mangling */
 	private static long uniqueID = 1;
-	
+
 	/**
 	 * Creates a new unique ID
 	 * @return A new unique ID
@@ -446,14 +446,14 @@ public class X10NameMangler {
 	private static long getUniqueID() {
 		return uniqueID++;
 	}
-	
+
 	/**
 	 * Checks if a given type is a constrained type and then returns the appropriate mangled name
-	 * If the given type is not actually a constrained type the given mangled base type name will be returned. 
-	 * 
+	 * If the given type is not actually a constrained type the given mangled base type name will be returned.
+	 *
 	 * @param mangledBaseType The mangled base type name of the given type
 	 * @param realType The real type -> Can be a constrained type
-	 * @return The mangled name. 
+	 * @return The mangled name.
 	 */
 	private static String maybeConstrained(String mangledBaseType, final Type realType) {
 		if(realType instanceof ConstrainedType) {
@@ -461,19 +461,19 @@ public class X10NameMangler {
 			CConstraint co = cc.getRealXClause();
 			String tmp = constrainedHashMap.get(co);
 			if(tmp != null) return mangledBaseType + tmp;
-			
+
 			long id = getUniqueID();
 			StringBuilder buf = new StringBuilder();
 			buf.append(MANGLED_CONSTRAINED);
 			buf.append(id);
-			
+
 			String ret = buf.toString();
 			constrainedHashMap.put(co, ret);
 			return mangledBaseType + ret;
 		}
 		return mangledBaseType;
 	}
-	
+
 	/**
 	 * Mangle a given type
 	 * @param type The type which should be mangled
@@ -482,7 +482,7 @@ public class X10NameMangler {
 	 */
 	private static String mangleType(final Type type, final boolean embed) {
 		String tmp = null;
-		
+
 		final Type ret = typeSystem.simplifyType(type);
 		if(!embed) {
 			tmp = tryPrimitiveType(ret);
@@ -494,10 +494,10 @@ public class X10NameMangler {
 		} else {
 //			 assert(false): "Unknown type in mangleType" + ret.getClass() + ": " + ret;
 		}
-		
+
 		return maybeConstrained(tmp, type);
 	}
-	
+
 	/**
 	 * Mangles a given type object
 	 * @param typeObject The type object which should be mangled
@@ -507,9 +507,9 @@ public class X10NameMangler {
 	private static String mangleTypeObject(final TypeObject typeObject, final boolean embed, final boolean mangleDefiningClass) {
 		if(typeObject instanceof Type)
 			return mangleType((Type)typeObject, embed);
-		
+
 		String tmp = null;
-		
+
 		if(typeObject instanceof FieldInstance) { // a field instance
 			tmp = mangleFieldInstance((FieldInstance)typeObject, mangleDefiningClass);
 		} else if(typeObject instanceof MethodInstance) { // a method
@@ -519,10 +519,10 @@ public class X10NameMangler {
 		} else {
 			assert(false) : "Unknown type in mangleType" + typeObject.getClass() + ": " + typeObject;
 		}
-		
+
 		return tmp;
 	}
-	
+
 	/**
 	 * Mangles a given type object and returns the mangled name
 	 * @param type The type object for which the name should be mangled
@@ -531,14 +531,14 @@ public class X10NameMangler {
 	 */
 	private static String mangleTypeObject(final TypeObject type, final boolean mangleDefiningClass) {
 		StringBuilder buf = new StringBuilder();
-		
+
 		buf.append(MANGLE_PREFIX);
 		buf.append(mangleTypeObject(type, false, mangleDefiningClass));
 		buf.append(MANGLE_SUFFIX);
-		
+
 		return buf.toString();
 	}
-	
+
 	/**
 	 * Mangles a given type object and returns the mangled name with the appropriate defining class
 	 * @param type The type object for which the name should be mangled
@@ -547,7 +547,7 @@ public class X10NameMangler {
 	public static String mangleTypeObjectWithDefClass(final TypeObject type) {
 		return mangleTypeObject(type, true);
 	}
-	
+
 	/**
 	 * Mangles a given type object and returns the mangled name withouth the appropriate defining class
 	 * @param type The type object for which the name should be mangled
@@ -556,7 +556,7 @@ public class X10NameMangler {
 	public static String mangleTypeObjectWithoutDefClass(final TypeObject type) {
 		return mangleTypeObject(type, false);
 	}
-	
+
 	/**
 	 * Returns the mangled vtable name for a given class type
 	 * @param clazz The class type for which the mangled vtable name should be returned
@@ -564,15 +564,15 @@ public class X10NameMangler {
 	 */
 	public static String mangleVTable(final X10ClassType clazz) {
 		StringBuilder buf = new StringBuilder();
-		
+
 		buf.append(MANGLE_PREFIX);
 		buf.append(MANGLED_VTABLE);
 		buf.append(mangleClassType(clazz, false));
 		buf.append(MANGLE_SUFFIX);
-		
+
 		return buf.toString();
 	}
-	
+
 	/**
 	 * Returns the mangled typeinfo name for a given class type
 	 * @param clazz The class type for which the mangled typeinfo name should be returned
@@ -580,12 +580,12 @@ public class X10NameMangler {
 	 */
 	public static String mangleTypeinfo(final X10ClassType clazz) {
 		StringBuilder buf = new StringBuilder();
-		
+
 		buf.append(MANGLE_PREFIX);
 		buf.append(MANGLED_TYPEINFO);
 		buf.append(mangleClassType(clazz, false));
 		buf.append(MANGLE_SUFFIX);
-		
+
 		return buf.toString();
 	}
 }

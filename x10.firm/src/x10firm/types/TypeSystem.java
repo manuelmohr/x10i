@@ -28,12 +28,12 @@ import x10c.types.X10CTypeSystem_c;
 import firm.ClassType;
 import firm.Entity;
 import firm.Ident;
+import firm.MethodType;
 import firm.Mode;
 import firm.Mode.ir_mode_arithmetic;
 import firm.Mode.ir_mode_sort;
 import firm.OO;
 import firm.PointerType;
-import firm.MethodType;
 import firm.PrimitiveType;
 import firm.Program;
 import firm.Type;
@@ -50,37 +50,37 @@ public class TypeSystem extends X10CTypeSystem_c {
 
 	/** Maps polyglot types to firm types. */
 	private Map<polyglot.types.Type, Type> firmCoreTypes = new HashMap<polyglot.types.Type, Type>();
-	
+
 	/** Maps some polyglot types to "native"/primitive firm types */
 	private Map<polyglot.types.Type, Type> firmTypes = new HashMap<polyglot.types.Type, Type>();
-	
+
 	/** Maps fields to firm entities */
 	private Map<FieldInstance, Entity> fieldMap = new HashMap<FieldInstance, Entity>();
-	
+
 	/** Maps struct types to the appropriate boxing types */
 	private Map<X10ClassType, X10ClassType> structBoxingTypes = new HashMap<X10ClassType, X10ClassType>();
-	
+
 	/** All class instances share the same location for the vptr (the pointer to the vtable) */
 	private Entity vptrEntity;
-	
+
 	private static long boxingID = 1;
-	
-	/** 
-	 * Name of the boxed value. 
+
+	/**
+	 * Name of the boxed value.
 	 */
 	public static String BOXED_VALUE = "__value__";
-	
+
 	/**
 	 * @param extInfo language extension this type system is for
 	 */
 	public TypeSystem(final ExtensionInfo extInfo) {
 		super(extInfo);
 	}
-	
+
 	private String getUniqueBoxingName(final String structName) {
 		return structName + "__FirmBox__" + (boxingID++);
 	}
-	
+
 	/**
 	 * Returns the boxing type for a given struct type
 	 * @param type The type for which the boxing type should be returned
@@ -88,10 +88,10 @@ public class TypeSystem extends X10CTypeSystem_c {
 	 */
 	public X10ClassType getBoxingType(final X10ClassType type) {
 		assert Types.isX10Struct(type);
-		
+
 		final X10ClassType ret = structBoxingTypes.get(type);
 		if(ret != null) return ret;
-		
+
         final Position pos = Position.COMPILER_GENERATED;
 
         X10ClassDef cd = new X10ClassDef_c(this, null);
@@ -108,22 +108,22 @@ public class TypeSystem extends X10CTypeSystem_c {
         cd.kind(ClassDef.TOP_LEVEL);
         cd.flags(Flags.FINAL);
         cd.superType(Types.ref(objectType));
-        
+
         X10ClassType ct = cd.asType();
-        
+
         final Set<polyglot.types.Type> intSet = new HashSet<polyglot.types.Type>();
-        
-        for(polyglot.types.Type t : type.interfaces()) { // "interfaces" method returns duplicates ??? 
+
+        for(polyglot.types.Type t : type.interfaces()) { // "interfaces" method returns duplicates ???
         	if(intSet.contains(t)) continue;
         	intSet.add(t);
-        	
+
         	final X10ClassType intervace = (X10ClassType)t;
         	final X10ClassDef  intervaceDef = intervace.x10Def();
-        	
+
         	cd.addInterface(Types.ref(intervace));
-        	
+
         	for(final MethodDef mDef : intervaceDef.methods())  {
-        		
+
 				/* DELETE ME START: "following methods are not supported yet" */
         		final MethodInstance mi = mDef.asInstance();
     			final String x = mi.name().toString();
@@ -132,30 +132,30 @@ public class TypeSystem extends X10CTypeSystem_c {
     				continue;
     			}
     			/* DELETE ME END: */
-        		
+
         		final X10MethodDef md = methodDef(pos, Types.ref(ct), Flags.PUBLIC, mDef.returnType(), mDef.name(),
         										  mDef.formalTypes());
 
                 cd.addMethod(md);
         	}
         }
-        
+
         // add the boxed value to the class.
         final FieldDef boxValue = fieldDef(pos, Types.ref(ct), Flags.PUBLIC, Types.ref(type), Name.make(BOXED_VALUE));
         cd.addField(boxValue);
-        
+
         // preinit the type
         asFirmType(ct);
         final Type ft  = asFirmCoreType(ct);
-        
+
         final FieldInstance fieldInstance = boxValue.asInstance();
         addField(fieldInstance, ft);
-        
+
         structBoxingTypes.put(type, ct);
-		
+
 		return ct;
 	}
-	
+
 	/**
 	 * Creates a method type (= a member function). So we in addition to the
 	 * type we need the flags to determine if it is static and the owner class
@@ -179,7 +179,7 @@ public class TypeSystem extends X10CTypeSystem_c {
 			final Type thisType = asFirmType(owner);
 			parameterTypes[p++] = thisType;
 		}
-		
+
 		for (polyglot.types.Type type : formalTypes) {
 			final polyglot.types.Type simpType = simplifyType(type);
 			if(isFirmStructType(simpType)) {
@@ -203,7 +203,7 @@ public class TypeSystem extends X10CTypeSystem_c {
 
 		return new MethodType(parameterTypes, resultTypes);
 	}
-	
+
 	/**
 	 * Layouts a given type
 	 * @param type The type which should be layouted
@@ -211,10 +211,10 @@ public class TypeSystem extends X10CTypeSystem_c {
 	private void layoutType(final Type type) {
 		if(type.getTypeState() == ir_type_state.layout_fixed)
 			return;
-		
+
 		if(!(type instanceof ClassType))
 			return;
-		
+
 		ClassType klass = (ClassType)type;
 		for(Entity entity : klass.getMembers())
 			layoutType(entity.getType());
@@ -222,7 +222,7 @@ public class TypeSystem extends X10CTypeSystem_c {
 		klass.layoutFields();
 		klass.finishLayout();
 	}
-	
+
 	/**
 	 * Finishes the type system.
 	 */
@@ -230,9 +230,9 @@ public class TypeSystem extends X10CTypeSystem_c {
 		for(final Type type : firmCoreTypes.values())
 			layoutType(type);
 	}
-	
+
 	/**
-	 * Checks if we need the core type for a given type (for example: Parameter passing) 
+	 * Checks if we need the core type for a given type (for example: Parameter passing)
 	 * @param type The type which should be checked
 	 * @return True if we need the core type for the given type
 	 */
@@ -240,9 +240,9 @@ public class TypeSystem extends X10CTypeSystem_c {
 		final polyglot.types.Type baseType = simplifyType(type);
 		return Types.isX10Struct(baseType) && !isFirmPrimitiveType(baseType);
 	}
-	
+
 	/**
-	 * Simplifies a given polyglot type -> Returns the base type of a given type. -> Removes constrained types, annotations etc. 
+	 * Simplifies a given polyglot type -> Returns the base type of a given type. -> Removes constrained types, annotations etc.
 	 * @param type The type which should be simplified
 	 * @return The simplified version of the given type
 	 */
@@ -250,21 +250,21 @@ public class TypeSystem extends X10CTypeSystem_c {
 		final polyglot.types.Type t =  Types.baseType(type);
 		return Types.stripConstraints(t);
 	}
-	
+
 	/**
 	 * Checks if 2 types are equal
-	 * @param type1 The first type 
+	 * @param type1 The first type
 	 * @param type2 The second type
-	 * @return True if both types are equal. 
+	 * @return True if both types are equal.
 	 */
 	private boolean equalTypes(final polyglot.types.Type type1, final polyglot.types.Type type2) {
 		return equals((TypeObject)type1, (TypeObject)type2);
 	}
-	
+
 	/**
-	 * True if the given type is handled as a primitive type in firm. 
+	 * True if the given type is handled as a primitive type in firm.
 	 * @param type_ The type which should be checked
-	 * @return True if the given type is handled as a primitive type. 
+	 * @return True if the given type is handled as a primitive type.
 	 */
 	public boolean isFirmPrimitiveType(final polyglot.types.Type type_) {
 		final polyglot.types.Type type = simplifyType(type_);
@@ -300,7 +300,7 @@ public class TypeSystem extends X10CTypeSystem_c {
 			}
 		}
 		assert (p == nParameters);
-		
+
 		return new MethodType(parameterTypes, resultTypes);
 	}
 
@@ -327,10 +327,10 @@ public class TypeSystem extends X10CTypeSystem_c {
 
 		/* currently we should never produce types without modes here */
 		assert result.getMode() != null;
-		
+
 		return result;
 	}
-	
+
 	private Entity getVptrEntity() {
 		if (vptrEntity == null) {
 			firm.Type pointerType = Mode.getP().getType();
@@ -338,7 +338,7 @@ public class TypeSystem extends X10CTypeSystem_c {
 		}
 		return vptrEntity;
 	}
-	
+
 	/**
 	 * Adds a new field to the type system
 	 * @param field The field which should be added
@@ -347,28 +347,28 @@ public class TypeSystem extends X10CTypeSystem_c {
 	private void addField(final FieldInstance field, final firm.Type klass) {
 		final Flags fieldFlags = field.flags();
 		final String name = X10NameMangler.mangleTypeObjectWithDefClass(field);
-		
+
 		firm.Type type;
-		if(isFirmStructType(field.type())) 
+		if(isFirmStructType(field.type()))
 			type = asFirmCoreType(field.type());
 		else
 			type = asFirmType(field.type());
-		
+
 		final firm.Type owner = fieldFlags.isStatic() ? Program.getGlobalType() : klass;
 		final Entity entity = new Entity(owner, name, type);
-		
+
 		entity.setLdIdent(name);
 		OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 		fieldMap.put(field, entity);
 	}
-	
+
 	/**
 	 * Adds a new static field instance to the type system
 	 * @param field The field instance which should be added
 	 */
 	public void addExtraStaticField(final FieldInstance field) {
 		assert field.flags().isStatic();
-		
+
 		final firm.Type klass = asFirmCoreType(field.container());
 		addField(field, klass);
 	}
@@ -382,14 +382,14 @@ public class TypeSystem extends X10CTypeSystem_c {
 		/* put the class into the core types already, because we could
 		 * have a field referencing ourself */
 		firmCoreTypes.put(classType, result);
-		
+
 		/* create supertypes */
 		polyglot.types.Type superType = classType.superClass();
 		if (superType != null) {
 			Type firmSuperType = asFirmCoreType(superType);
 			result.addSuperType(firmSuperType);
 			new Entity(result, "$super", firmSuperType);
-			
+
 		} else if (flags.isStruct()) {
 			/* no superclass */
 		} else if(flags.isInterface()) {
@@ -400,7 +400,7 @@ public class TypeSystem extends X10CTypeSystem_c {
 			assert classType.toString().equals("x10.lang.Object");
 			getVptrEntity().setOwner(result);
 		}
-		
+
 		/* create interfaces */
 		for (polyglot.types.Type iface : classType.interfaces()) {
 			Type firmIface = asFirmCoreType(iface);
@@ -411,24 +411,24 @@ public class TypeSystem extends X10CTypeSystem_c {
 		for (FieldInstance field : classType.fields()) {
 			addField(field, result);
 		}
-		
+
 		/* creates fields for properties */
 		for(FieldInstance field : classType.properties()) {
 			addField(field, result);
 		}
-		
+
 		OO.setClassVPtrEntity(result, getVptrEntity());
-		
+
 		if (!flags.isInterface() && !flags.isStruct()) {
 			Entity vtable = new Entity(Program.getGlobalType(), X10NameMangler.mangleVTable(classType), Mode.getP().getType());
 			OO.setClassVTableEntity(result, vtable);
 		}
-		
+
 		Entity classInfoEntity = new Entity(Program.getGlobalType(),Ident.createUnique(className + "$"), Mode.getP().getType());
-		
+
 		OO.setClassRTTIEntity(result, classInfoEntity);
-		
-		// Layouting of classes must be done explicitly by finishTypes 
+
+		// Layouting of classes must be done explicitly by finishTypes
 
 		return result;
 	}

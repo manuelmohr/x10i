@@ -86,10 +86,10 @@ import x10.ast.X10Unary_c;
 import x10.visit.X10DelegatingVisitor;
 
 /**
- * A "dummy" visitor which visits all "AST" nodes. 
+ * A "dummy" visitor which visits all "AST" nodes.
  */
 public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
-	
+
 	@Override
 	public void visit(Node n) {
 		visitAppropriate(n);
@@ -132,7 +132,7 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 	public void visit(Import_c n) {
 
 	}
-	
+
 	@Override
 	public void visit(AssignPropertyCall_c n) {
 		for(Expr arg : n.arguments())
@@ -361,7 +361,7 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(BooleanLit_c literal) {
-		
+
 	}
 
 	@Override
@@ -420,9 +420,9 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 			visitAppropriate(n.formal());
 		if(n.domain() != null)
 			visitAppropriate(n.domain());
-		
+
 		visitAppropriate(n.body());
-		
+
 		for(Stmt s : n.locals())
 			visitAppropriate(s);
 	}
@@ -450,7 +450,7 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Here_c n) {
-		
+
 	}
 
 	@Override
@@ -460,9 +460,9 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(X10Special_c n) {
-		
+
 	}
-	
+
 	@Override
 	public void visit(Closure_c n) {
 		visitAppropriate(n.body());
