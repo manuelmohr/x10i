@@ -13,7 +13,10 @@ public final class OOSupport {
 
 
 	/**
-	 * lowers object oriented constructs
+	 * lowers object oriented constructs:
+	 * - generate vtable entities
+	 * - generate class info entities
+	 * - generate runtime type info
 	 */
 	@SuppressWarnings("unused")
 	public static void lowerOO(TypeSystem typeSystem) {
