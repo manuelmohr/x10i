@@ -52,6 +52,6 @@ void _ZN9SimpleLib5printEb(x10_boolean v)
 
 void _ZN9SimpleLib5printEPN3x104lang6StringE(x10_string *str)
 {
-	wprintf(L"%ls\n", str->buf);
+	wprintf(L"%ls\n", X10_STRING_BUF(str));
 }
 

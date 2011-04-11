@@ -36,6 +36,7 @@ typedef void   			x10_any;
 
 typedef struct x10_object 	x10_object;
 typedef struct x10_string 	x10_string;
+typedef struct x10_printer      x10_printer;
 
 typedef int64_t 		x10_long;
 typedef uint64_t 		x10_ulong;

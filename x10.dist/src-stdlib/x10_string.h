@@ -9,6 +9,8 @@ struct x10_string {
 	x10_char buf[1];
 };
 
+#define T_(x) L##x
+
 #define X10_STRING_LEN(s) ((s)->len)
 #define X10_STRING_BUF(s) ((s)->buf)
 

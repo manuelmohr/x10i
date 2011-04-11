@@ -19,6 +19,7 @@ append_classpath() {
 		classpath="$1"
 	fi
 }
+
 append_classpath "${X10_TOP}/x10.compiler/classes"
 append_classpath "${X10_TOP}/x10.runtime/classes"
 append_classpath "${X10_TOP}/x10.common/classes"

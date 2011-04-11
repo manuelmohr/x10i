@@ -8,7 +8,7 @@ import x10firm.goals.AsmEmitted;
 import x10firm.goals.FirmGenerated;
 import x10firm.goals.GoalSequence;
 import x10firm.goals.Linked;
-import x10firm.goals.OptimizedFirm;
+import x10firm.goals.LoweringFirm;
 import x10firm.goals.SourceGoalSequence;
 import x10firm.types.TypeSystem;
 
@@ -32,6 +32,11 @@ class X10FirmScheduler extends X10Scheduler {
 		 * the generated source code. In the Firm context this corresponds to
 		 * emitting assembler and linking with the stdlib.
 		 */
+		
+		final TypeSystem typeSystem = (TypeSystem)extInfo.typeSystem();
+		
+		final Goal lowering_firm = new LoweringFirm(extInfo, typeSystem);
+		lowering_firm.intern(this);
 
 		final Goal asmEmitted = new AsmEmitted(this);
 		asmEmitted.intern(this);
@@ -40,6 +45,7 @@ class X10FirmScheduler extends X10Scheduler {
 		linked.intern(this);
 
 		final GoalSequence seq = new GoalSequence("FirmOutputSequence");
+		seq.append(lowering_firm);
 		seq.append(asmEmitted);
 		seq.append(linked);
 
@@ -55,16 +61,12 @@ class X10FirmScheduler extends X10Scheduler {
 		final Goal firm_generated = new FirmGenerated(job, typeSystem, nodeFactory);
 		firm_generated.intern(this);
 
-		final Goal optimized_firm = new OptimizedFirm(job, typeSystem);
-		optimized_firm.intern(this);
-
 		/* Since source goals are per job/compilation unit/source file,
 		 * they must include their job into their hashCode for the intern method.
 		 */
 
 		final SourceGoalSequence seq = new SourceGoalSequence("FirmTransformationSequence", job);
 		seq.append(firm_generated);
-		seq.append(optimized_firm);
 
 		return seq.intern(this);
 	}

@@ -23,19 +23,19 @@ class PolyOverrider extends Poly {
 abstract class Choice {
 	def this() { }
 	private def choose(b: Boolean) { if(b) this.yes(); else this.no(); }
-	abstract def yes(): Void;
-	abstract def no(): Void;
+	abstract def yes(): void;
+	abstract def no(): void;
 }
 
 class Choice_c extends Choice {
 	public def choose(b: Boolean) { if(b) this.yes(); else this.no(); }
-	def yes(): Void = { }
-	public def no(): Void  = { }
-	def yes(a: Int) : Void = { }
+	def yes(): void = { }
+	public def no(): void  = { }
+	def yes(a: Int) : void = { }
 }
 */
 
-class Simple1 {
+class SimpleTest {
 /*
 	public def m(f: (Int) => Boolean, absent: Float): Int = {
 		{ class MySimpleLocalClass { } }
@@ -111,7 +111,7 @@ class Simple1 {
 	public var b : Int;
 	public var c : Int;
 
- 	public static def main(Array[String]) : Void {
+ 	public static def main(Array[String]) : void {
 		val x = 4 + 3 * 3 << 45;
 		SimpleLib.print(m12());
 	}

@@ -713,6 +713,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final X10MethodDef   def            = (X10MethodDef) dec.methodDef();
 		final MethodInstance methodInstance = def.asInstance();
 		final Flags          flags          = methodInstance.flags();
+		
 		final Entity         entity         = getMethodEntity(methodInstance);
 
 		if (flags.isNative() || flags.isAbstract()) {
@@ -2808,12 +2809,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(TypeDecl_c n) {
-		throw new RuntimeException("Not implemented yet");
+		// DO NOTHING
 	}
 
 	@Override
 	public void visit(LocalTypeDef_c n) {
-		throw new RuntimeException("Not implemented yet");
+		// DO NOTHING
 	}
 
 	@Override
@@ -2888,12 +2889,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Try_c n) {
-		throw new RuntimeException("Not implemented yet");
+//		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(Catch_c n) {
-		throw new RuntimeException("Not implemented yet");
+//		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
@@ -2949,7 +2950,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Tuple_c c) {
-		throw new RuntimeException("Not implemented yet");
+//		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override

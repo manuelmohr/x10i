@@ -2,37 +2,37 @@
 import SimpleLib;
 
 interface IFace {
-	public def interfaceMethod() : Void;
+	public def interfaceMethod() : void;
 }
 
 class Base {
 	public val a : Int = 456;
-	public def foo() : Void { val x: Int = 123; SimpleLib.print(a); }
+	public def foo() : void { val x: Int = 123; SimpleLib.print(a); }
 }
 
 class Base2 extends Base {
-	public def foo() : Void { SimpleLib.print(456); }
+	public def foo() : void { SimpleLib.print(456); }
 }
 
 class Sub extends Base implements IFace {
 	public val a : Int = 1;
-	public def foo() : Void { val x: Int = 123; SimpleLib.print(789); }
-	public def interfaceMethod() : Void { val x: Int = 123; SimpleLib.print(a); }
+	public def foo() : void { val x: Int = 123; SimpleLib.print(789); }
+	public def interfaceMethod() : void { val x: Int = 123; SimpleLib.print(a); }
 }
 
 class TestClass {
 	public val a: Int = 789;
-	public def doIt() : Void {  SimpleLib.print(a); }
+	public def doIt() : void {  SimpleLib.print(a); }
 }
 
 class TestClass2 extends TestClass {
 	public val b: Int = 2323;
 	public def this() { SimpleLib.print(666); }
-	public def doIt() : Void {  SimpleLib.print(a); }
+	public def doIt() : void {  SimpleLib.print(a); }
 }
 
 class DDispatch {
-	public static def main(Array[String]) : Void {
+	public static def main(Array[String]) : void {
 		
 		var inst : IFace = new Sub();
 		inst.interfaceMethod();

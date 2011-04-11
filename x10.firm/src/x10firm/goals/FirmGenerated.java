@@ -39,15 +39,11 @@ public class FirmGenerated extends SourceGoal_c {
 		this.nodeFactory = nodeFactory;
 	}
 
-	private static boolean hasRun = false;
-
 	@Override
 	public boolean runTask() {
-		// TODO: should not be necessary...
-		if(hasRun) return true;
-		hasRun = true;
 
 		Node ast = job().ast();
+		System.out.println("FirmGenerated: " + ast);
 		assert (ast != null);
 		if (!((X10Ext) ast.ext()).subtreeValid()) {
 			return false;
@@ -60,11 +56,13 @@ public class FirmGenerated extends SourceGoal_c {
 		Compiler compiler = job().compiler();
 		final X10FirmCodeGenerator v = new X10FirmCodeGenerator(compiler,
 				typeSystem, nodeFactory, tr);
+		
 		v.visitAppropriate(ast);
 
 		try {
-			Dump.dumpTypeGraph("typegraph.vcg");
+			Dump.dumpTypeGraph("typegraph_" + ast.toString() + ".vcg");
 		} catch (IOException e1) {
+		
 		}
 
 		for(Graph g : Program.getGraphs()) {
