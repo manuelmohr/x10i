@@ -24,7 +24,7 @@ public class Linked extends PostCompiled {
 	protected boolean invokePostCompiler(Options options,
 			Compiler compiler, ErrorQueue eq) {
 		CompilerOptions opts = (CompilerOptions) options;
-		String exe_name = opts.executable_path;
+		String exe_name = opts.executable_path == null ? "a.out" : opts.executable_path;
 		String asm_name = AsmEmitted.ASM_FILENAME;
 		
 		final String x10DistPath = System.getenv("X10_DIST");
