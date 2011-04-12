@@ -14,11 +14,6 @@ import firm.Backend;
  * @author matze
  */
 public class CompilerOptions extends X10CompilerOptions {
-	/**
-	 * name for the resulting executable
-	 */
-	public String exe_name = "a.out";
-
 	/** constructor */
 	public CompilerOptions(ExtensionInfo extension) {
 		super(extension);
@@ -39,11 +34,6 @@ public class CompilerOptions extends X10CompilerOptions {
 						"Invalid backend argument '%s'", args[i]));
 			}
 			return index + 1;
-		}
-
-		if (args[i].startsWith("-o")) {
-			exe_name = args[i+1];
-			return index + 2;
 		}
 
 		return index;
