@@ -1,9 +1,9 @@
 [submodule "jFirm"]
 	path = jFirm
-	url = git://github.com/MatzeB/jFirm.git
+	url = http://pp.info.uni-karlsruhe.de/GIT/jFirm.git
 [submodule "libfirm"]
 	path = libfirm
-	url = http://github.com/MatzeB/libfirm.git
+	url = http://pp.info.uni-karlsruhe.de/GIT/libfirm.git
 [submodule "liboo"]
 	path = liboo
-	url = http://github.com/MatzeB/liboo.git
+	url = http://pp.info.uni-karlsruhe.de/GIT/liboo.git
