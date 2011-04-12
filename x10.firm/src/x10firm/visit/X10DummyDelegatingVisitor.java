@@ -249,11 +249,17 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(For_c n) {
-		for(ForInit i : n.inits())
-			visitAppropriate(i);
-		visitAppropriate(n.cond());
-		for(ForUpdate i : n.iters())
-			visitAppropriate(i);
+		if(n.inits() != null) {
+			for(ForInit i : n.inits())
+				visitAppropriate(i);
+		}
+		if(n.cond() != null) {
+			visitAppropriate(n.cond());
+		}
+		if(n.iters() != null) {
+			for(ForUpdate i : n.iters())
+				visitAppropriate(i);
+		}
 		visitAppropriate(n.body());
 	}
 

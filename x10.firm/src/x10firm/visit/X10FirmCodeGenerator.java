@@ -37,6 +37,8 @@ import polyglot.ast.FieldDecl_c;
 import polyglot.ast.Field_c;
 import polyglot.ast.FloatLit;
 import polyglot.ast.FloatLit_c;
+import polyglot.ast.ForInit;
+import polyglot.ast.ForUpdate;
 import polyglot.ast.For_c;
 import polyglot.ast.Formal_c;
 import polyglot.ast.Id_c;
@@ -1399,9 +1401,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		con.getGraph().getEndBlock().addPred(retNode);
 		con.setCurrentBlockBad();
 	}
-
-	@Override
-	public void visit(LocalDecl_c n) {
+	
+	private void genLocalDecl(final LocalDecl_c n) {
 		final Expr expr = n.init();
 
 		if (expr != null) {
@@ -1435,6 +1436,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				con.setVariable(idx, initNode);
 			}
 		}
+	}
+
+	@Override
+	public void visit(LocalDecl_c n) {
+		genLocalDecl(n);
 	}
 
 	@Override
@@ -1589,6 +1595,89 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		firmContext.popFirmScope();
 
 		bFalse.mature();
+
+		if(!con.getCurrentBlock().isBad())
+			bCond.addPred(con.newJmp());
+
+		bCond.mature();
+
+		con.setCurrentBlock(bFalse);
+	}
+	
+	@Override
+	public void visit(For_c n) {
+		// condition evaluates to false -> nothing to do
+		// TODO: Something is wrong with the method condIsConstantTrue
+//		if(!n.condIsConstantTrue())
+//			return;
+
+		String label = null;
+		if(firmContext.getLabeledStmt() == n) {
+			label = firmContext.getLabel();
+			firmContext.resetLabeledStmt();
+		}
+		
+		if(n.inits() != null) {
+			for(ForInit f: n.inits()) {
+				if(f instanceof LocalDecl_c) {
+					genLocalDecl((LocalDecl_c)f);
+				}
+			}
+		}
+		
+		final Block bCond  = con.newBlock();
+		final Block bTrue  = con.newBlock();
+		final Block bFalse = con.newBlock();
+
+		bCond.addPred(con.newJmp());
+		con.setCurrentBlock(bCond);
+
+		final X10FirmScope topScope = firmContext.getTopScope();
+		X10FirmScope newScope = (X10FirmScope)topScope.clone();
+
+		firmContext.pushFirmScope(newScope);
+		{
+			newScope.setTrueBlock(bTrue);
+			newScope.setFalseBlock(bFalse);
+			
+			Expr cond = n.cond();
+			if(cond == null) {
+				cond = xnf.BooleanLit(Position.COMPILER_GENERATED, true);
+			}
+			
+			makeExpressionCondition(cond);
+		}
+		firmContext.popFirmScope();
+
+		bTrue.mature();
+
+		con.setCurrentBlock(bTrue);
+
+		final X10FirmScope topScope2 = firmContext.getTopScope();
+		newScope = (X10FirmScope)topScope2.clone();
+
+		firmContext.pushFirmScope(newScope);
+		{
+			newScope.setBreakBlock(bFalse);
+			newScope.setContinueBlock(bCond);
+
+			if(label != null) {
+				newScope.setBlockForLabeledBreak(label, bFalse);
+				newScope.setBlockForLabeledContinue(label, bCond);
+			}
+
+			final Stmt body = n.body();
+			visitAppropriate(body);
+		}
+		firmContext.popFirmScope();
+
+		bFalse.mature();
+		
+		if(n.iters() != null) {
+			for(ForUpdate f: n.iters()) {
+				visitAppropriate(f);
+			}
+		}
 
 		if(!con.getCurrentBlock().isBad())
 			bCond.addPred(con.newJmp());
@@ -2849,11 +2938,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Formal_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(For_c n) {
 		throw new RuntimeException("Not implemented yet");
 	}
 
