@@ -1,9 +1,9 @@
 [submodule "jFirm"]
 	path = jFirm
-	url = http://pp.info.uni-karlsruhe.de/GIT/jFirm.git
+	url = http://pp.info.uni-karlsruhe.de/git/jFirm.git
 [submodule "libfirm"]
 	path = libfirm
-	url = http://pp.info.uni-karlsruhe.de/GIT/libfirm.git
+	url = http://pp.info.uni-karlsruhe.de/git/libfirm.git
 [submodule "liboo"]
 	path = liboo
-	url = http://pp.info.uni-karlsruhe.de/GIT/liboo.git
+	url = http://pp.info.uni-karlsruhe.de/git/liboo.git
