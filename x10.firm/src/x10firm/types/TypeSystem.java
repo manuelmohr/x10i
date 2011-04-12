@@ -227,6 +227,9 @@ public class TypeSystem extends X10CTypeSystem_c {
 	 * Finishes the type system.
 	 */
 	public void finishTypeSystem() {
+		// Before layouting the types we need to run liboo's lowering first to remove method entities from the graph. 
+		OO.lowerProgram();
+		
 		for(final Type type : firmCoreTypes.values())
 			layoutType(type);
 	}

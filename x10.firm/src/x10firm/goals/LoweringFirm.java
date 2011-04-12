@@ -2,7 +2,6 @@ package x10firm.goals;
 
 import polyglot.frontend.ExtensionInfo;
 import polyglot.visit.PostCompiled;
-import x10firm.OOSupport;
 import x10firm.types.TypeSystem;
 import firm.Backend;
 import firm.Util;
@@ -28,7 +27,6 @@ public class LoweringFirm extends PostCompiled {
 	@Override
 	public boolean runTask() {
 		typeSystem.finishTypeSystem();
-		OOSupport.lowerOO(typeSystem);
 		Util.lowerSels();
 		Backend.lowerForTarget();
 
