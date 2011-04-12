@@ -44,4 +44,4 @@ export X10_DIST="${MYDIR}/.."
 export CP_OVERRIDE="${classpath}:"
 export DEXT="x10firm.ExtensionInfo"
 
-exec "${X10_DIST}/bin/x10c" "$@"
+exec "${X10_DIST}/bin/x10c" -sourcepath "${X10_DIST}/src-stdlib" "$@"

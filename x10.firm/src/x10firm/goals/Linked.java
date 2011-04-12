@@ -26,14 +26,27 @@ public class Linked extends PostCompiled {
 		CompilerOptions opts = (CompilerOptions) options;
 		String exe_name = opts.exe_name;
 		String asm_name = AsmEmitted.ASM_FILENAME;
-		// TODO link our standard library correctly
+		
+		final String x10DistPath = System.getenv("X10_DIST");
+		String stdlibPath = "";
+		String libooPath  = "";
+		
+		if (x10DistPath != null) {
+			stdlibPath = x10DistPath + "/src-stdlib";
+			libooPath  = x10DistPath + "/../liboo/build";
+		}
+		else {
+			stdlibPath = "src-stdlib";
+			libooPath = "../liboo/build";
+		}
+		
 		String[] cmd = {
 				"gcc",
 				"-std=c99",
 				asm_name,
-				"src-stdlib/libx10std.a",
+				stdlibPath + "/libx10std.a",
 				"-lm",
-				"-L../liboo/build", "-Wl,-R../liboo/build", "-loo_rt",
+				"-L" + libooPath, "-Wl,-R" + libooPath, "-loo_rt",
 				"-o", exe_name
 		};
 
