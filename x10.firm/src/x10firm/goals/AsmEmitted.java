@@ -1,6 +1,7 @@
 package x10firm.goals;
 
 import java.io.IOException;
+import java.util.UUID;
 
 import polyglot.frontend.AllBarrierGoal;
 import polyglot.frontend.Goal;
@@ -9,14 +10,12 @@ import polyglot.frontend.Scheduler;
 import firm.Backend;
 
 /**
- * This defines the FirmGeneration goal (other people would say "phase")
- * for polyglot.
- * @author matze
+ * Assembler emission goal.
  */
 public class AsmEmitted extends AllBarrierGoal {
 	/** name of the intermediate asm file */
-	public static final String ASM_FILENAME = "test.s";
-
+	public static final String ASM_FILENAME = UUID.randomUUID().toString() + ".s";
+	
 	private Goal prereq_redirection = null;
 
 	/** Constructor */
