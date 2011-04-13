@@ -9,6 +9,7 @@ import polyglot.frontend.SourceGoal_c;
 import polyglot.visit.Translator;
 import x10.ast.X10NodeFactory_c;
 import x10.extension.X10Ext;
+import x10firm.CompilerOptions;
 import x10firm.types.TypeSystem;
 import x10firm.visit.X10FirmCodeGenerator;
 import firm.Dump;
@@ -41,13 +42,11 @@ public class FirmGenerated extends SourceGoal_c {
 
 	@Override
 	public boolean runTask() {
-
 		Node ast = job().ast();
 		System.out.println("FirmGenerated: " + ast);
 		assert (ast != null);
-		if (!((X10Ext) ast.ext()).subtreeValid()) {
+		if (!((X10Ext) ast.ext()).subtreeValid())
 			return false;
-		}
 
 		typeSystem.beforeGraphConstruction();
 
@@ -59,15 +58,21 @@ public class FirmGenerated extends SourceGoal_c {
 		
 		v.visitAppropriate(ast);
 
-		try {
-			Dump.dumpTypeGraph("typegraph_" + ast.toString() + ".vcg");
-		} catch (IOException e1) {
-		
+		final CompilerOptions options = (CompilerOptions) scheduler.extensionInfo().getOptions();
+		if (options.dump_firm_graphs) {
+			try {
+				Dump.dumpTypeGraph("typegraph_" + ast.toString() + ".vcg");
+			} catch (IOException e1) {
+			
+			}
 		}
-
-		for(Graph g : Program.getGraphs()) {
+		
+		
+		for (Graph g : Program.getGraphs()) {
 			binding_iroptimize.optimize_cf(g.ptr);
-			Dump.dumpGraph(g, "--fresh");
+			
+			if (options.dump_firm_graphs)
+				Dump.dumpGraph(g, "--fresh");
 		}
 
 		return true;

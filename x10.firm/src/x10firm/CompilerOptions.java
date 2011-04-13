@@ -14,6 +14,8 @@ import firm.Backend;
  * @author matze
  */
 public class CompilerOptions extends X10CompilerOptions {
+	public boolean dump_firm_graphs = false;
+
 	/** constructor */
 	public CompilerOptions(ExtensionInfo extension) {
 		super(extension);
@@ -36,6 +38,11 @@ public class CompilerOptions extends X10CompilerOptions {
 			return index + 1;
 		}
 
+		if (args[i].equals("-dumpgraphs")) {
+			dump_firm_graphs = true;
+			return index + 1;
+		}
+
 		return index;
 	}
 
@@ -47,7 +54,7 @@ public class CompilerOptions extends X10CompilerOptions {
 		super.usage(out);
 		usageForFlag(out, "-b<flag>",
 				"Set firm backend options (use -bhelp for additional help)");
-		usageForFlag(out, "-o <file>",
-				"Place the output into <file>");
+		usageForFlag(out, "-dumpgraphs",
+				"Dump FIRM graphs");
 	}
 }
