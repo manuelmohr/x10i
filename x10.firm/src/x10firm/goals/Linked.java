@@ -21,44 +21,43 @@ public class Linked extends PostCompiled {
 	}
 
 	@Override
-	protected boolean invokePostCompiler(Options options,
-			Compiler compiler, ErrorQueue eq) {
-		CompilerOptions opts = (CompilerOptions) options;
-		String exe_name = opts.executable_path == null ? "a.out" : opts.executable_path;
-		String asm_name = AsmEmitted.ASM_FILENAME;
-		
+	protected boolean invokePostCompiler(Options options, Compiler compiler,
+			ErrorQueue eq) {
+		final CompilerOptions opts = (CompilerOptions) options;
+		final String exeFilename = opts.executable_path == null
+		                     ? "a.out"
+		                     : opts.executable_path;
+		final String asmFilename = AsmEmitted.ASM_FILENAME;
+
 		final String x10DistPath = System.getenv("X10_DIST");
-		String stdlibPath = "";
-		String libooPath  = "";
+		final String stdlibPath = x10DistPath != null
+		                          ? x10DistPath + "/src-stdlib"
+		                          : "src-stdlib";
+		final String libooPath  = x10DistPath != null
+		                          ? x10DistPath + "/../liboo/build"
+		                          : "../liboo/build";
 		
-		if (x10DistPath != null) {
-			stdlibPath = x10DistPath + "/src-stdlib";
-			libooPath  = x10DistPath + "/../liboo/build";
-		}
-		else {
-			stdlibPath = "src-stdlib";
-			libooPath = "../liboo/build";
-		}
-		
-		String[] cmd = {
+		final String[] cmd = {
 				"gcc",
 				"-std=c99",
-				asm_name,
+				asmFilename,
 				stdlibPath + "/libx10std.a",
 				"-lm",
 				"-L" + libooPath, "-Wl,-R" + libooPath, "-loo_rt",
-				"-o", exe_name
+				"-o", exeFilename
 		};
 
-		/* C++ backend decides according to options, whether to delete the output files */
-		ArrayList<String> output_files = new ArrayList<String>();
-		output_files.add(asm_name);
+		// C++ backend decides according to options, whether to delete the
+		// output files
+		final ArrayList<String> outputFiles = new ArrayList<String>();
+		outputFiles.add(asmFilename);
 
-		/* reuse the C++ backend */
-		if (! X10CPPTranslator.doPostCompile(options, eq, output_files, cmd)) {
+		// reuse the C++ backend
+		if (!X10CPPTranslator.doPostCompile(options, eq, outputFiles, cmd)) {
 			eq.enqueue(ErrorInfo.POST_COMPILER_ERROR, "linking failed");
 			return false;
 		}
+		
 		return true;
 	}
 }
