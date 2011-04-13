@@ -19,7 +19,8 @@ import x10firm.types.TypeSystem;
 class X10FirmScheduler extends X10Scheduler {
 	/**
 	 * Initialize the scheduler, duh.
-	 * @param info	"==ExtensionInfo.this", because this inner class is static (strange design by X10)
+	 * @param info	"==ExtensionInfo.this", because this inner class is static
+	 * (strange design by X10)
 	 */
 	public X10FirmScheduler(ExtensionInfo info) {
 		super(info);
@@ -28,13 +29,13 @@ class X10FirmScheduler extends X10Scheduler {
 	@Override
 	protected Goal PostCompiled() {
 		/*
-		 * The other X10 backends and Polyglot use this goal to invoke javac/gcc
-		 * the generated source code. In the Firm context this corresponds to
-		 * emitting assembler and linking with the stdlib.
+		 * The other X10 backends and Polyglot use this goal to invoke
+		 * javac/gcc on the generated source code.  In the Firm context this
+		 * corresponds to emitting assembler and linking with the stdlib.
 		 */
-		
+
 		final TypeSystem typeSystem = (TypeSystem)extInfo.typeSystem();
-		
+
 		final Goal lowering_firm = new LoweringFirm(extInfo, typeSystem);
 		lowering_firm.intern(this);
 
@@ -56,16 +57,21 @@ class X10FirmScheduler extends X10Scheduler {
 	public Goal CodeGenerated(Job job) {
 
 		final TypeSystem typeSystem = (TypeSystem) extInfo.typeSystem();
-		final X10NodeFactory_c nodeFactory = (X10NodeFactory_c)extInfo.nodeFactory();
+		final X10NodeFactory_c nodeFactory =
+				(X10NodeFactory_c) extInfo.nodeFactory();
 
-		final Goal firm_generated = new FirmGenerated(job, typeSystem, nodeFactory);
+		final Goal firm_generated =
+				new FirmGenerated(job, typeSystem, nodeFactory);
 		firm_generated.intern(this);
 
-		/* Since source goals are per job/compilation unit/source file,
-		 * they must include their job into their hashCode for the intern method.
+		/*
+		 * Since source goals are per job/compilation unit/source file,
+		 * they must include their job into their hashCode for the internal
+		 * method.
 		 */
 
-		final SourceGoalSequence seq = new SourceGoalSequence("FirmTransformationSequence", job);
+		final SourceGoalSequence seq =
+				new SourceGoalSequence("FirmTransformationSequence", job);
 		seq.append(firm_generated);
 
 		return seq.intern(this);

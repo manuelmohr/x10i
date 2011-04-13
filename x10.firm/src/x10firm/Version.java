@@ -1,7 +1,7 @@
 package x10firm;
 
 /**
- * Polyglot requires thisa class to specify the version of our extension
+ * Polyglot requires this class to specify the version of our extension
  */
 public class Version extends x10.Version {
 	@Override

@@ -14,8 +14,9 @@ import firm.Backend;
  */
 public class AsmEmitted extends AllBarrierGoal {
 	/** name of the intermediate asm file */
-	public static final String ASM_FILENAME = UUID.randomUUID().toString() + ".s";
-	
+	public static final String ASM_FILENAME =
+			UUID.randomUUID().toString() + ".s";
+
 	private Goal prereq_redirection = null;
 
 	/** Constructor */

@@ -7,10 +7,7 @@ import firm.Backend;
 import firm.Util;
 
 /**
- * This defines the FirmGeneration goal (other people would say "phase")
- * for polyglot.
- * Goal for lowering firm 
- * @author matze
+ * This defines the lowering pass.
  */
 public class LoweringFirm extends PostCompiled {
 	/**

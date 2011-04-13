@@ -36,7 +36,7 @@ public class Linked extends PostCompiled {
 		final String libooPath  = x10DistPath != null
 		                          ? x10DistPath + "/../liboo/build"
 		                          : "../liboo/build";
-		
+
 		final String[] cmd = {
 				"gcc",
 				"-std=c99",
@@ -48,16 +48,16 @@ public class Linked extends PostCompiled {
 		};
 
 		// C++ backend decides according to options, whether to delete the
-		// output files
+		// output files.
 		final ArrayList<String> outputFiles = new ArrayList<String>();
 		outputFiles.add(asmFilename);
 
-		// reuse the C++ backend
+		// Reuse the C++ backend.
 		if (!X10CPPTranslator.doPostCompile(options, eq, outputFiles, cmd)) {
 			eq.enqueue(ErrorInfo.POST_COMPILER_ERROR, "linking failed");
 			return false;
 		}
-		
+
 		return true;
 	}
 }

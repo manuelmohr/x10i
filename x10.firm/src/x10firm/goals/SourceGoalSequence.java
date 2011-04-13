@@ -31,19 +31,21 @@ public class SourceGoalSequence extends SourceGoal_c {
 
 	@Override
 	public boolean runTask() {
-		/* nothing to do itself, all functionality is in the sequence it depends on */
+		// Nothing to do itself, all functionality is in the sequence it
+		// depends on.
 		return true;
 	}
 
 	@Override
 	public void addPrereq(Goal goal) {
-		/* redirect to the first goal, since all other goals transitively get the prereq as well then. */
+		// Redirect to the first goal, since all other goals transitively get
+		// the prereq as well then.
 		first.addPrereq(goal);
 	}
 
 	/** append another goal to the end of the goal sequence */
 	public void append(Goal goal) {
-		/* depend on all goals in the sequence */
+		// Depend on all goals in the sequence.
 		super.addPrereq(goal);
 
 		if (first == null) {

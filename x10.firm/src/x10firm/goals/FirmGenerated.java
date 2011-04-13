@@ -34,7 +34,8 @@ public class FirmGenerated extends SourceGoal_c {
 	private final X10NodeFactory_c nodeFactory;
 
 	/** Constructor */
-	public FirmGenerated(final Job job, final TypeSystem typeSystem, final X10NodeFactory_c nodeFactory) {
+	public FirmGenerated(final Job job, final TypeSystem typeSystem,
+			final X10NodeFactory_c nodeFactory) {
 		super("FirmGenerated", job);
 		this.typeSystem = typeSystem;
 		this.nodeFactory = nodeFactory;
@@ -55,22 +56,22 @@ public class FirmGenerated extends SourceGoal_c {
 		Compiler compiler = job().compiler();
 		final X10FirmCodeGenerator v = new X10FirmCodeGenerator(compiler,
 				typeSystem, nodeFactory, tr);
-		
+
 		v.visitAppropriate(ast);
 
-		final CompilerOptions options = (CompilerOptions) scheduler.extensionInfo().getOptions();
+		final CompilerOptions options =
+				(CompilerOptions) scheduler.extensionInfo().getOptions();
 		if (options.dump_firm_graphs) {
 			try {
 				Dump.dumpTypeGraph("typegraph_" + ast.toString() + ".vcg");
 			} catch (IOException e1) {
-			
+
 			}
 		}
-		
-		
+
 		for (Graph g : Program.getGraphs()) {
 			binding_iroptimize.optimize_cf(g.ptr);
-			
+
 			if (options.dump_firm_graphs)
 				Dump.dumpGraph(g, "--fresh");
 		}

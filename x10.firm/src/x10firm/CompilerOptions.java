@@ -14,6 +14,9 @@ import firm.Backend;
  * @author matze
  */
 public class CompilerOptions extends X10CompilerOptions {
+	/**
+	 * Decides whether compiler outputs FIRM graphs.
+	 */
 	public boolean dump_firm_graphs = false;
 
 	/** constructor */
