@@ -3,7 +3,8 @@
 
 #include <wchar.h>
 
-void _ZN3x102io7Printer7printlnEPN3x104lang3AnyE(x10_printer *printer, x10_any *any)
+void _ZN3x102io7Printer7printlnEPN3x104lang3AnyE(
+	x10_printer *printer, x10_any *any)
 {
 	switch (X10_TYPE(any)) {
 	case T_STRING:
