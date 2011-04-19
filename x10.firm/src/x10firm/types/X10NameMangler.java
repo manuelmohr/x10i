@@ -393,16 +393,12 @@ public class X10NameMangler {
 	 * @return The mangled name of the given field instance
 	 */
 	private static String mangleFieldInstance(final FieldInstance field, final boolean defClass) {
-		return mangleFieldInstance(field, defClass, null);
-	}
-
-	private static String mangleFieldInstance(final FieldInstance field, final boolean defClass, final ClassType definingClassType) {
 		StringBuilder buf = new StringBuilder();
 		assert(field.container() != null);
 
 		if (defClass) {
 			buf.append(QUAL_START);
-			buf.append(mangleType(definingClassType != null ? definingClassType : field.container(), true));
+			buf.append(mangleType(field.container(), true));
 			buf.append(mangleName(field.name().toString()));
 			buf.append(QUAL_END);
 		} else {
