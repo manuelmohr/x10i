@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import polyglot.types.ClassType;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
 import polyglot.types.LocalInstance;
@@ -145,6 +144,7 @@ public class X10NameMangler {
 		primMangleTable.put(typeSystem.Float(),   "f");
 		primMangleTable.put(typeSystem.Double(),  "d");
 		primMangleTable.put(typeSystem.Boolean(), "b");
+		primMangleTable.put(typeSystem.Void(),    MANGLED_VOID_TYPE);
 	}
 
 	/**
@@ -277,16 +277,6 @@ public class X10NameMangler {
 	}
 
 	/**
-	 * Mangles a given type as a return type
-	 * @param type The type which should be mangled
-	 * @return The mangled name of the given return type
-	 */
-	private static String mangleReturn(final Type type) {
-		// same as mangleArgument
-		return mangleParameter(type);
-	}
-
-	/**
 	 * Mangles a given type as a type parameter (Generics)
 	 * @param type The type which should be mangled
 	 * @return The mangled name of the given type
@@ -348,39 +338,44 @@ public class X10NameMangler {
 	 */
 	private static String mangleMethodInstance(final MethodInstance method, final boolean mangleDefiningClass) {
 		StringBuilder buf = new StringBuilder();
+		buf.append(QUAL_START);
 
-		if(mangleDefiningClass) {
-			if(method.container() != null) {
-				buf.append(QUAL_START);
+		if (mangleDefiningClass) {
+			if (method.container() != null) {
 				buf.append(mangleType(method.container(), true));
 				buf.append(mangleMethodName(method));
-				buf.append(QUAL_END);
 			}
 		} else {
 			buf.append(mangleMethodName(method));
 		}
 
-		boolean needMangledRet = false; // return type must also be mangled if we have type parameters.
 		final List<? extends Type> typeArgs = method.typeParameters() != null ? method.typeParameters() :
 																				method.x10Def().typeParameters();
-		if(!typeArgs.isEmpty()) {
-			needMangledRet = true;
+		if (!typeArgs.isEmpty()) {
 			buf.append(TYPEARG_START);
 			for(Type type : method.typeParameters())
 				buf.append(mangleTypeParameter(type));
 			buf.append(TYPEARG_END);
 		}
-
-		final List<LocalInstance> formals = method.formalNames();
-		if(!formals.isEmpty()) {
-			for(LocalInstance form : formals)
-				buf.append(mangleArgument(form));
+		
+		buf.append(QUAL_END);
+		
+		if (!typeArgs.isEmpty()) {
+			// Comply with C++ ABI and mangle return type.
+			buf.append(mangleType(method.returnType(), false));
+		}
+		
+		if (!method.formalNames().isEmpty()) {
+			final List<LocalInstance> formalNames = method.formalNames();
+			final List<Type> formalTypes = method.formalTypes();
+			assert formalNames.size() == formalTypes.size();
+			
+			for (int i = 0; i < formalNames.size(); ++i) {
+				final LocalInstance form = formalNames.get(i);
+				buf.append(mangleArgument(form.type(formalTypes.get(i))));
+			}
 		} else {
 			buf.append(MANGLED_VOID_TYPE);
-		}
-
-		if(needMangledRet) {
-			buf.append(mangleReturn(method.returnType()));
 		}
 
 		return buf.toString();
