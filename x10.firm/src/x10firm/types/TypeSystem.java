@@ -411,13 +411,19 @@ public class TypeSystem extends X10CTypeSystem_c {
 		}
 
 		/* create fields */
-		for (FieldInstance field : classType.fields()) {
+		for (FieldInstance field : classType.fields())
 			addField(field, result);
-		}
 
 		/* creates fields for properties */
-		for(FieldInstance field : classType.properties()) {
-			addField(field, result);
+		for (FieldInstance field : classType.properties()) {
+			// Fix by mohr on 2011-04-19
+			//
+			// At this point, classType holds the concrete type, i.e.
+			// x10.lang.Array<x10.lang.Integer>.
+			// Calling container() on field just returns the generic type, i.e.
+			// x10.lang.Array<T> which breaks our mangling.
+			// Therefore, we explicitly set the containing class type here.
+			addField(field.container(classType), result);
 		}
 
 		OO.setClassVPtrEntity(result, getVptrEntity());
@@ -427,7 +433,7 @@ public class TypeSystem extends X10CTypeSystem_c {
 			OO.setClassVTableEntity(result, vtable);
 		}
 
-		Entity classInfoEntity = new Entity(Program.getGlobalType(),Ident.createUnique(className + "$"), Mode.getP().getType());
+		Entity classInfoEntity = new Entity(Program.getGlobalType(), Ident.createUnique(className + "$"), Mode.getP().getType());
 
 		OO.setClassRTTIEntity(result, classInfoEntity);
 

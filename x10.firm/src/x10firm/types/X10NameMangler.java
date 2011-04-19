@@ -4,17 +4,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import polyglot.types.ClassType;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
 import polyglot.types.LocalInstance;
 import polyglot.types.Package;
 import polyglot.types.Type;
 import polyglot.types.TypeObject;
-import x10.types.ConstrainedType;
 import x10.types.MethodInstance;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
-import x10.types.constraints.CConstraint;
+import x10.types.X10ParsedClassType;
 
 /**
  * Name mangler which mangles X10 type objects to unique names
@@ -53,7 +53,6 @@ public class X10NameMangler {
 	private static final String MANGLED_THIS = "C1";
 	private static final String MANGLED_VTABLE = "TV";
 	private static final String MANGLED_TYPEINFO = "TI";
-	private static final String MANGLED_CONSTRAINED = "CO";
 
 	/**
 	 * Initializes name substitutions for unary operators
@@ -257,7 +256,8 @@ public class X10NameMangler {
 		final Type ret = typeSystem.simplifyType(type);
 
 		String tmp = tryPrimitiveType(ret);
-		if(tmp != null) return maybeConstrained(tmp, type);
+		if (tmp != null)
+			return tmp;
 
 		StringBuilder buf = new StringBuilder();
 
@@ -273,7 +273,7 @@ public class X10NameMangler {
 
 		buf.append(mangleType(ret, false));
 
-		return maybeConstrained(buf.toString(), type);
+		return buf.toString();
 	}
 
 	/**
@@ -389,16 +389,20 @@ public class X10NameMangler {
 	/**
 	 * Mangles a given field instance
 	 * @param field The field instance which should be mangled
-	 * @param defClass True if the definining class of the field should also be mangled.
+	 * @param defClass True if the defining class of the field should also be mangled.
 	 * @return The mangled name of the given field instance
 	 */
 	private static String mangleFieldInstance(final FieldInstance field, final boolean defClass) {
+		return mangleFieldInstance(field, defClass, null);
+	}
+
+	private static String mangleFieldInstance(final FieldInstance field, final boolean defClass, final ClassType definingClassType) {
 		StringBuilder buf = new StringBuilder();
 		assert(field.container() != null);
 
-		if(defClass) {
+		if (defClass) {
 			buf.append(QUAL_START);
-			buf.append(mangleType(field.container(), true));
+			buf.append(mangleType(definingClassType != null ? definingClassType : field.container(), true));
 			buf.append(mangleName(field.name().toString()));
 			buf.append(QUAL_END);
 		} else {
@@ -423,55 +427,14 @@ public class X10NameMangler {
 		buf.append(QUAL_END);
 
 		final List<LocalInstance> forms = cons.formalNames();
-		if(!forms.isEmpty()) {
-			for(LocalInstance form : forms)
+		if (!forms.isEmpty()) {
+			for (LocalInstance form : forms)
 				buf.append(mangleArgument(form));
 		} else {
 			buf.append(MANGLED_VOID_TYPE);
 		}
 
 		return buf.toString();
-	}
-
-	/** Mapping between constraints and the appropriate mangled name **/
-	private static Map<CConstraint, String> constrainedHashMap = new HashMap<CConstraint, String>();
-
-	/** ID counter to create unique id for constrained mangling */
-	private static long uniqueID = 1;
-
-	/**
-	 * Creates a new unique ID
-	 * @return A new unique ID
-	 */
-	private static long getUniqueID() {
-		return uniqueID++;
-	}
-
-	/**
-	 * Checks if a given type is a constrained type and then returns the appropriate mangled name
-	 * If the given type is not actually a constrained type the given mangled base type name will be returned.
-	 *
-	 * @param mangledBaseType The mangled base type name of the given type
-	 * @param realType The real type -> Can be a constrained type
-	 * @return The mangled name.
-	 */
-	private static String maybeConstrained(String mangledBaseType, final Type realType) {
-		if(realType instanceof ConstrainedType) {
-			ConstrainedType cc = (ConstrainedType)realType;
-			CConstraint co = cc.getRealXClause();
-			String tmp = constrainedHashMap.get(co);
-			if(tmp != null) return mangledBaseType + tmp;
-
-			long id = getUniqueID();
-			StringBuilder buf = new StringBuilder();
-			buf.append(MANGLED_CONSTRAINED);
-			buf.append(id);
-
-			String ret = buf.toString();
-			constrainedHashMap.put(co, ret);
-			return mangledBaseType + ret;
-		}
-		return mangledBaseType;
 	}
 
 	/**
@@ -484,18 +447,24 @@ public class X10NameMangler {
 		String tmp = null;
 
 		final Type ret = typeSystem.simplifyType(type);
-		if(!embed) {
+		if (!embed) {
 			tmp = tryPrimitiveType(ret);
-			if(tmp != null) return maybeConstrained(tmp, type);
+			if (tmp != null)
+				return tmp;
 		}
 
-		if(ret instanceof X10ClassType) { // a class type
-			tmp = mangleClassType((X10ClassType)ret, embed);
+		if (ret instanceof X10ParsedClassType) {
+			if (((X10ParsedClassType) ret).isMissingTypeArguments())
+				throw new RuntimeException("Cannot mangle type `" + ret.fullName() + "' because it is missing type arguments.");
+
+			tmp = mangleClassType((X10ClassType) ret, embed);
+		} else if (ret instanceof X10ClassType) { // a class type
+			tmp = mangleClassType((X10ClassType) ret, embed);
 		} else {
-//			 assert(false): "Unknown type in mangleType" + ret.getClass() + ": " + ret;
+			 assert(false): "Unknown type in mangleType " + ret.getClass() + ": " + ret;
 		}
 
-		return maybeConstrained(tmp, type);
+		return tmp;
 	}
 
 	/**
