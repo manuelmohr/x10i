@@ -7,6 +7,4 @@
 X10_EXTERN x10_printer *_ZN3x102io7Console3OUTE;
 X10_EXTERN x10_printer *_ZN3x102io7Console3ERRE;
 
-X10_EXTERN x10_printer *_ZN3x102io7Console8OUT__getEv(void);
-
 #endif // X10_CONSOLE_H_

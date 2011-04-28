@@ -5,7 +5,6 @@
 
 struct x10_printer {
 	X10_OBJECT_HEADER
-	FILE *target;
 };
 
 X10_EXTERN void _ZN3x102io7Printer7printlnEPN3x104lang3AnyE(
