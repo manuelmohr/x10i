@@ -28,7 +28,6 @@ x10_string *_ZN3x104lang7Boolean8typeNameEv(x10_boolean self) {
 
 // toString
 x10_string *_ZN3x104lang7Boolean8toStringEv(x10_boolean self) { 
-	UNUSED(self); 
 	return self ? x10_string_from_wide_chars(T_("true")) : x10_string_from_wide_chars(T_("false")); 
 }
 

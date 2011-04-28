@@ -23,4 +23,22 @@ x10_int _ZN3x104lang3Intv3rbsEi(x10_int a, x10_int b)
 }
 MAKE_CONFS(_ZN3x104lang3Int, x10_int)
 
+x10_string *_ZN3x104lang3Int8toStringEv(x10_int self) { 
+	wchar_t buf[64];
+	swprintf(buf, sizeof(buf) / sizeof(wchar_t), L"%d", self);
+	return x10_string_from_wide_chars(buf);
+}
+
+x10_boolean _ZN3x104lang3Int6equalsEPN3x104lang3AnyE(x10_int self,
+		x10_any *other)
+{
+	// TODO Implement me.
+
+	UNUSED(self);
+	switch (X10_TYPE(other)) {
+	default:
+		return false;
+	};
+}
+
 #endif // X10_INT_H_
