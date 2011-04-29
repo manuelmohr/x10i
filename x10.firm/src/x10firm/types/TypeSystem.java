@@ -124,11 +124,11 @@ public class TypeSystem extends X10CTypeSystem_c {
 
         	for(final MethodDef mDef : intervaceDef.methods())  {
 
+        		// TODO
 				/* DELETE ME START: "following methods are not supported yet" */
         		final MethodInstance mi = mDef.asInstance();
     			final String x = mi.name().toString();
-    			if(x.equals("compareTo") || x.equals("toString") || x.equals("hashCode") || x.equals("equals") ||
-    			   x.equals("_struct_equals") || x.equals("typeName")) {
+    			if (x.equals("compareTo") || x.equals("hashCode")) {
     				continue;
     			}
     			/* DELETE ME END: */
@@ -273,10 +273,11 @@ public class TypeSystem extends X10CTypeSystem_c {
 		final polyglot.types.Type type = simplifyType(type_);
 		return equalTypes(type, Int())     || equalTypes(type, UInt())   ||
 		   	   equalTypes(type, Long())    || equalTypes(type, ULong())  ||
+		   	   equalTypes(type, Short())   || equalTypes(type, UShort()) ||
 		   	   equalTypes(type, Byte())    || equalTypes(type, UByte())  ||
-			   equalTypes(type, Float())   || equalTypes(type, Double()) ||
-			   equalTypes(type, Boolean()) ||
-			   equalTypes(type, Char());
+		       equalTypes(type, Float())   || equalTypes(type, Double()) ||
+		       equalTypes(type, Boolean()) ||
+		       equalTypes(type, Char());
 	}
 
 	/**

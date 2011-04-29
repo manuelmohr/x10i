@@ -40,6 +40,7 @@ import polyglot.ast.FloatLit_c;
 import polyglot.ast.ForInit;
 import polyglot.ast.ForUpdate;
 import polyglot.ast.For_c;
+import polyglot.ast.Formal;
 import polyglot.ast.Formal_c;
 import polyglot.ast.Id_c;
 import polyglot.ast.If_c;
@@ -82,8 +83,10 @@ import polyglot.types.ObjectType;
 import polyglot.types.Ref;
 import polyglot.types.Type;
 import polyglot.types.Types;
+import polyglot.util.CollectionUtil;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
+import polyglot.visit.NodeVisitor;
 import polyglot.visit.Translator;
 import x10.ast.AssignPropertyCall_c;
 import x10.ast.Async_c;
@@ -107,6 +110,7 @@ import x10.ast.StmtSeq_c;
 import x10.ast.SubtypeTest_c;
 import x10.ast.Tuple_c;
 import x10.ast.TypeDecl_c;
+import x10.ast.TypeParamNode;
 import x10.ast.When_c;
 import x10.ast.X10Binary_c;
 import x10.ast.X10Call_c;
@@ -117,6 +121,8 @@ import x10.ast.X10ClassDecl;
 import x10.ast.X10ClassDecl_c;
 import x10.ast.X10ConstructorCall_c;
 import x10.ast.X10Instanceof_c;
+import x10.ast.X10MethodDecl;
+import x10.ast.X10MethodDecl_c;
 import x10.ast.X10NodeFactory_c;
 import x10.ast.X10SourceFile_c;
 import x10.ast.X10Special_c;
@@ -124,6 +130,8 @@ import x10.ast.X10Unary_c;
 import x10.types.ClosureDef;
 import x10.types.ClosureInstance;
 import x10.types.MethodInstance;
+import x10.types.ParameterType;
+import x10.types.TypeParamSubst;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassDef_c;
 import x10.types.X10ClassType;
@@ -135,6 +143,7 @@ import x10.types.X10MethodDef;
 import x10.types.X10ProcedureInstance;
 import x10.types.checker.Converter;
 import x10.util.ClosureSynthesizer;
+import x10.visit.TypeParamSubstTransformer;
 import x10.visit.X10DelegatingVisitor;
 import x10firm.types.TypeSystem;
 import x10firm.types.X10NameMangler;
@@ -426,6 +435,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			firmContext.setInitClassMembers(inits);
 
 			for (ClassMember member : body.members()) {
+				// TODO
 				/* DELETE ME START: "following methods are not supported yet" */
 				if(member instanceof MethodDecl_c) {
 					MethodDecl_c meth = (MethodDecl_c)member;
@@ -712,14 +722,19 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(MethodDecl_c dec) {
-		final X10MethodDef   def            = (X10MethodDef) dec.methodDef();
+		final X10MethodDef def = (X10MethodDef) dec.methodDef();
+
 		final MethodInstance methodInstance = def.asInstance();
-		final Flags          flags          = methodInstance.flags();
+		
+		for (Type typeParam : methodInstance.typeParameters())
+			if (typeParam instanceof ParameterType)
+				return;
 		
 		final Entity         entity         = getMethodEntity(methodInstance);
+		final Flags          flags          = methodInstance.flags();
 
 		if (flags.isNative() || flags.isAbstract()) {
-			/* native code is defined elsewhere, so nothing left to do */
+			// native code is defined elsewhere, so nothing left to do
 			return;
 		}
 
@@ -730,7 +745,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		// extract all formals and locals from the method.
 		final List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(dec);
 		constructGraph(entity, dec, false, formals, locals, isStatic, methodInstance, owner);
-
+		
 		if (query.isMainMethod(def)) {
 			processMainMethod(entity);
 		}
@@ -822,7 +837,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	/**
-	 * Createas a target value for a given constant expr
+	 * Creates a target value for a given constant expr
 	 * @param expr The constant expr
 	 * @return The target value of the given constant expr
 	 */
@@ -944,7 +959,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	private Node genFieldLoadHelp(final Node fieldPointer, final FieldInstance fInst) {
-		if(typeSystem.isFirmStructType(fInst.type())) // structs
+		if (typeSystem.isFirmStructType(fInst.type())) // structs
 			return fieldPointer;
 
 		final firm.Type type = typeSystem.asFirmType(fInst.type());
@@ -1401,7 +1416,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		con.getGraph().getEndBlock().addPred(retNode);
 		con.setCurrentBlockBad();
 	}
-	
+
 	private void genLocalDecl(final LocalDecl_c n) {
 		final Expr expr = n.init();
 
@@ -1603,7 +1618,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		con.setCurrentBlock(bFalse);
 	}
-	
+
 	@Override
 	public void visit(For_c n) {
 		// condition evaluates to false -> nothing to do
@@ -1616,7 +1631,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			label = firmContext.getLabel();
 			firmContext.resetLabeledStmt();
 		}
-		
+
 		if(n.inits() != null) {
 			for(ForInit f: n.inits()) {
 				if(f instanceof LocalDecl_c) {
@@ -1624,7 +1639,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				}
 			}
 		}
-		
+
 		final Block bCond  = con.newBlock();
 		final Block bTrue  = con.newBlock();
 		final Block bFalse = con.newBlock();
@@ -1639,12 +1654,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		{
 			newScope.setTrueBlock(bTrue);
 			newScope.setFalseBlock(bFalse);
-			
+
 			Expr cond = n.cond();
 			if(cond == null) {
 				cond = xnf.BooleanLit(Position.COMPILER_GENERATED, true);
 			}
-			
+
 			makeExpressionCondition(cond);
 		}
 		firmContext.popFirmScope();
@@ -1672,7 +1687,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		firmContext.popFirmScope();
 
 		bFalse.mature();
-		
+
 		if(n.iters() != null) {
 			for(ForUpdate f: n.iters()) {
 				visitAppropriate(f);
@@ -1826,11 +1841,176 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		resetReturnNode();
 	}
 
+
+
+
+	/**
+	 *  Needed because TypeParamSubstTransformer's constructor is protected.
+	 */
+	public static class GenericTypesRewritingVisitor extends NodeVisitor {
+		private class GenericTypeTransformer extends TypeParamSubstTransformer {
+			public GenericTypeTransformer(TypeParamSubst subst) {
+				super(subst);
+			}
+		}
+
+		private GenericTypeTransformer transformer;
+
+		/**
+		 * @param subst The substitution that shall be applied.
+		 */
+		public GenericTypesRewritingVisitor(TypeParamSubst subst) {
+			this.transformer = new GenericTypeTransformer(subst);
+		}
+
+        @Override
+        public polyglot.ast.Node leave(polyglot.ast.Node old, polyglot.ast.Node n, NodeVisitor v) {
+        	return transformer.transform(n, old, null);
+        }
+	}
+
+	private Set<String> alreadyCompiledMethods = new HashSet<String>();
+	
+	private String buildHashString(final MethodInstance mi) {
+		final StringBuilder sb = new StringBuilder();
+		
+		sb.append(mi.designator());
+		sb.append(" ");
+		sb.append(mi.flags().prettyPrint());
+		sb.append(Types.baseType(mi.container()).fullName().toString());
+		sb.append(".");
+		sb.append(mi.name().toString());
+		
+		List<String> params = new ArrayList<String>();
+		List<Type> typeParameters = mi.typeParameters();
+		if (typeParameters != null) {
+			for (int i = 0; i < typeParameters.size(); i++) {
+				params.add(Types.baseType(typeParameters.get(i)).toString());
+			}
+		}
+		else {
+			for (int i = 0; i < mi.x10Def().typeParameters().size(); i++) {
+				params.add(Types.baseType(mi.x10Def().typeParameters().get(i)).toString());
+			}
+		}
+		if (params.size() > 0) {
+			sb.append("[");
+			sb.append(CollectionUtil.listToString(params));
+			sb.append("]");
+		}
+		
+		List<String> formals = new ArrayList<String>();
+		List<Type> formalTypes = mi.formalTypes();
+		if (formalTypes != null) {
+			List<LocalInstance> formalNames = mi.formalNames();
+			for (int i = 0; i < formalTypes.size(); i++) {
+				String s = "";
+				String t = Types.baseType(formalTypes.get(i)).toString();
+				if (formalNames != null && i < formalNames.size()) {
+					LocalInstance a = formalNames.get(i);
+					if (a != null && ! a.name().toString().equals(""))
+						s = a.name() + ": " + t; 
+					else
+						s = t;
+				}
+				else {
+					s = t;
+				}
+				formals.add(s);
+			}
+		}
+		else {
+			for (int i = 0; i < mi.def().formalTypes().size(); i++) {
+				formals.add(Types.baseType(mi.def().formalTypes().get(i).get()).toString());
+			}
+		}
+		sb.append("(");
+		sb.append(CollectionUtil.listToString(formals));
+		sb.append(")");
+
+		// TODO:  Do we need the return type here?
+		Ref<? extends Type> returnType = mi.returnTypeRef();
+		if (returnType != null && returnType.known()) {
+			sb.append(": ");
+			sb.append(Types.baseType(returnType.get()));
+		}
+		
+		return sb.toString();
+	}
+
 	@Override
 	public void visit(X10Call_c n) {
-		/* determine called function */
-		final MethodInstance methodInstance = n.methodInstance();
-		final Node ret = genX10Call(methodInstance, n.arguments(), n.target(), false);
+		// Determine called method.
+		final MethodInstance oldMethodInstance = n.methodInstance();
+		final Flags oldFlags = oldMethodInstance.flags();
+		
+		if (oldFlags.isNative() || oldFlags.isAbstract() || oldMethodInstance.typeParameters().isEmpty()) {
+			final Node ret = genX10Call(oldMethodInstance, n.arguments(), n.target(), false);
+			setReturnNode(ret);
+			return;
+		}
+		
+		final MethodInstance newMethodInstance = oldMethodInstance;
+		final String hashName = buildHashString(newMethodInstance);
+
+		if (alreadyCompiledMethods.contains(hashName)) {
+			final Node ret = genX10Call(newMethodInstance, n.arguments(), n.target(), false);
+			setReturnNode(ret);
+			return;
+		}
+
+		// Add eagerly to allow recursion.
+		alreadyCompiledMethods.add(hashName);
+
+		// Find the method declaration.
+		final MethodDeclFetcher fetcher = new MethodDeclFetcher(typeSystem, xnf);
+		final X10MethodDecl oldDecl = fetcher.getDecl(n);
+
+		// Build substitution object that substitutes actual types for type parameters.
+		final List<Type> actualTypes = oldMethodInstance.typeParameters();
+		final List<ParameterType> formalTypes = new ArrayList<ParameterType>();
+		for (TypeParamNode tpn : oldDecl.typeParameters())
+			formalTypes.add(tpn.type());
+		final TypeParamSubst subst = new TypeParamSubst(typeSystem, actualTypes, formalTypes);
+
+		// Apply substitution to AST.
+		final GenericTypesRewritingVisitor visitor = new GenericTypesRewritingVisitor(subst);
+		final polyglot.ast.Node newAst = oldDecl.body().visit(visitor);
+
+		// Rewrite types.
+		final TypeNode newReturnTypeNode = oldDecl.returnType().typeRef(subst.reinstantiate(oldDecl.returnType().typeRef()));
+		final List<Formal> newFormals = new ArrayList<Formal>();
+		for (Formal oldFormal : oldDecl.formals()) {
+			final Ref<? extends Type> newTypeRef = subst.reinstantiate(oldFormal.type().typeRef());
+			final Formal newFormal = oldFormal.type(oldFormal.type().typeRef(newTypeRef));
+			newFormals.add(newFormal);
+		}
+
+		final X10MethodDecl_c newMethodDecl = new X10MethodDecl_c(
+				xnf,
+				oldDecl.position(),
+				oldDecl.flags(),
+				newReturnTypeNode,
+				oldDecl.name(),
+				new ArrayList<TypeParamNode>(),
+				newFormals,
+				oldDecl.guard(),
+				oldDecl.offerType(),
+				(polyglot.ast.Block) newAst);
+
+		final Entity entity = getMethodEntity(newMethodInstance);
+		final List<LocalInstance> formals = newMethodInstance.formalNames();
+		final List<LocalInstance> nFormals = new ArrayList<LocalInstance>();
+		for (LocalInstance inst : formals)
+			nFormals.add(inst.type(subst.reinstantiate(inst.type())));
+		final boolean isStatic = newMethodInstance.flags().isStatic();
+		final X10ClassType owner = (X10ClassType) newMethodInstance.container();
+
+		// Extract all locals from the method.
+		final List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(newMethodDecl);
+		constructGraph(entity, newMethodDecl, false, nFormals, locals, isStatic, newMethodInstance, owner);
+
+		final Node ret = genX10Call(newMethodInstance, n.arguments(), n.target(), false);
 		setReturnNode(ret);
 	}
 
@@ -1982,7 +2162,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			setReturnNode(ret);
 		} else {
 			final int idx = var.getIdx();
-			final Node ret = con.getVariable(idx, typeSystem.getFirmMode(loc.type()));
+			// FIXME:  Check if it is correct to use n.type() instead of loc.type() here.
+			final Node ret = con.getVariable(idx, typeSystem.getFirmMode(n.type()));
 			setReturnNode(ret);
 		}
 	}
@@ -2520,7 +2701,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param target The target of the method call.
 	 * @return The return node or null if the call doesn`t have a return value
 	 */
-	private Node genX10Call(final MethodInstance mi, final List<Expr> args, final Receiver target, boolean closure) {
+	private Node genX10Call(final MethodInstance mi, final List<Expr> args, Receiver target, boolean closure) {
 		final Flags flags = mi.flags();
 		final boolean isStatic = flags.isStatic();
 		final boolean isFinal  = flags.isFinal();
@@ -2530,8 +2711,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final Entity entity = (closure) ? getClosureEntity(mi.signature()) : getMethodEntity(mi);
 
 		final MethodType type = (MethodType) entity.getType();
-		final int param_count = type.getNParams();
-
+		final int paramCount = type.getNParams();
+		
 		List<Expr> arguments = new LinkedList<Expr>();
 
 		// add the other arguments
@@ -2544,11 +2725,19 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			arguments.add(0, receiver);
 		}
 
-		assert arguments.size() == param_count : "parameters are off : "+ arguments.size() + " vs " + param_count;
-		Node[] parameters = new Node[param_count];
+		assert arguments.size() == paramCount : "parameters are off : "+ arguments.size() + " vs " + paramCount;
+		Node[] parameters = new Node[paramCount];
 
-		for(int i=0; i < param_count; i++)
-			parameters[i] = visitExpression(arguments.get(i));
+		for (int i = 0; i < paramCount; i++) {
+			// Do we need to autobox?
+			// TODO:  Is this really the correct condition?
+			final boolean needAutoboxing = (i == 0 && typeSystem.isStructType(target.type()) && !isStaticBinding);
+			
+			if (needAutoboxing)
+				parameters[0] = genAutoboxing((X10ClassType) Types.baseType(target.type()), (Expr) target);
+			else
+				parameters[i] = visitExpression(arguments.get(i));
+		}
 
 		final Node address = (isStaticBinding) ? con.newSymConst(entity) : con.newSel(parameters[0], entity);
 
