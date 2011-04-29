@@ -7,6 +7,33 @@
 #define X10_MAKE_EQUALS(name, type) \
 	x10_boolean name(type self, type other) { return (self == other); }
 
+#define X10_MAKE_TOSTRING(name, type, fmt) \
+x10_string *name(type self) \
+{ \
+	wchar_t buf[64]; \
+	swprintf(buf, sizeof(buf) / sizeof(wchar_t), L##fmt, self); \
+	return x10_string_from_wide_chars(buf); \
+}
+
+#define X10_MAKE_TYPENAME(name, type, str) \
+x10_string *name(type self) \
+{ \
+	UNUSED(self); \
+	return x10_string_from_wide_chars(L##str); \
+}
+
+// TODO:  Implement me.
+#define X10_MAKE_EQUALS_ANY(name, type) \
+x10_boolean name(type self, x10_any *other) \
+{ \
+\
+	UNUSED(self); \
+	switch (X10_TYPE(other)) { \
+	default: \
+		return false; \
+	}; \
+}
+
 #define BINOP(name, type, op)  \
 	type name(type a, type b) { return a op b; }
 

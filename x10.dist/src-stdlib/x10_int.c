@@ -1,18 +1,12 @@
-#ifndef X10_INT_H_
-#define X10_INT_H_
-
 #include "x10.h"
 #include "x10_primitive_types.h"
 #include "x10_string.h"
 
 X10_MAKE_COMPARETO(_ZN3x104lang3Int9compareToEi, x10_int)
 X10_MAKE_EQUALS(_ZN3x104lang3Int6equalsEi, x10_int)
-
-// typename
-x10_string *_ZN3x104lang3Int8typeNameEv(x10_int self) { 
-	UNUSED(self); 
-	return x10_string_from_wide_chars(T_("x10.lang.Int")); 
-}
+X10_MAKE_TOSTRING(_ZN3x104lang3Int8toStringEv, x10_int, "%d")
+X10_MAKE_TYPENAME(_ZN3x104lang3Int8typeNameEv, x10_int, "x10.lang.Int")
+X10_MAKE_EQUALS_ANY(_ZN3x104lang3Int6equalsEPN3x104lang3AnyE, x10_int)
 
 MAKE_INT_BINOPS(_ZN3x104lang3Int, i, x10_int)
 MAKE_CMPOPS(_ZN3x104lang3Int, i, x10_int)
@@ -22,23 +16,3 @@ x10_int _ZN3x104lang3Intv3rbsEi(x10_int a, x10_int b)
 	return (x10_int) ((x10_uint) a >> (x10_uint) b);
 }
 MAKE_CONFS(_ZN3x104lang3Int, x10_int)
-
-x10_string *_ZN3x104lang3Int8toStringEv(x10_int self) { 
-	wchar_t buf[64];
-	swprintf(buf, sizeof(buf) / sizeof(wchar_t), L"%d", self);
-	return x10_string_from_wide_chars(buf);
-}
-
-x10_boolean _ZN3x104lang3Int6equalsEPN3x104lang3AnyE(x10_int self,
-		x10_any *other)
-{
-	// TODO Implement me.
-
-	UNUSED(self);
-	switch (X10_TYPE(other)) {
-	default:
-		return false;
-	};
-}
-
-#endif // X10_INT_H_

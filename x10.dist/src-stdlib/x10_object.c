@@ -34,4 +34,3 @@ x10_string *_ZN3x104lang6Object8toStringEv(x10_object *self)
 	swprintf(tmp, 30, L"Object %p", self);
 	return x10_string_from_wide_chars(tmp);
 }
-
