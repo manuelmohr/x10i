@@ -36,7 +36,7 @@ class X10FirmScheduler extends X10Scheduler {
 
 		final TypeSystem typeSystem = (TypeSystem)extInfo.typeSystem();
 
-		final Goal lowering_firm = new LoweringFirm(extInfo, typeSystem);
+		final Goal lowering_firm = new LoweringFirm(typeSystem);
 		lowering_firm.intern(this);
 
 		final Goal asmEmitted = new AsmEmitted(this);

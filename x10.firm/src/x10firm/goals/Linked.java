@@ -43,7 +43,9 @@ public class Linked extends PostCompiled {
 				asmFilename,
 				stdlibPath + "/libx10std.a",
 				"-lm",
-				"-L" + libooPath, "-Wl,-R" + libooPath, "-loo_rt",
+				"-L" + libooPath,
+				"-Wl,-R" + libooPath,
+				"-loo_rt",
 				"-o", exeFilename
 		};
 

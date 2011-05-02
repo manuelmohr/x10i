@@ -50,7 +50,7 @@ args="${args} -sourcepath ${X10_TOP}/x10.dist/src-stdlib"
 
 # Arguments for the JavaVM
 java_args="-Xmx512m"
-#java_args="${java_args} -ea"
+java_args="${java_args} -ea"
 java_args="${java_args} -Dfile.encoding=UTF-8"
 java_args="${java_args} -Dx10.dist=${X10_TOP}/x10.dist"
 
