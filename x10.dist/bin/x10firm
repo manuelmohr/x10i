@@ -2,13 +2,17 @@
 
 # determine toplevel directory of x10 installation
 ME="$0"
-if [ -L "$ME" ]; then
-	# TODO: readlink -f is NOT posix, but writing stiff manually is cumbersome
+if [ -L "${ME}" ]; then
+	# TODO: readlink -f is NOT posix, but writing stuff manually is cumbersome
 	# so I just hope nobody installs x10firm with symlinks on macs for now.
-	ME="`readlink -f "$ME"`"
+	ME="`readlink -f "${ME}"`"
 fi
-MYDIR=`dirname "$ME"`
-X10_TOP="${MYDIR}/../.."
+X10_TOP="$(cd "$(dirname "$ME")/../.." && pwd)"
+
+# Choose javavm. A user may for example use something like this:
+#    JAVA="gdb --args java"
+# to run x10firm in the gnu debugger
+[ -z "${JAVA}" ] && JAVA="java"
 
 # prepare classpath
 classpath=""
@@ -33,15 +37,26 @@ append_classpath "${X10_TOP}/jFirm/lib/jna.jar"
 JNA_LIBRARY_PATH="${X10_TOP}/libfirm/build/debug"
 JNA_LIBRARY_PATH="${JNA_LIBRARY_PATH}:${X10_TOP}/liboo/build"
 # Some how we can not use -Djna.library.path= as java arguments, otherwise
-# liboo won't find the referenced libfirm librarye (not jna can't find it
-# but dlopen while opening liboo.so)
+# liboo won't find the referenced libfirm library (this is not the fault of jna
+# but dlopen can't find it while opening liboo.so)
 export LD_LIBRARY_PATH="$JNA_LIBRARY_PATH"
 # and for our OS/X friends
 export DYLD_LIBRARY_PATH="$JNA_LIBRARY_PATH"
 
-# The following is from x10c++
-export X10_DIST="${MYDIR}/.."
-export CP_OVERRIDE="${classpath}:"
-export DEXT="x10firm.ExtensionInfo"
+# Collect arguments for the x10firm compiler
+args="-extclass x10firm.ExtensionInfo"
+args="${args} -x10lib ${X10_TOP}/x10.dist/stdlib/libx10.properties"
+args="${args} -sourcepath ${X10_TOP}/x10.dist/src-stdlib"
 
-exec "${X10_DIST}/bin/x10c" -sourcepath "${X10_DIST}/src-stdlib" "$@"
+# Arguments for the JavaVM
+java_args="-Xmx512m"
+#java_args="${java_args} -ea"
+java_args="${java_args} -Dfile.encoding=UTF-8"
+java_args="${java_args} -Dx10.dist=${X10_TOP}/x10.dist"
+
+export X10RT_IMPL=sockets
+
+# Run JavaVM
+command="${JAVA} -classpath ${classpath} ${java_args} polyglot.main.Main ${args} "$@""
+#echo "$command"
+${command}
