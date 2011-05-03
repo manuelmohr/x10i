@@ -22,7 +22,7 @@ public class X10FirmContext {
 	private X10FirmScope topFirmScope = new X10FirmScope();
 
 	/** Maps VarInstances to the appropriate "VarEntry" entries */
-	private Map<String, X10VarEntry> varEntryMapper = new HashMap<String, X10VarEntry>();
+	private Map<VarInstance<?>, X10VarEntry> varEntryMapper = new HashMap<VarInstance<?>, X10VarEntry>();
 
 	/**
 	 * Reference to the current class type
@@ -155,9 +155,8 @@ public class X10FirmContext {
 	 * @param entry The "VarEntry" for the given variable
 	 */
 	public void setVarEntry(X10VarEntry entry) {
-		assert !varEntryMapper.containsKey(entry.getVarInstance().name().toString());
-//		System.out.println(this.hashCode() + ": Setting mapper[\"" + entry.getVarInstance().name().toString() + "\"] to " + entry.hashCode());
-		varEntryMapper.put(entry.getVarInstance().name().toString(), entry);
+		assert !varEntryMapper.containsKey(entry.getVarInstance());
+		varEntryMapper.put(entry.getVarInstance(), entry);
 	}
 
 	/** Returns the "VarEntry" for a given instance variable in the current scope
@@ -165,9 +164,7 @@ public class X10FirmContext {
 	 * null if the instance variable could not be found.
 	 */
 	public X10VarEntry getVarEntry(VarInstance<?> var) {
-		final X10VarEntry entry = varEntryMapper.get(var.name().toString());
-//		System.out.println(this.hashCode() + ": mapper[\"" + var.name().toString() + "\"] == " + entry.hashCode());
-		return entry;
+		return varEntryMapper.get(var);
 	}
 
 	/** Pushes a new firm scope
