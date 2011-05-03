@@ -77,12 +77,6 @@ class X10FirmScope {
 	 */
 	private Map<String, X10FirmLabel> firmLabelMapper = new HashMap<String, X10FirmLabel>();
 
-	/** Block we will jump into if an expression evaluates to true */
-	private Block trueBlock;
-
-	/** Block we will jump into if an expression evaluates to false */
-	private Block falseBlock;
-
 	/** Block we will jump into if we reach a continue statement */
 	private Block continueBlock;
 
@@ -113,30 +107,6 @@ class X10FirmScope {
 	 */
 	public X10FirmScope getPrev() {
 		return prev;
-	}
-
-	/** Sets the true block.
-	 * @param block The block to set */
-	public void setTrueBlock(Block block) {
-		trueBlock = block;
-	}
-
-	/** Returns the true block.
-	 * @return The true block */
-	public Block getTrueBlock() {
-		return trueBlock;
-	}
-
-	/** Sets the false block.
-	 * @param block The block to set */
-	public void setFalseBlock(Block block) {
-		falseBlock = block;
-	}
-
-	/** Returns the false block.
-	 * @return The false block */
-	public Block getFalseBlock() {
-		return falseBlock;
 	}
 
 	/** Sets the continue block.
@@ -283,8 +253,6 @@ class X10FirmScope {
 	@Override
 	public Object clone() {
 		X10FirmScope clonedScope  	= new X10FirmScope();
-		clonedScope.trueBlock     	= this.trueBlock;
-		clonedScope.falseBlock		= this.falseBlock;
 		clonedScope.continueBlock   = this.continueBlock;
 		clonedScope.breakBlock      = this.breakBlock;
 		// The local mapper needn`t be cloned

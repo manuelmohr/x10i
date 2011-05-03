@@ -227,9 +227,9 @@ public class TypeSystem extends X10CTypeSystem_c {
 	 * Finishes the type system.
 	 */
 	public void finishTypeSystem() {
-		// Before layouting the types we need to run liboo's lowering first to remove method entities from the graph. 
+		// Before layouting the types we need to run liboo's lowering first to remove method entities from the graph.
 		OO.lowerProgram();
-		
+
 		for(final Type type : firmCoreTypes.values())
 			layoutType(type);
 	}
@@ -544,7 +544,11 @@ public class TypeSystem extends X10CTypeSystem_c {
 		Type typeDouble = new PrimitiveType(modeDouble);
 		firmTypes.put(Double(), typeDouble);
 
-		Mode modeBoolean = Mode.getb();
+		/* Note that the mode_b in firm can't be used here, since it is an
+		 * internal mode which cannot be used for fields/call parameters/return
+		 * values. We will use mode_b only internally when generating code for
+		 * conditional jumps. */
+		Mode modeBoolean = Mode.getBu();
 		Type typeBoolean = new PrimitiveType(modeBoolean);
 		firmTypes.put(Boolean(), typeBoolean);
 

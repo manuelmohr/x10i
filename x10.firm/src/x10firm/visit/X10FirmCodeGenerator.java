@@ -13,7 +13,6 @@ import polyglot.ast.ArrayAccess_c;
 import polyglot.ast.ArrayInit_c;
 import polyglot.ast.Assert_c;
 import polyglot.ast.Assign_c;
-import polyglot.ast.Binary;
 import polyglot.ast.Binary_c;
 import polyglot.ast.Block_c;
 import polyglot.ast.BooleanLit_c;
@@ -174,11 +173,9 @@ import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Cond;
 import firm.nodes.CopyB;
-import firm.nodes.InstanceOf;
 import firm.nodes.Load;
 import firm.nodes.Node;
 import firm.nodes.OOConstruction;
-import firm.nodes.Proj;
 import firm.nodes.Store;
 
 /**
@@ -230,93 +227,38 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/** current firm context */
 	private X10FirmContext firmContext = new X10FirmContext();
 
-	/**
-	 * If n is not already a condition node, build an extra compare and condition node.
-	 * If n is a projection node create only a new condition node
-	 * @param n	a Firm node
-	 * @return a condition Firm node
-	 */
-	private Node makeCondition(final Node n) {
-		if(n instanceof Proj || !n.getMode().equals(Mode.getT())) {
-			final X10FirmScope topScope = firmContext.getTopScope();
-
-			final Block bTrue  = topScope.getTrueBlock();
-			final Block bFalse = topScope.getFalseBlock();
-
-			Node condition = n;
-			if(!(n instanceof Proj)) { // No projection, create an explicit compare and projection node.
-				final Node one  = con.newConst(1, n.getMode());
-				final Node cmp  = con.newCmp(n, one, Relation.Equal);
-				condition = cmp;
-			}
-
-			final Node cond = con.newCond(condition);
-
-			final Node projTrue  = con.newProj(cond, Mode.getX(), Cond.pnTrue);
-			final Node projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
-
-			bTrue.addPred(projTrue);
-			bFalse.addPred(projFalse);
-
-			return cond;
-		}
-		return n;
+	private void evaluateCondition(final Expr e, final Block trueBlock, final Block falseBlock) {
+		ConditionEvaluationCodeGenerator codegen
+			= new ConditionEvaluationCodeGenerator(trueBlock, falseBlock, this);
+		codegen.visitAppropriate(e);
 	}
 
-	private Node makeExpressionCondition(final Expr e) {
-		Node ret = visitExpression(e);
-		return makeCondition(ret);
-	}
-
-	/**
-	 * Evaluates the given expression and creates the appropriate firm nodes. Afterwards
-	 * it creates a new true (holds the value 1) and false (holds the value 0) block for
-	 * the results of the expression. Finally the true and false blocks are combined with
-	 * a common phi node.
-	 * @param E		A polyglot expression
-	 * @return		A Phi firm node
-	 */
-	private Node makeConditionalPhiTrailer(final Expr E) {
-
+	private Node produceBooleanValue(final Expr e) {
 	    final Block cur    = con.getCurrentBlock();
 		final Block bTrue  = con.newBlock();
 		final Block bFalse = con.newBlock();
+		final Mode  mode   = typeSystem.getFirmMode(e.type());
 
 		con.setCurrentBlock(bTrue);
 		final Node jmp1 = con.newJmp();
-		final Node one  = con.newConst(1, Mode.getb());
+		final Node one  = con.newConst(mode.getOne());
 
 		con.setCurrentBlock(bFalse);
 		final Node jmp2 = con.newJmp();
-		final Node zero = con.newConst(0, Mode.getb());
+		final Node zero = con.newConst(mode.getNull());
 
 		con.setCurrentBlock(cur);
-
-		final X10FirmScope topScope = firmContext.getTopScope();
-		X10FirmScope newScope = (X10FirmScope)topScope.clone();
-
-		firmContext.pushFirmScope(newScope);
-		{
-			// TODO: Swap jmps if we are in an unary ! expr.
-			newScope.setTrueBlock(bTrue);
-			newScope.setFalseBlock(bFalse);
-
-			makeExpressionCondition(E);
-		}
-		firmContext.popFirmScope();
-
+		evaluateCondition(e, bTrue, bFalse);
 		bTrue.mature();
 		bFalse.mature();
 
 		final Block phiBlock = con.newBlock();
 		phiBlock.addPred(jmp1);
 		phiBlock.addPred(jmp2);
-
-		con.setCurrentBlock(phiBlock);
-
 		phiBlock.mature();
 
-		return con.newPhi(new Node[]{one, zero}, Mode.getb());
+		con.setCurrentBlock(phiBlock);
+		return con.newPhi(new Node[]{one, zero}, mode);
 	}
 
 	/**
@@ -725,11 +667,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final X10MethodDef def = (X10MethodDef) dec.methodDef();
 
 		final MethodInstance methodInstance = def.asInstance();
-		
+
 		for (Type typeParam : methodInstance.typeParameters())
 			if (typeParam instanceof ParameterType)
 				return;
-		
+
 		final Entity         entity         = getMethodEntity(methodInstance);
 		final Flags          flags          = methodInstance.flags();
 
@@ -745,7 +687,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		// extract all formals and locals from the method.
 		final List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(dec);
 		constructGraph(entity, dec, false, formals, locals, isStatic, methodInstance, owner);
-		
+
 		if (query.isMainMethod(def)) {
 			processMainMethod(entity);
 		}
@@ -1539,14 +1481,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final X10FirmScope topScope2  = firmContext.getTopScope();
 		newScope  = (X10FirmScope)topScope2.clone();
 
-		firmContext.pushFirmScope(newScope);
-		{
-			newScope.setTrueBlock(bTrue);
-			newScope.setFalseBlock(bFalse);
-
-			makeExpressionCondition(n.cond());
-		}
-		firmContext.popFirmScope();
+		evaluateCondition(n.cond(), bTrue, bFalse);
 
 		bTrue.mature();
 		bFalse.mature();
@@ -1559,8 +1494,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		// condition evaluates to false -> nothing to do
 		// TODO: Something is wrong with the method condIsConstantTrue
-//		if(!n.condIsConstantTrue())
-//			return;
+		//		if(!n.condIsConstantTrue())
+		//			return;
 
 		String label = null;
 		if(firmContext.getLabeledStmt() == n) {
@@ -1578,15 +1513,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final X10FirmScope topScope = firmContext.getTopScope();
 		X10FirmScope newScope = (X10FirmScope)topScope.clone();
 
-		firmContext.pushFirmScope(newScope);
-		{
-			newScope.setTrueBlock(bTrue);
-			newScope.setFalseBlock(bFalse);
-
-			makeExpressionCondition(n.cond());
-		}
-		firmContext.popFirmScope();
-
+		evaluateCondition(n.cond(), bTrue, bFalse);
 		bTrue.mature();
 
 		con.setCurrentBlock(bTrue);
@@ -1650,20 +1577,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final X10FirmScope topScope = firmContext.getTopScope();
 		X10FirmScope newScope = (X10FirmScope)topScope.clone();
 
-		firmContext.pushFirmScope(newScope);
-		{
-			newScope.setTrueBlock(bTrue);
-			newScope.setFalseBlock(bFalse);
-
-			Expr cond = n.cond();
-			if(cond == null) {
-				cond = xnf.BooleanLit(Position.COMPILER_GENERATED, true);
-			}
-
-			makeExpressionCondition(cond);
+		Expr cond = n.cond();
+		if(cond == null) {
+			cond = xnf.BooleanLit(Position.COMPILER_GENERATED, true);
 		}
-		firmContext.popFirmScope();
-
+		evaluateCondition(cond, bTrue, bFalse);
 		bTrue.mature();
 
 		con.setCurrentBlock(bTrue);
@@ -1735,17 +1653,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		con.setCurrentBlock(curBlock);
 
-		final X10FirmScope topScope = firmContext.getTopScope();
-		X10FirmScope newScope = (X10FirmScope)topScope.clone();
-
-		firmContext.pushFirmScope(newScope);
-		{
-			newScope.setTrueBlock(bTrue);
-			newScope.setFalseBlock(bFalse);
-
-			makeExpressionCondition(n.cond());
-		}
-		firmContext.popFirmScope();
+		evaluateCondition(n.cond(), bTrue, bFalse);
 
 		bFalse.mature();
 
@@ -1767,25 +1675,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final Block bTrue  = con.newBlock();
 		final Block bAfter = con.newBlock();
 
-		final X10FirmScope topScope = firmContext.getTopScope();
-		X10FirmScope newScope = (X10FirmScope)topScope.clone();
-
 		Block bFalse = null; // block will only be created if we have an else stmt.
-		firmContext.pushFirmScope(newScope);
-		{
-			newScope.setTrueBlock(bTrue);
-
-			if (n.alternative() != null) {
-				bFalse = con.newBlock();
-				newScope.setFalseBlock(bFalse);
-			} else {
-				newScope.setFalseBlock(bAfter);
-			}
-
-			makeExpressionCondition(n.cond());
+		if (n.alternative() != null) {
+			bFalse = con.newBlock();
+		} else {
+			bFalse = bAfter;
 		}
-		firmContext.popFirmScope();
-
+		evaluateCondition(n.cond(), bTrue, bFalse);
 		con.setCurrentBlock(bTrue);
 
 		resetReturnNode();
@@ -1800,6 +1696,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		bTrue.mature();
 
 		if (n.alternative() != null) {
+			bFalse.mature();
 			Stmt alternative = n.alternative();
 			if (alternative instanceof Block_c) {
 				Block_c block = (Block_c) alternative;
@@ -1815,17 +1712,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			else {
 				bAfter.addPred(con.newJmp());
 			}
-
-			if(bFalse != null)
-				bFalse.mature();
 		}
-
-		con.setCurrentBlock(bAfter);
 
 		if(endIf != null)
 			bAfter.addPred(endIf);
 
 		bAfter.mature();
+		con.setCurrentBlock(bAfter);
 	}
 
 	@Override
@@ -1870,17 +1763,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	private Set<String> alreadyCompiledMethods = new HashSet<String>();
-	
+
 	private String buildHashString(final MethodInstance mi) {
 		final StringBuilder sb = new StringBuilder();
-		
+
 		sb.append(mi.designator());
 		sb.append(" ");
 		sb.append(mi.flags().prettyPrint());
 		sb.append(Types.baseType(mi.container()).fullName().toString());
 		sb.append(".");
 		sb.append(mi.name().toString());
-		
+
 		List<String> params = new ArrayList<String>();
 		List<Type> typeParameters = mi.typeParameters();
 		if (typeParameters != null) {
@@ -1898,7 +1791,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			sb.append(CollectionUtil.listToString(params));
 			sb.append("]");
 		}
-		
+
 		List<String> formals = new ArrayList<String>();
 		List<Type> formalTypes = mi.formalTypes();
 		if (formalTypes != null) {
@@ -1909,7 +1802,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				if (formalNames != null && i < formalNames.size()) {
 					LocalInstance a = formalNames.get(i);
 					if (a != null && ! a.name().toString().equals(""))
-						s = a.name() + ": " + t; 
+						s = a.name() + ": " + t;
 					else
 						s = t;
 				}
@@ -1934,7 +1827,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			sb.append(": ");
 			sb.append(Types.baseType(returnType.get()));
 		}
-		
+
 		return sb.toString();
 	}
 
@@ -1943,13 +1836,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		// Determine called method.
 		final MethodInstance oldMethodInstance = n.methodInstance();
 		final Flags oldFlags = oldMethodInstance.flags();
-		
+
 		if (oldFlags.isNative() || oldFlags.isAbstract() || oldMethodInstance.typeParameters().isEmpty()) {
 			final Node ret = genX10Call(oldMethodInstance, n.arguments(), n.target(), false);
 			setReturnNode(ret);
 			return;
 		}
-		
+
 		final MethodInstance newMethodInstance = oldMethodInstance;
 		final String hashName = buildHashString(newMethodInstance);
 
@@ -2047,7 +1940,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param expr	an X10 Expr node
 	 * @return a Firm node containing the result value of the expression
 	 */
-	private Node visitExpression(Expr expr) {
+	public Node visitExpression(Expr expr) {
 		resetReturnNode();
 		visitAppropriate(expr);
 		final Node ret = getReturnNode();
@@ -2155,7 +2048,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			   -> fall through
 			*/
 		}
-		assert(var != null);
+		assert var != null;
 
 		if(var.getType() == X10VarEntry.STRUCT) {
 			final Node ret = getEntityFromCurrentFrame(var.getEntity());
@@ -2712,7 +2605,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		final MethodType type = (MethodType) entity.getType();
 		final int paramCount = type.getNParams();
-		
+
 		List<Expr> arguments = new LinkedList<Expr>();
 
 		// add the other arguments
@@ -2732,7 +2625,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			// Do we need to autobox?
 			// TODO:  Is this really the correct condition?
 			final boolean needAutoboxing = (i == 0 && typeSystem.isStructType(target.type()) && !isStaticBinding);
-			
+
 			if (needAutoboxing)
 				parameters[0] = genAutoboxing((X10ClassType) Types.baseType(target.type()), (Expr) target);
 			else
@@ -2768,122 +2661,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(X10Binary_c B) {
-
-		// only '==', '!=', '&&' or '||' are allowed operators.
-		// all other operators are implemented by native calls.
-
-		final Expr left 			= B.left();
-		final Type l 				= left.type();
-		final Expr right 			= B.right();
-		final Type r 				= right.type();
-		final Binary.Operator op 	= B.operator();
-
-		if (op == Binary.EQ || op == Binary.NE) { // Added for testing purposes.
-			final Relation modus = (op == Binary.EQ) ? Relation.Equal : Relation.LessGreater;
-
-			final X10FirmScope curScope = firmContext.getTopScope();
-			if(curScope.getTrueBlock() != null && curScope.getFalseBlock() != null ) {
-				final Block bTrue  = curScope.getTrueBlock();
-				final Block bFalse = curScope.getFalseBlock();
-
-				final Node retLeft  = visitExpression(left);
-				final Node retRight = visitExpression(right);
-
-				// no new firm scope needed
-
-				final Node cmp  = con.newCmp(retLeft, retRight, modus);
-				final Node cond = con.newCond(cmp);
-
-				final Node projTrue  = con.newProj(cond, Mode.getX(), Cond.pnTrue);
-				final Node projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
-
-				bTrue.addPred(projTrue);
-				bFalse.addPred(projFalse);
-
-				setReturnNode(cond);
-
-			} else {
-				final Node ret = makeConditionalPhiTrailer(B);
-				setReturnNode(ret);
-			}
-
-			return;
-		} else if ((l.isNumeric() && r.isNumeric()) || (l.isBoolean() && r.isBoolean())) {
-			// delegate it to Binary_c
-			visit((Binary_c)B);
-			return;
-		}
-
-		throw new RuntimeException("User-defined binary operators should have been desugared earier");
+		final Node n = produceBooleanValue(B);
+		setReturnNode(n);
 	}
 
 	@Override
 	public void visit(Binary_c B) {
-		final Binary.Operator op = B.operator();
-
-		// Boolean short-circuiting operators are ok
-		assert (op == Binary.COND_AND || op == Binary.COND_OR) : "visiting " + B.getClass() + " at " + B.position() + ": " + B;
-
-		// only '&&' and '||' are valid
-		// TODO: Add constant value evaluation
-
-		final X10FirmScope curScope = firmContext.getTopScope();
-
-		if(curScope.getTrueBlock() != null && curScope.getFalseBlock() != null) {
-			final Block bCurTrue  = curScope.getTrueBlock();
-			final Block bCurFalse = curScope.getFalseBlock();
-
-			Block bTrue, bFalse;
-
-			if(op == Binary.COND_AND) { // '&&'
-				bTrue  = con.newBlock();
-				bFalse = curScope.getFalseBlock();
-			} else { // '||'
-				bTrue  = curScope.getTrueBlock();
-				bFalse = con.newBlock();
-			}
-
-			final X10FirmScope topScope = firmContext.getTopScope();
-			X10FirmScope newScope = (X10FirmScope)topScope.clone();
-
-			firmContext.pushFirmScope(newScope);
-			{
-				newScope.setTrueBlock(bTrue);
-				newScope.setFalseBlock(bFalse);
-
-				makeExpressionCondition(B.left());
-			}
-			firmContext.popFirmScope();
-
-			if(op == Binary.COND_AND)
-				con.setCurrentBlock(bTrue);
-			else
-				con.setCurrentBlock(bFalse);
-
-			final X10FirmScope topScope2 = firmContext.getTopScope();
-			newScope = (X10FirmScope)topScope2.clone();
-
-			Node ret = null;
-			firmContext.pushFirmScope(newScope);
-			{
-				newScope.setTrueBlock(bCurTrue);
-				newScope.setFalseBlock(bCurFalse);
-
-				ret = makeExpressionCondition(B.right());
-			}
-			firmContext.popFirmScope();
-
-			if(op == Binary.COND_AND) {
-				bTrue.mature();
-			} else {
-				bFalse.mature();
-			}
-
-			setReturnNode(ret);
-		} else {
-			final Node ret = makeConditionalPhiTrailer(B);
-			setReturnNode(ret);
-		}
+		final Node n = produceBooleanValue(B);
+		setReturnNode(n);
 	}
 
 	@Override
@@ -3065,19 +2850,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(X10Instanceof_c n) {
-		visitAppropriate(n.expr());
-
-		final Node objPtr = getReturnNode();
-		final Type type = n.compareType().typeRef().get();
-		final firm.Type firmType = typeSystem.asFirmCoreType(type);
-		final Node mem = con.getCurrentMem();
-
-		final Node instanceOf = con.newInstanceOf(mem, objPtr, firmType);
-
-		final Node projM = con.newProj(instanceOf, Mode.getM(), InstanceOf.pnM);
-		con.setCurrentMem(projM);
-		final Node projRes = con.newProj(instanceOf, Mode.getIs(), InstanceOf.pnRes);
-		setReturnNode(projRes);
+		final Node node = produceBooleanValue(n);
+		setReturnNode(node);
 	}
 
 	@Override
@@ -3239,5 +3013,19 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(AtExpr_c n) {
 		throw new RuntimeException("At expression should have been desugared earlier");
+	}
+
+	/**
+	 * return current construction object
+	 */
+	OOConstruction getFirmConstruction() {
+		return con;
+	}
+
+	/**
+	 * return typeSystem
+	 */
+	TypeSystem getTypeSystem() {
+		return typeSystem;
 	}
 }

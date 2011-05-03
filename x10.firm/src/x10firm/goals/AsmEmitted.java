@@ -7,7 +7,13 @@ import polyglot.frontend.AllBarrierGoal;
 import polyglot.frontend.Goal;
 import polyglot.frontend.Job;
 import polyglot.frontend.Scheduler;
+import x10firm.CompilerOptions;
 import firm.Backend;
+import firm.Dump;
+import firm.Graph;
+import firm.Program;
+import firm.bindings.binding_irgopt;
+import firm.bindings.binding_iroptimize;
 
 /**
  * Assembler emission goal.
@@ -28,6 +34,19 @@ public class AsmEmitted extends AllBarrierGoal {
 	public boolean runTask() {
 		/* try to generate some assembly */
 		String compilationUnit = "x10program";
+
+		final CompilerOptions options =
+			(CompilerOptions) scheduler.extensionInfo().getOptions();
+
+		/* make sure all unreachable code is eliminated or the bakend
+		 * may be confused */
+		for (Graph g : Program.getGraphs()) {
+			binding_irgopt.optimize_graph_df(g.ptr);
+			binding_iroptimize.optimize_cf(g.ptr);
+			if (options.dump_firm_graphs) {
+				Dump.dumpGraph(g, "--before-backend");
+			}
+		}
 
 		try {
 			Backend.option("omitfp"); // makes the assembler a bit more readable

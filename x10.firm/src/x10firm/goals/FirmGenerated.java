@@ -15,7 +15,6 @@ import x10firm.visit.X10FirmCodeGenerator;
 import firm.Dump;
 import firm.Graph;
 import firm.Program;
-import firm.bindings.binding_iroptimize;
 
 /**
  * This defines the FirmGeneration goal (other people would say "phase")
@@ -69,11 +68,13 @@ public class FirmGenerated extends SourceGoal_c {
 			}
 		}
 
-		for (Graph g : Program.getGraphs()) {
-			binding_iroptimize.optimize_cf(g.ptr);
-
-			if (options.dump_firm_graphs)
-				Dump.dumpGraph(g, "--fresh");
+		/* TODO: this is suboptimal here, since we have multiple FirmGenerated
+		 * goals for each inputfile. We should only dump the graphs for the current
+		 * input here and not all... */
+		if (options.dump_firm_graphs) {
+			for (Graph g : Program.getGraphs()) {
+					Dump.dumpGraph(g, "--fresh");
+			}
 		}
 
 		return true;
