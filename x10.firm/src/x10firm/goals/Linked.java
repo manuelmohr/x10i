@@ -29,7 +29,7 @@ public class Linked extends PostCompiled {
 		                     : opts.executable_path;
 		final String asmFilename = AsmEmitted.ASM_FILENAME;
 
-		final String x10DistPath = System.getenv("X10_DIST");
+		final String x10DistPath = System.getProperty("x10.dist");
 		final String stdlibPath = x10DistPath != null
 		                          ? x10DistPath + "/src-stdlib"
 		                          : "src-stdlib";
