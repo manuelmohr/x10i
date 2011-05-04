@@ -1954,7 +1954,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		final Flags flags = instance.flags();
 
-		if(flags.isStatic() && !n.isConstant()) {
+		if(flags.isStatic() && !instance.isConstant()) {
 			// a static non constant field -> do a static method call to the "field".__get method
 			final MethodInstance staticGetterMethod = getGetterMethodForStaticField(instance);
 
