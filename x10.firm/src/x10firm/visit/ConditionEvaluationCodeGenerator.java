@@ -20,7 +20,7 @@ import firm.nodes.OOConstruction;
 /**
  * Generates code which "evaluates" a boolean condition.
  * This generates code that jumps to a true/false block depending
- * on the condition
+ * on the value of the condition expression.
  */
 public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	private Block trueBlock;
@@ -36,6 +36,18 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		this.falseBlock = falseBlock;
 		this.codeGenerator = codeGenerator;
 		this.con = codeGenerator.getFirmConstruction();
+	}
+
+	/**
+	 * Create conditional jump to true/false Block.
+	 */
+	private void makeJumps(Node node) {
+		final Node     cond      = con.newCond(node);
+		final Node     projTrue  = con.newProj(cond, Mode.getX(), Cond.pnTrue);
+		final Node     projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
+		trueBlock.addPred(projTrue);
+		falseBlock.addPred(projFalse);
+		con.setCurrentBlockBad();
 	}
 
 	@Override
@@ -72,15 +84,6 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		visitAppropriate(binop.right());
 	}
 
-	private void makeJumps(Node node) {
-		final Node     cond      = con.newCond(node);
-		final Node     projTrue  = con.newProj(cond, Mode.getX(), Cond.pnTrue);
-		final Node     projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
-		trueBlock.addPred(projTrue);
-		falseBlock.addPred(projFalse);
-		con.setCurrentBlockBad();
-	}
-
 	@Override
 	public void visit(X10Binary_c B) {
 		final Binary.Operator op = B.operator();
@@ -89,8 +92,8 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 			return;
 		}
 
-		// only '==', '!=', '&&' or '||' are allowed operators.
-		// all other operators are implemented by native calls.
+		/* only '==', '!=' are allowed operators.
+		 * all other operators are implemented by native calls. */
 
 		final Expr     left      = B.left();
 		final Expr     right     = B.right();
@@ -112,27 +115,21 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		con.setCurrentMem(projM);
 		final Node projRes = con.newProj(instanceOf, Mode.getIs(), InstanceOf.pnRes);
 		/* intanceof strangely returns mode_Is at the moment, so we need an additional
-		 * Cmp to get it to mode_b */
+		 * Cmp to get a mode_b out of it */
 		final Node one = con.newConst(Mode.getIs().getOne());
 		final Node cmp = con.newCmp(projRes, one, Relation.Equal);
 		makeJumps(cmp);
 	}
 
-	private void makeCond(Expr expr) {
+	@Override
+	public void visit(Expr_c expr) {
+		/* normal expressions produce a 0 or 1 value if we want to jump
+		 * based on that we have to compare the value */
 		final Node node = codeGenerator.visitExpression(expr);
 		final Mode mode = codeGenerator.getTypeSystem().getFirmMode(expr.type());
 		final Node one = con.newConst(mode.getOne());
 		final Node cmp = con.newCmp(node, one, Relation.Equal);
 		final Node cond = con.newCond(cmp);
-		final Node projTrue = con.newProj(cond, Mode.getX(), Cond.pnTrue);
-		final Node projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
-		trueBlock.addPred(projTrue);
-		falseBlock.addPred(projFalse);
-		con.setCurrentBlockBad();
-	}
-
-	@Override
-	public void visit(Expr_c expr) {
-		makeCond(expr);
+		makeJumps(cond);
 	}
 }
