@@ -129,7 +129,6 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		final Mode mode = codeGenerator.getTypeSystem().getFirmMode(expr.type());
 		final Node one = con.newConst(mode.getOne());
 		final Node cmp = con.newCmp(node, one, Relation.Equal);
-		final Node cond = con.newCond(cmp);
-		makeJumps(cond);
+		makeJumps(cmp);
 	}
 }
