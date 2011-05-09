@@ -2,7 +2,7 @@ package x10firm;
 
 import polyglot.frontend.Scheduler;
 import x10.X10CompilerOptions;
-import x10firm.types.TypeSystem;
+import x10c.types.X10CTypeSystem_c;
 import firm.Firm;
 import firm.OO;
 
@@ -38,7 +38,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 
 	@Override
 	protected polyglot.types.TypeSystem createTypeSystem() {
-		return new TypeSystem(this);
+		return new X10CTypeSystem_c(this);
 	}
 
 	@Override

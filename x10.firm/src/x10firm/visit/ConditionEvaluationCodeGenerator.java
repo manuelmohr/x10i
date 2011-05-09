@@ -108,7 +108,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	public void visit(X10Instanceof_c n) {
 		final Node objPtr = codeGenerator.visitExpression(n.expr());
 		final Type type = n.compareType().typeRef().get();
-		final firm.Type firmType = codeGenerator.getTypeSystem().asFirmCoreType(type);
+		final firm.Type firmType = codeGenerator.getFirmTypeSystem().asFirmCoreType(type);
 		final Node mem = con.getCurrentMem();
 		final Node instanceOf = con.newInstanceOf(mem, objPtr, firmType);
 		final Node projM = con.newProj(instanceOf, Mode.getM(), InstanceOf.pnM);
@@ -126,7 +126,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		/* normal expressions produce a 0 or 1 value if we want to jump
 		 * based on that we have to compare the value */
 		final Node node = codeGenerator.visitExpression(expr);
-		final Mode mode = codeGenerator.getTypeSystem().getFirmMode(expr.type());
+		final Mode mode = codeGenerator.getFirmTypeSystem().getFirmMode(expr.type());
 		final Node one = con.newConst(mode.getOne());
 		final Node cmp = con.newCmp(node, one, Relation.Equal);
 		makeJumps(cmp);

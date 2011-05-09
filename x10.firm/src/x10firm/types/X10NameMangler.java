@@ -10,6 +10,7 @@ import polyglot.types.LocalInstance;
 import polyglot.types.Package;
 import polyglot.types.Type;
 import polyglot.types.TypeObject;
+import polyglot.types.TypeSystem;
 import x10.types.MethodInstance;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
@@ -21,9 +22,9 @@ import x10.types.X10ParsedClassType;
 public class X10NameMangler {
 
 	/**
-	 * Reference to the type system
+	 * Reference to the X10 type system
 	 */
-	private static TypeSystem typeSystem;
+	private static TypeSystem x10TypeSystem;
 
 	/**
 	 * Mapping of primitive types
@@ -132,19 +133,19 @@ public class X10NameMangler {
 	 * Initializes mapping between primitive types and the appropriate name mangles.
 	 */
 	private static void setupPrimitiveTypeNameMangling() {
-		primMangleTable.put(typeSystem.Long(),    "x");
-		primMangleTable.put(typeSystem.ULong(),   "y");
-		primMangleTable.put(typeSystem.Int(),     "i");
-		primMangleTable.put(typeSystem.UInt(),    "j");
-		primMangleTable.put(typeSystem.Short(),   "s");
-		primMangleTable.put(typeSystem.UShort(),  "t");
-		primMangleTable.put(typeSystem.Byte(),    "a");
-		primMangleTable.put(typeSystem.UByte(),   "h");
-		primMangleTable.put(typeSystem.Char(),    "Di");
-		primMangleTable.put(typeSystem.Float(),   "f");
-		primMangleTable.put(typeSystem.Double(),  "d");
-		primMangleTable.put(typeSystem.Boolean(), "b");
-		primMangleTable.put(typeSystem.Void(),    MANGLED_VOID_TYPE);
+		primMangleTable.put(x10TypeSystem.Long(),    "x");
+		primMangleTable.put(x10TypeSystem.ULong(),   "y");
+		primMangleTable.put(x10TypeSystem.Int(),     "i");
+		primMangleTable.put(x10TypeSystem.UInt(),    "j");
+		primMangleTable.put(x10TypeSystem.Short(),   "s");
+		primMangleTable.put(x10TypeSystem.UShort(),  "t");
+		primMangleTable.put(x10TypeSystem.Byte(),    "a");
+		primMangleTable.put(x10TypeSystem.UByte(),   "h");
+		primMangleTable.put(x10TypeSystem.Char(),    "Di");
+		primMangleTable.put(x10TypeSystem.Float(),   "f");
+		primMangleTable.put(x10TypeSystem.Double(),  "d");
+		primMangleTable.put(x10TypeSystem.Boolean(), "b");
+		primMangleTable.put(x10TypeSystem.Void(),    MANGLED_VOID_TYPE);
 	}
 
 	/**
@@ -152,7 +153,7 @@ public class X10NameMangler {
 	 * @param typeSystem_ Reference to the type system
 	 */
 	public static void setup(final TypeSystem typeSystem_) {
-		typeSystem = typeSystem_;
+		x10TypeSystem = typeSystem_;
 		setupUnOpSubstitutions();
 		setupNameSubstitutions();
 		setupPrimitiveTypeNameMangling();
@@ -253,7 +254,7 @@ public class X10NameMangler {
 	 */
 	private static String mangleParameter(final Type type) {
 
-		final Type ret = typeSystem.simplifyType(type);
+		final Type ret = FirmTypeSystem.simplifyType(type);
 
 		String tmp = tryPrimitiveType(ret);
 		if (tmp != null)
@@ -437,7 +438,7 @@ public class X10NameMangler {
 	private static String mangleType(final Type type, final boolean embed) {
 		String tmp = null;
 
-		final Type ret = typeSystem.simplifyType(type);
+		final Type ret = FirmTypeSystem.simplifyType(type);
 		if (!embed) {
 			tmp = tryPrimitiveType(ret);
 			if (tmp != null)

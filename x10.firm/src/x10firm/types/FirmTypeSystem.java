@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import polyglot.frontend.ExtensionInfo;
 import polyglot.types.ClassDef;
 import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
@@ -46,7 +45,7 @@ import firm.bindings.binding_typerep.ir_type_state;
  * XXX While the mapping is static, the X10 type system is not,
  * because the runtime is loaded dynamically.
  */
-public class TypeSystem extends X10CTypeSystem_c {
+public class FirmTypeSystem {
 
 	/** Maps polyglot types to firm types. */
 	private Map<polyglot.types.Type, Type> firmCoreTypes = new HashMap<polyglot.types.Type, Type>();
@@ -69,12 +68,16 @@ public class TypeSystem extends X10CTypeSystem_c {
 	 * Name of the boxed value.
 	 */
 	public static String BOXED_VALUE = "__value__";
+	
+	
+	private final X10CTypeSystem_c x10TypeSystem;
 
 	/**
-	 * @param extInfo language extension this type system is for
+	 * Construct a firm type system object.
+	 * @param x10TypeSystem The X10 type system
 	 */
-	public TypeSystem(final ExtensionInfo extInfo) {
-		super(extInfo);
+	public FirmTypeSystem(final X10CTypeSystem_c x10TypeSystem) {
+		this.x10TypeSystem = x10TypeSystem;
 	}
 
 	private String getUniqueBoxingName(final String structName) {
@@ -94,7 +97,7 @@ public class TypeSystem extends X10CTypeSystem_c {
 
         final Position pos = Position.COMPILER_GENERATED;
 
-        X10ClassDef cd = new X10ClassDef_c(this, null);
+        X10ClassDef cd = new X10ClassDef_c(x10TypeSystem, null);
 
         // use a unique name for the boxing class
         final String name = getUniqueBoxingName(type.name().toString());
@@ -133,15 +136,15 @@ public class TypeSystem extends X10CTypeSystem_c {
     			}
     			/* DELETE ME END: */
 
-        		final X10MethodDef md = methodDef(pos, Types.ref(ct), Flags.PUBLIC, mDef.returnType(), mDef.name(),
-        										  mDef.formalTypes());
+        		final X10MethodDef md = x10TypeSystem.methodDef(pos, Types.ref(ct), Flags.PUBLIC, mDef.returnType(), mDef.name(),
+        										                mDef.formalTypes());
 
                 cd.addMethod(md);
         	}
         }
 
         // add the boxed value to the class.
-        final FieldDef boxValue = fieldDef(pos, Types.ref(ct), Flags.PUBLIC, Types.ref(type), Name.make(BOXED_VALUE));
+        final FieldDef boxValue = x10TypeSystem.fieldDef(pos, Types.ref(ct), Flags.PUBLIC, Types.ref(type), Name.make(BOXED_VALUE));
         cd.addField(boxValue);
 
         // preinit the type
@@ -169,7 +172,7 @@ public class TypeSystem extends X10CTypeSystem_c {
 		final Flags flags = methodInstance.flags();
 		final boolean isStatic = flags.isStatic();
 		final int nParameters = formalTypes.size() + (isStatic ? 0 : 1);
-		final int nResults = methodInstance.returnType() == Void() ? 0 : 1;
+		final int nResults = methodInstance.returnType() == x10TypeSystem.Void() ? 0 : 1;
 		final X10ClassType owner = (X10ClassType) methodInstance.container();
 		final Type[] parameterTypes = new firm.Type[nParameters];
 		final Type[] resultTypes = new firm.Type[nResults];
@@ -227,9 +230,6 @@ public class TypeSystem extends X10CTypeSystem_c {
 	 * Finishes the type system.
 	 */
 	public void finishTypeSystem() {
-		// Before layouting the types we need to run liboo's lowering first to remove method entities from the graph.
-		OO.lowerProgram();
-
 		for(final Type type : firmCoreTypes.values())
 			layoutType(type);
 	}
@@ -243,13 +243,14 @@ public class TypeSystem extends X10CTypeSystem_c {
 		final polyglot.types.Type baseType = simplifyType(type);
 		return Types.isX10Struct(baseType) && !isFirmPrimitiveType(baseType);
 	}
-
+	
 	/**
 	 * Simplifies a given polyglot type -> Returns the base type of a given type. -> Removes constrained types, annotations etc.
+	 * TODO  Put this into a separate Util (or similar) class.
 	 * @param type The type which should be simplified
 	 * @return The simplified version of the given type
 	 */
-	public polyglot.types.Type simplifyType(final polyglot.types.Type type) {
+	public static polyglot.types.Type simplifyType(final polyglot.types.Type type) {
 		final polyglot.types.Type t =  Types.baseType(type);
 		return Types.stripConstraints(t);
 	}
@@ -261,7 +262,7 @@ public class TypeSystem extends X10CTypeSystem_c {
 	 * @return True if both types are equal.
 	 */
 	private boolean equalTypes(final polyglot.types.Type type1, final polyglot.types.Type type2) {
-		return equals((TypeObject)type1, (TypeObject)type2);
+		return x10TypeSystem.equals((TypeObject)type1, (TypeObject)type2);
 	}
 
 	/**
@@ -271,13 +272,13 @@ public class TypeSystem extends X10CTypeSystem_c {
 	 */
 	public boolean isFirmPrimitiveType(final polyglot.types.Type type_) {
 		final polyglot.types.Type type = simplifyType(type_);
-		return equalTypes(type, Int())     || equalTypes(type, UInt())   ||
-		   	   equalTypes(type, Long())    || equalTypes(type, ULong())  ||
-		   	   equalTypes(type, Short())   || equalTypes(type, UShort()) ||
-		   	   equalTypes(type, Byte())    || equalTypes(type, UByte())  ||
-		       equalTypes(type, Float())   || equalTypes(type, Double()) ||
-		       equalTypes(type, Boolean()) ||
-		       equalTypes(type, Char());
+		return equalTypes(type, x10TypeSystem.Int())     || equalTypes(type, x10TypeSystem.UInt())   ||
+		   	   equalTypes(type, x10TypeSystem.Long())    || equalTypes(type, x10TypeSystem.ULong())  ||
+		   	   equalTypes(type, x10TypeSystem.Short())   || equalTypes(type, x10TypeSystem.UShort()) ||
+		   	   equalTypes(type, x10TypeSystem.Byte())    || equalTypes(type, x10TypeSystem.UByte())  ||
+		       equalTypes(type, x10TypeSystem.Float())   || equalTypes(type, x10TypeSystem.Double()) ||
+		       equalTypes(type, x10TypeSystem.Boolean()) ||
+		       equalTypes(type, x10TypeSystem.Char());
 	}
 
 	/**
@@ -492,57 +493,57 @@ public class TypeSystem extends X10CTypeSystem_c {
 		Mode modeLong = new Mode("Long", ir_mode_sort.irms_int_number, 64, 1,
 				ir_mode_arithmetic.irma_twos_complement, 64);
 		Type typeLong = new PrimitiveType(modeLong);
-		firmTypes.put(Long(), typeLong);
+		firmTypes.put(x10TypeSystem.Long(), typeLong);
 
 		Mode modeULong = new Mode("ULong", ir_mode_sort.irms_int_number, 64, 0,
 				ir_mode_arithmetic.irma_twos_complement, 64);
 		Type typeULong = new PrimitiveType(modeULong);
-		firmTypes.put(ULong(), typeULong);
+		firmTypes.put(x10TypeSystem.ULong(), typeULong);
 
 		Mode modeInt = new Mode("Int", ir_mode_sort.irms_int_number, 32, 1,
 				ir_mode_arithmetic.irma_twos_complement, 32);
 		Type typeInt = new PrimitiveType(modeInt);
-		firmTypes.put(Int(), typeInt);
+		firmTypes.put(x10TypeSystem.Int(), typeInt);
 
 		Mode modeUInt = new Mode("UInt", ir_mode_sort.irms_int_number, 32, 0,
 				ir_mode_arithmetic.irma_twos_complement, 32);
 		Type typeUInt = new PrimitiveType(modeUInt);
-		firmTypes.put(UInt(), typeUInt);
+		firmTypes.put(x10TypeSystem.UInt(), typeUInt);
 
 		Mode modeShort = new Mode("Short", ir_mode_sort.irms_int_number, 16, 1,
 				ir_mode_arithmetic.irma_twos_complement, 32);
 		Type typeShort = new PrimitiveType(modeShort);
-		firmTypes.put(Short(), typeShort);
+		firmTypes.put(x10TypeSystem.Short(), typeShort);
 
 		Mode modeUShort = new Mode("UShort", ir_mode_sort.irms_int_number, 16,
 				0, ir_mode_arithmetic.irma_twos_complement, 32);
 		Type typeUShort = new PrimitiveType(modeUShort);
-		firmTypes.put(UShort(), typeUShort);
+		firmTypes.put(x10TypeSystem.UShort(), typeUShort);
 
 		Mode modeByte = new Mode("Byte", ir_mode_sort.irms_int_number, 8, 1,
 				ir_mode_arithmetic.irma_twos_complement, 32);
 		Type typeByte = new PrimitiveType(modeByte);
-		firmTypes.put(Byte(), typeByte);
+		firmTypes.put(x10TypeSystem.Byte(), typeByte);
 
 		Mode modeUByte = new Mode("UByte", ir_mode_sort.irms_int_number, 8, 0,
 				ir_mode_arithmetic.irma_twos_complement, 32);
 		Type typeUByte = new PrimitiveType(modeUByte);
-		firmTypes.put(UByte(), typeUByte);
+		firmTypes.put(x10TypeSystem.UByte(), typeUByte);
 
 		Mode modeChar = new Mode("Char", ir_mode_sort.irms_int_number, 32, 0,
 				ir_mode_arithmetic.irma_twos_complement, 0);
 		Type typeChar = new PrimitiveType(modeChar);
-		firmTypes.put(Char(), typeChar);
+		firmTypes.put(x10TypeSystem.Char(), typeChar);
 
 		Mode modeFloat = new Mode("Float", ir_mode_sort.irms_float_number, 32,
 				1, ir_mode_arithmetic.irma_ieee754, 0);
 		Type typeFloat = new PrimitiveType(modeFloat);
-		firmTypes.put(Float(), typeFloat);
+		firmTypes.put(x10TypeSystem.Float(), typeFloat);
 
 		Mode modeDouble = new Mode("Double", ir_mode_sort.irms_float_number, 64,
 				1, ir_mode_arithmetic.irma_ieee754, 0);
 		Type typeDouble = new PrimitiveType(modeDouble);
-		firmTypes.put(Double(), typeDouble);
+		firmTypes.put(x10TypeSystem.Double(), typeDouble);
 
 		/* Note that the mode_b in firm can't be used here, since it is an
 		 * internal mode which cannot be used for fields/call parameters/return
@@ -550,11 +551,11 @@ public class TypeSystem extends X10CTypeSystem_c {
 		 * conditional jumps. */
 		Mode modeBoolean = Mode.getBu();
 		Type typeBoolean = new PrimitiveType(modeBoolean);
-		firmTypes.put(Boolean(), typeBoolean);
+		firmTypes.put(x10TypeSystem.Boolean(), typeBoolean);
 
 		Type unknown = Type.getUnknown();
 		Type nullRefType = new PointerType(unknown);
-		firmTypes.put(Null(), nullRefType);
+		firmTypes.put(x10TypeSystem.Null(), nullRefType);
 		/* Note: there is no sensible firmCoreType for Null() */
 	}
 
@@ -563,7 +564,7 @@ public class TypeSystem extends X10CTypeSystem_c {
 	 */
 	public X10ClassType getObjectType() {
 		final QName fullName = QName.make("x10.lang", "Object");
-	    final List<polyglot.types.Type> types = systemResolver().check(fullName);
+	    final List<polyglot.types.Type> types = x10TypeSystem.systemResolver().check(fullName);
 	    assert(types != null && types.size() == 1);
 	    final Named n = types.get(0);
 	    final X10ClassType objectType = (X10ClassType)n;

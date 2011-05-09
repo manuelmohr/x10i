@@ -2,21 +2,25 @@ package x10firm;
 
 import polyglot.frontend.Goal;
 import polyglot.frontend.Job;
+import polyglot.types.TypeSystem;
 import x10.ExtensionInfo.X10Scheduler;
 import x10.ast.X10NodeFactory_c;
+import x10c.types.X10CTypeSystem_c;
 import x10firm.goals.AsmEmitted;
 import x10firm.goals.FirmGenerated;
 import x10firm.goals.GoalSequence;
 import x10firm.goals.Linked;
 import x10firm.goals.LoweringFirm;
 import x10firm.goals.SourceGoalSequence;
-import x10firm.types.TypeSystem;
+import x10firm.types.FirmTypeSystem;
 
 /**
  * Setting the goals for the Firm backend and depend on the X10 scheduler for
  * the rest.
  */
 class X10FirmScheduler extends X10Scheduler {
+	private final FirmTypeSystem firmTypeSystem;
+	
 	/**
 	 * Initialize the scheduler, duh.
 	 * @param info	"==ExtensionInfo.this", because this inner class is static
@@ -24,6 +28,7 @@ class X10FirmScheduler extends X10Scheduler {
 	 */
 	public X10FirmScheduler(ExtensionInfo info) {
 		super(info);
+		this.firmTypeSystem = new FirmTypeSystem((X10CTypeSystem_c) info.typeSystem());
 	}
 
 	@Override
@@ -34,10 +39,8 @@ class X10FirmScheduler extends X10Scheduler {
 		 * corresponds to emitting assembler and linking with the stdlib.
 		 */
 
-		final TypeSystem typeSystem = (TypeSystem)extInfo.typeSystem();
-
-		final Goal lowering_firm = new LoweringFirm(typeSystem);
-		lowering_firm.intern(this);
+		final Goal loweringFirm = new LoweringFirm();
+		loweringFirm.intern(this);
 
 		final Goal asmEmitted = new AsmEmitted(this);
 		asmEmitted.intern(this);
@@ -46,7 +49,7 @@ class X10FirmScheduler extends X10Scheduler {
 		linked.intern(this);
 
 		final GoalSequence seq = new GoalSequence("FirmOutputSequence");
-		seq.append(lowering_firm);
+		seq.append(loweringFirm);
 		seq.append(asmEmitted);
 		seq.append(linked);
 
@@ -56,12 +59,12 @@ class X10FirmScheduler extends X10Scheduler {
 	@Override
 	public Goal CodeGenerated(Job job) {
 
-		final TypeSystem typeSystem = (TypeSystem) extInfo.typeSystem();
+		final TypeSystem typeSystem = extInfo.typeSystem();
 		final X10NodeFactory_c nodeFactory =
 				(X10NodeFactory_c) extInfo.nodeFactory();
 
 		final Goal firm_generated =
-				new FirmGenerated(job, typeSystem, nodeFactory);
+				new FirmGenerated(job, typeSystem, firmTypeSystem, nodeFactory);
 		firm_generated.intern(this);
 
 		/*

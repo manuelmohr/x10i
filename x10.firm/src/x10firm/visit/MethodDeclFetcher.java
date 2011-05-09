@@ -6,6 +6,7 @@ import polyglot.types.ContainerType;
 import polyglot.types.Ref;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
+import polyglot.types.TypeSystem;
 import polyglot.types.Types;
 import polyglot.util.Position;
 import polyglot.visit.NodeVisitor;
@@ -20,22 +21,21 @@ import x10.types.X10ClassType;
 import x10.types.X10MethodDef;
 import x10.visit.Desugarer;
 import x10.visit.X10TypeChecker;
-import x10firm.types.TypeSystem;
 
 /**
  * Stolen from Inliner.java. Let's hope the X10 guys refactor this and put it
  * into a separate class soon.
  */
 public class MethodDeclFetcher {
-	private final TypeSystem typeSystem;
+	private final TypeSystem x10TypeSystem;
 	private final X10NodeFactory_c xnf;
 
 	/**
-	 * @param typeSystem Our FIRM type system.
+	 * @param typeSystem The X10 type system.
 	 * @param xnf The node factory.
 	 */
 	public MethodDeclFetcher(TypeSystem typeSystem, X10NodeFactory_c xnf) {
-		this.typeSystem = typeSystem;
+		this.x10TypeSystem = typeSystem;
 		this.xnf = xnf;
 	}
 
@@ -88,7 +88,7 @@ public class MethodDeclFetcher {
 			ast = job.ast();
 			assert (ast instanceof X10SourceFile_c);
 			if (!((X10SourceFile_c) ast).hasBeenTypeChecked())
-				ast = ast.visit(new X10TypeChecker(job, typeSystem, xnf, job.nodeMemo()).begin());
+				ast = ast.visit(new X10TypeChecker(job, x10TypeSystem, xnf, job.nodeMemo()).begin());
 			if (null == ast) {
 				System.err.println("Unable to reconstruct AST for " + job);
 				return null;
@@ -196,8 +196,8 @@ public class MethodDeclFetcher {
 			return null;
 		}
 
-		ast = ast.visit(new Desugarer(candidateJob, typeSystem, xnf).begin());
-		ast = ast.visit(new ForLoopOptimizer(candidateJob, typeSystem, xnf).begin());
+		ast = ast.visit(new Desugarer(candidateJob, x10TypeSystem, xnf).begin());
+		ast = ast.visit(new ForLoopOptimizer(candidateJob, x10TypeSystem, xnf).begin());
 		X10MethodDecl decl = getDeclaration(candidate, ast);
 		if (null == decl) {
 			System.err.println("unable to find declaration for candidate: "
