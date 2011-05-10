@@ -35,6 +35,7 @@ endif
 	$(CXX) $(CXXFLAGS) $< -o $@ $(APP_LDFLAGS_STANDALONE) $(APP_LDLIBS_STANDALONE) $(X10RT_TEST_LDFLAGS)
 
 $(LIB_FILE_STANDALONE): standalone/x10rt_standalone.o $(COMMON_OBJS)
+	mkdir -p lib
 ifdef X10_STATIC_LIB
 	$(AR) $(ARFLAGS) $@ $^
 else
