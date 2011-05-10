@@ -54,6 +54,7 @@
 /x10.runtime/x10rt/include/pgasrt_types.h
 /x10.runtime/x10rt/include/x10_x10rt_ActiveMessage.h
 /x10.runtime/x10rt/include/x10_x10rt_X10RT.h
+/x10.runtime/x10rt/include/x10_x10rt_X10RT_State.h
 /x10.runtime/x10rt/include/x10_x10rt_MessageHandlers.h
 /x10.runtime/x10rt/include/x10_x10rt_TeamSupport.h
 /x10.runtime/x10rt/test/x10rt_basic.pgas_sockets*
