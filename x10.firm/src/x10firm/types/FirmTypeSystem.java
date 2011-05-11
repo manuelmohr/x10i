@@ -395,7 +395,7 @@ public class FirmTypeSystem {
 			result.addSuperType(firmSuperType);
 			new Entity(result, "$super", firmSuperType);
 
-		} else if (flags.isStruct()) {
+		} else if (flags.isStruct() || classType.isAnonymous()) {
 			/* no superclass */
 		} else if(flags.isInterface()) {
 			/* no superclass interface */

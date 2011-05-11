@@ -71,7 +71,6 @@ import polyglot.ast.TypeNode;
 import polyglot.ast.Unary_c;
 import polyglot.ast.While_c;
 import polyglot.frontend.Compiler;
-import polyglot.types.ClassDef;
 import polyglot.types.ContainerType;
 import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
@@ -93,7 +92,6 @@ import x10.ast.AtEach_c;
 import x10.ast.AtExpr_c;
 import x10.ast.AtStmt_c;
 import x10.ast.Atomic_c;
-import x10.ast.ClosureCall;
 import x10.ast.ClosureCall_c;
 import x10.ast.Closure_c;
 import x10.ast.Finish_c;
@@ -126,13 +124,10 @@ import x10.ast.X10NodeFactory_c;
 import x10.ast.X10SourceFile_c;
 import x10.ast.X10Special_c;
 import x10.ast.X10Unary_c;
-import x10.types.ClosureDef;
-import x10.types.ClosureInstance;
 import x10.types.MethodInstance;
 import x10.types.ParameterType;
 import x10.types.TypeParamSubst;
 import x10.types.X10ClassDef;
-import x10.types.X10ClassDef_c;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorDef;
 import x10.types.X10ConstructorInstance;
@@ -141,7 +136,6 @@ import x10.types.X10FieldInstance;
 import x10.types.X10MethodDef;
 import x10.types.X10ProcedureInstance;
 import x10.types.checker.Converter;
-import x10.util.ClosureSynthesizer;
 import x10.visit.TypeParamSubstTransformer;
 import x10.visit.X10DelegatingVisitor;
 import x10c.types.X10CTypeSystem_c;
@@ -186,9 +180,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/** names of builtin functions */
 	private static final String X10_STRING_LITERAL = "x10_string_literal";
 
-	/** name of saved this pointer in closure */
-	private static final String X10_SAVED_THIS_LITERAL = "saved_this";
-
 	/** The current firm construction object */
 	private OOConstruction con;
 
@@ -214,19 +205,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private final HashMap<MethodInstance, Entity> methodEntities = new HashMap<MethodInstance, Entity>();
 	/** mapping between X10ConstructorInstances and firm entities */
 	private final HashMap<X10ConstructorInstance, Entity> constructorEntities = new HashMap<X10ConstructorInstance, Entity>();
-
-	/**
-	 * Closure id for generating unique closure names
-	 */
-	private static long closureId = 1;
-
-	/**
-	 * Returns a unique closure name
-	 * @return A unique closure name
-	 */
-	private static String getUniqueClosureName() {
-		return "Firm_Closure_" + closureId++;
-	}
 
 	/** current firm context */
 	private X10FirmContext firmContext = new X10FirmContext();
@@ -565,7 +543,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/**
 	 * Initializes a new construction
 	 * @param entity The method entities for which the a new construction should be inited.
-	 * @param closure True if the construction should be inited for a closure
 	 * @param formals The formals of the given method entity
 	 * @param locals The locals of the given method entity
 	 * @param isStatic True if the method is static
@@ -573,7 +550,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param The owner of the procedure
 	 * @return A reference to the current (saved) construction
 	 */
-	private OOConstruction initConstruction(final Entity entity, final boolean closure, final List<LocalInstance> formals,
+	private OOConstruction initConstruction(final Entity entity, final List<LocalInstance> formals,
 			final List<LocalInstance> locals, final boolean isStatic, final X10ProcedureInstance<?> proc, final X10ClassType owner) {
 		final int nVars = formals.size() + locals.size() + (isStatic ? 0 : 1);
 
@@ -585,7 +562,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		final Map<LocalInstance, Entity> map = calculatEntityMappingForLocals(locals);
 
-		newFirmContext.setInClosure(closure);
 		newFirmContext.setCurProcedure(proc);
 		newFirmContext.setCurClass(owner);
 
@@ -660,10 +636,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		firmContext = firmContext.popFirmContext();
 	}
 
-	private void constructGraph(final Entity entity, final CodeBlock code, final boolean closure, final List<LocalInstance> formals,
+	private void constructGraph(final Entity entity, final CodeBlock code, final List<LocalInstance> formals,
 			final List<LocalInstance> locals, final boolean isStatic, final X10ProcedureInstance<?> proc, final X10ClassType owner) {
 
-		OOConstruction savedConstruction = initConstruction(entity, closure, formals, locals, isStatic, proc, owner);
+		OOConstruction savedConstruction = initConstruction(entity, formals, locals, isStatic, proc, owner);
 
 		// Walk body and construct graph
 		visitAppropriate(code.body());
@@ -695,7 +671,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		// extract all formals and locals from the method.
 		final List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(dec);
-		constructGraph(entity, dec, false, formals, locals, isStatic, methodInstance, owner);
+		constructGraph(entity, dec, formals, locals, isStatic, methodInstance, owner);
 
 		if (query.isMainMethod(def)) {
 			processMainMethod(entity);
@@ -762,7 +738,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(dec);
 		final List<ClassMember> initClassMembers = firmContext.getInitClassMembers();
 
-		final OOConstruction savedConstruction = initConstruction(entity, false, formals, locals, isStatic, instance, owner);
+		final OOConstruction savedConstruction = initConstruction(entity, formals, locals, isStatic, instance, owner);
 
 		// The instance variables must be initialized first
 		for(ClassMember member : initClassMembers) {
@@ -1021,7 +997,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
     	final MethodInstance staticFieldGetterMethod = getGetterMethodForStaticField(fieldInst);
         final Entity staticFieldGetterEntity = getMethodEntity(staticFieldGetterMethod);
-        final OOConstruction savedConstruction = initConstruction(staticFieldGetterEntity, false, new LinkedList<LocalInstance>(),
+        final OOConstruction savedConstruction = initConstruction(staticFieldGetterEntity, new LinkedList<LocalInstance>(),
         		new LinkedList<LocalInstance>(), true, staticFieldGetterMethod, (X10ClassType)staticFieldGetterMethod.container());
         final Entity statusFieldEnt = firmTypeSystem.getEntityForField(statusFieldInst);
 
@@ -1847,7 +1823,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final Flags oldFlags = oldMethodInstance.flags();
 
 		if (oldFlags.isNative() || oldFlags.isAbstract() || oldMethodInstance.typeParameters().isEmpty()) {
-			final Node ret = genX10Call(oldMethodInstance, n.arguments(), n.target(), false);
+			final Node ret = genX10Call(oldMethodInstance, n.arguments(), n.target());
 			setReturnNode(ret);
 			return;
 		}
@@ -1856,7 +1832,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final String hashName = buildHashString(newMethodInstance);
 
 		if (alreadyCompiledMethods.contains(hashName)) {
-			final Node ret = genX10Call(newMethodInstance, n.arguments(), n.target(), false);
+			final Node ret = genX10Call(newMethodInstance, n.arguments(), n.target());
 			setReturnNode(ret);
 			return;
 		}
@@ -1910,9 +1886,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		// Extract all locals from the method.
 		final List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(newMethodDecl);
-		constructGraph(entity, newMethodDecl, false, nFormals, locals, isStatic, newMethodInstance, owner);
+		constructGraph(entity, newMethodDecl, nFormals, locals, isStatic, newMethodInstance, owner);
 
-		final Node ret = genX10Call(newMethodInstance, n.arguments(), n.target(), false);
+		final Node ret = genX10Call(newMethodInstance, n.arguments(), n.target());
 		setReturnNode(ret);
 	}
 
@@ -1967,7 +1943,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			// a static non constant field -> do a static method call to the "field".__get method
 			final MethodInstance staticGetterMethod = getGetterMethodForStaticField(instance);
 
-			final Node ret = genX10Call(staticGetterMethod, new ArrayList<Expr>(), null, false);
+			final Node ret = genX10Call(staticGetterMethod, new ArrayList<Expr>(), null);
 			setReturnNode(ret);
 		} else if(flags.isStatic()) {
 			final Node ret = genStaticFieldLoad(instance);
@@ -1978,57 +1954,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			setReturnNode(ret);
 		}
 	}
-
-	/**
-	 * Returns the appropriate field instance from a given class type and field name (Only for closure implementation)
-	 * @param closureType The class type of the closure
-	 * @param name The name of the field (only the name, no type names etc.)
-	 * @return The appropriate field instance
-	 */
-	private FieldInstance getClosureFieldInstance(X10ClassType closureType, String name) {
-		final X10ClassDef closureDef = closureType.x10Def();
-     	FieldInstance fInst = null;
-
-     	for(FieldDef fDef : closureDef.fields()) {
-     		if(fDef.name().toString().equals(name)) {
-     			fInst = fDef.asInstance();
-     			break;
-     		}
-     	}
-     	assert(fInst != null) : name + " not found in closure: " + closureType;
-
-     	return fInst;
-	}
-
-	/**
-	 * Generate the appropriate firm nodes for a field read operation in a closure
-	 * @param fieldName The name of the field
-	 * @param closureType The class type of the closure
-	 * @return The proj node (result) of the generated firm graph
-	 */
-	private Node genClosureFieldRead(String fieldName, X10ClassType closureType) {
-		final FieldInstance fInst = getClosureFieldInstance(closureType, fieldName);
-		final Entity entity = firmTypeSystem.getEntityForField(fInst);
-
-		final Mode mode = firmTypeSystem.getFirmMode(closureType);
-		final Node thisPointer = getThis(mode);
-		final Node fieldPointer = con.newSel(thisPointer, entity);
-
-		return genFieldLoadHelp(fieldPointer, fInst);
-	}
-
-	/**
-	 * Generate the appropriate firm nodes for a field write operation in a closure
-	 * @param objectPointer The appropriate "this" node
-	 * @param fieldName The name of the field
-	 * @param closureType The class type of the closure
-	 * @param rhs The rhs of the write operation
-	 */
-	private Node genClosureFieldWrite(Node objectPointer, String fieldName, X10ClassType closureType, Node rhs) {
-    	final FieldInstance fInst = getClosureFieldInstance(closureType, fieldName);
-    	return genFieldAssign(objectPointer, fInst, rhs);
-	}
-
+	
 	/**
 	 * Returns the appropriate sel node from the current frame for a given entity
 	 * @param entity The entity for which the sel node from the current frame should be returned
@@ -2045,19 +1971,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final LocalInstance loc = n.localInstance();
 
 		final X10VarEntry var = firmContext.getVarEntry(loc);
-		if(firmContext.isInClosure()) {
-			if(var == null) {
-				/* it`s a field of the closure */
-				final Node ret = genClosureFieldRead(loc.def().name().toString(), firmContext.getCurClass());
-				setReturnNode(ret);
-				return;
-			}
-			/* it`s actually a local instance in the closure
-			   generate code for a normal local instance.
-			   -> fall through
-			*/
-		}
-		assert var != null;
+		
+		assert(var != null);
 
 		if(var.getType() == X10VarEntry.STRUCT) {
 			final Node ret = getEntityFromCurrentFrame(var.getEntity());
@@ -2339,213 +2254,19 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(X10Special_c n) {
 		if (n.kind() == Special.THIS) {
-			Node thisPointer = null;
-			if(firmContext.isInClosure()) {
-				thisPointer = genClosureFieldRead(X10_SAVED_THIS_LITERAL, firmContext.getCurClass());
-			} else {
-				firm.Mode mode = firmTypeSystem.getFirmMode(n.type());
-				thisPointer = getThis(mode);
-			}
+			firm.Mode mode = firmTypeSystem.getFirmMode(n.type());
+			final Node thisPointer = getThis(mode);
 			setReturnNode(thisPointer);
 		} else {
 			throw new RuntimeException("Not implemented yet");
 		}
 	}
 
-    /**
-     * Mapping between the signature (!!!) of the "apply" method in a closure and the appropriate
-     * entity of the super interface
-     */
-	private static final Map<String, Entity> closureEntities = new HashMap<String, Entity>();
-
-	/**
-	 * Create a new mapping between the signature of the "apply" method and the appropriate entity
-	 * of the super class (interface)
-	 */
-	private static void putClosureEntity(String sig, Entity ent) {
-		closureEntities.put(sig, ent);
-	}
-
-	/**
-	 * Returns the appropriate entity for a given signature.
-	 * @param sig The signature of the "apply" method
-	 * @return The appropriate entity
-	 */
-	private static Entity getClosureEntity(String sig) {
-		return closureEntities.get(sig);
-	}
-
-	/**
-	 * Helper function to create a new closure def class (see newClosureDef)
-	 * @param def The ClosureDef from which the closure class definition should be created
-	 * @return The created closure class definition.
-	 */
-	private X10ClassDef newClosureDefHelp(final ClosureDef def) {
-        final Position pos = def.position();
-
-        X10ClassDef cd = new X10ClassDef_c(x10TypeSystem, null) {
-            private static final long serialVersionUID = 4543620040069882230L;
-            @Override
-            public boolean isFunction() {
-                return true;
-            }
-        };
-
-        // use a unique name for the closure class
-        final String name = getUniqueClosureName();
-
-        // Get "Object" class and set it as the super class
-        final X10ClassType objectType = firmTypeSystem.getObjectType();
-
-        cd.position(pos);
-        cd.name(Name.make(name));
-        cd.setPackage(null);
-        cd.kind(ClassDef.TOP_LEVEL);
-        cd.flags(Flags.FINAL);
-        cd.superType(Types.ref(objectType));
-
-        final int numTypeParams = def.typeParameters().size();
-        final int numValueParams = def.formalTypes().size();
-
-        // Add type parameters.
-        final List<Type> typeArgs = new ArrayList<Type>();
-
-        final ClosureInstance ci = def.asInstance();
-        typeArgs.addAll(ci.formalTypes());
-
-        if (!ci.returnType().isVoid()) {
-            typeArgs.add(ci.returnType());
-        }
-
-        // Instantiate the super type on the new parameters.
-        X10ClassType sup = ClosureSynthesizer.closureBaseInterfaceDef(x10TypeSystem, numTypeParams,
-				numValueParams,
-				ci.returnType().isVoid(),
-				def.formalNames(),
-				def.guard())
-			.asType();
-
-        assert sup.x10Def().typeParameters().size() == typeArgs.size() : def + ", " + sup + ", " + typeArgs;
-        sup = sup.typeArguments(typeArgs);
-
-        cd.addInterface(Types.ref(sup));
-
-        return cd;
-	}
-
-	/**
-	 * Creates a new class definition for a closure
-	 * @param def The ClosureDef from which the closure class definition should be created
-	 * @param savedFields The field which should be saved in the closure class
-	 * @param needSavedThis True if a reference to the current class (upper) should be saved in the closure class
-	 * @return The created closure class definition.
-	 */
-	private X10ClassDef newClosureDef(final ClosureDef def, Set<LocalInstance> savedFields, boolean needSavedThis) {
-		final X10ClassDef cd = newClosureDefHelp(def);
-		final X10ClassType ct = cd.asType();
-		final Position pos = cd.position();
-
-		final X10ClassType supInt = (X10ClassType)cd.interfaces().get(0).get();
-		final MethodInstance supApplyMethInst = supInt.methods().get(0);
-
-		final Entity ent = getMethodEntity(supApplyMethInst);
-		putClosureEntity(supApplyMethInst.signature(), ent);
-
-		// Copy the formal types from the method instance !!! and not from the method def.
-		// Method def can have unresolved types.
-		List<Ref<? extends Type>> types = new LinkedList<Ref<? extends Type>>();
-		for(Type t : supApplyMethInst.formalTypes())
-			types.add(Types.ref(t));
-
-        // create the "apply" method.
-		final X10MethodDef mi = x10TypeSystem.methodDef(pos, Types.ref(ct),
-				Flags.PUBLIC, Types.ref(supApplyMethInst.returnType()),
-				ClosureCall.APPLY,
-				types);
-
-        cd.addMethod(mi);
-
-        // create the context of the closure
-        for(LocalInstance loc : savedFields) {
-            final FieldDef fdef = x10TypeSystem.fieldDef(pos, Types.ref(ct), Flags.PUBLIC, Types.ref(loc.type()), loc.name());
-            cd.addField(fdef);
-        }
-
-        if(needSavedThis) {
-        	// We need a reference to the outer class.
-        	final FieldDef fdef = x10TypeSystem.fieldDef(pos, Types.ref(ct), Flags.PUBLIC, Types.ref(firmContext.getCurClass()), Name.make(X10_SAVED_THIS_LITERAL));
-        	cd.addField(fdef);
-        }
-
-        return cd;
-	}
-
-	@Override
-	public void visit(Closure_c n) {
-		final ClosureDef def = n.closureDef();
-		final ClosureInstance closureInstance = def.asInstance();
-
-		final List<LocalInstance> formals = closureInstance.formalNames();
-
-		final X10ClosureVisitor closureVisitor = new X10ClosureVisitor(formals);
-		closureVisitor.visit(n.body());
-
-		final List<LocalInstance> locals = closureVisitor.getLocals();
-		final Set<LocalInstance> savedLocals = closureVisitor.getSavedLocalInstances();
-		final boolean needSavedThis = closureVisitor.needSavedThis();
-
-		final X10ClassDef closureClassDef = newClosureDef(def, savedLocals, needSavedThis);
-		final X10ClassType closureType = closureClassDef.asType();
-        final MethodInstance applyMethod = closureType.methods().get(0);
-
-		final Entity entity = getMethodEntity(applyMethod);
-
-		/* Create an instance of the closure and save the current context. */
-        final Node objectPointer = genNewAlloc(closureType, closureType);
-        for(LocalInstance loc : savedLocals) {
-
-        	Node rhs = null;
-    		final X10VarEntry var = firmContext.getVarEntry(loc);
-    		if(var == null) {
-    			// a field -> grap the local instance from the object.
-    			rhs = genClosureFieldRead(loc.name().toString(), firmContext.getCurClass());
-    		} else {
-    			if(var.getType() == X10VarEntry.STRUCT) { // grap the local instance from the current frame
-    				rhs = getEntityFromCurrentFrame(var.getEntity());
-    			} else {
-	    			/* a normal local variable */
-	        		assert var.getIdx() != -1;
-	        		rhs = con.getVariable(var.getIdx(), firmTypeSystem.getFirmMode(var.getVarInstance().type()));
-    			}
-    		}
-        	assert(rhs != null);
-
-        	genClosureFieldWrite(objectPointer, loc.def().name().toString(), closureType, rhs);
-        }
-
-        if(needSavedThis) {
-        	Node thisPointer = null;
-        	if(firmContext.isInClosure()) {
-        		// if we are currently in a closure we will use the saved this reference from the current closure
-        		// for the new closure
-        		thisPointer = genClosureFieldRead(X10_SAVED_THIS_LITERAL, firmContext.getCurClass());
-        	} else {
-    			thisPointer = getThis(Mode.getP());
-        	}
-
-        	genClosureFieldWrite(objectPointer, X10_SAVED_THIS_LITERAL, closureType, thisPointer);
-        }
-
-		constructGraph(entity, n, true, formals, locals, false, applyMethod, closureType);
-
-		setReturnNode(objectPointer);
-	}
-
 	@Override
 	public void visit(ClosureCall_c c) {
 		/* determine called function */
 		final MethodInstance applyMethodInstance = c.closureInstance();
-		final Node ret = genX10Call(applyMethodInstance, c.arguments(), c.target(), true);
+		final Node ret = genX10Call(applyMethodInstance, c.arguments(), c.target());
 		setReturnNode(ret);
 	}
 
@@ -2603,14 +2324,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param target The target of the method call.
 	 * @return The return node or null if the call doesn`t have a return value
 	 */
-	private Node genX10Call(final MethodInstance mi, final List<Expr> args, Receiver target, boolean closure) {
+	private Node genX10Call(final MethodInstance mi, final List<Expr> args, Receiver target) {
 		final Flags flags = mi.flags();
 		final boolean isStatic = flags.isStatic();
 		final boolean isFinal  = flags.isFinal();
 		final boolean isNative = flags.isNative();
 		final boolean isStruct = x10TypeSystem.isStructType(mi.container());
 		final boolean isStaticBinding = (isStatic || isFinal || isNative || isStruct);
-		final Entity entity = (closure) ? getClosureEntity(mi.signature()) : getMethodEntity(mi);
+		final Entity entity = getMethodEntity(mi);
 
 		final MethodType type = (MethodType) entity.getType();
 		final int paramCount = type.getNParams();
@@ -2726,7 +2447,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	         * To avoid unnecessary dynamic delegation calls we can and will do a static method call on the boxed field.
 	         */
 
-	        final OOConstruction savedConstruction = initConstruction(entity, false, m.formalNames(), new LinkedList<LocalInstance>(),
+	        final OOConstruction savedConstruction = initConstruction(entity, m.formalNames(), new LinkedList<LocalInstance>(),
 	        														  flags.isStatic(), m, boxType);
 
 	        // The receiver of the delegated method call -> the boxed value
@@ -2876,6 +2597,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(LocalTypeDef_c n) {
 		// DO NOTHING
+	}
+	
+	@Override
+	public void visit(Closure_c n) {
+		throw new RuntimeException("Closure should have been desugared earlier");
 	}
 
 	@Override

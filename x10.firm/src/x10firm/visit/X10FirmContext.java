@@ -50,11 +50,6 @@ public class X10FirmContext {
 	private X10FirmContext outer;
 
 	/**
-	 * True if we are currently in a closure
-	 */
-	private boolean inClosure = false;
-
-	/**
 	 * List with the class members which must be initialised explicitly in a constructor etc.
 	 */
 	private List<ClassMember> initClassMembers = null;
@@ -133,22 +128,6 @@ public class X10FirmContext {
 	public X10FirmContext popFirmContext() {
 		assert outer != null;
 		return outer;
-	}
-
-	/**
-	 * Marking that we are currently in a closure
-	 * @param in True if we are currently in a closure
-	 */
-	public void setInClosure(boolean in) {
-		inClosure = in;
-	}
-
-	/**
-	 * Checks if we are currently in a closure
-	 * @return True if we are currently in a closure
-	 */
-	public boolean isInClosure() {
-		return inClosure;
 	}
 
 	/** Sets the "VarEntry" for a given variable (local variable or field instance)

@@ -11,6 +11,7 @@ import polyglot.types.Package;
 import polyglot.types.Type;
 import polyglot.types.TypeObject;
 import polyglot.types.TypeSystem;
+import polyglot.util.UniqueID;
 import x10.types.MethodInstance;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
@@ -40,6 +41,11 @@ public class X10NameMangler {
 	 * Substitution table for unary operators.
 	 */
 	private static Map<String, String> unOpSubst = new HashMap<String, String>();
+	
+	/**
+	 * Mapping for anonymous class names.
+	 */
+	private static Map<X10ClassType, String> anonymousClassNames = new HashMap<X10ClassType, String>();
 
 	private static final String MANGLE_PREFIX = "_Z";
 	private static final String MANGLE_SUFFIX = "";
@@ -53,6 +59,8 @@ public class X10NameMangler {
 	private static final String MANGLED_THIS = "C1";
 	private static final String MANGLED_VTABLE = "TV";
 	private static final String MANGLED_TYPEINFO = "TI";
+	
+	private static final String MANGLED_ANONYMOUS_CLASS_PREFIX = "$ANONYMOUS";
 
 	/**
 	 * Initializes name substitutions for unary operators
@@ -286,6 +294,15 @@ public class X10NameMangler {
 		// same as mangle type without embedding
 		return mangleType(type, false);
 	}
+	
+	private static String getAnonymousClassName(final X10ClassType clazz) {
+		String name = anonymousClassNames.get(clazz);
+		if(name != null) return name;
+		
+		name = UniqueID.newID(MANGLED_ANONYMOUS_CLASS_PREFIX);
+		anonymousClassNames.put(clazz, name);
+		return name;
+	}
 
 	/**
 	 * Mangles a given class type
@@ -310,11 +327,14 @@ public class X10NameMangler {
         		buf.append(QUAL_START);
         	}
         	buf.append(mangleType(clazz.outer(), true));
+        } else if (clazz.isAnonymous()) {
+        	// DO NOTHING
         } else {
         	assert(false): "Unknown class type" + clazz;
         }
 
-        buf.append(mangleName(clazz.name().toString()));
+    	final String clazzName = clazz.isAnonymous() ? getAnonymousClassName(clazz) : clazz.name().toString();
+    	buf.append(mangleName(clazzName));
 
         final List<? extends Type> typeArgs = clazz.typeArguments() != null ? clazz.typeArguments() :
         									  								  clazz.x10Def().typeParameters();

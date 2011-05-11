@@ -1,5 +1,9 @@
 package x10firm;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import polyglot.ast.NodeFactory;
 import polyglot.frontend.Goal;
 import polyglot.frontend.Job;
 import polyglot.types.TypeSystem;
@@ -13,6 +17,7 @@ import x10firm.goals.Linked;
 import x10firm.goals.LoweringFirm;
 import x10firm.goals.SourceGoalSequence;
 import x10firm.types.FirmTypeSystem;
+import x10firm.visit.X10ClosureRemover;
 
 /**
  * Setting the goals for the Firm backend and depend on the X10 scheduler for
@@ -55,6 +60,26 @@ class X10FirmScheduler extends X10Scheduler {
 
 		return seq.intern(this);
 	}
+	
+    @Override
+    public List<Goal> goals(Job job) {
+    	// add the closure remover to the goals
+        List<Goal> superGoals = super.goals(job);
+        List<Goal> goals = new ArrayList<Goal>(superGoals.size()+10);
+        for (Goal g : superGoals) {
+            if (g == CodeGenerated(job)) {
+                goals.add(ClosureRemover(job));
+            }
+            goals.add(g);
+        }
+        return goals;
+    }
+
+    private Goal ClosureRemover(Job job) {
+        TypeSystem ts = extInfo.typeSystem();
+        NodeFactory nf = extInfo.nodeFactory();
+        return new ValidatingVisitorGoal("ClosureRemoved", job, new X10ClosureRemover(job, ts, nf)).intern(this);
+    }
 
 	@Override
 	public Goal CodeGenerated(Job job) {
