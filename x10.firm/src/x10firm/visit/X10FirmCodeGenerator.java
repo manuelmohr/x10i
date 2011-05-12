@@ -76,6 +76,7 @@ import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
 import polyglot.types.LocalInstance;
+import polyglot.types.MethodDef;
 import polyglot.types.Name;
 import polyglot.types.ObjectType;
 import polyglot.types.Ref;
@@ -201,10 +202,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/** Our own AST query */
 	private final X10ASTQuery query;
 
-	/** Mapping between X10MethodInstances and firm entities. */
-	private final HashMap<MethodInstance, Entity> methodEntities = new HashMap<MethodInstance, Entity>();
-	/** mapping between X10ConstructorInstances and firm entities */
-	private final HashMap<X10ConstructorInstance, Entity> constructorEntities = new HashMap<X10ConstructorInstance, Entity>();
+	/** Mapping between MethodDefs and firm entities. */
+	private final HashMap<MethodDef, Entity> methodEntities = new HashMap<MethodDef, Entity>();
+	/** Mapping between X10ConstructorDefs and firm entities */
+	private final HashMap<X10ConstructorDef, Entity> constructorEntities = new HashMap<X10ConstructorDef, Entity>();
 
 	/** current firm context */
 	private X10FirmContext firmContext = new X10FirmContext();
@@ -396,7 +397,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	private Entity getConstructorEntity(X10ConstructorInstance instance) {
-		Entity entity = constructorEntities.get(instance);
+		Entity entity = constructorEntities.get(instance.x10Def());
 		if (entity == null) {
 			final String name = X10NameMangler.mangleTypeObjectWithDefClass(instance);
 			final Flags flags = instance.flags();
@@ -420,7 +421,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			 * (Note that we still have a "this" pointer anyway) */
 			OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 
-			constructorEntities.put(instance, entity);
+			constructorEntities.put(instance.x10Def(), entity);
 		}
 		return entity;
 	}
@@ -470,7 +471,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * Return entity for an X10 method
 	 */
 	private Entity getMethodEntity(final MethodInstance instance) {
-		Entity entity = methodEntities.get(instance);
+		Entity entity = methodEntities.get(instance.def());
 		if (entity == null) {
 			final X10ClassType owner = (X10ClassType) instance.container();
 			final String nameWithoutDefiningClass = X10NameMangler.mangleTypeObjectWithoutDefClass(instance);
@@ -506,7 +507,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			if(overwritten != null)
 				entity.addEntityOverwrites(overwritten);
 
-			methodEntities.put(instance, entity);
+			methodEntities.put(instance.def(), entity);
 		}
 
 		return entity;
