@@ -2500,12 +2500,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	        		break;
 	        	}
 	        }
-	        if(im == null) {
-	        	System.out.println("FUCK");
-	        	for(final MethodInstance mmm: boxedType.methods()) {
-	        		System.out.println(mmm);
-	        	}
-	        }
 	        assert(im != null);
 
 	        // create the call
