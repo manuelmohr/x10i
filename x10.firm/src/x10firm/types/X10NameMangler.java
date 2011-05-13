@@ -70,7 +70,6 @@ public class X10NameMangler {
 		unOpSubst.put("operator-", "ng");
 		// There are no substitutions in the spec for the following unary! operators
 		// -> our own additions
-		unOpSubst.put("operator!", "v3unt");
 		unOpSubst.put("operator~", "v3uti");
 	}
 

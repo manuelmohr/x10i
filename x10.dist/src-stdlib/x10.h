@@ -63,5 +63,7 @@ typedef double 			x10_double;
 
 #define UNUSED(s) (void)(s)
 
+#define T_(x) L##x
+
 #endif // X10_H
 

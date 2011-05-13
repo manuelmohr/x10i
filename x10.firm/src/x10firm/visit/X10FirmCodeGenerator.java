@@ -355,6 +355,35 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		firmContext = firmContext.popFirmContext();
 	}
+	
+	private void createStructTypeNameMethodBody(final X10ClassDecl clazz, final MethodDecl_c meth) {
+		X10MethodDef def              = (X10MethodDef)meth.methodDef();
+		final MethodInstance methInstance = def.asInstance();
+		final Position pos = Position.COMPILER_GENERATED;
+		
+		// remove the native flag
+		def.setFlags(def.flags().clearNative());
+		
+        List<Stmt> statements = new ArrayList<Stmt>();
+        
+        // generate -> return "[packageName].ClassName";
+        final Expr str = xnf.StringLit(pos, clazz.classDef().fullName().toString()).type(x10TypeSystem.String());
+        final Return ret = xnf.X10Return(pos, str, false);
+        statements.add(ret);
+
+        final polyglot.ast.Block block = xnf.Block(pos, statements);
+        
+        final Entity entity = getMethodEntity(methInstance);
+
+        final OOConstruction savedConstruction = initConstruction(entity, methInstance.formalNames(), 
+        		new LinkedList<LocalInstance>(),
+				def.flags().isStatic(), methInstance, clazz.classDef().asType());
+        
+        // Now generate the firm graph
+        visitAppropriate(block);
+        
+        finishConstruction(entity, savedConstruction);
+	}
 
 	private void visitStruct(X10ClassDecl n) {
 
@@ -365,18 +394,23 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			firmContext.setInitClassMembers(inits);
 
 			for (ClassMember member : body.members()) {
-				// TODO
 				/* DELETE ME START: "following methods are not supported yet" */
 				if(member instanceof MethodDecl_c) {
-					MethodDecl_c meth = (MethodDecl_c)member;
-					X10MethodDef def              = (X10MethodDef)meth.methodDef();
-					MethodInstance methodInstance = def.asInstance();
-					String name = methodInstance.name().toString();
-					if(name.equals("compareTo") || name.equals("toString") || name.equals("hashCode") || name.equals("equals") ||
-					   name.equals("_struct_equals") || name.equals("typeName")) {
+					final MethodDecl_c meth = (MethodDecl_c)member;
+					final X10MethodDef def              = (X10MethodDef)meth.methodDef();
+					final MethodInstance methodInstance = def.asInstance();
+					final String name = methodInstance.name().toString();
+					
+					if(name.equals("typeName") && def.formalNames().size() == 0) {
+						createStructTypeNameMethodBody(n, meth);
+						continue;
+					}
+					
+					if(name.equals("toString") || name.equals("hashCode")) {
 						continue;
 					}
 				}
+				
 				/* DELETE ME END: */
 				visitAppropriate(member);
 			}
@@ -2291,6 +2325,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
         }
 		return ret;
 	}
+	
+	private Expr transformArgument(final Type fType, final Expr arg) {
+		Expr ret = arg;
+		if(!x10TypeSystem.typeEquals(fType, arg.type(), x10Context) && !(x10TypeSystem.isParameterType(fType) && arg.type().isNull()))
+			ret = x10Cast(arg, fType);
+		return ret;
+	}
 
 	/**
 	 * Transforms a list of expressions to another list of expressions where types are adjusted by explicit casts.
@@ -2307,9 +2348,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		for (Expr arg : args) {
 		    final Type fType = formalTypes.get(i);
 
-		    // need explicit casting
-		    if(!x10TypeSystem.typeEquals(fType, arg.type(), x10Context) && !(x10TypeSystem.isParameterType(fType) && arg.type().isNull()))
-		        arg = x10Cast(arg, fType);
+		    arg = transformArgument(fType, arg);
 
 		    ret.add(arg);
 		    i++;
@@ -2346,22 +2385,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		if (!isStatic) {
 			assert(target != null && target instanceof Expr);
 			final Expr receiver = (Expr)target;
-			arguments.add(0, receiver);
+			arguments.add(0, transformArgument(mi.container(), receiver));
 		}
 
 		assert arguments.size() == paramCount : "parameters are off : "+ arguments.size() + " vs " + paramCount;
 		Node[] parameters = new Node[paramCount];
 
-		for (int i = 0; i < paramCount; i++) {
-			// Do we need to autobox?
-			// TODO:  Is this really the correct condition?
-			final boolean needAutoboxing = (i == 0 && x10TypeSystem.isStructType(target.type()) && !isStaticBinding);
-
-			if (needAutoboxing)
-				parameters[0] = genAutoboxing((X10ClassType) Types.baseType(target.type()), (Expr) target);
-			else
-				parameters[i] = visitExpression(arguments.get(i));
-		}
+		for (int i = 0; i < paramCount; i++) 
+			parameters[i] = visitExpression(arguments.get(i));
 
 		final Node address = (isStaticBinding) ? con.newSymConst(entity) : con.newSel(parameters[0], entity);
 
@@ -2452,7 +2483,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	        														  flags.isStatic(), m, boxType);
 
 	        // The receiver of the delegated method call -> the boxed value
-	        final Expr bxdField = xnf.Field(pos, xnf.This(pos).type(boxType), xnf.Id(pos, boxedField.name())).fieldInstance(boxedField);
+	        final Expr bxdField = xnf.Field(pos, xnf.This(pos).type(boxType), xnf.Id(pos, boxedField.name())).fieldInstance(boxedField).type(boxedType);
 
 	        // the arguments.
 	        List<Expr> args = new LinkedList<Expr>();
@@ -2467,6 +2498,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	        	if(meth.isSameMethod(m, x10Context)) {
 	        		im = meth;
 	        		break;
+	        	}
+	        }
+	        if(im == null) {
+	        	System.out.println("FUCK");
+	        	for(final MethodInstance mmm: boxedType.methods()) {
+	        		System.out.println(mmm);
 	        	}
 	        }
 	        assert(im != null);

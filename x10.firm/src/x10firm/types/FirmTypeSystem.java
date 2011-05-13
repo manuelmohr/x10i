@@ -126,16 +126,15 @@ public class FirmTypeSystem {
         	cd.addInterface(Types.ref(intervace));
 
         	for(final MethodDef mDef : intervaceDef.methods())  {
-
-        		// TODO
+        		
 				/* DELETE ME START: "following methods are not supported yet" */
         		final MethodInstance mi = mDef.asInstance();
     			final String x = mi.name().toString();
-    			if (x.equals("compareTo") || x.equals("hashCode")) {
+    			if (x.equals("compareTo") || x.equals("toString") || x.equals("hashCode")) {
     				continue;
     			}
     			/* DELETE ME END: */
-
+        		
         		final X10MethodDef md = x10TypeSystem.methodDef(pos, Types.ref(ct), Flags.PUBLIC, mDef.returnType(), mDef.name(),
         										                mDef.formalTypes());
 

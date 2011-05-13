@@ -1,6 +1,8 @@
 #ifndef X10_PRIMITIVE_TYPES_H_
 #define X10_PRIMITIVE_TYPES_H_
 
+#include "x10_util.h"
+
 #define X10_MAKE_COMPARETO(name, type)	\
 	x10_int name(type self, type other) { return (self == other) ? 0 : (self < other) ? - 1 : 1; }
 
@@ -32,6 +34,12 @@ x10_boolean name(type self, x10_any *other) \
 	default: \
 		return false; \
 	}; \
+}
+
+#define X10_MAKE_HASHCODE(name, type) \
+x10_int name(type self) \
+{ \
+	return x10_hashCode((const unsigned char *)&self, sizeof(self)); \
 }
 
 #define BINOP(name, type, op)  \
