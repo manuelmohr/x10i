@@ -4,6 +4,7 @@
 
 // compareTo from Comparable
 X10_MAKE_COMPARETO(_ZN3x104lang4Byte9compareToEa, x10_byte)
+X10_MAKE_HASHCODE(_ZN3x104lang4Byte8hashCodeEv, x10_byte)
 X10_MAKE_EQUALS(_ZN3x104lang4Byte6equalsEa, x10_byte)
 X10_MAKE_TOSTRING(_ZN3x104lang4Byte8toStringEv, x10_byte, "%d")
 X10_MAKE_TYPENAME(_ZN3x104lang4Byte8typeNameEv, x10_byte, "x10.lang.Byte")

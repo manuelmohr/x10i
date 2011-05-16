@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 
 import polyglot.types.ClassDef;
+import polyglot.types.Context;
 import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
@@ -22,6 +23,7 @@ import x10.types.X10ClassDef;
 import x10.types.X10ClassDef_c;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
+import x10.types.X10Context_c;
 import x10.types.X10MethodDef;
 import x10c.types.X10CTypeSystem_c;
 import firm.ClassType;
@@ -59,6 +61,9 @@ public class FirmTypeSystem {
 	/** Maps struct types to the appropriate boxing types */
 	private Map<X10ClassType, X10ClassType> structBoxingTypes = new HashMap<X10ClassType, X10ClassType>();
 
+	/** X10 Context */
+	private X10Context_c x10Context = null;
+	
 	/** All class instances share the same location for the vptr (the pointer to the vtable) */
 	private Entity vptrEntity;
 
@@ -78,6 +83,7 @@ public class FirmTypeSystem {
 	 */
 	public FirmTypeSystem(final X10CTypeSystem_c x10TypeSystem) {
 		this.x10TypeSystem = x10TypeSystem;
+		this.x10Context    = new X10Context_c(this.x10TypeSystem);
 	}
 
 	private String getUniqueBoxingName(final String structName) {
@@ -130,7 +136,7 @@ public class FirmTypeSystem {
 				/* DELETE ME START: "following methods are not supported yet" */
         		final MethodInstance mi = mDef.asInstance();
     			final String x = mi.name().toString();
-    			if (x.equals("compareTo") || x.equals("toString") || x.equals("hashCode")) {
+    			if (x.equals("compareTo") || x.equals("toString")) {
     				continue;
     			}
     			/* DELETE ME END: */
@@ -376,9 +382,41 @@ public class FirmTypeSystem {
 		final firm.Type klass = asFirmCoreType(field.container());
 		addField(field, klass);
 	}
+	
+	/** 
+	 * Expands a given class type. -> Add extra methods etc. 
+	 * @param classType The class type which should be expanded. 
+	 */
+	private void expandClassType(final X10ClassType classType) {
+		// Currently only primitive types are expanded. 
+		if(!isFirmPrimitiveType(classType)) return;
+		
+		final X10ClassDef def = classType.x10Def();
+		
+		final X10ClassType x10Any = x10TypeSystem.Any();
+		
+		// Get the hashCode method from x10.Any
+		final List<MethodInstance> methods = x10Any.methodsNamed(Name.make("hashCode"));
+		assert(methods.size() == 1);
+		final MethodInstance x10AnyhashCodeMethodInstance = methods.get(0);
+		
+		final List<MethodInstance> mm = classType.methods(Name.make("hashCode"), x10AnyhashCodeMethodInstance.formalTypes(), x10Context);
+		if(mm.size() == 0) {
+			// add the missing hashCode method to the class
+			final MethodDef x10AnyhashCodeMethodDef = x10AnyhashCodeMethodInstance.def();
+			
+			final MethodDef hashCodeMethodDef = x10TypeSystem.methodDef(Position.COMPILER_GENERATED, Types.ref(classType), 
+					x10AnyhashCodeMethodDef.flags().clearAbstract().Native(), x10AnyhashCodeMethodDef.returnType(), x10AnyhashCodeMethodDef.name(), 
+					x10AnyhashCodeMethodDef.formalTypes());
+			
+			def.addMethod(hashCodeMethodDef);
+		}
+	}
 
 	@SuppressWarnings("unused")
 	private firm.Type createClassType(final X10ClassType classType) {
+		expandClassType(classType);
+		
 		final String className = X10NameMangler.mangleTypeObjectWithDefClass(classType);
 		final Flags flags = classType.flags();
 		ClassType result = new ClassType(className);

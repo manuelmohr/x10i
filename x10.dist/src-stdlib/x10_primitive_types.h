@@ -39,7 +39,13 @@ x10_boolean name(type self, x10_any *other) \
 #define X10_MAKE_HASHCODE(name, type) \
 x10_int name(type self) \
 { \
-	return x10_hashCode((const unsigned char *)&self, sizeof(self)); \
+	if(sizeof(type) <= sizeof(x10_int)) { \
+		union { x10_int i; type u; } m; \
+		m.u = self; \
+		return m.i; \
+	} else { \
+		return x10_hashCode((const unsigned char *)&self, sizeof(type)); \
+	} \
 }
 
 #define BINOP(name, type, op)  \

@@ -3,8 +3,8 @@
 #include "x10_string.h"
 
 /* Booleans */
-
 X10_MAKE_EQUALS(_ZN3x104lang7Boolean6equalsEb, x10_boolean)
+X10_MAKE_HASHCODE(_ZN3x104lang7Boolean8hashCodeEv, x10_boolean); 
 
 // toString
 x10_string *_ZN3x104lang7Boolean8toStringEv(x10_boolean self) { 
@@ -19,11 +19,6 @@ X10_MAKE_EQUALS_ANY(_ZN3x104lang7Boolean6equalsEPN3x104lang3AnyE, x10_int)
 // compareTo from Comparable
 x10_int _ZN3x104lang7Boolean9compareToEb(x10_boolean self, x10_boolean other) { 
 	return (self == other) ? 0 : self ? 1 : -1; 
-}
-
-// hashCode
-x10_int _ZN3x104lang7Boolean8hashCodeEv(x10_boolean self) { 
-	return (x10_int)self; 
 }
 
 UNOP(_ZN3x104lang7BooleanntEv, x10_boolean, !)

@@ -406,7 +406,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 						continue;
 					}
 					
-					if(name.equals("toString") || name.equals("hashCode")) {
+					if(name.equals("toString")) {
 						continue;
 					}
 				}
