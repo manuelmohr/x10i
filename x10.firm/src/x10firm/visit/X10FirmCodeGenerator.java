@@ -1379,7 +1379,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		con.setCurrentBlockBad();
 	}
 
-	private void genLocalDecl(final LocalDecl_c n) {
+	@Override
+	public void visit(LocalDecl_c n) {
 		final Expr expr = n.init();
 
 		if (expr != null) {
@@ -1413,11 +1414,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				con.setVariable(idx, initNode);
 			}
 		}
-	}
-
-	@Override
-	public void visit(LocalDecl_c n) {
-		genLocalDecl(n);
 	}
 
 	@Override
@@ -1580,11 +1576,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 
 		if(n.inits() != null) {
-			for(ForInit f: n.inits()) {
-				if(f instanceof LocalDecl_c) {
-					genLocalDecl((LocalDecl_c)f);
-				}
-			}
+			for(ForInit f: n.inits())
+				visitAppropriate(f);
 		}
 
 		final Block bCond  = con.newBlock();
