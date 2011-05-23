@@ -446,4 +446,3 @@ public class X10ClosureRemover extends ContextVisitor {
         throw new InternalCompilerError("");//TODO
     }
 }
-	

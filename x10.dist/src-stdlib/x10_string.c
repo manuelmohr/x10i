@@ -52,8 +52,6 @@ x10_string *_ZN3x104lang6StringplIN3x104lang6StringEEEN3x104lang6StringEPN3x104l
 	return str;
 }
 
-#include <stdio.h>
-
 // operator+ functions
 #define X10_DEF_OPERATOR_PLUS(funcName, type, convFuncName) \
 	X10_EXTERN x10_string *convFuncName(type); \

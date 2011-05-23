@@ -19,28 +19,28 @@ X10_MAKE_EQUALS_ANY(_ZN3x104lang6Double6equalsEPN3x104lang3AnyE, x10_int)
 /* precondition: buf contains decimal point */
 static void kill_excess_zeroes(wchar_t *buf, size_t sz)
 {
-	for (int i=sz-1 ; i>0 && (buf[i]==L'0' || buf[i]==L'\0') ; --i) {
-		if (buf[i-1] == L'.')
+	for (int i=sz-1 ; i>0 && (buf[i]==L'0' || buf[i]==T_('\0')) ; --i) {
+		if (buf[i-1] == T_('.'))
 			break;
-		buf[i] = L'\0';
+		buf[i] = T_('\0');
 	}
 }
 
 x10_string *_ZN3x104lang6Double8toStringEv(x10_double v)
 {
 #define STRBUF_SIZE 120
-	wchar_t buf[STRBUF_SIZE] = L"";
+	wchar_t buf[STRBUF_SIZE] = T_("");
 	if (isnan(v)) {
-		swprintf(buf, STRBUF_SIZE, L"NaN");
+		swprintf(buf, STRBUF_SIZE, T_("NaN"));
 	} else if (isinf(v) && v > 0.0) {
-		swprintf(buf, STRBUF_SIZE, L"Infinity"); 
+		swprintf(buf, STRBUF_SIZE, T_("Infinity")); 
 	} else if (isinf(v) && v < 0.0) {
-		swprintf(buf, STRBUF_SIZE, L"-Infinity");
+		swprintf(buf, STRBUF_SIZE, T_("-Infinity"));
 	} else if (fabs(v) >= 1E-3 && fabs(v) < 1E7) {
-		swprintf(buf, STRBUF_SIZE, L"%.15f", v);
+		swprintf(buf, STRBUF_SIZE, T_("%.15f"), v);
 		kill_excess_zeroes(buf, STRBUF_SIZE);
 	} else if (v == 0.0) {
-		swprintf(buf, STRBUF_SIZE, L"%.1f", v);
+		swprintf(buf, STRBUF_SIZE, T_("%.1f"), v);
 	} else {
 		/* scientific notation */
 		int e = (int)floor(log(fabs(v))/log(10.0)); /* exponent */
@@ -52,13 +52,13 @@ x10_string *_ZN3x104lang6Double8toStringEv(x10_double v)
 			m /= pow(10.0, e+10);
 		}
 		if (e < 0) {
-			swprintf(buf, STRBUF_SIZE, L"%.1f", m);
+			swprintf(buf, STRBUF_SIZE, T_("%.1f"), m);
 		} else {
-			swprintf(buf, STRBUF_SIZE, L"%.16f", m);
+			swprintf(buf, STRBUF_SIZE, T_("%.16f"), m);
 		}
 		kill_excess_zeroes(buf, STRBUF_SIZE);
 		wchar_t *rest = buf + wcslen(buf);
-		swprintf(rest, STRBUF_SIZE + buf - rest, L"E%d", e);
+		swprintf(rest, STRBUF_SIZE + buf - rest, T_("E%d"), e);
 	}
 	return x10_string_from_wide_chars(buf);
 #undef BUF_SIZE

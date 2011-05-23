@@ -1720,18 +1720,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			con.setCurrentBlock(bFalse);
 			visitAppropriate(alternative);
 
-			if(con.getCurrentBlock().isBad())
-				con.setCurrentBlock(bFalse);
-			else {
+			if(!con.getCurrentBlock().isBad())
 				bAfter.addPred(con.newJmp());
-			}
 		}
 
 		if(endIf != null)
 			bAfter.addPred(endIf);
 
 		bAfter.mature();
-		con.setCurrentBlock(bAfter);
+		
+		if(!con.getCurrentBlock().isBad())
+			con.setCurrentBlock(bAfter);
 	}
 
 	@Override

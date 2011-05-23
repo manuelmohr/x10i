@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.Set;
 
 import polyglot.types.ClassDef;
-import polyglot.types.Context;
 import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
