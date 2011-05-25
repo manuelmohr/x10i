@@ -477,7 +477,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		while(cont != null) {
 			if(!firstRun) {
 				for(MethodInstance meth: cont.methods()) {
-					if(x10TypeSystem.canOverride(meth, instance, x10Context)) {
+					if(x10TypeSystem.canOverride(instance, meth, x10Context)) {
 		        		return getMethodEntity(meth);
 		        	}
 				}
@@ -489,9 +489,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 			// check if we have a super class.
 			if(cont instanceof ObjectType) {
-				ObjectType objType = (ObjectType)cont;
-				if(objType.superClass() instanceof X10ClassType) {
-					sup = (ContainerType)objType.superClass();
+				final ObjectType objType = (ObjectType)cont;
+				final Type sup2 = objType.superClass();
+				
+				if(sup2 != null) {
+					final Type tmp = FirmTypeSystem.simplifyType(sup2);
+					assert(tmp instanceof ContainerType);
+					
+					sup = (ContainerType)tmp;
 				}
 			}
 
