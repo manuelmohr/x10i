@@ -40,7 +40,7 @@ x10_string *_ZN3x104lang6StringplIN3x104lang6StringEEEN3x104lang6StringEPN3x104l
 {
 	// TODO memory management/garbage collection
 	const size_t len = X10_STRING_LEN(self) + X10_STRING_LEN(other);
-	x10_string *str = X10_ALLOC_STRING(len + 1);
+	x10_string *str = X10_ALLOC_STRING(len);
 	assert(str != NULL);
 	
 	X10_STRING_INIT(str, len);
