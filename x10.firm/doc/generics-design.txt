@@ -1,0 +1,270 @@
+Allgemeines Design für Generics-Unterstützung
+=============================================
+
+Genau zwei Decls können Typparameter einführen, MethodDecls und ClassDecls
+(struct-Definitionen sind auch ClassDecls).
+
+  static def foo[T]() { ... }
+  class Bar[T] { ... }
+  struct Baz[T] { ... }
+
+Zwischen Decl und Def besteht in Polyglot eine 1:1-Beziehung.  Es ist also
+zulässig, Decl und Def synonym zu verwenden.  Da die Verwendungen, also Calls
+oder New-Aufrufe, keine Verweise zur Decl, sondern nur zur Def haben, werden in
+der Implementierung Defs genutzt, um z.B. in Hashtabellen zu greifen.
+
+Das grundsätzliche Problem ist die Abbildung von X10-Typen auf Firm-Typen und
+von X10-Methoden auf Firm-Entities.
+
+Betrachten wir zunächst ein eingeschränktes X10, in dem es weder generische
+Methoden noch generische Klassen gibt.  Hier besteht zwischen X10-Methoden und
+Firm-Entities eine 1:1-Beziehung  (also zwischen MethodDefs und Firm-Entities).
+Es ist also zulässig zwei globale Abbildungen zu haben, die X10-Objekte auf
+Firm-Objekte abbilden:
+
+  types    : X10Type   -> firm.Type
+  entities : MethodDef -> firm.Entity
+
+Wir nennen diese Abbildungen zusammen einen GenericContext (GC).  In unserem
+eingeschränkten X10 gibt es also genau einen GC.
+
+Erweitern wir nun das eingeschränkte X10 um generische Methoden.  Jetzt gilt die
+1:1-Beziehung zwischen Methoden und Firm-Entities nicht mehr.  Denn jetzt
+gehören 0..* Instanzen zu einer generischen Methode und zu jeder dieser
+Instanzen gehört genau eine Firm-Entity.  Wir müssen nun also die entities-
+Abbildung so erweitern, dass sie von der Typbelegung abhängig wird.  Der
+Schlüssel in die Hash-Tabelle ist also nicht mehr eine MethodDef sondern ein
+Tupel aus MethodDef und Typbelegung:
+
+  types    : X10Type                  -> firm.Type
+  entities : (MethodDef, Typbelegung) -> firm.Entity
+
+Für nichtgenerische Methoden ist die Typbelegung immer leer.
+Weiterhin muss während der Übersetzung der generischen Methode der Typparameter
+in types eingetragen sein!  Denn anstatt mehrere ASTs zu generiereren (einen
+pro generischer Methodeninstanz), verwenden wir immer den gleichen AST in
+unterschiedlichen Kontexten.  Im Übersetzungskontext muss also jeder
+Typparameter, der in der Methode sichtbar ist, auf den Firm-Typen abgebildet
+sein, auf den der X10-Typ abgebildet ist, der für den Typparameter eingesetzt
+wurde.
+
+Compilerverhalten für ein kleines Beispiel:
+
+  static def foo[T](x : T) { ... }
+  // Weiter unten im Programm eine Verwendung:
+  foo[Int](42);
+
+Der Compiler wird beim Kompilieren des Aufrufs foo[Int](42) in der entities-
+Tabelle mit dem Tupel (foo-MethodDef, {T -> Int}) nachschauen und keine Entity
+finden (falls das die erste Verwendung von foo[Int] war).  Es wird also eine
+Entity angelegt, die allerdings noch mit keinem Graph verbunden ist.  Außerdem
+merkt sich der Compiler in einer Warteschlange, dass Code für foo[Int] erzeugt
+werden muss.
+Nachdem der AST übersetzt worden ist, wird die Warteschlange bearbeitet.  Jetzt
+wird types um einen Eintrag erweitert, sodass T auf einen gültigen Firm-Typ
+abgebildet wird.  Mit dem Tupel (T, Int):
+
+  types.put(T, types.get(Int))
+
+types.get(Int) MUSS einen gültigen Firm-Typen liefern, da ein Typargument zum
+Zeitpunkt der Instanziierung ein konkreter Typ sein muss.  Achtung:  Falls es
+bereits einen Eintrag für T in types gibt, so muss dieser vorher gesichert
+werden und später wieder hergestellt werden.  Beispiel:
+
+  static def foo[Double](x : Double) { }
+
+ist legal und der Typparameter Double überdeckt innerhalb von foo andere Typen
+mit diesem Namen (z.B. den Standardtyp `Double').
+
+Jetzt wird der Code für foo[Int] erzeugt.  Es kann der bereits vorhandene AST
+von foo, der Verweise auf das generische T enthält, verwendet werden, da im
+aktuellen Kontext T auf einen Firm-Typen abgebildet wird!
+Nachdem der Firm-Graph für das Entity von foo[Int] erzeugt wurde, muss T wieder
+aus der types-Abbildung entfernt werden und die eventuell vorher existierende
+Abbildung wiederhergestellt werden.
+
+
+Erweitern wir nun die Sprache auf volles X10 und erlauben auch generische
+Klassen.  Ohne generische Klassen stammen alle generischen Typen, die in einer
+Methode auftreten, von der Methode selbst:
+
+  static def foo[T]() { val x : U; }   // Ohne generische Klassen ist das
+                                       // *IMMER* fehlerhafter Code.
+
+Betrachten wir folgendes Beispiel:
+
+  class Foo[T] {
+    static def bar[U]() { }
+  }
+
+Nachwievor hat bar genau eine MethodDef.  Allerdings hängt die Firm-Entity, die
+zu dieser MethodDef gehört, jetzt nicht nur von U ab, sondern auch von T!
+Ohne weitere Analyse kann man nämlich nicht ausschließen, dass bar nicht
+irgendwo auch T verwendet, auch wenn der Körper von bar hier leer ist und T
+nicht verwendet wird.  Im folgenden Beispiel sollen also *zwei* Entities für
+bar erzeugt werden:
+
+  new Foo[Int]().bar[Double]();
+  new Foo[String]().bar[Double]();
+
+Klar ist also, dass die bisherige Abbildung (MethodDef, Typbelegung) -> Entity
+nicht mehr ausreicht.
+Die entities-Abbildung muss deshalb erweitert werden:
+
+  entities : ((ClassDef, Typbelegung), MethodDef, Typbelegung) -> firm.Entity
+
+  Im Fall von eben hätte man also einmal ((Foo, {T->Int}), bar, {U->Double})
+  und einmal ((Foo, {T->String}), bar, {U->Double}) als Key, würde also wie
+  gefordert unterschiedliche Entities erhalten.
+  Für nichtgenerische Klassen ist die Typbelegung immer leer.
+
+
+Ein Thema, das noch nicht angesprochen wurde, ist das Verschachteln von Klassen.
+Klassen erlauben ja hierarchische Strukturen, denn man darf in X10 natürlich
+generische Klassen innerhalb von generischen Klassen definieren.
+Die Definition von Methoden innerhalb von Methoden ist hingegegen nicht erlaubt,
+d.h. im eingeschränkten X10 ergibt sich diese Problematik nicht.
+Allerdings hat X10 einige Lowering-Phasen, die uns das Leben leichter machen.
+Bevor Code erzeugt wird, laufen folgende Lowering-Phasen in dieser Reihenfolge:
+
+ 1) X10LocalClassRemover:
+
+    Wandelt lokale und anonyme Klassen in innere Klassen um.  Lokale Klassen
+    sind Klassen, die innerhalb von Methoden definiert werden.  Anonyme Klassen
+    sind Klassen, die als Teil einer Expression definiert und instanziiert
+    werden.
+
+ 2) X10InnerClassRemover:
+
+    Wandelt innere Klassen in statische innere Klassen ("static nested classes")
+    um.
+
+ 3) StaticNestedClassRemover:
+
+    Verschiebt statische innere Klassen in den globalen Namespace.
+
+
+Folgendes Beispiel zeigt alle Möglichkeiten:
+
+class A[T] {
+	// Non-generic inner class.
+	class NonGenericInner {
+	}
+
+	// Generic inner class.
+	class GenericInner[U] {
+	}
+
+	// Non-generic static nested class.
+	static class NonGenericStatic {
+	}
+
+	// Generic static nested class.
+	static class GenericStatic[V] {
+	}
+
+	def foo() {
+		// Non-generic local class.
+		class NonGenericLocal {
+		}
+	}
+
+	def bar() {
+		// Generic local class.
+		class GenericLocal[W] {
+		}
+	}
+
+	interface I {
+	}
+
+	static def baz() {
+		// Non-generic anonymous class.
+		val x = new I() {
+		};
+	}
+
+	// Generic method.
+	def genericMethod[U]() {
+	}
+}
+
+Nach dem Lowering:
+
+class A[T] {
+	def foo() {
+	}
+
+	def bar() {
+	}
+
+	static def baz() {
+		val x = new A$Anonymous$2() {
+		};
+	}
+
+	// Generic method.
+	def genericMethod[U]() {
+	}
+}
+
+class A$NonGenericInner[T] {
+	private val out$ : A[T];
+}
+
+class A$GenericInner[U, T] {
+	private val out$ : A[T];
+}
+
+class A$NonGenericStatic {
+}
+
+class A$GenericStatic[V] {
+}
+
+interface A$I {
+}
+
+class A$NonGenericLocal$0[T] {
+	private val out$ : A[T];
+}
+
+class A$GenericLocal$1[W, T] {
+	private val out$ : A[T];
+}
+
+class A$Anonymous$2 implements A$I {
+}
+
+
+Die wichtige Erkenntnis hier ist:  Es ist ausreichend, mit einer
+Verschachtelungstiefe 1 umgehen zu können, da von der Loweringphase alles auf
+eine "flache" Darstellung heruntergebrochen wird.  Es ist also *nicht*
+notwendig, z.b. die
+entity-Abbildung so zu erweitern, dass sie mit
+
+  class A[T] {
+    class B[U] {
+      def foo[V]() {
+      }
+    }
+  }
+
+umgehen kann.
+
+
+Wichtig ist noch, dass man für Methoden nicht mehrfach Entities anlegt.
+Betrachten wir folgendes Beispiel:
+
+  static def foo[T]() { }
+  class Bar[U] {
+    def baz() {
+      foo[Int]();
+    }
+  }
+
+Hier sollen *nicht* mehrere Entities für foo[Int] angelegt werden, denn foo
+hängt *garantiert* nicht von U ab, da U im Definitionskontext von foo gar nicht
+sichtbar ist.  Wird also Code für Bar[Float].baz und Bar[Double].baz erzeugt,
+sollen die Calls innerhalb von baz auf die gleiche foo[Int]-Entity verweisen.
+Das wird dadurch erreicht, dass foo ja in
