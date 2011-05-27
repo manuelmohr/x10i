@@ -35,6 +35,17 @@ x10_int _ZN3x104lang6String6lengthEv(x10_string *self)
 	return X10_STRING_LEN(self);
 }
 
+x10_string *_ZN3x104lang6String8toStringEv(x10_string *self)
+{
+	return self;
+}
+
+x10_string *_ZN3x104lang6String8typeNameEv(x10_string *self)
+{
+	UNUSED(self);
+	return x10_string_from_wide_chars(L"x10.lang.String");
+}
+
 // operator+(String)
 x10_string *_ZN3x104lang6StringplIN3x104lang6StringEEEN3x104lang6StringEPN3x104lang6StringEPN3x104lang6StringE(x10_string *self, x10_string *other)
 {
@@ -42,7 +53,7 @@ x10_string *_ZN3x104lang6StringplIN3x104lang6StringEEEN3x104lang6StringEPN3x104l
 	const size_t len = X10_STRING_LEN(self) + X10_STRING_LEN(other);
 	x10_string *str = X10_ALLOC_STRING(len);
 	assert(str != NULL);
-	
+
 	X10_STRING_INIT(str, len);
 
 	memcpy((void *)X10_STRING_BUF(str), (const void *)X10_STRING_BUF(self), X10_STRING_LEN(self) * sizeof(x10_char));
