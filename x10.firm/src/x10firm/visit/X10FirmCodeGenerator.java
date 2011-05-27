@@ -78,9 +78,9 @@ import polyglot.types.Flags;
 import polyglot.types.LocalInstance;
 import polyglot.types.MethodDef;
 import polyglot.types.Name;
-import polyglot.types.ObjectType;
 import polyglot.types.Ref;
 import polyglot.types.Type;
+import polyglot.types.TypeObject;
 import polyglot.types.Types;
 import polyglot.util.CollectionUtil;
 import polyglot.util.InternalCompilerError;
@@ -239,7 +239,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		phiBlock.addPred(jmp1);
 		phiBlock.addPred(jmp2);
 		phiBlock.mature();
-
+		
 		con.setCurrentBlock(phiBlock);
 		return con.newPhi(new Node[]{one, zero}, mode);
 	}
@@ -463,47 +463,28 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/**
 	 * Returns the firm entity of a method which a given method instance maybe overwrites.
 	 * @param instance The method instance which should be checked
-	 * @return The appropriate firm method entity or null if the given method instance doesn`t overwrite any other methods
-	 * in the class hierarchy.
+	 * @return The set of the appropriate firm entities
 	 */
-	private Entity getMethodOverride(MethodInstance instance) {
+	private Set<Entity> getMethodOverride(MethodInstance instance) {
 		final Flags flags = instance.flags();
 		// static methods can`t override other methods.
-		if(flags.isStatic()) return null;
+		if(flags.isStatic() || flags.isAbstract()) return Collections.<Entity>emptySet();
 
-		ContainerType cont = instance.container();
-
-		boolean firstRun = true;
-		while(cont != null) {
-			if(!firstRun) {
-				for(MethodInstance meth: cont.methods()) {
-					if(x10TypeSystem.canOverride(instance, meth, x10Context)) {
-		        		return getMethodEntity(meth);
-		        	}
-				}
-			}
-
-			firstRun = false;
-
-			ContainerType sup = null;
-
-			// check if we have a super class.
-			if(cont instanceof ObjectType) {
-				final ObjectType objType = (ObjectType)cont;
-				final Type sup2 = objType.superClass();
-				
-				if(sup2 != null) {
-					final Type tmp = FirmTypeSystem.simplifyType(sup2);
-					assert(tmp instanceof ContainerType);
-					
-					sup = (ContainerType)tmp;
-				}
-			}
-
-			cont = sup;
+		final List<MethodInstance> overrides = new LinkedList<MethodInstance>();
+		
+		overrides.addAll(instance.implemented(x10Context));
+		overrides.addAll(instance.overrides(x10Context));
+		
+		final Set<Entity> ret = new HashSet<Entity>();
+		
+		final ContainerType me_cont = instance.container();
+		for(final MethodInstance meth: overrides) {
+			if(x10TypeSystem.equals((TypeObject)me_cont, (TypeObject)meth.container())) continue;
+			final Entity entity = getMethodEntity(meth); 
+			ret.add(entity);
 		}
-
-		return null;
+		
+		return ret;
 	}
 
 	/**
@@ -542,9 +523,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				entity.setVisibility(ir_visibility.ir_visibility_external);
 			}
 
-			final Entity overwritten = getMethodOverride(instance);
-			if(overwritten != null)
-				entity.addEntityOverwrites(overwritten);
+			for(final Entity overwrite: getMethodOverride(instance))
+				entity.addEntityOverwrites(overwrite);
 
 			methodEntities.put(instance.def(), entity);
 		}
