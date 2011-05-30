@@ -20,7 +20,7 @@ X10_EXTERN x10_string *x10_string_literal(size_t, x10_char *);
 // String methods
 X10_EXTERN x10_int _ZN3x104lang6String6lengthEv(x10_string *);
 X10_EXTERN x10_string *_ZN3x104lang6String8toStringEv(x10_string *);
-X10_EXTERN x10_string *_ZN3x104lang6String8typeNameEv(x10_string *self);
+X10_EXTERN x10_string *_ZN3x104lang6String8typeNameEv(x10_string *);
 
 // operator+(String)
 X10_EXTERN x10_string *_ZN3x104lang6StringplIN3x104lang6StringEEEN3x104lang6StringEPN3x104lang6StringEPN3x104lang6StringE(x10_string *, x10_string *);

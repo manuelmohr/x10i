@@ -467,7 +467,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 */
 	private Set<Entity> getMethodOverride(MethodInstance instance) {
 		final Flags flags = instance.flags();
-		// static methods can`t override other methods.
+		// static or abstract methods can`t override other methods.
 		if(flags.isStatic() || flags.isAbstract()) return Collections.<Entity>emptySet();
 
 		final List<MethodInstance> overrides = new LinkedList<MethodInstance>();

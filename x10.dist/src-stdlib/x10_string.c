@@ -43,7 +43,7 @@ x10_string *_ZN3x104lang6String8toStringEv(x10_string *self)
 x10_string *_ZN3x104lang6String8typeNameEv(x10_string *self)
 {
 	UNUSED(self);
-	return x10_string_from_wide_chars(L"x10.lang.String");
+	return x10_string_from_wide_chars(T_("x10.lang.String"));
 }
 
 // operator+(String)
