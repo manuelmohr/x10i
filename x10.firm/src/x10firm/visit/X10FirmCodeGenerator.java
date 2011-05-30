@@ -121,6 +121,7 @@ import x10.ast.X10SourceFile_c;
 import x10.ast.X10Special_c;
 import x10.ast.X10Unary_c;
 import x10.types.MethodInstance;
+import x10.types.ParameterType;
 import x10.types.TypeParamSubst;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
@@ -1728,8 +1729,26 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			final List<TypeParamNode> paramTypes = decl.typeParameters();
 			assert (actualTypes.size() == decl.typeParameters().size());
 			final ParameterTypeMapping ptm = new ParameterTypeMapping();
-			for (int i = 0; i < paramTypes.size(); ++i)
-				ptm.add(paramTypes.get(i).type(), Types.stripConstraints(actualTypes.get(i)));
+			for (int i = 0; i < paramTypes.size(); ++i) {
+				// There's one important special case:  if we use a type parameter T
+				// for another type parameter U, we have to actually get the type that T
+				// currently stands for.
+				// Example:
+				//
+				//   static void bar[T, U](x : T, y : U) { }
+				//   static void foo[T](x : T) {
+				//     bar[T, T](x, x);
+				//   }
+				//
+				// It is *NOT* correct to record the mapping {T=T, U=T} for bar here because
+				// we do not know what T stood for when we want to generate code for bar later.
+
+				Type t = actualTypes.get(i);
+				if (x10TypeSystem.isParameterType(t))
+					t = x10TypeSystem.getConcreteType((ParameterType) Types.baseType(t));
+
+				ptm.add(paramTypes.get(i).type(), Types.stripConstraints(t));
+			}
 			
 			// Remember the parameter type configuration to generate code later.
 			addToWorklist(decl, ptm);
@@ -2140,7 +2159,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	
 	private Expr transformArgument(final Type fType, final Expr arg) {
 		Expr ret = arg;
-		if(!x10TypeSystem.typeEquals(fType, arg.type(), x10Context) && !(x10TypeSystem.isParameterType(fType) && arg.type().isNull()))
+		if (!x10TypeSystem.typeEquals(fType, arg.type(), x10Context))
 			ret = x10Cast(arg, fType);
 		return ret;
 	}

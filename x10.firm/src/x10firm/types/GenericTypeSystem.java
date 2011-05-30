@@ -71,14 +71,6 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	}
 
 	@Override
-	public boolean isParameterType(Type type) {
-		if (typeParameters.containsKey(type))
-			return false;
-		
-		return super.isParameterType(type);
-	}
-
-	@Override
 	public boolean typeDeepBaseEquals(Type t1, Type t2, Context context) {
 		Type t1_ = t1, t2_ = t2;
 

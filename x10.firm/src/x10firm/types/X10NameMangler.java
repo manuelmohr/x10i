@@ -261,8 +261,8 @@ public class X10NameMangler {
 	 * @return The mangled name of the given type
 	 */
 	private static String mangleParameter(final Type type) {
-		if (type instanceof ParameterType)
-			return mangleParameter(x10TypeSystem.getConcreteType((ParameterType) type));
+		if (x10TypeSystem.isParameterType(type))
+			return mangleParameter(x10TypeSystem.getConcreteType((ParameterType) FirmTypeSystem.simplifyType(type)));
 
 		final Type ret = FirmTypeSystem.simplifyType(type);
 
@@ -458,8 +458,8 @@ public class X10NameMangler {
 	 * @return The mangled name of the given type
 	 */
 	private static String mangleType(final Type type, final boolean embed) {
-		if (type instanceof ParameterType)
-			return mangleType(x10TypeSystem.getConcreteType((ParameterType) type), embed);
+		if (x10TypeSystem.isParameterType(type))
+			return mangleType(x10TypeSystem.getConcreteType((ParameterType) FirmTypeSystem.simplifyType(type)), embed);
 
 		String tmp = null;
 
