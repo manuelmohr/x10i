@@ -1,12 +1,15 @@
 package x10firm.types;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import polyglot.types.ClassDef;
+import polyglot.types.ContainerType;
 import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
@@ -18,13 +21,14 @@ import polyglot.types.TypeObject;
 import polyglot.types.Types;
 import polyglot.util.Position;
 import x10.types.MethodInstance;
+import x10.types.ParameterType;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassDef_c;
 import x10.types.X10ClassType;
+import x10.types.X10ConstructorDef;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10Context_c;
 import x10.types.X10MethodDef;
-import x10c.types.X10CTypeSystem_c;
 import firm.ClassType;
 import firm.Entity;
 import firm.Ident;
@@ -39,6 +43,7 @@ import firm.Program;
 import firm.Type;
 import firm.bindings.binding_oo.ddispatch_binding;
 import firm.bindings.binding_typerep.ir_type_state;
+import firm.bindings.binding_typerep.ir_visibility;
 
 /**
  * Includes everything to map X10 types to Firm types
@@ -51,11 +56,17 @@ public class FirmTypeSystem {
 	/** Maps polyglot types to firm types. */
 	private Map<polyglot.types.Type, Type> firmCoreTypes = new HashMap<polyglot.types.Type, Type>();
 
-	/** Maps some polyglot types to "native"/primitive firm types */
+	/** Maps some polyglot types to "native"/primitive firm types. */
 	private Map<polyglot.types.Type, Type> firmTypes = new HashMap<polyglot.types.Type, Type>();
 
 	/** Maps fields to firm entities */
 	private Map<FieldInstance, Entity> fieldMap = new HashMap<FieldInstance, Entity>();
+
+	/** Mapping between MethodDefs and firm entities. */
+	private final HashMap<String, Entity> methodEntities = new HashMap<String, Entity>();
+
+	/** Mapping between X10ConstructorDefs and firm entities */
+	private final HashMap<X10ConstructorDef, Entity> constructorEntities = new HashMap<X10ConstructorDef, Entity>();
 
 	/** Maps struct types to the appropriate boxing types */
 	private Map<X10ClassType, X10ClassType> structBoxingTypes = new HashMap<X10ClassType, X10ClassType>();
@@ -74,13 +85,13 @@ public class FirmTypeSystem {
 	public static String BOXED_VALUE = "__value__";
 	
 	
-	private final X10CTypeSystem_c x10TypeSystem;
+	private final GenericTypeSystem x10TypeSystem;
 
 	/**
 	 * Construct a firm type system object.
 	 * @param x10TypeSystem The X10 type system
 	 */
-	public FirmTypeSystem(final X10CTypeSystem_c x10TypeSystem) {
+	public FirmTypeSystem(final GenericTypeSystem x10TypeSystem) {
 		this.x10TypeSystem = x10TypeSystem;
 		this.x10Context    = new X10Context_c(this.x10TypeSystem);
 	}
@@ -605,5 +616,142 @@ public class FirmTypeSystem {
 	    final Named n = types.get(0);
 	    final X10ClassType objectType = (X10ClassType)n;
 		return objectType;
+	}
+
+	public Entity getConstructorEntity(X10ConstructorInstance instance) {
+		Entity entity = constructorEntities.get(instance.x10Def());
+		if (entity == null) {
+			final String name = X10NameMangler.mangleTypeObjectWithDefClass(instance);
+			final Flags flags = instance.flags();
+
+			final firm.Type type      = asFirmType(instance);
+
+			entity = new Entity(Program.getGlobalType(), name, type);
+			entity.setLdIdent(name);
+
+			if (flags.isAbstract()) {
+				OO.setMethodAbstract(entity, true);
+			}
+
+			if (flags.isNative()) {
+				entity.setVisibility(ir_visibility.ir_visibility_external);
+			}
+
+			OO.setMethodExcludeFromVTable(entity, true);
+			/* the binding of a constructor is static as we will not use the
+			 * vtable to determine which method to call.
+			 * (Note that we still have a "this" pointer anyway) */
+			OO.setEntityBinding(entity, ddispatch_binding.bind_static);
+
+			constructorEntities.put(instance.x10Def(), entity);
+		}
+		return entity;
+	}
+
+	/**
+	 * Returns the firm entity of a method which a given method instance maybe overwrites.
+	 * @param instance The method instance which should be checked
+	 * @return The set of the appropriate firm entities
+	 */
+	private Set<Entity> getMethodOverride(MethodInstance instance) {
+		final Flags flags = instance.flags();
+		// static or abstract methods can't override other methods.
+		if (flags.isStatic() || flags.isAbstract())
+			return Collections.<Entity>emptySet();
+
+		final List<MethodInstance> overrides = new LinkedList<MethodInstance>();
+
+		overrides.addAll(instance.implemented(x10Context));
+		overrides.addAll(instance.overrides(x10Context));
+
+		final Set<Entity> ret = new HashSet<Entity>();
+
+		final ContainerType me_cont = instance.container();
+		for (final MethodInstance meth: overrides) {
+			if (x10TypeSystem.equals((TypeObject)me_cont, (TypeObject)meth.container()))
+				continue;
+
+			final Entity entity = getMethodEntity(meth); 
+			ret.add(entity);
+		}
+
+		return ret;
+	}
+
+	/**
+	 * Return entity for an X10 method
+	 */
+	public Entity getMethodEntity(final MethodInstance instance) {
+		final String nameWithDefiningClass = X10NameMangler.mangleTypeObjectWithDefClass(instance);
+		Entity entity = methodEntities.get(nameWithDefiningClass);
+		if (entity == null) {
+			final X10ClassType owner = (X10ClassType) instance.container();
+			final String nameWithoutDefiningClass = X10NameMangler.mangleTypeObjectWithoutDefClass(instance);
+
+			final Flags flags = instance.flags();
+
+			final firm.Type owningClass = asFirmCoreType(owner);
+			final firm.Type ownerFirm = flags.isStatic() ? Program.getGlobalType() : owningClass;
+			final firm.Type type = asFirmType(instance);
+			entity = new Entity(ownerFirm, nameWithoutDefiningClass, type);
+			entity.setLdIdent(nameWithDefiningClass);
+
+			if (flags.isStatic()) {
+				OO.setEntityBinding(entity, ddispatch_binding.bind_static);
+			} else if (owner.flags().isInterface()) {
+				OO.setEntityBinding(entity, ddispatch_binding.bind_interface);
+			} else if(x10TypeSystem.isStructType(owner)) {
+				// struct methods needn`t be dynamic
+				OO.setEntityBinding(entity, ddispatch_binding.bind_static);
+			} else {
+				OO.setEntityBinding(entity, ddispatch_binding.bind_dynamic);
+			}
+
+			if (flags.isAbstract()) {
+				OO.setMethodAbstract(entity, true);
+			}
+			if (flags.isNative()) {
+				entity.setVisibility(ir_visibility.ir_visibility_external);
+			}
+
+			for(final Entity overwrite: getMethodOverride(instance))
+				entity.addEntityOverwrites(overwrite);
+
+			methodEntities.put(nameWithDefiningClass, entity);
+		}
+
+		return entity;
+	}
+
+	public void pushTypeMapping(ParameterTypeMapping ptm) {
+		// TODO:  Check if already present.
+//		for (ParameterType param : ptm.getKeySet()) {
+//		}
+		
+		for (ParameterType param : ptm.getKeySet()) {
+			final polyglot.types.Type mappedType = ptm.getMappedType(param);
+
+			assert (firmCoreTypes.containsKey(mappedType) || firmTypes.containsKey(mappedType));
+
+			x10TypeSystem.addTypeMapping(param, mappedType);
+
+			if (firmCoreTypes.containsKey(mappedType))
+				firmCoreTypes.put(param, firmCoreTypes.get(mappedType));
+			
+			if (firmTypes.containsKey(mappedType))
+				firmTypes.put(param, firmTypes.get(mappedType));
+		}
+	}
+
+	public void popTypeMapping(ParameterTypeMapping ptm) {
+		for (ParameterType param : ptm.getKeySet()) {
+			x10TypeSystem.removeTypeMapping(param);
+
+			if (firmCoreTypes.containsKey(param))
+				firmCoreTypes.remove(param);
+			
+			if (firmTypes.containsKey(param))
+				firmTypes.remove(param);
+		}
 	}
 }

@@ -10,9 +10,9 @@ import polyglot.types.LocalInstance;
 import polyglot.types.Package;
 import polyglot.types.Type;
 import polyglot.types.TypeObject;
-import polyglot.types.TypeSystem;
 import polyglot.util.UniqueID;
 import x10.types.MethodInstance;
+import x10.types.ParameterType;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10ParsedClassType;
@@ -25,7 +25,7 @@ public class X10NameMangler {
 	/**
 	 * Reference to the X10 type system
 	 */
-	private static TypeSystem x10TypeSystem;
+	private static GenericTypeSystem x10TypeSystem;
 
 	/**
 	 * Mapping of primitive types
@@ -157,10 +157,11 @@ public class X10NameMangler {
 
 	/**
 	 * Initializes the name mangler.
-	 * @param typeSystem_ Reference to the type system
+	 * @param x10TypeSystem_ Reference to the type system.
+	 * @param firmTypeSystem_ Reference to the firm type system.
 	 */
-	public static void setup(final TypeSystem typeSystem_) {
-		x10TypeSystem = typeSystem_;
+	public static void setup(final GenericTypeSystem x10TypeSystem_) {
+		x10TypeSystem = x10TypeSystem_;
 		setupUnOpSubstitutions();
 		setupNameSubstitutions();
 		setupPrimitiveTypeNameMangling();
@@ -260,6 +261,8 @@ public class X10NameMangler {
 	 * @return The mangled name of the given type
 	 */
 	private static String mangleParameter(final Type type) {
+		if (type instanceof ParameterType)
+			return mangleParameter(x10TypeSystem.getConcreteType((ParameterType) type));
 
 		final Type ret = FirmTypeSystem.simplifyType(type);
 
@@ -455,6 +458,9 @@ public class X10NameMangler {
 	 * @return The mangled name of the given type
 	 */
 	private static String mangleType(final Type type, final boolean embed) {
+		if (type instanceof ParameterType)
+			return mangleType(x10TypeSystem.getConcreteType((ParameterType) type), embed);
+
 		String tmp = null;
 
 		final Type ret = FirmTypeSystem.simplifyType(type);

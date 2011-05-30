@@ -13,6 +13,7 @@ import x10.extension.X10Ext;
 import x10c.types.X10CTypeSystem_c;
 import x10firm.CompilerOptions;
 import x10firm.types.FirmTypeSystem;
+import x10firm.types.GenericTypeSystem;
 import x10firm.visit.X10FirmCodeGenerator;
 import firm.Dump;
 import firm.Graph;
@@ -32,7 +33,7 @@ public class FirmGenerated extends SourceGoal_c {
 	/**
 	 * Remember the X10 type system until the code generator is actually invoked.
 	 */
-	private final X10CTypeSystem_c x10TypeSystem;
+	private final GenericTypeSystem x10TypeSystem;
 
 	/**
 	 * Remember the node factory until the code generator is actually invoked
@@ -45,7 +46,7 @@ public class FirmGenerated extends SourceGoal_c {
 			final X10NodeFactory_c nodeFactory) {
 		super("FirmGenerated", job);
 		this.firmTypeSystem = firmTypeSystem;
-		this.x10TypeSystem = (X10CTypeSystem_c) x10TypeSystem;
+		this.x10TypeSystem = (GenericTypeSystem) x10TypeSystem;
 		this.nodeFactory = nodeFactory;
 	}
 

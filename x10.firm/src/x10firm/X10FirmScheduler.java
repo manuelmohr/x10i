@@ -9,7 +9,6 @@ import polyglot.frontend.Job;
 import polyglot.types.TypeSystem;
 import x10.ExtensionInfo.X10Scheduler;
 import x10.ast.X10NodeFactory_c;
-import x10c.types.X10CTypeSystem_c;
 import x10firm.goals.AsmEmitted;
 import x10firm.goals.FirmGenerated;
 import x10firm.goals.GoalSequence;
@@ -17,6 +16,7 @@ import x10firm.goals.Linked;
 import x10firm.goals.LoweringFirm;
 import x10firm.goals.SourceGoalSequence;
 import x10firm.types.FirmTypeSystem;
+import x10firm.types.GenericTypeSystem;
 import x10firm.visit.X10ClosureRemover;
 
 /**
@@ -33,7 +33,7 @@ class X10FirmScheduler extends X10Scheduler {
 	 */
 	public X10FirmScheduler(ExtensionInfo info) {
 		super(info);
-		this.firmTypeSystem = new FirmTypeSystem((X10CTypeSystem_c) info.typeSystem());
+		this.firmTypeSystem = new FirmTypeSystem((GenericTypeSystem) info.typeSystem());
 	}
 
 	@Override
