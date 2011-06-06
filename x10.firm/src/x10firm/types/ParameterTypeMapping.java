@@ -3,7 +3,6 @@ package x10firm.types;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-
 import polyglot.types.Type;
 import polyglot.types.TypeObject;
 import x10.types.ParameterType;

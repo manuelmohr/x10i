@@ -25,11 +25,6 @@ public class X10FirmContext {
 	private Map<VarInstance<?>, X10VarEntry> varEntryMapper = new HashMap<VarInstance<?>, X10VarEntry>();
 
 	/**
-	 * Reference to the current class type
-	 */
-	private X10ClassType curClass;
-
-	/**
 	 * Reference to the current procedure type
 	 */
 	private X10ProcedureInstance<?> curProcedure;
@@ -58,22 +53,6 @@ public class X10FirmContext {
 	 * Create a new Firm context
 	 */
 	public X10FirmContext() {
-
-	}
-
-	/**
-	 * Sets the current class
-	 * @param curClass The current class
-	 */
-	public void setCurClass(X10ClassType curClass) {
-		this.curClass = curClass;
-	}
-
-	/**
-	 * Returns the current class
-	 */
-	public X10ClassType getCurClass() {
-		return curClass;
 	}
 
 	/**

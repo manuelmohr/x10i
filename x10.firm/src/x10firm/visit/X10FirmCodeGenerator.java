@@ -71,6 +71,7 @@ import polyglot.ast.TypeNode;
 import polyglot.ast.Unary_c;
 import polyglot.ast.While_c;
 import polyglot.frontend.Compiler;
+import polyglot.types.ConstructorInstance;
 import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
@@ -81,7 +82,6 @@ import polyglot.types.Type;
 import polyglot.types.Types;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
-import polyglot.visit.NodeVisitor;
 import polyglot.visit.Translator;
 import x10.ast.AssignPropertyCall_c;
 import x10.ast.Async_c;
@@ -104,7 +104,6 @@ import x10.ast.StmtSeq_c;
 import x10.ast.SubtypeTest_c;
 import x10.ast.Tuple_c;
 import x10.ast.TypeDecl_c;
-import x10.ast.TypeParamNode;
 import x10.ast.When_c;
 import x10.ast.X10Binary_c;
 import x10.ast.X10Call_c;
@@ -122,7 +121,6 @@ import x10.ast.X10Special_c;
 import x10.ast.X10Unary_c;
 import x10.types.MethodInstance;
 import x10.types.ParameterType;
-import x10.types.TypeParamSubst;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorDef;
@@ -132,7 +130,6 @@ import x10.types.X10FieldInstance;
 import x10.types.X10MethodDef;
 import x10.types.X10ProcedureInstance;
 import x10.types.checker.Converter;
-import x10.visit.TypeParamSubstTransformer;
 import x10.visit.X10DelegatingVisitor;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
@@ -365,9 +362,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private void addToWorklist(polyglot.ast.Node decl, ParameterTypeMapping ptm) {
 		// Check for duplicates.		
 		for (GenericInstance gi : workList)
-			if (gi.getMapping().equals(ptm))
+			if (gi.getNode() == decl && gi.getMapping().equals(ptm))
 				return;
-		
+
 		workList.add(new GenericInstance(decl, ptm));
 	}
 
@@ -383,7 +380,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		while (!workList.isEmpty()) {
 			final GenericInstance head = workList.poll();
 			final ParameterTypeMapping ptm = head.getMapping();
-			
+
 			firmTypeSystem.pushTypeMapping(ptm);
 			visitAppropriate(head.getNode());
 			firmTypeSystem.popTypeMapping(ptm);
@@ -398,11 +395,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final X10FirmContext newFirmContext = new X10FirmContext();
 		firmContext = firmContext.pushFirmContext(newFirmContext);
 
-		firmContext.setCurClass(classType);
-
-		if(classType.flags().isInterface()) {
-			// NOTHING TO DO
-		} else if(classType.isX10Struct()) {
+		if (classType.flags().isInterface()) {
+			// Nothing to do.
+		} else if (classType.isX10Struct()) {
 			visitStruct(n);
 		} else {
 			visitClass(n);
@@ -539,7 +534,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final Map<LocalInstance, Entity> map = calculatEntityMappingForLocals(locals);
 
 		newFirmContext.setCurProcedure(proc);
-		newFirmContext.setCurClass(owner);
 
 		firmContext = firmContext.pushFirmContext(newFirmContext);
 
@@ -626,7 +620,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(MethodDecl_c dec) {
 		final X10MethodDef   def = (X10MethodDef) dec.methodDef();
-		final MethodInstance methodInstance = def.asInstance();
+		MethodInstance methodInstance = def.asInstance();
+
 		final Entity         entity         = firmTypeSystem.getMethodEntity(methodInstance);
 		final Flags          flags          = methodInstance.flags();
 
@@ -1681,32 +1676,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		resetReturnNode();
 	}
 
+	private void addToMapping(final ParameterTypeMapping ptm, final List<ParameterType> paramTypes, final List<Type> actualTypes) {
+		for (int i = 0; i < paramTypes.size(); ++i) {
+			Type t = actualTypes.get(i);
+			if (x10TypeSystem.isParameterType(t))
+				t = x10TypeSystem.getConcreteType((ParameterType) Types.baseType(t));
 
-
-
-	/**
-	 *  Needed because TypeParamSubstTransformer's constructor is protected.
-	 */
-	public static class GenericTypesRewritingVisitor extends NodeVisitor {
-		private class GenericTypeTransformer extends TypeParamSubstTransformer {
-			public GenericTypeTransformer(TypeParamSubst subst) {
-				super(subst);
-			}
+			ptm.add(paramTypes.get(i), Types.stripConstraints(t));
 		}
-
-		private GenericTypeTransformer transformer;
-
-		/**
-		 * @param subst The substitution that shall be applied.
-		 */
-		public GenericTypesRewritingVisitor(TypeParamSubst subst) {
-			this.transformer = new GenericTypeTransformer(subst);
-		}
-
-        @Override
-        public polyglot.ast.Node leave(polyglot.ast.Node old, polyglot.ast.Node n, NodeVisitor v) {
-        	return transformer.transform(n, old, null);
-        }
 	}
 
 	@Override
@@ -1721,31 +1698,29 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			final X10MethodDecl decl = fetcher.getDecl(n);
 
 			// Construct type mapping.
+			final List<ParameterType> paramTypes = ((X10MethodDef) methodInstance.def()).typeParameters();
 			final List<Type> actualTypes = methodInstance.typeParameters();
-			final List<TypeParamNode> paramTypes = decl.typeParameters();
 			assert (actualTypes.size() == decl.typeParameters().size());
-			final ParameterTypeMapping ptm = new ParameterTypeMapping();
-			for (int i = 0; i < paramTypes.size(); ++i) {
-				// There's one important special case:  if we use a type parameter T
-				// for another type parameter U, we have to actually get the type that T
-				// currently stands for.
-				// Example:
-				//
-				//   static void bar[T, U](x : T, y : U) { }
-				//   static void foo[T](x : T) {
-				//     bar[T, T](x, x);
-				//   }
-				//
-				// It is *NOT* correct to record the mapping {T=T, U=T} for bar here because
-				// we do not know what T stood for when we want to generate code for bar later.
-
-				Type t = actualTypes.get(i);
-				if (x10TypeSystem.isParameterType(t))
-					t = x10TypeSystem.getConcreteType((ParameterType) Types.baseType(t));
-
-				ptm.add(paramTypes.get(i).type(), Types.stripConstraints(t));
-			}
 			
+			ParameterTypeMapping ptm = new ParameterTypeMapping();
+			addToMapping(ptm, paramTypes, actualTypes);
+
+			// If this is a generic method defined inside a generic class,
+			// also save the type mapping for the generic class.
+			// We do not have to remember to instantiate this class
+			// with the given type argument here, because this must have already
+			// happened before when someone created the object that we call the
+			// method on.
+			if (n.target() != null && x10TypeSystem.isClass(n.target().type())) {
+				X10ClassType ct = (X10ClassType) Types.stripConstraints(n.target().type());
+				X10ClassDef def = (X10ClassDef) ct.def();
+
+				final List<ParameterType> cParamTypes = def.typeParameters();
+				final List<Type> cActualTypes = ct.typeArguments();
+
+				addToMapping(ptm, cParamTypes, cActualTypes);
+			}
+
 			// Remember the parameter type configuration to generate code later.
 			addToWorklist(decl, ptm);
 		}
@@ -1939,11 +1914,30 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final Type type = n.objectType().type();
 		Node objectThisNode = null;
 
-		if(x10TypeSystem.isStructType(n.type())) {
-			objectThisNode = genStackAlloc(n.type(), type);
-		} else {
-			objectThisNode = genNewAlloc(n.type(), type);
+		if (!n.typeArguments().isEmpty()) {
+			final ConstructorInstance ci = n.constructorInstance();
+
+			// Find the class declaration.
+			final ClassDeclFetcher fetcher = new ClassDeclFetcher(x10TypeSystem, xnf);
+			final X10ClassDecl decl = fetcher.getDecl(n);
+
+			// Construct type mapping.
+			final X10ClassType ct = (X10ClassType) ci.container();
+			final List<ParameterType> paramTypes = ct.def().typeParameters();
+			final List<Type> actualTypes = ct.typeArguments();
+			assert (actualTypes.size() == decl.typeParameters().size());
+			final ParameterTypeMapping ptm = new ParameterTypeMapping();
+			addToMapping(ptm, paramTypes, actualTypes);
+
+			// Remember the parameter type configuration to generate code later.
+			addToWorklist(decl, ptm);
 		}
+
+		if (x10TypeSystem.isStructType(n.type()))
+			objectThisNode = genStackAlloc(n.type(), type);
+		else
+			objectThisNode = genNewAlloc(n.type(), type);
+
 		assert(objectThisNode != null);
 
 		genConstructorCall(objectThisNode, n.constructorInstance(), n.arguments());

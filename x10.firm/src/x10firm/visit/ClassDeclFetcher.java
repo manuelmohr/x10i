@@ -1,5 +1,6 @@
 package x10firm.visit;
 
+import polyglot.ast.New;
 import polyglot.ast.TypeNode;
 import polyglot.frontend.Job;
 import polyglot.types.ContainerType;
@@ -11,22 +12,22 @@ import polyglot.types.Types;
 import polyglot.util.Position;
 import polyglot.visit.NodeVisitor;
 import x10.ast.X10Call;
+import x10.ast.X10ClassDecl;
 import x10.ast.X10MethodDecl;
+import x10.ast.X10New;
+import x10.ast.X10New_c;
 import x10.ast.X10NodeFactory_c;
 import x10.ast.X10SourceFile_c;
 import x10.errors.Errors;
 import x10.optimizations.ForLoopOptimizer;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
+import x10.types.X10ConstructorDef;
 import x10.types.X10MethodDef;
 import x10.visit.Desugarer;
 import x10.visit.X10TypeChecker;
 
-/**
- * Stolen from Inliner.java. Let's hope the X10 guys refactor this and put it
- * into a separate class soon.
- */
-public class MethodDeclFetcher {
+public class ClassDeclFetcher {
 	private final TypeSystem x10TypeSystem;
 	private final X10NodeFactory_c xnf;
 
@@ -34,18 +35,18 @@ public class MethodDeclFetcher {
 	 * @param typeSystem The X10 type system.
 	 * @param xnf The node factory.
 	 */
-	public MethodDeclFetcher(TypeSystem typeSystem, X10NodeFactory_c xnf) {
+	public ClassDeclFetcher(TypeSystem typeSystem, X10NodeFactory_c xnf) {
 		this.x10TypeSystem = typeSystem;
 		this.xnf = xnf;
 	}
 
 	/**
-	 * Get the definition of the X10 Class that implements a given method.
+	 * Get the definition of the X10 Class that implements a given constructor.
 	 * 
-	 * @param candidate the method definition whose container is desired
-	 * @return the definition of the X10 Class containing md
+	 * @param candidate the constructor definition whose container is desired
+	 * @return the definition of the X10 Class containing the constructor
 	 */
-	private X10ClassDef getContainer(X10MethodDef candidate) {
+	private X10ClassDef getContainer(X10ConstructorDef candidate) {
 		Ref<? extends ContainerType> containerRef = candidate.container();
 		ContainerType containerType = Types.get(containerRef);
 		Type containerBase = Types.baseType(containerType);
@@ -55,7 +56,7 @@ public class MethodDeclFetcher {
 	}
 
 	/**
-	 * Obtain the job for containing the declaration for a given method. Run the
+	 * Obtain the job for containing the declaration for a given constructor. Run the
 	 * preliminary compilation phases on the job's AST.
 	 * 
 	 * Note Errors during speculative compilation should not be fatal. The
@@ -66,7 +67,7 @@ public class MethodDeclFetcher {
 	 * @param container
 	 * @return
 	 */
-	private Job getJob(X10MethodDef candidate, X10ClassDef container) {
+	private Job getJob(X10ConstructorDef candidate, X10ClassDef container) {
 		Job job = container.job();
 		try {
 			/*
@@ -107,19 +108,19 @@ public class MethodDeclFetcher {
 	}
 
 	/**
-	 * Walk an AST looking for the declaration of a given method.
+	 * Walk an AST looking for the declaration of a given constructor.
 	 * 
 	 * @param candidate
-	 *            the method whose declaration is desired
+	 *            the cons whose declaration is desired
 	 * @param ast
 	 *            the abstract syntax tree containing the declaration
 	 * @return the declaration for the indicated method, or null if no
 	 *         declaration can be found or it has an empty body.
 	 */
-	private X10MethodDecl getDeclaration(final X10MethodDef candidate,
+	private X10ClassDecl getDeclaration(final X10ClassDef candidate,
 			final polyglot.ast.Node ast) {
 		final Position pos = candidate.position();
-		final X10MethodDecl[] decl = new X10MethodDecl[1];
+		final X10ClassDecl[] decl = new X10ClassDecl[1];
 
 		ast.visit(new NodeVisitor() {
 			private boolean contains(Position outer, Position inner) {
@@ -138,9 +139,9 @@ public class MethodDeclFetcher {
 					return n; // TypeNodes don't contain decls, short-circuit search
 				if (!pos.isCompilerGenerated() && !contains(n.position(), pos))
 					return n; // definition of md isn't inside n, short-circuit search
-				if (n instanceof X10MethodDecl
-						&& candidate == ((X10MethodDecl) n).methodDef()) {
-					decl[0] = (X10MethodDecl) n;
+				if (n instanceof X10ClassDecl
+						&& candidate == ((X10ClassDecl) n).classDef()) {
+					decl[0] = (X10ClassDecl) n;
 					return n; // we found the decl for the candidate, short-circuit search
 				}
 				return null; // look for the decl inside n
@@ -171,9 +172,9 @@ public class MethodDeclFetcher {
 	 * @return The declaration of the method invoked by call, or null if the
 	 *         declaration cannot be found.
 	 */
-	public X10MethodDecl getDecl(X10Call call) {
+	public X10ClassDecl getDecl(X10New n) {
 		// get candidate
-		X10MethodDef candidate = call.methodInstance().x10Def();
+		X10ConstructorDef candidate = n.constructorInstance().x10Def();
 
 		// get container and declaration for candidate
 		X10ClassDef container = getContainer(candidate);
@@ -198,7 +199,7 @@ public class MethodDeclFetcher {
 
 		ast = ast.visit(new Desugarer(candidateJob, x10TypeSystem, xnf).begin());
 		ast = ast.visit(new ForLoopOptimizer(candidateJob, x10TypeSystem, xnf).begin());
-		X10MethodDecl decl = getDeclaration(candidate, ast);
+		X10ClassDecl decl = getDeclaration(container, ast);
 		if (null == decl) {
 			System.err.println("unable to find declaration for candidate: "
 					+ candidate);

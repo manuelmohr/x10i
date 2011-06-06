@@ -7,6 +7,7 @@ import polyglot.frontend.ExtensionInfo;
 import polyglot.types.ClassType;
 import polyglot.types.Context;
 import polyglot.types.Type;
+import polyglot.types.Types;
 import x10.types.ParameterType;
 import x10c.types.X10CTypeSystem_c;
 
@@ -50,8 +51,14 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	 * @return				the corresponding value type
 	 */
 	public polyglot.types.Type getConcreteType(ParameterType paramType) {
-		assert (typeParameters.containsKey(paramType));
-		return typeParameters.get(paramType);
+		polyglot.types.Type p = paramType;
+
+		while ((p = Types.baseType(p)) != null && super.isParameterType(p)) {
+			assert (typeParameters.containsKey(p));
+			p = typeParameters.get(p);
+		}
+
+		return p;
 	}
 
 	@Override

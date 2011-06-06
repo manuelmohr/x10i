@@ -469,12 +469,7 @@ public class X10NameMangler {
 				return tmp;
 		}
 
-		if (ret instanceof X10ParsedClassType) {
-			if (((X10ParsedClassType) ret).isMissingTypeArguments())
-				throw new RuntimeException("Cannot mangle type `" + ret.fullName() + "' because it is missing type arguments.");
-
-			tmp = mangleClassType((X10ClassType) ret, embed);
-		} else if (ret instanceof X10ClassType) { // a class type
+		if (ret instanceof X10ClassType) { // a class type
 			tmp = mangleClassType((X10ClassType) ret, embed);
 		} else {
 			 assert(false): "Unknown type in mangleType " + ret.getClass() + ": " + ret;

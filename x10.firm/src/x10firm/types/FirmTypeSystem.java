@@ -25,10 +25,10 @@ import x10.types.ParameterType;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassDef_c;
 import x10.types.X10ClassType;
-import x10.types.X10ConstructorDef;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10Context_c;
 import x10.types.X10MethodDef;
+import x10.types.X10ParsedClassType;
 import firm.ClassType;
 import firm.Entity;
 import firm.Ident;
@@ -66,7 +66,7 @@ public class FirmTypeSystem {
 	private final HashMap<String, Entity> methodEntities = new HashMap<String, Entity>();
 
 	/** Mapping between X10ConstructorDefs and firm entities */
-	private final HashMap<X10ConstructorDef, Entity> constructorEntities = new HashMap<X10ConstructorDef, Entity>();
+	private final HashMap<String, Entity> constructorEntities = new HashMap<String, Entity>();
 
 	/** Maps struct types to the appropriate boxing types */
 	private Map<X10ClassType, X10ClassType> structBoxingTypes = new HashMap<X10ClassType, X10ClassType>();
@@ -505,6 +505,9 @@ public class FirmTypeSystem {
 	 * This variant does not return the "native"-type even if there is one.
 	 */
 	public firm.Type asFirmCoreType(polyglot.types.Type type) {
+		// isParsedClassType => !isMissingTypeArguments
+		assert (!(type instanceof X10ParsedClassType) || !((X10ParsedClassType) type).isMissingTypeArguments());
+
 		/* strip type-constraints */
 		final polyglot.types.Type baseType = simplifyType(type);
 
@@ -623,12 +626,12 @@ public class FirmTypeSystem {
 	 * @return	a Firm entity corresponding to the constructor
 	 */
 	public Entity getConstructorEntity(X10ConstructorInstance instance) {
-		Entity entity = constructorEntities.get(instance.x10Def());
-		if (entity == null) {
-			final String name = X10NameMangler.mangleTypeObjectWithDefClass(instance);
-			final Flags flags = instance.flags();
+		final String name = X10NameMangler.mangleTypeObjectWithDefClass(instance);
+		Entity entity = constructorEntities.get(name);
 
-			final firm.Type type      = asFirmType(instance);
+		if (entity == null) {
+			final Flags flags = instance.flags();
+			final firm.Type type = asFirmType(instance);
 
 			entity = new Entity(Program.getGlobalType(), name, type);
 			entity.setLdIdent(name);
@@ -647,7 +650,7 @@ public class FirmTypeSystem {
 			 * (Note that we still have a "this" pointer anyway) */
 			OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 
-			constructorEntities.put(instance.x10Def(), entity);
+			constructorEntities.put(name, entity);
 		}
 		return entity;
 	}
@@ -718,7 +721,7 @@ public class FirmTypeSystem {
 				entity.setVisibility(ir_visibility.ir_visibility_external);
 			}
 
-			for(final Entity overwrite: getMethodOverride(instance))
+			for (final Entity overwrite: getMethodOverride(instance))
 				entity.addEntityOverwrites(overwrite);
 
 			methodEntities.put(nameWithDefiningClass, entity);
