@@ -146,7 +146,7 @@ public class FirmTypeSystem {
 				/* DELETE ME START: "following methods are not supported yet" */
         		final MethodInstance mi = mDef.asInstance();
     			final String x = mi.name().toString();
-    			if (x.equals("compareTo") || x.equals("toString")) {
+    			if (x.equals("compareTo")) {
     				continue;
     			}
     			/* DELETE ME END: */

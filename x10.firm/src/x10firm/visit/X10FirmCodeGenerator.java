@@ -460,10 +460,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 						createStructTypeNameMethodBody(n, meth);
 						continue;
 					}
-					
-					if(name.equals("toString")) {
-						continue;
-					}
 				}
 				
 				/* DELETE ME END: */
