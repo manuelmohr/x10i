@@ -35,8 +35,12 @@ static inline void x10_free(void *obj) {
 	// Do nothing
 }
 
-extern void *X10NullPointerException;
-extern void *X10IndexOutOfBoundsException;
+static inline x10_object *new_exception(const char *name, const char *msg) {
+	(void) name;
+	(void) msg;
+	// TODO this is just a dummy!
+	return NULL;
+}
 
 static inline void x10_throw_exception(x10_object *exc) {
 	(void) exc;
@@ -45,7 +49,7 @@ static inline void x10_throw_exception(x10_object *exc) {
 
 static inline void x10_null_check(void *obj) {
 	if (obj == X10_NULL)
-		x10_throw_exception(X10NullPointerException);
+		x10_throw_exception(new_exception("NullPointerException", "null check"));
 }
 
 #endif // UTIL_H

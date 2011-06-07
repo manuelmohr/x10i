@@ -10,7 +10,7 @@
 // check string bounds; return IndexOutOfRangeException
 #define X10_CHECK_STRING_BOUNDS(self, idx) \
 	if (idx < 0 || (x10_uint)idx > X10_STRING_LEN(self)) { \
-		x10_throw_exception(X10IndexOutOfBoundsException);	\
+		x10_throw_exception(new_exception("Index Out of Bounds", "Within string bounds check"));	\
 	}
 
 static x10_string *x10_string_from_wide_buf(const size_t len, const x10_char *wchars) {
@@ -177,7 +177,7 @@ x10_string *_ZN3x104lang6String9substringEii(x10_string *self, x10_int start_idx
 	X10_CHECK_STRING_BOUNDS(self, start_idx);
 	X10_CHECK_STRING_BOUNDS(self, to_idx);
 	if(start_idx > to_idx) {
-		x10_throw_exception(X10IndexOutOfBoundsException);
+		x10_throw_exception(new_exception("Index Out Of Bounds", "In substring"));
 	}
 
 	const size_t len = to_idx - start_idx;
