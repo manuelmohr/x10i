@@ -32,7 +32,7 @@ X10_EXTERN x10_int _ZN3x104lang6String11lastIndexOfEDi(x10_string *, x10_char);
 X10_EXTERN x10_int _ZN3x104lang6String11lastIndexOfEDii(x10_string *, x10_char, x10_int);
 X10_EXTERN x10_int _ZN3x104lang6String11lastIndexOfEPN3x104lang6StringE(x10_string *, x10_string *);
 X10_EXTERN x10_int _ZN3x104lang6String11lastIndexOfEPN3x104lang6StringEi(x10_string *, x10_string *, x10_int);
-X10_EXTERN x10_string *_ZN3x104lang6String9substringEi(x10_string *, x10_int); 
+X10_EXTERN x10_string *_ZN3x104lang6String9substringEi(x10_string *, x10_int);
 X10_EXTERN x10_string *_ZN3x104lang6String9substringEii(x10_string *, x10_int, x10_int);
 X10_EXTERN x10_boolean _ZN3x104lang6String8endsWithEPN3x104lang6StringE(x10_string *, x10_string *);
 X10_EXTERN x10_boolean _ZN3x104lang6String10startsWithEPN3x104lang6StringE(x10_string *, x10_string *);

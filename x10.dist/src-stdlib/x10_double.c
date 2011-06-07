@@ -10,7 +10,7 @@ X10_MAKE_EQUALS(_ZN3x104lang6Double6equalsEd, x10_double)
 X10_MAKE_TYPENAME(_ZN3x104lang6Double8typeNameEv, x10_double, "x10.lang.Double")
 X10_MAKE_EQUALS_ANY(_ZN3x104lang6Double6equalsEPN3x104lang3AnyE, x10_int)
 
-/* 
+/*
  * For Double, we need a special toString() method to be compatible
  * to x10c++.  The following code is copied from
  * x10aux/basic_functions.cc.
@@ -33,7 +33,7 @@ x10_string *_ZN3x104lang6Double8toStringEv(x10_double v)
 	if (isnan(v)) {
 		swprintf(buf, STRBUF_SIZE, T_("NaN"));
 	} else if (isinf(v) && v > 0.0) {
-		swprintf(buf, STRBUF_SIZE, T_("Infinity")); 
+		swprintf(buf, STRBUF_SIZE, T_("Infinity"));
 	} else if (isinf(v) && v < 0.0) {
 		swprintf(buf, STRBUF_SIZE, T_("-Infinity"));
 	} else if (fabs(v) >= 1E-3 && fabs(v) < 1E7) {
@@ -62,7 +62,7 @@ x10_string *_ZN3x104lang6Double8toStringEv(x10_double v)
 	}
 	return x10_string_from_wide_chars(buf);
 #undef BUF_SIZE
-}   
+}
 
 
 MAKE_BINOPS(_ZN3x104lang6Double, d, x10_double)

@@ -49,7 +49,7 @@ bits, whether the original value of a,b,c is almost all zero or is uniformly dis
 mix() was built out of 36 single-cycle latency instructions in a structure that could supported
 2x parallelism, like so:
 
-      a -= b; 
+      a -= b;
       a -= c; x = (c>>13);
       b -= c; a ^= x;
       b -= a; x = (a<<8);
