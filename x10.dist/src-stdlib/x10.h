@@ -51,19 +51,7 @@ typedef wchar_t			x10_char;
 typedef float 			x10_float;
 typedef double 			x10_double;
 
-#define X10_MIN(a, b) (((a) < (b)) ? (a) : (b))
-#define X10_MAX(a, b) (((a) > (b)) ? (a) : (b))
-
 #define X10_EXTERN extern
-
-#define X10_NULL   NULL
-
-#define X10_TRUE 	(true)
-#define X10_FALSE	(false)
-
-#define X10_MALLOC(s)   	malloc(s)
-#define X10_REALLOC(v,s)	realloc((v), (s))
-#define X10_FREE(o)		// DO NOTHING
 
 #define X10_OBJECT_CAST(to, what) ((to *)(what))
 
@@ -72,17 +60,6 @@ typedef double 			x10_double;
 #define UNUSED(s) (void)(s)
 
 #define T_(x) L##x
-
-#define X10_NULL_CHECK(obj) \
-	if(obj == X10_NULL) { \
-		X10_THROW_EXCEPTION(X10_NULL_POINTER_EXCEPTION); \
-	}
-
-#define X10_NULL_POINTER_EXCEPTION // TODO: name assoziation
-#define X10_INDEX_OUT_OF_BOUNDS_EXCEPTION // TODO: name assoziation
-
-#define X10_THROW_EXCEPTION(...)	\
-	{ } // TODO: Throw exception
 
 #endif // X10_H
 

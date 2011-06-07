@@ -1,6 +1,7 @@
 #include "x10_string.h"
+#include "util.h"
 
-#define X10_ALLOC_STRING(len) (x10_string *)X10_MALLOC(sizeof(x10_string) + (((len) + 1) * sizeof(x10_char)))
+#define X10_ALLOC_STRING(len) (x10_string *)x10_malloc(sizeof(x10_string) + (((len) + 1) * sizeof(x10_char)))
 
 #define X10_STRING_INIT(str, len) \
 	X10_INIT_OBJECT(str, T_STRING); \
@@ -9,7 +10,7 @@
 // check string bounds; return IndexOutOfRangeException 
 #define X10_CHECK_STRING_BOUNDS(self, idx) \
 	if (idx < 0 || (x10_uint)idx > X10_STRING_LEN(self)) { \
-		X10_THROW_EXCEPTION(X10_INDEX_OUT_OF_BOUNDS_EXCEPTION);	\
+		x10_throw_exception(X10IndexOutOfBoundsException);	\
 	}
 
 static x10_string *x10_string_from_wide_buf(const size_t len, const x10_char *wchars) {
@@ -103,7 +104,7 @@ static const x10_char *wstrnrstrn(const x10_char *haystack, size_t haystack_sz,
 
 x10_int _ZN3x104lang6String7indexOfEPN3x104lang6StringEi(x10_string *self, x10_string *other, x10_int idx)
 {
-	X10_NULL_CHECK(other); 
+	x10_null_check(other); 
 	if(idx < 0) idx = 0;
 	if(((size_t)idx) >= X10_STRING_LEN(self)) return -1;
 
@@ -148,7 +149,7 @@ x10_int _ZN3x104lang6String11lastIndexOfEPN3x104lang6StringE(x10_string *self, x
 
 x10_int _ZN3x104lang6String11lastIndexOfEPN3x104lang6StringEi(x10_string *self, x10_string *other, x10_int idx)
 {
-	X10_NULL_CHECK(other); 
+	x10_null_check(other); 
 	if(idx < 0) idx = 0;
 	if(((size_t)idx) >= X10_STRING_LEN(self)) return -1;
 
@@ -176,7 +177,7 @@ x10_string *_ZN3x104lang6String9substringEii(x10_string *self, x10_int start_idx
 	X10_CHECK_STRING_BOUNDS(self, start_idx);
 	X10_CHECK_STRING_BOUNDS(self, to_idx);
 	if(start_idx > to_idx) {
-		X10_THROW_EXCEPTION(X10_INDEX_OUT_OF_BOUNDS_EXCEPTION);
+		x10_throw_exception(X10IndexOutOfBoundsException);
 	}
 
 	const size_t len = to_idx - start_idx;
@@ -223,9 +224,9 @@ x10_string *_ZN3x104lang6String4trimEv(x10_string *self)
 
 x10_int _ZN3x104lang6String9compareToEPN3x104lang6StringE(x10_string *self, x10_string *other)
 {
-	X10_NULL_CHECK(other);
+	x10_null_check(other);
     	const x10_int len_diff = X10_STRING_LEN(self) - X10_STRING_LEN(other);
-    	const size_t min_len = X10_MIN(X10_STRING_LEN(self), X10_STRING_LEN(other)); 
+    	const size_t min_len = MIN(X10_STRING_LEN(self), X10_STRING_LEN(other)); 
 	const x10_int cmp = wcsncmp(X10_STRING_BUF(self), X10_STRING_BUF(other), min_len);
 	if(cmp != 0) 
 		return cmp;
