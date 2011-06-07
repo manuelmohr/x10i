@@ -9,8 +9,6 @@ struct x10_string {
 	x10_char buf[1];
 };
 
-#define X10_STRING_LEN(s) 	((s)->len)
-#define X10_STRING_LEN_BYTES(s) (X10_STRING_LEN(s) * sizeof(x10_char))
 #define X10_STRING_BUF(s) 	((s)->buf)
 #define X10_STRING_CHAR(s,i) 	X10_STRING_BUF((s))[(i)]
 
