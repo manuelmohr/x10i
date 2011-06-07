@@ -10,7 +10,6 @@ import polyglot.types.TypeSystem;
 import polyglot.visit.Translator;
 import x10.ast.X10NodeFactory_c;
 import x10.extension.X10Ext;
-import x10c.types.X10CTypeSystem_c;
 import x10firm.CompilerOptions;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;

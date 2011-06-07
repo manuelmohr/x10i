@@ -73,7 +73,7 @@ public class FirmTypeSystem {
 
 	/** X10 Context */
 	private X10Context_c x10Context = null;
-	
+
 	/** All class instances share the same location for the vptr (the pointer to the vtable) */
 	private Entity vptrEntity;
 
@@ -83,8 +83,8 @@ public class FirmTypeSystem {
 	 * Name of the boxed value.
 	 */
 	public static String BOXED_VALUE = "__value__";
-	
-	
+
+
 	private final GenericTypeSystem x10TypeSystem;
 
 	/**
@@ -142,7 +142,7 @@ public class FirmTypeSystem {
         	cd.addInterface(Types.ref(intervace));
 
         	for(final MethodDef mDef : intervaceDef.methods())  {
-        		
+
 				/* DELETE ME START: "following methods are not supported yet" */
         		final MethodInstance mi = mDef.asInstance();
     			final String x = mi.name().toString();
@@ -150,7 +150,7 @@ public class FirmTypeSystem {
     				continue;
     			}
     			/* DELETE ME END: */
-        		
+
         		final X10MethodDef md = x10TypeSystem.methodDef(pos, Types.ref(ct), Flags.PUBLIC, mDef.returnType(), mDef.name(),
         										                mDef.formalTypes());
 
@@ -258,7 +258,7 @@ public class FirmTypeSystem {
 		final polyglot.types.Type baseType = simplifyType(type);
 		return Types.isX10Struct(baseType) && !isFirmPrimitiveType(baseType);
 	}
-	
+
 	/**
 	 * Simplifies a given polyglot type -> Returns the base type of a given type. -> Removes constrained types, annotations etc.
 	 * TODO  Put this into a separate Util (or similar) class.
@@ -392,33 +392,33 @@ public class FirmTypeSystem {
 		final firm.Type klass = asFirmCoreType(field.container());
 		addField(field, klass);
 	}
-	
-	/** 
-	 * Expands a given class type. -> Add extra methods etc. 
-	 * @param classType The class type which should be expanded. 
+
+	/**
+	 * Expands a given class type. -> Add extra methods etc.
+	 * @param classType The class type which should be expanded.
 	 */
 	private void expandClassType(final X10ClassType classType) {
-		// Currently only primitive types are expanded. 
+		// Currently only primitive types are expanded.
 		if(!isFirmPrimitiveType(classType)) return;
-		
+
 		final X10ClassDef def = classType.x10Def();
-		
+
 		final X10ClassType x10Any = x10TypeSystem.Any();
-		
+
 		// Get the hashCode method from x10.Any
 		final List<MethodInstance> methods = x10Any.methodsNamed(Name.make("hashCode"));
 		assert(methods.size() == 1);
 		final MethodInstance x10AnyhashCodeMethodInstance = methods.get(0);
-		
+
 		final List<MethodInstance> mm = classType.methods(Name.make("hashCode"), x10AnyhashCodeMethodInstance.formalTypes(), x10Context);
 		if(mm.size() == 0) {
 			// add the missing hashCode method to the class
 			final MethodDef x10AnyhashCodeMethodDef = x10AnyhashCodeMethodInstance.def();
-			
-			final MethodDef hashCodeMethodDef = x10TypeSystem.methodDef(Position.COMPILER_GENERATED, Types.ref(classType), 
-					x10AnyhashCodeMethodDef.flags().clearAbstract().Native(), x10AnyhashCodeMethodDef.returnType(), x10AnyhashCodeMethodDef.name(), 
+
+			final MethodDef hashCodeMethodDef = x10TypeSystem.methodDef(Position.COMPILER_GENERATED, Types.ref(classType),
+					x10AnyhashCodeMethodDef.flags().clearAbstract().Native(), x10AnyhashCodeMethodDef.returnType(), x10AnyhashCodeMethodDef.name(),
 					x10AnyhashCodeMethodDef.formalTypes());
-			
+
 			def.addMethod(hashCodeMethodDef);
 		}
 	}
@@ -426,7 +426,7 @@ public class FirmTypeSystem {
 	@SuppressWarnings("unused")
 	private firm.Type createClassType(final X10ClassType classType) {
 		expandClassType(classType);
-		
+
 		final String className = X10NameMangler.mangleTypeObjectWithDefClass(classType);
 		final Flags flags = classType.flags();
 		ClassType result = new ClassType(className);
@@ -618,6 +618,10 @@ public class FirmTypeSystem {
 		return objectType;
 	}
 
+	/**
+	 * @param instance	a constructor method instance
+	 * @return	a Firm entity corresponding to the constructor
+	 */
 	public Entity getConstructorEntity(X10ConstructorInstance instance) {
 		Entity entity = constructorEntities.get(instance.x10Def());
 		if (entity == null) {
@@ -671,7 +675,7 @@ public class FirmTypeSystem {
 			if (x10TypeSystem.equals((TypeObject)me_cont, (TypeObject)meth.container()))
 				continue;
 
-			final Entity entity = getMethodEntity(meth); 
+			final Entity entity = getMethodEntity(meth);
 			ret.add(entity);
 		}
 
@@ -723,11 +727,15 @@ public class FirmTypeSystem {
 		return entity;
 	}
 
+	/**
+	 * Inserts parameter type mapping into global mappings
+	 * @param ptm	a set of type mappings
+	 */
 	public void pushTypeMapping(ParameterTypeMapping ptm) {
 		// TODO:  Check if already present.
 //		for (ParameterType param : ptm.getKeySet()) {
 //		}
-		
+
 		for (ParameterType param : ptm.getKeySet()) {
 			final polyglot.types.Type mappedType = ptm.getMappedType(param);
 
@@ -737,19 +745,23 @@ public class FirmTypeSystem {
 
 			if (firmCoreTypes.containsKey(mappedType))
 				firmCoreTypes.put(param, firmCoreTypes.get(mappedType));
-			
+
 			if (firmTypes.containsKey(mappedType))
 				firmTypes.put(param, firmTypes.get(mappedType));
 		}
 	}
 
+	/**
+	 * Remove parameter type mapping from global mappings
+	 * @param ptm	a set of type mappings
+	 */
 	public void popTypeMapping(ParameterTypeMapping ptm) {
 		for (ParameterType param : ptm.getKeySet()) {
 			x10TypeSystem.removeTypeMapping(param);
 
 			if (firmCoreTypes.containsKey(param))
 				firmCoreTypes.remove(param);
-			
+
 			if (firmTypes.containsKey(param))
 				firmTypes.remove(param);
 		}

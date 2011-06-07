@@ -41,7 +41,7 @@ public class X10NameMangler {
 	 * Substitution table for unary operators.
 	 */
 	private static Map<String, String> unOpSubst = new HashMap<String, String>();
-	
+
 	/**
 	 * Mapping for anonymous class names.
 	 */
@@ -59,7 +59,7 @@ public class X10NameMangler {
 	private static final String MANGLED_THIS = "C1";
 	private static final String MANGLED_VTABLE = "TV";
 	private static final String MANGLED_TYPEINFO = "TI";
-	
+
 	private static final String MANGLED_ANONYMOUS_CLASS_PREFIX = "$ANONYMOUS";
 
 	/**
@@ -158,7 +158,6 @@ public class X10NameMangler {
 	/**
 	 * Initializes the name mangler.
 	 * @param x10TypeSystem_ Reference to the type system.
-	 * @param firmTypeSystem_ Reference to the firm type system.
 	 */
 	public static void setup(final GenericTypeSystem x10TypeSystem_) {
 		x10TypeSystem = x10TypeSystem_;
@@ -296,11 +295,11 @@ public class X10NameMangler {
 		// same as mangle type without embedding
 		return mangleType(type, false);
 	}
-	
+
 	private static String getAnonymousClassName(final X10ClassType clazz) {
 		String name = anonymousClassNames.get(clazz);
 		if(name != null) return name;
-		
+
 		name = UniqueID.newID(MANGLED_ANONYMOUS_CLASS_PREFIX);
 		anonymousClassNames.put(clazz, name);
 		return name;
@@ -380,19 +379,19 @@ public class X10NameMangler {
 				buf.append(mangleTypeParameter(type));
 			buf.append(TYPEARG_END);
 		}
-		
+
 		buf.append(QUAL_END);
-		
+
 		if (!typeArgs.isEmpty()) {
 			// Comply with C++ ABI and mangle return type.
 			buf.append(mangleType(method.returnType(), false));
 		}
-		
+
 		if (!method.formalNames().isEmpty()) {
 			final List<LocalInstance> formalNames = method.formalNames();
 			final List<Type> formalTypes = method.formalTypes();
 			assert formalNames.size() == formalTypes.size();
-			
+
 			for (int i = 0; i < formalNames.size(); ++i) {
 				final LocalInstance form = formalNames.get(i);
 				buf.append(mangleArgument(form.type(formalTypes.get(i))));
