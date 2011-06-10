@@ -11,6 +11,7 @@ import java.util.Set;
 
 import polyglot.types.ClassDef;
 import polyglot.types.ContainerType;
+import polyglot.types.Context;
 import polyglot.types.Def;
 import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
@@ -29,7 +30,6 @@ import x10.types.X10ClassDef;
 import x10.types.X10ClassDef_c;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
-import x10.types.X10Context_c;
 import x10.types.X10MethodDef;
 import x10.types.X10ParsedClassType;
 import firm.ClassType;
@@ -72,7 +72,7 @@ public class FirmTypeSystem {
 	private final Map<GenericClassInstance, GenericClassContext> genericContexts = new HashMap<GenericClassInstance, GenericClassContext>();
 
 	/** X10 Context */
-	private X10Context_c x10Context = null;
+	private Context x10Context = null;
 
 	/** All class instances share the same location for the vptr (the pointer to the vtable) */
 	private Entity vptrEntity;
@@ -93,7 +93,7 @@ public class FirmTypeSystem {
 	 */
 	public FirmTypeSystem(final GenericTypeSystem x10TypeSystem) {
 		this.x10TypeSystem = x10TypeSystem;
-		this.x10Context    = new X10Context_c(this.x10TypeSystem);
+		this.x10Context    = new Context(this.x10TypeSystem);
 	}
 
 	private String getUniqueBoxingName(final String structName) {
@@ -531,7 +531,7 @@ public class FirmTypeSystem {
 		// FIXME:  Workaround.
 		if (origType instanceof X10ParsedClassType)
 			type = fixParsedClassType((X10ParsedClassType) origType);
-		
+
 		// isParsedClassType => !isMissingTypeArguments
 		assert (!(type instanceof X10ParsedClassType) || !((X10ParsedClassType) type).isMissingTypeArguments());
 
@@ -729,7 +729,7 @@ public class FirmTypeSystem {
 
 			// This should always be the case but unfortunately it is not.
 			if (clazz.typeArguments() != null && clazz.def().typeParameters().size() == clazz.typeArguments().size())
-				classInstance = new GenericClassInstance(clazz);	
+				classInstance = new GenericClassInstance(clazz);
 			else {
 				// FIXME:  This is a hack to workaround a problem in X10.
 				ParameterTypeMapping map = new ParameterTypeMapping();
