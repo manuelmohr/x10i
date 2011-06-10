@@ -1,6 +1,5 @@
 package x10firm.visit;
 
-import polyglot.ast.New;
 import polyglot.ast.TypeNode;
 import polyglot.frontend.Job;
 import polyglot.types.ContainerType;
@@ -11,11 +10,8 @@ import polyglot.types.TypeSystem;
 import polyglot.types.Types;
 import polyglot.util.Position;
 import polyglot.visit.NodeVisitor;
-import x10.ast.X10Call;
 import x10.ast.X10ClassDecl;
-import x10.ast.X10MethodDecl;
 import x10.ast.X10New;
-import x10.ast.X10New_c;
 import x10.ast.X10NodeFactory_c;
 import x10.ast.X10SourceFile_c;
 import x10.errors.Errors;
@@ -23,7 +19,6 @@ import x10.optimizations.ForLoopOptimizer;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorDef;
-import x10.types.X10MethodDef;
 import x10.visit.Desugarer;
 import x10.visit.X10TypeChecker;
 
@@ -42,7 +37,7 @@ public class ClassDeclFetcher {
 
 	/**
 	 * Get the definition of the X10 Class that implements a given constructor.
-	 * 
+	 *
 	 * @param candidate the constructor definition whose container is desired
 	 * @return the definition of the X10 Class containing the constructor
 	 */
@@ -58,11 +53,11 @@ public class ClassDeclFetcher {
 	/**
 	 * Obtain the job for containing the declaration for a given constructor. Run the
 	 * preliminary compilation phases on the job's AST.
-	 * 
+	 *
 	 * Note Errors during speculative compilation should not be fatal. The
 	 * mechanism implementing this behavior consists of a pair of hacks that
 	 * should be fixed.
-	 * 
+	 *
 	 * @param candidate
 	 * @param container
 	 * @return
@@ -109,7 +104,7 @@ public class ClassDeclFetcher {
 
 	/**
 	 * Walk an AST looking for the declaration of a given constructor.
-	 * 
+	 *
 	 * @param candidate
 	 *            the cons whose declaration is desired
 	 * @param ast
@@ -166,9 +161,7 @@ public class ClassDeclFetcher {
 	 * TODO
 	 * TODO: Add caching.
 	 * TODO
-	 * 
-	 * @param call
-	 *            The call to the method we need the declaration for.
+	 *
 	 * @return The declaration of the method invoked by call, or null if the
 	 *         declaration cannot be found.
 	 */

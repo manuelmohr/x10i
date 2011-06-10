@@ -960,7 +960,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			return meth;
 
 		final X10ClassType contType = (X10ClassType)field.container();
-		final X10ClassDef contDef = (X10ClassDef)contType.def();
+		final X10ClassDef contDef = contType.def();
 
 		final Position pos = Position.COMPILER_GENERATED;
 		// Create the method for accessing the field
@@ -986,7 +986,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final FieldDef fieldDef = dec.fieldDef();
 		final FieldInstance fieldInst = fieldDef.asInstance();
 		final X10ClassType contType = (X10ClassType)fieldInst.container();
-		final X10ClassDef contDef = (X10ClassDef)contType.def();
+		final X10ClassDef contDef = contType.def();
 
 		final Position pos = Position.COMPILER_GENERATED;
 		// Create a new static value for the given field for holding the status of the initialization
@@ -1751,7 +1751,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			// method on.
 			if (n.target() != null && x10TypeSystem.isClass(n.target().type())) {
 				X10ClassType ct = (X10ClassType) Types.stripConstraints(n.target().type());
-				X10ClassDef def = (X10ClassDef) ct.def();
+				X10ClassDef def = ct.def();
 
 				final List<ParameterType> cParamTypes = def.typeParameters();
 				final List<Type> cActualTypes = ct.typeArguments();

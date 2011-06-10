@@ -139,7 +139,7 @@ public class X10ClosureRemover extends ContextVisitor {
                     final Id staticInnerClassName = xnf.Id(pos, UniqueID.newID(STATIC_INNER_CLASS_BASE_NAME));
 
                     // create class def for static inner
-                    final X10ClassDef staticInnerClassDef = (X10ClassDef) xts.createClassDef();
+                    final X10ClassDef staticInnerClassDef = xts.createClassDef();
                     
                     staticInnerClassDef.superType(Types.ref(xts.Object()));
                     staticInnerClassDef.kind(ClassDef.MEMBER);
@@ -422,7 +422,7 @@ public class X10ClosureRemover extends ContextVisitor {
      * @return The type parameter list 
      */
     List<ParameterType> getCurrentCodeParameterType(Context ctx) {
-        X10CodeDef codeDef = (X10CodeDef) ctx.currentCode();
+        X10CodeDef codeDef = ctx.currentCode();
         if (!(codeDef instanceof ClosureDef)) {
             return codeDef.typeParameters();
         }

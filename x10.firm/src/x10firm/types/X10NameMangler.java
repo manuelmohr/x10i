@@ -15,7 +15,6 @@ import x10.types.MethodInstance;
 import x10.types.ParameterType;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
-import x10.types.X10ParsedClassType;
 
 /**
  * Name mangler which mangles X10 type objects to unique names
