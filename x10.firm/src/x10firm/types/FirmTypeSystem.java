@@ -500,6 +500,27 @@ public class FirmTypeSystem {
 		return fieldMap.get(instance);
 	}
 
+	private X10ParsedClassType fixParsedClassType(X10ParsedClassType t) {
+		if (t.isMissingTypeArguments()) {
+			List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
+			for (ParameterType pt : t.def().typeParameters())
+				typeArguments.add(x10TypeSystem.getConcreteType(pt));
+
+			return t.typeArguments(typeArguments);
+		}
+		else if (t.typeArguments() != null && !t.typeArguments().isEmpty()) {
+			List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
+			for (polyglot.types.Type typeArg : t.typeArguments())
+				if (typeArg.getClass() == ParameterType.class)  // No constrained types here.
+					typeArguments.add(x10TypeSystem.getConcreteType((ParameterType) typeArg));
+
+			if (!typeArguments.isEmpty())
+				return t.typeArguments(typeArguments);
+		}
+
+		return t;
+	}
+
 	/**
 	 * return the firm type for a given ast-type.
 	 * This variant does not return the "native"-type even if there is one.
@@ -508,26 +529,8 @@ public class FirmTypeSystem {
 		polyglot.types.Type type = origType;
 
 		// FIXME:  Workaround.
-		if (origType instanceof X10ParsedClassType) {
-			X10ParsedClassType t = (X10ParsedClassType) origType;
-
-			if (t.isMissingTypeArguments()) {
-				List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
-				for (ParameterType pt : t.def().typeParameters())
-					typeArguments.add(x10TypeSystem.getConcreteType(pt));
-
-				type = t.typeArguments(typeArguments);
-			}
-			else if (t.typeArguments() != null && !t.typeArguments().isEmpty()) {
-				List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
-				for (polyglot.types.Type typeArg : t.typeArguments())
-					if (typeArg.getClass() == ParameterType.class)  // No constrained types here.
-						typeArguments.add(x10TypeSystem.getConcreteType((ParameterType) typeArg));
-
-				if (!typeArguments.isEmpty())
-					type = t.typeArguments(typeArguments);
-			}
-		}
+		if (origType instanceof X10ParsedClassType)
+			type = fixParsedClassType((X10ParsedClassType) origType);
 		
 		// isParsedClassType => !isMissingTypeArguments
 		assert (!(type instanceof X10ParsedClassType) || !((X10ParsedClassType) type).isMissingTypeArguments());
@@ -698,9 +701,16 @@ public class FirmTypeSystem {
 
 		final Set<Entity> ret = new HashSet<Entity>();
 
-		final ContainerType me_cont = instance.container();
+		ContainerType myContType = instance.container();
+		if (myContType instanceof X10ParsedClassType)
+			myContType = fixParsedClassType((X10ParsedClassType) myContType);
+
 		for (final MethodInstance meth: overrides) {
-			if (x10TypeSystem.equals((TypeObject)me_cont, (TypeObject)meth.container()))
+			polyglot.types.Type contType = meth.container();
+			if (contType instanceof X10ParsedClassType)
+				contType = fixParsedClassType((X10ParsedClassType) contType);
+
+			if (x10TypeSystem.equals((TypeObject) myContType, (TypeObject) contType))
 				continue;
 
 			final Entity entity = getMethodEntity(meth);
