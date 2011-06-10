@@ -127,6 +127,7 @@ import x10.types.X10ClassType;
 import x10.types.X10ConstructorDef;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10Context_c;
+import x10.types.X10Def;
 import x10.types.X10FieldInstance;
 import x10.types.X10MethodDef;
 import x10.types.X10ProcedureInstance;
@@ -316,7 +317,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		throw new RuntimeException("Unhandled node type: " + n.getClass());
 	}
 
-	private static class GenericNodeInstance {
+	private static final class GenericNodeInstance {
 		private final polyglot.ast.Node node;
 		private final ParameterTypeMapping mapping;
 		
@@ -333,6 +334,16 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			return mapping;
 		}
 
+		private X10Def getDef() {
+			if (node instanceof X10ClassDecl)
+				return ((X10ClassDecl) node).classDef();
+			else if (node instanceof X10MethodDecl)
+				return ((X10MethodDecl) node).methodDef();
+
+			assert (false);
+			return null;
+		}
+
 		// TODO:  Obviously, this will create collisions for different
 		//        instances of the same generic method/class.
 		//        Think of a better hashing approach.
@@ -347,7 +358,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				return false;
 			
 			final GenericNodeInstance rhs = (GenericNodeInstance) other;
-			return node == rhs.node && mapping.equals(rhs.mapping);
+			return getDef() == rhs.getDef() && mapping.equals(rhs.mapping);
 		}
 		
 		@Override
@@ -360,13 +371,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	// and their corresponding mapping of parameter types.
 	private Queue<GenericNodeInstance> workList = new LinkedList<GenericNodeInstance>();
 	
-	private void addToWorklist(polyglot.ast.Node decl, ParameterTypeMapping ptm) {
+	private void addToWorklist(GenericNodeInstance other) {
 		// Check for duplicates.		
 		for (GenericNodeInstance gi : workList)
-			if (gi.getNode() == decl && gi.getMapping().equals(ptm))
+			if (gi.equals(other))
 				return;
 
-		workList.add(new GenericNodeInstance(decl, ptm));
+		workList.add(other);
 	}
 
 	private void visit(X10SourceFile_c sourceFile) {
@@ -1749,7 +1760,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			}
 
 			// Remember the parameter type configuration to generate code later.
-			addToWorklist(decl, ptm);
+			addToWorklist(new GenericNodeInstance(decl, ptm));
 		}
 
 		final Node ret = genX10Call(methodInstance, n.arguments(), n.target());
@@ -1957,7 +1968,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			addToMapping(ptm, paramTypes, actualTypes);
 
 			// Remember the parameter type configuration to generate code later.
-			addToWorklist(decl, ptm);
+			addToWorklist(new GenericNodeInstance(decl, ptm));
 		}
 
 		if (x10TypeSystem.isStructType(n.type()))
