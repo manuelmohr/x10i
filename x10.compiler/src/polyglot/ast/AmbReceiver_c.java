@@ -39,24 +39,24 @@ public class AmbReceiver_c extends AmbPrefix_c implements AmbReceiver
             return n;
     }
 
-    public Node buildTypes(TypeBuilder tb) throws SemanticException {
+    public Node buildTypes(TypeBuilder tb) {
         return type(tb.typeSystem().unknownType(position()));
     }
 
     /** Disambiguate the receiver. */
     public Node disambiguate(ContextVisitor ar) {
-        try {
+//        try {
             return super.disambiguate(ar);
-        } catch (SemanticException e) {
-            Errors.issue(ar.job(), e, this);
-            TypeSystem xts =  ar.typeSystem();
-            X10LocalInstance li = xts.createFakeLocal(name.id(), e);
-            return ar.nodeFactory().Local(position(), name).localInstance(li).type(li.type());
-        }
+//        } catch (SemanticException e) {
+//            Errors.issue(ar.job(), e, this);
+//            TypeSystem xts =  ar.typeSystem();
+//            X10LocalInstance li = xts.createFakeLocal(name.id(), e);
+//            return ar.nodeFactory().Local(position(), name).localInstance(li).type(li.type());
+//        }
     }
     
 
-    public Node typeCheck(ContextVisitor tc) throws SemanticException {
+    public Node typeCheck(ContextVisitor tc) {
         // Didn't finish disambiguation; just return.
         return this;
     }

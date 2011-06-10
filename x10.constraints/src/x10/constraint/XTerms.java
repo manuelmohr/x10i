@@ -34,6 +34,7 @@ public class XTerms {
 	public static final XLit NULL = new XLit(null);
 	public static final XLit TRUE = new XLit(true);
 	public static final XLit FALSE = new XLit(false);
+    public static boolean isBoolean(XTerm x) { return x==TRUE || x==FALSE; } // because we intern
 	public static final XLit OPERATOR = new XLit(new Object()) { 
 		public String toString() { return "o"; } 
 	};
@@ -82,9 +83,9 @@ public class XTerms {
 	 * @param field
 	 * @return
 	 */
-	/*public static final XField makeField(XVar receiver, XName field) {
-		return new XField(receiver, field);
-	}*/
+	public static final <T> XField<T> makeField(XVar receiver, T field) {
+		return new XField<T>(receiver, field);
+	}
 	public static final XField<Object> makeFakeField(XVar receiver, Object field) {
 		return new XField<Object>(receiver, field, true);
 	}
@@ -158,6 +159,10 @@ public class XTerms {
 		assert left != null;
 		assert right != null;
 		return new XAnd(left, right);
+	}
+	public static XTerm makeNot(XTerm arg) {
+		assert arg != null;
+		return new XNot(arg);
 	}
 
 	/**

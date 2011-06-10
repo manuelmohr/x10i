@@ -12,6 +12,7 @@
 package x10.array;
 
 import x10.io.*;
+import x10.compiler.TempNoInline_0;
 
 
 /**
@@ -92,21 +93,21 @@ final class PolyScanner(rank:Int)/*(C:PolyMat)*/ {
        
         this.C = pm;
         val r = pm0.rank;
-        val n = Rail.make[VarMat](r);
+        val n = new Rail[VarMat](r);
         myMin = n;
-        val x = Rail.make[VarMat](r);
+        val x = new Rail[VarMat](r);
         myMax = x;
-        val nSum = Rail.make[VarMat](r);
+        val nSum = new Rail[VarMat](r);
         minSum = nSum;
-        val xSum = Rail.make[VarMat](r);
+        val xSum = new Rail[VarMat](r);
         maxSum = xSum;
-        val n2 = Rail.make[Rail[PolyRow]](r);
+        val n2 = new Rail[Rail[PolyRow]](r);
         min2 = n2;
-        val x2 = Rail.make[Rail[PolyRow]](r);
+        val x2 = new Rail[Rail[PolyRow]](r);
         max2 = x2;
         //printInfo(Console.OUT);
 
-        parFlags = Rail.make[boolean](r);
+        parFlags = new Rail[boolean](r);
     }
 
     private def init() {
@@ -143,8 +144,8 @@ final class PolyScanner(rank:Int)/*(C:PolyMat)*/ {
         myMax(axis) = new VarMat(imax, axis+1);
         minSum(axis) = new VarMat(imin, axis+1);
         maxSum(axis) = new VarMat(imax, axis+1);
-        min2(axis) = Rail.make[PolyRow](imin);
-        max2(axis) = Rail.make[PolyRow](imax);
+        min2(axis) = new Rail[PolyRow](imin);
+        max2(axis) = new Rail[PolyRow](imax);
 
         // fill in
         imin=0; imax=0;
@@ -214,7 +215,7 @@ final class PolyScanner(rank:Int)/*(C:PolyMat)*/ {
     /**
      * odometer-style iterator for this scanner
      *
-     * hasNext() computes the k that is the axis to be bumped:
+     * advance() computes the k that is the axis to be bumped:
      *
      * axis    0    1         k        k+1
      * now   x[0] x[1] ...  x[k]   max[k+1] ...  max[rank-1]
@@ -233,13 +234,13 @@ final class PolyScanner(rank:Int)/*(C:PolyMat)*/ {
         private val rank: int = PolyScanner.this.rank;
         private val s =  PolyScanner.this;
 
-        private val x = Rail.make[int](rank);
-        private val myMin = Rail.make[int](rank);
-        private val myMax = Rail.make[int](rank);
+        private val x = new Rail[int](rank);
+        private val myMin = new Rail[int](rank);
+        private val myMax = new Rail[int](rank);
 
         private var k: int;
-        def this() {}
-        def init() {
+        private var doesHaveNext:boolean;
+        def this() {
             myMin(0) = s.min(0);
             myMax(0) = s.max(0);
             x(0) = s.min(0);
@@ -251,14 +252,20 @@ final class PolyScanner(rank:Int)/*(C:PolyMat)*/ {
                 myMax(k) = s.max(k);
             }
             x(rank-1)--;
-        }
+	    checkHasNext();
+	}
 
-        final public def hasNext(): boolean {
+        public def hasNext() = doesHaveNext;
+
+        private def checkHasNext():void {
             k = rank-1;
-            while (x(k)>=myMax(k))
-                if (--k<0)
-                    return false;
-            return true;
+            while (x(k)>=myMax(k)) {
+                if (--k<0) {
+                    doesHaveNext = false;
+                    return;
+                }
+            }
+            doesHaveNext = true;
         }
 
         final public def next() {
@@ -270,6 +277,7 @@ final class PolyScanner(rank:Int)/*(C:PolyMat)*/ {
                 myMin(k) = m;
                 myMax(k) = s.max(k);
             }
+            checkHasNext();
             return x;
         }
 
@@ -283,25 +291,12 @@ final class PolyScanner(rank:Int)/*(C:PolyMat)*/ {
      *   2. hide inside iterator(body:(Point)=>void)?
      */
 
-    final private class PointIt 
-        implements Iterator[Point(PolyScanner.this.rank)] {
-
-        val it: RailIt;
-
-        def this() {
-            it = new RailIt();
-        }
-
+    public @TempNoInline_0 def iterator():Iterator[Point(rank)] = new Iterator[Point(rank)]() {
+    	val it = new RailIt();
         public final def hasNext() = it.hasNext();
-        public final def next(): Point(rank) = it.next() as Point(rank);
-        public final def remove() = it.remove();
-    }
-
-    public def iterator(): Iterator[Point(rank)] {
-        val it = new PointIt();
-        it.it.init();
-        return it;
-    }
+        public final def next(): Point(rank) = it.next(); 
+        public final def remove() { it.remove(); }
+    };
 
 
     //
@@ -315,7 +310,7 @@ final class PolyScanner(rank:Int)/*(C:PolyMat)*/ {
     }
 
     public def printInfo2(ps: Printer): void {
-        for (var k: int = 0; k<myMin.length; k++) {
+        for (var k: int = 0; k<myMin.size; k++) {
             ps.println("axis "+k);
             ps.println("  min");
             for (var l: int = 0; l<myMin(k).rows; l++) {

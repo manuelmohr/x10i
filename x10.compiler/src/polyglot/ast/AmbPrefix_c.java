@@ -8,9 +8,13 @@
 
 package polyglot.ast;
 
+import polyglot.types.QName;
 import polyglot.types.SemanticException;
+import polyglot.types.TypeSystem;
 import polyglot.util.*;
 import polyglot.visit.*;
+import x10.errors.Errors;
+import x10.types.X10ClassType;
 
 /**
  * An <code>AmbPrefix</code> is an ambiguous AST node composed of dot-separated
@@ -71,8 +75,20 @@ public class AmbPrefix_c extends Node_c implements AmbPrefix
         return reconstruct(prefix, name);
     }
 
+    @Override
+    public Node disambiguate(ContextVisitor ar) {
+        try {
+            return superDisambiguate(ar);
+        } catch (SemanticException e) {
+            Errors.issue(ar.job(), e, this);
+            TypeSystem xts =  ar.typeSystem();
+            X10ClassType ct = xts.createFakeClass(QName.make(null, name.id()), e);
+            return ar.nodeFactory().CanonicalTypeNode(position(), ct);
+        }
+    }
+
     /** Disambiguate the prefix. */
-    public Node disambiguate(ContextVisitor ar) throws SemanticException {
+    public Node superDisambiguate(ContextVisitor ar) throws SemanticException {
 	Position pos = position();
 	Disamb disamb = ar.nodeFactory().disamb();
 	Node n = disamb.disambiguate(this, ar, pos, prefix, name);
@@ -82,13 +98,13 @@ public class AmbPrefix_c extends Node_c implements AmbPrefix
 	throw new SemanticException("Could not find " + (prefix != null ? prefix + "." : "") + name, pos);
     }
 
-    public Node typeCheck(ContextVisitor tc) throws SemanticException {
+    public Node typeCheck(ContextVisitor tc) {
         // Didn't finish disambiguation; just return.
         return this;
     }
 
     /** Check exceptions thrown by the prefix. */
-    public Node exceptionCheck(ExceptionChecker ec) throws SemanticException {
+    public Node exceptionCheck(ExceptionChecker ec) {
 	throw new InternalCompilerError(position(),
 	    "Cannot exception check ambiguous node " + this + ".");
     } 

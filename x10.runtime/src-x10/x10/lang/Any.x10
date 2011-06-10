@@ -37,7 +37,8 @@ public interface Any {
      *
      * @return a string representation of this entity.
      */
-    @Native("java", "((java.lang.Object)(#0)).toString()")
+	// @Native("java", "((java.lang.Object)(#this)).toString()")
+	@Native("java", "x10.rtt.Types.toString(#this)")
     @Native("c++", "x10aux::to_string(#this)")
     def toString():String;
 
@@ -47,7 +48,7 @@ public interface Any {
      *
      * @return a string representation of the run-time type of this entity.
      */
-    @Native("java", "x10.rtt.Types.typeName(#0)")
+    @Native("java", "x10.rtt.Types.typeName(#this)")
     @Native("c++", "x10aux::type_name(#this)")
     @NoThisAccess
     def typeName():String;
@@ -75,7 +76,7 @@ public interface Any {
      * @param that the given entity
      * @return true if this entity is equal to the given entity.
      */
-    @Native("java", "((java.lang.Object)(#0)).equals(#1)")
+    @Native("java", "((java.lang.Object)(#this)).equals(#that)")
     @Native("c++", "x10aux::equals(#this,#that)")
     def equals(that:Any):Boolean;
 
@@ -99,9 +100,11 @@ public interface Any {
      *
      * @return the hash code of this entity.
      */
-    @Native("java", "((java.lang.Object)(#0)).hashCode()")
+    // @Native("java", "((java.lang.Object)(#this)).hashCode()")
+    @Native("java", "x10.rtt.Types.hashCode(#this)")
     @Native("c++", "x10aux::hash_code(#this)")
     def hashCode():Int;
 }
+public type Any(x:Any) = Any{self==x};
 
 // vim:shiftwidth=4:tabstop=4:expandtab

@@ -35,12 +35,32 @@ namespace x10aux {
     template<class T> struct cuda_array {
         x10_int FMGL(size);
         T *raw;
-        __device__ T &apply (x10_int i) { return raw[i]; }
-        __device__ T set (const T &v, x10_int i) { return raw[i] = v; }
+        __device__ T &__apply (x10_int i) { return raw[i]; }
+        __device__ T __set (const T &v, x10_int i) { return raw[i] = v; }
     };
 
     template<class T> __device__ cuda_array<T> *nullCheck (cuda_array<T> &v) { return &v; }
+
+
 }
+
+__device__ void _X10_STATEMENT_HOOK() { }
+
+namespace x10 { namespace util {
+
+        template <class T, x10_int SZ> struct NativeVec{
+                __device__ inline x10_int size() const { return SZ; }
+                T arr[SZ];
+                __device__ NativeVec(void) { };
+                __device__ NativeVec(size_t sz) { (void) sz; };
+                __device__ const T &get (int i) const { return arr[i]; }
+                __device__ const T &set (const T &v, int i) { arr[i] = v; return v; }
+                __device__ NativeVec(const NativeVec<T,SZ> &src)
+                {
+                        ::memcpy(arr, src.arr, SZ * sizeof(T));
+                }
+        };      
+} }
 
 #endif
 

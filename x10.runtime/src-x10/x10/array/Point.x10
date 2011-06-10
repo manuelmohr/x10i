@@ -12,6 +12,7 @@
 package x10.array;
 
 import x10.util.Ordered;
+import x10.compiler.TempNoInline_0;
 import x10.compiler.TempNoInline_2;
 import x10.compiler.TempNoInline_3;
 
@@ -21,8 +22,9 @@ import x10.compiler.TempNoInline_3;
  * may be accessed individually (with zero-based indexing) using
  * <code>p(i)</code> because <code>Point</code> implements
  * <code>(Int)=>int</code>. The coordinates may also be accessed as a
- * Rail[int]. Point arithmetic is supported.
+ * Array[int]. Point arithmetic is supported.
  */
+
 public final class Point(rank:Int) implements (Int) => Int, 
                                               Ordered[Point(rank)], 
                                               Comparable[Point(rank)] {
@@ -30,9 +32,9 @@ public final class Point(rank:Int) implements (Int) => Int,
     private val c1:int;
     private val c2:int;
     private val c3:int;
-    private val cs:Array[int](1);  // Will be null if rank<5
+    private val cs:Rail[int];  // Will be null if rank<5
 
-    def this(coords:Array[int](1)):Point(coords.size) {
+    def this(coords:Rail[int]):Point(coords.size) {
         property(coords.size);
 
 	c0 = coords(0);
@@ -96,41 +98,28 @@ public final class Point(rank:Int) implements (Int) => Int,
     public def coords():(int)=>int = (i:int)=> this(i);
 
     /**
-     * Constructs a Point from a Rail[int]
-     */
-    public static def make(r:Rail[int]):Point(r.length) {
-        switch(r.length) {
-            case 1: return new Point(r(0)) as Point(r.length);
-	    case 2: return new Point(r(0), r(1)) as Point(r.length);
-            case 3: return new Point(r(0), r(1), r(2)) as Point(r.length);
-            case 4: return new Point(r(0), r(1), r(2), r(3)) as Point(r.length);
-            default: return new Point(new Array[int](r.length, (i:int)=>r(i))) as Point(r.length); // TODO: cast should not be needed on this branch!
-        }
-    }
-
-    /**
      * Constructs a Point from a Array[int](1)
      */
-    public static def make(r:Array[int](1)):Point(r.size) {
+    public static def make[T](r:Array[T](1)){T<: Int}:Point(r.size) {
         switch(r.size) {
-            case 1: return new Point(r(0)) as Point(r.size);
-	    case 2: return new Point(r(0), r(1)) as Point(r.size);
+            case 1: return new Point(r(0)) as Point(r.size);//{self.rank==r.size};
+            case 2: return new Point(r(0), r(1)) as Point(r.size);
             case 3: return new Point(r(0), r(1), r(2)) as Point(r.size);
             case 4: return new Point(r(0), r(1), r(2), r(3)) as Point(r.size);
-            default: return new Point(new Array[int](r.size, (i:int)=>r(i))) as Point(r.size); // TODO: cast should not be needed on this branch!
+            default: return new Point(new Array[int](r.size, (i:int)=>r(i)));
         }
     }
 
     /**
      * Returns a <code>Point p</code> of rank <code>rank</code> with <code>p(i)=init(i)</code>.
      */
-    public static def make(rank:Int, init:(i:Int)=>int):Point(rank) {
+    public @TempNoInline_0 static def make(rank:Int, init:(i:Int)=>int):Point(rank) {
         switch(rank) {
             case 1: return new Point(init(0)) as Point(rank);
-	    case 2: return new Point(init(0), init(1)) as Point(rank);
+	        case 2: return new Point(init(0), init(1)) as Point(rank);
             case 3: return new Point(init(0), init(1), init(2)) as Point(rank);
             case 4: return new Point(init(0), init(1), init(2), init(3)) as Point(rank);
-            default: return new Point(new Array[int](rank, init)) as Point(rank); // TODO: cast should not be needed on this branch!
+            default: return new Point(new Array[int](rank, init));
         }
     }
 
@@ -140,16 +129,10 @@ public final class Point(rank:Int) implements (Int) => Int,
     public static def make(i0:int, i1:int, i2:int) = new Point(i0, i1, i2);
     public static def make(i0:int, i1:int, i2:int, i3:int) = new Point(i0, i1, i2, i3);
 
-
-    /** A <code>Rail</code> <code>r</code> of size <code>k</code> can be converted to a point <code>p</code>
-	of the same rank with <code>p(i)=r(i)</code>.
-     */
-    public static operator (r:Rail[int]): Point(r.length) = make(r);
-
     /** A <code>Array</code> <code>r</code> of length <code>k</code> can be converted to a point <code>p</code>
 	of the same rank with <code>p(i)=r(i)</code>.
      */
-    public static operator (a:Array[int](1)):Point(a.size) = make(a);
+    public static operator[T] (a:Array[T](1)){T <: Int}:Point(a.size) = make(a);
 
 
     /**  The point <code>+p</code> is the same as <code>p</code>.
@@ -158,7 +141,7 @@ public final class Point(rank:Int) implements (Int) => Int,
 
     /**  The point <code>-p</code> is the same as <code>p</code> with each index negated.
      */
-    public operator - this: Point(rank) 
+    public @TempNoInline_0 operator - this: Point(rank) 
        = Point.make(rank, (i:Int)=>-this(i));
 
     /**  The ith coordinate of point <code>p+q</code> is <code>p(i)+q(i)</code>.
@@ -316,3 +299,4 @@ public final class Point(rank:Int) implements (Int) => Int,
         return s;
     }
 }
+public type Point(r: Int) = Point{self.rank==r};

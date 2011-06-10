@@ -233,7 +233,7 @@ public abstract class FieldDecl_c extends Term_c implements FieldDecl {
     @Override
     public abstract void setResolver(final Node parent, TypeCheckPreparer v);
 
-    public Node checkConstants(ContextVisitor tc) throws SemanticException {
+    public Node checkConstants(ContextVisitor tc) {
         if (init == null || ! init.isConstant() || ! fi.flags().isFinal()) {
             fi.setNotConstant();
         }
@@ -251,14 +251,14 @@ public abstract class FieldDecl_c extends Term_c implements FieldDecl {
         return reconstruct(flags, type, name, this.init);
     }
 
-    public Node typeCheckBody(Node parent, TypeChecker tc, TypeChecker childtc) throws SemanticException {
+    public Node typeCheckBody(Node parent, TypeChecker tc, TypeChecker childtc) {
         FieldDecl_c n = this;
         Expr init = (Expr) n.visitChild(n.init, childtc);
         n = (FieldDecl_c) n.init(init);
         return n.checkConstants(tc);
     }
     
-    public abstract Node typeCheck(ContextVisitor tc) throws SemanticException;
+    public abstract Node typeCheck(ContextVisitor tc);
 
     public Node conformanceCheck(ContextVisitor tc) {
         TypeSystem ts = tc.typeSystem();
@@ -289,11 +289,11 @@ public abstract class FieldDecl_c extends Term_c implements FieldDecl {
             // check that inner classes do not declare static fields, unless they
             // are compile-time constants
             if (flags.isStatic() &&
-        	    container.isInnerClass()) {
+        	    (container.isInnerClass() || container.isLocal() || container.isAnonymous())) {
         	// it's a static field in an inner class.
         	if (!flags.isFinal() || init == null || !init.isConstant()) {
         	    Errors.issue(tc.job(), 
-        	    		new Errors.InnerClassCannotDeclareStaticFields(position()));
+        	    		new Errors.InnerClassCannotDeclareStaticFields(fieldDef(), container, position()));
         	}
             }
         }
@@ -301,11 +301,9 @@ public abstract class FieldDecl_c extends Term_c implements FieldDecl {
         return this;
     }
 
-    public NodeVisitor exceptionCheckEnter(ExceptionChecker ec) throws SemanticException {
+    public NodeVisitor exceptionCheckEnter(ExceptionChecker ec) {
         return ec.push(new ExceptionChecker.CodeTypeReporter("A field initializer"));
     }
-
-    public abstract Type childExpectedType(Expr child, AscriptionVisitor av);
 
     public Term firstChild() {
         return type;

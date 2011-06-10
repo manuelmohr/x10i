@@ -16,19 +16,24 @@ import x10.rtt.Type;
 import x10.rtt.Types;
 
 // Base class for all X10 structs
-public abstract class Struct implements Any {
+public abstract class Struct implements StructI {
 
+	private static final long serialVersionUID = 1L;
+
+	public Struct(java.lang.System[] $dummy) {}
+	
+	public Struct $init() {return this;}
+	
     public Struct() {}
 
+    @Override
     public boolean equals(Object o) {
-        return _struct_equals(o);
+        return _struct_equals$O(o);
     }
 
-    abstract public boolean _struct_equals(Object o);
-
-    public static final RuntimeType<Struct> _RTT = new RuntimeType<Struct>(Struct.class);
-    public RuntimeType<?> getRTT() {return _RTT;}
-    public Type<?> getParam(int i) {return null;}
+    public static final RuntimeType<Struct> $RTT = new RuntimeType<Struct>(Struct.class, new x10.rtt.Type[] { x10.rtt.Types.STRUCT });
+    public RuntimeType<?> $getRTT() {return $RTT;}
+    public Type<?> $getParam(int i) {return null;}
 
     @Override
     public java.lang.String toString() {

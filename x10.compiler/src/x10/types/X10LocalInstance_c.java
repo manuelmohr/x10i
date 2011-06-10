@@ -84,20 +84,15 @@ public class X10LocalInstance_c extends LocalInstance_c implements X10LocalInsta
         }
         // If the local variable is final, replace T by T{self==t}, 
         // do this even if depclause==null.
-        try {
-        	CConstraint c = Types.xclause(rightType);
-        	c = c==null? new CConstraint() : c.copy();
+        CConstraint c = Types.xclause(rightType);
+        c = c==null? new CConstraint() : c.copy();
 
-        	XLocal var = xts.xtypeTranslator().translate(this.type(rightType));
-        	c.addSelfBinding(var);
-        	rightType = Types.xclause(Types.baseType(rightType), c);
+        XLocal var = xts.xtypeTranslator().translate(this.type(rightType));
+        c.addSelfBinding(var);
+        rightType = Types.xclause(Types.baseType(rightType), c);
 
-        	assert rightType != null;
-        	return rightType;
-        }
-        catch (XFailure f) {
-        	throw new InternalCompilerError("Could not add self binding.", f);
-        }
+        assert rightType != null;
+        return rightType;
     }
 
     private SemanticException error;
@@ -113,7 +108,8 @@ public class X10LocalInstance_c extends LocalInstance_c implements X10LocalInsta
     }
 
     public String toString() {
-        String s = "local " + flags().prettyPrint() + name() + ": " + safeType();
+        Name name = x10Def().isUnnamed() ? X10LocalDef_c.UNNAMED : name();
+        String s = "local " + flags().prettyPrint() + name + ": " + safeType();
         return s;
     }
 

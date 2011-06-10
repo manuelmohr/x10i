@@ -31,16 +31,19 @@ import polyglot.types.SystemResolver;
 import polyglot.types.Type;
 import polyglot.types.Types;
 
+import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import x10.ast.AnnotationNode;
 import x10.ast.Closure;
 import x10.ast.ClosureCall;
 import x10.ast.X10Local_c;
 import x10.constraint.XLocal;
-import x10.constraint.XFailure;
+import x10.constraint.XVar;
 import x10.types.ClosureDef;
 import x10.types.ClosureInstance;
+import x10.types.ClosureType;
 import x10.types.ClosureType_c;
+import x10.types.FunctionType_c;
 import x10.types.FunctionType;
 import x10.types.ParameterType;
 import x10.types.MethodInstance;
@@ -57,6 +60,7 @@ import polyglot.types.TypeSystem;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.CLocal;
 import x10.types.constraints.CTerms;
+import x10.types.matcher.Subst;
 import x10.extension.X10Ext;
 
 public class ClosureSynthesizer {
@@ -110,7 +114,7 @@ public class ClosureSynthesizer {
 	                xnf.CanonicalTypeNode(pos, retType),
 	                 body)
 	                .closureDef(cDef)
-	                .type(closureAnonymousClassDef( xts, cDef).asType());
+	                .type(cDef.asType());
             if (null != annotations && !annotations.isEmpty()) {
                 List<AnnotationNode> ans = new ArrayList<AnnotationNode>();
                 for (Type at : annotations) {
@@ -137,6 +141,14 @@ public class ClosureSynthesizer {
             public boolean isFunction() { 
                 return true;
             }
+            @Override
+            public ClosureType asType() {
+                if (asType == null) {
+                    X10ClassDef cd = this;
+                    asType = new ClosureType_c(xts, pos, this, def.methodContainer().get());
+                }
+                return (ClosureType) asType;
+            }
         };
 
         cd.position(pos);
@@ -149,53 +161,70 @@ public class ClosureSynthesizer {
         int numTypeParams = def.typeParameters().size();
         int numValueParams = def.formalTypes().size();
 
-        // Add type parameters.
-        List<Ref<? extends Type>> typeParams = new ArrayList<Ref<? extends Type>>();
-        List<Type> typeArgs = new ArrayList<Type>();
+        ClosureType ct = (ClosureType) cd.asType();
+        ThisDef thisDef = cd.thisDef();
 
-        ClosureInstance ci = (ClosureInstance) def.asInstance();
-        typeArgs.addAll(ci.formalTypes());
+        List<LocalDef> formalNames = xts.dummyLocalDefs(def.formalTypes());
+        X10MethodDef mi = xts.methodDef(pos, Types.ref(ct),
+                Flags.PUBLIC.Abstract(), def.returnType(),
+                ClosureCall.APPLY, 
+                def.typeParameters(), 
+                def.formalTypes(), 
+                thisDef,
+                def.formalNames(), 
+                def.guard(),
+                def.typeGuard(),
+                null, // FIXME: offerType
+                null);
+        cd.addMethod(mi);
 
-        if (!ci.returnType().isVoid()) {
-            typeArgs.add(ci.returnType());
-        }
+        ClosureInstance ci = def.asInstance();
 
         // Instantiate the super type on the new parameters.
-        X10ClassType sup = (X10ClassType) closureBaseInterfaceDef(xts, numTypeParams, 
-        		numValueParams, 
-        		ci.returnType().isVoid(),
-        		def.formalNames(),
-        		def.guard())
-        		.asType();
+        FunctionType sup = (FunctionType) closureBaseInterfaceDef(xts, numTypeParams, 
+                numValueParams, 
+                ci.returnType().isVoid(),
+                def.formalNames(),
+                def.guard()).asType();
+
+        // Compute type arguments.
+        List<Type> typeArgs = new ArrayList<Type>();
+        List<LocalDef> fromNames = def.formalNames();
+        MethodInstance instance = sup.applyMethod();
+        List<LocalDef> toNames =  ((X10MethodDef) instance.def()).formalNames();
+        XVar[] fromVars = Types.toVarArray(toNames);
+        XVar[] toVars = Types.toVarArray(fromNames);
+        List<Type> formalTypes = ci.formalTypes();
+        try {
+            formalTypes = Subst.subst(formalTypes, fromVars, toVars);
+        } catch (SemanticException e) {
+            throw new InternalCompilerError("Unexpected exception while creating a closure type", pos, e);
+        }
+        typeArgs.addAll(formalTypes);
+        Type rt = ci.returnType();
+        if (!rt.isVoid()) {
+            try {
+                rt = Subst.subst(rt, fromVars, toVars);
+            } catch (SemanticException e) {
+                throw new InternalCompilerError("Unexpected exception while creating a closure type", pos, e);
+            }
+            typeArgs.add(rt);
+        }
 
         assert sup.x10Def().typeParameters().size() == typeArgs.size() : def + ", " + sup + ", " + typeArgs;
-        sup = sup.typeArguments(typeArgs);
+        sup = (FunctionType) sup.typeArguments(typeArgs);
 
         // todo: yoav added
         // Adding the method guard
         Ref<CConstraint> guard = def.guard();
-        if (guard!=null) {
+        if (guard != null) {
             CConstraint constraint = guard.get();
             // need to rename the guard variables according to the method parameters
-            List<LocalDef> fromNames = def.formalNames();
-            MethodInstance instance = sup.methods().get(0);
-            List<LocalDef> toNames =  ((X10MethodDef) instance.def()).formalNames();
-            for (int i=0; i<fromNames.size(); i++) {
-                X10LocalDef fromName = (X10LocalDef) fromNames.get(i);
-                X10LocalDef toName = (X10LocalDef) toNames.get(i);
-                try {
-                    CLocal fromLocal = CTerms.makeLocal(fromName);
-                    CLocal toLocal = CTerms.makeLocal(toName);
-                    constraint = constraint.substitute(toLocal,fromLocal);
-                } catch (XFailure xFailure) {
-                    assert false;
-                }
+            try {
+                constraint = Subst.subst(constraint, fromVars, toVars);
+            } catch (SemanticException e) {
+                throw new InternalCompilerError("Unexpected exception while creating a closure type", pos, e);
             }
-
-            CConstraint result = ((ClosureType_c)sup).getXClause();
-            result.addIn(constraint);
-            assert result.consistent();
-
         }
         
         cd.addInterface(Types.ref(sup));
@@ -206,7 +235,7 @@ public class ClosureSynthesizer {
 	public static X10ClassDef closureBaseInterfaceDef(final TypeSystem xts, final int numTypeParams,
 	        final int numValueParams, final boolean isVoid)
 	{
-	    return ClosureSynthesizer.closureBaseInterfaceDef(xts, numTypeParams, numValueParams, isVoid, null, null);
+	    return closureBaseInterfaceDef(xts, numTypeParams, numValueParams, isVoid, null, null);
 	}
 
 	/**
@@ -245,11 +274,14 @@ public class ClosureSynthesizer {
             name = "Void" + name;
         }
 
+        // N.B. white space is needed to fix XTENLANG-1647
+        name = " " + name;
+
         // Check if the class has already been defined.
         QName fullName = QName.make("x10.lang", name);
         Type n = SystemResolver.first(xts.systemResolver().check(fullName));
 
-        if (n instanceof X10ClassType) {
+        if (guard1 == null && n instanceof X10ClassType) {
             X10ClassType ct = (X10ClassType) n;
             return ct.x10Def();
         }
@@ -261,12 +293,12 @@ public class ClosureSynthesizer {
                 return true;
             }
             @Override
-            public X10ClassType asType() {
+            public FunctionType asType() {
                 if (asType == null) {
                     X10ClassDef cd = this;
-                    asType = new ClosureType_c(xts, pos, this);
+                    asType = new FunctionType_c(xts, pos, this);
                 }
-                return (X10ClassType) asType;
+                return (FunctionType) asType;
             }
         };
 
@@ -315,11 +347,21 @@ public class ClosureSynthesizer {
         // NOTE: don't call cd.asType() until after the type parameters are
         // added.
         FunctionType ct = (FunctionType) cd.asType();
-        xts.systemResolver().install(fullName, ct);
+        if (guard1 == null) {
+            xts.systemResolver().install(fullName, ct);
+        }
 
         ThisDef thisDef = cd.thisDef();
 
         List<LocalDef> formalNames = xts.dummyLocalDefs(argTypes);
+        CConstraint newGuard = Types.get(guard1);
+        if (newGuard != null) {
+            try {
+                newGuard = Subst.subst(newGuard, Types.toVarArray(formalNames), Types.toVarArray(formalNames1));
+            } catch (SemanticException e) {
+                throw new InternalCompilerError("Unexpected exception while creating a function type", pos, e);
+            }
+        }
         X10MethodDef mi = xts.methodDef(pos, Types.ref(ct),
         		Flags.PUBLIC.Abstract(), Types.ref(rt),
         		ClosureCall.APPLY, 
@@ -327,14 +369,12 @@ public class ClosureSynthesizer {
         		argTypes, 
         		thisDef,
         		formalNames, 
-        		null,//todo: it was guard1
-        		null, 
-        	
+        		Types.ref(newGuard),
+        		null,
         		null, // offerType
         		null);
         cd.addMethod(mi);
 
         return cd;
     }
-
 }

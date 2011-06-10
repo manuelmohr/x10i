@@ -37,6 +37,9 @@ else
   abspath=$(abspath $1)
 endif
 
+# g++ tracing of header file inclusions
+#CXXFLAGS += -H
+
 ifdef OPTIMIZE
   CXXFLAGS += -DNO_TRACING
   X10CPPFLAGS += -optimize
@@ -56,6 +59,8 @@ endif
 ifndef JAVA_HOME
   ifeq ($(shell uname -s),Darwin)
     JAVA_HOME=$(shell /usr/libexec/java_home)
+  else
+    JAVA_HOME="${ANT_JAVA_HOME}"
   endif
 endif
 
@@ -67,7 +72,7 @@ ifdef JAVA_HOME
     JNI_INCLUDES = -I"$(JAVA_HOME)"/include -I"$(JAVA_HOME)"/include/linux
   else
   ifeq ($(firstword $(subst _, ,$(shell uname -s))),CYGWIN)
-    JAVA_CYGPATH = $(shell cygpath "$(JAVA_HOME)")
+    JAVA_CYGPATH = $(shell cygpath '$(JAVA_HOME)')
     JNI_INCLUDES = -I"$(JAVA_CYGPATH)"/include -I"$(JAVA_CYGPATH)"/include/win32
   else
   ifeq ($(shell uname -s),Darwin)
@@ -131,7 +136,7 @@ else
     ifdef OPTIMIZE
       override CXXFLAGS += -O3 -qinline -qarch=auto -qtune=auto -qhot
     endif
-    override CXXFLAGS += -qsuppress=1540-0809:1500-029:1540-1101
+    override CXXFLAGS += -qsuppress=1540-0809:1500-029:1540-1101:1540-1102
     override CXXFLAGS += -qminimaltoc
     override CXXFLAGS += $(XLC_EXTRA_FLAGS)
     ifndef USE_32BIT
@@ -149,7 +154,7 @@ else
       export X10RT_PLATFORM=aix_gcc
       override CXXFLAGS += -maix64
       override CXXFLAGS_SHARED += -shared -fPIC -Wl,-bbigtoc -Wl,-G -Wl,-lptools_ptr
-      override LDFLAGS += -Wl,-brtl
+      override LDFLAGS += -Wl,-brtl,-lpthreads
       export X10RT_TEST_LDFLAGS = -Wl,-L"$(X10_HOME)"/x10.runtime/x10rt/lib
     endif
     ifdef USE_XLC
@@ -200,6 +205,7 @@ else
         endif
       else
         export X10RT_PLATFORM=linux_x86_32
+        override XRX_PROPS_CXXFLAGS += -msse2 -mfpmath=sse
       endif
       endif
     else
@@ -208,6 +214,7 @@ else
       override CXX ?= g++-4
       override CC ?= gcc-4
       override CXXFLAGS_SHARED += -shared -Wl,--export-all-symbols -Wl,--enable-auto-import
+      override XRX_PROPS_CXXFLAGS += -msse2 -mfpmath=sse
       LIBPREFIX :=
       LIBSUFFIX := .dll
       ifndef DEFAULT_X10RT_LIB
@@ -229,6 +236,7 @@ else
         override CXXFLAGS += -arch x86_64
         override XRX_PROPS_CXXFLAGS += -arch x86_64
       endif
+      override XRX_PROPS_CXXFLAGS += -msse2 -mfpmath=sse
       AR = libtool
       # Warning: Order matters!  The "-o" has to be at the end.
       ARFLAGS = -static -o

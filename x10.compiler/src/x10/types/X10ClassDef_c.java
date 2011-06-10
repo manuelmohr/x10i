@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.HashSet;
 
 import polyglot.frontend.Job;
 import polyglot.frontend.Source;
@@ -26,6 +27,7 @@ import polyglot.types.ContainerType;
 import polyglot.types.Context;
 import polyglot.types.FieldDef;
 import polyglot.types.Flags;
+import polyglot.types.LazyRef;
 import polyglot.types.LazyRef_c;
 import polyglot.types.MethodDef;
 import polyglot.types.Name;
@@ -62,7 +64,7 @@ public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
     protected Flags flags;
     protected Kind kind;
     protected Name name;
-    protected Ref<ClassDef> outer;
+    protected Ref<X10ClassDef> outer;
     protected List<Ref<? extends ClassType>> memberClasses;
     protected transient ClassType asType;
     
@@ -129,22 +131,6 @@ public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
     }
     
     // END ANNOTATION MIXIN
-    
-    // Cached realClause of the root type.
-    protected SemanticException rootClauseInvalid;
-
-    /**
-     * Set the realClause for this type. The realClause is the conjunction of the
-     * depClause and the baseClause for the type -- it represents all the constraints
-     * that are satisfied by an instance of this type. The baseClause is the invariant for
-     * the base type. If the base type C has defined properties P1 p1, ..., Pk pk, 
-     * and inherits from type B, then the baseClause for C is the baseClause for B
-     * conjoined with r1[self.p1/self, self/this] && ... && rk[self.pk/self, self/this]
-     * where ri is the realClause for Pi.
-     * 
-     * @return
-     */
-    boolean computing = false;
 
     Ref<TypeConstraint> typeBounds;
     
@@ -156,163 +142,194 @@ public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
         this.typeBounds = c;
     }
 
-    // Cached realClause of the root type.
-    Ref<CConstraint> rootClause;
-
-    protected Ref<CConstraint> classInvariant; // todo: this doesn't include X10ClassDecl_c.classInvariant, and the code in X10ClassDecl_c.postBuildTypes  and X10ClassDef_c.getRootClause() looks redundant (and ignores classInvariant)
+    protected Ref<CConstraint> classInvariant; 
 
     public void setClassInvariant(Ref<CConstraint> c) {
         this.classInvariant = c;
-        this.rootClause = null;
-        this.rootClauseInvalid = null;
     }
 
-   /* public void setRootClause(Ref<CConstraint> c) {
-    	this.rootClause = c;
-    	this.rootClauseInvalid = null;
-    }*/
-
+    /**
+     * Return the explicitly declared class invariant. If you want to get
+     * all the statically known information about instances of this class, then
+     * use the getRealClause().
+     */
     public Ref<CConstraint> classInvariant() {
         return classInvariant;
     }
     
+    // Cached realClause of the root type.
+    protected SemanticException realClauseInvalid;
     public void checkRealClause() throws SemanticException {
-	if (rootClauseInvalid != null)
-	    throw rootClauseInvalid;
+    	getRealClause(); // force the computation.
+    	if (realClauseInvalid != null)
+    		throw realClauseInvalid;
     }
     
-  
-    public CConstraint getRootClause() {
-	    if (rootClause == null) {
-		    if (computing) {
-			    /*this.rootClause = Types.<CConstraint>ref(new CConstraint());
-			    this.rootClauseInvalid = 
-				    new SemanticException("The real clause of " + this + " depends upon itself.", position());
-			    return rootClause.get();*/
-		    	return new CConstraint();
-		    }
-		    
-		    computing = true;
-		    
-		    try {
-			    List<X10FieldDef> properties = properties();
-			    
-			    TypeSystem xts = (TypeSystem) ts;
-
-			    CConstraint result = new CConstraint();
-			    
-			    XVar oldThis = thisVar(); // xts.xtypeTranslator().translateThisWithoutTypeConstraint();
-			    
-			    try {
-				    // Add in constraints from the supertypes.  This is
-				    // no need to change self, and no occurrence of this is possible in 
-				    // a type's base constraint.
-			    	// vj: 08/12/09. Incorrect. this can occur in a type's base constraint.
-				    {
-					    Type type = Types.get(superType());
-					    if (type != null) {
-						CConstraint rs = Types.realX(type);
-						if (rs != null) {
-							if (rs.thisVar() != null)
-								rs = rs.substitute(oldThis, (XVar) rs.thisVar());
-						    result.addIn(rs);
-						}
-					    }
-				    }
-
-				    // Add in constraints from the interfaces.
-				    for (Iterator<Ref<? extends Type>> i = interfaces().iterator(); i.hasNext(); ) {
-					    Ref<? extends Type> it = (Ref<? extends Type>) i.next();
-					    CConstraint rs = Types.realX(it.get());
-					    // no need to change self, and no occurrence of this is possible in 
-					    // a type's base constraint.
-					    if (rs != null) {
-//						    rs = rs.substitute(rs.self(), oldThis);
-						    result.addIn(rs);
-					    }
-				    }
-				    
-				    // add in the bindings from the property declarations.
-				    for (X10FieldDef fi : properties) {
-					    Type type = fi.asInstance().type();   // ### check for recursive call here
-					    XVar fiThis = fi.thisVar();
-					    CConstraint rs = Types.realX(type);
-					    if (rs != null) {
-						    // Given: f:C{c}
-						    // Add in: c[self.f/self,self/this]
-						    XTerm newSelf = xts.xtypeTranslator().translate(rs.self(), fi.asInstance());
-						    CConstraint rs1 = rs.substitute(newSelf, rs.self());
-						    CConstraint rs2;
-						    if (fiThis != null)
-						        rs2 = rs1.substitute(rs1.self(), fiThis);
-						    else
-						        rs2 = rs1;
-						    result.addIn(rs2);
-					    }
-				    }
-
-				    // Finally, add in the class invariant.
-				    // It is important to do this last since we need avoid type-checking constraints
-				    // until after the base type of the supertypes are resolved.
-				    XVar thisVar = thisVar();
-				    CConstraint ci = Types.get(classInvariant);
-				    if (ci != null) {
-					ci = ci.substitute(ci.self(), oldThis);
-					result.addIn(ci);
-				    }
-				    
-			    }
-			    catch (XFailure f) {
-				    result.setInconsistent();
-				    this.rootClause = Types.ref(result);
-				    this.rootClauseInvalid = new SemanticException("The class invariant and property constraints of " + this + " are inconsistent.", position());
-			    }
-			    
-			    // Now, set the root clause and mark that we're no longer computing.
-			    this.rootClause = Types.ref(result);
-			    this.computing = false;
-			    
-			    // Now verify that the root clause entails the assertions of the properties.
-			    // We need to set the root clause first, to avoid a spurious report of a cyclic dependency.
-			    // This can happen when one of the properties is subtype of this type:
-			    // class Ref(home: Place) { }
-			    // class Place extends Ref { ... }
-			    
-			    // Disable this for now since it can cause an infinite loop.
-			    // TODO: vj 08/12/09 Revisit this.
-			    /*if (false && result.consistent()) {
-				    // Verify that the realclause, as it stands, entails the assertions of the 
-				    // property.
-				    for (X10FieldDef fi : properties) {
-					    Type ftype = fi.asInstance().type();
-					    
-					    CConstraint c = X10TypeMixin.realX(ftype);
-					    XTerm newSelf = xts.xtypeTranslator().trans(c, c.self(), fi.asInstance());
-					    c = c.substitute(newSelf, c.self());
-					    
-					    if (! result.entails(c, ((X10Context) ts.emptyContext()).constraintProjection(result, c))) {
-						    this.rootClause = Types.ref(result);
-						    this.rootClauseInvalid = 
-							    new SemanticException("The real clause, " + result + ", does not satisfy constraints from " + fi + ".", position());
-					    }
-				    }
-			    }*/
-		    }
-		  /*  catch (XFailure e) {
-		    	CConstraint result = new CConstraint();
-			    result.setInconsistent();
-			    this.rootClause = Types.ref(result);
-			    this.rootClauseInvalid = new SemanticException(e.getMessage(), position());
-		    }*/
-		    finally {
-			    computing = false;
-		    }
-	    }
-	    
-	    assert rootClause != null;
-	    return rootClause.get();
+    // Cached realClause of the root type.
+    Ref<CConstraint> realClause = setRealClause();
+    Ref<CConstraint> realClauseWithThis = setRealClauseWithThis();
+    
+    private Ref<CConstraint> setRealClauseWithThis() {
+        final LazyRef<CConstraint> ref = new LazyRef_c<CConstraint>(new CConstraint());
+        final Runnable runnable = new Runnable() {
+            public void run() {
+                CConstraint c = X10ClassDef_c.this.realClause.get();
+                c = c.instantiateSelf(thisVar());
+                ref.update(c);
+            }
+            public String toString() {
+                return "realClauseWithThis for " + X10ClassDef_c.this;
+            }
+        };
+        ref.setResolver(runnable);
+        return ref;
     }
+    
+    /**
+     * Set the realClause for this type. The realClause is the conjunction of the
+     * depClause and the baseClause for the type -- it represents all the constraints
+     * that are satisfied by an instance of this type. The baseClause is the invariant for
+     * the base type. If the base type C has defined properties P1 p1, ..., Pk pk, 
+     * and inherits from type B, then the baseClause for C is the baseClause for B
+     * conjoined with r1[self.p1/self, self/this] && ... && rk[self.pk/self, self/this]
+     * where ri is the realClause for Pi.
+     * 
+     */
+    private Ref<CConstraint> setRealClause() {
+    	final LazyRef<CConstraint> ref = new LazyRef_c<CConstraint>(new CConstraint());
+    	Runnable runnable = new Runnable() {
+    		boolean computing = false;
+    		public void run() {
+    			if (computing) {
+    				return;
+    		    }
+    		    computing = true;
+    		    CConstraint result = new CConstraint();
+    		    try {
+    			    List<X10FieldDef> properties = properties();
+    			    XVar oldThis = thisVar(); // xts.xtypeTranslator().translateThisWithoutTypeConstraint();
+    			    
+    			    try {
+    				    // Add in constraints from the supertypes.  This is
+    				    // no need to change self, and no occurrence of this is possible in 
+    				    // a type's base constraint.
+    			    	// vj: 08/12/09. Incorrect. this can occur in a type's base constraint.
+    				    {
+    					    Type type = Types.get(superType());
+    					    if (type != null) {
+    						CConstraint rs = Types.realX(type);
+    						if (rs != null && ! rs.valid()) {
+    							if (rs.thisVar() != null)
+    								rs = rs.substitute(oldThis, (XVar) rs.thisVar());
+    						    result.addIn(rs);
+    						}
+    					    }
+    				    }
 
+    				    // Add in constraints from the interfaces.
+    				    for (Iterator<Ref<? extends Type>> i = interfaces().iterator(); i.hasNext(); ) {
+    					    Ref<? extends Type> it = (Ref<? extends Type>) i.next();
+    					    CConstraint rs = Types.realX(it.get());
+    					    // no need to change self, and no occurrence of this is possible in 
+    					    // a type's base constraint.
+    					    if (rs != null && ! rs.valid()) {
+//    						    rs = rs.substitute(rs.self(), oldThis);
+    						    result.addIn(rs);
+    					    }
+    				    }
+    				    
+    				    // add in the bindings from the property declarations.
+    				    for (X10FieldDef fi : properties) {
+    					    Type type = fi.asInstance().type();   // ### check for recursive call here
+    					    XVar fiThis = fi.thisVar();
+    					    CConstraint rs = Types.realX(type);
+    					    if (rs != null) {
+    						    // Given: f:C{c}
+    						    // Add in: c[self.f/self,self/this]
+    						    XTerm newSelf = ts.xtypeTranslator().translate(result.self(), fi.asInstance());
+    						    CConstraint rs1 = rs.instantiateSelf(newSelf);
+    						    CConstraint rs2;
+    						    if (fiThis != null)
+    						        rs2 = rs1.substitute(result.self(), fiThis);
+    						    else
+    						        rs2 = rs1;
+    						    result.addIn(rs2);
+    					    }
+    				    }
+
+    				    // Finally, add in the class invariant.
+    				    // It is important to do this last since we need avoid type-checking constraints
+    				    // until after the base type of the supertypes are resolved.
+    				    XVar thisVar = thisVar();
+    				    CConstraint ci = Types.get(classInvariant);
+    				    if (ci != null && ! ci.valid()) {
+    				    	ci = ci.substitute(ci.self(), oldThis);
+    				    	result.addIn(ci);
+    				    }
+    				    
+    			    }
+    			    catch (XFailure f) {
+    				    result.setInconsistent();
+    				    X10ClassDef_c.this.realClauseInvalid = 
+    				    	new SemanticException("The real clause for " 
+    				    			+ this + " is inconsistent.", position());
+    			    }
+    			    
+    			    // Now verify that the root clause entails the assertions of the properties.
+    			    // We need to set the root clause first, to avoid a spurious report of a cyclic dependency.
+    			    // This can happen when one of the properties is subtype of this type:
+    			    // class Ref(home: Place) { }
+    			    // class Place extends Ref { ... }
+    			    
+    			    // Disable this for now since it can cause an infinite loop.
+    			    // TODO: vj 08/12/09 Revisit this.
+    			    /*if (false && result.consistent()) {
+    				    // Verify that the realclause, as it stands, entails the assertions of the 
+    				    // property.
+    				    for (X10FieldDef fi : properties) {
+    					    Type ftype = fi.asInstance().type();
+    					    
+    					    CConstraint c = X10TypeMixin.realX(ftype);
+    					    XTerm newSelf = xts.xtypeTranslator().trans(c, c.self(), fi.asInstance());
+    					    c = c.substitute(newSelf, c.self());
+    					    
+    					    if (! result.entails(c, ((X10Context) ts.emptyContext()).constraintProjection(result, c))) {
+    						    this.rootClause = Types.ref(result);
+    						    this.rootClauseInvalid = 
+    							    new SemanticException("The real clause, " + result + ", does not satisfy constraints from " + fi + ".", position());
+    					    }
+    				    }
+    			    }*/
+    		    }
+    		  /*  catch (XFailure e) {
+    		    	CConstraint result = new CConstraint();
+    			    result.setInconsistent();
+    			    this.rootClause = Types.ref(result);
+    			    this.rootClauseInvalid = new SemanticException(e.getMessage(), position());
+    		    }*/
+    		    finally {
+    		    	ref.update(result);
+    			    this.computing = false;
+    		    }
+    		}
+    		public String toString() {
+    		    return "realClause for " + X10ClassDef_c.this;
+    		}
+    	};
+    	ref.setResolver(runnable);
+    	return ref;
+    }
+  
+    public Ref<CConstraint> realClause() {
+    	return realClause;
+    }
+    public Ref<CConstraint> realClauseWithThis() {
+        return realClauseWithThis;
+    }
+    public CConstraint getRealClause() {
+    	return realClause.get();
+    }
+	
     public boolean isJavaType() {
         return fromJavaClassFile();
     }
@@ -352,6 +369,18 @@ public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
 	variances = new ArrayList<ParameterType.Variance>(variances);
 	variances.add(v);
     }
+    
+    public void replaceTypeParameter(int i, ParameterType p, ParameterType.Variance v) {
+	assert (typeParameters.size() == variances.size());
+	typeParameters = new ArrayList<ParameterType>(typeParameters);
+	typeParameters.set(i, p);
+	variances = new ArrayList<ParameterType.Variance>(variances);
+	variances.set(i, v);
+    }
+    
+    TypeParamSubst subst = null;
+    public TypeParamSubst subst() { return this.subst; }
+    public void setSubst(TypeParamSubst subst) { this.subst = subst; }
 
     List<TypeDef> typeMembers;
 
@@ -523,7 +552,7 @@ public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
         return inStaticContext;
     }
 
-    public Ref<? extends ClassDef> outer() {
+    public Ref<? extends X10ClassDef> outer() {
         if (kind() == TOP_LEVEL)
             return null;
         if (outer == null)
@@ -561,7 +590,7 @@ public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
         this.kind = kind;
     }
 
-    public void outer(Ref<ClassDef> outer) {
+    public void outer(Ref<X10ClassDef> outer) {
         if (outer != null && kind() == TOP_LEVEL)
             throw new InternalCompilerError("Top-level classes cannot have outer classes.");
         this.outer = outer;
@@ -685,4 +714,44 @@ public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
         }
     }
 
+    private static void addTypeToWorkList(ArrayList<ClassDef> worklist, Ref<? extends Type> ref) {
+        Type sup = Types.get(ref);
+        sup = Types.baseType(sup);
+        // can be a parameter type
+        if (sup instanceof ParameterType) return;
+        if (! (sup instanceof X10ParsedClassType))
+        assert sup instanceof X10ParsedClassType;
+        worklist.add( ((X10ParsedClassType)sup).def() );
+    }
+    private static void addToWorkList(ClassDef def, ArrayList<ClassDef> worklist) {
+        final Ref<? extends Type> ref = def.superType();
+        if (ref!=null) {
+            addTypeToWorkList(worklist, ref);
+        }
+        final List<X10FieldDef> props = def.properties();
+        for (X10FieldDef p : props) {
+            addTypeToWorkList(worklist, p.type());
+        }
+    }
+    public boolean hasCircularProperty() {
+        ArrayList<ClassDef> worklist = new ArrayList<ClassDef>();
+        HashSet<ClassDef> smaller = new HashSet<ClassDef>();
+        addToWorkList(this, worklist);
+        while (worklist.size()>0) {
+            ClassDef cur = worklist.remove(worklist.size()-1);
+            if (smaller.contains(cur)) continue;
+            smaller.add(cur);
+            addToWorkList(cur, worklist);
+        }
+        return smaller.contains(this);
+
+    }
+
+    private boolean wasInner = false;
+    public boolean wasInner() {
+        return wasInner;
+    }
+    public void setWasInner(boolean v) {
+        wasInner = v;
+    }
 }

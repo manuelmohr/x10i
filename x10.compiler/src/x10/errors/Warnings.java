@@ -22,24 +22,17 @@ public class Warnings {
         if (use.error() != null) {
             Errors.issue(tc.job(), use.error(), n);
         }
-        if (use instanceof ProcedureInstance)
-            wasGuardChecked(tc, (ProcedureInstance) use, n);        
     }
-    public static void wasGuardChecked(ContextVisitor tc, ProcedureInstance pi, Node n) {
-        if (pi.checkGuardAtRuntime()) {
-            Warnings.dynamicCall(tc.job(),Warnings.CheckGuardAtRuntime(n.position()));
-        }
-    }
-	public static ErrorInfo CheckGuardAtRuntime(Position p) {                       
-		return new ErrorInfo(ErrorInfo.WARNING, "Generated a dynamic check for the method guard.", p);
+	public static ErrorInfo GeneratedDynamicCheck(Position p) {                       
+		return new ErrorInfo(ErrorInfo.WARNING, "Generated a dynamic check for the method call.", p);
 	}
 
 	public static boolean dynamicCall(Job job, ErrorInfo e) {
         final ExtensionInfo extensionInfo = (ExtensionInfo) job.extensionInfo();
         X10CompilerOptions opts = extensionInfo.getOptions();
-        if (opts.x10_config.STATIC_CALLS) {
+        if (opts.x10_config.STATIC_CHECKS) {
             return false;
-        } else if (opts.x10_config.VERBOSE_CALLS) {
+        } else if (opts.x10_config.VERBOSE_CHECKS) {
             Warnings.issue(job, e);
         } else {
             extensionInfo.incrWeakCallsCount();

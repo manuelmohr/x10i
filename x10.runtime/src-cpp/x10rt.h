@@ -39,8 +39,8 @@
 #include <x10aux/long_utils.h>
 #include <x10aux/short_utils.h>
 #include <x10aux/string_utils.h>
-#include <x10aux/rail_utils.h>
 #include <x10aux/fun_utils.h>
+#include <x10aux/array_utils.h>
 
 #include <x10aux/math_utils.h>
 #include <x10aux/system_utils.h>
@@ -48,6 +48,8 @@
 #include <x10aux/place_local.h>
 
 #include <x10aux/cuda_kernel.h>
+
+#include <x10aux/vec_decl.h>
 
 #endif
 // vim:tabstop=4:shiftwidth=4:expandtab

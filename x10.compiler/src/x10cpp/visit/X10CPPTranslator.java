@@ -18,6 +18,7 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 
 import java.io.Writer;
@@ -54,6 +55,7 @@ import polyglot.ast.SourceCollection;
 import polyglot.ast.SourceFile;
 import polyglot.ast.Stmt;
 import polyglot.ast.SwitchBlock;
+import polyglot.ast.Term;
 import polyglot.ast.TopLevelDecl;
 import polyglot.ast.Try;
 
@@ -85,8 +87,10 @@ import polyglot.util.StdErrorQueue;
 import polyglot.util.StringUtil;
 import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.visit.Translator;
+import x10.ast.Closure;
 import x10.ast.ForLoop;
 import x10.ast.X10ClassDecl;
+import x10.ast.X10ConstructorDecl;
 import x10.extension.X10Ext;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
@@ -103,6 +107,7 @@ import x10cpp.postcompiler.CXXCommandBuilder;
 import x10cpp.postcompiler.Cygwin_CXXCommandBuilder;
 import x10cpp.postcompiler.Linux_CXXCommandBuilder;
 import x10cpp.postcompiler.PostCompileProperties;
+import x10cpp.postcompiler.SharedLibProperties;
 import x10cpp.postcompiler.SunOS_CXXCommandBuilder;
 import x10cpp.types.X10CPPContext_c;
 import static x10cpp.visit.ASTQuery.getCppRep;
@@ -176,7 +181,7 @@ public class X10CPPTranslator extends Translator {
 		}
 		
 		X10CPPCompilerOptions opts = (X10CPPCompilerOptions) job.extensionInfo().getOptions();
-		if (opts.x10_config.DEBUG && n instanceof Stmt && !(n instanceof Assert) && !(n instanceof Block) && !(n instanceof Catch) && !(parent instanceof If))
+		if (opts.x10_config.DEBUG && n instanceof Stmt && !(n instanceof Assert) && !(n instanceof Block) && !(n instanceof Catch) && !(parent instanceof If) && !(n instanceof For))
 		{
 			w.write("_X10_STATEMENT_HOOK()");
 			if (!(parent instanceof For))
@@ -190,7 +195,7 @@ public class X10CPPTranslator extends Translator {
 		// FIXME: [IP] Some nodes have no del() -- warn in that case
 		super.print(parent, n, w_);
 
-		final int endLine = w.currentStream().getStreamLineNumber(); // for debug info
+		final int endLine = w.currentStream().getStreamLineNumber() - w.currentStream().getOmittedLines(); // for debug info
 
 		if (opts.x10_config.DEBUG && line > 0 &&
 		    ((n instanceof Stmt && !(n instanceof SwitchBlock) && !(n instanceof Catch)) ||
@@ -204,45 +209,88 @@ public class X10CPPTranslator extends Translator {
 		    if (fileToLineNumberMap != null) {
 		        final LineNumberMap lineNumberMap = fileToLineNumberMap.get(key);
 		        // [DC] avoid NPE when writing to .cu files
-		        if (lineNumberMap != null) {
+		        // [DC] avoid NPE when parent is null, e.g. generating initialisation for cuda shm
+		        if (lineNumberMap != null && parent != null) {
 		            final MemberDef def =
-		                (n instanceof Block) ?
-		                    (parent instanceof MethodDecl) ? ((MethodDecl) parent).methodDef() :
-		                    (parent instanceof ConstructorDecl) ? ((ConstructorDecl) parent).constructorDef()
-		                    : null
-		                : null;
-		            final int lastX10Line = parent.position().endLine();
-		            if (n instanceof Stmt) {
+		            	(n instanceof ConstructorDecl) ?
+		            		((ConstructorDecl) n).constructorDef() :
+			                (n instanceof Block) ?
+			                    (parent instanceof MethodDecl) ? ((MethodDecl) parent).methodDef() 
+			                : null
+			             : null;
+		            final int lastX10Line = (n instanceof ConstructorDecl)? n.position().endLine() : parent.position().endLine();
+		            if (n instanceof Stmt || n instanceof ProcedureDecl)
+	                {
 		                final int adjustedStartLine = adjustSLNForNode(startLine, n);
 		                final int adjustedEndLine = adjustELNForNode(endLine, n);
 		                final int fixedEndLine = adjustedEndLine < adjustedStartLine ? adjustedStartLine : adjustedEndLine;
+		                //final boolean generated = n.position().isCompilerGenerated(); // || ((parent instanceof Closure) && (!(n instanceof ProcedureDecl) || (n instanceof ProcedureDecl && ((ProcedureDecl)n).reachable())));
+		                final boolean addLastLine = ((n instanceof ConstructorDecl) || (n instanceof Block && !((Block)n).statements().isEmpty() && 
+		                		((Block)n).position().endLine() != ((Block)n).statements().get(((Block)n).statements().size()-1).position().endLine()));
 		                w.currentStream().registerCommitListener(new ClassifiedStream.CommitListener() {
 		                    public void run(ClassifiedStream s) {
 		                        int cppStartLine = s.getStartLineOffset()+adjustedStartLine;
 		                        int cppEndLine = s.getStartLineOffset()+fixedEndLine;
-//		                        System.out.println("Adding line number entry: "+cppFile+":"+cppStartLine+"-"+cppEndLine+"->"+file+":"+line);
-		                        lineNumberMap.put(cppFile, cppStartLine, cppEndLine, file, line, column);
-		                        if (def != null && !def.position().isCompilerGenerated()) {
+		                        if (def != null && !def.position().isCompilerGenerated())
+		                        {
 		                            lineNumberMap.addMethodMapping(def, cppFile, cppStartLine, cppEndLine, lastX10Line);
+		                            lineNumberMap.put(cppFile, cppStartLine, cppEndLine, file, line, column);
+		                            if (addLastLine)
+		                        		lineNumberMap.put(cppFile, cppEndLine, cppEndLine, file, lastX10Line, column);
+		                        }
+		                        else //if (!generated)
+		                        {
+		                        	lineNumberMap.put(cppFile, cppStartLine, cppEndLine, file, line, column);
+		                        	if (addLastLine)
+		                        		lineNumberMap.put(cppFile, cppEndLine, cppEndLine, file, lastX10Line, column);
 		                        }
 		                    }
 		                });
 		            }
-		            if (n instanceof FieldDecl && !c.inTemplate()) // the c.inTemplate() skips mappings for templates, which don't have a fixed size.
-		            	lineNumberMap.addClassMemberVariable(((FieldDecl)n).name().toString(), ((FieldDecl)n).type().toString(), Emitter.mangled_non_method_name(context.currentClass().toString()));
+		            if (parent instanceof For && n instanceof LocalDecl)
+		            {
+		            	Term t = ((For)parent).body().firstChild();
+		            	if (t instanceof LocalDecl)
+		            		lineNumberMap.rememberLoopVariable(((LocalDecl)t).name().toString(), ((LocalDecl)n).name().toString(), line, lastX10Line);
+		            }
+		            if (n instanceof FieldDecl && !c.inTemplate() && !((FieldDecl)n).flags().flags().isStatic() && !n.position().isCompilerGenerated()) // the c.inTemplate() skips mappings for templates, which don't have a fixed size.
+		            	lineNumberMap.addClassMemberVariable(((FieldDecl)n).name().toString(), ((FieldDecl)n).type().toString(), Emitter.mangled_non_method_name(context.currentClass().toString()), context.currentClass().isX10Struct(), false);
 		            else if (n instanceof LocalDecl && !((LocalDecl)n).position().isCompilerGenerated())
-		            	lineNumberMap.addLocalVariableMapping(((LocalDecl)n).name().toString(), ((LocalDecl)n).type().toString(), line, lastX10Line, file, false);
+		            	lineNumberMap.addLocalVariableMapping(((LocalDecl)n).name().toString(), ((LocalDecl)n).type().toString(), line, lastX10Line, file, false, -1, false);
 		            else if (def != null)
 		            {
 		            	// include method arguments in the local variable tables
-		            	List<Formal> args = ((ProcedureDecl)parent).formals();
-		            	for (int i=0; i<args.size(); i++)
-		            		lineNumberMap.addLocalVariableMapping(args.get(i).name().toString(), args.get(i).type().toString(), line, lastX10Line, file, false);
-		            	// include "this" for non-static methods		            	
-		            	if (!def.flags().isStatic() && ((ProcedureDecl)parent).reachable() && !c.inTemplate())
+		            	ProcedureDecl defSource;
+		            	if (n instanceof ConstructorDecl)
 		            	{
-		            		lineNumberMap.addLocalVariableMapping("this", Emitter.mangled_non_method_name(context.currentClass().toString()), line, lastX10Line, file, true);
-		            		lineNumberMap.addClassMemberVariable(null, null, Emitter.mangled_non_method_name(context.currentClass().toString()));
+		            		defSource = (ProcedureDecl)n;
+		            		
+		            		// add the hack reference to the outer class
+		            		if (n instanceof X10ConstructorDecl && ((X10ConstructorDecl)n).returnType().toString().contains("$"))
+		            		{
+		            			String thisClass = ((X10ConstructorDecl)n).returnType().toString();
+		            			String parentClass = thisClass.substring(0, thisClass.lastIndexOf('$'));
+		            			List<Formal> args = defSource.formals();
+				            	if (args.size() == 1)
+				            	{
+				            		Formal arg = args.get(0);
+				            		if (arg.type().toString().equals(parentClass))
+				            			lineNumberMap.addClassMemberVariable(arg.name().toString(), parentClass, Emitter.mangled_non_method_name(thisClass), false, true);
+				            	}
+		            		}		            		
+		            	}
+		            	else
+		            		defSource = (ProcedureDecl)parent;
+		            	List<Formal> args = defSource.formals();
+		            	for (int i=0; i<args.size(); i++)
+		            		lineNumberMap.addLocalVariableMapping(args.get(i).name().toString(), args.get(i).type().toString(), line, lastX10Line, file, false, -1, false);
+		            	// include "this" for non-static methods		            	
+		            	if (!def.flags().isStatic() && defSource.reachable() && !c.inTemplate())
+		            	{
+		            		boolean isStruct = context.currentClass().isX10Struct();
+		            		if (!defSource.position().isCompilerGenerated())
+		            			lineNumberMap.addLocalVariableMapping("this", Emitter.mangled_non_method_name(context.currentClass().toString()), line, lastX10Line, file, true, -1, isStruct);
+		            		lineNumberMap.addClassMemberVariable(null, null, Emitter.mangled_non_method_name(context.currentClass().toString()), isStruct, false);
 		            	}
 		            }
 		        }
@@ -286,7 +334,6 @@ public class X10CPPTranslator extends Translator {
 	protected boolean translateSource(SourceFile sfn) {
 
 		int outputWidth = job.compiler().outputWidth();
-		Collection<String> outputFiles = job.compiler().outputFiles();
 
 		try {
 
@@ -331,21 +378,21 @@ public class X10CPPTranslator extends Translator {
 		            for (Type at : as) {
 		                ASTQuery.assertNumberOfInitializers(at, 1);
 		                String include = getStringPropertyInit(at, 0);
-		                outputFiles.add(pkg_+include);
+		                job.compiler().addOutputFile(sfn, pkg_+include);
 		                maybeCopyTo(include, path, out_path+pkg_);
 		            }
 		            as = ext.annotationMatching(xts.systemResolver().findOne(QName.make("x10.compiler.NativeCPPOutputFile")));
 		            for (Type at : as) {
 		                ASTQuery.assertNumberOfInitializers(at, 1);
 		                String file = getStringPropertyInit(at, 0);
-		                outputFiles.add(pkg_+file);
+		                job.compiler().addOutputFile(sfn, pkg_+file);
 		                maybeCopyTo(file, path, out_path+pkg_);
 		            }
 		            as = ext.annotationMatching(xts.systemResolver().findOne(QName.make("x10.compiler.NativeCPPCompilationUnit")));
 		            for (Type at : as) {
 		                ASTQuery.assertNumberOfInitializers(at, 1);
 		                String compilation_unit = getStringPropertyInit(at, 0);
-		                outputFiles.add(pkg_+compilation_unit);
+		                job.compiler().addOutputFile(sfn, pkg_+compilation_unit);
 		                opts.compilationUnits().add(pkg_+compilation_unit);
 		                maybeCopyTo(compilation_unit, path, out_path+pkg_);
 		            }
@@ -366,7 +413,7 @@ public class X10CPPTranslator extends Translator {
 				// [DC] TODO: This hack is to ensure the .h is always generated.
                 sw.getNewStream(StreamWrapper.Header, true);
 				String header = wstreams.getStreamName(StreamWrapper.Header);
-				outputFiles.add(header);
+				job.compiler().addOutputFile(sfn, header);
 				
 				if (opts.x10_config.DEBUG) {
 					Map<String, LineNumberMap> fileToLineNumberMap =
@@ -389,7 +436,7 @@ public class X10CPPTranslator extends Translator {
 			
 			if (generatedCode) {
 			    String cc = fstreams.getStreamName(StreamWrapper.CC);
-			    outputFiles.add(cc);
+			    job.compiler().addOutputFile(sfn, cc);
                 opts.compilationUnits().add(cc);
                 
                 if (opts.x10_config.DEBUG) {
@@ -418,7 +465,7 @@ public class X10CPPTranslator extends Translator {
 //	            if (map.isEmpty())
 //	                return;
 	            s.forceNewline();
-	            LineNumberMap.exportForCPPDebugger(s, map);
+	            map.exportForCPPDebugger(s, map);
 	        }
 	    });
 	}
@@ -489,54 +536,92 @@ public class X10CPPTranslator extends Translator {
 			// use set to avoid duplicates
 			Set<String> compilationUnits = CollectionFactory.newHashSet(options.compilationUnits());
 
-			try {
-			    final File file = outputFile(options, null, options.x10cpp_config.MAIN_STUB_NAME, "cc");
-			    ExtensionInfo ext = compiler.sourceExtension();
-			    SimpleCodeWriter sw = new SimpleCodeWriter(ext.targetFactory().outputWriter(file),
-			            compiler.outputWidth());
-			    List<MethodDef> mainMethods = new ArrayList<MethodDef>();
-			    for (Job job : ext.scheduler().commandLineJobs()) {
-			        mainMethods.addAll(getMainMethods(job));
-			    }
-			    if (mainMethods.size() < 1) {
-			        // If there are no main() methods in the command-line jobs, try other files
-			        for (Job job : ext.scheduler().jobs()) {
-			            mainMethods.addAll(getMainMethods(job));
-			        }
-			    }
-			    if (mainMethods.size() < 1) {
-			        eq.enqueue(ErrorInfo.SEMANTIC_ERROR, "No main method found");
-			        return false;
-			    } else if (mainMethods.size() > 1) {
-			        eq.enqueue(ErrorInfo.SEMANTIC_ERROR,
-			                "Multiple main() methods found, please specify MAIN_CLASS:"+listMethods(mainMethods));
-			        return false;
-			    }
-			    assert (mainMethods.size() == 1);
-			    X10ClassType container = (X10ClassType) Types.get(mainMethods.get(0).container());
-			    MessagePassingCodeGenerator.processMain(container, sw, options);
-			    sw.flush();
-			    sw.close();
-			    compilationUnits.add(file.getName());
-			}
-			catch (IOException e) {
-			    eq.enqueue(ErrorInfo.IO_ERROR, "I/O error while translating: " + e.getMessage());
-			    return false;
-			}
+			if (options.buildX10Lib == null) {
 
+				try {
+				    final File file = outputFile(options, null, options.x10cpp_config.MAIN_STUB_NAME, "cc");
+				    ExtensionInfo ext = compiler.sourceExtension();
+				    SimpleCodeWriter sw = new SimpleCodeWriter(ext.targetFactory().outputWriter(file),
+				            compiler.outputWidth());
+				    List<MethodDef> mainMethods = new ArrayList<MethodDef>();
+				    for (Job job : ext.scheduler().commandLineJobs()) {
+				        mainMethods.addAll(getMainMethods(job));
+				    }
+				    if (mainMethods.size() < 1) {
+				        // If there are no main() methods in the command-line jobs, try other files
+				        for (Job job : ext.scheduler().jobs()) {
+				            mainMethods.addAll(getMainMethods(job));
+				        }
+				    }
+				    if (mainMethods.size() < 1) {
+				        eq.enqueue(ErrorInfo.SEMANTIC_ERROR, "No main method found");
+				        return false;
+				    } else if (mainMethods.size() > 1) {
+				        eq.enqueue(ErrorInfo.SEMANTIC_ERROR,
+				                "Multiple main() methods found, please specify MAIN_CLASS:"+listMethods(mainMethods));
+				        return false;
+				    }
+				    assert (mainMethods.size() == 1);
+				    X10ClassType container = (X10ClassType) Types.get(mainMethods.get(0).container());
+				    MessagePassingCodeGenerator.processMain(container, sw, options);
+				    sw.flush();
+				    sw.close();
+				    compilationUnits.add(file.getName());
+				}
+				catch (IOException e) {
+				    eq.enqueue(ErrorInfo.IO_ERROR, "I/O error while translating: " + e.getMessage());
+				    return false;
+				}
+			}
+			
 			PostCompileProperties x10rt = loadX10RTProperties(options);
-			CXXCommandBuilder ccb = CXXCommandBuilder.getCXXCommandBuilder(options, x10rt, eq);
+		    SharedLibProperties shared_lib_props = loadSharedLibProperties();
+			CXXCommandBuilder ccb = CXXCommandBuilder.getCXXCommandBuilder(options, x10rt, shared_lib_props, eq);
 			String[] cxxCmd = ccb.buildCXXCommandLine(compilationUnits);
 
 			if (!doPostCompile(options, eq, compilationUnits, cxxCmd)) return false;
+			
+			if (options.buildX10Lib != null) {
+				if (!emitPropertiesFile(options, ccb)) return false;
+			}
 
 			// FIXME: [IP] HACK: Prevent the java post-compiler from running
 			options.post_compiler = null;
 		}
 		return true;
 	}
+	
+	private static String quoteSeparated (List<String> list)
+	{
+		StringBuilder sb = new StringBuilder();
+		boolean first = true;
+		for (String s : list) {
+			sb.append((first?"":" ")+"\""+s+"\"");
+			first = false;
+		}
+		return sb.toString();
+	}
+	
+	public static boolean emitPropertiesFile(X10CPPCompilerOptions options, CXXCommandBuilder ccb) {
+		try {
+			File f = new File(options.buildX10Lib + "/"+options.executable_path+".properties");
+			PrintStream dest = new PrintStream(new FileOutputStream(f));
+	    	dest.println("X10LIB_PLATFORM="+ccb.getPlatform());
+	    	dest.println("X10LIB_TIMESTAMP="+"UNSUPPORTED");
+			dest.println("X10LIB_CXX="+ccb.getPostCompiler());
+	    	dest.println("X10LIB_CXXFLAGS="+quoteSeparated(options.extraPreArgs));
+			dest.println("X10LIB_LDFLAGS=");
+	    	dest.println("X10LIB_LDLIBS=-l"+options.executable_path+" "+quoteSeparated(options.extraPostArgs));
+	    	dest.println("X10LIB_SRC_JAR="+options.executable_path+".jar");
+	    	dest.close();
+	    	return true;
+		} catch (IOException e) {
+			System.out.println(e);
+			return false;
+		}
+	}
 
-	private static PostCompileProperties loadX10RTProperties(X10CPPCompilerOptions options) {
+	public static PostCompileProperties loadX10RTProperties(X10CPPCompilerOptions options) {
 	    // TODO: get options.distPath external to this method
 	    String dp = System.getProperty("x10.dist");
 	    options.setDistPath(dp);
@@ -553,6 +638,11 @@ public class X10CPPTranslator extends Translator {
 	    return x10rt_props;
 	}
 	
+	public static SharedLibProperties loadSharedLibProperties() {
+	    String dp = System.getProperty("x10.dist");
+	    return new SharedLibProperties(loadPropertyFile(dp+"/etc/sharedlib.properties"));
+	}
+	
     private static Properties loadPropertyFile(String filename) {
         Properties properties = new Properties();
         try {
@@ -567,6 +657,9 @@ public class X10CPPTranslator extends Translator {
 	    X10CPPCompilerOptions opts = (X10CPPCompilerOptions) job.extensionInfo().getOptions();
 	    X10CPPJobExt jobext = (X10CPPJobExt) job.ext();
 	    if (opts.x10_config.MAIN_CLASS != null) {
+	        if (opts.x10_config.MAIN_CLASS.length() == 0) {
+	            return Collections.<MethodDef>emptyList();
+	        }
 	        QName mainClass = QName.make(opts.x10_config.MAIN_CLASS);
 	        try {
 	            ClassType mct = (ClassType) job.extensionInfo().typeSystem().forName(mainClass);

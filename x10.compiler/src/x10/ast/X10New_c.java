@@ -54,12 +54,14 @@ import polyglot.visit.PrettyPrinter;
 import polyglot.visit.TypeBuilder;
 import polyglot.visit.TypeChecker;
 import x10.constraint.XTerms;
+import x10.constraint.XVar;
 import x10.errors.Errors;
 import x10.errors.Warnings;
 import x10.extension.X10Del;
 import x10.extension.X10Del_c;
 import x10.extension.X10Ext;
 import x10.types.ConstrainedType;
+import x10.types.ParameterType;
 import x10.types.ThisDef;
 import x10.types.TypeParamSubst;
 import x10.types.X10ClassDef;
@@ -72,12 +74,14 @@ import x10.types.X10ParsedClassType;
 import polyglot.types.TypeSystem;
 import polyglot.types.ProcedureDef;
 import polyglot.types.ProcedureInstance;
+import polyglot.types.TypeSystem_c;
+import polyglot.types.NoMemberException;
 
 import x10.types.checker.Converter;
 import x10.types.checker.PlaceChecker;
 import x10.types.constraints.CConstraint;
+import x10.types.constraints.QualifiedVar;
 import x10.types.constraints.TypeConstraint;
-import x10.types.matcher.DumbConstructorMatcher;
 import x10.visit.X10TypeChecker;
 
 
@@ -118,8 +122,8 @@ public class X10New_c extends New_c implements X10New {
 
 
     @Override
-    public X10New anonType(ClassDef anonType) {
-        return (X10New) super.anonType(anonType);
+    public X10New anonType(X10ClassDef anonType) {
+        return super.anonType(anonType);
     }
     @Override
     public X10New arguments(List<Expr> arguments) {
@@ -143,7 +147,7 @@ public class X10New_c extends New_c implements X10New {
     }
 
     @Override
-    public Node buildTypesOverride(TypeBuilder tb) throws SemanticException {
+    public Node buildTypesOverride(TypeBuilder tb) {
         X10New_c n = (X10New_c) super.buildTypesOverride(tb);
         List<TypeNode> typeArgs = n.visitList(n.typeArguments(), tb);
         n = (X10New_c) n.typeArguments(typeArgs);
@@ -166,12 +170,7 @@ public class X10New_c extends New_c implements X10New {
 
     @Override
     protected X10New_c typeCheckHeader(TypeChecker childtc) {
-        X10New_c n;
-        try {
-            n = (X10New_c) super.typeCheckHeader(childtc);
-        } catch (SemanticException e) {
-            throw new InternalCompilerError("Unexpected exception when typechecking "+this, e);
-        }
+        X10New_c n = (X10New_c) super.typeCheckHeader(childtc);
         List<TypeNode> typeArguments = visitList(n.typeArguments(), childtc);
         n = (X10New_c) n.typeArguments(typeArguments);
 
@@ -205,12 +204,7 @@ public class X10New_c extends New_c implements X10New {
 
     @Override
     public Node typeCheckOverride(Node parent, ContextVisitor tc) {
-        Node n;
-        try {
-            n = super.typeCheckOverride(parent, tc);
-        } catch (SemanticException e) {
-            throw new InternalCompilerError("Unexpected exception when compiling "+this, e);
-        }
+        Node n = super.typeCheckOverride(parent, tc);
         NodeVisitor childtc = tc.enter(parent, n);
         List<AnnotationNode> oldAnnotations = ((X10Ext) ext()).annotations();
         if (oldAnnotations == null || oldAnnotations.isEmpty()) {
@@ -226,7 +220,6 @@ public class X10New_c extends New_c implements X10New {
     /**
      * @param ar
      * @param ct
-     * @throws SemanticException
      */
     protected X10New findQualifier(TypeChecker ar, ClassType ct) {
         // If we're instantiating a non-static member class, add a "this"
@@ -389,7 +382,7 @@ public class X10New_c extends New_c implements X10New {
             qualifier = (Expr) k.visitChild(k.qualifier(), childtc);
         }
 
-        if (false && typeArguments.size() > 0) {
+        if (typeArguments.size() > 0) {
             List<Type> typeArgs = new ArrayList<Type>(typeArguments.size());
 
             for (TypeNode tan : typeArguments) {
@@ -425,10 +418,10 @@ public class X10New_c extends New_c implements X10New {
 
     public static Pair<ConstructorInstance, List<Expr>> tryImplicitConversions(X10ProcedureCall n, ContextVisitor tc,
             Type targetType, List<Type> argTypes) throws SemanticException {
-        final TypeSystem ts = (TypeSystem) tc.typeSystem();
+        final TypeSystem_c ts = (TypeSystem_c) tc.typeSystem();
         final Context context = tc.context();
 
-        List<ConstructorInstance> methods = ts.findAcceptableConstructors(targetType, new DumbConstructorMatcher(targetType, argTypes, context));
+        List<ConstructorInstance> methods = ts.findAcceptableConstructors(targetType, ts.ConstructorMatcher(targetType, Collections.EMPTY_LIST,argTypes, context, true));
         return Converter.tryImplicitConversions(n, tc, targetType, methods, new MatcherMaker<ConstructorInstance>() {
             public Matcher<ConstructorInstance> matcher(Type ct, List<Type> typeArgs, List<Type> argTypes) {
                 return ts.ConstructorMatcher(ct, argTypes, context);
@@ -493,6 +486,12 @@ public class X10New_c extends New_c implements X10New {
             result = (X10New_c) result.objectType(result.objectType().typeRef(Types.ref(t)));
         }
 
+        try {
+            Types.checkMissingParameters(result.objectType());
+        } catch (SemanticException e) {
+            Errors.issue(tc.job(), e, result.objectType());
+        }
+
         TypeSystem ts = (TypeSystem) tc.typeSystem();
         Type tp = ci.returnType();
         final Context context = tc.context();
@@ -508,7 +507,7 @@ public class X10New_c extends New_c implements X10New {
             }
         }
         if (!ts.hasUnknown(tp) && !ts.isSubtype(tp1, t1, context)) {
-            SemanticException e = new SemanticException("Constructor return type " + tp + " is not a subtype of " + t + ".", pos);
+            SemanticException e = Errors.NewIncompatibleType.make(result.type(tp1),  t1, tc, pos);
             Errors.issue(tc.job(), e, this);
             if (ci.error() == null) {
                 ci = ci.error(e);
@@ -518,7 +517,7 @@ public class X10New_c extends New_c implements X10New {
         // Copy the method instance so we can modify it.
         //tp = ((X10Type) tp).setFlags(X10Flags.ROOTED);
         ci = ci.returnType(tp);
-        ci = result.adjustCI(ci, tc);
+        ci = result.adjustCI(ci, tc, qualifier());
 
         try {
             checkWhereClause(ci, pos, context);
@@ -552,9 +551,6 @@ public class X10New_c extends New_c implements X10New {
         }
 
         result = (X10New_c) result.type(type);
-
-        Warnings.wasGuardChecked(tc, ci, this);
-
         return result;
     }
 
@@ -566,7 +562,7 @@ public class X10New_c extends New_c implements X10New {
         return findConstructor(tc, n, targetType, actualTypes, null);
     }
     public static Pair<ConstructorInstance,List<Expr>> findConstructor(ContextVisitor tc, X10ProcedureCall n,
-            Type targetType, List<Type> actualTypes, ClassDef anonType) {
+            Type targetType, List<Type> actualTypes, X10ClassDef anonType) {
         X10ConstructorInstance ci;
         TypeSystem xts = tc.typeSystem();
         Context context = (Context) tc.context();
@@ -611,7 +607,7 @@ public class X10New_c extends New_c implements X10New {
     }
 
     private static Pair<ConstructorInstance,List<Expr>> findConstructor(ContextVisitor tc, Context xc,
-            X10ProcedureCall n, Type targetType, List<Type> argTypes, ClassDef anonType) throws SemanticException {
+            X10ProcedureCall n, Type targetType, List<Type> argTypes, X10ClassDef anonType) throws SemanticException {
 
         X10ConstructorInstance ci = null;
         TypeSystem xts = (TypeSystem) tc.typeSystem();
@@ -634,9 +630,22 @@ public class X10New_c extends New_c implements X10New {
                 ci = (X10ConstructorInstance) dci.asInstance();
             }
 
+            // Force type inference when a constructor is invoked with no type arguments from an instance method of the same class
+            List<Type> tas = ct.typeArguments();
+            List<ParameterType> tps = ct.x10Def().typeParameters();
+            if (!tps.isEmpty() && (tas == null || tas.isEmpty())) {
+                throw new Errors.TypeIsMissingParameters(ct, tps, n.position());
+            }
+
             return new Pair<ConstructorInstance, List<Expr>>(ci, n.arguments());
         }
         catch (SemanticException e) {
+            e.setPosition(n.position());
+            // only if we didn't find any methods, try coercions.
+            if (!(e instanceof NoMemberException)) {
+                throw e;
+            }
+            
             // Now, try to find the method with implicit conversions, making
             // them explicit.
             try {
@@ -678,19 +687,41 @@ public class X10New_c extends New_c implements X10New {
      * variables whose types are determined by the static type of the receiver
      * and the actual arguments to the call.
      * 
-     * Also add the self.home==here clause.
+     * Also self.$$here==here.
+     * Add self!=null.
      */
-    private X10ConstructorInstance adjustCI(X10ConstructorInstance xci, ContextVisitor tc) {
+    private X10ConstructorInstance adjustCI(X10ConstructorInstance xci, ContextVisitor tc, Expr outer) {
         if (xci == null)
             return (X10ConstructorInstance) this.ci;
         Type type = xci.returnType();
+        if (outer != null) {
+            type = Types.addInOuterClauses(type, outer.type());
+        } else {
+            // this could still be a local class, and the outer this has to be captured.
+            Type baseType = Types.baseType(type);
+            if (baseType instanceof X10ClassType) {
+                X10ClassType ct = (X10ClassType) baseType;
+                if (ct.isLocal()) {
+                    Type outerT = ct.outer();
+                    CConstraint c = new CConstraint();
+                    Type outerTB = Types.baseType(outerT);
+                    if (outerTB instanceof X10ClassType) {
+                        X10ClassType outerct = (X10ClassType) outerTB;
+                        c.addSelfBinding(outerct.def().thisVar());
+                        outerT = Types.xclause(outerT, c);
+                        type = Types.addInOuterClauses(type, outerT);
+                    }
+                }
+            }
+        }
+        
         TypeSystem ts = (TypeSystem) tc.typeSystem();
 
         if (ts.isStructType(type)) 
             return xci;
         // Add self.home == here to the return type.
         // Add this even in 2.1 -- the place where this object is created
-        // is tracked in the type through a fake field "here".
+        // is tracked in the type through a fake field "$$here".
         // This field does not exist at runtime in the object -- but that does not
         // prevent the compiler from imagining that it exists.
         ConstrainedType type1 = Types.toConstrainedType(type);

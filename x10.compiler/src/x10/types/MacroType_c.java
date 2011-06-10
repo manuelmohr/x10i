@@ -80,7 +80,9 @@ public class MacroType_c extends ParametrizedType_c implements MacroType {
 		return null;
 	}
 	public boolean isGloballyAccessible() {
-	    return false;
+	    if (container != null && !container.isGloballyAccessible())
+	        return false;
+	    return flags().isPublic();
 	}
 
 	@Override
@@ -220,8 +222,8 @@ public class MacroType_c extends ParametrizedType_c implements MacroType {
 		return (MacroType) t;
 	}
 
-    public boolean checkGuardAtRuntime() { return false; }
-    public MacroType_c checkGuardAtRuntime(boolean check) {
+    public boolean checkConstraintsAtRuntime() { return false; }
+    public MacroType_c checkConstraintsAtRuntime(boolean check) {
         throw new RuntimeException("The guard for a MacroType cannot be dynamically checked (at runtime)");
     }
 	
@@ -261,8 +263,8 @@ public class MacroType_c extends ParametrizedType_c implements MacroType {
 		t.definedType = definedType;
 		return t;
 	}
-	
-	public static class FormalToVarTransform implements Transformation<Integer, XVar> {
+
+    public static class FormalToVarTransform implements Transformation<Integer, XVar> {
 
 		List<LocalDef> formalNames;
 		List<Ref<? extends Type>> formalTypes;
@@ -344,7 +346,7 @@ public class MacroType_c extends ParametrizedType_c implements MacroType {
 		for (int i = 0; i < formals.size(); i++) {
 		    if (i != 0)
 			sb.append(", ");
-		    if (! formals.get(i).equals("")) {
+		    if (! formals.get(i).toString().equals("")) {
 			sb.append(formals.get(i));
 			sb.append(": ");
 		    }

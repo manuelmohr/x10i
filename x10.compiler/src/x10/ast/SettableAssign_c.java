@@ -51,7 +51,6 @@ import polyglot.util.InternalCompilerError;
 import polyglot.util.Pair;
 import polyglot.util.Position;
 import polyglot.util.TypedList;
-import polyglot.visit.AscriptionVisitor;
 import polyglot.visit.CFGBuilder;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.NodeVisitor;
@@ -67,7 +66,6 @@ import polyglot.types.TypeSystem;
 
 import x10.types.checker.Checker;
 import x10.types.checker.Converter;
-import x10.types.matcher.DumbMethodMatcher;
 import x10.visit.X10TypeChecker;
 
 /** An immutable representation of an X10 array access update: a[point] op= expr;
@@ -98,7 +96,7 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
 	
 	public Type leftType() {
 	    if (mi == null) return null;
-	    return mi.formalTypes().get(0);
+	    return mi.formalTypes().get(mi.formalTypes().size()-1);
 	}
 
 	public Expr left() {
@@ -166,16 +164,6 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
    		return reconstruct(array, index);
    	}
    	
-   	public Type childExpectedType(Expr child, AscriptionVisitor av) {
-   		TypeSystem ts = (TypeSystem) av.typeSystem();
-   		
-   		if (child == array) {
-   			return ts.Settable();
-   		}
-   		
-   		return child.type();
-   	}
-	
 	MethodInstance mi;
 	MethodInstance ami; // the apply method is searched even for SettableAssign if the operator is not "=", e.g., a(1) += 2; If it is just assignment, then ami will be null, e.g., a(1)=2;
 	
@@ -197,7 +185,7 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
 	}
 	
 	@Override
-	public Node buildTypes(TypeBuilder tb) throws SemanticException {
+	public Node buildTypes(TypeBuilder tb) {
 	    SettableAssign_c n = (SettableAssign_c) super.buildTypes(tb);
 
 	    TypeSystem ts = (TypeSystem) tb.typeSystem();
@@ -213,7 +201,7 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
 	    final Context context = tc.context();
 
 	    List<MethodInstance> methods = ts.findAcceptableMethods(targetType,
-	            new DumbMethodMatcher(targetType, SettableAssign.SET, typeArgs, argTypes, context));
+	            ts.MethodMatcher(targetType, SettableAssign.SET, typeArgs, argTypes, context, true));
 
 	    Pair<MethodInstance,List<Expr>> p = Converter.<MethodDef,MethodInstance>tryImplicitConversions(n, tc,
 	            targetType, methods, new X10New_c.MatcherMaker<MethodInstance>() {
@@ -235,14 +223,50 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
 
 		List<Type> typeArgs = Collections.<Type>emptyList();
 		List<Type> actualTypes = new ArrayList<Type>(index.size()+1);
-		actualTypes.add(right.type());
 		for (Expr ei : index) {
 		    actualTypes.add(ei.type());
 		}
 
 		List<Expr> args = new ArrayList<Expr>();
-		args.add(right);
 		args.addAll(index);
+
+		MethodInstance ami = null;
+		Expr right = this.right;
+		Expr val = this.right;
+
+		// FIXME: try to find the method with implicit conversions if this fails.
+		ami = Checker.findAppropriateMethod(tc, array.type(), ClosureCall.APPLY, typeArgs, actualTypes);
+
+		if (op != Assign.ASSIGN) {
+		    if (ami.error() != null) { // it's an error only if op is not =, e.g., a(1)+=1;
+		        Type bt = Types.baseType(array.type());
+		        boolean arrayP = xts.isX10Array(bt) || xts.isX10DistArray(bt);
+		        Errors.issue(tc.job(), new Errors.CannotAssignToElement(leftToString(), arrayP, right, Types.arrayElementType(array.type()), position(), ami.error()));
+		    }
+		    X10Call_c left = (X10Call_c) nf.X10Call(position(), array, nf.Id(position(),
+		            ClosureCall.APPLY), Collections.<TypeNode>emptyList(),
+		            index).methodInstance(ami).type(ami.returnType());
+		    X10Binary_c n = (X10Binary_c) nf.Binary(position(), left, op.binaryOperator(), right);
+		    X10Call c = X10Binary_c.desugarBinaryOp(n, tc);
+		    MethodInstance cmi = (MethodInstance) c.methodInstance();
+		    if (cmi.error() != null) {
+		        Type bt = Types.baseType(array.type());
+		        boolean arrayP = xts.isX10Array(bt) || xts.isX10DistArray(bt);
+		        Errors.issue(tc.job(),
+		                new Errors.CannotPerformAssignmentOperation(leftToString(), arrayP, op.toString(), right, Types.arrayElementType(array.type()), position(), cmi.error()));
+		    }
+		    if (cmi.flags().isStatic()) {
+		        right = c.arguments().get(1);
+		    } else if (c.name().id().equals(X10Binary_c.invBinaryMethodName(n.operator()))) {
+		        right = (Expr) c.target();
+		    } else {
+		        right = c.arguments().get(0);
+		    }
+		    val = c;
+		}
+
+		actualTypes.add(val.type());
+		args.add(val);
 
 		// First try to find the method without implicit conversions.
 		mi = Checker.findAppropriateMethod(tc, array.type(), SET, typeArgs, actualTypes);
@@ -263,39 +287,9 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
 		        Errors.issue(tc.job(), new Errors.CannotAssignToElement(leftToString(), arrayP, right, Types.arrayElementType(array.type()), position(), mi.error()));
 		    }
 		}
-        Warnings.wasGuardChecked(tc,mi,this);
 
-		MethodInstance ami = null;
-
-		actualTypes = new ArrayList<Type>(mi.formalTypes());
-		actualTypes.remove(0);
-
-		// First try to find the method without implicit conversions.
-		ami = Checker.findAppropriateMethod(tc, array.type(), ClosureCall.APPLY, typeArgs, actualTypes);
-
-
-
-		if (op != Assign.ASSIGN) {
-            if (ami.error() != null) { // it's an error only if op is not =, e.g., a(1)+=1;
-                Type bt = Types.baseType(array.type());
-                boolean arrayP = xts.isX10Array(bt) || xts.isX10DistArray(bt);
-                Errors.issue(tc.job(), new Errors.CannotAssignToElement(leftToString(), arrayP, right, Types.arrayElementType(array.type()), position(), ami.error()));
-            }
-            Warnings.wasGuardChecked(tc,ami,this);
-            // First try to find the method without implicit conversions.
-		    X10Call_c left = (X10Call_c) nf.X10Call(position(), array, nf.Id(position(),
-		            ClosureCall.APPLY), Collections.<TypeNode>emptyList(),
-		            index).methodInstance(ami).type(ami.returnType());
-		    X10Binary_c n = (X10Binary_c) nf.Binary(position(), left, op.binaryOperator(), right);
-		    X10Call c = X10Binary_c.desugarBinaryOp(n, tc);
-		    MethodInstance cmi = (MethodInstance) c.methodInstance();
-		    if (cmi.error() != null) {
-		        Type bt = Types.baseType(array.type());
-		        boolean arrayP = xts.isX10Array(bt) || xts.isX10DistArray(bt);
-		        Errors.issue(tc.job(),
-		                new Errors.CannotPerformAssignmentOperation(leftToString(), arrayP, op.toString(), right, Types.arrayElementType(array.type()), position(), cmi.error()));
-		    }
-            Warnings.wasGuardChecked(tc,cmi,this);
+		if (op == Assign.ASSIGN) {
+		    right = args.get(args.size()-1);
 		}
 
 		if (mi.flags().isStatic() ) {
@@ -305,8 +299,8 @@ public class SettableAssign_c extends Assign_c implements SettableAssign {
 		SettableAssign_c a = this;
 		a = (SettableAssign_c) a.methodInstance(mi);
 		a = (SettableAssign_c) a.applyMethodInstance(ami);
-		a = (SettableAssign_c) a.right(args.get(0));
-		a = (SettableAssign_c) a.index(args.subList(1, args.size()));
+		a = (SettableAssign_c) a.right(right);
+		a = (SettableAssign_c) a.index(args.subList(0, args.size()-1));
 		return a;
 	}
 	

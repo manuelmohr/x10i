@@ -21,6 +21,7 @@ import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.types.Types;
 import polyglot.util.CodeWriter;
+import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import polyglot.visit.CFGBuilder;
 import polyglot.visit.ContextVisitor;
@@ -32,6 +33,7 @@ import x10.constraint.XVar;
 import x10.errors.Errors;
 import polyglot.types.Context;
 import polyglot.types.TypeSystem;
+import x10.types.checker.PlaceChecker;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.XConstrainedTerm;
@@ -40,8 +42,7 @@ import x10.types.constraints.XConstrainedTerm;
 /**
  *
  */
-public class Here_c extends Expr_c 
-    implements Here {
+public class Here_c extends Expr_c implements Here {
 
     public Here_c(Position p) {
         super(p);
@@ -65,38 +66,42 @@ public class Here_c extends Expr_c
     public String toString() {
     	return "here";
     }
-    /* (non-Javadoc)
-     * @see x10.ast.TranslateWhenDumpedNode#getArgument(int)
-     */
-    public Node getArgument(int id) {
-        assert (false);
-        return null;
-    }
-    
-    /** Type check the expression. */
-	public Node typeCheck(ContextVisitor tc) {
-		TypeSystem ts = (TypeSystem) tc.typeSystem();
-		Context xc = (Context) tc.context();
 
-		Type tt = ts.Place();
-		XConstrainedTerm h = xc.currentPlaceTerm();
-		if (h != null) {
-			CConstraint cc = new CConstraint();
-			try {
-				cc.addSelfBinding(h);
-			}
-			catch (XFailure e) {
-				Errors.issue(tc.job(),
-				        new Errors.ConstraintInconsistency(e, position()));
-			}
-			tt = Types.xclause(Types.baseType(tt), cc);
-		}
-		
-		return type(tt);
-	}
-    public String translate(Resolver c) {
-      return "x10.lang.Runtime.home()";
+    protected XConstrainedTerm placeTerm;
+    public XConstrainedTerm placeTerm() { return placeTerm; }
+    public Here_c placeTerm(XConstrainedTerm pt) {
+        if (pt == placeTerm) return this;
+        Here_c h = (Here_c) this.copy();
+        h.placeTerm = pt;
+        return h;
     }
+
+    /** Type check the expression. */
+    public Node typeCheck(ContextVisitor tc) {
+        TypeSystem ts = (TypeSystem) tc.typeSystem();
+        Context xc = (Context) tc.context();
+
+        Type tt = ts.Place();
+        XConstrainedTerm h = xc.currentPlaceTerm();
+        if (h == null) {
+            Errors.issue(tc.job(), new Errors.CannotUseHereInThisContext(position()));
+            try {
+                CConstraint d = new CConstraint();
+                XTerm term = PlaceChecker.here(); // to avoid further errors
+                h = XConstrainedTerm.instantiate(d, term);
+            } catch (XFailure e) {
+                throw new InternalCompilerError("Cannot construct a place term", position());
+            }
+        }
+        if (h != null) {
+            CConstraint cc = new CConstraint();
+            cc.addSelfBinding(h);
+            tt = Types.xclause(Types.baseType(tt), cc);
+        }
+
+        return this.placeTerm(h).type(tt);
+    }
+
     /** Write the statement to an output file. */
     public void prettyPrint(CodeWriter w, PrettyPrinter tr) {
     	w.write(" here ");

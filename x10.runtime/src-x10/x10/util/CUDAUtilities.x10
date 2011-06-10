@@ -12,6 +12,7 @@
 package x10.util;
 
 import x10.compiler.Native;
+import x10.compiler.TempNoInline_0;
 
 /** A collection of functions useful in/around CUDA kernels.
  * @author Dave Cunningham
@@ -48,19 +49,19 @@ public class CUDAUtilities {
 
     private static def makeCUDAArray[T] (gpu:Place, numElements:Int, init:IndexedMemoryChunk[T])
       : RemoteArray[T]{self.home==gpu, self.rank()==1} {
-        val reg = 0 .. (numElements-1);
+        val reg = (0 .. (numElements-1)) as Region;
         @Native("c++",
-            "x10_ulong addr = x10aux::remote_alloc(gpu.FMGL(id), ((size_t)numElements)*sizeof(FMGL(T)));\n"+
-            "RemoteIndexedMemoryChunk<FMGL(T)> rimc(addr, numElements, gpu);\n"+
-            "initCUDAArray<FMGL(T)>(init,rimc,numElements);\n"+
-            "return x10::array::RemoteArray<FMGL(T)>::_make(reg, rimc);\n"
+            "x10_ulong addr = x10aux::remote_alloc(gpu.FMGL(id), ((size_t)numElements)*sizeof(TPMGL(T)));\n"+
+            "RemoteIndexedMemoryChunk<TPMGL(T)> rimc(addr, numElements, gpu);\n"+
+            "initCUDAArray<TPMGL(T)>(init,rimc,numElements);\n"+
+            "return x10::array::RemoteArray<TPMGL(T)>::_make(reg, rimc);\n"
         ) { }
         throw new UnsupportedOperationException();
     }
 
     public static def makeRemoteArray[T] (place:Place, numElements:Int, init: Array[T](1){rail})
         : RemoteArray[T]{self.rank==1, self.array.home==place}
-    {
+    { @TempNoInline_0
         if (place.isCUDA()) {
             return makeCUDAArray(place, numElements, init.raw());
         } else {
@@ -70,9 +71,9 @@ public class CUDAUtilities {
 
     public static def makeRemoteArray[T] (place:Place, numElements:Int, init: T)
         : RemoteArray[T]{self.rank==1, self.home==place}
-    {
+    { @TempNoInline_0
         if (place.isCUDA()) {
-            val chunk = IndexedMemoryChunk.allocate[T](numElements);
+            val chunk = IndexedMemoryChunk.allocateUninitialized[T](numElements);
             for ([i] in 0..(numElements-1)) chunk(i) = init;
             return makeCUDAArray(place, numElements, chunk);
         } else {
@@ -82,9 +83,9 @@ public class CUDAUtilities {
 
     public static def makeRemoteArray[T] (place:Place, numElements:Int, init: (Int)=>T)
         : RemoteArray[T]{self.rank==1, self.home==place}
-    {
+    { @TempNoInline_0
         if (place.isCUDA()) {
-            val chunk = IndexedMemoryChunk.allocate[T](numElements);
+            val chunk = IndexedMemoryChunk.allocateUninitialized[T](numElements);
             for ([i] in 0..(numElements-1)) chunk(i) = init(i);
             return makeCUDAArray(place, numElements, chunk);
         } else {
@@ -97,7 +98,7 @@ public class CUDAUtilities {
         val place = arr.home;
         if (place.isCUDA()) {
             @Native("c++",
-                "RemoteIndexedMemoryChunk<FMGL(T)> rimc = arr->FMGL(rawData);\n"+
+                "RemoteIndexedMemoryChunk<TPMGL(T)> rimc = arr->FMGL(rawData);\n"+
                 "x10aux::remote_free(place.FMGL(id), (x10_ulong)(size_t)rimc->data);\n"
             ) { }
         }

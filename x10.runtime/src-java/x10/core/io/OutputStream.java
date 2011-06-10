@@ -12,18 +12,26 @@
 package x10.core.io;
 
 import x10.core.Ref;
+import x10.rtt.NamedType;
 import x10.rtt.RuntimeType;
 import x10.rtt.Type;
 
 public class OutputStream extends Ref {
   
-    private final java.io.OutputStream stream;
+	private static final long serialVersionUID = 1L;
 
-    // NOTE: be careful when using this constructor, all APIs must be overridden.
-    public OutputStream() {
-        this.stream = null;
+    // XTENLANG-2680
+    /*private*/public java.io.OutputStream stream;
+
+    public OutputStream(java.lang.System[] $dummy) {
+        super($dummy);
     }
 
+    public OutputStream $init(java.io.OutputStream stream) {
+        this.stream = stream;
+        return this;
+    }
+    
     public OutputStream(java.io.OutputStream stream) {
         this.stream = stream;
     }
@@ -60,6 +68,15 @@ public class OutputStream extends Ref {
         }
     }
     
+    // XTENLANG-2680
+    public void write_0_$_x10$lang$Byte_$(x10.array.Array buf) {
+        try {
+            stream.write(buf.raw().getByteArray());
+        } catch (java.io.IOException e) {
+            throw x10.core.ThrowableUtilities.getCorrespondingX10Exception(e);
+        }
+    }
+
     public void write(byte[] b, int off, int len) {
         try {
             stream.write(b, off, len);
@@ -68,19 +85,77 @@ public class OutputStream extends Ref {
         }
     }
     
+    // XTENLANG-2680
+    public void write_0_$_x10$lang$Byte_$(x10.array.Array buf, int off, int len) {
+        try {
+            stream.write(buf.raw().getByteArray(), off, len);
+        } catch (java.io.IOException e) {
+            throw x10.core.ThrowableUtilities.getCorrespondingX10Exception(e);
+        }
+    }
+
     //
     // Runtime type information
     //
-    public static final RuntimeType<OutputStream> _RTT = new RuntimeType<OutputStream>(
+    public static final RuntimeType<OutputStream> $RTT = new NamedType<OutputStream>(
+        "x10.io.OutputStreamWriter.OutputStream",
         OutputStream.class,
         new Type[] { x10.rtt.Types.OBJECT }
-    ) {
-        @Override
-        public String typeName() {
-            return "x10.io.OutputStreamWriter.OutputStream";
+    );
+    public RuntimeType<?> $getRTT() { return $RTT; }
+    public Type<?> $getParam(int i) { return null; }
+
+
+    //
+    // NOTE: this class is only used in @Native annotation of x10.io.Writer.getNativeOutputStream()
+    //
+    public static class WriterOutputStream extends OutputStream {
+        private static final long serialVersionUID = 1L;
+        private x10.io.Writer w;
+
+        public WriterOutputStream(java.lang.System[] $dummy) {
+            super($dummy);
         }
-    };
-    public RuntimeType<?> getRTT() { return _RTT; }
-    public Type<?> getParam(int i) { return null; }
+
+        public void $init(x10.io.Writer w) {
+            // NOTE: since the backing stream is not set, all APIs of OutputStream must be overridden.
+            super.$init((java.io.OutputStream)null);
+            this.w = w;
+        }
+        
+        public WriterOutputStream(x10.io.Writer w) {
+            // NOTE: since the backing stream is not set, all APIs of OutputStream must be overridden.
+            super((java.io.OutputStream)null);
+            this.w = w;
+        }
+
+        @Override
+        public void write(int x) {
+            w.write((byte) x);
+        }
+        @Override
+        public void close() {
+            throw new x10.lang.UnsupportedOperationException();
+        }
+        @Override
+        public void flush() {
+            throw new x10.lang.UnsupportedOperationException();
+        }
+        @Override
+        public void write(byte[] b) {
+            throw new x10.lang.UnsupportedOperationException();
+        }
+        @Override
+        public void write(byte[] b, int off, int len) {
+            throw new x10.lang.UnsupportedOperationException();
+        }
+        public static final RuntimeType<WriterOutputStream> $RTT = new NamedType<WriterOutputStream>(
+            "x10.io.OutputStreamWriter.OutputStream.WriterOutputStream",
+            WriterOutputStream.class,
+            new Type[] { OutputStream.$RTT }
+        );
+        public RuntimeType<?> $getRTT() { return $RTT; }
+        public Type<?> $getParam(int i) { return null; }
+    }
 
 }

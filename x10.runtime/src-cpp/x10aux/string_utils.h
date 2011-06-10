@@ -18,7 +18,6 @@
 
 namespace x10 {
     namespace lang {
-        template<class T> class Rail;
         class String;
     }
     namespace array {
@@ -37,6 +36,7 @@ namespace x10aux {
         const char* cstr(ref<x10::lang::String>);
 
         char *strdup(const char*);
+        char *strndup(const char*, x10_int len);
     }
 
     /*

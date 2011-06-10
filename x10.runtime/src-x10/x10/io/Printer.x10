@@ -13,19 +13,20 @@ package x10.io;
 
 import x10.compiler.Native;
 
+import x10.util.concurrent.Lock;
+
 /**
  * Usage:
  *
  * try {
- *   val in = new File(inputFileName);
- *   val out = new File(outputFileName);
- *   val p = out.printer();
- *   for (line in in.lines()) {
- *      line = line.chop();
- *      p.println(line);
- *   }
- * }
- * catch (IOException e) { }
+ *    val input = new File(inputFileName);
+ *    val output = new File(outputFileName);
+ *    val p = output.printer();
+ *    for (line in input.lines()) {
+ *       p.println(line);
+ *    }
+ *    p.flush();
+ * } catch (IOException) { }
  */    
 public class Printer extends FilterWriter {
     public def this(w: Writer) { super(w); }
@@ -34,11 +35,16 @@ public class Printer extends FilterWriter {
 
     private lock = new Lock();
     
-    public def println(): void = print(NEWLINE);
+    public def println(): void { print(NEWLINE); }
     
     public final def println(o:Any): void {
         print(o==null? "null\n" : o.toString()+"\n");
     }
+    // this is needed to avoid extra boxing in Managed X10
+    public final def println(s:String): void {
+    	print(s==null? "null\n" : s+"\n");
+    }
+    
     public final def print(o:Any): void {
     	print(o==null? "null" : o.toString());
     }
@@ -46,7 +52,8 @@ public class Printer extends FilterWriter {
     public def print(s:String): void {
         lock.lock();
         try {
-            val b = s.bytes();
+        	val ss = s != null ? s : "null";
+            val b = ss.bytes();
             write(b, 0, b.size);
         }
         catch (e: IOException) {
@@ -58,10 +65,10 @@ public class Printer extends FilterWriter {
         lock.unlock();
     }
 
-    public def printf(fmt: String): void { printfArray(fmt, new Array[Any][]); }
-    public def printf(fmt: String, o1: Any): void { printfArray(fmt, new Array[Any][o1]); }
-    public def printf(fmt: String, o1: Any, o2: Any): void { printfArray(fmt, new Array[Any][o1,o2]); }
-    public def printf(fmt: String, o1: Any, o2: Any, o3: Any): void { printfArray(fmt, new Array[Any][o1,o2,o3]); }
+    public def printf(fmt: String): void { printfArray(fmt, new Array[Any](0)); }
+    public def printf(fmt: String, o1: Any): void { printfArray(fmt, [o1 as Any]); }
+    public def printf(fmt: String, o1: Any, o2: Any): void { printfArray(fmt, [o1 as Any,o2]); }
+    public def printf(fmt: String, o1: Any, o2: Any, o3: Any): void { printfArray(fmt, [o1 as Any,o2,o3]); }
     public def printf(fmt: String, o1: Any, o2: Any, o3: Any, o4: Any): void { 
         printfArray(fmt, [o1,o2,o3,o4]); 
     }
@@ -73,7 +80,7 @@ public class Printer extends FilterWriter {
     }
 
     public def printf(fmt: String, args: Rail[Any]): void { 
-        print(String.format(fmt, new Array[Any](args.length, (i:int)=>args(i))));
+        print(String.format(fmt, new Array[Any](args.size, (i:int)=>args(i))));
     }
     public def printfArray(fmt: String, args: Array[Any](1)): void { 
         print(String.format(fmt, args));

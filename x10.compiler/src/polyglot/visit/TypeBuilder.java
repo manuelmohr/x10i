@@ -19,6 +19,9 @@ import polyglot.main.Reporter;
 import polyglot.types.*;
 import polyglot.types.Package;
 import polyglot.util.*;
+import x10.errors.Errors;
+import x10.types.X10ClassDef;
+import x10.types.X10ClassType;
 
 /** Visitor which traverses the AST constructing type objects. */
 public class TypeBuilder extends NodeVisitor
@@ -32,7 +35,7 @@ public class TypeBuilder extends NodeVisitor
     protected boolean inCode; // true if the last scope pushed as not a class.
     protected boolean global; // true if all scopes pushed have been classes.
     protected Package package_;
-    protected ClassDef type; // last class pushed.
+    protected X10ClassDef type; // last class pushed.
     protected Def def;
 
     public TypeBuilder(Job job, TypeSystem ts, NodeFactory nf) {
@@ -82,63 +85,15 @@ public class TypeBuilder extends NodeVisitor
     }
     
     public Node override(Node n) {
-        try {
-            return n.del().buildTypesOverride(this);
-        }
-        catch (SemanticException e) {
-            Position position = e.position();
-
-            if (position == null) {
-                position = n.position();
-            }
-
-            if (e.getMessage() != null) {
-                errorQueue().enqueue(ErrorInfo.SEMANTIC_ERROR,
-                                    e.getMessage(), position);
-            }
-                            
-            return n;
-        }
+        return n.del().buildTypesOverride(this);
     }
 
     public NodeVisitor enter(Node n) {
-        try {
 	    return n.del().buildTypesEnter(this);
-	}
-	catch (SemanticException e) {
-	    Position position = e.position();
-
-	    if (position == null) {
-		position = n.position();
-	    }
-
-            if (e.getMessage() != null) {
-                errorQueue().enqueue(ErrorInfo.SEMANTIC_ERROR,
-                                    e.getMessage(), position);
-            }
-                            
-            return this;
-	}
     }
 
     public Node leave(Node old, Node n, NodeVisitor v) {
-	try {
 	    return n.del().buildTypes((TypeBuilder) v);
-	}
-	catch (SemanticException e) {
-	    Position position = e.position();
-
-	    if (position == null) {
-		position = n.position();
-	    }
-
-            if (e.getMessage() != null) {
-                errorQueue().enqueue(ErrorInfo.SEMANTIC_ERROR,
-                                    e.getMessage(), position);
-            }
-
-	    return n;
-	}
     }
 
     /**
@@ -205,7 +160,7 @@ public class TypeBuilder extends NodeVisitor
         return tb;
     }
 
-    public TypeBuilder pushClass(ClassDef classDef) {
+    public TypeBuilder pushClass(X10ClassDef classDef) {
         if (reporter.should_report(Reporter.visit, 4))
             reporter.report(4, "TB pushing class " + classDef + ": " + context());
 
@@ -229,9 +184,16 @@ public class TypeBuilder extends NodeVisitor
      * dummy name, to allow proceeding with compilation.
      */
     protected ClassDef newClass(Position pos, Flags flags, Name name) {
-	TypeSystem ts = typeSystem();
+        return newClass(pos, flags, name, null);
+    }
+    /**
+     * Do not fail on duplicate types, but create another instance of the type with a
+     * dummy name, to allow proceeding with compilation.
+     */
+    protected X10ClassDef newClass(Position pos, Flags flags, Name name, SemanticException error) {
+        TypeSystem ts = typeSystem();
 
-        ClassDef ct = ts.createClassDef(job().source());
+        X10ClassDef ct = ts.createClassDef(job().source());
 
         ct.position(pos);
         ct.flags(flags);
@@ -250,8 +212,8 @@ public class TypeBuilder extends NodeVisitor
 	    return ct;
 	}
 	else if (currentClass() != null) {
-            ct.kind(ClassDef.MEMBER);
-            ct.outer(Types.ref(currentClass()));
+	    ct.kind(ClassDef.MEMBER);
+	    ct.outer(Types.ref(currentClass()));
 	    ct.setJob(job());
 
 	    currentClass().addMemberClass(Types.<ClassType>ref(ct.asType()));
@@ -273,13 +235,15 @@ public class TypeBuilder extends NodeVisitor
 
             if (allMembers) {
                 try {
-                    typeSystem().systemResolver().addNamed(QName.make(currentClass().fullName(), ct.name()), ct.asType());
+                    X10ClassType t = ct.asType();
+                    if (error != null) t = t.error(error);
+                    typeSystem().systemResolver().addNamed(QName.make(currentClass().fullName(), ct.name()), t);
 
                     // Save in the cache using the name a class file would use.
                     QName classFileName = typeSystem().getTransformedClassName(ct);
-                    typeSystem().systemResolver().install(classFileName, ct.asType());
+                    typeSystem().systemResolver().install(classFileName, t);
                 } catch (SemanticException e) {
-                    job.compiler().errorQueue().enqueue(ErrorInfo.SEMANTIC_ERROR, e.getMessage(), e.position());
+                    Errors.issue(job, e);
                 }
             }
 
@@ -310,17 +274,21 @@ public class TypeBuilder extends NodeVisitor
             }
 
             if (dup != null && dup.fullName().equals(fullName)) {
-                job.compiler().errorQueue().enqueue(ErrorInfo.SEMANTIC_ERROR,
-                                                    "Duplicate class \"" + ct.fullName() + "\".", pos);
+                if (error == null) {
+                    error = new SemanticException("Duplicate class \"" + ct.fullName() + "\".", pos);
+                    Errors.issue(job, error);
+                }
                 Name newName = Name.make(name.toString()+"_dup"+(dupId++));
                 ct.name(newName);
                 fullName = QName.make(null, newName);
             }
 
             try {
-        	typeSystem().systemResolver().addNamed(fullName, ct.asType());
+                X10ClassType t = ct.asType();
+                if (error != null) t = t.error(error);
+                typeSystem().systemResolver().addNamed(fullName, t);
             } catch (SemanticException e) {
-        	job.compiler().errorQueue().enqueue(ErrorInfo.SEMANTIC_ERROR, e.getMessage(), e.position());
+                Errors.issue(job, e);
             }
 
 	    return ct;
@@ -336,15 +304,15 @@ public class TypeBuilder extends NodeVisitor
                 "Can only push an anonymous class within code.");
         }
 
-        ClassDef ct = createAnonClass(pos);
+        X10ClassDef ct = createAnonClass(pos);
 
         return pushClass(ct);
     }
 
-    protected ClassDef createAnonClass(Position pos) {
+    protected X10ClassDef createAnonClass(Position pos) {
         TypeSystem ts = typeSystem();
 
-        ClassDef ct = ts.createClassDef(this.job().source());
+        X10ClassDef ct = ts.createClassDef(this.job().source());
         ct.kind(ClassDef.ANONYMOUS);
         ct.outer(Types.ref(currentClass()));
         ct.position(pos);
@@ -360,11 +328,15 @@ public class TypeBuilder extends NodeVisitor
     }
 
     public TypeBuilder pushClass(Position pos, Flags flags, Name name) {
-        ClassDef t = newClass(pos, flags, name);
+        return pushClass(pos, flags, name, null);
+    }
+
+    public TypeBuilder pushClass(Position pos, Flags flags, Name name, SemanticException error) {
+        X10ClassDef t = newClass(pos, flags, name, error);
         return pushClass(t);
     }
 
-    public ClassDef currentClass() {
+    public X10ClassDef currentClass() {
         return this.type;
     }
 

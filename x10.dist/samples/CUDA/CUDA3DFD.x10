@@ -192,9 +192,9 @@ public class CUDA3DFD {
             val S_DATA_STRIDE = BLOCK_DIMX+2*RADIUS;
             finish async at (gpu) @CUDA @CUDADirectParams {
                 val c_coeff = h_coeff_symmetric.sequence();
-                finish for ([block] in 0..(BLOCKS_X*BLOCKS_Y-1)) async {
+                finish for (block in 0..(BLOCKS_X*BLOCKS_Y-1)) async {
                     val s_data = new Array[Float]((BLOCK_DIMY+2*RADIUS)*S_DATA_STRIDE, 0);
-                    clocked finish for ([thread] in 0..(THREADS-1)) clocked async {
+                    clocked finish for (thread in 0..(THREADS-1)) clocked async {
                         val blockidx = block%BLOCKS_X;
                         val blockidy = block/BLOCKS_X;
                         val threadidx = thread%BLOCK_DIMX;
@@ -224,7 +224,7 @@ public class CUDA3DFD {
                         infront3 = d_input(in_idx);    in_idx += stride;
                         infront4 = d_input(in_idx);    in_idx += stride;
 
-                        for(var i:Int=RADIUS; i<dimz-RADIUS; i++)
+                        for(var j:Int=RADIUS; j<dimz-RADIUS; j++)
                         {
                             //////////////////////////////////////////
                             // advance the slice (move the thread-front)
@@ -240,7 +240,7 @@ public class CUDA3DFD {
 
                             in_idx  += stride;
                             out_idx += stride;
-                            next;
+                            Clock.advanceAll();
 
                             /////////////////////////////////////////
                             // update the data slice in smem
@@ -259,7 +259,7 @@ public class CUDA3DFD {
 
                             // update the slice in smem
                             s_data((ty)*S_DATA_STRIDE + tx) = current;
-                            next;
+                            Clock.advanceAll();
 
                             /////////////////////////////////////////
                             // compute the output value

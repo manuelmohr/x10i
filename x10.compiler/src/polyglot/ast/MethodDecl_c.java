@@ -17,6 +17,10 @@ import polyglot.visit.*;
 import x10.errors.Errors;
 import x10.errors.Errors.InterfaceMethodsMustBePublic;
 import x10.types.MethodInstance;
+import x10.types.X10ClassDef;
+import x10.types.X10TypeEnv_c;
+import x10.visit.Desugarer;
+import x10.ast.X10ClassDecl_c;
 
 /**
  * A method declaration.
@@ -159,7 +163,7 @@ public abstract class MethodDecl_c extends Term_c implements MethodDecl
 
     public abstract Node buildTypesOverride(TypeBuilder tb);
 
-    protected abstract MethodDef createMethodDef(TypeSystem ts, ClassDef ct, Flags flags);
+    protected abstract MethodDef createMethodDef(TypeSystem ts, X10ClassDef ct, Flags flags);
 
     public Context enterScope(Context c) {
         Reporter reporter = c.typeSystem().extensionInfo().getOptions().reporter;
@@ -172,7 +176,7 @@ public abstract class MethodDecl_c extends Term_c implements MethodDecl
     public abstract Node visitSignature(NodeVisitor v);
     
     /** Type check the declaration. */
-    public Node typeCheckBody(Node parent, TypeChecker tc, TypeChecker childtc) throws SemanticException {
+    public Node typeCheckBody(Node parent, TypeChecker tc, TypeChecker childtc) {
         MethodDecl_c n = this;
         Block body = (Block) n.visitChild(n.body, childtc);
         n = (MethodDecl_c) n.body(body);
@@ -180,7 +184,7 @@ public abstract class MethodDecl_c extends Term_c implements MethodDecl
     }
 
     /** Type check the method. */
-    public Node typeCheck(ContextVisitor tc) throws SemanticException {
+    public Node typeCheck(ContextVisitor tc) {
         TypeSystem ts = tc.typeSystem();
 /*
         for (Iterator<TypeNode> i = throwTypes().iterator(); i.hasNext(); ) {
@@ -219,7 +223,7 @@ public abstract class MethodDecl_c extends Term_c implements MethodDecl
             }
             
             if (flags.isStatic()) {
-        	Errors.issue(tc.job(), new Errors.InterfaceMethodsCannobBeStatic(position()));
+        	Errors.issue(tc.job(), new Errors.InterfaceMethodsCannotBeStatic(position()));
             }
         }
 
@@ -250,10 +254,10 @@ public abstract class MethodDecl_c extends Term_c implements MethodDecl
 	}
 
         // check that inner classes do not declare static methods
-        if (ct != null && flags.isStatic() && ct.isInnerClass()) {
+        if (ct != null && flags.isStatic() && (ct.isInnerClass() || ct.isLocal() || ct.isAnonymous())) {
             // it's a static method in an inner class.
             Errors.issue(tc.job(),
-                    new Errors.InnerClassesCannotDeclareStaticMethod(position()));             
+                    new Errors.InnerClassesCannotDeclareStaticMethods(methodDef(), ct, position()));             
         }
     }
 
@@ -265,6 +269,7 @@ public abstract class MethodDecl_c extends Term_c implements MethodDecl
             if (! ts.isAccessible(mj, tc.context())) {
                 continue;
             }
+            mj = X10ClassDecl_c.expandMacros(tc, ts, mi, mj);
             try {
                 ts.checkOverride(mi, mj, tc.context());
             } catch (SemanticException e) {
@@ -273,7 +278,7 @@ public abstract class MethodDecl_c extends Term_c implements MethodDecl
         }
     }
 
-  /*  public NodeVisitor exceptionCheckEnter(ExceptionChecker ec) throws SemanticException {
+  /*  public NodeVisitor exceptionCheckEnter(ExceptionChecker ec) {
         return ec.push(new ExceptionChecker.CodeTypeReporter("Method " + mi.signature())).push(methodDef().asInstance().throwTypes());
     }
 */

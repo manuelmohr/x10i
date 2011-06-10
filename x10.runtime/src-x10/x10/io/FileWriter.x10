@@ -15,18 +15,18 @@ import x10.compiler.NativeRep;
 import x10.compiler.Native;
 
 public class FileWriter extends OutputStreamWriter {
-    @NativeRep("java", "x10.core.io.FileOutputStream", null, "x10.core.io.FileOutputStream._RTT")
+    @NativeRep("java", "x10.core.io.FileOutputStream", null, "x10.core.io.FileOutputStream.$RTT")
     @NativeRep("c++", "x10aux::ref<x10::io::FileWriter__FileOutputStream>", "x10::io::FileWriter__FileOutputStream", null)
     protected final static class FileOutputStream extends OutputStream {
-        @Native("java", "new java.lang.Object() { x10.core.io.FileOutputStream eval(String s) { try { return new x10.core.io.FileOutputStream(s); } catch (java.io.FileNotFoundException e) { throw x10.core.ThrowableUtilities.getCorrespondingX10Exception(e); } } }.eval(#1)")
-        public native def this(String); // throws IOException;
+        @Native("java", "x10.core.io.FileOutputStream.make(#path)")
+        public native def this(path: String); // throws IOException;
     }
 
     // TODO: This is questionable.
     //       What does it mean to send a File to another node?
     val file: File;
     
-    // @Native("java", "new java.io.BufferedOutputStream(new java.io.FileOutputStream(#1))")
+    // @Native("java", "new java.io.BufferedOutputStream(new java.io.FileOutputStream(#path))")
     private static def make(path: String):OutputStream{ //throws IOException {
         return new FileOutputStream(path);       
     }

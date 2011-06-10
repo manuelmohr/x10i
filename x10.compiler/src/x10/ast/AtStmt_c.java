@@ -40,7 +40,6 @@ import polyglot.util.CollectionUtil;
 import x10.util.CollectionFactory;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
-import polyglot.visit.AscriptionVisitor;
 import polyglot.visit.CFGBuilder;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.FlowGraph;
@@ -57,10 +56,10 @@ import x10.types.ClosureDef;
 import x10.types.ParameterType;
 import x10.types.ThisDef;
 import x10.types.X10ClassDef;
-import x10.types.X10Context_c;
 import x10.types.X10MemberDef;
 import x10.types.X10MethodDef;
 import x10.types.X10ProcedureDef;
+import x10.types.checker.Converter;
 import x10.types.checker.PlaceChecker;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.XConstrainedTerm;
@@ -79,11 +78,27 @@ public class AtStmt_c extends Stmt_c implements AtStmt {
 	protected Expr place;
 	protected Stmt body;
 	protected AtDef atDef;
+	protected List<Node> captures;
 
 	public AtStmt_c(Position pos, Expr place, Stmt body) {
+	    this(pos, place, null, body);
+	}
+	public AtStmt_c(Position pos, Expr place, List<Node> captures, Stmt body) {
 		super(pos);
+        assert body!=null;
 		this.place = place;
 		this.body = body;
+		this.captures = captures;
+	}
+
+	public List<Node> captures() {
+	    return captures;
+	}
+
+	public AtStmt_c captures(List<Node> captures) {
+	    AtStmt_c n = (AtStmt_c) copy();
+	    n.captures = captures;
+	    return n;
 	}
 
 	/**
@@ -130,7 +145,7 @@ public class AtStmt_c extends Stmt_c implements AtStmt {
 	}
 
 	/** Reconstruct the statement. */
-	protected AtStmt reconstruct(Expr place, Stmt body) {
+	protected AtStmt_c reconstruct(Expr place, Stmt body) {
 		if (place != this.place || body != this.body) {
 			AtStmt_c n = (AtStmt_c) copy();
 			n.place = place;
@@ -140,16 +155,13 @@ public class AtStmt_c extends Stmt_c implements AtStmt {
 		return this;
 	}
 
-    protected XConstrainedTerm placeTerm;
-    protected boolean placeError = false;
-  
-    protected XConstrainedTerm finishPlaceTerm;
     public boolean isFinishPlace() {
         boolean isFinishPlace = false;
-        if (null != finishPlaceTerm) {
+        AtDef def = atDef();
+        if (null != def.finishPlaceTerm()) {
             XConstraint constraint = new XConstraint();
-            constraint.addBinding(finishPlaceTerm.term(),placeTerm.term());
-            if (placeTerm.constraint().entails(constraint)) {
+            constraint.addBinding(def.finishPlaceTerm().term(),def.placeTerm().term());
+            if (def.placeTerm().constraint().entails(constraint)) {
                 isFinishPlace = true;
             }    
         }
@@ -181,7 +193,7 @@ public class AtStmt_c extends Stmt_c implements AtStmt {
         CodeDef code = (CodeDef) def;
 
         AtDef mi = (AtDef) createDummyAsync(position(), ts, ct.asType(), code, code.staticContext(), false);
-        
+
         // Unlike methods and constructors, do not create new goals for resolving the signature and body separately;
         // since closures don't have names, we'll never have to resolve the signature.  Just push the code context.
         TypeBuilder tb2 = tb.pushCode(mi);
@@ -203,38 +215,53 @@ public class AtStmt_c extends Stmt_c implements AtStmt {
     	if (v instanceof PruningVisitor) {
     		return this;
     	}
+    	ContextVisitor childtc = (ContextVisitor) v;
+    	Expr place = (Expr) visitChild(this.place, childtc);
+    	place = Converter.attemptCoercion(tc, place, ts.Place());
+    	if (place == null) {
+    	    Errors.issue(tc.job(), 
+    	            new Errors.AtArgMustBePlace(this.place, ts.Place(), this.place.position()));
+    	    place = tc.nodeFactory().Here(this.place.position()).type(ts.Place());
+    	}
 
-        if (placeTerm == null) {
+    	Context c = tc.context();
+    	AtDef def = this.atDef();
+    	if (def.placeTerm() == null) {
+            XConstrainedTerm placeTerm;
+            XConstrainedTerm finishPlaceTerm = c.currentFinishPlaceTerm();
+            CConstraint d = new CConstraint();
+            XTerm term = PlaceChecker.makePlace();
             try {
-                placeTerm = PlaceChecker.computePlaceTerm((Expr) visitChild(this.place, v),
-                        (Context) tc.context(), ts);
-                finishPlaceTerm = tc.context().currentFinishPlaceTerm();
-            } catch (SemanticException e) {
-                CConstraint d = new CConstraint();
-                XTerm term = PlaceChecker.makePlace();
-                try {
-                    placeTerm = XConstrainedTerm.instantiate(d, term);
-                    placeError = true;
-                } catch (XFailure z) {
-                    throw new InternalCompilerError("Cannot construct placeTerm from term  and constraint.");
-                }
+                placeTerm = XConstrainedTerm.instantiate(d, term);
+            } catch (XFailure z) {
+                throw new InternalCompilerError("Cannot construct placeTerm from term and constraint.");
             }
+            try {
+                XConstrainedTerm realPlaceTerm = PlaceChecker.computePlaceTerm(place, c, ts);
+                d.addBinding(placeTerm, realPlaceTerm);
+            } catch (SemanticException e) { }
+            def.setPlaceTerm(placeTerm);
+            def.setFinishPlaceTerm(finishPlaceTerm);
+    	}
+
+    	// now that placeTerm is computed for this node, install it in the context
+    	// and continue visiting children
+
+    	Context oldC = c;
+        c = super.enterChildScope(body, childtc.context());
+        XConstrainedTerm pt = def.placeTerm();
+        if (pt != null) {
+        	if (c == oldC)
+        		c = c.pushBlock();
+            c.setPlace(pt);
         }
-    	
-    	// now that placeTerm is set in this node, continue visiting children
-    	// enterScope will ensure that placeTerm is installed in the context.
-    	
-    	return null;
+        Stmt body = (Stmt) visitChild(this.body, childtc.context(c));
+        AtStmt_c n = this.reconstruct(place, body);
+        return tc.leave(parent, this, n, childtc);
     }
 
     @Override
     public Node typeCheck(ContextVisitor tc) {
-        TypeSystem ts = (TypeSystem) tc.typeSystem();
-        if (placeError) { // this means we were not able to convert this.place into a term of type Place.
-            Errors.issue(tc.job(), 
-                    new Errors.AtArgMustBePlace(this.place, ts.Place(), this.position()));
-        }
-
         Context c = tc.context();
         AtDef def = this.atDef();
         //if (!def.capturedEnvironment().isEmpty()) {
@@ -244,7 +271,18 @@ public class AtStmt_c extends Stmt_c implements AtStmt {
 
         return this;
     }
-    
+
+    @Override
+    public Context enterChildScope(Node child, Context c) {
+        if (child != this.body) return c.pop();
+        Context oldC = c;
+        c = super.enterChildScope(child, c);
+        if (c == oldC)
+            c = c.pushBlock();
+        c.setPlace(atDef.placeTerm());
+        return c;
+    }
+
 	/** Visit the children of the statement. */
 	public Node visitChildren(NodeVisitor v) {
 		Expr place = (Expr) visitChild(this.place, v);
@@ -269,36 +307,12 @@ public class AtStmt_c extends Stmt_c implements AtStmt {
 	    return asyncInstance; 
 	}
 
-	public Context enterScope(Context c) {
-	    c = c.pushCode(atDef);
-	    ((X10Context_c)c).x10Kind = X10Context_c.X10Kind.At;
-	    return c;
-	}
-
 	@Override
-	public Context enterChildScope(Node child, Context c) {
-		if (child != this.body) {
-			// pop the scope pushed by enterScope.
-			c = c.pop();
-		} else {
-			c = super.enterChildScope(child,c);
-			Context xc = (Context) c;
-			if (child == body) {
-				if (placeTerm != null)
-					c = xc.pushPlace(placeTerm);
-			}
-			addDecls(c);
-		}
-		return c;
-	}
-
-
-	public Type childExpectedType(Expr child, AscriptionVisitor av) {
-		TypeSystem ts = (TypeSystem) av.typeSystem();
-		if (child == place) {
-			return ts.Place();
-		}
-		return child.type();
+	public Context enterScope(Context c) {
+	    c = c.pushBlock();
+	    c = c.pushAt(atDef);
+	    c.x10Kind = Context.X10Kind.At;
+	    return c;
 	}
 
 	public String toString() {
@@ -318,27 +332,14 @@ public class AtStmt_c extends Stmt_c implements AtStmt {
 	 * term.
 	 */
 	public Term firstChild() {
-		if (place != null) {
-			return place;
-		}
-
-		return body;
+		return place;
 	}
 
 	/**
 	 * Visit this term in evaluation order.
-	 * [IP] Treat this as a conditional to make sure the following
-	 *      statements are always reachable.
-	 * FIXME: We should really build our own CFG, push a new context,
-	 * and disallow uses of "continue", "break", etc. in asyncs.
 	 */
 	public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
-
-		if (place != null) {
-			v.visitCFG(place, FlowGraph.EDGE_KEY_TRUE, body,
-					ENTRY, FlowGraph.EDGE_KEY_FALSE, this, EXIT);
-		}
-
+        v.visitCFG(place, body, ENTRY);
 		v.visitCFG(body, this, EXIT);
 
 		return succs;

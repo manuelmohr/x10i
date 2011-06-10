@@ -11,9 +11,15 @@
 
 package x10.visit;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 import polyglot.ast.Assign;
 import polyglot.ast.Call;
@@ -31,36 +37,39 @@ import polyglot.ast.Receiver;
 import polyglot.ast.Stmt;
 import polyglot.ast.TypeNode;
 import polyglot.frontend.Job;
+import polyglot.main.Options;
 import polyglot.main.Reporter;
-import polyglot.types.ConstructorInstance;
 import polyglot.types.ClassDef;
 import polyglot.types.ClassType;
 import polyglot.types.ConstructorDef;
+import polyglot.types.ConstructorInstance;
 import polyglot.types.Flags;
-import polyglot.types.FieldDef;
 import polyglot.types.LocalDef;
 import polyglot.types.Name;
 import polyglot.types.QName;
+import polyglot.types.Ref;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
-import polyglot.types.Types;
-import polyglot.types.Ref;
 import polyglot.types.TypeSystem;
+import polyglot.types.Types;
+import polyglot.util.ErrorInfo;
 import polyglot.util.Position;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.NodeVisitor;
-import x10.ast.*;
+import x10.ast.AnnotationNode;
+import x10.ast.X10ClassDecl;
+import x10.ast.X10ConstructorDecl;
+import x10.ast.X10MethodDecl;
 import x10.extension.X10Ext;
+import x10.types.MethodInstance;
 import x10.types.ParameterType;
-import x10.types.X10Def;
-import x10.types.X10ConstructorDef;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
+import x10.types.X10ConstructorDef;
+import x10.types.X10Def;
 import x10.types.X10FieldDef;
-import x10.types.MethodInstance;
-
 import x10.types.X10MethodDef;
-import polyglot.types.TypeSystem;
+import x10.util.FileUtils;
 
 /**
  * Visitor that expands @NativeClass and @NativeDef annotations.
@@ -165,7 +174,8 @@ public class NativeClassVisitor extends ContextVisitor {
         } else {
             fake.setFlags(Flags.NONE);
         }
-        fake.setPackage(Types.ref(ts.packageForName(QName.make(getNativeClassPackage(cdef)))));
+        String cpackage = getNativeClassPackage(cdef);
+        fake.setPackage(Types.ref(ts.packageForName(QName.make(cpackage))));
 
         java.util.Iterator<ParameterType> ps = cdef.typeParameters().iterator();
         java.util.Iterator<ParameterType.Variance> vs = cdef.variances().iterator();
@@ -175,7 +185,7 @@ public class NativeClassVisitor extends ContextVisitor {
             fake.addTypeParameter(pp, vv);
         }
 
-        X10ClassType embed = (X10ClassType) xts.systemResolver().findOne(QName.make("x10.compiler.Embed"));
+        X10ClassType embed = (X10ClassType) xts.Embed();
         List<AnnotationNode> anodes;
         if (fake.isStruct()) {
             anodes = Collections.<AnnotationNode>emptyList();
@@ -262,9 +272,8 @@ public class NativeClassVisitor extends ContextVisitor {
                 for (Formal f : mdecl.formals())
                     args.add(xnf.Local(p, f.name()).localInstance(f.localDef().asInstance()).type(f.type().type()));
 
-                // reuse x10 method instance for delegate method but make it global to avoid place check
+                // reuse x10 method instance for delegate method
                 MethodInstance minst = mdef.asInstance();
-                minst = (MethodInstance) minst.flags(((Flags) minst.flags()));
                 minst = (MethodInstance) minst.container(ftype);
 
                 // call delegate

@@ -17,34 +17,34 @@ import x10.core.Any;
 
 public class RuntimeType<T> implements Type<T> {
 
+	private static final long serialVersionUID = 1L;
+
     public enum Variance {INVARIANT, COVARIANT, CONTRAVARIANT}
     
-    Type<?>[] parents;
-    Class<?> base;
-    Variance[] variances;
+    private final Class<?> impl;
+    private final Variance[] variances;
+    private final Type<?>[] parents;
     
-    public RuntimeType(Class<?> c) {
-        this.base = c;
+    public RuntimeType(Class<?> impl) {
+        this(impl, null, null);
     }
     
-    public RuntimeType(Class<?> c, Variance[] variances) {
-        this.base = c;
-        this.variances = variances;
+    public RuntimeType(Class<?> impl, Variance[] variances) {
+        this(impl, variances, null);
     }
 
-    public RuntimeType(Class<?> c, Type<?>[] parents) {
-        this.base = c;
-        this.parents = parents;
+    public RuntimeType(Class<?> impl, Type<?>[] parents) {
+        this(impl, null, parents);
     }
     
-    public RuntimeType(Class<?> c, Variance[] variances, Type<?>[] parents) {
-        this.base = c;
+    public RuntimeType(Class<?> impl, Variance[] variances, Type<?>[] parents) {
+        this.impl = impl;
         this.variances = variances;
         this.parents = parents;
     }
 
-    public Class<?> getJavaClass() {
-        return base;
+    public Class<?> getImpl() {
+        return impl;
     }
     
     public Variance[] getVariances() {
@@ -63,7 +63,7 @@ public class RuntimeType<T> implements Type<T> {
         if (this == o) return true;
         if (o instanceof RuntimeType<?>) {
             RuntimeType<?> rt = (RuntimeType<?>) o;
-            if (base.equals(rt.base)) {
+            if (impl.equals(rt.impl)) {
                 return true;
             }
         }
@@ -76,7 +76,7 @@ public class RuntimeType<T> implements Type<T> {
         if (o == Types.OBJECT) return !Types.isStructType(this);
         if (o instanceof RuntimeType<?>) {
             RuntimeType<?> rt = (RuntimeType<?>) o;
-            if (rt.base.isAssignableFrom(base)) {
+            if (rt.impl.isAssignableFrom(impl)) {
                 return true;
             }
         }
@@ -95,40 +95,43 @@ public class RuntimeType<T> implements Type<T> {
 
     public boolean instanceof$(Object o) {
         if (o == null) {return false;}
-        if (o.getClass() == base) {
+        if (o.getClass() == impl) {
             return true;
         }
-        return base.isInstance(o);
+        return impl.isInstance(o);
     }
 
     // o instanceof This and params
     public final boolean instanceof$(Object o, Type<?>... params) {
         if (o == null) {return false;}
         Class<?> target = o.getClass();
-        if (target == base || checkAnonymous(target)) {
+        if (target == impl || checkAnonymous(target)) {
             Any any = (Any) o;
             for (int i = 0, s = params.length; i < s; i ++) {
                 switch (variances[i]) {
                 case INVARIANT:
-                    if (!params[i].equals(any.getParam(i))) {return false;}
+                    if (!params[i].equals(any.$getParam(i))) {return false;}
                     break;
                 case COVARIANT:
-                    if (!any.getParam(i).isSubtype(params[i])) {return false;}
+                    if (!any.$getParam(i).isSubtype(params[i])) {return false;}
                     break;
                 case CONTRAVARIANT:
-                    if (!params[i].isSubtype(any.getParam(i))) {return false;}
+                    if (!params[i].isSubtype(any.$getParam(i))) {return false;}
                     break;
                 }
             }
             return true;
         }
-        else if (base.isInstance(o)) { // i.e. type of o != This
+        else if (impl.isInstance(o)) { // i.e. type of o != This
             return checkParents(o, params);
         }
+        // not needed for Java primitives. not sure for String
+        /*
         else if (o instanceof String || o instanceof Number) {
             // @NativeRep'ed type
             return checkParents(o, params);
         }
+        */
         else {
             return false;
         }
@@ -138,10 +141,10 @@ public class RuntimeType<T> implements Type<T> {
         if (!target.isAnonymousClass()) {
             return false;
         }
-        if (target.getSuperclass() != java.lang.Object.class && target.getSuperclass() == base) {
+        if (target.getSuperclass() != java.lang.Object.class && target.getSuperclass() == impl) {
             return true;
         }
-        if (target.getInterfaces().length == 1 && target.getInterfaces()[0] == base) {
+        if (target.getInterfaces().length == 1 && target.getInterfaces()[0] == impl) {
             return true;
         }
         return false;
@@ -150,7 +153,7 @@ public class RuntimeType<T> implements Type<T> {
     private final boolean checkParents(Object o, Type<?>... params) {
         if (o instanceof Any) {
             Any any = (Any) o;
-            RuntimeType<?> rtt = any.getRTT(); // o._RTT
+            RuntimeType<?> rtt = any.$getRTT(); // o.$RTT
             if (rtt == null) {
                 return true;
             }
@@ -179,7 +182,7 @@ public class RuntimeType<T> implements Type<T> {
     private final boolean instantiateCheck(Type<?>[] params, RuntimeType<?> rtt, Object o) {
         if (rtt.parents != null) {
             for (Type<?> t : rtt.parents) {
-                if (base.isAssignableFrom(t.getJavaClass())) {
+                if (impl.isAssignableFrom(t.getImpl())) {
                     if (t instanceof ParameterizedType<?>) {
                         ParameterizedType<?> pt = (ParameterizedType<?>) t;
                         Type<?>[] paramsT = pt.getParams();
@@ -208,7 +211,7 @@ public class RuntimeType<T> implements Type<T> {
     private final boolean instantiateCheck(Type<?>[] params, RuntimeType<?> rtt, Any any) {
         if (rtt.parents != null) {
             for (Type<?> t : rtt.parents) {
-                if (base.isAssignableFrom(t.getJavaClass())) {
+                if (impl.isAssignableFrom(t.getImpl())) {
                     if (t instanceof ParameterizedType<?>) {
                         ParameterizedType<?> pt = (ParameterizedType<?>) t;
                         Type<?>[] paramsT = pt.getParams();
@@ -216,7 +219,7 @@ public class RuntimeType<T> implements Type<T> {
                         for (int i = 0; i < paramsT.length; i ++ ) {
                             if (paramsT[i] != null && paramsT[i] instanceof UnresolvedType) {
                                 int index = ((UnresolvedType) paramsT[i]).getIndex();
-                                newParamsT[i]= index == -1 ? rtt : any.getParam(index);
+                                newParamsT[i]= index == -1 ? rtt : any.$getParam(index);
                             }
                             else {
                                 newParamsT[i] = paramsT[i];
@@ -239,7 +242,7 @@ public class RuntimeType<T> implements Type<T> {
     private final boolean instantiateCheck(Type<?>[] params, RuntimeType<?> rtt, Type<?>[] paramsRTT) {
         if (rtt.parents != null) {
             for (Type<?> t : rtt.parents) {
-                if (base.isAssignableFrom(t.getJavaClass())) {
+                if (impl.isAssignableFrom(t.getImpl())) {
                     if (t instanceof ParameterizedType<?>) {
                         ParameterizedType<?> pt = (ParameterizedType<?>) t;
                         Type<?>[] paramsT = pt.getParams();
@@ -268,7 +271,7 @@ public class RuntimeType<T> implements Type<T> {
     
     // check "type and paramsType" <: "this and params"
     final boolean isSuperType(Type<?>[] params, RuntimeType<?> rtt, Type<?>[] paramsType) {
-        if (base == rtt.getJavaClass()) {
+        if (impl == rtt.getImpl()) {
             if (params != null) {
                 for (int i = 0, s = params.length; i < s; i ++) {
                     switch (variances[i]) {
@@ -286,7 +289,7 @@ public class RuntimeType<T> implements Type<T> {
             }
             return true;
         }
-        else if (base.isAssignableFrom(rtt.getJavaClass())) {
+        else if (impl.isAssignableFrom(rtt.getImpl())) {
             return instantiateCheck(params, rtt, paramsType);
         }
         else {
@@ -295,7 +298,7 @@ public class RuntimeType<T> implements Type<T> {
     }
     
     public Object makeArray(int length) {
-        return Array.newInstance(base, length);
+        return Array.newInstance(impl, length);
     }
 
     public Object makeArray(Object... elems) {
@@ -306,9 +309,12 @@ public class RuntimeType<T> implements Type<T> {
         return ((T[])array)[i];
     }
 
-    public T setArray(Object array, int i, T v) {
+//    public T setArray(Object array, int i, T v) {
+//        ((T[])array)[i] = v;
+//        return v;
+//    }
+    public void setArray(Object array, int i, T v) {
         ((T[])array)[i] = v;
-        return v;
     }
     
     public int arrayLength(Object array) {
@@ -316,7 +322,7 @@ public class RuntimeType<T> implements Type<T> {
     }
 
     public String typeName() {
-        String name = base.toString();
+        String name = impl.toString();
         if (name.startsWith("class ")) {
             name = name.substring("class ".length());
         } else if (name.startsWith("interface ")) {
@@ -330,10 +336,10 @@ public class RuntimeType<T> implements Type<T> {
         int i;
         for (i = 0; i < variances.length - 1; i++) {
             if (i != 0) str += ",";
-            str += ((Any) o).getParam(i).typeName();
+            str += ((Any) o).$getParam(i).typeName();
         }
         str += ")=>";
-        str += ((Any) o).getParam(i).typeName();
+        str += ((Any) o).$getParam(i).typeName();
         return str;
     }
     protected final String typeNameForVoidFun(Object o) {
@@ -341,7 +347,7 @@ public class RuntimeType<T> implements Type<T> {
         if (variances != null && variances.length > 0) {
             for (int i = 0; i < variances.length; i++) {
                 if (i != 0) str += ",";
-                str += ((Any) o).getParam(i).typeName();
+                str += ((Any) o).$getParam(i).typeName();
             }
         }
         str += ")=>void";
@@ -354,7 +360,7 @@ public class RuntimeType<T> implements Type<T> {
                 str += "[";
                 for (int i = 0; i < variances.length; i ++) {
                     if (i != 0) str += ",";
-                    str += ((Any) o).getParam(i).typeName();
+                    str += ((Any) o).$getParam(i).typeName();
                 }
                 str += "]";
             }
@@ -370,26 +376,29 @@ public class RuntimeType<T> implements Type<T> {
     public boolean instanceof$(Object o, Type<?> param0) {
         if (o == null) {return false;}
         Class<?> target = o.getClass();
-        if (target == base || checkAnonymous(target)) {
+        if (target == impl || checkAnonymous(target)) {
             Any any = (Any) o;
             if (variances[0].equals(Variance.INVARIANT)) {
-                if (!param0.equals(any.getParam(0))) {return false;}
+                if (!param0.equals(any.$getParam(0))) {return false;}
             }
             else if(variances[0].equals(Variance.COVARIANT)) {
-                if (!any.getParam(0).isSubtype(param0)) {return false;}
+                if (!any.$getParam(0).isSubtype(param0)) {return false;}
             }
             else if(variances[0].equals(Variance.CONTRAVARIANT)) {
-                if (!param0.isSubtype(any.getParam(0))) {return false;}
+                if (!param0.isSubtype(any.$getParam(0))) {return false;}
             }
             return true;
         }
-        else if (base.isInstance(o)) {
+        else if (impl.isInstance(o)) {
             return checkParents(o, param0);
         }
+        // not needed for Java primitives. not sure for String
+        /*
         else if (o instanceof String || o instanceof Number) {
             // @NativeRep'ed type
             return checkParents(o, param0);
         }
+        */
         else {
             return false;
         }
@@ -400,35 +409,38 @@ public class RuntimeType<T> implements Type<T> {
     public final boolean instanceof$(Object o, Type<?> param0, Type<?> param1) {
         if (o == null) {return false;}
         Class<?> target = o.getClass();
-        if (target == base || checkAnonymous(target)) {
+        if (target == impl || checkAnonymous(target)) {
             Any any = (Any) o;
             if (variances[0].equals(Variance.INVARIANT)) {
-                if (!param0.equals(any.getParam(0))) {return false;}
+                if (!param0.equals(any.$getParam(0))) {return false;}
             }
             else if(variances[0].equals(Variance.COVARIANT)) {
-                if (!any.getParam(0).isSubtype(param0)) {return false;}
+                if (!any.$getParam(0).isSubtype(param0)) {return false;}
             }
             else if(variances[0].equals(Variance.CONTRAVARIANT)) {
-                if (!param0.isSubtype(any.getParam(0))) {return false;}
+                if (!param0.isSubtype(any.$getParam(0))) {return false;}
             }
             if (variances[1].equals(Variance.INVARIANT)) {
-                if (!param1.equals(any.getParam(1))) {return false;}
+                if (!param1.equals(any.$getParam(1))) {return false;}
             }
             else if(variances[1].equals(Variance.COVARIANT)) {
-                if (!any.getParam(1).isSubtype(param1)) {return false;}
+                if (!any.$getParam(1).isSubtype(param1)) {return false;}
             }
             else if(variances[1].equals(Variance.CONTRAVARIANT)) {
-                if (!param1.isSubtype(any.getParam(1))) {return false;}
+                if (!param1.isSubtype(any.$getParam(1))) {return false;}
             }
             return true;
         }
-        else if (base.isInstance(o)) {
+        else if (impl.isInstance(o)) {
             return checkParents(o, param0, param1);
         }
+        // not needed for Java primitives. not sure for String
+        /*
         else if (o instanceof String || o instanceof Number) {
             // @NativeRep'ed type
             return checkParents(o, param0, param1);
         }
+        */
         else {
             return false;
         }
@@ -440,46 +452,49 @@ public class RuntimeType<T> implements Type<T> {
     public final boolean instanceof$(Object o, Type<?> param0, Type<?> param1, Type<?> param2) {
         if (o == null) {return false;}
         Class<?> target = o.getClass();
-        if (target == base || checkAnonymous(target)) {
+        if (target == impl || checkAnonymous(target)) {
             Any any = (Any) o;
             if (variances[0].equals(Variance.INVARIANT)) {
-                if (!param0.equals(any.getParam(0))) {return false;}
+                if (!param0.equals(any.$getParam(0))) {return false;}
             }
             else if(variances[0].equals(Variance.COVARIANT)) {
-                if (!any.getParam(0).isSubtype(param0)) {return false;}
+                if (!any.$getParam(0).isSubtype(param0)) {return false;}
             }
             else if(variances[0].equals(Variance.CONTRAVARIANT)) {
-                if (!param0.isSubtype(any.getParam(0))) {return false;}
+                if (!param0.isSubtype(any.$getParam(0))) {return false;}
             }
             
             if (variances[1].equals(Variance.INVARIANT)) {
-                if (!param1.equals(any.getParam(1))) {return false;}
+                if (!param1.equals(any.$getParam(1))) {return false;}
             }
             else if(variances[1].equals(Variance.COVARIANT)) {
-                if (!any.getParam(1).isSubtype(param1)) {return false;}
+                if (!any.$getParam(1).isSubtype(param1)) {return false;}
             }
             else if(variances[1].equals(Variance.CONTRAVARIANT)) {
-                if (!param1.isSubtype(any.getParam(1))) {return false;}
+                if (!param1.isSubtype(any.$getParam(1))) {return false;}
             }
             
             if (variances[2].equals(Variance.INVARIANT)) {
-                if (!param2.equals(any.getParam(2))) {return false;}
+                if (!param2.equals(any.$getParam(2))) {return false;}
             }
             else if(variances[2].equals(Variance.COVARIANT)) {
-                if (!any.getParam(2).isSubtype(param2)) {return false;}
+                if (!any.$getParam(2).isSubtype(param2)) {return false;}
             }
             else if(variances[2].equals(Variance.CONTRAVARIANT)) {
-                if (!param2.isSubtype(any.getParam(2))) {return false;}
+                if (!param2.isSubtype(any.$getParam(2))) {return false;}
             }
             return true;
         }
-        else if (base.isInstance(o)) {
+        else if (impl.isInstance(o)) {
             return checkParents(o, param0, param1, param2);
         }
+        // not needed for Java primitives. not sure for String
+        /*
         else if (o instanceof String || o instanceof Number) {
             // @NativeRep'ed type
             return checkParents(o, param0, param1, param2);
         }
+        */
         else {
             return false;
         }

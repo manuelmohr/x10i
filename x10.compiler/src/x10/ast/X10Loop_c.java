@@ -14,6 +14,8 @@ package x10.ast;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 import polyglot.ast.Binary;
 import polyglot.ast.Call;
@@ -60,6 +62,7 @@ import x10.types.MethodInstance;
 
 import x10.types.X10TypeEnv;
 import x10.types.X10TypeEnv_c;
+import x10.types.X10ParsedClassType_c;
 import polyglot.types.TypeSystem;
 import polyglot.types.LazyRef_c;
 import x10.types.checker.Converter;
@@ -191,19 +194,17 @@ public abstract class X10Loop_c extends Loop_c implements X10Loop {
             Synthesizer synth = new Synthesizer(nf, ts);
             XTerm v = synth.makePointRankTerm((XVar) self);
             XTerm rank = XTerms.makeLit(new Integer(length));
-            try {
-                indexType = Types.addBinding(indexType, v, rank);
-            } catch (XFailure z) {
-                throw new InternalCompilerError("Unexpected error: " + z);
-            }
+            indexType = Types.addBinding(indexType, v, rank);
             r.update(indexType);
             return;
         }
 
         Type domainType = domainTypeRef.get();
         indexType = getIndexType(domainType, tc);
-        if (indexType == null)
+        if (indexType == null) {
+            r.update(ts.unknownType(position()));
             return;
+        }
         Type base = Types.baseType(domainType);
 
 
@@ -219,23 +220,20 @@ public abstract class X10Loop_c extends Loop_c implements X10Loop {
         // Now the problem is that indexType may
         // have a non-null thisVar (e.g. Foo#this). We need to
         // replace thisVar with var.
-        if (thisVar != null)
-            try {
+        if (thisVar != null) {
+            try  {
 
                 indexType = Subst.subst(indexType, selfValue, thisVar);
                 if (generated) {
                     CConstraint c = Types.xclause(domainType);
-                    c=c.substitute(selfValue, c.self());
+                    c=c.instantiateSelf(selfValue);
                     indexType = Types.addConstraint(indexType, c);
                     assert Types.consistent(indexType);
                     indexType = Subst.subst(indexType, XTerms.makeEQV(), selfValue);
                 }
+            } catch (SemanticException z) {
 
             }
-        catch (XFailure z) {
-
-        }
-        catch (SemanticException e) {
         }
         r.update(indexType);
     }
@@ -249,10 +247,16 @@ public abstract class X10Loop_c extends Loop_c implements X10Loop {
 			domainType = domain.type();
 		}
 		ConstrainedType formalType = Types.toConstrainedType(formal.declType());
-		Type Iterable = ts.Iterable(formalType);
-		assert domainType != null 
+		assert domainType != null
 		: "formal=" + formal + " domain = " + domain + " position = " + position();
-		if (ts.isSubtype(domainType, Iterable, tc.context())) {
+        final Context context = tc.context();
+
+        HashSet<Type> iterableIndex = Types.getIterableIndex(domainType, context);
+        boolean newRes = false;
+        for (Type tt : iterableIndex)
+            newRes |= ts.isSubtype(tt, formalType, context);
+        //assert newRes==ts.isSubtype(domainType, ts.Iterable(formalType), tc.context()); // when Iterable was covariant (i.e., Iterable[+T])
+		if (newRes) {
 		//	if (X10TypeMixin.areConsistent(formalType, domainType)
 		    return this;
 		}
@@ -264,36 +268,31 @@ public abstract class X10Loop_c extends Loop_c implements X10Loop {
 //		if (! mi.flags().isStatic() && ts.isSubtype(rt, Iterator))
 //		    return this;
 
-		if (ts.isSubtype(formalType, ts.Point(), tc.context())) {
-		    try {
-		        ConstrainedType Region = Types.toConstrainedType(ts.Region());
-		        Region = Region.addRank(formalType.rank(tc.context()));
-		        Expr newDomain = Converter.attemptCoercion(tc, domain, Region);
-		        if (newDomain != null && newDomain != domain) {
-		            domainTypeRef = Types.lazyRef(null);
-		            Node nn = this.domain(newDomain).del().typeCheck(tc);
-		            return nn;
-		        }
-		    }
-		    catch (SemanticException e) {
-		    }
-		    try {
-		        ConstrainedType Dist = Types.toConstrainedType(ts.Dist());
-		        Dist = Dist.addRank(formalType.rank(tc.context()));
-		        Expr newDomain = Converter.attemptCoercion(tc, domain, Dist);
-		        if (newDomain != null && newDomain != domain) {
-		            domainTypeRef = Types.lazyRef(null);
-		            return this.domain(newDomain).del().typeCheck(tc);
-		        }
-		    }
-		    catch (SemanticException e) {
-		    }
+		if (ts.isSubtype(formalType, ts.Point(), context)) {
+		    ConstrainedType Region = Types.toConstrainedType(ts.Region());
+            final XTerm rankTerm = formalType.rank(context);
+            if (rankTerm!=null) {
+                Region = Region.addRank(rankTerm);
+                Expr newDomain = Converter.attemptCoercion(tc, domain, Region);
+                if (newDomain != null && newDomain != domain) {
+                    domainTypeRef = Types.lazyRef(null);
+                    Node nn = this.domain(newDomain).del().typeCheck(tc);
+                    return nn;
+                }
+                ConstrainedType Dist = Types.toConstrainedType(ts.Dist());
+                Dist = Dist.addRank(rankTerm);
+                newDomain = Converter.attemptCoercion(tc, domain, Dist);
+                if (newDomain != null && newDomain != domain) {
+                    domainTypeRef = Types.lazyRef(null);
+                    return this.domain(newDomain).del().typeCheck(tc);
+                }
+            }
 		}
 		
 		// The expected type is Iterable[Foo].  The constraints on domainType do matter
 		// for this failure, so don't strip them.
 		Errors.issue(tc.job(),
-		        new Errors.LoopDomainIsNotOfExpectedType(formalType, domainType, position()));
+		        new Errors.LoopDomainIsNotOfExpectedType(formalType, domainType, iterableIndex, position()));
 		return this;
 	}
 
@@ -464,7 +463,7 @@ public abstract class X10Loop_c extends Loop_c implements X10Loop {
 		return super.setResolverOverride(parent, v);
 	}
 
-	public Node buildTypes(TypeBuilder tb) throws SemanticException {
+	public Node buildTypes(TypeBuilder tb) {
 		X10Loop n = (X10Loop) super.buildTypes(tb);
 		
 		// Set the final flag on all formals introduced in the loop.

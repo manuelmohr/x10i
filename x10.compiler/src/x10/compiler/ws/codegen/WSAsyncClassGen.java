@@ -20,12 +20,16 @@ import java.util.Set;
 
 import polyglot.ast.Block;
 import polyglot.ast.Call;
+import polyglot.ast.Catch;
 import polyglot.ast.Eval;
 import polyglot.ast.Expr;
 import polyglot.ast.FieldAssign;
+import polyglot.ast.Formal;
 import polyglot.ast.LocalAssign;
 import polyglot.ast.LocalDecl;
 import polyglot.ast.Stmt;
+import polyglot.ast.Try;
+import polyglot.ast.TypeNode;
 import polyglot.types.ClassDef;
 import polyglot.types.Flags;
 import polyglot.types.Name;
@@ -34,11 +38,13 @@ import polyglot.types.Type;
 import polyglot.util.Pair;
 import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import x10.ast.Async;
+import x10.ast.Offer;
+import x10.ast.StmtSeq;
 import x10.compiler.ws.WSCodeGenerator;
 import x10.compiler.ws.util.AddIndirectLocalDeclareVisitor;
 import x10.compiler.ws.util.CodePatternDetector;
 import x10.compiler.ws.util.TransCodes;
-import x10.compiler.ws.util.WSCodeGenUtility;
+import x10.compiler.ws.util.WSUtil;
 import x10.compiler.ws.util.CodePatternDetector.Pattern;
 import x10.types.X10ClassType;
 import x10.util.synthesizer.ClassSynth;
@@ -75,12 +81,12 @@ public class WSAsyncClassGen extends AbstractWSClassGen {
     public WSAsyncClassGen(AbstractWSClassGen parent, Async a) {
         //Note in building the tree, we use parentFinish as async frame's up frame
         super(parent, getFinishFrameOfAsyncFrame(parent),
-                WSCodeGenUtility.getFAsyncStmtClassName(parent.getClassName()),
-                parent.wts.asyncFrameType, a.body());
+                WSUtil.getAsyncStmtClassName(parent.getClassName()),
+                parent.xts.AsyncFrame(), a.body());
         inFrameTransform = canInFrameTransform(codeBlock);
         
-        if(WSOptimizeConfig.OPT_PC_FIELD == 0){
-            addPCField();
+        if(!wts.OPT_PC_FIELD){
+            wsynth.createPCField(classSynth);
         }
         parentK = parent; //record parent continuation
         formals = new ArrayList<Pair<Name, Type>>();
@@ -96,41 +102,37 @@ public class WSAsyncClassGen extends AbstractWSClassGen {
     @Override
     protected void genMethods() throws SemanticException {
 
-        CodeBlockSynth fastBodySynth = fastMSynth.getMethodBodySynth(compilerPos);
-        CodeBlockSynth resumeBodySynth = resumeMSynth.getMethodBodySynth(compilerPos);
+        CodeBlockSynth fastBodySynth;
+        CodeBlockSynth resumeBodySynth; 
         CodeBlockSynth backBodySynth = backMSynth.getMethodBodySynth(compilerPos);
-
+        
+        if(wts.DISABLE_EXCEPTION_HANDLE){
+            fastBodySynth = fastMSynth.getMethodBodySynth(compilerPos);
+            resumeBodySynth = resumeMSynth.getMethodBodySynth(compilerPos);
+        }
+        else{
+            fastBodySynth = new CodeBlockSynth(xnf, xct, compilerPos);
+            resumeBodySynth = new CodeBlockSynth(xnf, xct, compilerPos);
+        }
         //the pc and switch table are only set value if we turn off pc field optimizatoin
         Expr pcRef = null;
         SwitchSynth resumeSwitchSynth = null;
         SwitchSynth backSwitchSynth = null;
-        if(WSOptimizeConfig.OPT_PC_FIELD == 0){
-            pcRef = synth.makeFieldAccess(compilerPos, getThisRef(), PC, xct);
+        if(!wts.OPT_PC_FIELD){
+            pcRef = wsynth.genPCRef(classSynth);
             resumeSwitchSynth = resumeBodySynth.createSwitchStmt(compilerPos, pcRef);
             backSwitchSynth = backBodySynth.createSwitchStmt(compilerPos, pcRef);
         }
         
-        
-
-        Set<Name> localDeclaredVar = CollectionFactory.newHashSet(); //all locals with these names will not be replaced
+        //Used for in frame transformation: record local variables that are not transformed as fields
+        Set<Name> localDeclaredVars = CollectionFactory.newHashSet(); //all locals with these names will not be replaced
                 
         if(!inFrameTransform){
             //we create a new frame to transform the async's body
-            
-            AbstractWSClassGen childFrameGen = genChildFrame(wts.regularFrameType, codeBlock, WSCodeGenUtility.getBlockFrameClassName(getClassName()));
-            TransCodes callCodes = this.genInvocateFrameStmts(1, childFrameGen);
-            
-            //now add codes to three path;
-            fastBodySynth.addStmts(callCodes.first());
-            
-            //resume/back path
-            if(WSOptimizeConfig.OPT_PC_FIELD == 0){      
-                resumeSwitchSynth.insertStatementsInCondition(0, callCodes.second());
-                if(callCodes.third().size() > 0){ //only assign call has back
-                    backSwitchSynth.insertStatementsInCondition(callCodes.getPcValue(), callCodes.third());
-                    backSwitchSynth.insertStatementInCondition(callCodes.getPcValue(), xnf.Break(compilerPos));
-                }
-            }
+            AbstractWSClassGen childFrameGen = genChildFrame(xts.RegularFrame(), codeBlock, WSUtil.getBlockFrameClassName(getClassName()));
+            List<Stmt> callCodes = wsynth.genInvocateFrameStmts(1, classSynth, fastMSynth, childFrameGen);
+            fastBodySynth.addStmts(callCodes);       
+            //no codes in resume path here
         }
         else{
             //transform code one by one in the async frame. No more deeper frames will be generated
@@ -148,7 +150,7 @@ public class WSAsyncClassGen extends AbstractWSClassGen {
                     s = transLocalDecl((LocalDecl) s);
                     if(s == null) continue;
                     if (s instanceof LocalDecl)
-                        localDeclaredVar.add(((LocalDecl) s).name().id());
+                        localDeclaredVars.add(((LocalDecl) s).name().id());
                 }
                 // need analyze out-finish scope local assign                
                 if(s instanceof Eval){
@@ -159,56 +161,69 @@ public class WSAsyncClassGen extends AbstractWSClassGen {
                 CodePatternDetector.Pattern pattern = CodePatternDetector.detectAndTransform(s, wts);
                 switch(pattern){
                 case Simple:
-                    codes = transNormalStmt(s, prePcValue, localDeclaredVar);
+                    codes = transNormalStmt(s, prePcValue, localDeclaredVars);
                     break;
-                case Compound:
-                    //call for help flattener help, and add results back to 
-                    codes = transCompoundStmt(s);
-                    bodyStmts.addAll(0, codes.getFlattenedCodes()); //put them into target
+                case StmtSeq:
+                    //Unwrapp the stmts, and add them back
+                    bodyStmts.addAll(0, ((StmtSeq)s).statements()); //put them into target
                     continue;
                 case Call:
-                    codes = transCall((Call)((Eval)s).expr(), prePcValue, localDeclaredVar);
+                    codes = transCall((Call)((Eval)s).expr(), prePcValue, localDeclaredVars);
                     break;
                 case AssignCall:
-                    codes = transAssignCall(((Eval)s), prePcValue, localDeclaredVar);
+                    codes = transAssignCall(((Eval)s), prePcValue, localDeclaredVars);
                     break;
                 default:
-                    System.err.println("[WS_ERR]Not support the following statements:");
-                    s.prettyPrint(System.err);
-                    System.err.println();
-                    System.err.println("[WS_ERR]Please turn off WS Compilation");
-                    System.exit(1);
+                    WSUtil.err("X10 WorkStealing cannot support:", s);
                     continue;
                 }
-                
-                pcValue = codes.getPcValue();
-                fastBodySynth.addStmts(codes.first());
-                
-                if(WSOptimizeConfig.OPT_PC_FIELD == 0){
-                    resumeSwitchSynth.insertStatementsInCondition(prePcValue, codes.second());
-                    if(codes.third().size() > 0){ //only assign call has back
-                        backSwitchSynth.insertStatementsInCondition(pcValue, codes.third());
+                fastBodySynth.addStmts(codes.getFastStmts());
+                pcValue = codes.pcValue();
+                if(!wts.OPT_PC_FIELD){
+                    resumeSwitchSynth.insertStatementsInCondition(prePcValue, codes.getResumeStmts());
+                    if(codes.getBackStmts().size() > 0){ //only assign call has back
+                        backSwitchSynth.insertStatementsInCondition(pcValue, codes.getBackStmts());
                         backSwitchSynth.insertStatementInCondition(pcValue, xnf.Break(compilerPos));
                     }
                 }
                 else{
+                    if(prePcValue == 0 && codes.getResumePostStmts().size() > 0){
+                        resumeBodySynth.addStmts(codes.getResumePostStmts());
+                    }
+                    if(prePcValue == 1){
+                        resumeBodySynth.addStmts(codes.getResumeStmts());
+                    }
                     //because there is only one possible assign call, its safe to add the statement to back path
-                    if(codes.third().size() > 0){ //only assign call has back
-                        backBodySynth.addStmts(codes.third());
+                    if(codes.getBackStmts().size() > 0){ //only assign call has back
+                        backBodySynth.addStmts(codes.getBackStmts());
                     }
                 }
                 prePcValue = pcValue;
+            }//while end
+        } //in frame transform end
+        
+        //Put the codes into a try block
+        if(!wts.DISABLE_EXCEPTION_HANDLE){
+            Block fastBlock = (Block) fastBodySynth.genStmt();
+            Block resumeBlock = (Block) resumeBodySynth.genStmt();
+            fastMSynth.getMethodBodySynth(compilerPos).addStmt(wsynth.genExceptionHandler(fastBlock.statements(), classSynth));
+            if(resumeBlock.statements().size() > 0){
+                resumeMSynth.getMethodBodySynth(compilerPos).addStmt(wsynth.genExceptionHandler(resumeBlock.statements(), classSynth));            
             }
         }
+        
 
         //After fast body, there should be a poll 
-        //upcast[_async,AsyncFrame](this).poll(worker);
-        fastBodySynth.addStmt(genPollStmt());
-               
+        fastMSynth.getMethodBodySynth(compilerPos).addStmt(wsynth.genPollStmt(classSynth, fastMSynth));
+        genMoveMethod(localDeclaredVars);
+
+    }
+    
+    private void genMoveMethod(Set<Name> localDeclaredVar) throws SemanticException {
         //Move method - Used to move data for all out scope assign statements
-        MethodSynth moveMSynth = classSynth.createMethod(compilerPos, MOVE.toString());
+        MethodSynth moveMSynth = classSynth.createMethod(compilerPos, WSSynthesizer.MOVE.toString());
         moveMSynth.setFlag(Flags.PUBLIC);
-        Expr moveFfRef = moveMSynth.addFormal(compilerPos, Flags.FINAL, wts.finishFrameType, "ff");
+        Expr moveFfRef = moveMSynth.addFormal(compilerPos, Flags.FINAL, xts.FinishFrame(), WSSynthesizer.FF.toString());
         CodeBlockSynth moveBodySynth = moveMSynth.getMethodBodySynth(compilerPos);
         //How to move
         //  Get the assign expression, the left will be the right, and 
@@ -226,36 +241,13 @@ public class WSAsyncClassGen extends AbstractWSClassGen {
             moveBodySynth.addStmt(xnf.Eval(compilerPos, moveAssign));  
         }
         
-        //final processing
-        fastBodySynth.addCodeProcessingJob(new AddIndirectLocalDeclareVisitor(xnf, this.getRefToDeclMap()));
-        resumeBodySynth.addCodeProcessingJob(new AddIndirectLocalDeclareVisitor(xnf, this.getRefToDeclMap()));
-        backBodySynth.addCodeProcessingJob(new AddIndirectLocalDeclareVisitor(xnf, this.getRefToDeclMap()));     
+        //final processing 
         moveBodySynth.addCodeProcessingJob(new AddIndirectLocalDeclareVisitor(xnf, this.getRefToDeclMap()));
-    } 
-    
-    protected Stmt genPollStmt() throws SemanticException{
-        //fast path: //upcast[_async,AsyncFrame](this).poll(worker);
-        
-        Expr upThisExpr = genUpcastCall(getClassType(), wts.asyncFrameType, getThisRef());
-        
-        InstanceCallSynth icSynth = new InstanceCallSynth(xnf, xct, compilerPos, upThisExpr, POLL.toString());
-        Expr fastWorkerRef = fastMSynth.getMethodBodySynth(compilerPos).getLocal(WORKER.toString());
-        icSynth.addArgument(wts.workerType, fastWorkerRef);        
-        return icSynth.genStmt();
     }
 
     protected void genClassConstructor() throws SemanticException {        
-        //now generate another constructor
-        /* 
-           @Inline def this(up:Frame!) {
-               super(up, up);
-           }
-        */
-        Expr upRef = conSynth.addFormal(compilerPos, Flags.FINAL, wts.frameType, "up"); //up:Frame!
-        
+        ConstructorSynth conSynth = wsynth.genClassConstructorType1Base(classSynth);
         CodeBlockSynth codeBlockSynth = conSynth.createConstructorBody(compilerPos);
-        SuperCallSynth superCallSynth = codeBlockSynth.createSuperCall(compilerPos, classSynth.getClassDef());
-        superCallSynth.addArgument(wts.frameType, upRef);
         
         //process all the formals. Assign fields with formals
         Expr thisRef = getThisRef();
@@ -318,8 +310,8 @@ public class WSAsyncClassGen extends AbstractWSClassGen {
      * @return
      */
     protected boolean canInFrameTransform(Block block){
-        boolean containsConcurrent = WSCodeGenUtility.containsConcurrentConstruct(block);
-        int concurrentCallNum = WSCodeGenUtility.calcConcurrentCallNums(block, wts);
+        boolean containsConcurrent = WSUtil.containsConcurrentConstruct(block);
+        int concurrentCallNum = WSUtil.calcConcurrentCallNums(block, wts);
         
         if(containsConcurrent || concurrentCallNum > 1){
             return false;

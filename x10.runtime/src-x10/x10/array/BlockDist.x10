@@ -43,7 +43,7 @@ final class BlockDist extends Dist {
     private transient var regionForHere:Region(this.rank);
 
 
-    def this(r:Region, axis:int, pg:PlaceGroup) {
+    def this(r:Region, axis:int, pg:PlaceGroup):BlockDist{self.region==r} {
         super(r);
         this.axis = axis;
         this.pg = pg;
@@ -76,6 +76,8 @@ final class BlockDist extends Dist {
             newMin(axis) = low;
             newMax(axis) = hi;
             return new RectRegion(newMin, newMax);
+        } else if (region instanceof RectRegion1D) {
+            return new RectRegion1D(low, hi) as Region(rank);
         } else {
             // General case handled via region algebra
             val r1 = Region.makeFull(axis);
@@ -131,6 +133,9 @@ final class BlockDist extends Dist {
         }
     }
     
+    // replicated from superclass to workaround xlC bug with using & itables
+    public operator this(p:Place):Region(rank) = get(p);
+
     public operator this(pt:Point(rank)):Place {
 	if (CompilerFlags.checkBounds() && !region.contains(pt)) raiseBoundsError(pt);
         return mapIndexToPlace(pt(axis));

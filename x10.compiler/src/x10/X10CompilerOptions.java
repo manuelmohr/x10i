@@ -32,7 +32,9 @@ public class X10CompilerOptions extends polyglot.main.Options {
     
     public String executable_path = null;
     public Configuration x10_config;
-    
+
+    public String buildX10Lib = null;
+
     /**
      * Absolute path to the X10 distribution
      */
@@ -49,6 +51,32 @@ public class X10CompilerOptions extends polyglot.main.Options {
 		x10_config = new Configuration();
 	}
 
+	/**
+	 * Add a PrecompiledLibrary object representing a remote x10library.
+	 * This enabled the library to be linked against, but does not include
+	 * the remote jar file in the compiler's sourcepath.
+	 * Intended for use only by X10DT.
+	 * 
+	 * @param lib the library to add
+	 */
+	public void addRemotePrecompiledLibrary(PrecompiledLibrary lib) {
+	    x10libs.add(lib);
+	}
+	
+	/**
+	 * Add a PrecompiledLibrary object representing a local x10library.
+     * This enabled the library to be linked against and includes
+     * the jar file in the compiler's sourcepath.
+     * 
+     * @param lib the library to add
+     */
+    public void addLocalPrecompiledLibrary(PrecompiledLibrary lib) {
+        x10libs.add(lib);
+        File jf = new File(lib.absolutePathToRoot, lib.sourceJar);
+        source_path.add(jf);
+    }
+
+	
 	@Override
 	protected int parseCommand(String args[], int index, Set<String> source) 
 		throws UsageError, Main.TerminationException
@@ -74,14 +102,18 @@ public class X10CompilerOptions extends polyglot.main.Options {
 	            File f = new File(libFile);
 	            properties.load(new FileInputStream(f));
 	            PrecompiledLibrary libObj = new PrecompiledLibrary(f.getParentFile().getAbsolutePath(), properties);
-	            x10libs.add(libObj);
-	            File jf = new File(libObj.absolutePathToRoot, libObj.sourceJar);
-	            source_path.add(jf);
+	            addLocalPrecompiledLibrary(libObj);
 	        } catch(IOException e) {
 	            UsageError ue = new UsageError("Unable to load x10library file "+libFile+" "+ e.getMessage());
 	            ue.initCause(e);
 	            throw ue;
 	        }
+	        return ++i;
+		}
+
+		if (args[i].equals("-buildx10lib")) {
+		    ++i;
+			buildX10Lib = args[i];
 	        return ++i;
 		}
 
@@ -113,6 +145,7 @@ public class X10CompilerOptions extends polyglot.main.Options {
 		usageForFlag(out, "-noassert", "turn off assertion generation");
 		usageForFlag(out, "-o <path>", "set generated executable path (for the post-compiler)");
 		usageForFlag(out, "-x10lib <lib.properties>", "use the precompiled x10 library described by <lib.properties>");
+		usageForFlag(out, "-buildx10lib", "build an x10 library");
 
 		String[][] options = x10_config.options();
 		for (int i = 0; i < options.length; i++) {

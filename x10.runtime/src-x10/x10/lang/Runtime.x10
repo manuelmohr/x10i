@@ -14,6 +14,7 @@ package x10.lang;
 import x10.compiler.Native;
 import x10.compiler.Pinned;
 import x10.compiler.Global;
+import x10.compiler.PerProcess;
 import x10.compiler.Pragma;
 import x10.compiler.StackAllocate;
 import x10.compiler.TempNoInline_1;
@@ -21,6 +22,12 @@ import x10.compiler.TempNoInline_1;
 import x10.util.Random;
 import x10.util.Stack;
 import x10.util.Box;
+import x10.util.NoSuchElementException;
+
+import x10.util.concurrent.Lock;
+import x10.util.concurrent.Monitor;
+import x10.util.concurrent.SimpleLatch;
+
 /**
  * XRX invocation protocol:
  * - Native runtime invokes new Runtime.Worker(0). Returns Worker instance worker0.
@@ -34,7 +41,7 @@ import x10.util.Box;
 
     // Print methods for debugging
 
-    @Native("java", "java.lang.System.err.println(#1)")
+    @Native("java", "java.lang.System.err.println(#any)")
     @Native("c++", "x10aux::system_utils::println(x10aux::to_string(#any)->c_str())")
     public native static def println(any:Any) : void;
 
@@ -42,46 +49,32 @@ import x10.util.Box;
     @Native("c++", "x10aux::system_utils::println(\"\")")
     public native static def println() : void;
 
-    @Native("java", "java.lang.System.err.printf(#4, #5)")
+    @Native("java", "java.lang.System.err.printf(#fmt, #t)")
     @Native("c++", "x10aux::system_utils::printf(#fmt, #t)")
     public native static def printf[T](fmt:String, t:T) : void;
 
-    // Configuration options
-
-    @Native("java", "x10.runtime.impl.java.Runtime.NO_STEALS")
-    @Native("c++", "x10aux::no_steals()")
-    public static NO_STEALS = false;
-
-    /**
-     * The initial number of worker threads
-     */
-    @Native("java", "x10.runtime.impl.java.Runtime.INIT_THREADS")
-    @Native("c++", "x10aux::num_threads()")
-    public static INIT_THREADS = 1;
-
-    /**
-     * An upper bound on the number of worker threads
-     */
-    @Native("java", "x10.runtime.impl.java.Runtime.MAX_THREADS")
-    @Native("c++", "x10aux::max_threads()")
-    public static MAX_WORKERS = 1000;
-
-    @Native("java", "x10.runtime.impl.java.Runtime.STATIC_THREADS")
-    @Native("c++", "x10aux::static_threads()")
-    public static STATIC_THREADS = false;
-
     // Native runtime interface
+
+    @Native("c++", "PLATFORM_MAX_THREADS")
+    private static PLATFORM_MAX_THREADS: Int = Int.MAX_VALUE;
+
+    @Native("c++", "DEFAULT_STATIC_THREADS")
+    private static DEFAULT_STATIC_THREADS: Boolean = false;
+
+    @Native("java", "x10.runtime.impl.java.Runtime.loadenv()")
+    @Native("c++", "x10aux::loadenv()")
+    private static native def loadenv():x10.util.HashMap[String,String];
 
     /**
      * Run body at place(id).
      * May be implemented synchronously or asynchronously.
      * Body cannot spawn activities, use clocks, or raise exceptions.
      */
-    @Native("java", "x10.runtime.impl.java.Runtime.runClosureAt(#1, #2)")
+    @Native("java", "x10.runtime.impl.java.Runtime.runClosureAt(#id, #body)")
     @Native("c++", "x10aux::run_closure_at(#id, #body)")
     static def runClosureAt(id:Int, body:()=>void):void { body(); }
 
-    @Native("java", "x10.runtime.impl.java.Runtime.runClosureCopyAt(#1, #2)")
+    @Native("java", "x10.runtime.impl.java.Runtime.runClosureCopyAt(#id, #body)")
     @Native("c++", "x10aux::run_closure_at(#id, #body)")
     static def runClosureCopyAt(id:Int, body:()=>void):void { body(); }
 
@@ -92,53 +85,17 @@ import x10.util.Box;
         dealloc(closure);
     }
 
-    // must be called once XRX is initialized prior to sending messages
+    /**
+     * Must be called once XRX is initialized prior to sending messages.
+     */
     @Native("c++", "x10rt_registration_complete()")
     @Native("java", "x10.x10rt.X10RT.registration_complete()")
     static native def x10rt_registration_complete():void;
 
-    //Work-Stealing Runtime Related Interface
-    public static def wsProcessEvents():void {
-        event_probe();
-    }
-    /*
-     * Run a ws frame in local or remote.
-     * The frame is in the body, and should be in the heap
-     */
-    public static def wsRunAsync(id:Int, body:()=>void):void {
-        if(id == here.id){
-            val closure:()=>void = deepCopy(body);
-            closure();
-            dealloc(closure);
-        }
-        else{
-            val closure:()=>void = ()=>@x10.compiler.RemoteInvocation {
-                body(); //just execute the 
-            };
-            runClosureCopyAt(id, closure);
-            dealloc(closure);
-        }
-    }
-    /* 
-     * Run a ws command in local or remote, such as a finish join action, or stop all workers action
-     */
-    public static def wsRunCommand(id:Int, body:()=>void):void {
-        if(id == here.id){
-            body();
-        }
-        else {
-            val closure:()=>void = ()=>@x10.compiler.RemoteInvocation {
-                body(); //just execute the 
-            };
-            runClosureAt(id, closure);
-            dealloc(closure);
-        }
-    }
-    
     /**
      * Deep copy.
      */
-    @Native("java", "x10.runtime.impl.java.Runtime.<#1>deepCopy(#4)")
+    @Native("java", "x10.runtime.impl.java.Runtime.<#T$box>deepCopy(#o)")
     @Native("c++", "x10aux::deep_copy<#T >(#o)")
     static native def deepCopy[T](o:T):T;
 
@@ -151,41 +108,161 @@ import x10.util.Box;
 
     // Accessors for native performance counters
 
+    static PRINT_STATS = false;
+
     @Native("c++","x10aux::asyncs_sent")
-    static def getAsyncsSent() = 0L;
+    static def getAsyncsSent():Long = 0L;
 
     @Native("c++","x10aux::asyncs_sent = #v")
-    static def setAsyncsSent(v:Long) { }
+    static def setAsyncsSent(v:Long):void { }
 
     @Native("c++","x10aux::asyncs_received")
-    static def getAsyncsReceived() = 0L;
+    static def getAsyncsReceived():Long = 0L;
 
     @Native("c++","x10aux::asyncs_received = #v")
-    static def setAsyncsReceived(v:Long) { }
+    static def setAsyncsReceived(v:Long):void { }
 
     @Native("c++","x10aux::serialized_bytes")
-    static def getSerializedBytes() = 0L;
+    static def getSerializedBytes():Long = 0L;
 
     @Native("c++","x10aux::serialized_bytes = #v")
-    static def setSerializedBytes(v:Long) { }
+    static def setSerializedBytes(v:Long):void { }
 
     @Native("c++","x10aux::deserialized_bytes")
-    static def getDeserializedBytes() = 0L;
+    static def getDeserializedBytes():Long = 0L;
 
     @Native("c++","x10aux::deserialized_bytes = #v")
-    static def setDeserializedBytes(v:Long) { }
+    static def setDeserializedBytes(v:Long):void { }
 
     // Methods for explicit memory management
 
     @Native("c++", "x10::lang::Object::dealloc_object((x10::lang::Object*)#o.operator->())")
-    public static def deallocObject (o:Object) { }
+    public static def deallocObject (o:Object):void { }
 
     @Native("c++", "x10aux::dealloc(#o.operator->())")
-    public static def dealloc[T] (o:()=>T) { }
+    public static def dealloc[T] (o:()=>T):void { }
 
     @Native("c++", "x10aux::dealloc(#o.operator->())")
-    public static def dealloc (o:()=>void) { }
+    public static def dealloc (o:()=>void):void { }
 
+    // Configuration options
+
+    private static def x10_strict_finish():Boolean {
+        try {
+            val v = env.getOrThrow("X10_STRICT_FINISH");
+            return !(v.equalsIgnoreCase("false") || v.equalsIgnoreCase("f") || v.equals("0"));
+        } catch (NoSuchElementException) {
+        }
+        return false;
+    }
+
+    /**
+     * The initial number of worker threads
+     */
+    private static def x10_nthreads():Int {
+        var v:Int = 0;
+        try {
+            v = Int.parse(env.getOrThrow("X10_NTHREADS"));
+        } catch (NoSuchElementException) {
+        } catch (NumberFormatException) {
+        }
+        if (v <= 0) v = 1;
+        if (v > PLATFORM_MAX_THREADS) v = PLATFORM_MAX_THREADS;
+        return v;
+    }
+
+    /**
+     * An upper bound on the number of worker threads
+     */
+    private static def x10_max_threads():Int {
+        var v:Int = 0;
+        try {
+           v = Int.parse(env.getOrThrow("X10_MAX_THREADS"));
+       } catch (NoSuchElementException) {
+       } catch (NumberFormatException) {
+       }
+       if (v <= 0) v = NTHREADS;
+       if (!STATIC_THREADS && v < 1000) v = 1000;
+       if (v > PLATFORM_MAX_THREADS) v = PLATFORM_MAX_THREADS;
+       return v;
+    }
+
+    private static def x10_static_threads():Boolean {
+        try {
+            val v = env.getOrThrow("X10_STATIC_THREADS");
+            return !(v.equalsIgnoreCase("false") || v.equalsIgnoreCase("f") || v.equals("0"));
+        } catch (NoSuchElementException) {
+        }
+        return DEFAULT_STATIC_THREADS;
+    }
+
+    /**
+     * The number of logical processors available on the host.
+     */
+    @Native("c++", "x10aux::num_local_cores")
+    @Native("java", "java.lang.Runtime.getRuntime().availableProcessors()")
+    public native static def availableProcessors():Int;
+
+
+    @PerProcess static staticMonitor = new Monitor();
+    @PerProcess static env = loadenv();
+    @PerProcess public static STRICT_FINISH = x10_strict_finish();
+    @PerProcess public static NTHREADS = x10_nthreads();
+    @PerProcess public static MAX_THREADS = x10_max_threads();
+    @PerProcess public static STATIC_THREADS = x10_static_threads();
+
+    //Work-Stealing Runtime Related Interface
+    
+    public static def wsInit():void {
+        pool.wsBlockedContinuations = new Deque();
+    }
+    
+    public static def wsFIFO():Deque {
+        return worker().wsfifo;
+    }
+    
+    public static def wsProcessEvents():void {
+        event_probe();
+    }
+
+    /*
+     * Run a ws frame in local or remote.
+     * The frame is in the body, and should be in the heap
+     */
+    public static def wsRunAsync(id:Int, body:()=>void):void {
+        if (id == hereInt()) {
+            val copy = deepCopy(body);
+            copy();
+            dealloc(copy);
+        } else {
+            runClosureCopyAt(id, body);
+        }
+        dealloc(body);
+    }
+
+    /* 
+     * Run a ws command in local or remote, such as a finish join action, or stop all workers action
+     */
+    public static def wsRunCommand(id:Int, body:()=>void):void {
+        runClosureAt(id, body);
+    }
+
+    public static def wsBlock(k:Object) {
+        pool.wsBlockedContinuations.push(k);
+    }
+
+    public static def wsUnblock() {
+        val src = pool.wsBlockedContinuations;
+        val dst = wsFIFO();
+        var k:Object;
+        while ((k = src.poll()) != null) dst.push(k);
+    }
+
+    public static def wsEnd() {
+        pool.wsEnd = true;
+    }
+
+    public static def wsEnded() = pool.wsEnd;
 
     /**
      * A mortal object is garbage collected when there are no remaining local refs even if remote refs might still exist
@@ -195,7 +272,7 @@ import x10.util.Box;
     @Pinned static class Semaphore {
         private val lock = new Lock();
 
-        private val threads = new Array[Worker](MAX_WORKERS);
+        private val threads = new Array[Worker](MAX_THREADS);
         private var size:Int = 0;
 
         private var permits:Int;
@@ -252,7 +329,7 @@ import x10.util.Box;
         def available():Int = permits;
     }
 
-    @Pinned final static class Worker extends Thread {
+    @Pinned public final static class Worker extends Thread {
         // bound on loop iterations to help j9 jit
         private static BOUND = 100;
 
@@ -268,7 +345,8 @@ import x10.util.Box;
         //Worker Id for CollectingFinish
         val workerId:Int;
 
-        var pool:Pool;
+        //Used for 1:1 mapping between WorkStealing Worker and X10 Worker (Temp Soltuion)
+        val wsfifo = new Deque();
 
         def this(workerId:Int) {
             super("thread-" + workerId);
@@ -289,7 +367,7 @@ import x10.util.Box;
         def steal() = queue.steal() as Activity;
 
         // push activity at the bottom of the deque
-        def push(activity:Activity):void = queue.push(activity);
+        def push(activity:Activity):void { queue.push(activity); }
 
         // run pending activities
         public operator this():void {
@@ -349,10 +427,10 @@ import x10.util.Box;
                 if (latch()) return false;
                 activity = poll();
                 if (activity == null) return false;
-                if (activity.finishState().simpleLatch() != latch) {
-                    push(activity);
-                    return false;
-                }
+//                if (activity.finishState().simpleLatch() != latch) {
+//                    push(activity);
+//                    return false;
+//                }
                 activity.run();
             }
             return true;
@@ -363,7 +441,7 @@ import x10.util.Box;
             if (!STATIC_THREADS) {
                 Thread.park();
             } else {
-                probe();
+                Runtime.probe();
             }
         }
 
@@ -376,8 +454,10 @@ import x10.util.Box;
     }
 
     @Pinned static class Pool {
-        val latch:SimpleLatch;
-
+        val latch = new SimpleLatch();
+        
+        var wsEnd:Boolean = false;
+        
         private var size:Int; // the number of workers in the pool
 
         private var spares:Int = 0; // the number of spare workers in the pool
@@ -388,31 +468,20 @@ import x10.util.Box;
 
         private val semaphore = new Semaphore(0);
 
+        var wsBlockedContinuations:Deque = null;
+
         // the workers in the pool
-        private val workers:Array[Worker](1){rail};
+        private val workers = new Array[Worker](MAX_THREADS);
 
-        def this(size:Int) {
-            this.size = size;
-            this.latch = new SimpleLatch();
-            val workers = new Array[Worker](MAX_WORKERS);
-
-            // main worker
+        operator this(n:Int):void {
+            size = n;
             workers(0) = worker();
-
-            // other workers
-            for (var i:Int = 1; i<size; i++) {
+            for (var i:Int = 1; i<n; i++) {
                 workers(i) = new Worker(i);
             }
-            this.workers = workers;
-        }
-
-        operator this():void {
-            val s = size;
-            for (var i:Int = 1; i<s; i++) {
-                workers(i).pool = this;
+            for (var i:Int = 1; i<n; i++) {
                 workers(i).start();
             }
-            workers(0).pool = this;
             workers(0)();
             while (size > dead) Worker.park();
         }
@@ -429,12 +498,11 @@ import x10.util.Box;
                 // allocate and start a new worker
                 val i = size++;
                 lock.unlock();
-                if (i >= MAX_WORKERS) {
+                if (i >= MAX_THREADS) {
                     println("TOO MANY THREADS... ABORTING");
                     System.exit(1);
                 }
                 val worker = new Worker(i);
-                worker.pool = this;
                 workers(i) = worker;
                 worker.start();
             }
@@ -467,12 +535,13 @@ import x10.util.Box;
                 if (null != activity || latch()) return activity;
                 // go to sleep if too many threads are running
                 semaphore.yield(worker);
+                if (null != activity || latch()) return activity;
                 // try network
                 event_probe();
                 activity = worker.poll();
                 if (null != activity || latch()) return activity;
                 // try random worker
-                if (next < MAX_WORKERS && null != workers(next)) { // avoid race with increase method
+                if (next < MAX_THREADS && null != workers(next)) { // avoid race with increase method
                     activity = workers(next).steal();
                 }
                 if (++next == size) next = 0;
@@ -482,36 +551,14 @@ import x10.util.Box;
         def size() = size;
     }
 
-    // static fields
-
-    static PRINT_STATS = false;
-
-    // runtime instance associated with each place
-    public static runtime = PlaceLocalHandle[Runtime]();
-
-    // instance fields
-
-    // per process members
-    transient val pool:Pool;
-
-    // per place members
-    private transient val atomicMonitor:Monitor;
-    private transient val staticMonitor:Monitor;
-    public transient val finishStates:FinishState.FinishStates;
-
-    // constructor
-
-    private def this(pool:Pool):Runtime {
-        this.pool = pool;
-        this.atomicMonitor = new Monitor();
-        this.staticMonitor = new Monitor();
-        this.finishStates = new FinishState.FinishStates();
-    }
+    @PerProcess static pool = new Pool();
+    @PerProcess public static atomicMonitor = new Monitor();
+    @PerProcess static finishStates = new FinishState.FinishStates();
 
     /**
      * Return the current worker
      */
-    static def worker():Worker = Thread.currentThread() as Worker;
+    public static def worker():Worker = Thread.currentThread() as Worker;
 
     /**
      * Return the current worker id
@@ -522,7 +569,7 @@ import x10.util.Box;
      * Return the number of workers currently in the pool
      * (can increase, cannot decrease)
      */
-    public static def poolSize():Int = runtime().pool.size();
+    public static def poolSize():Int = pool.size();
 
     /**
      * Return the current activity
@@ -532,7 +579,7 @@ import x10.util.Box;
     /**
      * Return the current place
      */
-    @Native("c++", "x10::lang::Place_methods::_make(x10aux::here)")
+    @Native("c++", "x10::lang::Place::_make(x10aux::here)")
     public static def home():Place = Thread.currentThread().home();
 
     /**
@@ -554,12 +601,9 @@ import x10.util.Box;
      * @param body Main activity
      */
     public static def start(init:()=>void, body:()=>void):void {
-        // initialize thread pool for the current process
-        val pool = new Pool(INIT_THREADS);
-
         try {
+            // initialize thread pool for the current process
             // initialize runtime
-            runtime.set(new Runtime(pool));
             x10rt_registration_complete();
 
             if (hereInt() == 0) {
@@ -569,11 +613,11 @@ import x10.util.Box;
 
                 // wait for thread pool to die
                 // (happens when main activity terminates)
-                pool();
+                pool(NTHREADS);
 
                 // root finish has terminated, kill remote processes if any
                 for (var i:Int=1; i<Place.MAX_PLACES; i++) {
-                    runClosureAt(i, ()=> @x10.compiler.RemoteInvocation {runtime().pool.latch.release();});
+                    runClosureAt(i, ()=> @x10.compiler.RemoteInvocation {pool.latch.release();});
                 }
 
                 // we need to call waitForFinish here to see the exceptions thrown by main if any
@@ -581,7 +625,7 @@ import x10.util.Box;
             } else {
                 // wait for thread pool to die
                 // (happens when a kill signal is received from place 0)
-                pool();
+                pool(NTHREADS);
             }
         } finally {
             if (PRINT_STATS) {
@@ -600,7 +644,7 @@ import x10.util.Box;
     /**
      * Run async at
      */
-    public static def runAsync(place:Place, clocks:Array[Clock](1){rail}, body:()=>void):void {
+    public static def runAsync(place:Place, clocks:Rail[Clock], body:()=>void):void {
         // Do this before anything else
         val a = activity();
         a.ensureNotInAtomic();
@@ -636,7 +680,7 @@ import x10.util.Box;
     /**
      * Run async
      */
-    public static def runAsync(clocks:Array[Clock](1){rail}, body:()=>void):void {
+    public static def runAsync(clocks:Rail[Clock], body:()=>void):void {
         // Do this before anything else
         val a = activity();
         a.ensureNotInAtomic();
@@ -708,8 +752,12 @@ import x10.util.Box;
     public static def runAt(place:Place, body:()=>void):void {
         Runtime.ensureNotInAtomic();
         if (place.id == hereInt()) {
-            deepCopy(body)();
-            return;
+            try {
+                deepCopy(body)();
+                return;
+            } catch (t:Throwable) {
+                throw deepCopy(t);
+            }
         }
         @StackAllocate val me = @StackAllocate new RemoteControl();
         val box = GlobalRef(me);
@@ -758,7 +806,11 @@ import x10.util.Box;
     public static def evalAt[T](place:Place, eval:()=>T):T {
         Runtime.ensureNotInAtomic();
         if (place.id == hereInt()) {
-            return deepCopy(deepCopy(eval)());
+            try {
+                return deepCopy(deepCopy(eval)());
+            } catch (t:Throwable) {
+                throw deepCopy(t);
+            }
         }
         @StackAllocate val me = @StackAllocate new Remote[T]();
         val box = GlobalRef(me);
@@ -769,7 +821,7 @@ import x10.util.Box;
                 val result = eval();
                 async at(box.home) {
                     val me2 = box();
-                    me2.t = result;
+                    me2.t = new Box[T](result);
                     me2.clockPhases = clockPhases;
                     me2.release();
                 }
@@ -795,25 +847,25 @@ import x10.util.Box;
     // initialization of static fields in c++ backend
 
     public static def StaticInitBroadcastDispatcherLock() {
-        runtime().staticMonitor.lock();
+        staticMonitor.lock();
     }
 
     public static def StaticInitBroadcastDispatcherAwait() {
-        runtime().staticMonitor.await();
+        staticMonitor.await();
     }
 
     public static def StaticInitBroadcastDispatcherUnlock() {
-        runtime().staticMonitor.unlock();
+        staticMonitor.unlock();
     }
 
     public static def StaticInitBroadcastDispatcherNotify() {
-        runtime().staticMonitor.release();
+        staticMonitor.release();
     }
 
     // atomic and when
 
     public static def enterAtomic() {
-        runtime().atomicMonitor.lock();
+        atomicMonitor.lock();
         val a = activity();
         if (a != null)
            a.pushAtomic();
@@ -829,28 +881,25 @@ import x10.util.Box;
         val a = activity();
         if (a != null)
            a.popAtomic();
-        runtime().atomicMonitor.release();
+        if (null != pool.wsBlockedContinuations) wsUnblock();
+        atomicMonitor.release();
+    }
+
+    public static def exitWSWhen(b:Boolean) {
+        val a = activity();
+        if (a != null)
+           a.popAtomic();
+        if (b) {
+            wsUnblock();
+            atomicMonitor.release();
+        } else {
+            atomicMonitor.unlock();
+        }
     }
 
     public static def awaitAtomic():void {
-        runtime().atomicMonitor.await();
+        atomicMonitor.await();
     }
-
-    // clocks
-
-    /**
-     * Next statement = next on all clocks in parallel.
-     */
-    @Native("cuda", "__syncthreads()")
-    public static def next():void {
-        ensureNotInAtomic();
-        activity().clockPhases().next();
-    }
-
-    /**
-     * Resume statement = resume on all clocks in parallel.
-     */
-    public static def resume():void = activity().clockPhases().resume();
 
     // finish
 
@@ -913,7 +962,7 @@ import x10.util.Box;
     public static def makeOffer[T](t:T) {
         val state = activity().finishState();
 //      Console.OUT.println("Place(" + here.id + ") Runtime.makeOffer: received " + t);
-        (state as FinishState.CollectingFinish[T]).accept(t,workerId());
+        (state as FinishState.CollectingFinish[T]).accept(t,workerId()); //Warning: This is an unsound cast because X10 currently does not perform constraint solving at runtime for generic parameters.
     }
 
     public static def stopCollectingFinish[T](f:FinishState):T {
@@ -936,16 +985,16 @@ import x10.util.Box;
     }
 
     // notify the pool a worker is about to execute a blocking operation
-    static def increaseParallelism():void {
+    public static def increaseParallelism():void {
         if (!STATIC_THREADS) {
-            runtime().pool.increase();
+            pool.increase();
         }
     }
 
     // notify the pool a worker resumed execution after a blocking operation
-    static def decreaseParallelism(n:Int) {
+    public static def decreaseParallelism(n:Int) {
         if (!STATIC_THREADS) {
-            runtime().pool.decrease(n);
+            pool.decrease(n);
         }
     }
 }

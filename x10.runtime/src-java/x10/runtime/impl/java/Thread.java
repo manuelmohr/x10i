@@ -12,8 +12,10 @@
 package x10.runtime.impl.java;
 
 import x10.lang.Place;
+import x10.rtt.NamedType;
 import x10.rtt.RuntimeType;
 import x10.rtt.Type;
+import x10.rtt.Types;
 import x10.x10rt.X10RT;
 
 /**
@@ -22,18 +24,32 @@ import x10.x10rt.X10RT;
  * @author Raj Barik, Vivek Sarkar
  * @author tardieu
  */
-public class Thread extends java.lang.Thread {
-    public RuntimeType<?> getRTT() { return null; }
-    public Type<?> getParam(int i) { return null; }
+public class Thread extends java.lang.Thread implements x10.core.RefI {
+	private static final long serialVersionUID = 1L;
+	public static final RuntimeType<Thread> $RTT = new NamedType<Thread>("x10.lang.Thread", Thread.class, new Type<?>[] { Types.OBJECT });
+    public RuntimeType<?> $getRTT() { return $RTT; }
+    public Type<?> $getParam(int i) { return null; }
 
 	public static Thread currentThread() {
 		return (Thread) java.lang.Thread.currentThread();
 	}
 
-	private final Place home;    // the current place
+	private Place home;    // the current place
 	
 	public x10.core.fun.VoidFun_0_0 body;
 
+	public Thread(java.lang.System[] $dummy) {}
+
+	public Thread $init(String name) {
+	    setName(name);
+        if (!(java.lang.Thread.currentThread() instanceof Thread)) {
+            home = Place.place(X10RT.here());
+        } else {
+            home = currentThread().home();
+        }
+        return this;
+	}
+	
     public Thread(String name) {
         super(name);
         if (!(java.lang.Thread.currentThread() instanceof Thread)) {

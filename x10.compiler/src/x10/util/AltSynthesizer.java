@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import polyglot.ast.Allocation;
 import polyglot.ast.Assign;
 import polyglot.ast.Assign.Operator;
 import polyglot.ast.Binary;
@@ -23,8 +24,10 @@ import polyglot.ast.BooleanLit;
 import polyglot.ast.Branch;
 import polyglot.ast.CanonicalTypeNode;
 import polyglot.ast.Catch;
+import polyglot.ast.ConstructorCall;
 import polyglot.ast.Expr;
 import polyglot.ast.Field;
+import polyglot.ast.FieldAssign;
 import polyglot.ast.FlagsNode;
 import polyglot.ast.FloatLit;
 import polyglot.ast.For;
@@ -37,14 +40,15 @@ import polyglot.ast.IntLit;
 import polyglot.ast.Labeled;
 import polyglot.ast.Local;
 import polyglot.ast.LocalDecl;
+import polyglot.ast.New;
 import polyglot.ast.NodeFactory;
+import polyglot.ast.Special;
 import polyglot.ast.Stmt;
 import polyglot.ast.StringLit;
 import polyglot.ast.Term;
 import polyglot.ast.Try;
 import polyglot.ast.TypeNode;
 import polyglot.ast.Unary;
-import polyglot.frontend.Job;
 import polyglot.types.ClassType;
 import polyglot.types.Context;
 import polyglot.types.Flags;
@@ -61,12 +65,12 @@ import polyglot.visit.ContextVisitor;
 import x10.ast.SettableAssign;
 import x10.ast.StmtExpr;
 import x10.ast.StmtSeq;
+import x10.ast.Tuple;
 import x10.ast.X10Call;
 import x10.ast.X10Cast;
 import x10.ast.X10Formal;
-import x10.constraint.XFailure;
+import x10.ast.X10NodeFactory_c;
 import x10.constraint.XTerm;
-import x10.types.ConstrainedType;
 import x10.types.MethodInstance;
 import x10.types.X10FieldInstance;
 import x10.types.X10LocalDef;
@@ -216,6 +220,17 @@ public class AltSynthesizer {
     public IntLit createIntLit(int val) {
         IntLit lit = nf.IntLit(Position.COMPILER_GENERATED, IntLit.INT, val);
         return (IntLit) lit.type(ts.Int());
+    }
+    
+    /**
+     * Create an IntLit node representing a given long literal.
+     * 
+     * @param val the long value to be represented
+     * @return an IntLit node representing the literal long val
+     */
+    public IntLit createLongLit(long val) {
+        IntLit lit = nf.IntLit(Position.COMPILER_GENERATED, IntLit.LONG, val);
+        return (IntLit) lit.type(ts.Long());
     }
 
     /**
@@ -437,6 +452,39 @@ public class AltSynthesizer {
 
     /**
      * @param pos
+     * @param prop
+     * @param init
+     * @param visitor 
+     * @return
+     */
+    public FieldAssign createFieldAssign(Position pos, X10FieldInstance fi, Expr init, ContextVisitor visitor) {
+        Expr target = createThis(pos, fi.container());
+        return createFieldAssign(pos, target, fi, init, visitor);
+    }
+
+    /**
+     * @param pos
+     * @param prop
+     * @param init
+     * @param visitor 
+     * @return
+     */
+    public FieldAssign createFieldAssign(Position pos, Expr target, X10FieldInstance fi, Expr init, ContextVisitor visitor) {
+        Type lbt = Types.baseType(fi.rightType());
+        Type rbt = Types.baseType(init.type());
+        if (!ts.typeEquals(rbt, lbt, visitor.context())){
+            init = createCoercion(pos, init, lbt, visitor);
+        }
+        Id id = nf.Id(pos, fi.name());
+        FieldAssign fa = nf.FieldAssign(pos, target, id, Assign.ASSIGN, init);
+        fa = fa.fieldInstance(fi);
+        fa = fa.targetImplicit(false);
+        fa = (FieldAssign) fa.type(lbt);
+        return fa;
+    }
+
+    /**
+     * @param pos
      * @param expr
      * @param type
      * @return
@@ -476,23 +524,10 @@ public class AltSynthesizer {
      */
     public X10Cast createCoercion(Position pos, Expr expr, Type toType, ContextVisitor visitor) {
         X10Cast cast;
-        try {
-            // FIXME: Have to typeCheck, because the typechecker has already desugared this to a conversion chain
-            cast = nf.X10Cast(pos, nf.CanonicalTypeNode(pos, toType), expr, Converter.ConversionType.UNKNOWN_IMPLICIT_CONVERSION);
-            cast = (X10Cast) cast.typeCheck(visitor);
-            return cast;
-        } catch (SemanticException e) {
-            // work around for XTENLANG-1335
-            try {
-                cast = nf.X10Cast(pos, nf.CanonicalTypeNode(pos, toType), expr, Converter.ConversionType.UNCHECKED );
-                cast = (X10Cast) cast.typeCheck(visitor);
-                return cast;
-            } catch (SemanticException x) {
-                // return null;
-            }
-            // end work around for XTENLANG-1335
-            return null;
-        }
+        // FIXME: Have to typeCheck, because the typechecker has already desugared this to a conversion chain
+        cast = nf.X10Cast(pos, nf.CanonicalTypeNode(pos, toType), expr, Converter.ConversionType.UNKNOWN_IMPLICIT_CONVERSION);
+        cast = (X10Cast) cast.typeCheck(visitor);
+        return cast;
     }
 
     // method calls
@@ -898,8 +933,8 @@ public class AltSynthesizer {
      * @return the LocalDecl representing the declaration of the local variable
      */
     public LocalDecl createLocalDecl(Position pos, Flags flags, Name name, Expr init) {
-        if (null == init.type() || init.type().isVoid()) {
-            throw new InternalCompilerError("trying to create a LocalDecl " +name+ " but init has null or void type, init=" +init, pos);
+        if (null == init || null == init.type() || init.type().isVoid()) {
+            throw new InternalCompilerError("trying to create a LocalDecl " +name+ " but init is null or has null or void type, init=" +init, pos);
         }
         return createLocalDecl(pos, flags, name, init.type(), init);
     }
@@ -929,7 +964,7 @@ public class AltSynthesizer {
     public LocalDecl createLocalDecl(Position pos, LocalDef def, Expr init) {
         return nf.LocalDecl( pos.markCompilerGenerated(), 
                              nf.FlagsNode(pos, def.flags()),
-                             nf.CanonicalTypeNode(pos, def.type().get()), 
+                             nf.CanonicalTypeNode(pos, def.type()), 
                              nf.Id(pos, def.name()),
                              init ).localDef(def);
     }
@@ -945,7 +980,7 @@ public class AltSynthesizer {
     public LocalDecl createLocalDecl(X10Formal formal, Expr init) {
         return nf.LocalDecl( formal.position(),
                              formal.flags(),
-                             formal.type(),
+                             formal.type().typeRef(formal.localDef().type()), // adjust ref
                              formal.name(),
                              init ).localDef(formal.localDef());
     }
@@ -978,11 +1013,7 @@ public class AltSynthesizer {
      * binding is inconsistent
      */
     public static Type addSelfConstraint(Type type, XTerm value) {
-        try {
-            return Types.addSelfBinding(type, value);
-        } catch (XFailure e) {
-            return null;
-        }
+        return Types.addSelfBinding(type, value);
     }
 
     // helper methods that return method instances
@@ -1089,6 +1120,47 @@ public class AltSynthesizer {
         }
     }
 
+    // constructor splitter synthesize methods
+    
+
+    /**
+     * @param n
+     * @param pos
+     * @return
+     */
+    public ConstructorCall createConstructorCall(Expr target, New n) {
+        Position pos = n.position(); // DEBUG
+        List<TypeNode> types = n.typeArguments(); // DEBUG
+        ConstructorCall cc = nf.X10ThisCall(n.position(), n.typeArguments(), n.arguments());
+        cc = cc.target(target);
+        cc = cc.constructorInstance(n.constructorInstance());
+        return cc;
+    }
+
+    /**
+     * @param pos
+     * @param type
+     * @return
+     * TODO: move to Synthesizer
+     */
+    public Special createThis(Position pos, Type type) {
+        return (Special) nf.This(pos).type(type);
+    }
+
+    /**
+     * Create an artificial Allocation node.
+     * 
+     * @param pos the Position of the allocation
+     * @param type the Type of the object (or struct) being allocated
+     * @param typeArgs 
+     * @return a synthesized Allocation node.
+     * TODO: move to Synthesizer
+     */
+    public Allocation createAllocation(Position pos, Type type, List<TypeNode> typeArgs) {
+        return (Allocation) ((Allocation) ((X10NodeFactory_c) nf).Allocation(pos).type(type)).typeArguments(typeArgs);
+    }
+
+    
     // local helper methods
 
     /**
@@ -1126,6 +1198,15 @@ public class AltSynthesizer {
             argTypes.add(a.type());
         }
         return argTypes;
+    }
+
+    public Expr createTuple(Position pos, int numElems, Expr initForAllElems) {
+        List<Expr> tupleVals  = new ArrayList<Expr>(numElems);
+        for (int i=0; i<numElems; i++) {
+            tupleVals.add(initForAllElems);
+        }
+        Type elemType = ts.Array(initForAllElems.type());
+        return nf.Tuple(pos, tupleVals).type(elemType);
     }
 
 }

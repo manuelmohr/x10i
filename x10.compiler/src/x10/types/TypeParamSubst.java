@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import polyglot.types.ContainerType;
 import polyglot.types.LazyRef;
 import polyglot.types.Ref;
 import polyglot.types.Type;
@@ -66,12 +67,19 @@ public class TypeParamSubst {
 		this.typeParameters = tps == null ? Collections.<ParameterType>emptyList() : tps;
 	}
 
+    public ArrayList<Type> copyTypeArguments() {
+        return new ArrayList<Type>(typeArguments);
+    }
+    public ArrayList<ParameterType> copyTypeParameters() {
+        return new ArrayList<ParameterType>(typeParameters);
+    }
+
 	public static boolean isSameParameter(ParameterType pt1, ParameterType pt2) {
 		return pt1 == pt2 ||
 		(Types.get(pt1.def()) == Types.get(pt2.def()) && pt1.name().equals(pt2.name()));
 	}
 
-	private Type reinstantiateType(Type t) {
+	private Type reinstantiateType(Type t, boolean forceTypeArguments) {
 		if (t instanceof ParameterType) { // always eager
 			ParameterType pt = (ParameterType) t;
 			for (int i = 0; i < typeParameters.size(); i++) {
@@ -94,6 +102,7 @@ public class TypeParamSubst {
 			MacroType mt = (MacroType) t;
 			if (eager) {
 			    mt = mt.definedType(reinstantiate(mt.definedType()));
+			    mt = (MacroType) mt.formalNames(reinstantiate(mt.formalNames()));
 			    mt = (MacroType) mt.formalTypes(reinstantiate(mt.formalTypes()));
 			    mt = (MacroType) mt.typeParameters(reinstantiate(mt.typeParameters()));
 			    mt = mt.guard(reinstantiate(mt.guard()));
@@ -111,7 +120,7 @@ public class TypeParamSubst {
 				return ct;
 			List<Type> typeArgs = ct.typeArguments();
 			List<ParameterType> tParams = ct.x10Def().typeParameters();
-			if (typeArgs == null && !tParams.isEmpty()) {
+			if (typeArgs == null && forceTypeArguments && !tParams.isEmpty()) {
 			    typeArgs = new ArrayList<Type>(tParams);
 			}
 			if (typeArgs != null && typeArgs.size() < tParams.size()) {
@@ -123,7 +132,7 @@ public class TypeParamSubst {
 			}
 			ct = ct.typeArguments(reinstantiate(typeArgs));
 			if (ct.isMember()) {
-				ct = ct.container(reinstantiate(ct.container()));
+				ct = ct.container((ContainerType) reinstantiateType(ct.container(), ct.isInnerClass()));
 			}
 			return ct;
 		}
@@ -187,7 +196,7 @@ public class TypeParamSubst {
 			return t;
 		}
 		if (t instanceof Ref<?>) return (T) reinstantiateRef((Ref<?>) t);
-		if (t instanceof Type) return (T) reinstantiateType((Type) t);
+		if (t instanceof Type) return (T) reinstantiateType((Type) t, true);
 		if (t instanceof X10FieldInstance) return (T) reinstantiateFI((X10FieldInstance) t);
 		if (t instanceof MethodInstance) return (T) reinstantiateMI((MethodInstance) t);
 		if (t instanceof X10ConstructorInstance) return (T) reinstantiateCI((X10ConstructorInstance) t);
@@ -197,9 +206,16 @@ public class TypeParamSubst {
 		if (t instanceof TypeConstraint) return (T) reinstantiateTypeConstraint((TypeConstraint) t);
 		if (t instanceof X10LocalInstance) return (T) reinstantiateLI((X10LocalInstance) t);
 		//if (t instanceof X10LocalDef) return (T) reinstantiateLD((X10LocalDef) t);
+		if (t instanceof TypeParamSubst) return (T) reinstantiateTPS((TypeParamSubst) t);
         assert false : t;
 		return t;
 	}
+
+    private TypeParamSubst reinstantiateTPS(TypeParamSubst t) {
+        List<? extends Type> tas = reinstantiate(t.typeArguments);
+        List<ParameterType> tps = reinstantiate(t.typeParameters);
+        return new TypeParamSubst(ts, tas, tps, eager);
+    }
 
 	private X10LocalInstance reinstantiateLI(X10LocalInstance t) {
 		if (eager) {
@@ -220,6 +236,7 @@ public class TypeParamSubst {
 		    final ClosureInstance fi = t;
 		    ClosureInstance res = new ClosureInstance_c(fi.typeSystem(), fi.position(), Types.ref(fi.def()));
 		    res = (ClosureInstance) res.returnType(reinstantiate(fi.returnType()));
+		    res = (ClosureInstance) res.formalNames(reinstantiate(fi.formalNames()));
 		    res = (ClosureInstance) res.formalTypes(reinstantiate(fi.formalTypes()));
 		    //res = (ClosureInstance) res.throwTypes(reinstantiate(fi.throwTypes()));
 		    res = (ClosureInstance) res.guard(reinstantiate(fi.guard()));
@@ -351,6 +368,7 @@ public class TypeParamSubst {
 		if (eager) {
 		    X10ConstructorInstance ci = t;
 		    ci = (X10ConstructorInstance) ci.returnType(reinstantiate(ci.returnType()));
+		    ci = (X10ConstructorInstance) ci.formalNames(reinstantiate(ci.formalNames()));
 		    ci = (X10ConstructorInstance) ci.formalTypes(reinstantiate(ci.formalTypes()));
 		    //ci = (X10ConstructorInstance) ci.throwTypes(reinstantiate(ci.throwTypes()));
 		    ci = (X10ConstructorInstance) ci.container(reinstantiate(ci.container()));
@@ -364,7 +382,9 @@ public class TypeParamSubst {
 	private MethodInstance reinstantiateMI(MethodInstance t) {
 		if (eager) {
 		    MethodInstance mi = t;
+		    mi = (MethodInstance) mi.typeParameters(reinstantiate(mi.typeParameters()));
 		    mi = (MethodInstance) mi.returnType(reinstantiate(mi.returnType()));
+		    mi = (MethodInstance) mi.formalNames(reinstantiate(mi.formalNames()));
 		    mi = (MethodInstance) mi.formalTypes(reinstantiate(mi.formalTypes()));
 		    //mi = (X10MethodInstance) mi.throwTypes(reinstantiate(mi.throwTypes()));
 		    mi = (MethodInstance) mi.container(reinstantiate(mi.container()));
@@ -389,6 +409,8 @@ public class TypeParamSubst {
 		if (isIdentityInstantiation()) {
 			return list;
 		}
+		if (list == null)
+		    return null;
 		if (eager) {
 		    boolean changed = false;
 		    List<T> res = new ArrayList<T>();
@@ -401,8 +423,6 @@ public class TypeParamSubst {
 		        return list;
 		    return res;
 		}
-		if (list == null)
-		    return null;
 		return new TransformingList<T, T>(list, new Transformation<T, T>() {
 			public T transform(T o) {
 				return reinstantiate(o);

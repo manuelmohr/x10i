@@ -12,13 +12,25 @@
 package x10.core.io;
 
 import x10.core.Ref;
+import x10.rtt.NamedType;
 import x10.rtt.RuntimeType;
 import x10.rtt.Type;
 
 public class InputStream extends Ref {
   
-    private final java.io.InputStream stream;
+	private static final long serialVersionUID = 1L;
 
+    private java.io.InputStream stream;
+
+    public InputStream(java.lang.System[] $dummy) {
+        super($dummy);
+    }
+    
+    public InputStream $init(java.io.InputStream stream) {
+        this.stream = stream;
+        return this;
+    }
+    
     public InputStream(java.io.InputStream stream) {
         this.stream = stream;
     }
@@ -39,6 +51,15 @@ public class InputStream extends Ref {
         }
     }
     
+    // XTENLANG-2680
+    public int read$O() {
+        try {
+            return stream.read();
+        } catch (java.io.IOException e) {
+            throw x10.core.ThrowableUtilities.getCorrespondingX10Exception(e);
+        }
+    }
+
     public void read(byte[] b, int off, int len) {
         try {
             stream.read(b, off, len);
@@ -55,6 +76,15 @@ public class InputStream extends Ref {
         }
     }
     
+    // XTENLANG-2680
+    public int available$O() {
+        try {
+            return stream.available();
+        } catch (java.io.IOException e) {
+            throw x10.core.ThrowableUtilities.getCorrespondingX10Exception(e);
+        }
+    }
+
     public void skip(int n) {
         try {
             stream.skip(n);
@@ -79,19 +109,20 @@ public class InputStream extends Ref {
         return stream.markSupported();
     }
     
+    // XTENLANG-2680
+    public boolean markSupported$O() {
+        return stream.markSupported();
+    }
+
     //
     // Runtime type information
     //
-    public static final RuntimeType<InputStream> _RTT = new RuntimeType<InputStream>(
+    public static final RuntimeType<InputStream> $RTT = new NamedType<InputStream>(
+        "x10.io.InputStreamReader.InputStream",
         InputStream.class,
         new Type[] { x10.rtt.Types.OBJECT }
-    ) {
-        @Override
-        public String typeName() {
-            return "x10.io.InputStreamReader.InputStream";
-        }
-    };
-    public RuntimeType<?> getRTT() { return _RTT; }
-    public Type<?> getParam(int i) { return null; }
+    );
+    public RuntimeType<?> $getRTT() { return $RTT; }
+    public Type<?> $getParam(int i) { return null; }
 
 }

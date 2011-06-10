@@ -1,7 +1,7 @@
 /*
  * (c) Copyright IBM Corporation 2009
  * 
- * $Id: x10rt_mpi.cc 16467 2010-09-16 20:58:58Z sparksparkspark $
+ * $Id: x10rt_mpi.cc 21708 2011-05-13 18:34:00Z bherta $
  *
  * This file is part of X10 Runtime on MPI layer implementation.
  */
@@ -1059,6 +1059,7 @@ static void x10rt_net_probe_ex (bool network_only) {
                     req->setType(X10RT_REQ_TYPE_RECV);
                 }
                 global_state.pending_recv_list.enqueue(req);
+                if (!network_only) check_pending_receives();
             }
         } else {
             check_pending_sends();
@@ -1100,6 +1101,11 @@ void x10rt_net_remote_op (x10rt_place place, x10rt_remote_ptr victim,
                           x10rt_op_type type, unsigned long long value)
 {
     abort();
+}
+
+void x10rt_net_remote_ops (x10rt_remote_op_params *ops, size_t numOps)
+{
+	abort();
 }
 
 void x10rt_net_team_new (x10rt_place placec, x10rt_place *placev,

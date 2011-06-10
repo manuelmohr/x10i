@@ -44,7 +44,6 @@ import x10.errors.Errors;
 import polyglot.types.Context;
 import x10.types.AtDef;
 import x10.types.X10ClassDef;
-import x10.types.X10Context_c;
 import x10.types.X10MemberDef;
 import x10.types.checker.PlaceChecker;
 import x10.types.constraints.CConstraint;
@@ -95,8 +94,6 @@ public class AtEach_c extends X10ClockedLoop_c implements AtEach, Clocked {
 	    return n;
 	}
 
-	XConstrainedTerm placeTerm;
-
 	@Override
 	public Node buildTypesOverride(TypeBuilder tb) {
 	    TypeSystem ts = (TypeSystem) tb.typeSystem();
@@ -128,11 +125,7 @@ public class AtEach_c extends X10ClockedLoop_c implements AtEach, Clocked {
 	    TypeBuilder tb2 = tb.pushCode(mi);
 
 	    AtEach_c n = (AtEach_c) this.del().visitChildren(tb2);
-	    try {
-	        n = (AtEach_c) n.del().buildTypes(tb2);
-	    } catch (SemanticException e) {
-	        throw new InternalCompilerError("Unexpected error while building types for an ateach statement", position(), e);
-	    }
+	    n = (AtEach_c) n.del().buildTypes(tb2);
 
 	    if (code instanceof X10MemberDef) {
 	        assert mi.thisDef() == ((X10MemberDef) code).thisDef();
@@ -143,28 +136,34 @@ public class AtEach_c extends X10ClockedLoop_c implements AtEach, Clocked {
 
 	@Override
 	public Context enterChildScope(Node child, Context c) {
+		Context oldC = c;
 		if (child == this.body) {
-		    c = c.pushCode(atDef);
-		    ((X10Context_c)c).x10Kind = X10Context_c.X10Kind.At; // this is an at, not an async
+		    c = c.pushAt(atDef);
+		    c.x10Kind = Context.X10Kind.At; // this is an at, not an async
 		}
-		Context xc = c;
 
-		try {
-			// FIXME: this creates a new place term; ideally, it should be the place associated with each
-			// point in the ateach distribution 
-			if (placeTerm == null) {
-				CConstraint d = new CConstraint();
-				XTerm term = PlaceChecker.makePlace();
-				placeTerm = XConstrainedTerm.instantiate(d, term);
-			}
-
-			if (child == body)
-			    xc = (Context) xc.pushPlace(placeTerm);
-		} 
-		catch (XFailure z) {
-			throw new InternalCompilerError("Cannot construct placeTerm from  term  and constraint.");
+		if (child == this.body) {
+		    if (c == oldC)
+		        c = c.pushBlock();
+		    c.setPlace(atDef.placeTerm());
 		}
-		return xc;
+
+		return c;
+	}
+
+	@Override
+	public Node typeCheckOverride(Node parent, ContextVisitor tc) {
+	    Context c = tc.context();
+	    AtDef def = this.atDef();
+	    if (def.placeTerm() == null) {
+	        // FIXME: this creates a new place term; ideally, it should be the place associated with each
+	        // point in the ateach distribution
+	        XConstrainedTerm placeTerm = XConstrainedTerm.make(PlaceChecker.makePlace());
+	        XConstrainedTerm finishPlaceTerm = c.currentFinishPlaceTerm();
+	        def.setPlaceTerm(placeTerm);
+	        def.setFinishPlaceTerm(finishPlaceTerm);
+	    }
+	    return super.typeCheckOverride(parent, tc);
 	}
 
 	@Override

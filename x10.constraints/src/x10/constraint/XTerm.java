@@ -14,6 +14,7 @@ package x10.constraint;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
+import java.util.ArrayList;
 
 /**
  * Constraints constrain XTerms. Thus XTerms are the basic building blocks 
@@ -43,6 +44,13 @@ public abstract class XTerm implements  Serializable, Cloneable {
 	public final XTerm subst(XTerm y, XVar x) {
 	    return subst(y, x, true);
 	}
+	
+	/**
+	 * Returns true only if this term is allowed to occur inside a constraint.
+	 * Terms a&&b, a||b, a==b etc must return false.
+	 * @return
+	 */
+	public abstract boolean okAsNestedTerm();
 
 	// int nextId = 0;
 	
@@ -103,15 +111,20 @@ public abstract class XTerm implements  Serializable, Cloneable {
 		return false;
 	}*/
 
+	public static int TERM_MUST_NOT_BE_BOUND=-1;
+	public static int TERM_PREFERS_BEING_BOUND=1;
+	public static int TERM_SHRUGS_ABOUT_BEING_BOUND=0;
 	/**
+	 * 0 == dont care, bind me if you want
+	 * -1 == must not bind me!
 	 * If true, bind this variable when processing this=t, for
 	 * any term t. In case t also prefers being bound, choose any
 	 * one.
 	 * 
 	 * @return true if this  prefers being bound in a constraint this==t.
 	 */
-	public boolean prefersBeingBound() {
-		return false;
+	public int prefersBeingBound() {
+		return TERM_SHRUGS_ABOUT_BEING_BOUND;
 	}
 
 	/**
@@ -143,4 +156,49 @@ public abstract class XTerm implements  Serializable, Cloneable {
 	public abstract int hashCode();
 	public abstract boolean equals(Object o);
 
+    // Wrote my own visitor, cause the XGraphVisitor is too cumbersome
+    public interface TermVisitor {
+        /**
+         * Visit the term tree.
+         * @param term
+         * @return  A term if normal traversal is to stop, <code>null</code> if it
+         * is to continue.
+         */
+        XTerm visit(XTerm term);
+    }
+    /**
+     * Given a visitor, we traverse the entire term (which is like a tree).
+     * @param visitor
+     * @return If the visitor didn't return any new child, then we return "this" (otherwise we create a clone with the new children)
+     */
+    public XTerm accept(TermVisitor visitor) {
+        // The default implementation for "leave" terms (that do not have any children)
+        XTerm res = visitor.visit(this);
+        if (res!=null) return res;
+        return this;
+    }
+    
+    /**
+     * Return the normal form for this term in this given constraint.
+     * The normal form of a term t in a constraint c, t.nf(c), is a term 
+     * s with the property that 
+     * for all u: s=u.nf(c) iff c |- s=u
+     * From this it follows that s=s.nf(c).
+     * The normal form is computed as nfp(c).term().
+     * @param c
+     * @return
+     */
+    public final XTerm nf(XConstraint c) {
+    	assert c != null;
+    	return nfp(c).term();
+    }
+    
+    /**
+     * Return the promise corresponding to the normal form of the term, 
+     * interning the term if it is not interned already. 
+     * If p is the return value, then guaranteed p!= null and p=p.lookup().
+     * @param c
+     * @return
+     */
+    public abstract XPromise nfp(XConstraint c);
 }

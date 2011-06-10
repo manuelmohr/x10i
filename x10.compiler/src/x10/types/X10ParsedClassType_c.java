@@ -35,12 +35,15 @@ import polyglot.types.Type;
 import polyglot.types.TypeObject;
 import polyglot.types.TypeSystem;
 import polyglot.types.Types;
+import polyglot.types.Context;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import polyglot.util.Transformation;
 import polyglot.util.TransformingList;
 import polyglot.util.TypedList;
-import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
+import polyglot.util.CollectionUtil;
+import polyglot.visit.InnerClassRemover;
+import x10.util.CollectionFactory;
 import x10.constraint.XFailure;
 import x10.constraint.XVar;
 import x10.types.constraints.CConstraint;
@@ -68,11 +71,13 @@ implements X10ParsedClassType
     // We ignore all constraints (we only handle generics)
     private Set<X10ParsedClassType_c> cacheDirectSupertypes = null;
     private Set<X10ParsedClassType_c> cacheAllSupertypes = null;
+    private ArrayList<MethodInstance> cacheAllMethods = null;
 
     private void clearCache() {
         cacheSubst = null;
         cacheDirectSupertypes = null;
         cacheAllSupertypes = null;
+        cacheAllMethods = null;
     }
     
     private void calcSuperTypes() {
@@ -89,25 +94,33 @@ implements X10ParsedClassType
         
         cacheAllSupertypes = CollectionFactory.newHashSet(cacheDirectSupertypes);
         for (X10ParsedClassType_c t : cacheDirectSupertypes)
-            cacheAllSupertypes.addAll(t.allSuperTypes());
+            cacheAllSupertypes.addAll(t.allSuperTypes(false));
     }
     public Set<X10ParsedClassType_c> directSuperTypes() {
         if (cacheDirectSupertypes==null) calcSuperTypes();
         return cacheDirectSupertypes;
     }
-    public Set<X10ParsedClassType_c> allSuperTypes() {
+    public Set<X10ParsedClassType_c> allSuperTypes(boolean includingMe) {
         if (cacheAllSupertypes==null) calcSuperTypes();
-        final List<MethodInstance> list = methods();
-        return cacheAllSupertypes;
+        Set<X10ParsedClassType_c> res = cacheAllSupertypes;
+        if (includingMe) {
+            res = new HashSet<X10ParsedClassType_c>(res);
+            res.add(this);
+        }
+        return res;
     }
 
     /**
      * @return all methods defined in the class/interface including all inherited methods
      */
-    public List<MethodInstance> getAllMethods() {
+    private final static boolean SHOULD_CACHE_ALL_METHODS = false;
+    public ArrayList<MethodInstance> getAllMethods() {
+        if (cacheAllMethods!=null) return cacheAllMethods;
         ArrayList<MethodInstance> res = new ArrayList<MethodInstance>(methods());
-        for (X10ParsedClassType_c supertype : allSuperTypes())
+        for (X10ParsedClassType_c supertype : allSuperTypes(false)) // using "false" because I already added my methods()
             res.addAll(supertype.methods());
+        if (SHOULD_CACHE_ALL_METHODS)
+            cacheAllMethods = res;
         return res;
     }
 
@@ -168,7 +181,7 @@ implements X10ParsedClassType
                     typeArguments.addAll(ta);
                     typeParameters.addAll(tp);
                 }
-                if (!c.isMember() || (c.flags().isStatic() && ta.size() == tp.size()))
+                if (!c.isMember() || c.flags().isStatic())
                     break;
             }
             cacheSubst = new TypeParamSubst((TypeSystem) ts, typeArguments, typeParameters);
@@ -181,12 +194,12 @@ implements X10ParsedClassType
         return (!tp.isEmpty() && (typeArguments == null || typeArguments.size() != tp.size()));
     }
     
-    public X10ParsedClassType_c(ClassDef def) {
+    public X10ParsedClassType_c(X10ClassDef def) {
         super(def);
         clearCache();
     }
 
-    public X10ParsedClassType_c(TypeSystem ts, Position pos, Ref<? extends ClassDef> def) {
+    public X10ParsedClassType_c(TypeSystem ts, Position pos, Ref<? extends X10ClassDef> def) {
         super(ts, pos, def);
         clearCache();
     }
@@ -498,7 +511,7 @@ implements X10ParsedClassType
 	    List<Type> typeArguments = pct.typeArguments();
 	    if (typeArguments == null)
 	        typeArguments = new ArrayList<Type>();
-	    if (pct.isMember() && (!pct.flags().isStatic() || typeArguments.size() != typeParameters.size())) {
+	    if (InnerClassRemover.isInner(pct.def())) {
 	        X10ParsedClassType container = ((X10ParsedClassType) pct.container()).instantiateTypeParametersExplicitly();
 	        if (container != pct.container()) {
 	            pct = pct.container(container);
@@ -514,7 +527,7 @@ implements X10ParsedClassType
 	        }
 	        pct = container.subst().reinstantiate(pct);
 	    }
-	    if (!typeParameters.isEmpty() && typeArguments.isEmpty()) {
+	    if (!typeParameters.isEmpty() && pct.typeArguments()==null) {
 	        pct = pct.typeArguments(new ArrayList<Type>(typeParameters));
 	    }
 	    return pct;

@@ -124,10 +124,8 @@ public class Struct {
         boolean isPrim = (qualifier!=null && qualifier.toString().equals("x10.lang") && ignoreTypes.contains(strName));
         boolean seenToString = isPrim;
         boolean seenHashCode = isPrim;
-        boolean seenEquals = isPrim;
-
-
-
+        boolean seenEqualsAny = isPrim;
+        boolean seenEqualsSelf = isPrim;
 
        for (ClassMember member : n.body().members())
            if (member instanceof MethodDecl_c) {
@@ -146,10 +144,10 @@ public class Struct {
                     mdecl.formals().isEmpty()) {
                     seenHashCode = true;
                 }
-                if (mdecl.name().id().toString().equals("equals") &&
-                    mdecl.formals().size() == 1) {
-                    seenEquals = true;
-                }
+                if (mdecl.name().id().toString().equals("equals") && mdecl.formals().size() == 1) {
+                    seenEqualsAny = true; // XTENLANG-2441: Needs to be a test to see if the type of formal is Any.
+                    seenEqualsSelf = true; // XTENLANG-2441: Needs to be a test to see if the type of the formal is the Struct ct 
+                }      
             }
 
 
@@ -168,19 +166,20 @@ public class Struct {
 
         final Flags flags = Flags.PUBLIC.Final();
         final NodeFactory nf = tb.nodeFactory();
-        final TypeNode intTypeNode = nf.TypeNodeFromQualifiedName(pos,QName.make("x10.lang","Int"));
-        final TypeNode boolTypeNode = nf.TypeNodeFromQualifiedName(pos,QName.make("x10.lang","Boolean"));
-        final TypeNode placeTypeNode = nf.TypeNodeFromQualifiedName(pos,QName.make("x10.lang","Place"));
-        final TypeNode objectTypeNode = nf.TypeNodeFromQualifiedName(pos,QName.make("x10.lang","Object"));
-        final TypeNode stringTypeNode = nf.TypeNodeFromQualifiedName(pos,QName.make("x10.lang","String"));
-        final TypeNode anyTypeNode = nf.TypeNodeFromQualifiedName(pos,QName.make("x10.lang","Any"));
+        final TypeSystem ts = tb.typeSystem();
+        final TypeNode intTypeNode = nf.CanonicalTypeNode(pos, ts.Int());
+        final TypeNode boolTypeNode = nf.CanonicalTypeNode(pos, ts.Boolean());
+        final TypeNode placeTypeNode = nf.CanonicalTypeNode(pos, ts.Place());
+        final TypeNode objectTypeNode = nf.CanonicalTypeNode(pos, ts.Object());
+        final TypeNode stringTypeNode = nf.CanonicalTypeNode(pos, ts.String());
+        final TypeNode anyTypeNode = nf.CanonicalTypeNode(pos, ts.Any());
         final List<TypeParamNode> typeParamNodeList = n.typeParameters();
         List<TypeNode> params = new ArrayList<TypeNode>();
         for (TypeParamNode p : typeParamNodeList)
-            params.add(nf.TypeNodeFromQualifiedName(pos,QName.make(null,p.name().id())));
-        final TypeNode structTypeNode = typeParamNodeList.isEmpty() ? nf.TypeNodeFromQualifiedName(pos,fullName) :
+            params.add(nf.CanonicalTypeNode(pos, p.type()));
+        final TypeNode structTypeNode = typeParamNodeList.isEmpty() ? nf.CanonicalTypeNode(pos, cd.asType()) :
                 nf.AmbDepTypeNode(pos, null,
-                        nf.Id(pos,fullName.name()), params, Collections.<Expr>emptyList(), null);
+                        nf.Id(pos, fullName.name()), params, Collections.<Expr>emptyList(), null);
         ArrayList<Stmt> bodyStmts;
         Expr expr;
         Block block;
@@ -210,7 +209,7 @@ public class Struct {
             //@Native("c++", "x10aux::type_name(#0)")
             //global safe def typeName():String;
             natives = createNative(nf, pos, "x10.rtt.Types.typeName(#0)", "x10aux::type_name(#0)");
-            AnnotationNode nonEscaping = nf.AnnotationNode(pos, nf.AmbMacroTypeNode(pos, nf.PrefixFromQualifiedName(pos,QName.make("x10.compiler")), nf.Id(pos, "NonEscaping"), Collections.<TypeNode>emptyList(), Collections.<Expr>singletonList(nf.StringLit(pos,""))));
+            AnnotationNode nonEscaping = nf.AnnotationNode(pos, nf.AmbMacroTypeNode(pos, nf.PrefixFromQualifiedName(pos,QName.make("x10.compiler")), nf.Id(pos, "NonEscaping"), Collections.<TypeNode>emptyList(), Collections.<Expr>emptyList()));
             natives.add(nonEscaping);
             methodName = "typeName";
             md = nf.MethodDecl(pos,nf.FlagsNode(pos,nativeFlags),stringTypeNode,nf.Id(pos,Name.make(methodName)),Collections.<Formal>emptyList(),null);
@@ -265,42 +264,46 @@ public class Struct {
         // (both backends need to convert == to _struct_equals)
         for (boolean isStructEquals : new boolean[]{false,true}) {
             methodName = isStructEquals ? SharedVarsMethods.STRUCT_EQUALS_METHOD : "equals";
-            if (!isStructEquals && seenEquals) continue;
 
-            // final public global safe def equals(other:Any):Boolean {
-            //  if (!(other instanceof NAME)) return false;
-            //  return equals(other as NAME);
-            // }
-            bodyStmts = new ArrayList<Stmt>();
-            Expr other =nf.Local(pos,nf.Id(pos,"other"));
-            bodyStmts.add(nf.If(pos, nf.Unary(pos, Unary.NOT,
-                    nf.Instanceof(pos,other,structTypeNode)),
-                    nf.Return(pos,nf.BooleanLit(pos,false))));
-            bodyStmts.add(nf.Return(pos,nf.Call(pos,nf.Id(pos,methodName),nf.Cast(pos,structTypeNode,other))));
-            block = nf.Block(pos).statements(bodyStmts);
-            Formal formal = nf.Formal(pos,nf.FlagsNode(pos,Flags.NONE),anyTypeNode,nf.Id(pos,"other"));
-            md = nf.MethodDecl(pos,nf.FlagsNode(pos,flags),boolTypeNode,nf.Id(pos,Name.make(methodName)), Collections.singletonList(formal),block);
-            n = (X10ClassDecl_c) n.body(n.body().addMember(md));
-
-            // final public global safe def equals(other:NAME):Boolean {
-            //  return true && FIELD1==other.FIELD1 && ...;
-            // }
-            bodyStmts = new ArrayList<Stmt>();
-            Expr res = fields.isEmpty() ? nf.BooleanLit(pos, true) : null;
-            for (FieldDecl fi : fields) {
-                String name = fi.name().toString();
-                final Id id = nf.Id(pos, name);
-                Expr right = nf.Binary(pos,nf.Field(pos,nf.This(pos),id),Binary.EQ,nf.Field(pos,other,id));
-                if (res==null)
-                    res = right;
-                else
-                    res = nf.Binary(pos,res,Binary.COND_AND,right);
+            if (isStructEquals || !seenEqualsAny) {
+                // final public global safe def equals(other:Any):Boolean {
+                //  if (!(other instanceof NAME)) return false;
+                //  return equals(other as NAME);
+                // }
+                bodyStmts = new ArrayList<Stmt>();
+                Expr other =nf.Local(pos,nf.Id(pos,"other"));
+                bodyStmts.add(nf.If(pos, nf.Unary(pos, Unary.NOT,
+                                                  nf.Instanceof(pos,other,structTypeNode)),
+                                                  nf.Return(pos,nf.BooleanLit(pos,false))));
+                bodyStmts.add(nf.Return(pos,nf.Call(pos,nf.Id(pos,methodName),nf.Cast(pos,structTypeNode,other))));
+                block = nf.Block(pos).statements(bodyStmts);
+                Formal formal = nf.Formal(pos,nf.FlagsNode(pos,Flags.NONE),anyTypeNode,nf.Id(pos,"other"));
+                md = nf.MethodDecl(pos,nf.FlagsNode(pos,flags),boolTypeNode,nf.Id(pos,Name.make(methodName)), Collections.singletonList(formal),block);
+                n = (X10ClassDecl_c) n.body(n.body().addMember(md));
             }
-            bodyStmts.add(nf.Return(pos, res));
-            block = nf.Block(pos).statements(bodyStmts);
-            formal = nf.Formal(pos,nf.FlagsNode(pos,Flags.NONE),structTypeNode,nf.Id(pos,"other"));
-            md = nf.MethodDecl(pos,nf.FlagsNode(pos,flags),boolTypeNode,nf.Id(pos,Name.make(methodName)),Collections.singletonList(formal),block);
-            n = (X10ClassDecl_c) n.body(n.body().addMember(md));
+
+            if (isStructEquals || !seenEqualsSelf) {
+                // final public global safe def equals(other:NAME):Boolean {
+                //  return true && FIELD1==other.FIELD1 && ...;
+                // }
+                bodyStmts = new ArrayList<Stmt>();
+                Expr other =nf.Local(pos,nf.Id(pos,"other"));
+                Expr res = fields.isEmpty() ? nf.BooleanLit(pos, true) : null;
+                for (FieldDecl fi : fields) {
+                    String name = fi.name().toString();
+                    final Id id = nf.Id(pos, name);
+                    Expr right = nf.Binary(pos,nf.Field(pos,nf.This(pos),id),Binary.EQ,nf.Field(pos,other,id));
+                    if (res==null)
+                        res = right;
+                    else
+                        res = nf.Binary(pos,res,Binary.COND_AND,right);
+                }
+                bodyStmts.add(nf.Return(pos, res));
+                block = nf.Block(pos).statements(bodyStmts);
+                Formal formal = nf.Formal(pos,nf.FlagsNode(pos,Flags.NONE),structTypeNode,nf.Id(pos,"other"));
+                md = nf.MethodDecl(pos,nf.FlagsNode(pos,flags),boolTypeNode,nf.Id(pos,Name.make(methodName)),Collections.singletonList(formal),block);
+                n = (X10ClassDecl_c) n.body(n.body().addMember(md));
+            }
         }
 
        return n;

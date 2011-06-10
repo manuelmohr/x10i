@@ -14,47 +14,7 @@ import x10.ExtensionInfo;
 import polyglot.types.*;
 import polyglot.types.Package;
 import polyglot.util.Position;
-import x10.ast.AmbMacroTypeNode;
-import x10.ast.AnnotationNode;
-import x10.ast.AssignPropertyCall;
-import x10.ast.Async;
-import x10.ast.AtExpr;
-import x10.ast.AtStmt;
-import x10.ast.Atomic;
-import x10.ast.Closure;
-import x10.ast.ClosureCall;
-import x10.ast.DepParameterExpr;
-import x10.ast.Finish;
-import x10.ast.FinishExpr;
-import x10.ast.HasZeroTest;
-import x10.ast.Here;
-import x10.ast.LocalTypeDef;
-import x10.ast.Next;
-import x10.ast.Offer;
-import x10.ast.ParExpr;
-import x10.ast.PropertyDecl;
-import x10.ast.Resume;
-import x10.ast.SettableAssign;
-import x10.ast.StmtExpr;
-import x10.ast.StmtSeq;
-import x10.ast.SubtypeTest;
-import x10.ast.Tuple;
-import x10.ast.TypeDecl;
-import x10.ast.TypeParamNode;
-import x10.ast.UnknownTypeNode;
-import x10.ast.When;
-import x10.ast.X10Call;
-import x10.ast.X10CanonicalTypeNode;
-import x10.ast.X10Cast;
-import x10.ast.X10ClassDecl;
-import x10.ast.X10ConstructorDecl;
-import x10.ast.X10Formal;
-import x10.ast.X10Instanceof;
-import x10.ast.X10Loop;
-import x10.ast.X10MLSourceFile;
-import x10.ast.X10MethodDecl;
-import x10.ast.X10New;
-import x10.ast.X10Special;
+import x10.ast.*;
 import x10.types.ParameterType;
 import x10.types.checker.Converter;
 import x10cuda.ast.CUDAKernel;
@@ -96,11 +56,6 @@ public interface NodeFactory
     AmbReceiver AmbReceiver(Position pos, Prefix prefix, Id name);
     Receiver ReceiverFromQualifiedName(Position pos, QName qualifiedName);
     
-    // package or type
-    AmbQualifierNode AmbQualifierNode(Position pos, Id name);
-    AmbQualifierNode AmbQualifierNode(Position pos, Prefix qual, Id name);
-    QualifierNode QualifierNodeFromQualifiedName(Position pos, QName qualifiedName);
-    
     // package or type or expr
     AmbPrefix AmbPrefix(Position pos, Id name);
     AmbPrefix AmbPrefix(Position pos, Prefix prefix, Id name);
@@ -108,7 +63,6 @@ public interface NodeFactory
     
     AmbTypeNode AmbTypeNode(Position pos, Id name);
     AmbTypeNode AmbTypeNode(Position pos, Prefix qualifier, Id name);
-    TypeNode TypeNodeFromQualifiedName(Position pos, QName qualifiedName);
     
     ArrayTypeNode ArrayTypeNode(Position pos, TypeNode base);
     CanonicalTypeNode CanonicalTypeNode(Position pos, Type type);
@@ -279,7 +233,14 @@ public interface NodeFactory
     While While(Position pos, Expr cond, Stmt body);
 
     AtStmt AtStmt(Position pos, Expr place, Stmt body);
-    AtExpr AtExpr(Position pos, Expr place, TypeNode returnType, Block body);
+    AtStmt AtStmt(Position pos, Expr place, List<Node> captures, Stmt body);
+    AtExpr AtExpr(Position pos, Expr place, Block body);
+    AtExpr AtExpr(Position pos, Expr place, List<Node> captures, Block body);
+
+    AtHomeStmt AtHomeStmt(Position pos, List<Expr> vars, Stmt body);
+    AtHomeStmt AtHomeStmt(Position pos, List<Expr> vars, List<Node> captures, Stmt body);
+    AtHomeExpr AtHomeExpr(Position pos, List<Expr> vars, Block body);
+    AtHomeExpr AtHomeExpr(Position pos, List<Expr> vars, List<Node> captures, Block body);
 
     ConstructorCall X10ConstructorCall(Position pos, ConstructorCall.Kind kind, Expr outer, List<TypeNode> typeArgs, List<Expr> args);
     ConstructorCall X10ThisCall(Position pos, Expr outer, List<TypeNode> typeArgs, List<Expr> args);
@@ -377,6 +338,7 @@ public interface NodeFactory
     AnnotationNode AnnotationNode(Position pos, TypeNode tn);
     
     AmbMacroTypeNode AmbMacroTypeNode(Position pos, Prefix prefix, Id name, List<TypeNode> typeArgs, List<Expr> args);
+    TypeNode AmbDepTypeNode(Position pos, AmbMacroTypeNode base, DepParameterExpr dep);
     TypeNode AmbDepTypeNode(Position pos, Prefix prefix, Id name, List<TypeNode> typeArgs, List<Expr> args, DepParameterExpr dep);
     TypeNode AmbDepTypeNode(Position pos, Prefix prefix, Id name, DepParameterExpr dep);
 

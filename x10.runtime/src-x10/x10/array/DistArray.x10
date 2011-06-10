@@ -43,7 +43,7 @@ import x10.util.IndexedMemoryChunk;
  * @see Dist
  * @see Array
  */
-public class DistArray[T] (
+public final class DistArray[T] (
     /**
      * The distribution of this array.
      */
@@ -59,12 +59,12 @@ public class DistArray[T] (
     /**
      * The region this array is defined over.
      */
-    public property region: Region(rank) = dist.region;
+    public property region(): Region(rank) = dist.region;
 
     /**
      * The rank of this array.
      */
-    public property rank: int = dist.rank;
+    public property rank(): int = dist.rank;
 
     // Need a trivial wrapper class because PlaceLocalHandle[T] requires that T <: Object
     protected static class LocalState[T](data:IndexedMemoryChunk[T]) {
@@ -104,7 +104,7 @@ public class DistArray[T] (
         property(dist);
 
         val plsInit:()=>LocalState[T] = () => {
-            val localRaw = IndexedMemoryChunk.allocate[T](dist.maxOffset()+1, true);
+            val localRaw = IndexedMemoryChunk.allocateZeroed[T](dist.maxOffset()+1);
             return new LocalState(localRaw);
         };
 
@@ -115,8 +115,14 @@ public class DistArray[T] (
     /**
      * Create a distributed array over the argument distribution whose elements
      * are initialized by executing the given initializer function for each 
-     * element of the array in the place where the argument Point is mapped.
-     *
+     * element of the array in the place where the argument Point is mapped. 
+     * The function will be evaluated exactly once for each point
+     * in dist in an arbitrary order to compute the initial value for each array element.</p>
+     * 
+     * Within each place, it is unspecified whether the function evaluations will
+     * be done sequentially by a single activity for each point or concurrently for disjoint sets 
+     * of points by one or more child activities. 
+     * 
      * @param dist the given distribution
      * @param init the initializer function
      * @return the newly created DistArray
@@ -129,7 +135,7 @@ public class DistArray[T] (
         property(dist);
 
         val plsInit:()=>LocalState[T] = () => {
-            val localRaw = IndexedMemoryChunk.allocate[T](dist.maxOffset()+1);
+            val localRaw = IndexedMemoryChunk.allocateUninitialized[T](dist.maxOffset()+1);
             val reg = dist.get(here);
             for (pt in reg) {
                localRaw(dist.offset(pt)) = init(pt);
@@ -157,7 +163,7 @@ public class DistArray[T] (
         property(dist);
 
         val plsInit:()=>LocalState[T] = () => {
-            val localRaw = IndexedMemoryChunk.allocate[T](dist.maxOffset()+1);
+            val localRaw = IndexedMemoryChunk.allocateUninitialized[T](dist.maxOffset()+1);
             val reg = dist.get(here);
             for (pt in reg) {
                 localRaw(dist.offset(pt)) = init;
@@ -488,7 +494,7 @@ public class DistArray[T] (
     public final def map[U](op:(T)=>U):DistArray[U](this.dist) {
         val plh = PlaceLocalHandle.make[LocalState[U]](dist, ()=> {
             val srcImc = raw();
-            val newImc = IndexedMemoryChunk.allocate[U](dist.maxOffset()+1);
+            val newImc = IndexedMemoryChunk.allocateUninitialized[U](dist.maxOffset()+1);
             val reg = dist.get(here);
             for (pt in reg) {
                 val offset = dist.offset(pt);
@@ -570,7 +576,7 @@ public class DistArray[T] (
         val plh = PlaceLocalHandle.make[LocalState[S]](dist, ()=> {
             val src1Imc = raw();
             val src2Imc = src.raw();
-            val newImc = IndexedMemoryChunk.allocate[S](dist.maxOffset()+1);
+            val newImc = IndexedMemoryChunk.allocateUninitialized[S](dist.maxOffset()+1);
             val reg = dist.get(here);
             for (pt in reg) {
                 val offset = dist.offset(pt);
@@ -668,31 +674,28 @@ public class DistArray[T] (
      * @see #map((T)=>S)
      */
     public final def reduce[U](lop:(U,T)=>U, gop:(U,U)=>U, unit:U):U {
-        // Could use collecting finish after XTENLANG-2364 is resolved
-        // instead of building up an explicit result array
-        val results = new Array[U](Place.MAX_PLACES, unit);
-        finish {
-            for (where in dist.places()) {
-                async {
-                    results(where.id) = at (where) {
-                        val reg = dist.get(here);
-                        var localRes:U = unit;
-                        val imc = raw();
-                        for (pt in reg) {
-                           localRes = lop(localRes, imc(dist.offset(pt)));
-                        }
-                        localRes
-                    };
-                };
-            }
-        }
+        val reducer = new Reducible[U]() {
+        	public def zero():U = unit;
+        	public operator this(a:U, b:U):U = gop(a,b);
+        };
 
-        var result:U = results(0);
-        for ([i] in 1..(results.size()-1)) {
-            result = gop(result, results(i));
-        }
+        val result = finish(reducer) {
+            for (where in dist.places()) {
+                async at (where) {
+                    val reg = dist.get(here);
+                    var localRes:U = unit;
+                    val imc = raw();
+                    for (pt in reg) {
+                       localRes = lop(localRes, imc(dist.offset(pt)));
+                    }
+                    offer(localRes);
+                }
+            }
+        };
+
         return result;
     }
+
 
     public def toString(): String {
         return "DistArray(" + dist + ")";
@@ -706,5 +709,9 @@ public class DistArray[T] (
      */
     public def iterator(): Iterator[Point(rank)] = region.iterator() as Iterator[Point(rank)];
 }
+public type DistArray[T](r:Int) = DistArray[T]{self.rank==r};
+public type DistArray[T](r:Region) = DistArray[T]{self.region==r};
+public type DistArray[T](d:Dist) = DistArray[T]{self.dist==d};
+public type DistArray[T](a:DistArray[T]) = DistArray[T]{self==a};
 
 // vim:tabstop=4:shiftwidth=4:expandtab

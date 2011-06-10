@@ -12,6 +12,7 @@
 package x10.array;
 
 import x10.compiler.NoInline;
+import x10.compiler.TempNoInline_0;
 import x10.compiler.NoReturn;
 
 /**
@@ -35,7 +36,7 @@ public abstract class Dist(
     /**
      * The rank of this distribution.
      */
-    property rank:Int = region.rank;
+    property rank():Int = region.rank;
 
     //
     // factories - place is all applicable places
@@ -48,8 +49,8 @@ public abstract class Dist(
      *
      * @return a "unique" distribution over all places.
      */
-    public static def makeUnique():Dist(1) {
-        return UNIQUE;        
+    public static @TempNoInline_0 def makeUnique():Dist(1) {
+        return UNIQUE as Dist(1);        
     }
     // Cache pre-allocated UniqueDist to optimize makeUnique calls.
     private static val UNIQUE = new UniqueDist();
@@ -100,7 +101,10 @@ public abstract class Dist(
      * Create a distribution over the specified region that varies in
      * place only along the specified axis. It divides the coordinates
      * along that axis into Place.MAX_PLACES blocks, and assigns
-     * successive blocks to successive places.
+     * successive blocks to successive places.  If the number of coordinates
+     * in the axis does not divide evenly into the number of blocks, then 
+     * the first (max(axis)-min(axis)+1)%Place.MAX_PLACES blocks will be assigned 
+     * one more coordinate than the remaining blocks.
      *
      * @param r the given region
      * @param axis the dimension to block over
@@ -126,17 +130,20 @@ public abstract class Dist(
      * @return a "block,block" distribution over r.
      */
     public static def makeBlockBlock(r:Region, axis0:int, axis1:int):Dist(r) {
-        return new BlockBlockDist(r, axis0, axis1, PlaceGroup.WORLD) as Dist(r); // TODO: should not need this cast
+        return new BlockBlockDist(r, axis0, axis1, PlaceGroup.WORLD);//) as Dist(r); // TODO: should not need this cast
     }
 
     /**
      * Create a distribution over the specified region that varies in
-     * place only the zeroth axis. It divides the coordinates
-     * along that axis into Place.MAX_PLACES blocks, and assigns
-     * successive blocks to successive places.
+     * place only along the 0-th axis. It divides the coordinates
+     * along the 0-th axis into Place.MAX_PLACES blocks, and assigns
+     * successive blocks to successive places.  If the number of coordinates
+     * in the axis does not divide evenly into the number of blocks, then 
+     * the first (max(axis)-min(axis)+1)%Place.MAX_PLACES blocks will be assigned 
+     * one more coordinate than the remaining blocks.
      *
      * @param r the given region
-     * @return a "block" distribution over r, blocked over the zeroth axis.
+     * @return a "block" distribution over r.
      */
     public static def makeBlock(r:Region) = makeBlock(r, 0, PlaceGroup.WORLD);
 
@@ -167,7 +174,7 @@ public abstract class Dist(
         if (pg.equals(PlaceGroup.WORLD)) {
             return makeUnique();
         } else {
-            return new UniqueDist(pg);
+            return new UniqueDist(pg) as Dist(1);
         }
     }
 
@@ -201,7 +208,10 @@ public abstract class Dist(
      * Create a distribution over the specified region that varies in
      * place only along the specified axis. It divides the coordinates
      * along that axis into pg.numPlaces() blocks, and assigns successive
-     * blocks to successive places in pg.
+     * blocks to successive places in pg. If the number of coordinates
+     * in the axis does not divide evenly into the number of places in pg, then 
+     * the first (max(axis)-min(axis)+1)%pg.numPlaces() blocks will be assigned 
+     * one more coordinate than the remaining blocks.
      *
      * @param r the given region
      * @param axis the dimension to block over
@@ -209,7 +219,7 @@ public abstract class Dist(
      * @return a "block" distribution over r, blocking over the places in ps.
      */
     public static def makeBlock(r:Region, axis:int, pg:PlaceGroup):Dist(r) {
-        return new BlockDist(r, axis, pg) as Dist(r); // TODO: cast should not be needed
+        return new BlockDist(r, axis, pg);// as Dist(r); // TODO: cast should not be needed
     }
 
     /**
@@ -656,7 +666,7 @@ public abstract class Dist(
      *
      * @param region the given region
      */
-    protected def this(region:Region) {
+    protected def this(region:Region):Dist{self.region==region} {
         property(region);
     }
 
@@ -692,5 +702,8 @@ public abstract class Dist(
         throw new BadPlaceException("point " + pt + " not defined at " + here);
     }    
 }
+public type Dist(r:Int) = Dist{self.rank==r};
+public type Dist(r:Region) = Dist{self.region==r};
+public type Dist(d:Dist) = Dist{self==d};
 
 // vim:shiftwidth=4:tabstop=4:expandtab

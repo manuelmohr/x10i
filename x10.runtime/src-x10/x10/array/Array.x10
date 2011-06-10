@@ -17,6 +17,7 @@ import x10.compiler.Header;
 import x10.compiler.Inline;
 import x10.compiler.Native;
 import x10.compiler.NoInline;
+import x10.compiler.TempNoInline_0;
 import x10.compiler.NoReturn;
 import x10.util.IndexedMemoryChunk;
 
@@ -62,30 +63,35 @@ public final class Array[T] (
         /**
          * The rank of this array.
          */
-        rank:int{self==region.rank},
+        rank:int,//(region.rank), //{self==region.rank},
         
         /**
-         * Is this array defined over a rectangular region?
+         * Is this array defined over a rectangular region?  
          */
-        rect:boolean{self==region.rect},
+        rect:boolean,//(region.rect), //{self==region.rect},
         
         /**
          * Is this array's region zero-based?
          */
-        zeroBased:boolean{self==region.zeroBased},
+        zeroBased:boolean,//(region.zeroBased), // {self==region.zeroBased},
         
         /**
          * Is this array's region a "rail" (one-dimensional, rect, and zero-based)?
          */
-        rail:boolean{self==region.rail},
+        rail:boolean,//(region.rail), //{self==region.rail},
         
         /**
          * The number of points/data values in the array.
          * Will always be equal to region.size(), but cached here to make it available as a property.
          */
         size:Int
-) implements (Point(region.rank))=>T,
-Iterable[Point(region.rank)] {
+) {rank==region.rank,
+	   rect==region.rect,
+	   zeroBased==region.zeroBased,
+	   rail==region.rail
+   }
+   implements (Point(rank))=>T,
+               Iterable[Point(region.rank)] {
     
     /**
      * The backing storage for the array's elements
@@ -115,43 +121,50 @@ Iterable[Point(region.rank)] {
      */
     public @Header @Inline def raw() = raw;
     
-    
+
     /**
      * Construct an Array over the region reg whose elements are zero-initialized.
      * 
      * @param reg The region over which to construct the array.
      */
-    public def this(reg:Region{self !=null}) {T haszero}
+    public @Inline def this(reg:Region) {T haszero}
     {
-        property(reg, reg.rank, reg.rect, reg.zeroBased, reg.rail, reg.size());
+        property(reg as Region{self != null}, reg.rank, reg.rect, reg.zeroBased, reg.rail, reg.size());
         
         layout = RectLayout(reg);
         val n = layout.size();
-        raw = IndexedMemoryChunk.allocate[T](n, true);
-    }
-    
-    
+        raw = IndexedMemoryChunk.allocateZeroed[T](n);
+    }   
+
+
     /**
      * Construct an Array over the region reg whose
      * values are initialized as specified by the init function.
+     * The function will be evaluated exactly once for each point
+     * in reg in an arbitrary order to 
+     * compute the initial value for each array element.</p>
+     * 
+     * It is unspecified whether the function evaluations will
+     * be done sequentially for each point by the current activity 
+     * or concurrently for disjoint sets of points by one or more 
+     * child activities. 
      * 
      * @param reg The region over which to construct the array.
      * @param init The function to use to initialize the array.
      */    
-    public def this(reg:Region{self != null}, init:(Point(reg.rank))=>T)
+    public @Inline def this(reg:Region, init:(Point(reg.rank))=>T)
     {
-        property(reg, reg.rank, reg.rect, reg.zeroBased, reg.rail, reg.size());
+        property(reg as Region{self != null}, reg.rank, reg.rect, reg.zeroBased, reg.rail, reg.size());
         
         layout = RectLayout(reg);
         val n = layout.size();
-        val r  = IndexedMemoryChunk.allocate[T](n);
+        val r  = IndexedMemoryChunk.allocateUninitialized[T](n);
         for (p:Point(reg.rank) in reg) {
             r(layout.offset(p))= init(p);
         }
         raw = r;
     }
-    
-    
+
     /**
      * Construct an Array over the region reg whose
      * values are initialized to be init.
@@ -159,13 +172,13 @@ Iterable[Point(region.rank)] {
      * @param reg The region over which to construct the array.
      * @param init The function to use to initialize the array.
      */    
-    public def this(reg:Region{self !=null}, init:T)
+    public @Inline def this(reg:Region, init:T)
     {
-        property(reg, reg.rank, reg.rect, reg.zeroBased, reg.rail, reg.size());
+        property(reg as Region{self!=null}, reg.rank, reg.rect, reg.zeroBased, reg.rail, reg.size());
         
         layout = RectLayout(reg);
         val n = layout.size();
-        val r  = IndexedMemoryChunk.allocate[T](n);
+        val r  = IndexedMemoryChunk.allocateUninitialized[T](n);
         if (reg.rect) {
             // Can be optimized into a simple fill of the backing IndexedMemoryChunk
             // because every element of the chunk is used by a point in the region.
@@ -179,8 +192,8 @@ Iterable[Point(region.rank)] {
         }
         raw = r;
     }
-    
-    
+
+
     /**
      * Construct an Array view of a backing IndexedMemoryChunk
      * using the argument region to define how to map Points into
@@ -191,9 +204,9 @@ Iterable[Point(region.rank)] {
      * @param reg The region over which to define the array.
      * @param backingStore The backing storage for the array data.
      */
-    public def this(reg:Region{self != null}, backingStore:IndexedMemoryChunk[T])
+    public @Inline def this(reg:Region, backingStore:IndexedMemoryChunk[T])
     {
-        property(reg, reg.rank, reg.rect, reg.zeroBased, reg.rail, reg.size());
+        property(reg as Region{self!=null}, reg.rank, reg.rect, reg.zeroBased, reg.rail, reg.size());
         
         layout = RectLayout(reg);
         val n = layout.size();
@@ -203,35 +216,68 @@ Iterable[Point(region.rank)] {
         raw = backingStore;
     }
     
+    /**
+     * Construct an Array view of a backing IndexedMemoryChunk
+     * using the region (0..backingStore.length-1)
+     * 
+     * @param reg The region over which to define the array.
+     * @param backingStore The backing storage for the array data.
+     */
+    public @Inline def this(backingStore:IndexedMemoryChunk[T])
+    {
+        val myReg = new RectRegion1D(0, backingStore.length()-1) 
+             as Region{self.rank==1,self.zeroBased,self.rect,self.rail,self!=null};
+        property(myReg, 1, true, true, true, backingStore.length());
+        
+        layout = RectLayout(myReg);
+        val n = layout.size();
+        if (n > backingStore.length()) {
+            throw new IllegalArgumentException("backingStore too small");
+        }
+        raw = backingStore;
+    }
+
     
     /**
      * Construct Array over the region 0..(size-1) whose elements are zero-initialized.
      */
-    public def this(size:int) {T haszero}
+    public @Inline def this(size:int) {T haszero}
     {
-        property(0..(size-1), 1, true, true, true, size);
+        val myReg = new RectRegion1D(0, size-1) 
+             as Region{self.rank==1,self.zeroBased,self.rect,self.rail,self!=null};
+        property(myReg, 1, true, true, true, size);
         
         layout = RectLayout(0, size-1);
         val n = layout.size();
-        raw = IndexedMemoryChunk.allocate[T](n, true);
+        raw = IndexedMemoryChunk.allocateZeroed[T](n);
     }
     
     
     /**
      * Construct Array over the region 0..(size-1) whose
      * values are initialized as specified by the init function.
+     * The function will be evaluated exactly once for each point
+     * in reg in an arbitrary order to 
+     * compute the initial value for each array element.</p>
+     * 
+     * It is unspecified whether the function evaluations will
+     * be done sequentially for each point by the current activity 
+     * or concurrently for disjoint sets of points by one or more 
+     * child activities. 
+     * 
      * 
      * @param reg The region over which to construct the array.
      * @param init The function to use to initialize the array.
      */    
-    public def this(size:int, init:(int)=>T)
+    public @Inline def this(size:int, init:(int)=>T)
     {
-        property(0..(size-1), 1, true, true, true, size);
+        val myReg = new RectRegion1D(0, size-1) as Region{self.zeroBased, self.rail,self.rank==1,self.rect, self!=null};
+        property(myReg, 1, true, true, true, size);
         
         layout = RectLayout(0, size-1);
         val n = layout.size();
-        val r  = IndexedMemoryChunk.allocate[T](n);
-        for ([i] in 0..(size-1)) {
+        val r  = IndexedMemoryChunk.allocateUninitialized[T](n);
+        for (i in 0..(size-1)) {
             r(i)= init(i);
         }
         raw = r;
@@ -245,14 +291,16 @@ Iterable[Point(region.rank)] {
      * @param reg The region over which to construct the array.
      * @param init The function to use to initialize the array.
      */    
-    public def this(size:int, init:T)
+    public @Inline def this(size:int, init:T)
     {
-        property(0..(size-1), 1, true, true, true, size);
+        val myReg = new RectRegion1D(0, size-1)
+           as Region{self.rank==1,self.zeroBased,self.rect,self.rail,self!=null};
+        property(myReg, 1, true, true, true, size);
         
         layout = RectLayout(0, size-1);
         val n = layout.size();
-        val r  = IndexedMemoryChunk.allocate[T](n);
-        for ([i] in 0..(size-1)) {
+        val r  = IndexedMemoryChunk.allocateUninitialized[T](n);
+        for (i in 0..(size-1)) {
             r(i)= init;
         }
         raw = r;
@@ -264,12 +312,12 @@ Iterable[Point(region.rank)] {
      * 
      * @param init The array to copy.
      */    
-    public def this(init:Array[T])
+    public @Inline def this(init:Array[T])
     {
         property(init.region, init.rank, init.rect, init.zeroBased, init.rail, init.size);
         layout = RectLayout(region);
         val n = layout.size();
-        val r  = IndexedMemoryChunk.allocate[T](n);
+        val r  = IndexedMemoryChunk.allocateUninitialized[T](n);
         IndexedMemoryChunk.copy(init.raw, 0, r, 0, n);
         raw = r;
     }
@@ -279,7 +327,8 @@ Iterable[Point(region.rank)] {
      * 
      * @param init The remote array to copy.
      */    
-    public def this(init:RemoteArray[T]{init.home==here})
+ // TODO: propagate the typeArg of the target (this) to the call in ConstructorSplitterVisitor
+    public @Inline def this(init:RemoteArray[T]{init.array.home==here})
     {
         this((init.array)());
     }
@@ -312,7 +361,7 @@ Iterable[Point(region.rank)] {
      * @return an iterator over the points in the region of this array.
      * @see x10.lang.Iterable[T]#iterator()
      */
-    public def iterator():Iterator[Point(rank)] = region.iterator() as Iterator[Point(rank)];
+    public def iterator():Iterator[Point(rank)] = region.iterator(); 
     
     
     /**
@@ -320,42 +369,31 @@ Iterable[Point(region.rank)] {
      * over this array.<p>
      * @return an Iterable[T] over this array.
      */
-    public def values():Iterable[T] {
-        // NOTE: If we could actually implement two instances of the
-        //       Iterable interface, then we woudn't need this code.
-        return new ValueIterable();
-    }
+    public def values():Iterable[T] = new Iterable[T]() {
+    	public def iterator() = new Iterator[T]() {
+    		val regIt = Array.this.iterator();
+    		public def next() = Array.this(regIt.next());
+    		public def hasNext() = regIt.hasNext();
+    	};
+    };
     
-    // TODO: Should be annonymous nested class in values, 
-    //       but that's too fragile with the 2.1 implementation of generics.
-    private static class ValueIterator[U](rank:int) implements Iterator[U] {
-        private val regIt:Iterator[Point(rank)];
-        private val array:Array[U](rank);
-        
-        def this(a:Array[U]):ValueIterator[U]{self.rank==a.rank} {
-            property(a.rank);
-            regIt = a.iterator() as Iterator[Point(rank)]; // TODO: cast should not be needed!
-            array = a as Array[U](rank);                   // TODO: cast should not be needed!
+    // TODO Inliner should remove the local class from the body of the constructor before instantiation
+    public @TempNoInline_0 def sequence(){this.rank==1}:Sequence[T] = {
+    		// once XTENLANG-2699 is fixed, replace
+    		// with anonymous class.
+    	class MySequence implements Sequence[T] {
+        	public def iterator() = new Iterator[T]() {
+        		val regIt = Array.this.iterator();
+        		public def next() = Array.this(regIt.next());
+        		public def hasNext() = regIt.hasNext();
+        	};
+        	// The :T below should not be needed, see XTENLANG-2700.
+        	public operator this(i:Int):T=Array.this(i); 
+        	public def size()=Array.this.size;
         }
-        public def hasNext() = regIt.hasNext();
-        public def next() = array(regIt.next());
+    	@TempNoInline_0 new MySequence()
     }
-    private  class ValueIterable implements Iterable[T] {
-        public def iterator()= new ValueIterator[T](Array.this);
-    }
-    
-    
-    public def sequence(){rank==1}:Sequence[T] = new ValueSequence();
-    // TODO: Should be annonymous nested class in values, 
-    //       but that's too fragile with the 2.1 implementation of generics.
-    private class ValueSequence(size:int) implements Sequence[T] {
-        val array = Array.this as Array[T](1);
-        public def iterator() = new ValueIterator(Array.this);
-        def this() {
-            property(Array.this.size);
-        }
-        public operator this(i:Int)=array(i);
-    }
+
     
     /**
      * Return the element of this array corresponding to the given index.
@@ -367,7 +405,7 @@ Iterable[Point(region.rank)] {
      * @see #operator(Point)
      * @see #set(T, Int)
      */
-    @Native("cuda", "(#0).raw[#1]")
+    @Native("cuda", "(#this).raw[#i0]")
     public @Header @Inline operator this(i0:int){rank==1}:T {
         if (rail) {
             // Bounds checking by backing IndexedMemoryChunk is sufficient
@@ -466,8 +504,8 @@ Iterable[Point(region.rank)] {
      * @see #operator(Int)
      * @see #set(T, Point)
      */
-    @Native("cuda", "(#0).raw[#2] = (#1)")
-    public @Header @Inline operator this(i0:int)=(v:T){rank==1}:T {
+    @Native("cuda", "(#this).raw[#i0] = (#v)")
+    public @Header @Inline operator this(i0:int)=(v:T){rank==1}:T{self==v} {
         if (rail) {
             // Bounds checking by backing IndexedMemoryChunk is sufficient
             raw(i0) = v;
@@ -493,7 +531,7 @@ Iterable[Point(region.rank)] {
      * @see #operator(Int, Int)
      * @see #set(T, Point)
      */
-    public @Header @Inline operator this(i0:int,i1:int)=(v:T){rank==2}:T {
+    public @Header @Inline operator this(i0:int,i1:int)=(v:T){rank==2}:T{self==v} {
         if (CompilerFlags.checkBounds() && !region.contains(i0, i1)) {
             raiseBoundsError(i0, i1);
         }
@@ -515,7 +553,7 @@ Iterable[Point(region.rank)] {
      * @see #operator(Int, Int, Int)
      * @see #set(T, Point)
      */
-    public @Header @Inline operator this(i0:int, i1:int, i2:int)=(v:T){rank==3}:T {
+    public @Header @Inline operator this(i0:int, i1:int, i2:int)=(v:T){rank==3}:T{self==v} {
         if (CompilerFlags.checkBounds() && !region.contains(i0, i1, i2)) {
             raiseBoundsError(i0, i1, i2);
         }
@@ -538,7 +576,7 @@ Iterable[Point(region.rank)] {
      * @see #operator(Int, Int, Int, Int)
      * @see #set(T, Point)
      */
-    public @Header @Inline operator this( i0:int, i1:int, i2:int, i3:int)=(v:T){rank==4}:T {
+    public @Header @Inline operator this( i0:int, i1:int, i2:int, i3:int)=(v:T){rank==4}:T{self==v} {
         if (CompilerFlags.checkBounds() && !region.contains(i0, i1, i2, i3)) {
             raiseBoundsError(i0, i1, i2, i3);
         }
@@ -557,7 +595,7 @@ Iterable[Point(region.rank)] {
      * @see #operator(Point)
      * @see #set(T, Int)
      */
-    public @Header @Inline operator this(p:Point{self.rank==this.rank})=(v:T):T {
+    public @Header @Inline operator this(p:Point{self.rank==this.rank})=(v:T):T{self==v} {
         if (CompilerFlags.checkBounds() && !region.contains(p)) {
             raiseBoundsError(p);
         }
@@ -617,7 +655,7 @@ Iterable[Point(region.rank)] {
      * @see #reduce((U,T)=>U,U)
      * @see #scan((U,T)=>U,U)
      */
-    public def map[U](dst:Array[U](region), op:(T)=>U):Array[U](region){self==dst} {
+    public def map[U](dst:Array[U](this.rank), op:(T)=>U):Array[U](this.rank){self==dst} {
         // TODO: parallelize these loops.
         if (region.rect) {
             // In a rect region, every element in the backing raw IndexedMemoryChunk[T]
@@ -649,7 +687,7 @@ Iterable[Point(region.rank)] {
      * @see #reduce((U,T)=>U,U)
      * @see #scan((U,T)=>U,U)
      */
-    public def map[U](dst:Array[U](region), filter:Region(this.rank), op:(T)=>U):Array[U](region){self==dst} {
+    public def map[U](dst:Array[U](this.rank), filter:Region(this.rank), op:(T)=>U):Array[U](this.rank){self==dst} {
         val fregion = region && filter;
         for (p in fregion) {
             dst(p) = op(this(p));
@@ -670,7 +708,7 @@ Iterable[Point(region.rank)] {
      * @see #reduce((U,T)=>U,U)
      * @see #scan((U,T)=>U,U)
      */
-    public def map[S,U](src:Array[U](this.region), op:(T,U)=>S):Array[S](region) {
+    public def map[S,U](src:Array[U](this.rank), op:(T,U)=>S):Array[S](this.region) {
         return new Array[S](region, (p:Point(this.rank))=>op(this(p), src(p)));
     }
     
@@ -688,7 +726,7 @@ Iterable[Point(region.rank)] {
      * @see #reduce((U,T)=>U,U)
      * @see #scan((U,T)=>U,U)
      */
-    public def map[S,U](dst:Array[S](region), src:Array[U](region), op:(T,U)=>S):Array[S](region) {
+    public def map[S,U](dst:Array[S](this.rank), src:Array[U](this.rank), op:(T,U)=>S):Array[S](this.rank){self==dst} {
         // TODO: parallelize these loops.
         if (region.rect) {
             // In a rect region, every element in the backing raw IndexedMemoryChunk
@@ -721,7 +759,7 @@ Iterable[Point(region.rank)] {
      * @see #reduce((U,T)=>U,U)
      * @see #scan((U,T)=>U,U)
      */
-    public def map[S,U](dst:Array[S](region), src:Array[U](region), filter:Region(rank), op:(T,U)=>S):Array[S](region) {
+    public def map[S,U](dst:Array[S](this.rank), src:Array[U](this.rank), filter:Region(rank), op:(T,U)=>S):Array[S](rank){self==dst} {
         val fregion = region && filter;
         for (p in fregion) {
             dst(p) = op(this(p), src(p));
@@ -1119,5 +1157,8 @@ Iterable[Point(region.rank)] {
         throw new ArrayIndexOutOfBoundsException("point " + pt + " not contained in array");
     }    
 }
+public type Array[T](r:Int) = Array[T]{self.rank==r};
+public type Array[T](r:Region) = Array[T]{self.region==r};
+public type Array[T](a:Array[T]) = Array[T]{self==a};
 
 // vim:tabstop=4:shiftwidth=4:expandtab

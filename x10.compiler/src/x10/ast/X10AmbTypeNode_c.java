@@ -45,6 +45,7 @@ import polyglot.visit.TypeChecker;
 import x10.errors.Errors;
 import x10.extension.X10Del;
 import x10.extension.X10Del_c;
+import x10.types.ConstrainedType;
 import x10.types.MacroType;
 import x10.types.X10ClassType;
 import polyglot.types.Context;
@@ -126,15 +127,16 @@ public class X10AmbTypeNode_c extends AmbTypeNode_c implements X10AmbTypeNode, A
 	      return tn;
       }
       catch (SemanticException e) {
-          X10ClassType ut = ts.createFakeClass(QName.make(null, name().id()), e);
+          LazyRef<Type> sym = (LazyRef<Type>) type;
+          X10ClassType ut = ts.createFakeClass(QName.make(fullName(this.prefix), name().id()), e);
           ut.def().position(pos);
-          ((Ref<Type>) type).update(ut);
-          // FIXME: should never return an ambiguous node
-          return this;
+          sym.update(ut);
+          Errors.issue(tc.job(), e, this);
+          return nf.CanonicalTypeNode(pos, sym);
       }
 
       Prefix prefix = this.prefix;
-      // First look for a typedef.
+      // First look for a typedef.  FIXME: remove
       try {
           X10ParsedClassType typeDefContainer = null;
     
@@ -150,9 +152,14 @@ public class X10AmbTypeNode_c extends AmbTypeNode_c implements X10AmbTypeNode, A
           }
           else if (prefix instanceof TypeNode) {
               TypeNode tn = (TypeNode) prefix;
-              if (tn.type() instanceof X10ParsedClassType) {
-        	  typeDefContainer = (X10ParsedClassType) tn.type();
+              
+              Type bt = tn.type();
+              if (Types.isConstrainedType(bt)) 
+                  bt = Types.baseType(tn.type());
+              if (bt instanceof X10ParsedClassType) {
+        	  typeDefContainer = (X10ParsedClassType) bt;
               }
+              
           }
           else if (prefix instanceof Expr) {
               throw new SemanticException("Non-static type members not implemented: " + prefix + " cannot be understood.", pos);
@@ -160,7 +167,7 @@ public class X10AmbTypeNode_c extends AmbTypeNode_c implements X10AmbTypeNode, A
     
           if (typeDefContainer != null) {
               Context context = tc.context();
-              MacroType mt = ts.findTypeDef(typeDefContainer, ts.TypeDefMatcher(typeDefContainer, name.id(), Collections.<Type>emptyList(), Collections.<Type>emptyList(), context), context);
+              MacroType mt = ts.findTypeDef(typeDefContainer, name.id(), Collections.<Type>emptyList(), Collections.<Type>emptyList(), context);
               
               LazyRef<Type> sym = (LazyRef<Type>) type;
               sym.update(mt);
@@ -208,11 +215,23 @@ public class X10AmbTypeNode_c extends AmbTypeNode_c implements X10AmbTypeNode, A
     
       // Mark the type as an error, so we don't try looking it up again.
       LazyRef<Type> sym = (LazyRef<Type>) type;
-      X10ClassType ut = ts.createFakeClass(QName.make(null, name().id()), ex);
+      X10ClassType ut = ts.createFakeClass(QName.make(fullName(prefix), name().id()), ex);
       ut.def().position(position());
       sym.update(ut);
       Errors.issue(tc.job(), ex, this);
       return nf.CanonicalTypeNode(position(), sym);
+  }
+  
+  public static QName fullName(Prefix prefix) {
+      if (prefix instanceof PackageNode) {
+          PackageNode pn = (PackageNode) prefix;
+          return Types.get(pn.package_()).fullName();
+      }
+      else if (prefix instanceof TypeNode) {
+          TypeNode tn = (TypeNode) prefix;
+          return tn.type().fullName();
+      }
+      return null;
   }
   
   static TypeNode postprocess(X10CanonicalTypeNode result, TypeNode n, ContextVisitor childtc) {

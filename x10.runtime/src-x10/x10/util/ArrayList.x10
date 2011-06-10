@@ -11,9 +11,11 @@
 
 package x10.util;
 
+import x10.compiler.TempNoInline_0;
+
 public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
 
-    private val a: GrowableRail[T];
+    private val a: GrowableIndexedMemoryChunk[T];
 
     public static def make[T](c: Container[T]) {
 	val a = new ArrayList[T]();
@@ -53,7 +55,7 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
     
     public def addBefore(i: int, v: T): void {
         a.add(v);
-        for (var j: int = i+1; j < a.length(); j++) {
+        for (var j:int = a.length()-1; j > i; j--) {
             a(j) = a(j-1);
         }
         a(i) = v;
@@ -83,16 +85,14 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
     
     public def isEmpty(): Boolean = size() == 0;
 
-    // DEPRECATED
     public def toArray() = a.toArray();
-    public def toRail() = a.toRail();
 
     public def this() {
-        a = new GrowableRail[T]();
+        a = new GrowableIndexedMemoryChunk[T]();
     }
     
     public def this(size: Int) {
-        a = new GrowableRail[T](size);
+        a = new GrowableIndexedMemoryChunk[T](size);
     }
     
     public def removeFirst(): T = removeAt(0);
@@ -140,7 +140,7 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
         return -1;
     }
 
-    public def moveSectionToRail(i:Int, j:Int): Rail[T] = a.moveSectionToRail(i,j);
+    public def moveSectionToArray(i:Int, j:Int) = a.moveSectionToArray(i,j);
 
     //
     // iterator
@@ -214,11 +214,8 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
     }
 
     // [NN]: should not need to cast x to Comparable[T]
-    public def sort() {T <: Comparable[T]} = sort((x:T, y:T) => (x as Comparable[T]).compareTo(y));
-    public def sort(cmp: (T,T)=>Int) = qsort(a, 0, 
-         a.length()-1, 
-         cmp
-    );
+    public def sort() {T <: Comparable[T]} { sort((x:T, y:T) => (x as Comparable[T]).compareTo(y)); }
+    public def sort(cmp: (T,T)=>Int) { qsort(a, 0, a.length()-1, cmp); }
 
     // public def sort(lessThan: (T,T)=>Boolean) = qsort(a, 0, a.length()-1, (x:T,y:T) => lessThan(x,y) ? -1 : (lessThan(y,x) ? 1 : 0));
     
@@ -226,7 +223,7 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
     // quick&dirty sort
     //
 
-    private def qsort(a: GrowableRail[T], lo: int, hi: int, cmp: (T,T)=>Int) {
+    private def qsort(a: GrowableIndexedMemoryChunk[T], lo: int, hi: int, cmp: (T,T)=>Int) {
         if (hi <= lo) return;
         var l: int = lo - 1;
         var h: int = hi;
@@ -241,7 +238,7 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
         qsort(a, l+1, hi, cmp);
     }
 
-    private def exch(a: GrowableRail[T], i: int, j: int): void {
+    private @TempNoInline_0 def exch(a: GrowableIndexedMemoryChunk[T], i: int, j: int): void {
         val temp = a(i);
         a(i) = a(j);
         a(j) = temp;

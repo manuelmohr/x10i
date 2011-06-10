@@ -11,24 +11,53 @@
 
 package x10.core;
 
+import java.util.Arrays;
+
 import x10.core.fun.VoidFun_0_0;
+import x10.lang.Place;
 import x10.lang.UnsupportedOperationException;
+import x10.rtt.NamedType;
 import x10.rtt.RuntimeType;
 import x10.rtt.RuntimeType.Variance;
 import x10.rtt.Type;
 
 public final class IndexedMemoryChunk<T> extends x10.core.Struct {
-    public final int length;
-    public final Object value;
-    public final Type<T> type;
 
-    public IndexedMemoryChunk(Type<T> type) {
-        this(type, 0, null);
+	private static final long serialVersionUID = 1L;
+
+    public int length;
+    public Object value;
+    public Type<T> type;
+
+    public IndexedMemoryChunk(java.lang.System[] $dummy) {
+        super($dummy);
     }
+
+    public IndexedMemoryChunk<T> $init(Type<T> type, int length, Object value) {
+        this.length = length;
+        this.type = type;
+        this.value = value;
+        return this;
+    }
+
     public IndexedMemoryChunk(Type<T> type, int length, Object value) {
         this.length = length;
         this.type = type;
         this.value = value;
+    }
+
+    public IndexedMemoryChunk<T> $init(Type<T> type) {
+        this.$init(type, 0, null);
+        return this;
+    }
+    
+    public IndexedMemoryChunk(Type<T> type) {
+        this(type, 0, null);
+    }
+
+    // zero value constructor
+    public IndexedMemoryChunk(Type<T> type, java.lang.System $dummy) {
+        this(type);
     }
 
     private IndexedMemoryChunk(Type<T> type, int length, boolean zeroed) {
@@ -39,6 +68,14 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
                 java.util.Arrays.fill((Object[]) value, zeroValue);
             }
         }
+    }
+
+    public static <T> IndexedMemoryChunk<T> allocate(Type<T> type, long length, boolean zeroed) {
+        if (length > Integer.MAX_VALUE) {
+            // TODO
+            throw new x10.lang.OutOfMemoryError("Array length must be shorter than 2^31");
+        }
+        return new IndexedMemoryChunk<T>(type, (int) length, zeroed);
     }
 
     public static <T> IndexedMemoryChunk<T> allocate(Type<T> type, int length, boolean zeroed) {
@@ -63,10 +100,43 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
         return type.getArray(value, i);
     }
 
-    public void $set(T v, int i) {
+    public void $set(int i, T v) {
         type.setArray(value, i, v);
     }
 
+    public void set_unsafe(T v, int i) {
+        $set(i, v);
+    }
+
+    public void clear(int start, int numElems) {
+        if (numElems <= 0) return;
+        if (value instanceof boolean[]) {
+            Arrays.fill(getBooleanArray(), start, start+numElems, false);
+        } else if (value instanceof byte[]) {
+            Arrays.fill(getByteArray(), start, start+numElems, (byte)0);                 
+        } else if (value instanceof char[]) {
+            Arrays.fill(getCharArray(), start, start+numElems, (char)0);               
+        } else if (value instanceof short[]) {
+            Arrays.fill(getShortArray(), start, start+numElems, (short)0);
+        } else if (value instanceof int[]) {
+            Arrays.fill(getIntArray(), start, start+numElems, 0);
+        } else if (value instanceof float[]) {
+            Arrays.fill(getFloatArray(), start, start+numElems, 0.0F);
+        } else if (value instanceof long[]) {
+            Arrays.fill(getLongArray(), start, start+numElems, 0L);
+        } else if (value instanceof double[]) {
+            Arrays.fill(getDoubleArray(), start, start+numElems, 0.0);
+        } else {
+            Object zeroValue = x10.rtt.Types.zeroValue(type);
+            Arrays.fill(getObjectArray(), start, start+numElems, zeroValue);
+        }
+    }
+
+    public void deallocate() {
+        value = null;
+        length = 0;
+    }
+    
     public static <T> void asyncCopy(IndexedMemoryChunk<T> src, final int srcIndex, 
                                      final RemoteIndexedMemoryChunk<T> dst, final int dstIndex,
                                      final int numElems) {
@@ -81,20 +151,47 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
             System.arraycopy(src.value, srcIndex, dataToCopy, 0, numElems);
         }
         
+        /*
+        // TODO translate copyBody to a static nested class
         VoidFun_0_0 copyBody = new VoidFun_0_0() {
+            private static final long serialVersionUID = 1L;
             int dstId = dst.id;
             Object srcData = dataToCopy;
             
-            public RuntimeType<?> getRTT() { return VoidFun_0_0._RTT; }
-            public Type<?> getParam(int i) { return null; }
+            public RuntimeType<?> $getRTT() { return VoidFun_0_0.$RTT; }
+            public Type<?> $getParam(int i) { return null; }
             
             public void $apply() {
                 Object dstData = RemoteIndexedMemoryChunk.getValue(dstId);
                 System.arraycopy(srcData, 0, dstData, dstIndex, numElems);
             }
         };
+        */
+        VoidFun_0_0 copyBody = new $Closure$0(dataToCopy, dst.id, dstIndex, numElems);
         
         x10.lang.Runtime.runAsync(dst.home, copyBody);
+    }
+    
+    // static nested class version of copyBody
+    static class $Closure$0 extends x10.core.Ref implements VoidFun_0_0 {
+        private static final long serialVersionUID = 1L;
+        final Object srcData;
+        final int dstId;
+        final int dstIndex;
+        final int numElems;
+        $Closure$0(Object srcData, int dstId, int dstIndex, int numElems) {
+        	this.srcData = srcData;
+        	this.dstId = dstId;
+        	this.dstIndex = dstIndex;
+        	this.numElems = numElems;
+        }
+        public void $apply() {
+            Object dstData = RemoteIndexedMemoryChunk.getValue(dstId);
+            System.arraycopy(srcData, 0, dstData, dstIndex, numElems);
+        }
+        public static final RuntimeType<$Closure$0> $RTT =
+        	new x10.rtt.StaticVoidFunType<$Closure$0>($Closure$0.class, new Type[] { VoidFun_0_0.$RTT, x10.rtt.Types.OBJECT });
+        public RuntimeType<$Closure$0> $getRTT() { return $RTT; }
     }
 
     public static <T> void asyncCopy(IndexedMemoryChunk<T> src, int srcIndex, 
@@ -109,12 +206,14 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
                                      final int numElems) {
         // A really bad implementation!  Leaks dst!!  Non-optimized copies! Extra distributed async/finish traffic!
         final RemoteIndexedMemoryChunk<T> dstWrapper = RemoteIndexedMemoryChunk.wrap(dst);
-        final int srcId = src.id;
         
+        /*
+        // TODO translate copyBody1 to a static nested class
+        final int srcId = src.id;
         VoidFun_0_0 copyBody1 = new VoidFun_0_0() {
-            
-            public RuntimeType<?> getRTT() { return VoidFun_0_0._RTT; }
-            public Type<?> getParam(int i) { return null; }
+            private static final long serialVersionUID = 1L;
+            public RuntimeType<?> $getRTT() { return VoidFun_0_0.$RTT; }
+            public Type<?> $getParam(int i) { return null; }
             
             public void $apply() {
                 // This body runs at src's home.  It accesses the data for src and then does
@@ -132,12 +231,14 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
                     System.arraycopy(srcData, srcIndex, dataToCopy, 0, numElems);
                 }
                 
+                // TODO translate this to a static nested class
                 VoidFun_0_0 copyBody2 = new VoidFun_0_0() {
+                    private static final long serialVersionUID = 1L;
                     int dstId = dstWrapper.id;
                     Object srcData = dataToCopy;
                     
-                    public RuntimeType<?> getRTT() { return VoidFun_0_0._RTT; }
-                    public Type<?> getParam(int i) { return null; }
+                    public RuntimeType<?> $getRTT() { return VoidFun_0_0.$RTT; }
+                    public Type<?> $getParam(int i) { return null; }
                     
                     public void $apply() {
                         // This body runs back at dst's home.  It does the actual assignment of values.
@@ -149,8 +250,57 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
                 x10.lang.Runtime.runAsync(dstWrapper.home, copyBody2);
             }
         };
-        
+        */
+        VoidFun_0_0 copyBody1 = new $Closure$1<T>(src, srcIndex, dstWrapper, dstIndex, numElems);
+
         x10.lang.Runtime.runAsync(src.home, copyBody1);
+    }
+    
+    // static nested class version of copyBody1
+    static class $Closure$1<T> extends x10.core.Ref implements VoidFun_0_0 {
+        private static final long serialVersionUID = 1L;
+        final int srcId;
+        final int srcLength;
+        final Type<T> srcType;
+        final int srcIndex;
+        final int dstWrapperId;
+        final Place dstWrapperHome;
+        final int dstIndex;
+        final int numElems;
+        $Closure$1(RemoteIndexedMemoryChunk<T> src, int srcIndex, RemoteIndexedMemoryChunk<T> dstWrapper, int dstIndex, int numElems) {
+        	this.srcId = src.id;
+        	this.srcLength = src.length;
+        	this.srcType = src.type;
+        	this.srcIndex = srcIndex;
+        	this.dstWrapperId = dstWrapper.id;
+        	this.dstWrapperHome = dstWrapper.home;
+        	this.dstIndex = dstIndex;
+        	this.numElems = numElems;
+        }
+        public void $apply() {
+            // This body runs at src's home.  It accesses the data for src and then does
+            // another async back to dstWrapper's home to transfer the data.
+            Object srcData = RemoteIndexedMemoryChunk.getValue(srcId);
+             
+            // extra copy here simplifies logic and allows us to do this entirely at the Java level.
+            // We'll eventually need to optimize this by writing custom native/JNI code instead of treating
+            // it as just another async to execute remotely.
+            final Object dataToCopy;
+            if (numElems == srcLength) {
+                dataToCopy = srcData;
+            } else {
+                dataToCopy = allocate(srcType, numElems, false).getBackingArray();
+                System.arraycopy(srcData, srcIndex, dataToCopy, 0, numElems);
+            }
+            
+            // N.B. copyBody2 is same as copyBody 
+            VoidFun_0_0 copyBody2 = new $Closure$0(dataToCopy, dstWrapperId, dstIndex, numElems);
+
+            x10.lang.Runtime.runAsync(dstWrapperHome, copyBody2);
+        }
+        public static final RuntimeType<$Closure$1<?>> $RTT =
+        	new x10.rtt.StaticVoidFunType<$Closure$1<?>>($Closure$1.class, new Type[] { VoidFun_0_0.$RTT, x10.rtt.Types.OBJECT });
+        public RuntimeType<$Closure$1<?>> $getRTT() { return $RTT; }
     }
 
     public static <T> void asyncCopy(RemoteIndexedMemoryChunk<T> src, int srcIndex, 
@@ -166,28 +316,30 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
         System.arraycopy(src.value, srcIndex, dst.value, dstIndex, numElems);
     }
 
-    @Override
-    public boolean _struct_equals(Object o) {
+    public boolean _struct_equals$O(Object o) {
         return o != null && this.value == ((IndexedMemoryChunk<?>) o).value;
     }
 
-    public static final RuntimeType<IndexedMemoryChunk<?>> _RTT = new RuntimeType<IndexedMemoryChunk<?>>(
+    // TODO implement remote operations
+    public RemoteIndexedMemoryChunk<T> getCongruentSibling(x10.lang.Place p) {
+    	ThrowableUtilities.UnsupportedOperationException("Remote operations are not implemented.");
+    	return null;
+    }
+
+    public static final RuntimeType<IndexedMemoryChunk<?>> $RTT = new NamedType<IndexedMemoryChunk<?>>(
+        "x10.util.IndexedMemoryChunk",
         IndexedMemoryChunk.class,
-        new RuntimeType.Variance[] { Variance.INVARIANT }
-    ) {
-        @Override
-        public java.lang.String typeName() {
-            return "x10.util.IndexedMemoryChunk";
-        }
-    };
+        new RuntimeType.Variance[] { Variance.INVARIANT },
+        new Type[] { x10.rtt.Types.STRUCT }
+    );
     
     @Override
-    public RuntimeType<IndexedMemoryChunk<?>> getRTT() {
-        return _RTT;
+    public RuntimeType<IndexedMemoryChunk<?>> $getRTT() {
+        return $RTT;
     }
 
     @Override
-    public Type<?> getParam(int i) {
+    public Type<?> $getParam(int i) {
         return i == 0 ? type : null;
     }
 

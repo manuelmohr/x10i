@@ -15,24 +15,30 @@ import java.util.List;
 
 import polyglot.ast.Allocation;
 import polyglot.ast.ConstructorCall;
-import polyglot.ast.Expr;
+import polyglot.ast.Ext;
+import polyglot.ast.FieldDecl;
 import polyglot.ast.Local;
 import polyglot.ast.LocalDecl;
 import polyglot.ast.New;
 import polyglot.ast.Node;
 import polyglot.ast.NodeFactory;
+import polyglot.ast.Special;
 import polyglot.ast.Stmt;
-import polyglot.ast.TypeNode;
 import polyglot.frontend.Job;
 import polyglot.types.Flags;
 import polyglot.types.Name;
+import polyglot.types.ObjectType;
+import polyglot.types.QName;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.types.TypeSystem;
 import polyglot.util.Position;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.NodeVisitor;
-import x10.ast.X10NodeFactory_c;
+import x10.ast.AnnotationNode;
+import x10.extension.X10Ext;
+import x10.types.Annotated;
+import x10.types.X10TypeObjectMixin;
 import x10.util.AltSynthesizer;
 
 /**
@@ -47,7 +53,9 @@ import x10.util.AltSynthesizer;
  */
 public class ConstructorSplitterVisitor extends ContextVisitor {
 
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
+    private static final QName NATIVE_CLASS_ANNOTATION = QName.make("x10.compiler.NativeClass");
+    private static final QName NATIVE_REP_ANNOTATION   = QName.make("x10.compiler.NativeRep");
     
     private void debug (Job job, String msg, Position pos) {
         if (!DEBUG) return;
@@ -62,7 +70,19 @@ public class ConstructorSplitterVisitor extends ContextVisitor {
      */
     public ConstructorSplitterVisitor(Job job, TypeSystem ts, NodeFactory nf) {
         super(job, ts, nf);
+        assert x10.optimizations.Optimizer.CONSTRUCTOR_SPLITTING(job.extensionInfo());
         syn = new AltSynthesizer(ts, nf);
+    }
+
+    /* (non-Javadoc)
+     * @see polyglot.visit.NodeVisitor#override(polyglot.ast.Node)
+     * 
+     * Note: C++ backend apparently cannot handle StmtExpr's "outside functions"
+     */
+    @Override
+    public Node override(Node n) {
+        if (n instanceof FieldDecl) return n;
+        return super.override(n);
     }
 
     /**
@@ -83,73 +103,137 @@ public class ConstructorSplitterVisitor extends ContextVisitor {
         Position pos = node.position();
         if (node instanceof New && !(parent instanceof LocalDecl)){
             New n              = (New) node;
-   //       Type type          = Types.baseType(n.type());
+            if (isUnsplittable(n.constructorInstance().container().toClass()))
+                return n;
             Type type          = n.type();
-            Allocation a       = createAllocation(pos, type, n.typeArguments());
+            Allocation a       = syn.createAllocation(pos, type, n.typeArguments());
+            a                  = (Allocation) copyAnnotations(n, a);
             LocalDecl ld       = syn.createLocalDecl(pos, Flags.FINAL, Name.makeFresh("alloc"), a);
-            Local l            = syn.createLocal(pos, ld);
-            ConstructorCall cc = createConstructorCall(n).target(l);
+            ConstructorCall cc = syn.createConstructorCall(syn.createLocal(pos, ld), n);
+            cc                 = (ConstructorCall) copyAnnotations(n, cc);
             List<Stmt> stmts   = new ArrayList<Stmt>();
             stmts.add(ld);
             stmts.add(cc);
             Node result        = syn.createStmtExpr(pos, stmts, syn.createLocal(pos, ld));
-            debug(job, "ConstructorSplitterVisitor splitting " +n+ "\n\t" +result, pos);
+            if (DEBUG) debug(job, "ConstructorSplitterVisitor splitting \n\t" +node+ "  ~>\n\t" +result, pos);
             return result;
         }
         if (node instanceof LocalDecl && ((LocalDecl) node).init() instanceof New) {
             LocalDecl ld       = (LocalDecl) node;
             New n              = (New) ld.init();
-    //      Type type          = Types.baseType(n.type());
+            if (isUnsplittable(n.constructorInstance().container().toClass()))
+                return ld;
             Type type          = n.type();
-            Allocation a       = createAllocation(pos, type, n.typeArguments());
-            ld                 = ld.init(a);
-            Local l            = syn.createLocal(pos, ld);
-            ConstructorCall cc = createConstructorCall(n).target(l);
+            Allocation a       = syn.createAllocation(pos, type, n.typeArguments());
+            a                  = (Allocation) copyAnnotations(n, a);
+            // We're in a statement context, so we can avoid a stmt expr.
             List<Stmt> stmts   = new ArrayList<Stmt>();
-            stmts.add(ld);
-            stmts.add(cc);
+            if (type.typeSystem().typeDeepBaseEquals(ld.declType(), n.type(), context)) {
+                ld                 = ld.init(a);
+                ConstructorCall cc = syn.createConstructorCall(syn.createLocal(pos, ld), n);
+                cc                 = (ConstructorCall) copyAnnotations(n, cc);
+                stmts.add(ld);
+                stmts.add(cc);
+            } else {
+                // Type of the local != type of the new.
+                // This happens when the type of the local decl is a supertype of the type of the new
+                // Introduce additional localdecl so that the constructor call can be made
+                // on a variable of the correct type. 
+                LocalDecl ld2      = syn.createLocalDecl(pos, Flags.FINAL, Name.makeFresh("alloc"), a);
+                ConstructorCall cc = syn.createConstructorCall(syn.createLocal(pos, ld2), n);
+                cc                 = (ConstructorCall) copyAnnotations(n, cc);
+                ld                 = ld.init(syn.createLocal(pos, ld2));
+                stmts.add(ld2);
+                stmts.add(cc);
+                stmts.add(ld);
+            }
             Node result        = syn.createStmtSeq(pos, stmts);
-            debug(job, "ConstructorSplitterVisitor splitting " +node+ "\n\t" +result, pos);
+            if (DEBUG) debug(job, "ConstructorSplitterVisitor splitting \n\t" +node+ "  ~>\n\t" +result, pos);
             return result;
-        }
+        } 
         if (node instanceof ConstructorCall) {
             ConstructorCall cc = (ConstructorCall) node;
-            debug(job, "ConstructorSplitterVisitor supplying 'this' target for constructor call: " + cc, pos);
-            return cc.target(createThis(pos, cc.constructorInstance().returnType()));
+            /*
+            if (cc.kind() == ConstructorCall.SUPER && ts.typeEquals(cc.constructorInstance().returnType(), ts.Object(), context())) {
+                return nf.Empty(cc.position());
+            }
+            */
+            if (null == cc.target()) {
+                Special target = syn.createThis(node.position(), cc.constructorInstance().returnType());
+                // TODO if "this" is generic make sure it's typeArgs get included in those of cc
+                return cc.target(target);
+            }
         }
         return super.leaveCall(parent, old, node, v);
     }
 
     /**
-     * @param n
-     * @param pos
-     * @return
-     */
-    private ConstructorCall createConstructorCall(New n) {
-        return nf.ThisCall(n.position(), n.arguments()).constructorInstance(n.constructorInstance());
-    }
-
-    /**
-     * @param pos
      * @param type
      * @return
-     * TODO: move to Synthesizer
      */
-    private Expr createThis(Position pos, Type type) {
-        return nf.This(pos).type(type);
+    public static boolean isUnsplittable(Type type) {
+        assert null != type;
+        TypeSystem ts = type.typeSystem();
+        assert null != ts;
+        if (ts.typeEquals(type, ts.Object(), ts.emptyContext()))
+            return false;
+        if (hasNaiveAnnotation(type))
+            return true;
+        if (type instanceof ObjectType) {
+            return inheritsUnsplittability(((ObjectType) type).superClass(), ts);
+        }
+        return false;
     }
 
     /**
-     * Create an artificial Allocation node.
-     * 
-     * @param pos the Position of the allocation
-     * @param type the Type of the object (or struct) being allocated
-     * @param typeArgs 
-     * @return a synthesized Allocation node.
-     * TODO: move to Synthesizer
+     * @param type
+     * @param ts 
+     * @return
      */
-    private Allocation createAllocation(Position pos, Type type, List<TypeNode> typeArgs) {
-        return (Allocation) ((Allocation) ((X10NodeFactory_c) nf).Allocation(pos).type(type)).typeArguments(typeArgs);
+    public static boolean inheritsUnsplittability(Type type, TypeSystem ts) {
+        if (null == type)
+            return false; // some non-Native ObjectClass's (x10.array.RectLayout for one) don't have a superClass ????
+        if (ts.typeEquals(type, ts.Object(), ts.emptyContext()))
+            return false;  // inheriting from x10.lang.object is ok
+        if (hasNaiveAnnotation(type)) 
+            return true;   // inheriting from any other native class is not
+        return inheritsUnsplittability(((ObjectType) type).superClass(), ts);
+    }
+
+    /**
+     * @param type
+     * @return
+     */
+    private static boolean hasNaiveAnnotation(Type type) {
+        List<Type> annotations = type.annotations();
+        if (null == annotations || annotations.isEmpty()) 
+            return false;
+        if (!X10TypeObjectMixin.annotationsNamed(annotations, NATIVE_CLASS_ANNOTATION).isEmpty())
+            return true;
+        if (!X10TypeObjectMixin.annotationsNamed(annotations, NATIVE_REP_ANNOTATION).isEmpty())
+            return true;
+        return false;
+    }
+
+    public static List<AnnotationNode> getAnnotations(Node n) {
+        Ext ext = n.ext();
+        if (null == ext || !(ext instanceof X10Ext)) 
+            return null;
+        X10Ext x10ext = (X10Ext) ext;
+        return x10ext.annotations();
+    }
+
+    public static Node addAnnotations(Node n, List<AnnotationNode> annotations) {
+        Ext ext = n.ext();
+        if (null == annotations || annotations.isEmpty() || null == ext || !(ext instanceof X10Ext)) 
+            return n;
+        X10Ext x10ext = (X10Ext) ext;
+        Node node = x10ext.annotations(annotations);
+        return node;
+    }
+
+    public static Node copyAnnotations(Node src, Node dst) {
+        return addAnnotations(dst, getAnnotations(src));
     }
 
 }

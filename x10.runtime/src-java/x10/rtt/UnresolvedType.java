@@ -3,9 +3,33 @@ package x10.rtt;
 
 public final class UnresolvedType implements Type {
 
-    int index = -1;
+	private static final long serialVersionUID = 1L;
+
+	public static final UnresolvedType THIS = new UnresolvedType(-1);
+	private static final UnresolvedType[] params = {
+	    new UnresolvedType(0),
+	    new UnresolvedType(1),
+	    new UnresolvedType(2),
+	    new UnresolvedType(3),
+        new UnresolvedType(4),
+        new UnresolvedType(5),
+        new UnresolvedType(6),
+        new UnresolvedType(7),
+        new UnresolvedType(8),
+        new UnresolvedType(9),
+	};
+
+    private final int index;
     
-    public UnresolvedType(int index) {
+    public static UnresolvedType getParam(int index) {
+        assert index >= 0;
+        if (index < params.length) {
+            return params[index];
+        }
+        return new UnresolvedType(index);
+    }
+    
+    private UnresolvedType(int index) {
         this.index = index;
     }
 
@@ -25,7 +49,7 @@ public final class UnresolvedType implements Type {
         throw new UnsupportedOperationException();
     }
 
-    public final Class<?> getJavaClass() {
+    public final Class<?> getImpl() {
         throw new UnsupportedOperationException();
     }
 
@@ -45,7 +69,10 @@ public final class UnresolvedType implements Type {
         throw new UnsupportedOperationException();
     }
 
-    public final Object setArray(Object array, int i, Object v) {
+//    public final Object setArray(Object array, int i, Object v) {
+//        throw new UnsupportedOperationException();
+//    }
+    public final void setArray(Object array, int i, Object v) {
         throw new UnsupportedOperationException();
     }
 

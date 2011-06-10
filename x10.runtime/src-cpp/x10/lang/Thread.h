@@ -24,6 +24,7 @@
 
 namespace x10 {
     namespace lang {
+        class Place;
         class String;
         class Reference;
         class Runtime__Worker;
@@ -68,7 +69,7 @@ namespace x10 {
 
             virtual void _serialize_body(x10aux::serialization_buffer &buf);
 
-            template<class T> static x10aux::ref<T> _deserializer(x10aux::deserialization_buffer &buf);
+            static x10aux::ref<x10::lang::Reference> _deserializer(x10aux::deserialization_buffer &buf);
 
             virtual void _deserialize_body(x10aux::deserialization_buffer& buf);
 
@@ -204,6 +205,10 @@ namespace x10 {
              */
             virtual void __apply();
 
+            // pthread -> Thread mapping is maintained as thread specific data
+            static pthread_key_t __thread_mapper;
+            static x10_boolean __thread_mapper_inited;
+
         protected:
             // Helper method to initialize a Thread object.
             void thread_init(const x10aux::ref<x10::lang::String> name);
@@ -221,12 +226,12 @@ namespace x10 {
             static void thread_permit_cleanup(void *arg);
             // Thread mapper cleanup handler.
             static void thread_mapper_cleanup(void *arg);
+            // Thread binding to processor capabilities
+            void thread_bind_cpu();
 
         private:
             // the current worker
             x10aux::ref<x10::lang::Runtime__Worker> __current_worker;
-            // the current thread
-            static x10aux::ref<Thread> __current_thread;
             // internal thread id counter (monotonically increasing only)
             static long __thread_cnt;
             // thread id
@@ -246,17 +251,7 @@ namespace x10 {
             pthread_mutex_t __thread_start_lock;
             // thread specific permit object
             permit_t __thread_permit;
-            // pthread -> Thread mapping is maintained as thread specific data
-            static pthread_key_t __thread_mapper;
-            static x10_boolean __thread_mapper_inited;
         };
-
-        template<class T> x10aux::ref<T> Thread::_deserializer(x10aux::deserialization_buffer &buf) {
-            x10aux::ref<Thread> this_ = new (x10aux::alloc<Thread>()) Thread();
-            buf.record_reference(this_); // TODO: avoid; no global refs; final class
-            this_->_deserialize_body(buf);
-            return this_;
-        }
     }
 }
 

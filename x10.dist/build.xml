@@ -10,7 +10,7 @@
     <property name="lib" location="${basedir}/lib"/>
     <property name="stdlib" location="${basedir}/stdlib"/>
     <property name="lpg.jar" value="lpg.jar"/>
-    <property name="lpg.jar.url" value="http://dist.codehaus.org/x10/dependencies/lpg.runtime.java_2.0.20.jar"/>
+    <property name="lpg.jar.url" value="http://dist.codehaus.org/x10/dependencies/lpg.runtime.java_2.0.22.jar"/>
     <property name="ecj.jar" value="ecj.jar"/>
     <property name="ecj.jar.url" value="http://dist.codehaus.org/x10/dependencies/ecj-3.5.1.jar"/>
     <property name="wala.jar" value="com.ibm.wala.cast.java_1.0.0.201101071300.jar"/>
@@ -23,8 +23,8 @@
     <property name="wala4.jar.url" value="http://dist.codehaus.org/x10/dependencies/com.ibm.wala.shrike_1.3.1.201101071300.jar"/>
     <property name="equinox.jar" value="org.eclipse.equinox.common_3.6.0.v20100503.jar"/>
     <property name="equinox.jar.url" value="http://dist.codehaus.org/x10/dependencies/org.eclipse.equinox.common_3.6.0.v20100503.jar"/>
-    <property name="math.jar" value="commons-math-2.1.jar"/>
-    <property name="math.jar.url" value="http://dist.codehaus.org/x10/dependencies/commons-math-2.1.jar"/>
+    <property name="math.jar" value="commons-math-2.2.jar"/>
+    <property name="math.jar.url" value="http://dist.codehaus.org/x10/dependencies/commons-math-2.2.jar"/>
     <property name="x10.bridge.location" location="${x10.home}/x10.wala"/>
     <property name="bridge.jar" value="x10wala.jar" />
     <property name="x10.constraints.location" location="${x10.home}/x10.constraints"/>
@@ -35,6 +35,7 @@
     <property name="compiler.jar" value="x10c.jar"/>
     <property name="config" value="standard.cfg"/>
     <property name="x10.runtime.location" location="${x10.home}/x10.runtime"/>
+    <property name="xrx.src.dir" location="${x10.home}/x10.runtime/src-x10" />
     <property name="runtime.jar" value="x10.jar"/>
     <property name="x10.tests.location" location="${x10.home}/x10.tests"/>
     <property name="jfirm.location" location="${x10.home}/jFirm"/>
@@ -45,6 +46,9 @@
     <property name="x10firm.jar" value="x10firm.jar"/>
     <property name="libx10std.location" value="${basedir}/src-stdlib"/>
 
+    <property name="x10.doc.location" location="${x10.home}/x10.doc"/>
+    <property name="bash.exe" value="bash"/>
+    <property name="CROSS_COMPILE_BGP" value="false" />
     <path id="project.classpath"/>
     <!-- get the environment variables -->
     <property environment="env"/>
@@ -133,7 +137,11 @@
         <ant antfile="${x10.runtime.location}/build.xml" target="clean" inheritAll="false" dir="${x10.runtime.location}"/>
     </target>
 
-    <target name="squeakyclean" depends="clean-java,clean-cpp,clean-bridge"/>
+    <target name="clean-x10doc">
+        <ant antfile="${x10.doc.location}/build.xml" target="clean" inheritAll="false" dir="${x10.doc.location}"/>
+    </target>
+
+    <target name="squeakyclean" depends="clean-java,clean-cpp,clean-bridge,clean-x10doc"/>
 
     <target name="distclean" depends="squeakyclean">
         <delete dir="${lib}" failonerror="false"/>
@@ -158,7 +166,7 @@
 
     <target name="dist-java" depends="init,build,common-jar,constraints-jar,compiler-jar,runtime-java,x10firm-jar"/>
     <target name="dist-cpp" depends="dist-java,runtime-cpp"/>
-    <target name="dist" depends="dist-java,dist-cpp,dist-bridge"/>
+    <target name="dist" depends="dist-java,dist-cpp,dist-bridge,dist-x10doc"/>
     <target name="dist-java-cpp" depends="init,build,common-jar,constraints-jar,compiler-jar">
         <ant antfile="${x10.runtime.location}/build.xml" target="dist-par" inheritAll="false" dir="${x10.runtime.location}"/>
     </target>
@@ -169,6 +177,9 @@
         </parallel>
     </target>
     <target name="dist-bridge" depends="dist-java,bridge-jar"/>
+    <target name="dist-x10doc" depends="init,compiler-jar">
+        <ant antfile="${x10.doc.location}/build.xml" target="dist" inheritAll="false" dir="${x10.doc.location}"/>
+    </target>
     <target name="check-jar-cache" depends="init">
         <available property="lpg.jar.present" file="${lib}/${lpg.jar}"/>
         <available property="ecj.jar.present" file="${lib}/${ecj.jar}"/>
@@ -190,6 +201,20 @@
                 <isset property="math.jar.present"/>
             </and>
         </condition>
+    </target>
+
+    <target name="xrx-xdoc" depends="dist-x10doc">
+        <fileset id="xrx.files" dir="${xrx.src.dir}" includes="**/*.x10" excludes="**/compiler/ws/**/*.x10" />
+        <pathconvert property="xrx.list" refid="xrx.files" dirsep="/" pathsep=" ">
+            <map from="${xrx.src.dir}${file.separator}" to=""/>
+        </pathconvert>
+        <pathconvert property="xrx.list" refid="xrx.files" dirsep="/" pathsep=" "/>
+        <echo message="x10doc -d '${stdlib}/x10doc' -rtdev -sourcepath '${xrx.src.dir}' ${xrx.list}"/>
+        <exec executable="${bash.exe}" failonerror="true" dir="${xrx.src.dir}">
+            <env key="X10_ROOT" value="${x10.home}" />
+            <arg value="-c" />
+            <arg value="'${basedir}/bin/x10doc' -d '${stdlib}/x10doc' -rtdev -sourcepath '${xrx.src.dir}' ${xrx.list}" />
+        </exec>
     </target>
 
     <target name="lpg-jar" depends="init,lpg-local-jar" unless="local.lpg.jar">
@@ -299,6 +324,11 @@
 
     <target name="update-jar-cache" depends="init,lpg-jar,ecj-jar,wala-jar,wala2-jar,wala3-jar,wala4-jar,equinox-jar,math-jar"/>
 
+	<target name="download-dependencies" depends="init,check-jar-cache" unless="cache.up-to-date">
+        <antcall target="update-jar-cache"/>
+    	<ant antfile="${x10.runtime.location}/build.xml" target="download-bdwgc" inheritAll="false" dir="${x10.runtime.location}"/>
+    </target>
+	
     <target name="prereq-jars" depends="init,check-jar-cache" unless="cache.up-to-date">
         <antcall target="update-jar-cache"/>
     </target>
@@ -521,13 +551,7 @@ WALA2_JAR='${wala2.jar}'
 WALA3_JAR='${wala3.jar}'
 WALA4_JAR='${wala4.jar}'
 MATH_JAR='${math.jar}'
-LPG_URL='${lpg.jar.url}'
-ECJ_URL='${ecj.jar.url}'
-WALA_URL='${wala.jar.url}'
-WALA2_URL='${wala2.jar.url}'
-WALA3_URL='${wala3.jar.url}'
-WALA4_URL='${wala4.jar.url}'
-
+CROSS_COMPILE_BGP='${CROSS_COMPILE_BGP}'
 
 </echo>
     </target>
@@ -691,10 +715,32 @@ WALA4_URL='${wala4.jar.url}'
             </or>
         </condition>
     	<property name="targetDir" value="../x10.dist.${platform}.${arch}.fragment"/>
-    	<echo message="Copying include and lib files to ${targetDir}..."/>
+
+        <echo message="Cleaning out bin, etc, include, lib, and stdlib of old files from ${targetDir}..."/>
+        <delete>
+          <fileset dir="${targetDir}/bin"     includes="**"/>
+          <fileset dir="${targetDir}/etc"     includes="**"/>
+          <fileset dir="${targetDir}/include" includes="**"/>
+          <fileset dir="${targetDir}/lib"     includes="**"/>
+          <fileset dir="${targetDir}/stdlib"  includes="**"/>
+        </delete>
+
+    	<echo message="Copying bin, etc, include, lib and stdlib files to ${targetDir}..."/>
         <copy todir="${targetDir}">
-            <fileset dir="." includes="include/**,lib/**,stdlib/**,bin/X10Launcher"/>
+            <fileset dir="." includes="bin/x10c,bin/x10c++,bin/X10Launcher,etc/*.properties,include/**,lib/**,samples/HelloWorld.x10,stdlib/**"/>
         </copy>
+        <chmod file="${targetDir}/bin/x10c" perm="u+x"/>
+        <chmod file="${targetDir}/bin/x10c++" perm="u+x"/>
+        <chmod file="${targetDir}/bin/X10Launcher" perm="u+x"/>
+
+        <echo message="Attempting to compile Hello, World..."/>
+        <exec executable="${targetDir}/bin/x10c++">
+          <arg value="-d"/>
+          <arg value="${targetDir}/samples"/>
+          <arg value="${targetDir}/samples/HelloWorld.x10"/>
+        </exec>
+        <echo message="Attempting to launch Hello, World..."/>
+        <exec executable="${targetDir}/samples/a.out"/>
     </target>
 
 </project>

@@ -12,13 +12,27 @@
 package x10.core.concurrent;
 
 import x10.core.RefI;
+import x10.rtt.NamedType;
 import x10.rtt.RuntimeType;
 import x10.rtt.Type;
 
 public final class AtomicInteger extends java.util.concurrent.atomic.AtomicInteger implements RefI {
 
+	private static final long serialVersionUID = 1L;
+
+	public AtomicInteger(java.lang.System[] $dummy) {
+	    super();
+	}
+	public AtomicInteger $init() {return this;}
+	
     public AtomicInteger() {
         super();
+    }
+
+    public AtomicInteger $init(int initialValue) {
+        // TODO
+        set(initialValue);
+        return this;
     }
     
     public AtomicInteger(int initialValue) {
@@ -28,17 +42,13 @@ public final class AtomicInteger extends java.util.concurrent.atomic.AtomicInteg
     //
     // Runtime type information
     //
-    public static final RuntimeType<AtomicInteger> _RTT = new RuntimeType<AtomicInteger>(
+    public static final RuntimeType<AtomicInteger> $RTT = new NamedType<AtomicInteger>(
+        "x10.util.concurrent.AtomicInteger",
         AtomicInteger.class,
         new x10.rtt.Type[] { x10.rtt.Types.OBJECT }
-    ) {
-        @Override
-        public String typeName() {
-            return "x10.util.concurrent.AtomicInteger";
-        }
-    };
-    public RuntimeType<AtomicInteger> getRTT() {return _RTT;}
-    public Type<?> getParam(int i) {
+    );
+    public RuntimeType<AtomicInteger> $getRTT() {return $RTT;}
+    public Type<?> $getParam(int i) {
         return null;
     }
 

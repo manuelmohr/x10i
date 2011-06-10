@@ -31,10 +31,13 @@ import polyglot.ast.Stmt;
 import polyglot.ast.TypeNode;
 import polyglot.frontend.Job;
 import polyglot.types.ClassType;
+import polyglot.types.CodeInstance;
 import polyglot.types.ConstructorDef;
 import polyglot.types.FieldDef;
 import polyglot.types.Flags;
 import polyglot.types.LocalDef;
+import polyglot.types.LocalInstance;
+import polyglot.types.Name;
 import polyglot.types.Ref;
 import polyglot.types.SemanticException;
 import polyglot.types.ContainerType;
@@ -52,6 +55,7 @@ import x10.ast.X10ConstructorDecl;
 import x10.ast.X10FieldDecl;
 import x10.ast.X10MethodDecl;
 import x10.ast.X10New;
+import x10.types.ClosureInstance;
 import x10.types.ConstrainedType;
 import x10.types.ParameterType;
 import x10.types.X10ClassDef;
@@ -60,13 +64,14 @@ import x10.types.X10ConstructorDef;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10FieldDef;
 import x10.types.X10FieldInstance;
+import x10.types.X10LocalInstance;
 
 import x10.types.X10MethodDef;
 import x10.types.MethodInstance;
 import x10.types.X10ParsedClassType;
 import x10.types.X10ProcedureDef;
-import x10.types.ParameterType.Variance;
 import x10.types.constraints.CConstraint;
+import x10.types.constraints.SubtypeConstraint;
 import x10.types.constraints.TypeConstraint;
 
 /**
@@ -146,13 +151,31 @@ public class X10InnerClassRemover extends InnerClassRemover {
         }
 
         protected CConstraint transformConstraint(CConstraint c) {
-            // TODO Auto-generated method stub
-            return c;
+            return super.transformConstraint(c);
         }
 
         protected TypeConstraint transformTypeConstraint(TypeConstraint c) {
-            // TODO Auto-generated method stub
-            return c;
+            if (c == null)
+                return null;
+            boolean changed = false;
+            List<SubtypeConstraint> newTerms = new ArrayList<SubtypeConstraint>();
+            List<SubtypeConstraint> terms = c.terms();
+            for (SubtypeConstraint t : terms) {
+                Type sub = t.subtype();
+                Type sup = t.isHaszero() ? null : t.supertype();
+                Type nsub = transformType(sub);
+                Type nsup = transformType(sup);
+                if (nsub != sub || nsup != sup) {
+                    newTerms.add(new SubtypeConstraint(nsub, nsup, t.kind()));
+                    changed = true;
+                } else {
+                    newTerms.add(t);
+                }
+            }
+            if (!changed) return c;
+            TypeConstraint nc = new TypeConstraint();
+            nc.addTerms(newTerms);
+            return nc;
         }
 
         @Override
@@ -167,11 +190,16 @@ public class X10InnerClassRemover extends InnerClassRemover {
             if (newFormalTypes != formalTypes) {
                 ci = (X10ConstructorInstance) ci.formalTypes(newFormalTypes);
             }
-            //List<Type> throwTypes = ci.throwTypes();
-            //List<Type> newThrowTypes = transformTypeList(throwTypes);
-            //if (newThrowTypes != throwTypes) {
-            //    ci = (X10ConstructorInstance) ci.throwTypes(newThrowTypes);
-            //}
+            List<LocalInstance> newFormalNames = new ArrayList<LocalInstance>();
+            boolean changed = false;
+            for (LocalInstance li : ci.formalNames()) {
+                LocalInstance newLI = transformLocalInstance((X10LocalInstance) li);
+                if (newLI != li) changed = true;
+                newFormalNames.add(newLI);
+            }
+            if (changed) {
+                ci = (X10ConstructorInstance) ci.formalNames(newFormalNames);
+            }
             ContainerType container = ci.container();
             ContainerType newContainer = (ContainerType) transformType(container);
             if (newContainer != container) {
@@ -202,11 +230,16 @@ public class X10InnerClassRemover extends InnerClassRemover {
             if (newFormalTypes != formalTypes) {
                 mi = (MethodInstance) mi.formalTypes(newFormalTypes);
             }
-            //List<Type> throwTypes = mi.throwTypes();
-            //List<Type> newThrowTypes = transformTypeList(throwTypes);
-            //if (newThrowTypes != throwTypes) {
-            //    mi = (X10MethodInstance) mi.throwTypes(newThrowTypes);
-            //}
+            List<LocalInstance> newFormalNames = new ArrayList<LocalInstance>();
+            boolean changed = false;
+            for (LocalInstance li : mi.formalNames()) {
+                LocalInstance newLI = transformLocalInstance((X10LocalInstance) li);
+                if (newLI != li) changed = true;
+                newFormalNames.add(newLI);
+            }
+            if (changed) {
+                mi = (MethodInstance) mi.formalNames(newFormalNames);
+            }
             ContainerType container = mi.container();
             ContainerType newContainer = (ContainerType) transformType(container);
             if (newContainer != container) {
@@ -241,8 +274,55 @@ public class X10InnerClassRemover extends InnerClassRemover {
         }
 
         @Override
+        protected ClosureInstance transformClosureInstance(ClosureInstance ci) {
+            Type returnType = ci.returnType();
+            Type newReturnType = transformType(returnType);
+            if (newReturnType != returnType) {
+                ci = (ClosureInstance) ci.returnType(newReturnType);
+            }
+            List<Type> formalTypes = ci.formalTypes();
+            List<Type> newFormalTypes = transformTypeList(formalTypes);
+            if (newFormalTypes != formalTypes) {
+                ci = (ClosureInstance) ci.formalTypes(newFormalTypes);
+            }
+            List<LocalInstance> newFormalNames = new ArrayList<LocalInstance>();
+            boolean changed = false;
+            for (LocalInstance li : ci.formalNames()) {
+                LocalInstance newLI = transformLocalInstance((X10LocalInstance) li);
+                if (newLI != li) changed = true;
+                newFormalNames.add(newLI);
+            }
+            if (changed) {
+                ci = (ClosureInstance) ci.formalNames(newFormalNames);
+            }
+            ClassType container = ci.typeContainer();
+            ClassType newContainer = (ClassType) transformType(container);
+            if (newContainer != container) {
+                ci = (ClosureInstance) ci.typeContainer(newContainer);
+            }
+            CodeInstance<?> methodContainer = ci.methodContainer();
+            CodeInstance<?> newMethodContainer = transformCodeInstance(methodContainer);
+            if (newMethodContainer != methodContainer) {
+                ci = (ClosureInstance) ci.methodContainer(newMethodContainer);
+            }
+            CConstraint guard = ci.guard();
+            CConstraint newGuard = transformConstraint(guard);
+            if (newGuard != guard) {
+                ci = (ClosureInstance) ci.guard(newGuard);
+            }
+            TypeConstraint typeGuard = ci.typeGuard();
+            TypeConstraint newTypeGuard = transformTypeConstraint(typeGuard);
+            if (newTypeGuard != typeGuard) {
+                ci = (ClosureInstance) ci.typeGuard(newTypeGuard);
+            }
+            return ci;
+        }
+
+        @Override
         protected Type transformType(Type t) {
-            return fixType(t);
+            Type nt = fixType(t);
+            nt = super.transformType(nt);
+            return nt;
         }
 
     }
@@ -358,20 +438,25 @@ public class X10InnerClassRemover extends InnerClassRemover {
         X10ClassDecl cd = (X10ClassDecl) n;
         Flags flags = cd.flags().flags();
         X10ClassDef def = cd.classDef();
-        if ((def.isMember() && !flags.isStatic())) {
+        if (def.isMember() && !cd.flags().flags().isStatic()) {
             def.flags(def.flags().clearStatic()); // temporarily turn off the "static" flag
-            List<ParameterType> typeParameters = new ArrayList<ParameterType>();
-            List<ParameterType.Variance> variances = new ArrayList<ParameterType.Variance>();
-            gatherOuterTypeParameters(def, typeParameters, variances);
+            // The def should already have all of the necessary type parameters
+            List<ParameterType> typeParameters = def.typeParameters();
+            List<ParameterType.Variance> variances = def.variances();
             assert (typeParameters.size() == variances.size());
             List<TypeParamNode> typeParamNodes = new ArrayList<TypeParamNode>(cd.typeParameters());
             for (int p = 0; p < typeParameters.size(); p++) {
                 ParameterType tp = typeParameters.get(p);
-                // FIXME: [IP] this is a hack.  We should really rename type parameters.
+                if (p < typeParamNodes.size()) {
+                    TypeParamNode tpn = typeParamNodes.get(p);
+                    assert (tpn.type().typeEquals(tp, context()));
+                    continue;
+                }
                 NodeFactory xnf = (NodeFactory) nf;
-                typeParamNodes.add(xnf.TypeParamNode(tp.position(), xnf.Id(tp.position(), tp.name()), variances.get(p)).type(tp));
+                Position genPos = tp.position().markCompilerGenerated();
+                typeParamNodes.add(xnf.TypeParamNode(genPos, xnf.Id(genPos, tp.name()), variances.get(p)).type(tp));
             }
-            if (!typeParameters.isEmpty()) {
+            if (typeParameters.size() > cd.typeParameters().size()) {
                 cd = cd.typeParameters(typeParamNodes);
             }
             List<ClassMember> newMember = new ArrayList<ClassMember>();
@@ -396,7 +481,7 @@ public class X10InnerClassRemover extends InnerClassRemover {
                 if (classMember instanceof ConstructorDecl) {
                     ArrayList<Stmt> statements = new ArrayList<Stmt>();
                     for (X10FieldDecl fieldD : fieldDs) {
-                        Position pos = fieldD.position();
+                        Position pos = fieldD.position().markCompilerGenerated();
                         FieldDef fi = fieldD.fieldDef();
                         FieldAssign a = nf.FieldAssign(pos, nf.This(pos).type(fi.asInstance().container()), nf.Id(pos, fi.name()), Assign.ASSIGN, fieldD.init());
                         a = (FieldAssign) a.type(fi.asInstance().type());
@@ -419,10 +504,16 @@ public class X10InnerClassRemover extends InnerClassRemover {
                 }
             }
             cd = cd.body(cd.body().members(newMember));
+            def.setWasInner(true);
+            Ref<? extends Type> st = def.superType();
+            ((Ref<Type>) st).update(Types.instantiateTypeParametersExplicitly(Types.get(st)));
+            for (Ref<? extends Type> it : def.interfaces()) {
+                ((Ref<Type>) it).update(Types.instantiateTypeParametersExplicitly(Types.get(it)));
+            }
             def.flags(def.flags().Static()); // set the "static" flag back on
         }
         cd = (X10ClassDecl) super.fixClassDecl(cd);
-        if ((def.isMember() && !flags.isStatic())) {
+        if (def.isMember() && !cd.flags().flags().isStatic()) {
             cd = cd.flags(cd.flags().flags(flags.Static()));
         }
         return cd;
@@ -439,7 +530,7 @@ public class X10InnerClassRemover extends InnerClassRemover {
     }
 
     protected CConstraint fixConstraint(CConstraint constraint) {
-        return constraint; // TODO
+        return constraint;
     }
 
     protected Type fixType(Type t) {
@@ -459,28 +550,24 @@ public class X10InnerClassRemover extends InnerClassRemover {
                 // FIXME: [IP] this is a hack.  We should really rename type parameters.
                 def.addTypeParameter(tp, variances.get(p));
             }
+            def.setWasInner(true);
             def.flags(def.flags().Static());
         }
         t = Types.instantiateTypeParametersExplicitly(t);
-        CConstraint constraint = t instanceof ConstrainedType ? ((ConstrainedType) t).getRealXClause() : null;
         t = propagateTypeArgumentsToInnermostType(t);
+        // FIXME: also fix the type arguments; TODO: test this
+        CConstraint constraint = t instanceof ConstrainedType ? ((ConstrainedType) t).getRealXClause() : null;
         if (constraint != null) {
             CConstraint newConstraint = fixConstraint(constraint);
             if (newConstraint != constraint)
-                t = Types.xclause(t, newConstraint);
+                t = Types.xclause(Types.baseType(t), newConstraint);
         }
         return t;
     }
 
     @Override
     public TypeNode fixTypeNode(TypeNode tn) {
-        tn = super.fixTypeNode(tn);
-        Type t = tn.type();
-        Type xqt = fixType(t);
-        if (xqt != t) {
-            tn = tn.typeRef(Types.ref(xqt));
-        }
-        return tn;
+        return super.fixTypeNode(tn);
     }
 
     @Override
@@ -489,13 +576,20 @@ public class X10InnerClassRemover extends InnerClassRemover {
         X10New xneu = (X10New) super.fixNew(neu);
         if (q == null)
             return xneu;
+        X10ConstructorInstance ci = xneu.constructorInstance();
+        // Fix the ci (again).
+        ArrayList<LocalInstance> formals = new ArrayList<LocalInstance>();
+        formals.add(typeSystem().localDef(q.position().markCompilerGenerated(), Flags.FINAL, Types.ref(q.type()), Name.makeFresh()).asInstance());
+        formals.addAll(ci.formalNames());
+        ci = (X10ConstructorInstance) ci.formalNames(formals);
+        xneu = xneu.constructorInstance(ci);
         assert (q.type().isClass());
         X10ParsedClassType qt = (X10ParsedClassType) q.type().toClass();
         List<TypeNode> typeArguments = new ArrayList<TypeNode>(xneu.typeArguments());
         List<Type> tArgs = qt.typeArguments();
         if (tArgs != null && !tArgs.isEmpty()) {
             for (Type ta : tArgs) {
-                typeArguments.add(nf.CanonicalTypeNode(q.position(), ta));
+                typeArguments.add(nf.CanonicalTypeNode(q.position().markCompilerGenerated(), ta));
             }
             xneu = xneu.typeArguments(typeArguments);
             // Object type has already been transformed by the visitor.
@@ -503,21 +597,27 @@ public class X10InnerClassRemover extends InnerClassRemover {
         return xneu;
     }
 
+    @Override
+    protected Node fixConstructorCall(ConstructorCall cc) {
+        Expr q = cc.qualifier();
+        cc = (ConstructorCall) super.fixConstructorCall(cc);
+        X10ConstructorInstance ci = (X10ConstructorInstance) cc.constructorInstance();
+        boolean fixCI = ci.formalTypes().size() != ci.formalNames().size();
+        // Fix the ci if a copy; otherwise, let the ci be modified at the declaration node.
+        if (fixCI) {
+            List<LocalInstance> args = new ArrayList<LocalInstance>();
+            args.add(typeSystem().localDef(q.position().markCompilerGenerated(), Flags.FINAL, Types.ref(q.type()), Name.makeFresh()).asInstance());
+            args.addAll(ci.formalNames());
+            ci = (X10ConstructorInstance) ci.formalNames(args);
+            cc = cc.constructorInstance(ci);
+        }
+        return cc;
+    }
+
     private static Type propagateTypeArgumentsToInnermostType(Type t) {
         if (t instanceof X10ParsedClassType) {
             X10ParsedClassType ct = (X10ParsedClassType) t;
             if (ct.isMember()) {
-                ct = ct.container((X10ClassType) propagateTypeArgumentsToInnermostType((X10ParsedClassType) ct.container()));
-                if (!ct.flags().isStatic() || ct.typeArguments() == null || ct.typeArguments().size() != ct.x10Def().typeParameters().size()) {
-                    List<Type> containerArgs = ct.container().typeArguments();
-                    if (containerArgs != null && !containerArgs.isEmpty()) {
-                        List<Type> newTypeArgs = new ArrayList<Type>();
-                        if (ct.typeArguments() != null)
-                            newTypeArgs.addAll(ct.typeArguments());
-                        newTypeArgs.addAll(containerArgs);
-                        ct = ct.typeArguments(newTypeArgs);
-                    }
-                }
                 ct = ct.container(resetTypeArguments((X10ParsedClassType) ct.container()));
             }
             List<Type> typeArguments = ct.typeArguments();
@@ -556,13 +656,19 @@ public class X10InnerClassRemover extends InnerClassRemover {
         return t.typeArguments(null);
     }
 
-    private void gatherOuterTypeParameters(X10ClassDef def, List<ParameterType> typeParameters, List<Variance> variances) {
-        if (!def.isMember() || def.flags().isStatic()) return;
+    private void gatherOuterTypeParameters(X10ClassDef def, List<ParameterType> typeParameters, List<ParameterType.Variance> variances) {
+        if (!isInner(def)) return;
         def = (X10ClassDef) Types.get(def.outer());
-        List<ParameterType> tp = def.typeParameters();
-        List<ParameterType.Variance> v = def.variances();
-        typeParameters.addAll(tp);
-        variances.addAll(v);
+        List<ParameterType> tps = def.typeParameters();
+        List<ParameterType.Variance> vs = def.variances();
+        for (int i = 0; i < tps.size(); i++) {
+            ParameterType tp = tps.get(i);
+            ParameterType.Variance v = vs.get(i);
+            if (!typeParameters.contains(tp)) {
+                typeParameters.add(tp);
+                variances.add(v);
+            }
+        }
         gatherOuterTypeParameters(def, typeParameters, variances);
     }
 

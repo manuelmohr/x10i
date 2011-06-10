@@ -23,6 +23,7 @@ import polyglot.types.TypeSystem_c;
 import polyglot.types.Types;
 import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import x10.errors.Warnings;
+import x10.ast.X10ClassBody_c;
 
 public class TypeDefMatcher extends TypeSystem_c.NameMatcher<Type> {
     Type container;
@@ -62,6 +63,7 @@ public class TypeDefMatcher extends TypeSystem_c.NameMatcher<Type> {
 
     private boolean hasConstraintsOrParameterTypes(Type t) {
         if (Types.isConstrained(t)) return true;
+        if (t instanceof ParameterType) return true;
         if (t.isClass()) {
             List<Type> tas = ((X10ParsedClassType) t.toClass()).typeArguments();
             if (tas != null) {
@@ -83,6 +85,13 @@ public class TypeDefMatcher extends TypeSystem_c.NameMatcher<Type> {
         return "type " + signature();
     }
 
+    public MacroType instantiateAccess(MacroType mi) throws SemanticException {
+        Type c = container != null ? container : mi.container();
+        // no implicit coercions!
+        MacroType result = x10.types.matcher.Matcher.inferAndCheckAndInstantiate((Context) context,
+                mi, c, typeArgs, argTypes, mi.position());
+        return result;
+    }
     public MacroType instantiate(Type n) throws SemanticException {
         if (n instanceof MacroType) {
             MacroType mi = (MacroType) n;
@@ -90,13 +99,8 @@ public class TypeDefMatcher extends TypeSystem_c.NameMatcher<Type> {
                 return null;
             if (mi.formalTypes().size() != argTypes.size())
                 return null;
-            Type c = container != null ? container : mi.container();
-            if (typeArgs.isEmpty() || typeArgs.size() == mi.typeParameters().size()) {
-                // no implicit coercions!
-                MacroType result = x10.types.matcher.Matcher.inferAndCheckAndInstantiate((Context) context, 
-                        mi, c, typeArgs, argTypes, mi.position());
-                return result;
-            }
+            if (typeArgs.isEmpty() || typeArgs.size() == mi.typeParameters().size())
+                return instantiateAccess(mi);
         }
         return null;
     }

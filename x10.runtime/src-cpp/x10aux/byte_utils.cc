@@ -14,12 +14,15 @@
 #include <x10aux/basic_functions.h>
 
 #include <x10/lang/String.h>
+#include <x10/lang/NumberFormatException.h>
+#include <errno.h>
 
 using namespace x10::lang;
 using namespace std;
 using namespace x10aux;
 
 const ref<String> x10aux::byte_utils::toString(x10_byte value, x10_int radix) {
+    if (0 == value) return String::Lit("0");
     assert(radix>=2);
     assert(radix<=16);
     static char numerals[] = { '0', '1', '2', '3', '4', '5', '6', '7',  
@@ -59,16 +62,30 @@ const ref<String> x10aux::byte_utils::toString(x10_byte value) {
     return to_string(value);
 }
 
-x10_byte x10aux::byte_utils::parseByte(const ref<String>& s, x10_int radix) {
-    nullCheck(s);
-    char* dummy;
-    return strtol(s.operator->()->c_str(), &dummy, radix);
+x10_byte x10aux::byte_utils::parseByte(ref<String> s, x10_int radix) {
+    const char *start = nullCheck(s)->c_str();
+    char *end;
+    errno = 0;
+    x10_int ans = strtol(start, &end, radix);
+    if (errno == ERANGE || (errno != 0 && ans == 0) ||
+        (ans != (x10_byte)ans) ||
+        ((end-start) != s->length())) {
+        x10aux::throwException(x10::lang::NumberFormatException::_make(s));
+    }
+    return (x10_byte)ans;
 }
 
-x10_byte x10aux::byte_utils::parseByte(const ref<String>& s) {
-    nullCheck(s);
-    // FIXME: NumberFormatException?
-    return atoi(nullCheck(s)->c_str());
+x10_ubyte x10aux::byte_utils::parseUByte(ref<String> s, x10_int radix) {
+    const char *start = nullCheck(s)->c_str();
+    char *end;
+    errno = 0;
+    x10_uint ans = strtoul(start, &end, radix);
+    if (errno == ERANGE || (errno != 0 && ans == 0) ||
+        (ans != (x10_ubyte)ans) ||
+        ((end-start) != s->length())) {
+        x10aux::throwException(x10::lang::NumberFormatException::_make(s));
+    }
+    return (x10_ubyte)ans;
 }
 
 // vim:tabstop=4:shiftwidth=4:expandtab

@@ -11,6 +11,7 @@
 
 package x10.core;
 
+import x10.rtt.NamedType;
 import x10.rtt.RuntimeType;
 import x10.rtt.Type;
 import x10.rtt.Types;
@@ -19,19 +20,27 @@ import x10.rtt.Types;
 // Base class of all X10 ref objects -- should be generated, but we need this class to get Box to compile.
 public class Ref implements RefI {
     
+	private static final long serialVersionUID = 1L;
+
+	// N.B. this is called implicitly by all subclasses of Ref
     public Ref() {}
-     
+
+	public Ref(java.lang.System[] $dummy) {}
+
+	public Ref $init(){return this;}
+	
+    public static Ref $make() { return new Ref(); }
+
+    /* TODO to be removed
+    public void $init(Object out$){}
+    
     // XTENLANG-1858: every Java class that could be an (non-static) inner class must have constructors with the outer instance parameter
     public Ref(Object out$) {}
+    */
 
-    public static RuntimeType<Ref> _RTT = new RuntimeType<Ref>(Ref.class) {
-        @Override
-        public java.lang.String typeName() {
-            return "x10.lang.Object";
-        }
-    };
-    public RuntimeType<?> getRTT() {return _RTT;}
-    public Type<?> getParam(int i) {return null;}
+    public static final RuntimeType<Ref> $RTT = new NamedType<Ref>("x10.lang.Object", Ref.class);
+    public RuntimeType<?> $getRTT() {return $RTT;}
+    public Type<?> $getParam(int i) {return null;}
 
     @Override
     public java.lang.String toString() {

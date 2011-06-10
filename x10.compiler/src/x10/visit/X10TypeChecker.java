@@ -70,57 +70,35 @@ public class X10TypeChecker extends TypeChecker {
 	        return n_;
 	    }
 
-	    try {
-	        if (reporter.should_report(reporter.visit, 2))
-	            reporter.report(2, ">> " + this + "::override " + n);
+	    if (reporter.should_report(reporter.visit, 2))
+	        reporter.report(2, ">> " + this + "::override " + n);
 
-	        Node m = n.del().typeCheckOverride(parent, this);
+	    Node m = n.del().typeCheckOverride(parent, this);
 
-	        if (m != null) {
-//	            memo.put(n, m);
-//	            memo.put(m, m);
-	        }
-
-	        return m;
-	    }
-	    catch (SemanticException e) {
-	        Errors.issue(job(), e);
-	        // continue, errors have been reported, maybe you will find more errors.
-	        return n;
-	    }
-	}
-
-	protected NodeVisitor enterCall(Node n) throws SemanticException {
-	    try {
-	        return super.enterCall(n);
-	    } catch (SemanticException z) {
-	        boolean newp = extensionInfo.errorSet().add(z);
-	        if (newp)
-	            throw z;
-	        else throw new SemanticException();
-	    }
-	}
-	    
-	protected Node leaveCall(Node old, Node n, NodeVisitor v) throws SemanticException {
-	    try {
-	        final TypeChecker tc = (TypeChecker) v;
-	        // Inline the super call without checking for expressions with unknown type
-	        Node m = n;
-	        m = m.del().disambiguate(tc);
-	        m = m.del().typeCheck(tc);
-	        m = m.del().checkConstants(tc);
-	        // Record the new node in the memo table.
-//	        memo.put(old, m);
+	    if (m != null) {
 //	        memo.put(n, m);
 //	        memo.put(m, m);
-	        return m;
-	    } catch (SemanticException z) {
-	        boolean newp = extensionInfo.errorSet().add(z);
-	        if (newp)
-	            throw z;
 	    }
-	    // continue, errors have been reported, maybe you will find more errors.
-	    return n;
+
+	    return m;
+	}
+
+	protected NodeVisitor enterCall(Node n) {
+	    return super.enterCall(n);
+	}
+	    
+	protected Node leaveCall(Node old, Node n, NodeVisitor v) {
+	    final TypeChecker tc = (TypeChecker) v;
+	    // Inline the super call without checking for expressions with unknown type
+	    Node m = n;
+	    m = m.del().disambiguate(tc);
+	    m = m.del().typeCheck(tc);
+	    m = m.del().checkConstants(tc);
+	    // Record the new node in the memo table.
+//	    memo.put(old, m);
+//	    memo.put(n, m);
+//	    memo.put(m, m);
+	    return m;
 	}
 
 	public static X10TypeChecker getTypeChecker(ContextVisitor tc) {

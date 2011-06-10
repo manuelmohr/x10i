@@ -26,8 +26,6 @@ namespace x10 {
     
     namespace lang {
 
-        template<class T> class Rail;
-
         class String : public Object {
             const char *FMGL(content);
             std::size_t FMGL(content_length);
@@ -44,50 +42,58 @@ namespace x10 {
             static Comparable<x10aux::ref<String> >::itable<String> _itable_Comparable;
             static x10aux::itable_entry _itables[3];
             virtual x10aux::itable_entry* _getITables() { return _itables; }
-            
+
+            void _constructor(const char *content, bool steal);
             // Set steal to true if you have just allocated the char * with
             // alloc_printf or it's otherwise OK if the String frees it.  Leave
             // steal false for string literals which ought not to be freed.
             // Leave it false for 'static' malloced char* such as the RTT type
             // names that also ought not to be freed.
-            static x10aux::ref<String> _make(const char *content, bool steal = false);
-            x10aux::ref<String> _constructor(const char *content, std::size_t content_length) {
-                this->Object::_constructor();
-                this->FMGL(content) = content;
-                this->FMGL(content_length) = content_length;
-                return this;
+            static x10aux::ref<String> _make(const char *content, bool steal) {
+                x10aux::ref<String> this_ = new (x10aux::alloc<String>()) String();
+                this_->_constructor(content, steal);
+                return this_;
             }
+
+            void _constructor();
             static x10aux::ref<String> _make() {
-                return Lit("");
+                x10aux::ref<String> this_ = new (x10aux::alloc<String>()) String();
+                this_->_constructor();
+                return this_;
             }
-            static x10aux::ref<String> _make(x10aux::ref<String> s);
-            static x10aux::ref<String> _make(x10aux::ref<Rail<x10_char> > rail,
-                                             x10_int start, x10_int length);
-            static x10aux::ref<String> _make(x10aux::ref<x10::array::Array<x10_byte> > array,
-                                             x10_int start, x10_int length);
-            static x10aux::ref<String> _make(x10aux::ref<x10::array::Array<x10_char> > array,
-                                             x10_int start, x10_int length);
+
+            void _constructor(x10aux::ref<String> s);
+            static x10aux::ref<String> _make(x10aux::ref<String> s) {
+                x10aux::ref<String> this_ = new (x10aux::alloc<String>()) String();
+                this_->_constructor(s);
+                return this_;
+            }
+
+            void _constructor(x10aux::ref<x10::array::Array<x10_byte> > array, x10_int start, x10_int length);
+            static x10aux::ref<String> _make(x10aux::ref<x10::array::Array<x10_byte> > array, x10_int start, x10_int length) {
+                x10aux::ref<String> this_ = new (x10aux::alloc<String>()) String();
+                this_->_constructor(array, start, length);
+                return this_;
+            }
+
+            void _constructor(x10aux::ref<x10::array::Array<x10_char> > array, x10_int start, x10_int length);
+            static x10aux::ref<String> _make(x10aux::ref<x10::array::Array<x10_char> > array, x10_int start, x10_int length) {
+                x10aux::ref<String> this_ = new (x10aux::alloc<String>()) String();
+                this_->_constructor(array, start, length);
+                return this_;
+            }
+
 
             // This is for string literals, brought out here so we have easier control
             // (Can later make this return a String without allocation)
             static x10aux::ref<String> Lit(const char *s) {
-                return _make(s);
+                return _make(s, false);
             }
 
             // Useful when we have a malloced char* instead of a literal
             static x10aux::ref<String> Steal(const char *s) {
                 return _make(s, true);
             }
-
-            /*
-            operator x10aux::ref<Object> () {
-                return x10aux::ref<String>(this);
-            }
-
-            operator x10aux::ref<String> () {
-                return _make(*this);
-            }
-            */
 
             x10aux::ref<String> trim();
 
@@ -116,8 +122,6 @@ namespace x10 {
                 return substring(start, this->length());
             }
 
-            x10aux::ref<x10::array::Array<x10aux::ref<String> > > split(x10aux::ref<String> pat);
-
             // Forwarding method needed so that String can be used in Generic contexts (T <: (nat)=>char)
             x10_char __apply(x10_int i) { return charAt(i); }
             
@@ -133,7 +137,7 @@ namespace x10 {
 
             virtual void _serialize_body(x10aux::serialization_buffer& buf);
 
-            template<class T> static x10aux::ref<T> _deserializer(x10aux::deserialization_buffer &buf);
+            static x10aux::ref<Reference> _deserializer(x10aux::deserialization_buffer &buf);
 
             void _deserialize_body(x10aux::deserialization_buffer &buf);
 
@@ -186,17 +190,25 @@ namespace x10 {
         }
         #endif
 
-        template<class T> x10aux::ref<T> String::_deserializer(x10aux::deserialization_buffer& buf) {
-            x10aux::ref<String> this_ = new (x10aux::alloc<String>()) String();
-            buf.record_reference(this_);
-            this_->_deserialize_body(buf);
-            return this_;
-        }
-
     } // namespace x10::lang
 
 } // namespace x10
 
 
 #endif
+
+
+#ifndef X10_LANG_STRING_H_NODEPS
+#define X10_LANG_STRING_H_NODEPS
+/*
+ * Must include header files for any types
+ * mentioned in @Native annotations but not
+ * present in method return types.
+ */
+#define X10_LANG_STRINGHELPER_H_NODEPS
+#include <x10/lang/StringHelper.h>
+#undef X10_LANG_STRINGHELPER_H_NODEPS
+
+#endif
+
 // vim:tabstop=4:shiftwidth=4:expandtab:textwidth=100

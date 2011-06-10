@@ -1,5 +1,10 @@
+#include <x10aux/throw.h>
+
 #include <x10/util/IndexedMemoryChunk.h>
+
+#include <x10/lang/ArrayIndexOutOfBoundsException.h>
 #include <x10/lang/Runtime.h>
+#include <x10/lang/String.h>
 
 
 x10aux::RuntimeType x10::util::IndexedMemoryChunk<void>::rtt;
@@ -37,7 +42,6 @@ namespace x10 {
         
         void IMC_notifyEnclosingFinish(deserialization_buffer& buf) {
             ref<x10::lang::FinishState> fs = buf.read<ref<x10::lang::FinishState> >();
-            ref<Runtime> rt = PlaceLocalHandle_methods<ref<Runtime> >::__apply(Runtime::FMGL(runtime));
             // olivier says the incr should be just after the notifySubActivitySpawn
             fs->notifyActivityCreation();
             fs->notifyActivityTermination();
@@ -46,9 +50,8 @@ namespace x10 {
         void IMC_serialize_finish_state(place dst, serialization_buffer &buf) {
             // dst is the place where the finish update will occur, i.e. where the notifier runs
             dst = parent(dst);
-            ref<Runtime> rt = PlaceLocalHandle_methods<ref<Runtime> >::__apply(Runtime::FMGL(runtime));
-            ref<x10::lang::FinishState> fs = rt->activity()->finishState();
-            fs->notifySubActivitySpawn(Place_methods::_make(dst));
+            ref<x10::lang::FinishState> fs = Runtime::activity()->finishState();
+            fs->notifySubActivitySpawn(Place::_make(dst));
             buf.write(fs);
         }
 
@@ -137,6 +140,13 @@ namespace x10 {
                         String::Lit("Congruent memory is not garbage collected thus cannot contain pointers")));
         }
 
+
+        void throwArrayIndexOutOfBoundsException(x10_int index, x10_int length) {
+            #ifndef NO_EXCEPTIONS
+            char *msg = alloc_printf("Index %ld out of range (length is %ld)", (long)index, ((long)length));
+            throwException(x10::lang::ArrayIndexOutOfBoundsException::_make(String::Lit(msg)));
+            #endif
+        }
     }
 }
 

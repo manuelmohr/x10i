@@ -12,7 +12,6 @@
 package x10.ast;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import polyglot.ast.ConstructorCall;
@@ -21,13 +20,11 @@ import polyglot.ast.Expr;
 import polyglot.ast.Node;
 import polyglot.ast.NodeFactory;
 import polyglot.ast.TypeNode;
-import polyglot.types.ClassDef;
 import polyglot.types.ClassType;
 import polyglot.types.ConstructorDef;
 import polyglot.types.ConstructorInstance;
 import polyglot.types.Context;
 import polyglot.types.ErrorRef_c;
-import polyglot.types.Matcher;
 import polyglot.types.QName;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
@@ -39,17 +36,14 @@ import polyglot.util.Position;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.NodeVisitor;
 import polyglot.visit.TypeBuilder;
-import x10.ast.X10New_c.MatcherMaker;
 import x10.errors.Errors;
 import x10.errors.Warnings;
 import x10.types.X10ConstructorDef;
 import x10.types.X10ConstructorInstance;
-import x10.types.X10Use;
+import x10.types.X10ClassDef;
+import x10.types.X10ConstructorDef_c;
 
-import polyglot.types.TypeSystem;
-import x10.types.checker.Converter;
 import x10.types.constraints.CConstraint;
-import x10.types.matcher.DumbConstructorMatcher;
 
 /**
  * A call to this(...) or super(...) in the body of a constructor.
@@ -73,7 +67,7 @@ public class X10ConstructorCall_c extends ConstructorCall_c implements X10Constr
 	
 	// Override to remove reference to ts.Object(), which will cause resolver loop.
 	@Override
-	public Node buildTypes(TypeBuilder tb) throws SemanticException {
+	public Node buildTypes(TypeBuilder tb) {
 	    TypeSystem ts = tb.typeSystem();
 
 	    // Remove super() calls for java.lang.Object.
@@ -97,10 +91,11 @@ public class X10ConstructorCall_c extends ConstructorCall_c implements X10Constr
 	@Override
 	public Node visitChildren(NodeVisitor v) {
 		Expr qualifier = (Expr) visitChild(this.qualifier, v);
+		Expr target = (Expr) visitChild(this.target, v);
 		List<TypeNode> typeArguments = visitList(this.typeArguments, v);
 		List<Expr> arguments = visitList(this.arguments, v);
 		X10ConstructorCall_c n = (X10ConstructorCall_c) typeArguments(typeArguments);
-		return n.reconstruct(qualifier, arguments);
+		return n.reconstruct(qualifier, target, arguments);
 	}
 	
 	List<TypeNode> typeArguments;
@@ -234,8 +229,7 @@ public class X10ConstructorCall_c extends ConstructorCall_c implements X10Constr
 
 	        List<Type> argTypes = new ArrayList<Type>();
 
-	        for (Iterator<Expr> iter = n.arguments().iterator(); iter.hasNext();) {
-	            Expr e = iter.next();
+	        for ( Expr e : n.arguments()) {
 	            argTypes.add(e.type());
 	        }
 
@@ -261,7 +255,7 @@ public class X10ConstructorCall_c extends ConstructorCall_c implements X10Constr
 	        }
 	    }
 
-        if (ci.checkGuardAtRuntime()) {
+        if (ci.checkConstraintsAtRuntime()) {
             // currently we can't do runtime code generation for a ctor call that needs to check a ctor guard,
             // see XTENLANG-2375 and XTENLANG-2376
             Errors.issue(tc.job(), new Errors.ConstructorGuardNotSatisfied(n.position()), n);
@@ -280,15 +274,32 @@ public class X10ConstructorCall_c extends ConstructorCall_c implements X10Constr
 	        } else {
 	            // The constructor *within which this super call happens*.
 	            X10ConstructorDef thisConstructor = (X10ConstructorDef) ctx.currentCode();
-	            CConstraint c = Types.realX(ci.returnType());
-	            thisConstructor.setSupClause(Types.ref(c));
+	            Type returnType = ci.returnType();
+	            CConstraint c = Types.realX(returnType);
+	            thisConstructor.setSupType(returnType);
+	            
+	            // Also make this information available downstream within this constructor.
+	            // Need to do this here because the constructor may not have a property clause.
+	            CConstraint cc = ctx.currentConstraint();
+	            cc.addIn(thisConstructor.thisVar(), c);
+	            ctx.setCurrentConstraint(cc);
 	        }
 	    }
 
 		return n;
 	}
 
-	public String toString() {
+    public static void checkSuperType(ContextVisitor tc, Type returnType, Position position) {
+        Context context = tc.context();
+        X10ClassDef classDef = context.currentClassDef();
+        Type extendsType = Types.get(classDef.superType());
+        if (extendsType!=null && returnType!=null && !returnType.isSubtype(extendsType, context) ) {
+            Errors.issue(tc.job(),
+                    new Errors.SuperCallCannotEstablishSuperType(returnType,extendsType, position));
+        }
+    }
+
+    public String toString() {
 	    return (qualifier != null ? qualifier + "." : "") + kind + arguments;
 	}
 

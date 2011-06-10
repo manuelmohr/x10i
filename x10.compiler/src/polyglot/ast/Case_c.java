@@ -14,6 +14,7 @@ import polyglot.types.*;
 import polyglot.util.CodeWriter;
 import polyglot.util.Position;
 import polyglot.visit.*;
+import x10.errors.Errors;
 
 /**
  * A <code>Case</code> is a representation of a Java <code>case</code>
@@ -83,21 +84,28 @@ public class Case_c extends Stmt_c implements Case
     }
 
     /** Type check the statement. */
-    public Node typeCheck(ContextVisitor tc) throws SemanticException {
+    public Node typeCheck(ContextVisitor tc) {
         if (expr == null) {
 	    return this;
 	}
 
 	TypeSystem ts = tc.typeSystem();
 
-	if (! ts.isImplicitCastValid(expr.type(), ts.Int(), tc.context()) && ! ts.isImplicitCastValid(expr.type(), ts.Char(), tc.context())) {
-	    throw new SemanticException("Case label must be an byte, char, short, or int.",position());
+	Type t = expr.type();
+	Type st = tc.context().currentSwitchType();
+	if (!ts.isSubtype(t, st)) {
+	    Errors.issue(tc.job(),
+	            new SemanticException("Case label must be of type "+st+" (same as the expression of the enclosing switch), not "+t+".", position()));
 	}
-    
+//	if (!ts.isIntOrLess(t) && !ts.isUInt(t) && !ts.isChar(t)) {
+//	    Errors.issue(tc.job(),
+//	            new SemanticException("Case label must be a char or a (signed or unsigned) byte, short, or int, not "+t+".", position()));
+//	}
+
 	return this;
     }
     
-    public Node checkConstants(ContextVisitor tc) throws SemanticException {
+    public Node checkConstants(ContextVisitor tc) {
         if (expr == null) {
             return this;
         }
@@ -115,17 +123,9 @@ public class Case_c extends Stmt_c implements Case
             }
         }
         
-        throw new SemanticException("Case label must be an integral constant.",position());
-    }
-
-    public Type childExpectedType(Expr child, AscriptionVisitor av) {
-        TypeSystem ts = av.typeSystem();
-
-        if (child == expr) {
-            return ts.Int();
-        }
-
-        return child.type();
+        Errors.issue(tc.job(),
+                new SemanticException("Case label must be an integral constant.",position()));
+        return this;
     }
 
     public String toString() {

@@ -38,7 +38,7 @@ class GCSpheres {
 
         public def sub (other:Vector3) = add(other.neg());
 
-        public def length () = Math.sqrt(length2());
+        public def length () = Math.sqrtf(length2());
 
         public def length2 () = x*x + y*y + z*z;
     }
@@ -86,7 +86,7 @@ class GCSpheres {
         var counter : Long = 0;
 
         // HOT LOOP BEGINS
-        for ([frame]:Point in 1..reps) {
+        for (c in 1..reps) {
 
             val x = (ran.nextDouble()*world_size) as Real;
             val y = (ran.nextDouble()*world_size) as Real;
@@ -94,7 +94,7 @@ class GCSpheres {
 
             val pos = new Vector3(x,y,z);
 
-            for ([i]:Point in 0..(spheres.size-1)) {
+            for (i in 0..(spheres.size-1)) {
                 if (spheres(i).intersects(pos)) {
                     counter++;
                 }
@@ -105,7 +105,7 @@ class GCSpheres {
         val time_taken = System.nanoTime() - time_start;
         Console.OUT.println("Total time: "+time_taken/1E9);
 
-        val expected = 107695;
+        val expected = 107695L;
         val ok = counter == expected;
         if (!ok) {
             Console.ERR.println("number of intersections: "+counter

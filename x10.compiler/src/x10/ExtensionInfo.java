@@ -88,8 +88,10 @@ import polyglot.visit.NodeVisitor;
 import polyglot.visit.PruningVisitor;
 import polyglot.visit.ReachChecker;
 import polyglot.visit.Translator;
+import x10.ast.X10ClassDecl;
 import x10.ast.X10NodeFactory_c;
 import x10.compiler.ws.WSCodeGenerator;
+import x10.compiler.ws.WSCodePreprocessor;
 import x10.compiler.ws.util.WSTransformationContent;
 import x10.errors.Warnings;
 import x10.extension.X10Ext;
@@ -112,11 +114,12 @@ import x10.visit.ExpressionFlattener;
 import x10.visit.FieldInitializerMover;
 //import x10.visit.FinishAsyncVisitor;
 import x10.visit.FinallyEliminator;
+import x10.visit.IfdefVisitor;
 import x10.visit.MainMethodFinder;
 import x10.visit.NativeClassVisitor;
 import x10.visit.RewriteAtomicMethodVisitor;
 import x10.visit.StaticNestedClassRemover;
-import x10.visit.X10Caster;
+import x10.visit.TypeParamAlphaRenamer;
 import x10.visit.X10ImplicitDeclarationExpander;
 import x10.visit.X10InnerClassRemover;
 import x10.visit.X10MLVerifier;
@@ -377,6 +380,7 @@ public class ExtensionInfo extends polyglot.frontend.ParserlessJLExtensionInfo {
        protected List<Goal> parseSourceGoals(Job job) {
            List<Goal> goals = new ArrayList<Goal>();
            addParseSourceGoals(job, goals);
+           goals.add(End(job));
            return goals;
        }
        /**
@@ -386,6 +390,7 @@ public class ExtensionInfo extends polyglot.frontend.ParserlessJLExtensionInfo {
        protected List<Goal> typecheckSourceGoals(Job job) {
            List<Goal> goals = new ArrayList<Goal>();
            addTypecheckSourceGoals(job, goals);
+           goals.add(End(job));
            return goals;
        }
        /**
@@ -395,11 +400,12 @@ public class ExtensionInfo extends polyglot.frontend.ParserlessJLExtensionInfo {
        protected List<Goal> semanticCheckSourceGoals(Job job) {
            List<Goal> goals = new ArrayList<Goal>();
            addSemanticCheckSourceGoals(job, goals);
+           goals.add(End(job));
            return goals;
        }
        /**
         * Given a list of goals and a job, append the goal that performs position checking
-        * to the end of that list.
+        * to the end of that list (just before the End goal).
         * @return the new list of goals that includes all of the original goals plus the new one
         */
        protected List<Goal> appendPositionCheckGoal(Job job, List<Goal> goals) {
@@ -407,24 +413,32 @@ public class ExtensionInfo extends polyglot.frontend.ParserlessJLExtensionInfo {
        }
        /**
         * Given a list of goals and a job, append the goal that performs position checking
-        * with a given name to the end of that list.  A unique name is required if there
-        * will be multiple such goals added.
+        * with a given name to the end of that list (just before the End goal).  A unique name
+        * is required if there will be multiple such goals added.
         * @param name the name of the position checker goal
         * @return the new list of goals that includes all of the original goals plus the new one
         */
        protected List<Goal> appendPositionCheckGoal(Job job, List<Goal> goals, String name) {
-    	   List<Goal> newgoals = new ArrayList<Goal>(goals);
-    	   addPositionCheckGoal(name, job, newgoals);
-    	   return newgoals;
+           List<Goal> newgoals = new ArrayList<Goal>(goals);
+           assert (newgoals.size() > 0);
+           Goal endGoal = newgoals.remove(goals.size()-1);
+           assert (endGoal.name().equals("End"));
+           addPositionCheckGoal(name, job, newgoals);
+           newgoals.add(endGoal);
+           return newgoals;
        }
        /**
         * Given a list of goals and a job, append the goal that performs full invariant checking
-        * to the end of that list.
+        * to the end of that list (just before the End goal).
         * @return the new list of goals that includes all of the original goals plus the new one
         */
        protected List<Goal> appendInvariantCheckGoal(Job job, List<Goal> goals) {
            List<Goal> newgoals = new ArrayList<Goal>(goals);
+           assert (newgoals.size() > 0);
+           Goal endGoal = newgoals.remove(goals.size()-1);
+           assert (endGoal.name().equals("End"));
            addInvariantCheckGoal(job, newgoals);
+           newgoals.add(endGoal);
            return newgoals;
        }
 
@@ -450,6 +464,7 @@ public class ExtensionInfo extends polyglot.frontend.ParserlessJLExtensionInfo {
            goals.add(RegisterPlugins(job));
            
            goals.add(PreTypeCheck(job));
+           goals.add(Ifdef(job));
            goals.add(TypesInitializedForCommandLineBarrier());
 
            goals.add(TypeChecked(job));
@@ -472,8 +487,6 @@ public class ExtensionInfo extends polyglot.frontend.ParserlessJLExtensionInfo {
            goals.add(AnnotationChecker(job));
            goals.add(CheckASTForErrors(job));
            //goals.add(TypeCheckBarrier());
-
-           goals.add(End(job));
        }
        private void addPositionCheckGoal(Job job, List<Goal> goals) {
            addPositionCheckGoal("PositionInvariantChecker", job, goals);
@@ -496,7 +509,6 @@ public class ExtensionInfo extends polyglot.frontend.ParserlessJLExtensionInfo {
            List<Goal> goals = new ArrayList<Goal>();
 
            addSemanticCheckSourceGoals(job, goals);
-           Goal endGoal = goals.remove(goals.size()-1);
 
            if (!opts.x10_config.ONLY_TYPE_CHECKING) {
 
@@ -534,7 +546,6 @@ public class ExtensionInfo extends polyglot.frontend.ParserlessJLExtensionInfo {
                }
            }
            
-           goals.add(X10Casted(job));
            goals.add(MoveFieldInitializers(job));
            goals.add(X10Expanded(job));
            goals.add(X10RewriteAtomicMethods(job));
@@ -547,19 +558,23 @@ public class ExtensionInfo extends polyglot.frontend.ParserlessJLExtensionInfo {
            innerClassRemoverGoal.addPrereq(nativeClassVisitorGoal);
            innerClassRemoverGoal.addPrereq(typeCheckBarrierGoal);
 
+           goals.add(TypeParameterAlphaRenamer(job));
+
            goals.add(Serialized(job));
            if (opts.x10_config.WORK_STEALING) {
-               Goal wsCodeGenGoal = WSCodeGenerator(job);
-               goals.add(wsCodeGenGoal);
+               Goal wsCodePreprocessorGoal = WSCodePreprocessor(job);
+               goals.add(wsCodePreprocessorGoal);
                if(walaBarrier != null){
-            	   //If we use WALA to analyze the call graph, we need add it before WSCallGraph
-            	   wsCodeGenGoal.addPrereq(walaBarrier);
+                   //WALA call graph builder to detect the transformation target
+                   wsCodePreprocessorGoal.addPrereq(walaBarrier);
                }
                else{
-            	   //Still use simple call graph analyzer to detect concurrent
-                   wsCodeGenGoal.addPrereq(WSCallGraphBarrier());            	   
+                   //Simple call graph builder to detect the transformation target
+                   wsCodePreprocessorGoal.addPrereq(WSCallGraphBarrier());                  
                }
-
+               Goal wsCodeGenGoal = WSCodeGenerator(job);
+               goals.add(wsCodeGenGoal);
+               wsCodeGenGoal.addPrereq(wsCodePreprocessorGoal);
            }
            
            goals.add(Preoptimization(job));
@@ -584,7 +599,7 @@ public class ExtensionInfo extends polyglot.frontend.ParserlessJLExtensionInfo {
 
            }
 
-           goals.add(endGoal);
+           goals.add(End(job));
 
            if (opts.x10_config.CHECK_INVARIANTS) {
                ArrayList<Goal> newGoals = new ArrayList<Goal>(goals.size()*2);
@@ -653,10 +668,10 @@ public class ExtensionInfo extends polyglot.frontend.ParserlessJLExtensionInfo {
            public boolean runTask() {
                Compiler compiler = ext.compiler();
                X10CompilerOptions opts = ext.getOptions();
-               if ((!opts.x10_config.VERBOSE_CALLS) && (!opts.x10_config.STATIC_CALLS)) {
+               if ((!opts.x10_config.VERBOSE_CHECKS) && (!opts.x10_config.STATIC_CHECKS)) {
                    int count = ext.weakCallsCount();
                    if (count > 0) {
-                       compiler.errorQueue().enqueue(ErrorInfo.WARNING, count + " dynamically checked calls or field accesses, run with -VERBOSE_CALLS for more details.");
+                       compiler.errorQueue().enqueue(ErrorInfo.WARNING, count + " dynamically checked calls or field accesses, run with -VERBOSE_CHECKS for more details.");
                    }
                }
                return true;
@@ -702,7 +717,7 @@ public class ExtensionInfo extends polyglot.frontend.ParserlessJLExtensionInfo {
                            //now use this one to construct WSTransformationState
                            TypeSystem ts  = extInfo.typeSystem();
                            NodeFactory nf = extInfo.nodeFactory();
-                           WSCodeGenerator.setWALATransTarget(ts, nf, nativeAnnotationLanguage(), transTarget);
+                           WSCodePreprocessor.setWALATransTarget(extensionInfo(), transTarget);
                        } catch (IllegalArgumentException e) {
                        } catch (IllegalAccessException e) {
                        } catch (InvocationTargetException e) {
@@ -872,12 +887,14 @@ public class ExtensionInfo extends polyglot.frontend.ParserlessJLExtensionInfo {
            protected SourceFile createDummyAST() {
                NodeFactory nf = job().extensionInfo().nodeFactory();
                String fName = job.source().name();
-               Position pos = new Position("", job.source().path(), 1, 1);
+               Position pos = new Position("", job.source().path(), 1, 1).markCompilerGenerated();
                String name = fName.substring(fName.lastIndexOf(File.separatorChar)+1, fName.lastIndexOf('.'));
-               TopLevelDecl decl = nf.ClassDecl(pos, nf.FlagsNode(pos, Flags.PUBLIC),
+               X10ClassDecl decl = (X10ClassDecl) nf.ClassDecl(pos, nf.FlagsNode(pos, Flags.PUBLIC),
                        nf.Id(pos, name), null, Collections.<TypeNode>emptyList(),
                        nf.ClassBody(pos, Collections.<ClassMember>emptyList()));
-               SourceFile ast = nf.SourceFile(pos, Collections.singletonList(decl)).source(job.source());
+               decl = decl.errorInAST(new SemanticException("", pos));
+               SourceFile ast = nf.SourceFile(pos, Collections.<TopLevelDecl>singletonList(decl)).source(job.source());
+               ast = (SourceFile) ((X10Ext)ast.ext()).setSubtreeValid(false);
                return ast;
            }
        }
@@ -949,6 +966,9 @@ public class ExtensionInfo extends polyglot.frontend.ParserlessJLExtensionInfo {
        private Goal AnnotationChecker(Job job) {
            return new ForgivingVisitorGoal("AnnotationChecker", job, new AnnotationChecker(job,job.extensionInfo().typeSystem(),job.extensionInfo().nodeFactory())).intern(this);
        }
+       private Goal Ifdef(Job job) {
+           return new ForgivingVisitorGoal("IfdefVisitor", job, new IfdefVisitor(job,job.extensionInfo().typeSystem(),job.extensionInfo().nodeFactory())).intern(this);
+       }
        private Goal ErrChecker(Job job) {
            return new ForgivingVisitorGoal("ErrChecker", job, new ErrChecker(job)).intern(this);
        }
@@ -974,12 +994,6 @@ public class ExtensionInfo extends polyglot.frontend.ParserlessJLExtensionInfo {
                }
                return super.runTask();
            }
-       }
-
-       public Goal X10Casted(Job job) {
-           TypeSystem ts = extInfo.typeSystem();
-           NodeFactory nf = extInfo.nodeFactory();
-           return new ValidatingVisitorGoal("X10Casted", job, new X10Caster(job, ts, nf)).intern(this);
        }
 
        public Goal MoveFieldInitializers(Job job) {
@@ -1022,12 +1036,18 @@ public class ExtensionInfo extends polyglot.frontend.ParserlessJLExtensionInfo {
                }
                @Override
                public boolean runTask() {
-                   WSCodeGenerator.buildCallGraph(ts, nf, nativeAnnotationLanguage());
+                   WSCodePreprocessor.buildCallGraph(extensionInfo());
                    return true;
                }
            }.intern(this);
        }
 
+       public Goal WSCodePreprocessor(Job job) {
+           TypeSystem ts = extInfo.typeSystem();
+           NodeFactory nf = extInfo.nodeFactory();
+           return new ValidatingVisitorGoal("WSCodePreprocessor", job, new WSCodePreprocessor(job, ts, nf)).intern(this);
+       }
+       
        public Goal WSCodeGenerator(Job job) {
            TypeSystem ts = extInfo.typeSystem();
            NodeFactory nf = extInfo.nodeFactory();
@@ -1045,36 +1065,31 @@ public class ExtensionInfo extends polyglot.frontend.ParserlessJLExtensionInfo {
            NodeFactory nf = extInfo.nodeFactory();
            return new ValidatingVisitorGoal("Lowerer", job, new Lowerer(job, ts, nf)).intern(this);
        }
-
-       public Goal WSExpressionFlattener(Job job) {
-           TypeSystem ts = extInfo.typeSystem();
-           NodeFactory nf = extInfo.nodeFactory();
-           VisitorGoal ef = new ValidatingVisitorGoal("WorkStealing ExpressionFlattener", job, new ExpressionFlattener(job, ts, nf));
-           Goal ef2 = ef.intern(this);
-           if (ef == ef2) {
-               ef.addPrereq(Serialized(job));
-           }
-           return ef2;
-       }
-       
-       
        
        public Goal InnerClassRemover(Job job) {
            TypeSystem ts = extInfo.typeSystem();
            NodeFactory nf = extInfo.nodeFactory();
            return new ValidatingVisitorGoal("InnerClassRemover", job, new X10InnerClassRemover(job, ts, nf)).intern(this);
        }
-       public Goal FinallyEliminator(Job job) {
-           TypeSystem ts = extInfo.typeSystem();
-           NodeFactory nf = extInfo.nodeFactory();
-           return new ValidatingVisitorGoal("FinallyEliminator", job, new FinallyEliminator(job, ts, nf)).intern(this);
-       }
+
        public Goal StaticNestedClassRemover(Job job) {
            TypeSystem ts = extInfo.typeSystem();
            NodeFactory nf = extInfo.nodeFactory();
            return new ValidatingVisitorGoal("StaticNestedClassRemover", job, new StaticNestedClassRemover(job, ts, nf)).intern(this);
        }
+
+       public Goal TypeParameterAlphaRenamer(Job job) {
+           TypeSystem ts = extInfo.typeSystem();
+           NodeFactory nf = extInfo.nodeFactory();
+           return new ValidatingVisitorGoal("TypeParameterAlphaRenamer", job, new TypeParamAlphaRenamer(job, ts, nf)).intern(this);
+       }
        
+       public Goal FinallyEliminator(Job job) {
+           TypeSystem ts = extInfo.typeSystem();
+           NodeFactory nf = extInfo.nodeFactory();
+           return new ValidatingVisitorGoal("FinallyEliminator", job, new FinallyEliminator(job, ts, nf)).intern(this);
+       }
+
        public Goal FinishAsyncBarrier(final Goal goal, final Job job, final Scheduler s) {
            return new AllBarrierGoal("FinishAsyncBarrier", this) {
                private static final long serialVersionUID = -4172220184246138069L;
@@ -1156,4 +1171,8 @@ public class ExtensionInfo extends polyglot.frontend.ParserlessJLExtensionInfo {
 		
 		return plugins.get(pluginName);
 	}
+
+    public Desugarer makeDesugarer(Job job) {
+        return new Desugarer(job, job.extensionInfo().typeSystem(), job.extensionInfo().nodeFactory());
+    }
 }

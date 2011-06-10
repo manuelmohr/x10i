@@ -13,6 +13,8 @@ package x10.lang;
 
 import x10.compiler.Native;
 import x10.io.Console;
+import x10.util.HashMap;
+import x10.util.Map;
 import x10.util.Timer;
 import x10.util.Pair;
 
@@ -43,7 +45,7 @@ public class System {
      * @see #exit()
      * @see #setExitCode(Int)
      */
-    @Native("java", "java.lang.System.exit(#1)")
+    @Native("java", "java.lang.System.exit(#code)")
     @Native("c++", "x10aux::system_utils::exit(#code)")
     static native def exit(code: Int): void;
 
@@ -56,14 +58,14 @@ public class System {
      * @see #exit(Int)
      * @see #setExitCode(Int)
      */
-    static def exit():void = exit(-1);
+    static def exit():void { exit(-1); }
 
     /**
      * Sets the system exit code.
      * The exit code will be returned from the application when main() terminates.
      * Can only be invoked in place 0.
      */
-    @Native("java", "x10.runtime.impl.java.Runtime.setExitCode(#1)")
+    @Native("java", "x10.runtime.impl.java.Runtime.setExitCode(#exitCode)")
     @Native("c++", "(x10aux::exitCode = (#exitCode))")
     public static def setExitCode(exitCode: int){here==Place.FIRST_PLACE}: void {}
 
@@ -77,9 +79,14 @@ public class System {
      *
      * @return An upper bound in bytes on the size of the X10 heap allocated to the current place.
      */
-    @Native("java", "java.lang.Runtime.totalMemory()")
+    @Native("java", "java.lang.Runtime.getRuntime().totalMemory()")
     @Native("c++", "x10aux::heap_size()")
     public static native def heapSize():long;
+
+    /**
+     * Returns an immutable map from environment variables to values.
+     */
+    public static def getenv():Map[String,String] = Runtime.env;
 
     /**
      * Sets the system property with the given name to the given value.
@@ -89,7 +96,7 @@ public class System {
      * TODO: @ return The previous value of the property, or null if it did not have one.
      */
     // TODO: XTENLANG-180.  Provide full System properties API in straight X10
-    @Native("java", "java.lang.System.setProperty(#1,#2)")
+    @Native("java", "java.lang.System.setProperty(#p,#v)")
     @Native("c++", "printf(\"not setting %s\\n\", (#p)->c_str())") // FIXME: Trivial definition to allow XRX compilation to go through.
     public static native def setProperty(p:String,v:String):void;
 

@@ -17,6 +17,8 @@ import java.util.List;
 
 import polyglot.ast.AmbExpr;
 import polyglot.ast.AmbTypeNode_c;
+import polyglot.ast.Binary;
+import polyglot.ast.Binary.Operator;
 import polyglot.ast.CanonicalTypeNode;
 import polyglot.ast.Disamb;
 import polyglot.ast.Expr;
@@ -26,8 +28,10 @@ import polyglot.ast.Local;
 import polyglot.ast.NamedVariable;
 import polyglot.ast.Node;
 import polyglot.ast.NodeFactory;
+import polyglot.ast.PackageNode;
 import polyglot.ast.Prefix;
 import polyglot.ast.TypeNode;
+import polyglot.ast.Unary;
 import polyglot.frontend.Globals;
 import polyglot.frontend.Goal;
 import polyglot.frontend.Job;
@@ -38,6 +42,7 @@ import polyglot.types.LocalDef;
 import polyglot.types.Name;
 import polyglot.types.QName;
 import polyglot.types.Ref;
+import polyglot.types.Resolver;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.types.TypeSystem;
@@ -53,9 +58,11 @@ import polyglot.visit.NodeVisitor;
 import polyglot.visit.PrettyPrinter;
 import polyglot.visit.TypeCheckPreparer;
 import polyglot.visit.TypeChecker;
+import x10.constraint.XTerm;
 import x10.constraint.XTerms;
 import x10.constraint.XVar;
 import x10.errors.Errors;
+import x10.errors.Errors.IllegalConstraint;
 import x10.errors.Warnings;
 import x10.extension.X10Del;
 import x10.extension.X10Del_c;
@@ -67,8 +74,11 @@ import polyglot.types.Context;
 import x10.types.X10Def;
 import x10.types.X10ParsedClassType;
 import polyglot.types.TypeSystem;
+import polyglot.types.TypeSystem_c;
+import polyglot.types.NoClassException;
 
 import x10.types.X10Use;
+import x10.types.TypeDefMatcher;
 import x10.visit.X10TypeChecker;
 import x10.visit.ChangePositionVisitor;
 import x10.types.checker.VarChecker;
@@ -202,7 +212,7 @@ public class AmbMacroTypeNode_c extends X10AmbTypeNode_c implements AmbMacroType
     }
 
     protected TypeNode disambiguateBase(ContextVisitor tc) throws SemanticException {
-        SemanticException ex;
+        SemanticException ex = null;
         
         Position pos = position();
         
@@ -225,10 +235,12 @@ public class AmbMacroTypeNode_c extends X10AmbTypeNode_c implements AmbMacroType
             for (Expr e : this.args) {
                 argTypes.add(e.type());
             }
-            
+
+            // FIXME: move this code into X10Disamb_c
             if (prefix == null) {
                 // Search the context.
-                List<Type> tl = c.find(ts.TypeDefMatcher(null, name.id(), typeArgs, argTypes, c));
+                TypeDefMatcher matcher = new TypeDefMatcher(null, name.id(), typeArgs, argTypes, c);
+                List<Type> tl = c.find(matcher);
                 for (Type n : tl) {
                     if (n instanceof MacroType) {
                         mt = (MacroType) n;
@@ -236,17 +248,27 @@ public class AmbMacroTypeNode_c extends X10AmbTypeNode_c implements AmbMacroType
                     }
                 }
             }
-            else {
-                if (prefix instanceof TypeNode) {
-                    TypeNode tn = (TypeNode) prefix;
-                    Type container = tn.type();
-                    mt = ts.findTypeDef(container, ts.TypeDefMatcher(container, name.id(), typeArgs, argTypes, c), c);
+            else if (prefix instanceof PackageNode) {
+                PackageNode pn = (PackageNode) prefix;
+                Resolver pc = ts.packageContextResolver(pn.package_().get());
+                TypeDefMatcher matcher = new TypeDefMatcher(null, name.id(), typeArgs, argTypes, c);
+                List<Type> tl = pc.find(matcher);
+                if (tl != null) {
+                    for (Type n : tl) {
+                        if (n instanceof MacroType) {
+                            mt = (MacroType) n;
+                            break;
+                        }
+                    }
                 }
+            }
+            else if (prefix instanceof TypeNode) {
+                TypeNode tn = (TypeNode) prefix;
+                Type container = tn.type();
+                mt = ts.findTypeDef(container, name.id(), typeArgs, argTypes, c);
             }
             
             if (mt != null) {
-                Warnings.wasGuardChecked(tc,mt,this);
-
                 LazyRef<Type> sym = (LazyRef<Type>) type;
                 sym.update(mt);
                 
@@ -257,27 +279,60 @@ public class AmbMacroTypeNode_c extends X10AmbTypeNode_c implements AmbMacroType
 
                 return nf.CanonicalTypeNode(pos, sym);
             }
-        }
-        catch (SemanticException e) {
+        } catch (SemanticException e) {
+            // These can happen normally:
+            // polyglot.types.SemanticException: No type defintion found in x10.util.Map for x10.util.Map.Entry[K, V].
+            // NoClassException
+            // But in other cases we want to report the error, e.g.,
+            //class TestMemberTypeResolution {
+            //	static type Foo(i:Int{self!=0}) = Int;
+            //	var x:Foo(0); // ERR: todo: improve error: Semantic Error: Could not find type "Foo".
+            //}
+            //  throw the error: (but we ignore it)
+            // x10.errors.Errors$InvalidParameter:    Invalid Parameter.
+            //     Expected type: x10.lang.Int{self!=0}
+            //     Found type: x10.lang.Int{self==0}
+            Throwable e2 = e;
         }
         
-        // Otherwise, look for a simply-named type.
-        try {
-            Disamb disamb = tc.nodeFactory().disamb();
-            Node n = disamb.disambiguate(this, tc, pos, prefix, name);
+        // Otherwise, if there are no arguments, look for a simply-named type.
+        if (this.args.isEmpty()) {
+            try {
+                Disamb disamb = tc.nodeFactory().disamb();
+                Node n = disamb.disambiguate(this, tc, pos, prefix, name);
 
-            if (n instanceof TypeNode) {
-        	TypeNode tn = (TypeNode) n;
-        	return tn;
+                if (n instanceof TypeNode) {
+                    TypeNode tn = (TypeNode) n;
+                    return tn;
+                }
             }
+            catch (SemanticException e) {
+                ex = e;
+            }
+        }
 
-            ex = new SemanticException("Could not find type \"" + (prefix == null ? name.toString() : prefix.toString() + "." + name.toString()) + "\".", pos);
-        }
-        catch (SemanticException e) {
-            ex = e;
-        }
+        if (ex == null)
+            ex = new SemanticException("Could not find type \"" + (prefix == null ? name.toString() : prefix.toString() + "." + name.toString()) + argsString() + "\".", pos);
 
         throw ex;
+    }
+    
+    private String argsString() {
+        if (this.args.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder("(");
+        boolean first = true;
+        for (Expr e : this.args) {
+            if (!first) {
+                sb.append(",");
+            } else {
+                first = true;
+            }
+            sb.append(e.type().fullName());
+        }
+        sb.append(")");
+        return sb.toString();
     }
     
     public Node typeCheckOverride(Node parent, ContextVisitor tc) {
@@ -303,6 +358,7 @@ public class AmbMacroTypeNode_c extends X10AmbTypeNode_c implements AmbMacroType
         n = (AmbMacroTypeNode_c) n.args(args);
         
         TypeNode tn;
+        boolean foundError = false;
         
         try {
             tn = n.disambiguateAnnotation(childtc);
@@ -310,19 +366,57 @@ public class AmbMacroTypeNode_c extends X10AmbTypeNode_c implements AmbMacroType
                 return postprocess((X10CanonicalTypeNode) tn, n, childtc);
         }
         catch (SemanticException e) {
-            // Mark the type resolved to prevent us from trying to resolve this again and again.
-            X10ClassType ut = ts.createFakeClass(QName.make(null, name().id()), e);
-            ut.def().position(n.position());
-            sym.update(ut);
+            if (!foundError) {
+                // Mark the type resolved to prevent us from trying to resolve this again and again.
+                X10ClassType ut = ts.createFakeClass(QName.make(fullName(prefix), name().id()), e);
+                ut.def().position(n.position());
+                sym.update(ut);
+                foundError = true;
+            }
+        }
+        // Do not permit arguments to macro calls to be Boolean and
+        // &&, || or !. These cannot be handled by the constraint system.
+        class CheckMacroCallArgsVisitor extends NodeVisitor {
+        	IllegalConstraint error;
+        	@Override
+        	public Node override(Node n) {
+        		if (n instanceof Binary ) {
+        			Binary b = (Binary) n;
+        			Binary.Operator bop = b.operator();
+        			if (b.type().isBoolean() && bop.equals(Binary.COND_AND) 
+        					|| bop.equals(Binary.COND_OR)) {
+        				error = new IllegalConstraint(b);
+        			}
+        		}
+        		if (n instanceof Unary) {
+        			Unary u = (Unary) n;
+        			Unary.Operator uop = u.operator();
+        			if (u.type().isBoolean() && uop.equals(Unary.NOT)) {
+        				error = new IllegalConstraint(u);
+        			}
+        		}
+        		return null;
+        	}
+        }
+        CheckMacroCallArgsVisitor v = new CheckMacroCallArgsVisitor();
+        for (Expr arg : args) {
+        	arg = (Expr) arg.visit(v);
+        	if (v.error !=null) {
+        		Errors.issue(tc.job(), v.error);
+        	}
         }
         try {
             tn = n.disambiguateBase(tc);
         }
+        
         catch (SemanticException e) {
-            // Mark the type resolved to prevent us from trying to resolve this again and again.
-            X10ClassType ut = ts.createFakeClass(QName.make(null, name().id()), e);
-            ut.def().position(n.position());
-            sym.update(ut);
+            if (!foundError) {
+                // Mark the type resolved to prevent us from trying to resolve this again and again.
+                X10ClassType ut = ts.createFakeClass(QName.make(fullName(prefix), name().id()), e);
+                ut.def().position(n.position());
+                sym.update(ut);
+                foundError = true;
+            }
             tn = n;
         }
         
@@ -344,33 +438,31 @@ public class AmbMacroTypeNode_c extends X10AmbTypeNode_c implements AmbMacroType
 
         if (! typeArgs.isEmpty()) {
             if (t instanceof X10ParsedClassType) {
-        	X10ParsedClassType ct = (X10ParsedClassType) t;
-        	int numParams = ct.x10Def().typeParameters().size();
-        	if (numParams > 0) {
-        	    if (numParams != typeArgs.size()) {
-        	        Errors.issue(tc.job(),
-        	                new Errors.NumberTypeArgumentsNotSameAsNumberTypeParameters(typeArgs.size(), ct.fullName(), numParams, n.position()));
-        	        typeArgs = new ArrayList<TypeNode>(typeArgs);
-        	        while (numParams < typeArgs.size()) {
-        	            typeArgs.remove(typeArgs.size()-1);
-        	        }
-        	        while (numParams > typeArgs.size()) {
-        	            typeArgs.add(nf.CanonicalTypeNode(Position.COMPILER_GENERATED, ts.Any()));
-        	        }
-        	    }
-        	    List<Type> typeArgsTypes = new ArrayList<Type>(numParams);
-        	    for (TypeNode tni : typeArgs) {
-        	        typeArgsTypes.add(tni.type());
-        	    }
-        	    t = ct.typeArguments(typeArgsTypes);
-        	    n = (AmbMacroTypeNode_c) n.typeArgs(Collections.<TypeNode>emptyList());
-        	    typeArgs = Collections.<TypeNode>emptyList();
-        	}
+                X10ParsedClassType ct = (X10ParsedClassType) t;
+                int numParams = ct.x10Def().typeParameters().size();
+                if (numParams != typeArgs.size()) {
+                    if (ct.error() == null) {
+                        SemanticException e = new Errors.NumberTypeArgumentsNotSameAsNumberTypeParameters(typeArgs.size(), ct.fullName(), numParams, n.position());
+                        Errors.issue(tc.job(), e, this);
+                        ct = (X10ParsedClassType) ts.createFakeClass(ct.fullName(), e);
+                        int i = 0;
+                        for (TypeNode ta : typeArgs) {
+                            ct.def().addTypeParameter(new ParameterType(ts, Position.COMPILER_GENERATED, Name.make("T"+(i++)), Types.ref(ct.def())), ParameterType.Variance.INVARIANT);
+                        }
+                    }
+                }
+                List<Type> typeArgsTypes = new ArrayList<Type>(numParams);
+                for (TypeNode tni : typeArgs) {
+                    typeArgsTypes.add(tni.type());
+                }
+                t = ct.typeArguments(typeArgsTypes);
+                n = (AmbMacroTypeNode_c) n.typeArgs(Collections.<TypeNode>emptyList());
+                typeArgs = Collections.<TypeNode>emptyList();
             }
         }
         if (n.flags != null) {
-        	t = Types.processFlags(n.flags, t);
-        	n.flags = null;
+            t = Types.processFlags(n.flags, t);
+            n.flags = null;
         }
 
         // Update the symbol with the base type so that if we try to get the type while checking the constraint, we don't get a cyclic
@@ -406,7 +498,7 @@ public class AmbMacroTypeNode_c extends X10AmbTypeNode_c implements AmbMacroType
     	return result;
     }
     
-    public Node exceptionCheck(ExceptionChecker ec) throws SemanticException {
+    public Node exceptionCheck(ExceptionChecker ec) {
         throw new InternalCompilerError(position(),
             "Cannot exception check ambiguous node " + this + ".");
     }

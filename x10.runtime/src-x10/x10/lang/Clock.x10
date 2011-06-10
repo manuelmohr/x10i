@@ -12,7 +12,10 @@
 package x10.lang;
 
 import x10.compiler.Global;
+import x10.compiler.Native;
 import x10.compiler.Pinned;
+import x10.compiler.TempNoInline_0;
+import x10.util.Map;
 
 /**
  * @author tardieu
@@ -23,7 +26,7 @@ import x10.compiler.Pinned;
  *       as this.root().f instead of this.f.
  * TODO: Port to Dual Class implementation of global objects.
  */
-public class Clock(name:String) {
+public final class Clock(name:String) {
 	
 	private val root = GlobalRef[Clock](this);
 	public def equals(a:Any) {
@@ -35,6 +38,7 @@ public class Clock(name:String) {
 	
     public static def make(): Clock = make("");
     public static def make(name:String):Clock {
+        if (Runtime.STATIC_THREADS) throw new ClockUseException("Clocks are not compatible with static threads.");
         val clock = new Clock(name);
         Runtime.activity().clockPhases().put(clock, FIRST_PHASE);
         return clock;
@@ -61,15 +65,21 @@ public class Clock(name:String) {
     }
     // should be accessed through root()
     @Pinned private def dropLocal(ph:Int) {
-        --count;
-        if (-ph != phase)
-            resumeLocal();
+        atomic {
+            --count;
+            if (-ph != phase) {
+                if (--alive == 0) {
+                    alive = count;
+                    ++phase;
+                }
+            }
+        }
     }
 
     @Global private def get() = Runtime.activity().clockPhases().get(this).value;
     @Global private def put(ph:Int) = Runtime.activity().clockPhases().put(this, ph);
     @Global private def remove() = Runtime.activity().clockPhases().remove(this).value;
-    @Global def register() {
+    @Global @TempNoInline_0 def register() {
         if (dropped()) clockUseException("async clocked");
         val ph = get();
         at (root) {
@@ -92,7 +102,17 @@ public class Clock(name:String) {
         }
         put(-ph);
     }
-    @Global def nextUnsafe() {
+     @Global @TempNoInline_0 def resumeInternal(entry:Map.Entry[Clock,Int]) {
+        Runtime.ensureNotInAtomic();
+        val ph = entry.getValue();
+        if (ph < 0) return;
+        at (root) {
+        	val me = root();
+        	me.resumeLocal();
+        }
+        entry.setValue(-ph);
+    }
+    @Global def advanceUnsafe() {
     	Runtime.ensureNotInAtomic();
         val ph = get();
         val abs = Math.abs(ph);
@@ -103,15 +123,26 @@ public class Clock(name:String) {
         }
         put(abs + 1);
     }
+    @Global @TempNoInline_0 def advanceInternal(entry:Map.Entry[Clock,Int]) {
+    	Runtime.ensureNotInAtomic();
+        val ph = entry.getValue();
+        val abs = Math.abs(ph);
+        at (root) {
+        	val me = root();
+            if (ph > 0) me.resumeLocal();
+            when (abs < me.phase);
+        }
+        entry.setValue(abs + 1);
+    }
     @Global def dropUnsafe() {
         val ph = remove();
-        async at(root) {
+        at(root) {
         	val me = root();
         	me.dropLocal(ph);
         }
     }
-    @Global def dropInternal() {
-        val ph = get();
+    @Global @TempNoInline_0 def dropInternal(entry:Map.Entry[Clock,Int]) {
+        val ph = entry.getValue();
         async at(root.home) {
 	    val rcl:Clock = root();
             rcl.dropLocal(ph);
@@ -127,9 +158,9 @@ public class Clock(name:String) {
         if (dropped()) clockUseException("resume");
         resumeUnsafe();
     }
-    public @Global def next():void {
-        if (dropped()) clockUseException("next");
-        nextUnsafe();
+    public @Global def advance():void {
+        if (dropped()) clockUseException("advance");
+        advanceUnsafe();
     }
     public @Global def drop():void {
         if (dropped()) clockUseException("drop");
@@ -141,6 +172,14 @@ public class Clock(name:String) {
     private def clockUseException(method:String) {
         if (dropped()) throw new ClockUseException("invalid invocation of " + method + "() on clock " + toString() + "; calling activity is not clocked on this clock");
     }
+
+    @Native("cuda", "__syncthreads()")
+    public static def advanceAll():void {
+        Runtime.ensureNotInAtomic();
+        Runtime.activity().clockPhases().advanceAll();
+    }
+
+    public static def resumeAll():void { Runtime.activity().clockPhases().resumeAll(); }
 }
 
 // vim:shiftwidth=4:tabstop=4:expandtab

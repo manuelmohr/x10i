@@ -11,8 +11,10 @@
 
 package x10.array;
 
+import x10.compiler.TempNoInline_0;
 import x10.compiler.TempNoInline_1;
 import x10.compiler.CompilerFlags;
+import x10.compiler.Inline;
 
 /**
  * A RectRegion is a finite dense rectangular region with a specified rank.
@@ -101,7 +103,7 @@ final class RectRegion extends Region{rect} {
     /**
      * Create a 1-dim region min..max.
      */
-    def this(min:int, max:int):RectRegion{self.rank==1} {
+    @Inline def this(min:int, max:int):RectRegion{self.rank==1,self.rect} {
         super(1, true, min==0);
 
         size = max - min + 1;
@@ -236,6 +238,8 @@ final class RectRegion extends Region{rect} {
                if (max(i) < thatMax(i)) return false;
            }
            return true;
+       } else if (that instanceof RectRegion1D) {
+           return min(0) <= that.min(0) && max(0) >= that.max(0);
        } else {
            return this.contains(that.computeBoundingBox());
        }
@@ -315,7 +319,7 @@ final class RectRegion extends Region{rect} {
     }
     
     
-    public def intersection(that:Region(rank)):Region(rank) {
+    public @TempNoInline_0 def intersection(that:Region(rank)):Region(rank) {
         if (that.isEmpty()) {
 	       return that;
         } else if (that instanceof FullRegion) {
@@ -329,6 +333,11 @@ final class RectRegion extends Region{rect} {
                 if (newMax(i)<newMin(i)) return Region.makeEmpty(rank);
             }
             return new RectRegion(newMin, newMax) as Region(rank);
+        } else if (that instanceof RectRegion1D) {
+            val newMin = Math.max(min(0), that.min(0));
+            val newMax = Math.min(max(0), that.max(0));
+            if (newMax < newMin) return Region.makeEmpty(1) as Region(rank);
+            return new RectRegion1D(newMin, newMax) as Region(rank);
         } else {
             // Use the general representation.
             return (toPolyRegion() as Region(rank)).intersection(that);
@@ -337,7 +346,7 @@ final class RectRegion extends Region{rect} {
     
 
     
-    public def product(that:Region):Region{self != null} /*self.rank==this.rank+that.rank*/{
+    public @TempNoInline_0 def product(that:Region):Region{self != null} /*self.rank==this.rank+that.rank*/{
         if (that.isEmpty()) {
             return Region.makeEmpty(rank + that.rank);
         } else if (that instanceof RectRegion) {
@@ -346,6 +355,13 @@ final class RectRegion extends Region{rect} {
             val k = rank+that.rank;
             val newMin = new Array[int](k, (i:int)=>i<rank?min(i):thatMin(i-rank));
             val newMax = new Array[int](k, (i:int)=>i<rank?max(i):thatMax(i-rank));
+            return new RectRegion(newMin, newMax);
+        } else if (that instanceof RectRegion1D) {
+            val thatMin = that.min(0);
+            val thatMax = that.max(0);
+            val k = rank+1;
+            val newMin = new Array[int](k, (i:int)=>i<rank?min(i):thatMin);
+            val newMax = new Array[int](k, (i:int)=>i<rank?max(i):thatMax);
             return new RectRegion(newMin, newMax);
         } else if (that instanceof FullRegion) {
        	    val k = rank+that.rank;
@@ -367,7 +383,7 @@ final class RectRegion extends Region{rect} {
         return new RectRegion(min(axis), max(axis));
     }
 
-    public def eliminate(axis:int):Region{self.rect} /*(rank-1)*/ {
+    public @TempNoInline_0 def eliminate(axis:int):Region{self.rect} /*(rank-1)*/ {
     	val k = rank-1;
         val newMin = new Array[int](k, (i:int)=>i<axis?min(i):min(i+i));
         val newMax = new Array[int](k, (i:int)=>i<axis?max(i):max(i+i));
@@ -375,18 +391,18 @@ final class RectRegion extends Region{rect} {
     }    
 
 
-    private static class RRIterator(myRank:int) implements Iterator[Point(myRank)]() {
+    private static class RRIterator(myRank:int) implements Iterator[Point(myRank)] {
         val min:(int)=>int;
         val max:(int)=>int;
         var done:boolean;
-        val cur:Rail[int](myRank);
+        val cur:Rail[int]{self.size==myRank};
 
         def this(rr:RectRegion):RRIterator{self.myRank==rr.rank} {
             property(rr.rank);
             min = rr.min();
             max = rr.max();
             done = rr.size == 0;
-            cur = Rail.make[int](myRank, min);
+            cur = new Rail[int](myRank, min);
         }        
 
         public def hasNext() = !done;

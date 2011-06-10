@@ -64,6 +64,7 @@ import x10.types.X10MemberDef;
 import polyglot.types.LazyRef_c;
 import x10.types.checker.PlaceChecker;
 import x10.types.checker.VarChecker;
+import x10.types.constraints.XConstrainedTerm;
 import x10.util.ClosureSynthesizer;
 
 /**
@@ -71,7 +72,7 @@ import x10.util.ClosureSynthesizer;
  * 
  * It has associated with it a ClosurDef.
  * 
- * Its type is an anonymous class that implements the Fun_m_n synthesized interface associated with ClosureDef.
+ * Its type is a ClosureType.
  * @author vj
  *
  */
@@ -195,6 +196,7 @@ public class Closure_c extends Expr_c implements Closure {
 	}
 
 	public Closure closureDef(ClosureDef ci) {
+		//System.out.println("Closure_c.closureDef called with " + ci);
 		if (ci == this.closureDef) return this;
 		Closure_c n = (Closure_c) copy();
 		n.closureDef = ci;
@@ -276,6 +278,7 @@ public class Closure_c extends Expr_c implements Closure {
 				
 				offerType == null ? null : offerType.typeRef());
 		mi.setStaticContext(code.staticContext());
+		mi.setPlaceTerm(PlaceChecker.closurePlaceTerm(mi));
 		
 		if (returnType() instanceof UnknownTypeNode) {
 			mi.inferReturnType(true);
@@ -337,23 +340,39 @@ public class Closure_c extends Expr_c implements Closure {
 	@Override
 	public Context enterChildScope(Node child, Context c) {
 		// We should have entered the method scope already.
-		if  ( c.currentCode() != this.closureDef())
+		Context oldC=c;
+		if  (c.currentCode() != this.closureDef())
 			assert c.currentCode() == this.closureDef();
 
 		if (child != body()) {
 			// Push formals so they're in scope in the types of the other formals.
 			c = c.pushBlock();
-			/*   for (TypeParamNode f : typeParameters) {
+            for (int i=0; i < formals.size(); i++) {
+                Formal f = formals.get(i);
                 f.addDecls(c);
+                if (f == child)
+                    break; // do not add downstream formals
             }
-			 */
-			for (Formal f : formals) {
-				f.addDecls(c);
-			}
+		}
+
+		// Ensure that the place constraint is set appropriately when
+		// entering the appropriate children
+		if (child == body || child == returnType || child == hasType || child == offerType || child == guard
+		        || (formals != null && formals.contains(child))) {
+		    ClosureDef cd = closureDef();
+		    XConstrainedTerm placeTerm = cd == null ? null : cd.placeTerm();
+		    if (placeTerm == null) {
+		        placeTerm = PlaceChecker.closurePlaceTerm(cd);
+		    }
+		    if (c == oldC)
+		        c = c.pushBlock();
+		    c.setPlace(placeTerm);
 		}
 
 		if (child == body && offerType != null && offerType.typeRef().known()) {
-		    c = c.pushCollectingFinishScope(offerType.type());
+		    if (oldC == c)
+		        c = c.pushBlock();
+		    c.setCollectingFinishScope(offerType.type());
 		}
 
 		return super.enterChildScope(child, c);
@@ -392,6 +411,11 @@ public class Closure_c extends Expr_c implements Closure {
 			if (ac.error != null) {
 				Errors.issue(tc.job(), ac.error, this);
 			}
+			if (guard.typeConstraint() != null && !Types.get(guard.typeConstraint()).terms().isEmpty()) {
+			    Errors.issue(tc.job(),
+			            new SemanticException("Type constraints not permitted in closure guards.",
+			                    position()));
+			}
 		}
 
 		if (n.returnType() instanceof UnknownTypeNode) {
@@ -403,8 +427,21 @@ public class Closure_c extends Expr_c implements Closure {
 				// Body had no return statement.  Set to void.
 				t = ts.Void();
 			}
+			t = Types.removeLocals( c, t);
 			tr.update(t);
 			n = (Closure_c) n.returnType(nf.CanonicalTypeNode(n.returnType().position(), t));
+		}
+
+		try {
+		    X10MethodDecl_c.dupFormalCheck(Collections.<TypeParamNode>emptyList(), formals);
+		} catch (SemanticException e) {
+		    Errors.issue(tc.job(), e, n);
+		}
+
+		try {
+		    Types.checkMissingParameters(n.returnType());
+		} catch (SemanticException e) {
+		    Errors.issue(tc.job(), e, n.returnType());
 		}
 
 		// Create an anonymous subclass of the closure type.
@@ -413,11 +450,10 @@ public class Closure_c extends Expr_c implements Closure {
 		//    System.out.println(this.position() + ": " + this + " captures "+def.capturedEnvironment());
 		//}
 		propagateCapturedEnvironment(c, def);
-		ClassDef cd = ClosureSynthesizer.closureAnonymousClassDef(xts, def);
-		n = (Closure_c) n.type(cd.asType());
+		n = (Closure_c) n.type(def.asType());
 		if (hasType != null) {
 			final TypeNode h = (TypeNode) n.visitChild(n.hasType, tc);
-			Type hasType = PlaceChecker.ReplaceHereByPlaceTerm(h.type(), ( Context ) tc.context());
+			Type hasType = PlaceChecker.ReplaceHereByPlaceTerm(h.type(), tc.context());
 			n = n.hasType(h);
 			if (!xts.isSubtype(n.returnType().type(), hasType, tc.context())) {
 				Errors.issue(tc.job(), new Errors.TypeIsNotASubtypeOfTypeBound(type, hasType, position()));

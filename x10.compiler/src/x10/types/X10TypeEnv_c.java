@@ -18,6 +18,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashSet;
 
 import polyglot.main.Reporter;
 import polyglot.types.ClassType;
@@ -27,6 +28,7 @@ import polyglot.types.DerefTransform;
 import polyglot.types.Flags;
 import polyglot.types.LazyRef;
 import polyglot.types.LazyRef_c;
+import polyglot.types.LocalDef;
 import polyglot.types.LocalInstance;
 import polyglot.types.Name;
 import polyglot.types.NoClassException;
@@ -45,29 +47,39 @@ import polyglot.types.TypeObject;
 import polyglot.types.TypeSystem_c;
 import polyglot.types.Types;
 import polyglot.types.TypeSystem;
+import polyglot.types.Def;
+import polyglot.types.MemberDef;
 import polyglot.types.TypeSystem_c.ConstructorMatcher;
 import polyglot.types.TypeSystem_c.TypeEquals;
 import polyglot.util.CodedErrorInfo;
 import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.TransformingList;
+import polyglot.util.Transformation;
 import x10.constraint.XEQV;
 import x10.constraint.XFailure;
 import x10.constraint.XLit;
 import x10.constraint.XTerms;
 import x10.constraint.XVar;
+import x10.constraint.XTerm;
 import x10.errors.Errors;
 import x10.types.ParameterType.Variance;
 import polyglot.types.TypeSystem_c.Bound;
 import polyglot.types.TypeSystem_c.Kind;
+import polyglot.ast.Expr;
 import x10.types.checker.PlaceChecker;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.CTerms;
 import x10.types.constraints.ConstraintMaker;
 import x10.types.constraints.SubtypeConstraint;
 import x10.types.constraints.TypeConstraint;
+import x10.types.constraints.CField;
+import x10.types.constraints.CAtom;
+import x10.types.constraints.CThis;
+import x10.types.constraints.CSelf;
 import x10.types.matcher.Matcher;
 import x10.types.matcher.Subst;
+import x10.visit.Desugarer;
 
 /**
  * A TypeSystem implementation for X10.
@@ -112,6 +124,7 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
                         continue;
                     }
 
+                    mi = expandPropertyInMethod(ct,mi);
                     MethodInstance mj = ts.findImplementingMethod(ct, mi, context);
                     if (mj == null) {
                     	if (Types.isX10Struct(ct)) {
@@ -181,7 +194,7 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
     }
 
     
-    public void checkOverride(ClassType ct, MethodInstance mi, MethodInstance mj) throws SemanticException {
+ /*   public void checkOverride(ClassType ct, MethodInstance mi, MethodInstance mj) throws SemanticException {
          XVar thisVar =  XTerms.makeUQV(); // XTerms.makeUQV(XTerms.makeFreshName("this")); // XTerms.makeLocal(XTerms.makeFreshName("this"));
 
          List<XVar> ys = new ArrayList<XVar>(2);
@@ -204,19 +217,19 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
 
         newEnv.checkOverride(mi, mj, true);
     }
-
+*/
     /* (non-Javadoc)
      * @see x10.types.X10TypeEnv#consistent(x10.types.constraints.CConstraint)
      */
-    public boolean consistent(CConstraint c) {
-        return c.consistent();
+    public boolean consistent(CConstraint c) { // todo: this is a horrible (!!!) signature because we do not use "this"! Make is static, or rename it, or use the context!
+        return c.consistent(); // todo: why is a TypeConstraint behaviour below different from a CConstraint here?
     }
 
     /* (non-Javadoc)
      * @see x10.types.X10TypeEnv#consistent(x10.types.constraints.TypeConstraint)
      */
     public boolean consistent(TypeConstraint c) {
-        return c.consistent((Context) context);
+        return c.consistent(context);
     }
 
     /* (non-Javadoc)
@@ -539,7 +552,7 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
             catch (SemanticException e) {
             }
             try {
-                return ts.findTypeDef(t, ts.TypeDefMatcher(t, name, Collections.<Type>emptyList(), Collections.<Type>emptyList(), context), context);
+                return ts.findTypeDef(t, name, Collections.<Type>emptyList(), Collections.<Type>emptyList(), context);
             }
             catch (SemanticException e) {
             }
@@ -698,13 +711,92 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
         return old;*/
     }
 
+    private boolean isInterface(ClassType t) {
+        return t.flags().isInterface();
+    }
+    public MethodInstance expandPropertyInMethod(final ClassType t1, MethodInstance mi) {
+        // expand property methods in all formals and guard
+        if (t1==null || isInterface(t1)) return mi;
+        mi = (MethodInstance) mi.formalNames(new TransformingList<LocalInstance,LocalInstance>(mi.formalNames(), new Transformation<LocalInstance, LocalInstance>() {
+            public LocalInstance transform(LocalInstance o) {
+                return o.type(expandPropertyInMethodNonNull(t1,o.type()));
+            }
+        }));
+        if (mi.guard()!=null)
+            mi = (MethodInstance) mi.guard( ifNull(expandProperty(true,t1,mi.guard()),mi.guard()) );
+        mi = (MethodInstance) mi.formalTypes(new TransformingList<Type,Type>(mi.formalTypes(), new Transformation<Type, Type>() {
+            public Type transform(Type o) {
+                return expandPropertyInMethodNonNull(t1,o);
+            }
+        }));
+        return mi;
+    }
+    public Type expandPropertyInSubtype(Type t1, Type t2) {
+        // we expand properties in t2 based on the property definitions in t1.
+        // e.g., val i:I{self.p()==2} = c;
+        // where I is an interface with abstract property p, and C is a class with concrete definition for p.
+        final ClassType t1ClassType = Types.getClassType(t1,ts,context);
+        if (t1ClassType==null || isInterface(t1ClassType)) return t2;  // if t1 is an interface, then there is no way it has any non-abstract property definitions.
+        return expandProperty(false,t1ClassType, t2);
+    }
+    public static <T> T ifNull(T t, T def) {
+        return t==null ? def : t;
+    }
+    public Type expandPropertyInMethodNonNull(final ClassType t1ClassType, Type t2) {
+        return ifNull(expandProperty(true,t1ClassType,t2), t2);
+    }
+    public Type expandProperty(final boolean isMethod, final ClassType t1ClassType, Type t2) {
+        if (!(t2 instanceof ConstrainedType)) return t2;
+        ConstrainedType t2c = (ConstrainedType) t2;
+        CConstraint originalConst = Types.get(t2c.constraint());
+        CConstraint newConstraint = expandProperty(isMethod, t1ClassType,originalConst);
+        if (newConstraint==null) return null;
+        if (newConstraint!=originalConst)
+            t2 = Types.xclause(Types.baseType(t2), newConstraint);
+        return t2;
+    }
+    public CConstraint expandProperty(final boolean isMethod, final ClassType t1ClassType, CConstraint originalConst) {
+        final List<XTerm> terms = originalConst.constraints();
+        final ArrayList<XTerm> newTerms = new ArrayList<XTerm>(terms.size());
+        boolean wasNew = false;
+        for (XTerm xTerm : terms) {
+            final XTerm.TermVisitor visitor = new XTerm.TermVisitor() {
+                public XTerm visit(XTerm term) {
+                    XTerm res = XTypeTranslator.expandPropertyMethod(term,isMethod,ts,t1ClassType,context);
+                    return res==term ? null : res;
+                }
+            };
+            final XTerm newXterm = xTerm.accept(visitor);
+            wasNew |= newXterm!=xTerm;
+            newTerms.add(newXterm);
+        }
+        if (wasNew) {
+            final CConstraint newConstraint = new CConstraint(originalConst.self());
+            newConstraint.setThisVar(originalConst.thisVar());
+            for (XTerm xTerm : newTerms) {
+                try {
+                    newConstraint.addTerm(xTerm);
+                } catch (XFailure xFailure) {
+                    return null;
+                }
+            }
+            if (!newConstraint.consistent())
+                return null;
+            return newConstraint;
+        }
+        return originalConst;
+    }
     /* (non-Javadoc)
      * @see x10.types.X10TypeEnv#isSubtype(polyglot.types.Type, polyglot.types.Type, boolean)
      */
     boolean isOldSubtype(XVar x, Type t1, Type t2) {
     	assert t1 != null;
     	assert t2 != null;
-    	if (ts.hasUnknown(t1) || ts.hasUnknown(t2)) return true;
+
+    	if (t1 == t2) 
+    		return true;
+
+    	if (ts.isUnknown(t1) || ts.isUnknown(t2)) return true; // used to be hasUnknown, which checks whether any part of the type is unknown, but it is inefficient (it is enough to check just the base type for unknown).
 
     	if (t1.isVoid())
     		return t2.isVoid();
@@ -713,11 +805,13 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
 
     	t1 = ts.expandMacros(t1);
     	t2 = ts.expandMacros(t2);
+        t2 = expandPropertyInSubtype(t1,t2);
+        if (t2==null) return false;
         assert !t1.isVoid() && !t2.isVoid();
         
     	if (ts.isAny(t2))
     		return true;
-    	Context xcontext = (Context) context;
+    	Context xcontext = context;
 
     	{
     		boolean isStruct1 = Types.isX10Struct(t1);
@@ -726,7 +820,8 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
 
     		if (isStruct2) {
     			// t1 must be a struct, and the bases must be the same.
-    			if (! (isStruct1 && ts.typeEquals(Types.baseType(t1), Types.baseType(t2),
+    			// No -- it could be a type parameter.
+    			if (isStruct1 && ! (ts.typeEquals(Types.baseType(t1), Types.baseType(t2),
     					xcontext)))
     				return false;
 
@@ -739,12 +834,8 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
     		}
     	}
     	
-    	if (t1 == t2) 
-    		return true;
-
-
     	if (t1.isNull())
-    		return Types.permitsNull(t2);
+    		return Types.permitsNull(xcontext, t2);
     	
 
     	if (t2.isNull()) 
@@ -773,7 +864,9 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
     		//                    newEnv = env;
     		//                    newEnv = Collections.EMPTY_LIST;
 
-    		Context xc2 = ((X10Context_c) xcontext).pushTypeConstraint(newEnv);
+    		Context xc2 = xcontext.pushBlock();
+    		//Context xc2 = ((X10Context_c) xcontext).pushTypeConstraint(newEnv);
+    		xc2.setTypeConstraint(newEnv);
     		X10TypeEnv_c tenv = shallowCopy();
     		tenv.context = xc2;
 
@@ -836,19 +929,17 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
     		}
     		t2 = Types.instantiateSelf(x, t2);
     		c2 = Types.xclause(t2);
-    		if (c2 != null && c2.valid())
+    		if (c2 != null && c2.valid()) {
     			c2 = null;
+    			
+    		}
     		if (c1 != null)
     			c1 = c1.copy().instantiateSelf(x);
 
     		CConstraint c = null;
-    		try {
-    			c = xcontext.constraintProjection(c1, c2);
-//    			c1 = xcontext.constraintProjection(c1);
-//    			c2 = xcontext.constraintProjection(c2);
-    		} catch (XFailure z) {
-    			return false;
-    		}
+    		c = xcontext.constraintProjection(c1, c2);
+//  		c1 = xcontext.constraintProjection(c1);
+//  		c2 = xcontext.constraintProjection(c2);
 
     		if (c1 != null && ! c.entails(c1)) {
     			// Update the context, by adding the
@@ -891,7 +982,47 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
     			return true;
     	}
     	// At this point the constraint has been checked and baseType2 == t2.
-    	
+
+    	// Handle function types
+    	if (baseType1 instanceof FunctionType && baseType2 instanceof FunctionType) {
+            FunctionType ft1 = (FunctionType) baseType1;
+            FunctionType ft2 = (FunctionType) baseType2;
+            // (x1:S1,..., xn:Sn){c}=>S <: (y1:T1,..., yn:Tn){d}=>T provided that
+            // 1. Ti <: Si, for i in 1..n
+            // 2. c entails d
+            // 3. S <: T
+            List<Type> Sl = ft1.argumentTypes();
+            Type S = ft1.returnType();
+            CConstraint c = ft1.guard();
+            List<Type> Tl = ft2.argumentTypes();
+            Type T = ft2.returnType();
+            CConstraint d = ft2.guard();
+            if (Sl.size() != Tl.size())
+                return false;
+            XVar[] ys = Types.toVarArray(Types.toLocalDefList(ft2.formalNames()));
+            XVar[] xs = Types.toVarArray(Types.toLocalDefList(ft1.formalNames()));
+            try {
+                Sl = Subst.subst(Sl, ys, xs);
+                if (c != null) {
+                    c = Subst.subst(c, ys, xs);
+                }
+                S = Subst.subst(S, ys, xs);
+            } catch (SemanticException e) {
+                throw new InternalCompilerError("Unexpected exception comparing function types", ft1.position(), e);
+            }
+            for (int i = 0; i < Sl.size(); i++) {
+                Type Si = Sl.get(i);
+                Type Ti = Tl.get(i);
+                if (!isSubtype(x, Ti, Si))
+                    return false;
+            }
+            if (!entails(d, c))
+                return false;
+            if (!isSubtype(x, S, T))
+                return false;
+            return true;
+    	}
+
     	// Handle parameterized types and interfaces
     	if (baseType1 instanceof X10ClassType && baseType2 instanceof X10ClassType) {
     		X10ClassType ct1 = (X10ClassType) baseType1;
@@ -1017,6 +1148,8 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
             return t2.isVoid();
         if (t2.isVoid())
             return false;
+
+    	if (ts.isUnknown(t1) || ts.isUnknown(t2)) return true;
           
         if (((TypeObject) t1).equalsImpl((TypeObject) t2))
             return true;
@@ -1038,7 +1171,9 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
             //                    newEnv = env;
             newEnv = Collections.<SubtypeConstraint>emptyList();
 
-            Context xc2 = ((X10Context_c) xc).pushTypeConstraint(newEnv);
+            Context xc2 = xc.pushBlock();
+            xc2.setTypeConstraint(newEnv);
+            	//((X10Context_c) xc).pushTypeConstraint(newEnv);
 
             if (term.isEqualityConstraint()) {
                 SubtypeConstraint eq = term;
@@ -1081,7 +1216,27 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
                 }
             }
         }
-        
+
+        if (t1 instanceof FunctionType && t2 instanceof FunctionType) {
+            FunctionType ft1 = (FunctionType) t1;
+            FunctionType ft2 = (FunctionType) t2;
+            if (ft1.formalNames().size() == ft2.formalNames().size()) {
+                // Rename formals
+                XTerm[] ys = new XTerm[ft1.formalNames().size()];
+                for (int i = 0; i < ys.length; i++) {
+                    ys[i] = XTerms.makeUQV();
+                }
+                try {
+                    XVar[] xs1 = Types.toVarArray(Types.toLocalDefList(ft1.formalNames()));
+                    t1 = Subst.subst(ft1, ys, xs1, new Type[] { }, new ParameterType[] { });
+                    XVar[] xs2 = Types.toVarArray(Types.toLocalDefList(ft2.formalNames()));
+                    t2 = Subst.subst(ft2, ys, xs2, new Type[] { }, new ParameterType[] { });
+                } catch (SemanticException e) {
+                    throw new InternalCompilerError("Unexpected exception while transforming function types", e);
+                }
+            }
+        }
+
         if (t1 instanceof X10ClassType && t2 instanceof X10ClassType) {
             X10ClassType ct1 = (X10ClassType) t1;
             X10ClassType ct2 = (X10ClassType) t2;
@@ -1156,7 +1311,7 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
       //  	return true;
         
         if (fromType instanceof NullType) {
-            return toType.isNull() ||  Types.permitsNull(toType);
+            return toType.isNull() ||  Types.permitsNull(context, toType);
           
         }
 
@@ -1218,12 +1373,8 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
 
         final Context xc = context;
         if (c1 == null) {
-            try {
-                CConstraint sigma = xc.constraintProjection(c2);
-                return sigma.entails(c2);
-            } catch (XFailure z) {
-                return false;
-            }
+            CConstraint sigma = xc.constraintProjection(c2);
+            return sigma.entails(c2);
         }
         return c1.entails(c2, new ConstraintMaker() {
                 public CConstraint make() throws XFailure {
@@ -1407,15 +1558,9 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
             
             XLit val = XTerms.makeLit(value);
 
-            try {
-                CConstraint c = new CConstraint();
-                c.addSelfBinding(val);
-                return entails(c, Types.realX(toType));
-            }
-            catch (XFailure f) {
-                // Adding binding makes real clause inconsistent.
-                return false;
-            }
+            CConstraint c = new CConstraint();
+            c.addSelfBinding(val);
+            return entails(c, Types.realX(toType));
     }
 
     protected boolean typeRefListEquals(List<Ref<? extends Type>> l1, List<Ref<? extends Type>> l2) {
@@ -1469,35 +1614,46 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
         }
     }
 
+    /**
+     * Return the least common ancestor of the two types. This must always exist.
+     */
     @Override
     public Type leastCommonAncestor(Type type1, Type type2)
-    throws SemanticException
+  
     {
 
         Type t;
-        if (type1.isNull() || type2.isNull()) {
+        IF: if (type1.isNull() || type2.isNull()) {
             t = type1.isNull() ? type2 : type1;
-            if (Types.permitsNull(t)) return t;
+            if (Types.permitsNull(context, t))
+                return t;
             // Maybe there is a constraint {self!=null} that we can remove from "t", and then null will be allowed.
             // e.g., true ? null : new Test()
             //      	 T1: type(null)
      	    //      	 T2: Test{self.home==here, self!=null}
             // The lub should be:  Test{self.home==here}
 
-            CConstraint ct = Types.realX(t);
             Type baseType = Types.baseType(t);
-            if (!Types.permitsNull(baseType))
-                throw new SemanticException("No least common ancestor found for types \"" + type1 +
-    								"\" and \"" + type2 + "\", because one is null and the other cannot contain null.");
+            if (!Types.permitsNull(context, baseType)) {
+                // ok, so climb and find the least common ancestor via interfaces.
+                break IF; // return ts.Any();
+              /*  throw new SemanticException("No least common ancestor found for types \"" + type1 +
+    								"\" and \"" + type2 + "\", because one is null and the other cannot contain null.");*/
+            }
             // we need to keep all the constraints except the one that says the type is not null
-            final Type res = Types.addConstraint(baseType, Types.allowNull(ct));
+            Type res = baseType;
+            // todo: this is an attempt to keep as many constraints as possible:
+            // res = Types.addConstraint(baseType, Types.allowNull(Types.realX(t)));
+            // It is useful if we do LCA(null, Point(2))  because it should be Point(2)
+            // However   LCA(null, Bla{self==a})  is complicated because "a" might be of type Bla{self!=null}, so we need to remove the constraint self==a.
+            // See XTENLANG_2622 and XTENLANG_1380
             assert Types.consistent(res);
-            assert Types.permitsNull(res);
+            assert Types.permitsNull(context, res);
             return res;
-        } else {
-            t = leastCommonAncestorBase(Types.baseType(type1),
-    			Types.baseType(type2));
-        }
+        } 
+            
+        t = leastCommonAncestorBase(Types.baseType(type1), Types.baseType(type2));
+        
     	
     	CConstraint c1 = Types.realX(type1), c2 = Types.realX(type2);
     	CConstraint c = c1.leastUpperBound(c2);
@@ -1505,20 +1661,109 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
     		t = Types.addConstraint(t, c);
     	assert Types.consistent(t);
     	return t;
-    	
+    }
+
+    private FunctionType changeReturnType(FunctionType ft, Type nrt) {
+        Type rt = ft.returnType();
+        if (nrt == rt || typeEquals(nrt, rt))
+            return ft;
+        List<Ref<? extends Type>> formalTypes = new ArrayList<Ref<? extends Type>>();
+        List<ParameterType> typeParameters = Collections.<ParameterType>emptyList(); // FIXME
+        for (Type t : ft.argumentTypes()) {
+            formalTypes.add(Types.ref(t));
+        }
+        List<LocalDef> formalNames = new ArrayList<LocalDef>();
+        for (LocalInstance li : ft.formalNames()) {
+            formalNames.add(li.def());
+        }
+        return ts.functionType(ft.position(), Types.ref(nrt), typeParameters, formalTypes, formalNames, Types.ref(ft.guard()));
     }
 
     // Assumes type1 and type2 are base types, no constraint clauses.
-    private Type leastCommonAncestorBase(Type type1, Type type2)
-    throws SemanticException
-    {
-       
+    private Type leastCommonAncestorBase(Type type1, Type type2)  {
+        Type res = leastCommonAncestorBaseOld(type1, type2);
+        // try to find something better with interfaces:
+        // let's intersect all the interfaces type1 and type2 implement,
+        // then let's return the one that is a subtype of all those in the intersection.
+        // see XTENLANG-2635
+        if (ts.Any()!=res && ts.Object()!=res)
+            return res;
+        if (ts.isAny(type1) || ts.isAny(type2)) // optimization
+            return res;
+        if (type1 instanceof X10ParsedClassType_c && type2 instanceof X10ParsedClassType_c) {
+            X10ParsedClassType_c ct1 = (X10ParsedClassType_c) type1;
+            X10ParsedClassType_c ct2 = (X10ParsedClassType_c) type2;
+            Set<Type> in1 = getStrippedInterfaces(ct1);
+            Set<Type> in2 = getStrippedInterfaces(ct2);
+            Set<Type> intersection = new HashSet<Type>();
+            Context empty = ts.emptyContext();
+            for (Type t1 : in1) {
+                for (Type t2 : in2) {
+                    if (ts.typeEquals(t1,t2, empty))
+                        intersection.add(t1);
+                }
+            }
+            int size = intersection.size();
+            // Note that Object doesn't implement Any (a bug in our compiler)
+            if (size>1) {
+                // let's find the most specific one
+                Type mostSpecific = null;
+                for (Type candidate : intersection) {
+                    boolean ok = true;
+                    for (Type t : intersection)
+                        if (t!=candidate && !ts.isSubtype(candidate, t,empty)) {
+                            ok = false;
+                            break;
+                        }
+                    if (!ok) continue;
+                    mostSpecific = candidate;
+                    break;
+                }
+                if (mostSpecific!=null)
+                    return mostSpecific;
+            }
+        }
+        return res;
+    }
+    // returns all the interfaces implemented by ct, without any constraint info
+    private Set<Type> getStrippedInterfaces(X10ParsedClassType_c ct) {
+        Set<X10ParsedClassType_c> supertypes = ct.allSuperTypes(true);
+        Set<Type> res = new HashSet<Type>();
+        for (X10ParsedClassType_c s : supertypes) {
+            if (s.def().flags().isInterface())
+                res.add(Types.stripConstraints(s));
+        }
+        return res;
+    }
+    private Type leastCommonAncestorBaseOld(Type type1, Type type2)  {
     	if (typeEquals(type1, type2)) {
     		return type1;
     	}
 
-
-    	if (type1 instanceof X10ClassType && type2 instanceof X10ClassType) {
+    	IF: if (type1 instanceof X10ClassType && type2 instanceof X10ClassType) {
+    	    if (type1 instanceof FunctionType && type2 instanceof FunctionType) {
+    	        FunctionType ft1 = (FunctionType) type1;
+    	        FunctionType ft2 = (FunctionType) type2;
+    	        if (isSubtype(ft1, ft2))
+    	            return ft2;
+    	        if (isSubtype(ft2, ft1))
+    	            return ft1;
+    	        if (ft1 instanceof ClosureType)
+    	            return leastCommonAncestor(((ClosureType) ft1).functionInterface(), ft2);
+    	        if (ft2 instanceof ClosureType)
+    	            return leastCommonAncestor(ft1, ((ClosureType) ft2).functionInterface());
+    	        // Found two function interfaces, neither of which is a subtype of each other.
+    	        // First try finding a common (covariant) return type.
+    	        Type rt1 = ft1.returnType();
+    	        Type rt2 = ft2.returnType();
+    	        Type nrt = leastCommonAncestor(rt1, rt2);
+    	        Type nft1 = changeReturnType(ft1, nrt);
+    	        Type nft2 = changeReturnType(ft2, nrt);
+    	        if (nft1 != ft1 || nft2 != ft2)
+    	            return leastCommonAncestor(nft1, nft2);
+    	        // TODO: try contravariant arguments
+    	        return ts.Any(); // Two unrelated functions still extend Any
+    	    }
     		if (hasSameClassDef(type1, type2)) {
     			X10ClassType ct1 = (X10ClassType) type1;
     			X10ClassType ct2 = (X10ClassType) type2;
@@ -1535,8 +1780,12 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
     					if (typeEquals(a1, a2))
     						newArgs.add(a1);
     					else
-    						throw new SemanticException("No least common ancestor found for types \"" + type1 +
-    								"\" and \"" + type2 + "\".");
+    					    // OK, so you have no chance of returning an LCA based 
+    					    // on analyzing the type arguments.Return to climbing
+    					    // the hierarchy.
+    					    break IF; // return ts.Object();
+    						/*throw new SemanticException("No least common ancestor found for types \"" + type1 +
+    								"\" and \"" + type2 + "\".");*/
     					break;
     				case COVARIANT:
     					newArgs.add(leastCommonAncestor(a1, a2));
@@ -1547,8 +1796,9 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
     					else if (isSubtype(a2, a1))
     						newArgs.add(a2);
     					else
-    						throw new SemanticException("No least common ancestor found for types \"" + type1 +
-    								"\" and \"" + type2 + "\".");
+    					    break IF; 
+    						/*throw new SemanticException("No least common ancestor found for types \"" + type1 +
+    								"\" and \"" + type2 + "\".");*/
     					break;
     				}
     			}
@@ -1556,19 +1806,16 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
     		}
     	}
 
-
     	if (isSubtype(type1, type2))
     		return type2;
     	if (isSubtype(type2, type1))
     		return type1;
-
 
     	// Don't consider interfaces.
     	if ((type1.isClass() && ts.isInterfaceType(type2)) ||
             (type2.isClass() && ts.isInterfaceType(type1))) {
     		return ts.Any(); // an interface may be implemented by a struct
     	}
-
 
     	// Since they are not equal, and one is not a subtype of another
     	// and one of them is a struct, the lub has to be Any.
@@ -1589,11 +1836,8 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
 
     		if (typeEquals(t1, t2)) 
     			return t1;
-
-
     	}
     	return ts.Any();
-
     }
 
     /* (non-Javadoc)
@@ -1672,7 +1916,7 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
 
         XVar thisVar = mi.x10Def().thisVar();
         if (thisVar == null)
-            thisVar = CTerms.makeThis(); // XTerms.makeLocal(XTerms.makeFreshName("this"));
+            thisVar = CTerms.makeThis();  
 
         List<XVar> ys = new ArrayList<XVar>(2);
         List<XVar> xs = new ArrayList<XVar>(2);
@@ -1683,9 +1927,11 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
 
         mi = fixThis(mi, y, x);
 
+        XVar placeTerm = Types.getPlaceTerm(mi);
+
         while (rt != null) {
             // add any method with the same name and formalTypes from rt
-            l.addAll(ts.methods(rt, mi.name(), mi.typeParameters(), mi.formalTypes(), thisVar, context));
+            l.addAll(ts.methods(rt, mi.name(), mi.typeParameters(), mi.formalNames(), thisVar, placeTerm, context));
 
             ContainerType sup = null;
 
@@ -1707,7 +1953,7 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
         MethodInstance mi = (MethodInstance) jmi;
         XVar thisVar = mi.x10Def().thisVar();
         if (thisVar == null)
-            thisVar = CTerms.makeThis(); //XTerms.makeLocal(XTerms.makeFreshName("this"));
+            thisVar = CTerms.makeThis();  
         return implemented(mi, mi.container(), thisVar);
     }
 
@@ -1726,9 +1972,10 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
 
         mi = fixThis((MethodInstance) mi, y, x);
 
+        XVar placeTerm = Types.getPlaceTerm(mi);
 
         List<MethodInstance> l = new LinkedList<MethodInstance>();
-        l.addAll(ts.methods(st, mi.name(), mi.typeParameters(), mi.formalTypes(), thisVar, context));
+        l.addAll(ts.methods(st, mi.name(), mi.typeParameters(), mi.formalNames(), thisVar, placeTerm, context));
 
         if (st instanceof ObjectType) {
             ObjectType rt = (ObjectType) st;
@@ -1782,13 +2029,18 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
                                         + "; different number of type parameters",mi.position());
         }
 
-        List<LocalInstance> miFormals = mi.formalNames();
-        assert miFormals.size() ==  mj.formalNames().size();
-        
-        XVar[] newSymbols = genSymbolicVars(mj.formalNames().size());
+        XVar[] newSymbols = genSymbolicVars(mj.formalNames().size()+1);
         TypeSystem xts = (TypeSystem) mi.typeSystem();
-        XVar[] miSymbols = Matcher.getSymbolicNames(mi.formalTypes(), mi.formalNames(),xts);
-        XVar[] mjSymbols = Matcher.getSymbolicNames(mj.formalTypes(), mj.formalNames(),xts);
+        XVar[] miFormals = Matcher.getSymbolicNames(mi.formalNames(),xts);
+        XVar mipt = Types.getPlaceTerm(mi);
+        XVar[] mjFormals = Matcher.getSymbolicNames(mj.formalNames(),xts);
+        XVar mjpt = Types.getPlaceTerm(mj);
+        XVar[] miSymbols = new XVar[miFormals.length+1];
+        miSymbols[0] = mipt;
+        System.arraycopy(miFormals, 0, miSymbols, 1, miFormals.length);
+        XVar[] mjSymbols = new XVar[mjFormals.length+1];
+        mjSymbols[0] = mjpt;
+        System.arraycopy(mjFormals, 0, mjSymbols, 1, mjFormals.length);
         
         TypeParamSubst tps = new TypeParamSubst(xts, mi.typeParameters(), mj.x10Def().typeParameters());
         assert (mi.typeParameters().size() == mj.typeParameters().size() &&
@@ -1820,13 +2072,39 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
             throw new Errors.IncompatibleReturnType(mi, mj);
         } 
 
-    
+        // FIXME: is this the same as entails(CConstraint, CConstraint)?
+        boolean entails = true;
+        final CConstraint mig = Subst.subst(mi.guard(), newSymbols, miSymbols);
+        final CConstraint mjg = Subst.subst(mj.guard(), newSymbols, mjSymbols);
+        if (mjg == null) {
+            entails = mig == null || mig.valid();
+        }
+        else {
+            entails = mig == null 
+            || mjg.entails(mig, new ConstraintMaker() {
+                public CConstraint make() throws XFailure {
+                    return  context.constraintProjection(mjg, mig);
+                }
+            });          
+        }
+
+        if (! entails) {
+            throw new SemanticException(mi.name() + " in " + mi.container()
+             +" cannot override method in " + mj.container() 
+             +"; overriding method guard is not entailed."
+             + "\n\t Overiding Method in " + mi.container() + ":" + mi.signature()
+             + "\n\t Method in " + mj.container()+":" + mj.signature()
+             ,
+             mi.position());
+        }
 
         if (mi.flags().moreRestrictiveThan(mj.flags())) {
             if (reporter.should_report(Reporter.types, 3))
                 reporter.report(3, mi.flags() + " more restrictive than " +
                               mj.flags());
-            throw new SemanticException(mi.signature() + " in " + mi.container() +" cannot override " +mj.signature() + " in " + mj.container() +"; attempting to assign weaker " +"access privileges",mi.position());
+            throw new SemanticException(mi.signature() + " in " 
+            		+ mi.container() +" cannot override " +mj.signature() 
+            		+ " in " + mj.container() +"; attempting to assign weaker " +"access privileges",mi.position());
         }
 
         if (mi.flags().isStatic() != mj.flags().isStatic()) {
@@ -1835,14 +2113,18 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
                               (mi.flags().isStatic() ? "" : "not") + 
                               " static but " + mj.signature() + " is " +
                               (mj.flags().isStatic() ? "" : "not") + " static");
-            throw new SemanticException(mi.signature() + " in " + mi.container() +" cannot override " +mj.signature() + " in " + mj.container() +"; overridden method is " +(mj.flags().isStatic() ? "" : "not") +"static",mi.position());
+            throw new SemanticException(mi.signature() + " in " + mi.container()
+            		+" cannot override " +mj.signature() + " in " + mj.container()
+            		+"; overridden method is " +(mj.flags().isStatic() ? "" : "not") +"static",mi.position());
         }
 
         if (! mi.def().equals(mj.def()) && mj.flags().isFinal()) {
             // mi can "override" a final method mj if mi and mj are the same method instance.
             if (reporter.should_report(Reporter.types, 3))
                 reporter.report(3, mj.flags() + " final");
-            throw new SemanticException(mi.signature() + " in " + mi.container() +" cannot override " +mj.signature() + " in " + mj.container() +"; overridden method is final",mi.position());
+            throw new SemanticException(mi.signature() + " in " + mi.container() 
+            		+" cannot override " +mj.signature() + " in " + mj.container()
+            		+"; overridden method is final",mi.position());
         }
     }
 
@@ -1874,30 +2156,7 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
 
         superCheckOverride(mi, mj, allowCovariantReturn);
 
-        // FIXME: is this the same as entails(CConstraint, CConstraint)?
-        boolean entails = true;
-        if (mj.guard() == null) {
-            entails = mi.guard() == null || mi.guard().valid();
-        }
-        else {
-
-            final MethodInstance mii = mi;
-            final MethodInstance mjj = mj;
-            entails = mi.guard() == null 
-            || mj.guard().entails(mi.guard(), new ConstraintMaker() {
-                public CConstraint make() throws XFailure {
-                    return  context.constraintProjection(mjj.guard(), mii.guard());
-                }
-            });          
-        }
-
-        if (! entails) {
-            throw new SemanticException(mi.signature() + " in " + mi.container()
-                                        +" cannot override " +mj.signature() 
-                                        + " in " + mj.container() 
-                                        +"; method guard is not entailed.",
-                                        mi.position());
-        }
+       
 
         Flags miF = mi.flags();
         Flags mjF = mj.flags();
@@ -1968,8 +2227,26 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
 	    return Collections.<ConstructorInstance>emptyList();
 	}
 
-	List<ConstructorInstance> list = ((ClassType) container).constructors();
-	for (ConstructorInstance ci : list) {
+	X10ParsedClassType containerClass = (X10ParsedClassType) container.toClass();
+	List<Type> tas = containerClass.typeArguments();
+	TypeConstraint tb = Types.get(containerClass.x10Def().typeBounds());
+	if (tas != null && tb != null) {
+	    TypeConstraint ntb = containerClass.subst().reinstantiate(tb);
+	    if (!ntb.consistent(context))
+	        error = new Errors.TypeGuardNotEntailed(tb, container);
+	}
+
+	List<ConstructorInstance> list = containerClass.constructors();
+	if (error != null) list = Collections.<ConstructorInstance>emptyList();
+    //When we write:  new A[T](...)
+    // then matcher.typeArgs is [T]
+    // but the ctor instance is not like a generic method (it already has the right substitution)
+    List<Type> typeArgs = Collections.EMPTY_LIST; //matcher.typeArgs;
+        boolean isDumb = matcher.isDumbMatcher;
+    boolean shouldTryCoercions = !isDumb && typeArgs.size() == 0 && container != null && (container instanceof X10ParsedClassType) && ((X10ParsedClassType) container).def().typeParameters().size() > 0;
+    List<ConstructorInstance> resolved =
+        TypeSystem_c.resolveProcedure(container, context, list, typeArgs, matcher.argTypes, isDumb);
+	for (ConstructorInstance ci : resolved) {
 	    if (reporter.should_report(Reporter.types, 3))
 		reporter.report(3, "Trying " + ci);
 
@@ -1988,7 +2265,8 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
 	    	}
 	    	else {
 	    		if (error == null) {
-	    			error = new NoMemberException(NoMemberException.CONSTRUCTOR, "Constructor " + ci.signature() + "\n is inaccessible.");
+	    			error = new NoMemberException(NoMemberException.CONSTRUCTOR,
+	    			                              "Constructor " + ci.signature() + "\n is inaccessible.");
 	    		}
 	    	}
 
@@ -1996,13 +2274,13 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
 	    }
 	    catch (SemanticException e) {
 	    	// Treat any instantiation errors as call invalid errors.
-	        int i = 1; // for debug breakpoints
+	        if (!shouldTryCoercions) error = e;
 	    }
 
 	    if (error == null) {
-		error = new NoMemberException(NoMemberException.CONSTRUCTOR, "Constructor " + ci.signature() 
-				+ "\n cannot be invoked with arguments \n"
-			+ matcher.argumentString() + ".");
+		error = new NoMemberException(NoMemberException.CONSTRUCTOR, "Constructor cannot be invoked with given arguments."
+		        + "\n Signature:" + ci.signature()
+				+ "\n Arguments:" + matcher.argumentString() + ".");
 
 	    }
 	}
@@ -2034,20 +2312,15 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
 	        public void run() {
 	            try {
 	                Type newRetType = Subst.subst(zmj.returnType(), y, x, new Type[] { }, new ParameterType[] { });
-	              newRetType = PlaceChecker.ReplaceHereByPlaceTerm(newRetType, (Context) context);
+	                newRetType = PlaceChecker.ReplaceHereByPlaceTerm(newRetType, (Context) context);
 	                final boolean isStatic =  zmj.flags().isStatic();
 	                // add in this.home=here clause.
 	                if (! isStatic  && ! Types.isX10Struct(mi.container())) {
-	                	try {
-	                		if ( y.length > 0 && y[0] instanceof XEQV)
-	                		newRetType = Subst.addIn(newRetType, PlaceChecker.ThisHomeEqualsHere(y[0], ts));
-
-	                	} catch (XFailure z) {
-	                		throw new InternalCompilerError("Unexpectedly inconsistent place constraint.");
-	                	}
+	                    if (y.length > 0 && y[0] instanceof XEQV)
+	                        newRetType = Subst.addIn(newRetType, PlaceChecker.ThisHomeEqualsHere(y[0], ts));
 	                }
-	                if ( y.length > 0 && y[0] instanceof XEQV) // this is a synthetic variable
-	                	newRetType = Subst.project(newRetType, (XVar) y[0]);  			
+	                if (y.length > 0 && y[0] instanceof XEQV) // this is a synthetic variable
+	                    newRetType = Subst.project(newRetType, (XVar) y[0]);  			
 	                tref.update(newRetType);
 	            }
 	            catch (SemanticException e) {
@@ -2070,8 +2343,22 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
 	            newFormals.add(t);
 	        }
 	    }
-	
 	    mj = (MethodInstance) mj.formalTypes(newFormals);
+	
+	    List<LocalInstance> newFormalNames = new ArrayList<LocalInstance>();
+	    
+	    for (LocalInstance li : mj.formalNames()) {
+	        try {
+	            LocalInstance newLI;
+	            newLI = Subst.subst((X10LocalInstance) li, y, x);
+	            newFormalNames.add(newLI);
+	        }
+	        catch (SemanticException e) {
+	            newFormalNames.add(li);
+	        }
+	    }
+	    
+	    mj = (MethodInstance) mj.formalNames(newFormalNames);
 	
 	    if (mj.guard() != null) {
 	        try {

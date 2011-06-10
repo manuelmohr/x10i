@@ -12,26 +12,36 @@
 
 package x10.lang;
 
+import x10.compiler.Native;
+import x10.compiler.Inline;
+import x10.compiler.TempNoInline_0;
+
 /**
  * Complex is a struct representing a complex number (a + b*i).
  * The real and imaginary components are represented as Doubles.
  */
 public struct Complex /*TODO implements Arithmetic[Complex]*/ {
+
     /** The real component of this complex number. */
     public val re:Double;
     /** The imaginary component of this complex number. */
     public val im:Double;
 
     /** The complex number that corresponds to 0.0 */
-    public static ZERO = Complex(0.0, 0.0);
+    @Native("c++", "x10::lang::Complex::_make(0.0,0.0)")
+    public static ZERO : Complex = Complex(0.0, 0.0);
     /** The complex number that corresponds to 1.0 */
-    public static ONE = Complex(1.0, 0.0);
+    @Native("c++", "x10::lang::Complex::_make(1.0,0.0)")
+    public static ONE : Complex = Complex(1.0, 0.0);
     /** The complex number that corresponds to 1.0i */
-    public static I = Complex(0.0, 1.0);
+    @Native("c++", "x10::lang::Complex::_make(0.0,1.0)")
+    public static I : Complex = Complex(0.0, 1.0);
     /** The complex number that corresponds to +Inf + +Inf*i */
-    public static INF = Complex(Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY);
+    @Native("c++", "x10::lang::Complex::_make(x10aux::double_utils::fromLongBits(0x7ff0000000000000LL),x10aux::double_utils::fromLongBits(0x7ff0000000000000LL))")
+    public static INF : Complex = Complex(Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY);
     /** The complex number that corresponds to NaN + NaN*i */
-    public static NaN = Complex(Double.NaN, Double.NaN);
+    @Native("c++", "x10::lang::Complex::_make(x10aux::double_utils::fromLongBits(0x7ff8000000000000LL),x10aux::double_utils::fromLongBits(0x7ff8000000000000LL))")
+    public static NaN : Complex = Complex(Double.NaN, Double.NaN);
 
     /**
      * Construct a complex number with the specified real and imaginary components.
@@ -40,7 +50,7 @@ public struct Complex /*TODO implements Arithmetic[Complex]*/ {
      * @imaginary the imaginary component of the Complex number
      * @return the Complex number representing (real + imaginary*i)
      */
-    public def this(real:Double, imaginary:Double) {
+    public @Inline def this(real:Double, imaginary:Double) {
         this.re = real;
         this.im = imaginary;
     }
@@ -109,7 +119,7 @@ public struct Complex /*TODO implements Arithmetic[Complex]*/ {
      * TODO: consider using Priest's algorithm {@link http://doi.acm.org/10.1145/1039813.1039814}.
      * @return the quotient of this complex number and the given complex number.
      */
-    public operator this / (that:Complex):Complex {
+    public @TempNoInline_0 operator this / (that:Complex):Complex {
         if (isNaN() || that.isNaN()) {
             return Complex.NaN;
         }
@@ -168,7 +178,7 @@ public struct Complex /*TODO implements Arithmetic[Complex]*/ {
     /**
      * @return the negation of this complex number.
      */
-    public operator - this:Complex  = isNaN() ? Complex.NaN : Complex(-re, -im);
+    public @TempNoInline_0 operator - this:Complex  = isNaN() ? Complex.NaN : Complex(-re, -im);
 
     /**
      * Return the absolute value of this complex number.

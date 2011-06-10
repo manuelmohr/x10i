@@ -14,6 +14,7 @@ import java.util.List;
 import polyglot.types.*;
 import polyglot.util.*;
 import polyglot.visit.*;
+import x10.errors.Errors;
 
 /**
  * A <code>Throw</code> is an immutable representation of a <code>throw</code>
@@ -60,22 +61,14 @@ public class Throw_c extends Stmt_c implements Throw
     }
 
     /** Type check the statement. */
-    public Node typeCheck(ContextVisitor tc) throws SemanticException {
+    public Node typeCheck(ContextVisitor tc) {
     	if (! expr.type().isThrowable()) {
-	    throw new SemanticException("Can only throw subclasses of \"" +tc.typeSystem().Throwable() + "\".", expr.position());
+	    Errors.issue(tc.job(),
+	            new SemanticException("Can only throw subclasses of \"" +tc.typeSystem().Throwable() + "\".", expr.position()),
+	            this);
 	}
 
 	return this;
-    }
-
-    public Type childExpectedType(Expr child, AscriptionVisitor av) {
-        TypeSystem ts = av.typeSystem();
-
-        if (child == expr) {
-            return ts.Throwable();
-        }
-
-        return child.type();
     }
 
     public String toString() {

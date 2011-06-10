@@ -13,10 +13,15 @@ package x10.rtt;
 
 
 public class CharType extends RuntimeType<Character> {
+
+	private static final long serialVersionUID = 1L;
+
     public CharType() {
-        super(char.class,
+//        super(char.class,
+        super(Character.class,
               new Type[] {
-                  new ParameterizedType(Types.COMPARABLE, new UnresolvedType(-1))
+                  new ParameterizedType(Types.COMPARABLE, UnresolvedType.THIS),
+                  Types.STRUCT
               });
     }
     
@@ -25,6 +30,7 @@ public class CharType extends RuntimeType<Character> {
         return "x10.lang.Char";
     }
 
+    // for shortcut 
     @Override
     public boolean instanceof$(Object o) {
         return o instanceof java.lang.Character;
@@ -49,9 +55,16 @@ public class CharType extends RuntimeType<Character> {
         return ((char[]) array)[i];
     }
     
+//    @Override
+//    public Character setArray(Object array, int i, Character v) {
+//        // avoid boxing again
+////        return ((char[]) array)[i] = v;
+//        ((char[]) array)[i] = v;
+//        return v;
+//    }
     @Override
-    public Character setArray(Object array, int i, Character v) {
-        return ((char[]) array)[i] = v;
+    public void setArray(Object array, int i, Character v) {
+        ((char[]) array)[i] = v;
     }
     
     @Override

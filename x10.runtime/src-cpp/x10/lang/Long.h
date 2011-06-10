@@ -9,7 +9,16 @@
  *  (C) Copyright IBM Corporation 2006-2010.
  */
 
+#ifndef X10_LANG_LONG_H_NODEPS
+#define X10_LANG_LONG_H_NODEPS
+
 /*
- * Empty header file for NativeRep class that doesn't require a
- * C++ implementation
+ * Must include header files for any types
+ * mentioned in @Native annotations but not
+ * present in method return types.
  */
+#define X10_LANG_LONGRANGE_H_NODEPS
+#include <x10/lang/LongRange.h>
+#undef X10_LANG_LONGRANGE_H_NODEPS
+
+#endif

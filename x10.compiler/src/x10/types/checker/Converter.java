@@ -38,15 +38,20 @@ import polyglot.types.Def;
 import polyglot.types.Matcher;
 import polyglot.types.MemberInstance;
 
+import polyglot.types.Flags;
+import polyglot.types.LazyRef_c;
+import polyglot.types.LocalInstance;
 import polyglot.types.Name;
 import polyglot.types.NoMemberException;
 import polyglot.types.ObjectType;
 import polyglot.types.ProcedureDef;
 import polyglot.types.ProcedureInstance;
+import polyglot.types.Ref;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.types.TypeSystem;
 import polyglot.types.Types;
+import polyglot.types.UnknownType;
 import polyglot.util.ErrorInfo;
 import polyglot.util.Pair;
 import polyglot.util.Position;
@@ -65,6 +70,7 @@ import x10.ast.X10New_c.MatcherMaker;
 import x10.constraint.XConstraint;
 import x10.constraint.XFailure;
 import x10.constraint.XTerm;
+import x10.constraint.XTerms;
 import x10.constraint.XVar;
 import x10.errors.Errors;
 import x10.errors.Warnings;
@@ -72,6 +78,10 @@ import x10.types.ParameterType;
 import x10.types.TypeParamSubst;
 import x10.types.X10ClassType;
 import x10.types.MethodInstance;
+import x10.types.X10LocalDef;
+import x10.types.X10LocalDef_c;
+import x10.types.X10LocalInstance;
+import x10.types.X10LocalInstance_c;
 import polyglot.types.Context;
 import x10.types.X10ParsedClassType_c;
 import x10.types.X10ProcedureDef;
@@ -79,7 +89,10 @@ import x10.types.X10ProcedureInstance;
 import polyglot.types.TypeSystem;
 
 import x10.types.constraints.CConstraint;
+import x10.types.constraints.CLocal;
+import x10.types.constraints.CTerms;
 import x10.types.constraints.TypeConstraint;
+import x10.types.matcher.Subst;
 import x10.util.Synthesizer;
 
 /**
@@ -95,12 +108,15 @@ public class Converter {
 		UNKNOWN_CONVERSION,
 		UNKNOWN_IMPLICIT_CONVERSION,
 		CALL_CONVERSION, // vj: Introduced 3/28/10 to implement cast-as-needed call semantics
+        DESUGAR_LATER,
 		PRIMITIVE,
 		CHECKED,
 		SUBTYPE,
 		UNBOXING,
 		BOXING,
-		UNCHECKED
+		UNCHECKED;
+
+        public boolean isChecked() { return this==CHECKED || this==DESUGAR_LATER; }
 	}
 
 	/**
@@ -112,9 +128,6 @@ public class Converter {
 	 * @throws SemanticException If this is not possible
 	 */
 	public static Expr attemptCoercion(ContextVisitor tc, Expr e, Type toType) {
-		return attemptCoercion(false, tc, e, toType);
-	}
-	public static Expr attemptCoercion(boolean dynamicCallp, ContextVisitor tc, Expr e, Type toType) {
 		TypeSystem ts = (TypeSystem) tc.typeSystem();
 		Type t1 = e.type();
 		t1 = PlaceChecker.ReplaceHereByPlaceTerm(t1, (Context) tc.context());
@@ -147,12 +160,6 @@ public class Converter {
 				// alright, now we actually synthesized a new depexpr. 
 				// lets splice it in.
 				result = typeCheckCast(nf.X10Cast(e.position(), tn, e, ct), tc);
-			}
-			if (dynamicCallp) {
-				if (!Warnings.dynamicCall(tc.job(),Warnings.CastingExprToType(e, tn.type(), e.position()))) {
-					//throw new SemanticException("Expression " + e + " cannot be cast to type " + tn.type() + ".", e.position());
-					return null;
-				}
 			}
 		}
 
@@ -211,8 +218,7 @@ public class Converter {
 			typeArgs.add(tn.type());
 		}
 
-		METHOD: for (Iterator<PI> i = methods.iterator(); i.hasNext();) {
-			PI smi = i.next();
+		METHOD: for (PI smi :  methods) {
 			X10ProcedureInstance<?> xmi = (X10ProcedureInstance<?>) smi;
 
 			if (reporter.should_report(Reporter.types, 3))
@@ -231,18 +237,78 @@ public class Converter {
 			}
 			List<Expr> transformedArgs = new ArrayList<Expr>();
 			List<Type> transformedArgTypes = new ArrayList<Type>();
-
+			List<XVar> transformedYs = new ArrayList<XVar>();
+			
 			List<Type> formals = smi.formalTypes();
+			ContextVisitor argtc = tc.context(xc.pushBlock());
 
+			boolean checkAtRuntime = false;
 			for (int j = 0; j < n.arguments().size(); j++) {
 				Expr e = n.arguments().get(j);
 				Type toType = formals.get(j);
+				// toType may have occurrences of CLoc's corresponding to the args
+				// k in 0..j-1. These must be treated as of type transformedArgTypes.get(k).
+				// Therefore substitute transformedYs.get(k) for the original CLoc. 
+				for (int k=0; k < j; k++) {
+				    toType = Subst.subst(toType, transformedYs.get(k),
+				            CTerms.makeLocal((X10LocalDef) smi.formalNames().get(k).def()));
+				}
 
-				Expr e2 = attemptCoercion(true, tc, e, toType);
+                // In DYNAMIC_CHECKS we can't just insert a cast for each argument due to dependencies between arguments, e.g.,
+                //def m(a:Int, b:Int{self==a}) {}
+                //def test(x:Int, y:Int) {
+                //  m(x+1,y);
+                //}
+                //will be desugared into:
+                //def m(a:Int, b:Int{self==a}) {}
+                //def test(x:Int, y:Int) {
+                // ( (a:Int, b:Int) => if (!(b==a)) throw new ...;  m(a,b)) (x+1,y);
+                //}
+			
+				Expr e2 = attemptCoercion(argtc, e, toType); 
+				// attemptCoercion is used in many places (for loops, local&field 
+				// init expressions, etc), so we special handle it for method calls                
+                if (e2 instanceof X10Cast) {
+                    X10Cast e2Cast = (X10Cast) e2;
+                    if (e2Cast.conversionType()==ConversionType.DESUGAR_LATER)
+                        e2 = e2Cast
+                        .conversionType(ConversionType.SUBTYPE)
+                        .type(Types.baseType(e2Cast.type())); 
+                    // because in instantiate we will flag the method call as 
+                    // checkGuardAtRuntime and create a closure for it
+                }
+
 				if (e2 == null)
+					continue METHOD; // this method def is not applicable for this call
+				Type e2Type = e2.type();
+				if (e2Type instanceof UnknownType)
 					continue METHOD;
-				transformedArgs.add(e2);
-				transformedArgTypes.add(e2.type());
+				Type nType = e2Type;
+				for (int k = 0; k < j; k++) {
+				    nType = Subst.subst(nType, XTerms.makeEQV(), transformedYs.get(k));
+				}
+				if (!nType.typeEquals(e2Type, argtc.context())) {
+				    // Do not add e2. This may contain some of the new variables
+				    // and they won't be in scope for the Desugarer.
+				    // Let the Desugarer again generate e2.
+				    transformedArgs.add(e);
+				    transformedArgTypes.add(toType);
+				    checkAtRuntime = true;
+				} else {
+				    transformedArgs.add(e2);
+				    transformedArgTypes.add(e2Type);
+				}
+				{
+					// Construct the new transformedY. 
+					Ref<Type> ref = new LazyRef_c<Type>(e2Type);
+					X10LocalDef def = X10LocalDef_c.makeHidden(ts, Position.COMPILER_GENERATED, Flags.FINAL, ref,
+							Name.makeFresh("arg"));
+					XVar y = CTerms.makeLocal(def);
+					ref.update(Types.addSelfBinding(e2Type, y));
+					transformedYs.add(y);
+					argtc.context().addVariable(def.asInstance());
+				}
+				
 			}
 
 			try {
@@ -266,7 +332,8 @@ public class Converter {
 				}
 				PI smi2 = (PI) matcher.instantiate(raw);
 				if (smi2 instanceof MethodInstance) {
-				((MethodInstance) smi2).setOrigMI((MethodInstance) raw);
+				    ((MethodInstance) smi2).setOrigMI((MethodInstance) raw);
+				    smi2 = (PI) smi2.checkConstraintsAtRuntime(checkAtRuntime);
 				} else {
 					if (smi2 instanceof ConstructorInstance) {
 						((ConstructorInstance) smi2).setOrigMI((ConstructorInstance) raw);
@@ -283,9 +350,13 @@ public class Converter {
 
 		if (acceptable.size() == 0) {
 			if (n instanceof New || n instanceof ConstructorCall)
-				throw new NoMemberException(NoMemberException.CONSTRUCTOR, "Could not find matching constructor in " + targetType + ".", n.position());
+				throw new NoMemberException(NoMemberException.CONSTRUCTOR, 
+						"Could not find matching constructor in " + targetType + ".", 
+						n.position());
 			else
-				throw new NoMemberException(NoMemberException.METHOD, "Could not find matching method in " + targetType + ".", n.position());
+				throw new NoMemberException(NoMemberException.METHOD,
+						"Could not find matching method in " + targetType + ".", 
+						n.position());
 		}
 
 		Collection<PI> maximal = ts.<PD, PI> findMostSpecificProcedures(acceptable, (Matcher<PI>) null, xc);
@@ -310,10 +381,12 @@ public class Converter {
 			}
 
 			if (n instanceof New || n instanceof ConstructorCall)
-				throw new NoMemberException(NoMemberException.CONSTRUCTOR, "Reference to " + targetType + " is ambiguous, multiple " + "constructors match: "
+				throw new NoMemberException(NoMemberException.CONSTRUCTOR, "Reference to " 
+						+ targetType + " is ambiguous, multiple " + "constructors match: "
 						+ sb.toString(), n.position());
 			else
-				throw new NoMemberException(NoMemberException.METHOD, "Reference to " + targetType + " is ambiguous, multiple " + "methods match: "
+				throw new NoMemberException(NoMemberException.METHOD, "Reference to " 
+						+ targetType + " is ambiguous, multiple " + "methods match: "
 						+ sb.toString(), n.position());
 		}
 
@@ -411,6 +484,10 @@ public class Converter {
 			if (ct.typeArguments() != null && ct.typeArguments().size() > 0) {
 				List<Type>[] alternatives = new List[ct.typeArguments().size()];
 				List<Type> newArgs = new ArrayList<Type>(ct.typeArguments().size());
+				if (ct.x10Def().variances().size() != ct.typeArguments().size()) {
+				    // an error would have been reported already
+				    throw new Errors.CannotConvertExprToType(cast.expr(), cast.conversionType(), toType, cast.position());
+				}
 				for (int i = 0; i < ct.typeArguments().size(); i++) {
 					ParameterType.Variance v = ct.x10Def().variances().get(i);
 					Type ti = ct.typeArguments().get(i);
@@ -442,8 +519,7 @@ public class Converter {
 		TypeSystem ts =  tc.typeSystem();
 		Type toType = cast.castType().type();
 		Type fromType = cast.expr().type();
-		NodeFactory nf = (NodeFactory) tc.nodeFactory();
-		Context context = (Context) tc.context();
+		Context context =  tc.context();
 
 		if (ts.isUnknown(toType)) {
 		    if (opts.x10_config.CHECK_INVARIANTS)
@@ -454,42 +530,104 @@ public class Converter {
 		if (ts.isVoid(toType) || ts.isVoid(fromType))
 			throw new Errors.CannotConvertToType(fromType, toType, cast.position());
 
+
+        Expr withoutCoercion = checkCastWithoutCoercions(cast, tc);
+        // even if withoutCoercion!=null, I still want to check coercions because I need to produce a warning
+        //  if we favor a system-as over a user-defined-as (both implicit and explicit)
+        Expr withCoercion = checkCastWithCoercions(cast, tc);
+        if (withoutCoercion!=null && withCoercion!=null) {
+            // produce a warning
+            // todo: add a verbose flag
+            if (opts.x10_config.VERBOSE)
+                Warnings.issue(tc.job(), "The casting can be done both by a user-defined coercion and system cast, and the compiler always favors a system cast over a user-defined cast. Make sure this is the desired behavior.", cast.position());
+        }
+        if (withoutCoercion!=null) return withoutCoercion;
+        if (withCoercion!=null) return withCoercion;
+		throw new Errors.CannotConvertExprToType(cast.expr(), cast.conversionType(), toType, cast.position());
+    }
+    private static Expr checkCastWithoutCoercions(X10Cast cast, ContextVisitor tc) throws SemanticException {
+		X10CompilerOptions opts = (X10CompilerOptions) tc.job().extensionInfo().getOptions();
+		TypeSystem ts =  tc.typeSystem();
+		Type toType = cast.castType().type();
+		Type fromType = cast.expr().type();
+		Context context = tc.context();
+
+        // Is it an upcast?
 		if (ts.isSubtype(fromType, toType, context)) {
 		    // Add the clause self==x if the fromType's self binding is x,
 		    // since for these casts we know the result is identical to expr.
-		    XTerm sv = Types.selfBinding(fromType);
-		    if (sv != null) 
-		        try {
-		        toType = Types.addSelfBinding((Type) toType.copy(), sv);
-		        } catch (XFailure f) {
-		            throw new Errors.InconsistentTypeSelf(toType, sv, cast.position());
-		        }
-
+		    //XTerm sv = Types.selfBinding(fromType);
+		    //if (sv != null)
+		    //    toType = Types.addSelfBinding((Type) toType.copy(), sv);
 		    X10Cast n =  cast.conversionType(ConversionType.SUBTYPE);
 		    return n.type(toType);
 		}
 
-		Type baseFrom = Types.baseType(fromType);
-		Type baseTo = Types.baseType(toType);
-		XConstraint cFrom = Types.xclause(fromType);
-		XConstraint cTo = Types.xclause(toType);
-
-		if (cast.conversionType() != ConversionType.UNKNOWN_IMPLICIT_CONVERSION 
+        // is it a downcast?
+		if (cast.conversionType() != ConversionType.UNKNOWN_IMPLICIT_CONVERSION
 				&& cast.conversionType() != ConversionType.CALL_CONVERSION) {
-			if (! ts.isParameterType(fromType) 
-					&& ! ts.isParameterType(toType) 
+			if (! ts.isParameterType(fromType)
+					&& ! ts.isParameterType(toType)
 					&& ts.isCastValid(fromType, toType, context)) {
-				X10Cast n = cast.conversionType(ConversionType.CHECKED); 
+				X10Cast n = cast.conversionType(ConversionType.CHECKED);
 				XTerm sv = Types.selfBinding(fromType);
-				if (sv != null) 
-				    try {
-				        toType = Types.addSelfBinding((Type) toType.copy(), sv);
-				    } catch (XFailure f) {
-				        throw new SemanticException("Inconsistent type: " + toType + " {self==" + sv+"}", cast.position());
-				    }
+				if (sv != null)
+				    toType = Types.addSelfBinding((Type) toType.copy(), sv);
 				return n.type(toType);
 			}
 		}
+
+
+	    l:  if (cast.conversionType() != ConversionType.UNKNOWN_IMPLICIT_CONVERSION
+	    		&& cast.conversionType() != ConversionType.CALL_CONVERSION) {
+        	if (ts.isParameterType(toType)) {
+        		// Now get the upper bound.
+        		List<Type> upper = ts.env(context).upperBounds(toType, false);
+        		if (upper.isEmpty()) {
+        			// No upper bound. Now a checked conversion is permitted only
+        			// if fromType is not Null.
+        			if (! fromType.isNull())
+        				return checkedConversionForTypeParameter(cast, fromType, toType);
+        		} else {
+        			for (Type t : upper)
+        				if (ts.isSubtype(fromType, t))
+        					return checkedConversionForTypeParameter(cast, fromType, toType);
+        		}
+        	} else 	if (ts.isParameterType(fromType)) {
+        		// Now get the upper bound.
+        		List<Type> upper = ts.env(context).upperBounds(fromType, false);
+        		for (Type t : upper)
+        			if (! ts.isSubtype(t, toType))
+        				break l;
+        		return checkedConversionForTypeParameter(cast, fromType, toType);
+        	}
+	    }
+
+		// Added 03/28/10 to support new call conversion semantics.
+		Type baseFrom = Types.baseType(fromType);
+		Type baseTo = Types.baseType(toType);
+		if (ts.isSubtype(baseFrom, baseTo, context))
+			if (!opts.x10_config.STATIC_CHECKS)
+				if (( cast.conversionType() == ConversionType.CALL_CONVERSION)
+						&& ts.isCastValid(fromType, toType, context)) {
+					//return cast.conversionType(ConversionType.DESUGAR_LATER).type(baseTo);
+					X10Cast n = cast.conversionType(ConversionType.DESUGAR_LATER);
+					XVar sv = Types.selfVarBinding(fromType); // FIXME: Vijay, can this be an XTerm?  -Bowen
+					if (sv != null)
+					    toType = Types.addSelfBinding((Type) toType.copy(), sv);
+					return n.type(toType);
+				}
+
+        return null;
+    }
+    private static Expr checkCastWithCoercions(X10Cast cast, ContextVisitor tc) throws SemanticException {
+		TypeSystem ts =  tc.typeSystem();
+		Type toType = cast.castType().type();
+		Type fromType = cast.expr().type();
+		NodeFactory nf = tc.nodeFactory();
+		Context context = tc.context();
+
+		Type baseTo = Types.baseType(toType);
 
 		{
 			MethodInstance converter = null;
@@ -516,9 +654,10 @@ public class Converter {
 					}
 				}
 				catch (SemanticException z1) {
+				    
 				}
 			}
-			// or  can convert if there is a static method fromType.$convert(ToType)
+			// or  can convert if there is a static implict cast operator defined on toType: static operator (f:fromType)
 
 			if (converter == null) {
 				try {
@@ -557,6 +696,7 @@ public class Converter {
                     // fromType.implicit_operator_as(fromType)
                     // but we should also check:
                     // fromType.operator_as(fromType)
+                    // IMPORTANT: we currently disable defining coercions in the fromType (only in the toType), see X10MethodDecl_c: static boolean SEARCH_CASTS_ONLY_IN_TARGET = true; // see XTENLANG_2667
 				}
 			}
 
@@ -572,54 +712,13 @@ public class Converter {
 				}
 			}
 		}
-
-	    l:  if (cast.conversionType() != ConversionType.UNKNOWN_IMPLICIT_CONVERSION
-	    		&& cast.conversionType() != ConversionType.CALL_CONVERSION) {
-        	if (ts.isParameterType(toType)) {
-        		// Now get the upper bound.
-        		List<Type> upper = ts.env(context).upperBounds(toType, false);
-        		if (upper.isEmpty()) {
-        			// No upper bound. Now a checked conversion is permitted only
-        			// if fromType is not Null.
-        			if (! fromType.isNull()) 
-        				return checkedConversionForTypeParameter(cast, fromType, toType);
-        		} else {
-        			for (Type t : upper)
-        				if (ts.isSubtype(fromType, t))
-        					return checkedConversionForTypeParameter(cast, fromType, toType);
-        		}
-        	} else 	if (ts.isParameterType(fromType)) {
-        		// Now get the upper bound.
-        		List<Type> upper = ts.env(context).upperBounds(fromType, false);
-        		for (Type t : upper) 
-        			if (! ts.isSubtype(t, toType))
-        				break l;
-        		return checkedConversionForTypeParameter(cast, fromType, toType);
-        	}
-	    }
-
-		// Added 03/28/10 to support new call conversion semantics.
-		if (ts.isSubtype(Types.baseType(fromType), Types.baseType(toType), context))
-			if (!opts.x10_config.STATIC_CALLS)
-				if (cast.conversionType() == ConversionType.CALL_CONVERSION 
-						&& ts.isCastValid(fromType, toType, context)) {
-					X10Cast n = cast.conversionType(ConversionType.CHECKED); 
-					XVar sv = Types.selfVarBinding(fromType); // FIXME: Vijay, can this be an XTerm?  -Bowen
-					if (sv != null)
-						try {
-							toType = Types.addSelfBinding((Type) toType.copy(), sv);
-						} catch (XFailure f) {
-							throw new SemanticException("Inconsistent type: " + toType + " {self==" + sv+"}", cast.position());
-						}
-						return n.type(toType);
-				}
-		throw new Errors.CannotConvertExprToType(cast.expr(), cast.conversionType(), toType, cast.position());
+        return null;
 	}
 		
 		   
-	    static Expr checkedConversionForTypeParameter(X10Cast cast, Type fromType, Type toType) {
-	        return cast.conversionType(ConversionType.CHECKED).type(toType);
-	    }
+	static Expr checkedConversionForTypeParameter(X10Cast cast, Type fromType, Type toType) {
+	    return cast.conversionType(ConversionType.CHECKED).type(toType);
+	}
 	public static <T extends Node> T check(T n, ContextVisitor tc) throws SemanticException {
 		return (T) n.del().disambiguate(tc).del().typeCheck(tc).del().checkConstants(tc);
 	}

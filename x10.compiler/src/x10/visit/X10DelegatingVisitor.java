@@ -12,10 +12,10 @@
 package x10.visit;
 
 import polyglot.ast.AbstractBlock_c;
+import polyglot.ast.Allocation_c;
 import polyglot.ast.AmbAssign_c;
 import polyglot.ast.AmbExpr_c;
 import polyglot.ast.AmbPrefix_c;
-import polyglot.ast.AmbQualifierNode_c;
 import polyglot.ast.AmbReceiver_c;
 import polyglot.ast.AmbTypeNode_c;
 import polyglot.ast.ArrayAccessAssign_c;
@@ -94,6 +94,8 @@ import x10.ast.AssignPropertyCall_c;
 import x10.ast.Async_c;
 import x10.ast.AtEach_c;
 import x10.ast.AtExpr_c;
+import x10.ast.AtHomeExpr_c;
+import x10.ast.AtHomeStmt_c;
 import x10.ast.AtStmt_c;
 import x10.ast.Atomic_c;
 import x10.ast.ClosureCall_c;
@@ -199,6 +201,7 @@ public class X10DelegatingVisitor {
 		if (n instanceof Case_c) { visit((Case_c)n); return; }
 		if (n instanceof Branch_c) { visit((Branch_c)n); return; }
 		if (n instanceof Atomic_c) { visit((Atomic_c)n); return; }
+		if (n instanceof AtHomeStmt_c) { visit((AtHomeStmt_c)n); return; }
 		if (n instanceof AtStmt_c) { visit((AtStmt_c)n); return; }
 		if (n instanceof Async_c) { visit((Async_c)n); return; }
 		if (n instanceof AssignPropertyCall_c) { visit((AssignPropertyCall_c)n); return; }
@@ -266,10 +269,12 @@ public class X10DelegatingVisitor {
 		if (n instanceof ArrayInit_c) { visit((ArrayInit_c)n); return; }
 		if (n instanceof ArrayAccess_c) { visit((ArrayAccess_c)n); return; }
 		if (n instanceof AmbExpr_c) { visit((AmbExpr_c)n); return; }
+		if (n instanceof AtHomeExpr_c) { visit((AtHomeExpr_c)n); return; }
 		if (n instanceof AtExpr_c) { visit((AtExpr_c)n); return; }
 		if (n instanceof Closure_c) { visit((Closure_c)n); return; }
 		if (n instanceof ClosureCall_c) { visit((ClosureCall_c)n); return; }
 		if (n instanceof StmtExpr_c) { visit((StmtExpr_c)n); return; }
+		if (n instanceof Allocation_c) { visit((Allocation_c)n); return; }
 		if (n instanceof Expr_c) { visit((Expr_c)n); return; }
 		if (n instanceof X10ConstructorDecl_c) { visit((X10ConstructorDecl_c)n); return; }
 		if (n instanceof ConstructorDecl_c) { visit((ConstructorDecl_c)n); return; }
@@ -282,7 +287,6 @@ public class X10DelegatingVisitor {
 		if (n instanceof SourceCollection_c) { visit((SourceCollection_c)n); return; }
 		if (n instanceof PackageNode_c) { visit((PackageNode_c)n); return; }
 		if (n instanceof Import_c) { visit((Import_c)n); return; }
-		if (n instanceof AmbQualifierNode_c) { visit((AmbQualifierNode_c)n); return; }
 		if (n instanceof AmbReceiver_c) { visit((AmbReceiver_c)n); return; }
 		if (n instanceof AmbPrefix_c) { visit((AmbPrefix_c)n); return; }
 		if (n instanceof Node_c) { visit((Node_c)n); return; }
@@ -300,7 +304,6 @@ public class X10DelegatingVisitor {
 	public void visit(Node_c n) { visit((Node)n); }
 		public void visit(AmbPrefix_c n) { visit((Node_c)n); }
 			public void visit(AmbReceiver_c n) { visit((AmbPrefix_c)n); }
-		public void visit(AmbQualifierNode_c n) { visit((Node_c)n); }
 		public void visit(Import_c n) { visit((Node_c)n); }
 		public void visit(PackageNode_c n) { visit((Node_c)n); }
 		public void visit(SourceCollection_c n) { visit((Node_c)n); }
@@ -313,6 +316,7 @@ public class X10DelegatingVisitor {
 			public void visit(ConstructorDecl_c n) { visit((Term_c)n); }
 				public void visit(X10ConstructorDecl_c n) { visit((ConstructorDecl_c)n); }
 			public void visit(Expr_c n) { visit((Term_c)n); }
+				public void visit(Allocation_c n) { visit((Expr_c)n); }
 				public void visit(AmbExpr_c n) { visit((Expr_c)n); }
 				public void visit(ArrayAccess_c n) { visit((Expr_c)n); }
 				public void visit(ArrayInit_c n) { visit((Expr_c)n); }
@@ -364,6 +368,7 @@ public class X10DelegatingVisitor {
 					public void visit(X10Unary_c n) { visit((Unary_c)n); }
 				public void visit(Closure_c n) { visit((Expr_c)n); }
 					public void visit(AtExpr_c n) { visit((Expr_c)n); }
+						public void visit(AtHomeExpr_c n) { visit((AtExpr_c)n); }
 				public void visit(ClosureCall_c n) { visit((Expr_c)n); }
 				public void visit(StmtExpr_c n) { visit((Expr_c)n); }
 			public void visit(FieldDecl_c n) { visit((Term_c)n); }
@@ -382,6 +387,7 @@ public class X10DelegatingVisitor {
 				public void visit(Assert_c n) { visit((Stmt_c)n); }
 				public void visit(AssignPropertyCall_c n) { visit((Stmt_c)n); }
 				public void visit(AtStmt_c n) { visit((Stmt_c)n); }
+					public void visit(AtHomeStmt_c n) { visit((AtStmt_c)n); }
 				public void visit(Async_c n) { visit((Stmt_c)n); }
 				public void visit(Atomic_c n) { visit((Stmt_c)n); }
 				public void visit(Branch_c n) { visit((Stmt_c)n); }

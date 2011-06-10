@@ -32,7 +32,10 @@ while [ -n "$1" ]; do
         -*) java_args="${java_args} -Dx10.${1##-}=true";;
 #        *.x10) args="$args '${1%%.x10}\$${MAIN_CLASS}'"; shift; args="$args $*"; break;;
         *.jar) args="$args -jar '$1'"; shift; args="$args $*"; break;;
-        *) args="$args '$1\$${MAIN_CLASS}'"; shift; args="$args $*"; break;;
+        *) if [ -z "$main" ]; then
+               main="$1"
+           fi
+           args="$args '$1\$${MAIN_CLASS}'"; shift; args="$args $*"; break;;
     esac
     shift
 done
@@ -52,13 +55,9 @@ where [options] includes:
     -dev                     developer mode (use unpackaged X10 libraries)
     -J<arg>                  [USE WITH CAUTION] pass <arg> directly to java.
         e.g., use -J-verbose to make java execution verbose.
-    -INIT_THREADS=<number>   set number of threads to allocate in the thread pool (default: # of cores)
-    -STATIC_THREADS          disable creating additional threads while blocking
-    -NO_STEALS               disable steals
 EOF
     exit 1
 fi
-
 
 CONFIG_DIR="${TOP}${FILE_SEP}etc"
 LIB_DIR="${TOP}${FILE_SEP}lib"
@@ -69,6 +68,13 @@ STDLIB_DIR="${TOP}${FILE_SEP}stdlib"
 classpath=""
 [ -n "$dev" ] && classpath="${TOP}${FILE_SEP}..${FILE_SEP}x10.runtime${FILE_SEP}classes${PATH_SEP}"
 classpath=".${PATH_SEP}${classpath}${STDLIB_DIR}${FILE_SEP}x10.jar${PATH_SEP}${LIB_DIR}${FILE_SEP}${MATH_JAR}"
+
+if [ -z "$dev" ]; then
+  if [[ ! -a "${STDLIB_DIR}${FILE_SEP}x10.jar" ]]; then
+    echo >&2 "Error: Cannot find x10 runtime" at "${STDLIB_DIR}${FILE_SEP}x10.jar"
+    exit 1
+  fi
+fi
 
 if [ -n "$extra_cp" ]; then
    classpath="$extra_cp${PATH_SEP}$classpath"
@@ -87,6 +93,18 @@ if [ -n "$extra_lib" ]; then
    externpath="$extra_lib${PATH_SEP}$externpath"
 fi
 
+if [[ "$UNAME" = CYGWIN* ]]; then 
+    if [ -n "$ENABLE_CYGWIN_MULTIVM" ]; then
+        JAVA="$(cygpath -au "$TOP/bin/cyglaunch")"
+        launcher="${TOP}${FILE_SEP}bin${FILE_SEP}X10Launcher"
+    else
+        java_args="-DX10RT_IMPL=disabled ${java_args}"
+    fi
+else
+    launcher="${TOP}${FILE_SEP}bin${FILE_SEP}X10Launcher"
+fi
+
+
 # TODO: executable jar
 # Note: use bootstrap class path instead of user class path to make it visible from jar file
 java_args="-Djava.library.path=\"$externpath\" -ea -classpath \"$classpath\" ${java_args}"
@@ -96,36 +114,28 @@ if [ -n "$mx" ]; then
    java_args="-Xmx$mx $java_args"
 fi
 
-if [ -n "$X10_NTHREADS" ]; then
-   java_args="-Dx10.INIT_THREADS=$X10_NTHREADS $java_args"
-fi
-
-if [ -n "$X10_STATIC_THREADS" ]; then
-   java_args="-Dx10.STATIC_THREADS=true $java_args"
-fi
-
 java_args="${java_args} ${defs}"
+
+command="\"$JAVA\" $java_args -ea x10.runtime.impl.java.TestClassLoading '$main\$$MAIN_CLASS'"
+[ -n "$verbose" ] && echo "$command"
+(
+unset X10_NPLACES
+eval "$command"
+if [ "$?" -ne "0" ]; then
+  echo >&2 "Error: Cannot load main class for" "$main" "with classpath" "$classpath"
+  exit 1
+fi
+)
 
 # HACK: enforce normal compilation in preloading phase
 IBMJ9VM=`"$JAVA" -version 2>&1 | grep 'IBM J9 VM'`
 if [ -n "$IBMJ9VM" ]; then java_args="-Xjit:classLoadPhaseThreshold=10000 ${java_args}"; fi
 
-if [[ "$UNAME" = CYGWIN* ]]; then 
-   if [ -n "$ENABLE_CYGWIN_MULTIVM" ]; then
-       JAVA="$(cygpath -au "$TOP/bin/cyglaunch")"
-       command="\"$JAVA\" $java_args $config $args"
-       [ -n "$verbose" ] && echo "$command"
-       launcher="${TOP}${FILE_SEP}bin${FILE_SEP}X10Launcher"
-       eval "$time$launcher $command"
-   else
-       command="\"$JAVA\" -DX10RT_IMPL=disabled $java_args $config $args"
-       [ -n "$verbose" ] && echo "$command"
-       eval "$time $command"
-   fi
+command="\"$JAVA\" $java_args $config $args"
+[ -n "$verbose" ] && echo "$command"
+if [[ "$UNAME" = CYGWIN* && -z "$ENABLE_CYGWIN_MULTIVM" ]]; then
+    eval "$time $command"
 else 
-    command="\"$JAVA\" $java_args $config $args"
-    [ -n "$verbose" ] && echo "$command"
-    launcher="${TOP}${FILE_SEP}bin${FILE_SEP}X10Launcher"
     eval "$time$launcher $command"
 fi
 
