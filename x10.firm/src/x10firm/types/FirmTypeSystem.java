@@ -1,5 +1,6 @@
 package x10firm.types;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -10,9 +11,11 @@ import java.util.Set;
 
 import polyglot.types.ClassDef;
 import polyglot.types.ContainerType;
+import polyglot.types.Def;
 import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
+import polyglot.types.MemberInstance;
 import polyglot.types.MethodDef;
 import polyglot.types.Name;
 import polyglot.types.Named;
@@ -52,24 +55,21 @@ import firm.bindings.binding_typerep.ir_visibility;
  * because the runtime is loaded dynamically.
  */
 public class FirmTypeSystem {
-
 	/** Maps polyglot types to firm types. */
-	private Map<polyglot.types.Type, Type> firmCoreTypes = new HashMap<polyglot.types.Type, Type>();
+	private final Map<polyglot.types.Type, Type> firmCoreTypes = new HashMap<polyglot.types.Type, Type>();
 
 	/** Maps some polyglot types to "native"/primitive firm types. */
-	private Map<polyglot.types.Type, Type> firmTypes = new HashMap<polyglot.types.Type, Type>();
+	private final Map<polyglot.types.Type, Type> firmTypes = new HashMap<polyglot.types.Type, Type>();
 
 	/** Maps fields to firm entities */
-	private Map<FieldInstance, Entity> fieldMap = new HashMap<FieldInstance, Entity>();
-
-	/** Mapping between MethodDefs and firm entities. */
-	private final HashMap<String, Entity> methodEntities = new HashMap<String, Entity>();
-
-	/** Mapping between X10ConstructorDefs and firm entities */
-	private final HashMap<String, Entity> constructorEntities = new HashMap<String, Entity>();
+	private final Map<FieldInstance, Entity> fieldMap = new HashMap<FieldInstance, Entity>();
 
 	/** Maps struct types to the appropriate boxing types */
-	private Map<X10ClassType, X10ClassType> structBoxingTypes = new HashMap<X10ClassType, X10ClassType>();
+	private final Map<X10ClassType, X10ClassType> structBoxingTypes = new HashMap<X10ClassType, X10ClassType>();
+
+	private final GenericClassContext rootContext = new GenericClassContext();
+
+	private final Map<GenericClassInstance, GenericClassContext> genericContexts = new HashMap<GenericClassInstance, GenericClassContext>();
 
 	/** X10 Context */
 	private X10Context_c x10Context = null;
@@ -504,7 +504,31 @@ public class FirmTypeSystem {
 	 * return the firm type for a given ast-type.
 	 * This variant does not return the "native"-type even if there is one.
 	 */
-	public firm.Type asFirmCoreType(polyglot.types.Type type) {
+	public firm.Type asFirmCoreType(polyglot.types.Type origType) {
+		polyglot.types.Type type = origType;
+
+		// FIXME:  Workaround.
+		if (origType instanceof X10ParsedClassType) {
+			X10ParsedClassType t = (X10ParsedClassType) origType;
+
+			if (t.isMissingTypeArguments()) {
+				List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
+				for (ParameterType pt : t.def().typeParameters())
+					typeArguments.add(x10TypeSystem.getConcreteType(pt));
+
+				type = t.typeArguments(typeArguments);
+			}
+			else if (t.typeArguments() != null && !t.typeArguments().isEmpty()) {
+				List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
+				for (polyglot.types.Type typeArg : t.typeArguments())
+					if (typeArg.getClass() == ParameterType.class)  // No constrained types here.
+						typeArguments.add(x10TypeSystem.getConcreteType((ParameterType) typeArg));
+
+				if (!typeArguments.isEmpty())
+					type = t.typeArguments(typeArguments);
+			}
+		}
+		
 		// isParsedClassType => !isMissingTypeArguments
 		assert (!(type instanceof X10ParsedClassType) || !((X10ParsedClassType) type).isMissingTypeArguments());
 
@@ -626,10 +650,11 @@ public class FirmTypeSystem {
 	 * @return	a Firm entity corresponding to the constructor
 	 */
 	public Entity getConstructorEntity(X10ConstructorInstance instance) {
-		final String name = X10NameMangler.mangleTypeObjectWithDefClass(instance);
-		Entity entity = constructorEntities.get(name);
+		final GenericClassContext context = getDefiningContext(instance);
+		Entity entity = context.getConstructorEntity(instance.x10Def());
 
 		if (entity == null) {
+			final String name = X10NameMangler.mangleTypeObjectWithDefClass(instance);
 			final Flags flags = instance.flags();
 			final firm.Type type = asFirmType(instance);
 
@@ -650,7 +675,7 @@ public class FirmTypeSystem {
 			 * (Note that we still have a "this" pointer anyway) */
 			OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 
-			constructorEntities.put(name, entity);
+			context.putConstructorEntity(instance.x10Def(), entity);
 		}
 		return entity;
 	}
@@ -685,18 +710,50 @@ public class FirmTypeSystem {
 		return ret;
 	}
 
+	private <T extends Def> GenericClassContext getDefiningContext(final MemberInstance<T> method) {
+		final X10ClassType clazz = (X10ClassType) method.container();
+		final boolean containedInGenericClass = clazz != null && clazz.def().typeParameters() != null && !clazz.def().typeParameters().isEmpty();
+
+		if (containedInGenericClass) {
+			GenericClassInstance classInstance;
+
+			// This should always be the case but unfortunately it is not.
+			if (clazz.typeArguments() != null && clazz.def().typeParameters().size() == clazz.typeArguments().size())
+				classInstance = new GenericClassInstance(clazz);	
+			else {
+				// FIXME:  This is a hack to workaround a problem in X10.
+				ParameterTypeMapping map = new ParameterTypeMapping();
+				for (ParameterType pt : clazz.def().typeParameters())
+					map.add(pt, x10TypeSystem.getConcreteType(pt));
+				classInstance = new GenericClassInstance(clazz.x10Def(), map);
+			}
+
+			GenericClassContext context = genericContexts.get(classInstance);
+			if (context == null) {
+				context = new GenericClassContext();
+				genericContexts.put(classInstance, context);
+			}
+
+			return context;
+		}
+
+		return rootContext;
+	}
+
 	/**
 	 * Return entity for an X10 method
 	 */
 	public Entity getMethodEntity(final MethodInstance instance) {
-		final String nameWithDefiningClass = X10NameMangler.mangleTypeObjectWithDefClass(instance);
-		Entity entity = methodEntities.get(nameWithDefiningClass);
+		final GenericClassContext context = getDefiningContext(instance);
+		final GenericMethodInstance gMethodInstance = new GenericMethodInstance(instance);
+		Entity entity = context.getMethodEntity(gMethodInstance);
+
 		if (entity == null) {
-			final X10ClassType owner = (X10ClassType) instance.container();
+			X10ClassType owner = (X10ClassType) instance.container();
+			final String nameWithDefiningClass = X10NameMangler.mangleTypeObjectWithDefClass(instance);
 			final String nameWithoutDefiningClass = X10NameMangler.mangleTypeObjectWithoutDefClass(instance);
 
 			final Flags flags = instance.flags();
-
 			final firm.Type owningClass = asFirmCoreType(owner);
 			final firm.Type ownerFirm = flags.isStatic() ? Program.getGlobalType() : owningClass;
 			final firm.Type type = asFirmType(instance);
@@ -724,7 +781,7 @@ public class FirmTypeSystem {
 			for (final Entity overwrite: getMethodOverride(instance))
 				entity.addEntityOverwrites(overwrite);
 
-			methodEntities.put(nameWithDefiningClass, entity);
+			context.putMethodEntity(gMethodInstance, entity);
 		}
 
 		return entity;
@@ -735,10 +792,6 @@ public class FirmTypeSystem {
 	 * @param ptm	a set of type mappings
 	 */
 	public void pushTypeMapping(ParameterTypeMapping ptm) {
-		// TODO:  Check if already present.
-//		for (ParameterType param : ptm.getKeySet()) {
-//		}
-
 		for (ParameterType param : ptm.getKeySet()) {
 			final polyglot.types.Type mappedType = ptm.getMappedType(param);
 

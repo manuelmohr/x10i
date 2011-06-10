@@ -46,6 +46,10 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		typeParameters.remove(paramType);
 	}
 
+	public Map<ParameterType, Type> getMapping() {
+		return typeParameters;
+	}
+
 	/**
 	 * @param paramType		the key type, which is mapped to a value type
 	 * @return				the corresponding value type

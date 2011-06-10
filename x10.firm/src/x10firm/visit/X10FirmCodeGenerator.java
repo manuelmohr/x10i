@@ -121,6 +121,7 @@ import x10.ast.X10Special_c;
 import x10.ast.X10Unary_c;
 import x10.types.MethodInstance;
 import x10.types.ParameterType;
+import x10.types.TypeParamSubst;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorDef;
@@ -315,11 +316,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		throw new RuntimeException("Unhandled node type: " + n.getClass());
 	}
 
-	private static class GenericInstance {
+	private static class GenericNodeInstance {
 		private final polyglot.ast.Node node;
 		private final ParameterTypeMapping mapping;
 		
-		public GenericInstance(final polyglot.ast.Node node, final ParameterTypeMapping mapping) {
+		public GenericNodeInstance(final polyglot.ast.Node node, final ParameterTypeMapping mapping) {
 			this.node = node;
 			this.mapping = mapping;
 		}
@@ -345,7 +346,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			if (other.getClass() != this.getClass())
 				return false;
 			
-			final GenericInstance rhs = (GenericInstance) other;
+			final GenericNodeInstance rhs = (GenericNodeInstance) other;
 			return node == rhs.node && mapping.equals(rhs.mapping);
 		}
 		
@@ -357,15 +358,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	
 	// This queue holds a list of nodes (either MethodDecls or ClassDecls)
 	// and their corresponding mapping of parameter types.
-	private Queue<GenericInstance> workList = new LinkedList<GenericInstance>();
+	private Queue<GenericNodeInstance> workList = new LinkedList<GenericNodeInstance>();
 	
 	private void addToWorklist(polyglot.ast.Node decl, ParameterTypeMapping ptm) {
 		// Check for duplicates.		
-		for (GenericInstance gi : workList)
+		for (GenericNodeInstance gi : workList)
 			if (gi.getNode() == decl && gi.getMapping().equals(ptm))
 				return;
 
-		workList.add(new GenericInstance(decl, ptm));
+		workList.add(new GenericNodeInstance(decl, ptm));
 	}
 
 	private void visit(X10SourceFile_c sourceFile) {
@@ -376,9 +377,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 					visit(decl);
 			}
 		}
-		
+
 		while (!workList.isEmpty()) {
-			final GenericInstance head = workList.poll();
+			final GenericNodeInstance head = workList.poll();
 			final ParameterTypeMapping ptm = head.getMapping();
 
 			firmTypeSystem.pushTypeMapping(ptm);
@@ -617,10 +618,36 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		finishConstruction(entity, savedConstruction);
 	}
 
+	private TypeParamSubst buildSubst() {
+		final Map<ParameterType, Type> mapping = x10TypeSystem.getMapping();
+		final List<Type> actualTypes = new ArrayList<Type>(mapping.values());
+		final List<ParameterType> paramTypes = new ArrayList<ParameterType>(mapping.keySet());
+
+		return new TypeParamSubst(x10TypeSystem, actualTypes, paramTypes);
+	}
+
 	@Override
 	public void visit(MethodDecl_c dec) {
-		final X10MethodDef   def = (X10MethodDef) dec.methodDef();
-		MethodInstance methodInstance = def.asInstance();
+		final X10MethodDef def = (X10MethodDef) dec.methodDef();
+		final MethodInstance defInstance = def.asInstance();
+
+		MethodInstance methodInstance;
+		if (def.typeParameters().isEmpty())
+			methodInstance = defInstance;
+		else {
+			// If we compile a generic method, asInstance() will give
+			// us a method instance where generic types are used.  But we know
+			// better at this point, because we can substitute the real types.
+			final TypeParamSubst subst = buildSubst();
+			methodInstance = subst.reinstantiate(def.asInstance());
+
+			// Substitute type parameters manually.  Why doesn't X10 do this?!
+			final List<Type> typeArguments = new ArrayList<Type>();
+			for (ParameterType paramType : def.typeParameters())
+				typeArguments.add(x10TypeSystem.getConcreteType(paramType));
+
+			methodInstance = (MethodInstance) methodInstance.typeParameters(typeArguments);
+		}
 
 		final Entity         entity         = firmTypeSystem.getMethodEntity(methodInstance);
 		final Flags          flags          = methodInstance.flags();
@@ -630,13 +657,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			return;
 		}
 
-		final List<LocalInstance> formals = methodInstance.formalNames();
+		final List<LocalInstance> formals = defInstance.formalNames();
 		final boolean isStatic = flags.isStatic();
 		final X10ClassType owner = (X10ClassType) methodInstance.container();
 
 		// extract all formals and locals from the method.
 		final List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(dec);
-		constructGraph(entity, dec, formals, locals, isStatic, methodInstance, owner);
+		constructGraph(entity, dec, formals, locals, isStatic, defInstance, owner);
 
 		if (query.isMainMethod(def)) {
 			processMainMethod(entity);

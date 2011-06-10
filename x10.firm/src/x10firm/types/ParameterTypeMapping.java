@@ -12,8 +12,15 @@ import x10.types.ParameterType;
  *
  */
 public class ParameterTypeMapping {
-	private Map<ParameterType, Type> mapping = new HashMap<ParameterType, Type>();
+	private final Map<ParameterType, Type> mapping;
 
+	public ParameterTypeMapping() {
+		this.mapping = new HashMap<ParameterType, Type>();
+	}
+
+	public ParameterTypeMapping(Map<ParameterType, Type> map) {
+		this.mapping = map;
+	}
 	/**
 	 * Add new mapping
 	 * @param param			type parameter
