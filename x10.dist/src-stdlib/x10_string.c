@@ -5,9 +5,9 @@ static inline x10_int get_str_len(const x10_string *str) {
 	return str->len;
 }
 
-#define X10_STRING_INIT(str, len) \
+#define X10_STRING_INIT(str, len_) \
 	X10_INIT_OBJECT(str, T_STRING); \
-	str->len = len;
+	str->len = (len_);
 
 static inline x10_string* alloc_string(x10_int len) {
 	return (x10_string *)x10_malloc(sizeof(x10_string) + (((len) + 1) * sizeof(x10_char)));
@@ -20,14 +20,11 @@ static inline void check_string_bounds(x10_string *str, x10_int idx) {
 }
 
 static x10_string *x10_string_from_wide_buf(const size_t len, const x10_char *wchars) {
-	// TODO memory management/garbage collection
 	x10_string *str = alloc_string(len);
-	assert(str != NULL); // TODO out of memory exception?!
 
 	X10_STRING_INIT(str, len);
 
-	memcpy((void *)X10_STRING_BUF(str), (const void *)wchars, len * sizeof(x10_char));
-	X10_STRING_BUF(str)[len] = T_('\0');
+	wcpncpy(X10_STRING_BUF(str), wchars, len); 
 
 	return str;
 }
@@ -40,6 +37,19 @@ x10_string *x10_string_from_wide_chars(const x10_char *wchars)
 
 x10_string *x10_string_literal(size_t len, x10_char *wchars) {
 	return x10_string_from_wide_buf(len, wchars);
+}
+
+// constructors
+// this(String)
+x10_string *_ZN3x104lang6StringC1EPN3x104lang6StringE(x10_string *str)
+{
+	return x10_string_from_wide_buf(get_str_len(str), X10_STRING_BUF(str)); 
+}
+
+// this()
+x10_string *_ZN3x104lang6StringC1Ev()
+{
+	return x10_string_literal(0, T_(""));
 }
 
 // String methods
@@ -246,44 +256,24 @@ x10_string *_ZN3x104lang6String8typeNameEv(x10_string *self)
 }
 
 // operator+(String)
-x10_string *_ZN3x104lang6StringplIN3x104lang6StringEEEN3x104lang6StringEPN3x104lang6StringEPN3x104lang6StringE(x10_string *self, x10_string *other)
+x10_string *_ZN3x104lang6StringplEPN3x104lang6StringE(x10_string *self, x10_string *other)
 {
-	// TODO memory management/garbage collection
-	const size_t len = get_str_len(self) + get_str_len(other);
-	x10_string *str = alloc_string(len);
-	assert(str != NULL);
-
-	X10_STRING_INIT(str, len);
-
-	memcpy((void *)X10_STRING_BUF(str), (const void *)X10_STRING_BUF(self), get_str_len(self)*sizeof(x10_char));
-	memcpy((void *)&X10_STRING_CHAR(str, get_str_len(self)), (const void *)X10_STRING_BUF(other), get_str_len(other)*sizeof(x10_char));
-	X10_STRING_BUF(str)[len] = T_('\0');
-
-	return str;
+	return _ZN3x104lang6StringplEPN3x104lang6StringEPN3x104lang6StringE(self, other); 
 }
 
-// operator+ functions
-#define X10_DEF_OPERATOR_PLUS(funcName, type, convFuncName) \
-	X10_EXTERN x10_string *convFuncName(type); \
-	x10_string *funcName(x10_string *self, type other) \
-	{ \
-		return _ZN3x104lang6StringplIN3x104lang6StringEEEN3x104lang6StringEPN3x104lang6StringEPN3x104lang6StringE(self, convFuncName(other)); \
-	}
+// static operator+(String, String)
+x10_string *_ZN3x104lang6StringplEPN3x104lang6StringEPN3x104lang6StringE(x10_string *x, x10_string *y)
+{
+	const size_t len_x = get_str_len(x), len_y = get_str_len(y);
+	const size_t len_ret = len_x + len_y;
+	x10_string *ret = alloc_string(len_ret);
 
-X10_DEF_OPERATOR_PLUS(_ZN3x104lang6StringplIxEEN3x104lang6StringEx,  x10_long, _ZN3x104lang4Long8toStringEv)
-X10_DEF_OPERATOR_PLUS(_ZN3x104lang6StringplIyEEN3x104lang6StringEy,  x10_ulong, _ZN3x104lang5ULong8toStringEv)
-X10_DEF_OPERATOR_PLUS(_ZN3x104lang6StringplIiEEN3x104lang6StringEi,  x10_int, _ZN3x104lang3Int8toStringEv)
-X10_DEF_OPERATOR_PLUS(_ZN3x104lang6StringplIjEEN3x104lang6StringEj,  x10_uint, _ZN3x104lang4UInt8toStringEv)
-X10_DEF_OPERATOR_PLUS(_ZN3x104lang6StringplIsEEN3x104lang6StringEs,  x10_short, _ZN3x104lang5Short8toStringEv)
-X10_DEF_OPERATOR_PLUS(_ZN3x104lang6StringplItEEN3x104lang6StringEt,  x10_ushort, _ZN3x104lang6UShort8toStringEv)
-X10_DEF_OPERATOR_PLUS(_ZN3x104lang6StringplIaEEN3x104lang6StringEa,  x10_byte, _ZN3x104lang4Byte8toStringEv)
-X10_DEF_OPERATOR_PLUS(_ZN3x104lang6StringplIhEEN3x104lang6StringEh,  x10_ubyte, _ZN3x104lang5UByte8toStringEv)
-X10_DEF_OPERATOR_PLUS(_ZN3x104lang6StringplIDiEEN3x104lang6StringEDi, x10_char, _ZN3x104lang4Char8toStringEv)
-X10_DEF_OPERATOR_PLUS(_ZN3x104lang6StringplIfEEN3x104lang6StringEf,  x10_float, _ZN3x104lang5Float8toStringEv)
-X10_DEF_OPERATOR_PLUS(_ZN3x104lang6StringplIdEEN3x104lang6StringEd,  x10_double, _ZN3x104lang6Double8toStringEv)
-X10_DEF_OPERATOR_PLUS(_ZN3x104lang6StringplIbEEN3x104lang6StringEb,  x10_boolean, _ZN3x104lang7Boolean8toStringEv)
+	X10_STRING_INIT(ret, len_ret);
 
-#undef X10_DEF_OPERATOR_PLUS
+	wcpncpy(X10_STRING_BUF(ret), X10_STRING_BUF(x), len_x);
+	wcpncpy(&X10_STRING_CHAR(ret, len_x), X10_STRING_BUF(y), len_y);
 
+	return ret;
+}
 
 
