@@ -521,9 +521,9 @@ public final class String implements (Int) => Char, /*TODO Ordered[String],*/ Co
      * @param y the given entity
      * @return the resulting String
      */
-    @Native("java", "((#x) + (#y))")
-    @Native("c++",  "((#x) + (#y))")
-    public native static operator[T] (x:String) + (y:T): String;
+	@Native("java", "((#x) + (#y))")
+	@Native("c++",  "((#x) + (#y))")
+    public static operator[T] (x:String) + (y:T):String = x + y.toString();
 
     /**
      * A string concatenation operator.
@@ -535,7 +535,7 @@ public final class String implements (Int) => Char, /*TODO Ordered[String],*/ Co
      */
     @Native("java", "((#x) + (#y))")
     @Native("c++",  "((#x) + (#y))")
-    public native static operator[T] (x:T) + (y:String): String;
+    public static operator[T] (x:T) + (y:String):String = x.toString() + y;
 
     /**
      * A string concatenation operator.

@@ -36,7 +36,7 @@ void _ZN9SimpleLib5printEi(x10_int v)
 void _ZN9SimpleLib5printEj(x10_uint v)
 {
 	x10_string *s = _ZN3x104lang4UInt8toStringEv(v);
-	wprintf(L"%ls\n", X10_STRING_BUF(s));
+	wprintf(T_("%ls\n"), X10_STRING_BUF(s));
 }
 
 void _ZN9SimpleLib5printEs(x10_short v)
