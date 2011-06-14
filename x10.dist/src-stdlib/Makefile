@@ -1,6 +1,6 @@
 
 LIBNAME=x10std
-VERSION=2.1.0
+VERSION=2.2.0
 A_FILE=lib${LIBNAME}.a
 SO_FILE=lib${LIBNAME}.so.${VERSION}
 C_FILES=$(shell ls *.c)
