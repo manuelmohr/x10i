@@ -333,8 +333,8 @@ public class X10NameMangler {
         	assert(false): "Unknown class type" + clazz;
         }
 
-    	final String clazzName = clazz.isAnonymous() ? getAnonymousClassName(clazz) : clazz.name().toString();
-    	buf.append(mangleName(clazzName));
+        final String clazzName = clazz.isAnonymous() ? getAnonymousClassName(clazz) : clazz.name().toString();
+        buf.append(mangleName(fixClassName(clazzName)));
 
         final List<? extends Type> typeArgs = clazz.typeArguments() != null ? clazz.typeArguments() :
         									  								  clazz.x10Def().typeParameters();
@@ -349,6 +349,20 @@ public class X10NameMangler {
         	buf.append(QUAL_END);
 
 		return buf.toString();
+	}
+
+	/**
+	 * As of X10 2.2.0 and thanks to XTENLANG-1647, a space is inserted
+	 * into the class name in x10.compiler/src/x10/util/ClosureSynthesizer.java
+	 *
+	 * As a quick fix, we translate this into a dollar sign. However, there should be
+	 * a better solution in x10.compiler! FIXME
+	 *
+	 * @param string	a class name, potentially with spaces
+	 * @return			a class name without spaces
+	 */
+	private static String fixClassName(String string) {
+		return string.replace(' ', '$');
 	}
 
 	/**
