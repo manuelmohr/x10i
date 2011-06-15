@@ -28,9 +28,9 @@ public class HeatTransfer_v5 {
     static val epsilon = 1.0e-5;
     static val P = 1;
 
-    static val BigD = Dist.makeBlock(new Array[Region(1){rect}][0..(n+1), 0..(n+1)], 0);
-    static val D = BigD | new Array[Region(1){rect}][1..n, 1..n];
-    static val LastRow : Region= new Array[Region(1){rect}][0..0, 1..n];
+    static val BigD = Dist.makeBlock((0..(n+1))*(0..(n+1)), 0);
+    static val D = BigD | (1..n)*(1..n);
+    static val LastRow = (0..0)*(1..n);
     static val A = DistArray.make[Double](BigD,(p:Point)=>{ LastRow.contains(p) ? 1.0 : 0.0 });
     static val Temp = DistArray.make[Double](BigD);
 
@@ -45,23 +45,22 @@ public class HeatTransfer_v5 {
     //       all-to-all collective reduction.
     //       This is a quick and sloppy implementation, which does way too much work.
     static def reduceMax(diff:DistArray[Double],z:Point{self.rank==diff.rank},  scratch:DistArray[Double]) {
-        val max = diff.reduce(Math.max.(Double,Double), 0.0);
+        val max = diff.reduce((x:Double,y:Double)=>Math.max(x,y), 0.0);
         diff(z) = max;
-        next;
+        Clock.advanceAll();
     }
 
     // TODO: This is a really inefficient implementation of this abstraction.
     //       Needs to be done properly and integrated into the Dist/Region/DistArray
     //       class library in x10.array.
-    static def blockIt(d:Dist(2), numProcs:int):Rail[Iterable[Point(2)]] {
-        val blocks = Rail.make(numProcs, // 
-                         (int) => new x10.util.ArrayList[Point{self.rank==2}]());
+    static def blockIt(d:Dist(2), numProcs:int):Array[Iterable[Point(2)]](1){rect} {
+        val blocks = new Array[x10.util.ArrayList[Point(2)]](numProcs, (int)=>new x10.util.ArrayList[Point(2)]());
         var modulo:int = 0;
         for (p in d) {
             blocks(modulo).add(p);
             modulo = (modulo + 1) % numProcs;
         }
-        val ans = Rail.make[Iterable[Point(2)]](numProcs, (i:Int) => blocks(i)); // [Iterable[Point(2)]]
+        val ans = new Array[Iterable[Point(2)]](numProcs, (i:Int) => blocks(i));
         return ans;
     }
 
@@ -71,7 +70,7 @@ public class HeatTransfer_v5 {
             val diff = DistArray.make[Double](D_Base);
             val scratch = DistArray.make[Double](D_Base);
             for (z in D_Base) clocked async at (D_Base(z)) {
-                val blocks:Rail[Iterable[Point(2)]] = blockIt(D | here, P);
+                val blocks = blockIt(D | here, P);
                 for ([q] in 0..(P-1)) clocked async {
                     var myDiff:Double;
                     do {
@@ -82,13 +81,13 @@ public class HeatTransfer_v5 {
                             myDiff = Math.max(myDiff, Math.abs(A(p) - Temp(p)));
                         }
                         atomic diff(z) = Math.max(myDiff, diff(z));
-                        next;
+                        Clock.advanceAll();
                         for (p:Point(2) in blocks(q)) {
                             A(p) = Temp(p);
                         }
                         if (q == 0) reduceMax(diff,z,  scratch);
                         myDiff = diff(z);
-                        next;
+                        Clock.advanceAll();
                     } while (myDiff > epsilon);
                 }
             }
@@ -99,7 +98,7 @@ public class HeatTransfer_v5 {
        for ([i] in A.region.projection(0)) {
            for ([j] in A.region.projection(1)) {
                 val pt = Point.make(i,j);
-                at (BigD(pt)) { 
+                at (BigD(pt)) {
                     val tmp = A(pt);
                     at (Place.FIRST_PLACE) Console.OUT.printf("%1.4f ", tmp);
                 }

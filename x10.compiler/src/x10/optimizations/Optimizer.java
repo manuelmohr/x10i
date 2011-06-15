@@ -24,10 +24,12 @@ import x10.Configuration;
 import x10.ExtensionInfo;
 import x10.X10CompilerOptions;
 import x10.ExtensionInfo.X10Scheduler.ValidatingVisitorGoal;
+import x10.optimizations.inlining.Inliner;
+import x10.visit.CodeCleanUp;
+import x10.visit.ConstantPropagator;
 import x10.visit.ConstructorSplitterVisitor;
 import x10.visit.DeadVariableEliminator;
 import x10.visit.ExpressionFlattener;
-import x10.visit.Inliner;
 
 public class Optimizer {
 
@@ -41,20 +43,26 @@ public class Optimizer {
         return false;
     }
 
-    public static boolean FLATTENING(ExtensionInfo extInfo, boolean javaBackEnd) {
+    public static boolean FLATTENING(ExtensionInfo extInfo) {
         Configuration config = extInfo.getOptions().x10_config;
-        if (config.FLATTEN_EXPRESSIONS)          return true;
-        if (javaBackEnd && INLINING(extInfo))    return true;
+        if (config.FLATTEN_EXPRESSIONS) return true;
+        if (extInfo instanceof x10c.ExtensionInfo && INLINING(extInfo)) return true;
         if (!config.ALLOW_STATEMENT_EXPRESSIONS) return true; // don't let StmtExpr's reach the back end
         return false;
     }
 
+    public static boolean CONSTRUCTOR_SPLITTING(polyglot.frontend.ExtensionInfo extensionInfo) {
+        Configuration config =((ExtensionInfo) extensionInfo).getOptions().x10_config;
+        if (!config.OPTIMIZE) return false;
+        if (!config.SPLIT_CONSTRUCTORS) return false;
+        return true;
+    }
+    
     private final Scheduler     scheduler;
     private final Job           job;
     private final ExtensionInfo extInfo;
     private final TypeSystem    ts;
     private final NodeFactory   nf;
-    private final boolean       java;      // Java back-end ???
 
     private Optimizer(Scheduler s, Job j) {
         scheduler = s;
@@ -62,7 +70,6 @@ public class Optimizer {
         extInfo   = (ExtensionInfo) j.extensionInfo();
         ts        = extInfo.typeSystem();
         nf        = extInfo.nodeFactory();
-        java      = extInfo instanceof x10c.ExtensionInfo;
     }
 
     public static List<Goal> goals(Scheduler scheduler, Job job) {
@@ -72,7 +79,7 @@ public class Optimizer {
     private List<Goal> goals() {
         List<Goal> goals = new ArrayList<Goal>();
         Configuration config = ((X10CompilerOptions) extInfo.getOptions()).x10_config;
-        if (config.SPLIT_CONSTRUCTORS) {
+        if (CONSTRUCTOR_SPLITTING(extInfo)) {
             goals.add(ConstructorSplitter());
         }
         if (config.LOOP_OPTIMIZATIONS) {
@@ -82,12 +89,20 @@ public class Optimizer {
         if (INLINING(extInfo)) {
             goals.add(Inliner());
         }
-        if (FLATTENING(extInfo, java)) {
+        if (FLATTENING(extInfo)) {
             goals.add(ExpressionFlattener());
+        }
+        if (config.CODE_CLEAN_UP) {
+            goals.add(CodeCleanUp());
+        }
+        // workaround for XTENLANG-2705
+        if (config.OPTIMIZE) {
+            goals.add(ConstantProp());
         }
         if (config.EXPERIMENTAL && config.ELIMINATE_DEAD_VARIABLES) {
             goals.add(DeadVariableEliminator());
         }
+            
         // TODO: add an empty goal that prereqs the above
         return goals;
     }
@@ -125,6 +140,18 @@ public class Optimizer {
     public Goal ConstructorSplitter() {
         NodeVisitor visitor = new ConstructorSplitterVisitor(job, ts, nf);
         Goal goal = new ValidatingVisitorGoal("Constuctor Splitter", job, visitor);
+        return goal.intern(scheduler);
+    }
+    
+    public Goal CodeCleanUp() {
+        NodeVisitor visitor = new CodeCleanUp(job, ts, nf);
+        Goal goal = new ValidatingVisitorGoal("CodeCleanUp", job, visitor);
+        return goal.intern(scheduler);
+    }
+    
+    public Goal ConstantProp() {
+        NodeVisitor visitor = new ConstantPropagator(job, ts, nf);
+        Goal goal = new ValidatingVisitorGoal("ConstantPropagation", job, visitor);
         return goal.intern(scheduler);
     }
 

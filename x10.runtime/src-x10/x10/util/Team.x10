@@ -14,6 +14,7 @@ package x10.util;
 import x10.compiler.Native;
 import x10.compiler.NativeRep;
 import x10.compiler.StackAllocate;
+import x10.compiler.TempNoInline_0;
 
 /** Interface to low level collective operations.  A team is a collection of
  * activities that work together by simultaneously doing 'collective
@@ -44,16 +45,12 @@ public struct Team {
     /** Create a team by defining the place where each member lives.  This would usually be called before creating an async for each member of the team.
      * @param places The place of each member
      */
-    public def this (places:Rail[Place]) {
-        this(places.raw(), places.length);
-    }
-
     public def this (places:Array[Place]) {
         this(places.raw(), places.size);
     }
 
     private def this (places:IndexedMemoryChunk[Place], count:Int) {
-        val result = IndexedMemoryChunk.allocate[Int](1);
+        val result = IndexedMemoryChunk.allocateUninitialized[Int](1);
         finish nativeMake(places, count, result);
         id = result(0);
     }
@@ -105,17 +102,13 @@ public struct Team {
      *
      * @param count The number of elements being transferred
      */
-    public def scatter[T] (role:Int, root:Int, src:Rail[T], src_off:Int, dst:Rail[T], dst_off:Int, count:Int) : void {
-        finish nativeScatter(id, role, root, src.raw(), src_off, dst.raw(), dst_off, count);
-    }
-
     public def scatter[T] (role:Int, root:Int, src:Array[T], src_off:Int, dst:Array[T], dst_off:Int, count:Int) : void {
         finish nativeScatter(id, role, root, src.raw(), src_off, dst.raw(), dst_off, count);
     }
 
     private static def nativeScatter[T] (id:Int, role:Int, root:Int, src:IndexedMemoryChunk[T], src_off:Int, dst:IndexedMemoryChunk[T], dst_off:Int, count:Int) : void {
         @Native("java", "x10.x10rt.TeamSupport.nativeScatter(id, role, root, src, src_off, dst, dst_off, count);")
-        @Native("c++", "x10rt_scatter(id, role, root, &src->raw()[src_off], &dst->raw()[dst_off], sizeof(FMGL(T)), count, x10aux::coll_handler, x10aux::coll_enter());") {}
+        @Native("c++", "x10rt_scatter(id, role, root, &src->raw()[src_off], &dst->raw()[dst_off], sizeof(TPMGL(T)), count, x10aux::coll_handler, x10aux::coll_enter());") {}
     }
 
     /** Blocks until all members have received root's array.
@@ -134,17 +127,13 @@ public struct Team {
      *
      * @param count The number of elements being transferred
      */
-    public def bcast[T] (role:Int, root:Int, src:Rail[T], src_off:Int, dst:Rail[T], dst_off:Int, count:Int) : void {
-        finish nativeBcast(id, role, root, src.raw(), src_off, dst.raw(), dst_off, count);
-    }
-
     public def bcast[T] (role:Int, root:Int, src:Array[T], src_off:Int, dst:Array[T], dst_off:Int, count:Int) : void {
         finish nativeBcast(id, role, root, src.raw(), src_off, dst.raw(), dst_off, count);
     }
 
     private static def nativeBcast[T] (id:Int, role:Int, root:Int, src:IndexedMemoryChunk[T], src_off:Int, dst:IndexedMemoryChunk[T], dst_off:Int, count:Int) : void {
         @Native("java", "x10.x10rt.TeamSupport.nativeBcast(id, role, root, src, src_off, dst, dst_off, count);")
-        @Native("c++", "x10rt_bcast(id, role, root, &src->raw()[src_off], &dst->raw()[dst_off], sizeof(FMGL(T)), count, x10aux::coll_handler, x10aux::coll_enter());") {}
+        @Native("c++", "x10rt_bcast(id, role, root, &src->raw()[src_off], &dst->raw()[dst_off], sizeof(TPMGL(T)), count, x10aux::coll_handler, x10aux::coll_enter());") {}
     }
 
     /** Blocks until all members have received their part of each other member's array.
@@ -166,17 +155,13 @@ public struct Team {
      *
      * @param count The number of elements being transferred
      */
-    public def alltoall[T] (role:Int, src:Rail[T], src_off:Int, dst:Rail[T], dst_off:Int, count:Int) : void {
-        finish nativeAlltoall(id, role, src.raw(), src_off, dst.raw(), dst_off, count);
-    }
-
     public def alltoall[T] (role:Int, src:Array[T], src_off:Int, dst:Array[T], dst_off:Int, count:Int) : void {
         finish nativeAlltoall(id, role, src.raw(), src_off, dst.raw(), dst_off, count);
     }
 
     private static def nativeAlltoall[T](id:Int, role:Int, src:IndexedMemoryChunk[T], src_off:Int, dst:IndexedMemoryChunk[T], dst_off:Int, count:Int) : void {
         @Native("java", "x10.x10rt.TeamSupport.nativeAllToAll(id, role, src, src_off, dst, dst_off, count);")
-        @Native("c++", "x10rt_alltoall(id, role, &src->raw()[src_off], &dst->raw()[dst_off], sizeof(FMGL(T)), count, x10aux::coll_handler, x10aux::coll_enter());") {}
+        @Native("c++", "x10rt_alltoall(id, role, &src->raw()[src_off], &dst->raw()[dst_off], sizeof(TPMGL(T)), count, x10aux::coll_handler, x10aux::coll_enter());") {}
     }
 
     /** Indicates the operation to perform when reducing. */
@@ -217,17 +202,13 @@ public struct Team {
      *
      * @param op The operation to perform
      */
-    public def allreduce[T] (role:Int, src:Rail[T], src_off:Int, dst:Rail[T], dst_off:Int, count:Int, op:Int) : void {
-        finish nativeAllreduce(id, role, src.raw(), src_off, dst.raw(), dst_off, count, op);
-    }
-
     public def allreduce[T] (role:Int, src:Array[T], src_off:Int, dst:Array[T], dst_off:Int, count:Int, op:Int) : void {
         finish nativeAllreduce(id, role, src.raw(), src_off, dst.raw(), dst_off, count, op);
     }
 
     private static def nativeAllreduce[T](id:Int, role:Int, src:IndexedMemoryChunk[T], src_off:Int, dst:IndexedMemoryChunk[T], dst_off:Int, count:Int, op:Int) : void {
         @Native("java", "x10.x10rt.TeamSupport.nativeAllReduce(id, role, src, src_off, dst, dst_off, count, op);")
-    	@Native("c++", "x10rt_allreduce(id, role, &src->raw()[src_off], &dst->raw()[dst_off], (x10rt_red_op_type)op, x10rt_get_red_type<FMGL(T)>(), count, x10aux::coll_handler, x10aux::coll_enter());") {}
+    	@Native("c++", "x10rt_allreduce(id, role, &src->raw()[src_off], &dst->raw()[dst_off], (x10rt_red_op_type)op, x10rt_get_red_type<TPMGL(T)>(), count, x10aux::coll_handler, x10aux::coll_enter());") {}
     }
 
     /** Performs a reduction on a single value, returning the result */
@@ -251,9 +232,9 @@ public struct Team {
     /** Performs a reduction on a single value, returning the result */
     public def allreduce (role:Int, src:Double, op:Int) = genericAllreduce(role, src, op);
 
-    private def genericAllreduce[T] (role:Int, src:T, op:Int) : T {
-        val chk = IndexedMemoryChunk.allocate[T](1);
-        val dst = IndexedMemoryChunk.allocate[T](1);
+    private @TempNoInline_0 def genericAllreduce[T] (role:Int, src:T, op:Int) : T {
+        val chk = IndexedMemoryChunk.allocateUninitialized[T](1);
+        val dst = IndexedMemoryChunk.allocateUninitialized[T](1);
         chk(0) = src;
         finish nativeAllreduce[T](id, role, chk, dst, op);
         return dst(0);
@@ -261,13 +242,13 @@ public struct Team {
 
     private static def nativeAllreduce[T](id:Int, role:Int, src:IndexedMemoryChunk[T], dst:IndexedMemoryChunk[T], op:Int) : void {
         @Native("java", "x10.x10rt.TeamSupport.nativeAllReduce(id, role, src, 0, dst, 0, 1, op);")
-        @Native("c++", "x10rt_allreduce(id, role, src->raw(), dst->raw(), (x10rt_red_op_type)op, x10rt_get_red_type<FMGL(T)>(), 1, x10aux::coll_handler, x10aux::coll_enter());") {}
+        @Native("c++", "x10rt_allreduce(id, role, src->raw(), dst->raw(), (x10rt_red_op_type)op, x10rt_get_red_type<TPMGL(T)>(), 1, x10aux::coll_handler, x10aux::coll_enter());") {}
     }
 
     /** Returns the index of the biggest double value across the team */
     public def indexOfMax (role:Int, v:Double, idx:Int) : Int {
-        val src = IndexedMemoryChunk.allocate[DoubleIdx](1);
-        val dst = IndexedMemoryChunk.allocate[DoubleIdx](1);
+        val src = IndexedMemoryChunk.allocateUninitialized[DoubleIdx](1);
+        val dst = IndexedMemoryChunk.allocateUninitialized[DoubleIdx](1);
         src(0) = DoubleIdx(v, idx);
         finish nativeIndexOfMax(id, role, src, dst);
         return dst(0).idx;
@@ -280,8 +261,8 @@ public struct Team {
 
     /** Returns the index of the smallest double value across the team */
     public def indexOfMin (role:Int, v:Double, idx:Int) : Int {
-        val src = IndexedMemoryChunk.allocate[DoubleIdx](1);
-        val dst = IndexedMemoryChunk.allocate[DoubleIdx](1);
+        val src = IndexedMemoryChunk.allocateUninitialized[DoubleIdx](1);
+        val dst = IndexedMemoryChunk.allocateUninitialized[DoubleIdx](1);
         src(0) = DoubleIdx(v, idx);
         finish nativeIndexOfMin(id, role, src, dst);
         return dst(0).idx;
@@ -307,7 +288,7 @@ public struct Team {
      * @param new_role The caller's role within the new team
      */
     public def split (role:Int, color:Int, new_role:Int) : Team {
-        val result = IndexedMemoryChunk.allocate[Int](1);
+        val result = IndexedMemoryChunk.allocateUninitialized[Int](1);
         finish nativeSplit(id, role, color, new_role, result);
         return Team(result(0));
     }

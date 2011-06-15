@@ -40,8 +40,10 @@ import polyglot.ast.MethodDecl;
 import polyglot.ast.New;
 import polyglot.ast.NodeFactory;
 import polyglot.ast.Receiver;
+import polyglot.ast.Special;
 import polyglot.ast.Stmt;
 import polyglot.ast.TypeNode;
+import polyglot.ast.Typed;
 import polyglot.ast.Unary;
 import polyglot.frontend.Globals;
 import polyglot.types.ClassDef;
@@ -63,6 +65,7 @@ import polyglot.types.Type;
 import polyglot.types.Types;
 import polyglot.types.VarDef;
 import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
+import polyglot.util.InternalCompilerError;
 import polyglot.util.Pair;
 import polyglot.util.Position;
 import polyglot.visit.ContextVisitor;
@@ -103,6 +106,7 @@ import x10.types.constraints.CLocal;
 import x10.types.constraints.CSelf;
 import x10.types.constraints.CTerms;
 import x10.types.constraints.CThis;
+import x10.types.constraints.QualifiedVar;
 import x10.visit.X10TypeBuilder;
 import x10.visit.X10TypeChecker;
 
@@ -428,11 +432,11 @@ public class Synthesizer {
 	        assert ((Field) lhs).fieldInstance() != null;
 	        a = ((FieldAssign) a).fieldInstance(((Field)lhs).fieldInstance());
 	    } else if (a instanceof SettableAssign) {
-	        assert (lhs instanceof X10Call);
-	        X10Call call = (X10Call) lhs;
+	        assert (lhs instanceof InlinableCall);
+	        InlinableCall call = (InlinableCall) lhs;
 	        Receiver target = call.target();
-	        MethodInstance ami = call.methodInstance();
-	        List<Type> argTypes = CollectionUtil.append(Collections.singletonList(ami.returnType()), ami.formalTypes());
+	        MethodInstance ami = (MethodInstance) call.procedureInstance();
+	        List<Type> argTypes = CollectionUtil.append(ami.formalTypes(), Collections.singletonList(ami.returnType()));
 	        MethodInstance smi = xts.findMethod(target.type(),
 	                xts.MethodMatcher(target.type(), SettableAssign.SET, argTypes, xc));
 	        a = ((SettableAssign) a).methodInstance(smi);
@@ -451,7 +455,7 @@ public class Synthesizer {
 	 * @throws SemanticException
 	 */
 	public Expr makeFieldAccess(Position pos, Receiver r, Name name, Context context) throws SemanticException {
-		FieldInstance fi = xts.findField(r.type(), xts.FieldMatcher(r.type(), name, context));
+		FieldInstance fi = xts.findField(r.type(), r.type(), name, context);
 		 Expr result = xnf.Field(pos, r, xnf.Id(pos, name)).fieldInstance(fi)
 		 .type(fi.type());
 		 return result;
@@ -469,7 +473,7 @@ public class Synthesizer {
 	 * @throws SemanticException
 	 */
 	public Expr makeSuperTypeFieldAccess(Position pos, Type superType, Receiver r, Name name, Context context) throws SemanticException {
-            FieldInstance fi = xts.findField(superType, xts.FieldMatcher(superType, name, context));
+            FieldInstance fi = xts.findField(superType, superType, name, context);
             Expr result = xnf.Field(pos, r, xnf.Id(pos, name)).fieldInstance(fi)
             .type(fi.type());
             return result;
@@ -647,7 +651,7 @@ public class Synthesizer {
 		
         List<Type> typeArgs = new ArrayList<Type>();
         for (TypeNode t : typeArgsN) typeArgs.add(t.type());
-        ClassType container = receiver.toClass();
+        X10ClassType container = receiver.toClass();
         MethodInstance mi = xts.findMethod(receiver,
                 xts.MethodMatcher(receiver, name, typeArgs, argTypes, xc.pushClass(container.def(), container)));
         Call result= (Call) xnf.X10Call(pos, 
@@ -703,7 +707,7 @@ public class Synthesizer {
 		
         List<Type> typeArgs = new ArrayList<Type>();
         for (TypeNode t : typeArgsN) typeArgs.add(t.type());
-        ClassType container = receiver.type().toClass();
+        X10ClassType container = receiver.type().toClass();
         MethodInstance mi = xts.findMethod(container,
                 xts.MethodMatcher(container, name, typeArgs, argTypes, xc.pushClass(container.def(), container)));
         Call result= (Call) xnf.X10Call(pos, 
@@ -776,8 +780,7 @@ public class Synthesizer {
 			Type returnType,
 			Context xc) throws SemanticException {
 
-		FieldInstance fi = xts.findField(receiver,
-				xts.FieldMatcher(receiver, name, xc));
+		FieldInstance fi = xts.findField(receiver, receiver, name, xc);
 		Field result=  (Field) xnf.Field(pos, 
 				xnf.CanonicalTypeNode(pos, receiver),
 				xnf.Id(pos, name))
@@ -1395,7 +1398,7 @@ public class Synthesizer {
 				typeArgs.add(nf.X10CanonicalTypeNode(pos, t));
 		}
 
-		DepParameterExpr dep = nf.DepParameterExpr(pos, makeExpr(c, pos));
+		DepParameterExpr dep = nf.DepParameterExpr(pos, makeExpr(c, Types.baseType(type), pos));
 		
 		QName qName = QName.make(typeName);
 		QName qual = qName.qualifier();
@@ -1451,48 +1454,61 @@ public class Synthesizer {
      * @return the expression corresponding to the constraint
      * @seeAlso X10TypeTranslator.constraint(...): it generates a constraint from an AST.
      */
-    Expr makeExpr(XTerm t, Position pos) {
+    Expr makeExpr(XTerm t, Type baseType, Position pos) {
         if (t instanceof CField) 
-            return makeExpr((CField) t, pos);
+            return makeExpr((CField) t, baseType, pos);
         if (t instanceof XLit)
-            return makeExpr((XLit) t, pos);
+            return makeExpr((XLit) t, baseType, pos);
         if (t instanceof XEquals)
-            return makeExpr((XEquals) t, pos);
+            return makeExpr((XEquals) t, baseType, pos);
         if (t instanceof XDisEquals)
-            return makeExpr((XDisEquals) t, pos);
+            return makeExpr((XDisEquals) t, baseType, pos);
         if (t instanceof CSelf)
-            return makeExpr((CSelf) t, pos); // this must occur before XLocal_c
+            return makeExpr((CSelf) t, baseType, pos); // this must occur before XLocal_c
         if (t instanceof CThis)
-            return makeExpr((CThis) t, pos); // this must occur before XLocal_c
+            // If we were able to ensure that a CThis without an enclosing QVar
+            // always represents a non-qualified this, then we should pass null here.
+            // However, an occurrence of a qualified this in an arg to a macro call
+            // is treated as if it is not in a deptype, and for such a qualified this
+            // we get a CThis from XTypeTranslaor, not a QualifiedVar.
+            // So we pass ((CThis) t).type(). It is safe to do so.
+            return makeExpr((CThis) t, /*null,*/ ((CThis) t).type(), baseType, pos); // this must occur before XLocal_c
         if (t instanceof XEQV)
-            return makeExpr((XEQV) t, pos); // this must occur before XLocal_c
+            return makeExpr((XEQV) t, baseType, pos); // this must occur before XLocal_c
         if (t instanceof XUQV)
-            return makeExpr((XUQV) t, pos); // this must occur before XLocal_c
+            return makeExpr((XUQV) t, baseType, pos); // this must occur before XLocal_c
+        if (t instanceof QualifiedVar) {
+            return makeExpr((QualifiedVar) t, baseType, pos);
+        }
         if (t instanceof CLocal)
-            return makeExpr((CLocal) t, pos);
+            return makeExpr((CLocal) t, baseType, pos);
         if (t instanceof XNot)
-            return makeExpr((XNot) t, pos);
+            return makeExpr((XNot) t, baseType, pos);
         if (t instanceof XFormula<?>)
-            return makeExpr((XFormula<?>) t, pos);
+            return makeExpr((XFormula<?>) t, baseType, pos);
         // FIXME: warn about being unable to translate the term
         return null;
     }
 
-    TypeNode makeTypeNode(XVar receiver, Position pos) {
+    TypeNode makeTypeNode(XVar receiver, Type baseType, Position pos) {
         if (!(receiver instanceof XLit))
             return null;
         Object val = ((XLit) receiver).val();
         if (!(val instanceof QName))
             return null;
-        return xnf.TypeNodeFromQualifiedName(pos, (QName) val);
+        try {
+            return xnf.CanonicalTypeNode(pos, xts.forName((QName) val));
+        } catch (SemanticException e) {
+            throw new InternalCompilerError("Invalid type encountered in a constraint: "+val, e);
+        }
     }
 
-    Expr makeExpr(CField t, Position pos) {
+    Expr makeExpr(CField t, Type baseType, Position pos) {
         if (t.isHidden())
             return null;
-        Receiver r = makeExpr(t.receiver(), pos);
+        Receiver r = makeExpr(t.receiver(), baseType, pos);
         if (r == null) {
-            r = makeTypeNode(t.receiver(), pos);
+            r = makeTypeNode(t.receiver(), baseType, pos);
         }
         if (r == null)
             return null;
@@ -1509,46 +1525,84 @@ public class Synthesizer {
     }
 
     // FIXME: merge with makeExpr(XLocal, Position)
-    Expr makeExpr(CSelf t, Position pos) {
+    Expr makeExpr(CSelf t, Type baseType, Position pos) {
         return xnf.Special(pos, X10Special.SELF);
     }
-    Expr makeExpr(CThis ct, Position pos) {
+  /*  if (n instanceof Special){
+        // if it's an outer instance, then we need to access the outer field
+        Special special = (Special) n;
+        TypeNode qualifer = special.qualifier();
+        if (qualifer==null) return newReceiver;
+        // qualifer doesn't have type info because it was created in Synthesizer.makeExpr
+        qualifer = (TypeNode) qualifer.visit(builder).visit(checker);
+        ClassType ct =  qualifer.type().toClass();
+        ClassType receiverType = Types.getClassType(newReceiver.type(), ts, context);
+        if (receiverType==null)
+            return newReceiver;
+        final ClassDef newReceiverDef = receiverType.def();
+        final ClassDef qualifierDef = ct.def();
+        if (newReceiverDef==qualifierDef)
+            return newReceiver;
+        return nf.Call(pos,newReceiver, nf.Id(pos,X10ClassDecl_c.getThisMethod(newReceiverDef.fullName(),ct.fullName())));
+    }*/
+    Expr makeExpr(QualifiedVar v, Type baseType, Position pos) {
         TypeNode tn = null;
-        Type type = ct.type();
+        ClassType ct = v.type().toClass();
+        XVar var = v.receiver();
+        if (var instanceof CThis)  // use old code, but with type taken from v
+            return makeExpr((CThis) var, v.type(), baseType, pos);
+        if (! (var instanceof Typed || var instanceof CSelf))
+            // Unable to generate an expression for this term.
+            return null;
+        // Todo: Make self Typed.
+        Type varType;
+        
+        if (var instanceof CSelf) {
+            varType = baseType;
+        } else {
+            varType = ((Typed) var).type();
+        }
+        ClassType varClassType = Types.getClassType(varType, xts);
+        ClassDef varDef = varClassType.def(); 
+        return xnf.Call(pos, 
+                        xnf.AmbExpr(pos, xnf.Id(pos,Name.make(var.toString()))),
+                        xnf.Id(pos, X10ClassDecl_c.getThisMethod(varDef.fullName(), 
+                                                                 ct.fullName())));
+    }
+    Expr makeExpr(CThis ct, Type type, Type baseType, Position pos) {
+        TypeNode tn = null;
         if (type != null) {
-            tn = xnf.TypeNodeFromQualifiedName(pos,QName.make(type.toString()));
+            tn = xnf.CanonicalTypeNode(pos, type);
         }
         return tn == null ? xnf.Special(pos, X10Special.THIS)
                 : xnf.Special(pos, X10Special.THIS, tn);
      
     }
-    Expr makeExpr(XEQV t, Position pos) {
+    Expr makeExpr(XEQV t, Type baseType, Position pos) {
         assert false;
         return xnf.AmbExpr(pos, xnf.Id(pos,Name.make(t.toString())));
     }
-    Expr makeExpr(XUQV t, Position pos) {
+    Expr makeExpr(XUQV t, Type baseType, Position pos) {
         String str = t.toString();
-        if (str.equals("here"))
+        if (t == PlaceChecker.here())
             return xnf.Here(pos);
         return xnf.AmbExpr(pos, xnf.Id(pos,Name.make(t.toString())));
     }
 
     // FIXME: merge with makeExpr(XEQV, Position)
-    Expr makeExpr(CLocal t, Position pos) {
+    Expr makeExpr(CLocal t, Type baseType, Position pos) {
         String str = t.name().toString();
-        if (str.equals("here"))
-            return xnf.Here(pos);
         return xnf.AmbExpr(pos, xnf.Id(pos,t.name().name()));
     }
 
-    Expr makeExpr(XNot t, Position pos) {
-        Expr expr = makeExpr(t.arguments().get(0), pos);
+    Expr makeExpr(XNot t, Type baseType, Position pos) {
+        Expr expr = makeExpr(t.arguments().get(0), baseType, pos);
         if (expr == null)
             return null;
         return xnf.Unary(pos, expr, Unary.NOT);
     }
 
-    Expr makeExpr(XLit t, Position pos) {
+    Expr makeExpr(XLit t, Type baseType, Position pos) {
         Object val = t.val();
         if (val == null)
             return xnf.NullLit(pos);
@@ -1572,26 +1626,26 @@ public class Synthesizer {
         return null;
     }
 
-    Expr makeExpr(XEquals t, Position pos) {
-        Expr left = makeExpr(t.arguments().get(0), pos);
-        Expr right = makeExpr(t.arguments().get(1), pos);
+    Expr makeExpr(XEquals t, Type baseType, Position pos) {
+        Expr left = makeExpr(t.arguments().get(0), baseType, pos);
+        Expr right = makeExpr(t.arguments().get(1), baseType, pos);
         if (left == null || right == null)
             return null;
         return xnf.Binary(pos, left, Binary.EQ, right);
     }
 
-    Expr makeExpr(XDisEquals t, Position pos) {
-        Expr left = makeExpr(t.arguments().get(0), pos);
-        Expr right = makeExpr(t.arguments().get(1), pos);
+    Expr makeExpr(XDisEquals t, Type baseType, Position pos) {
+        Expr left = makeExpr(t.arguments().get(0), baseType, pos);
+        Expr right = makeExpr(t.arguments().get(1), baseType, pos);
         if (left == null || right == null)
             return null;
         return xnf.Binary(pos, left, Binary.NE, right);
     }
 
-    Expr makeExpr(XFormula<?> t, Position pos) {
+    Expr makeExpr(XFormula<?> t, Type baseType, Position pos) {
         List<Expr> args = new ArrayList<Expr>();
         for (XTerm a : t.arguments()) {
-            Expr e = makeExpr(a, pos);
+            Expr e = makeExpr(a, baseType, pos);
             if (e == null)
                 return null;
             args.add(e);
@@ -1619,14 +1673,14 @@ public class Synthesizer {
         //}
     }
 
-    public List<Expr> makeExpr(CConstraint c, Position pos) {
+    public List<Expr> makeExpr(CConstraint c, Type baseType, Position pos) {
         List<Expr> es = new ArrayList<Expr>();
         if (c==null)
             return es;
         List<XTerm> terms  = c.extConstraints();
 
         for (XTerm term : terms) {
-            Expr e = makeExpr(term, pos);
+            Expr e = makeExpr(term, baseType, pos);
             if (e != null)
                 es.add(e);
         }
@@ -1684,10 +1738,10 @@ public class Synthesizer {
      * @return
      */
     public FunctionType simpleFunctionType(Type type, Position pos){        
-        return xts.closureType(pos, Types.ref(type),
+        return xts.functionType(pos, Types.ref(type),
+                       Collections.<ParameterType>emptyList(),
                        Collections.<Ref<? extends Type>>emptyList(),
-                       Collections.<LocalDef>emptyList(),
-                       null
+                       Collections.<LocalDef>emptyList(), null
                       );
     }
     

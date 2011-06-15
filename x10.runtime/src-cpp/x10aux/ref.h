@@ -32,20 +32,13 @@ namespace x10aux {
         static const x10aux::RuntimeType* getRTT() { return T::getRTT(); }
 
         // Copy between refs of the same type
-        GPUSAFE ref(const ref<T>& _ref) : _val(_ref._val) {
-            _R_("Copying reference " << &_ref << "(" << _ref._val
-                                     << ") of type " << TYPENAME(T)
-                                     << " to " << this);
-        }
+        GPUSAFE ref(const ref<T>& _ref) : _val(_ref._val) { }
 
         // Copy between refs of the same type
         // FIXME: something is wrong with the return value;
         // r1 = r2 = r3 doesn't work in xlC
         GPUSAFE const ref<T>& operator=(const ref<T>& _ref) {
             _val = _ref._val;
-            _R_("Assigning reference " << &_ref << "(" << _ref._val
-                                       << ") of type " << TYPENAME(T)
-                                       << " to " << this);
             return *this;
         }
 
@@ -71,37 +64,23 @@ namespace x10aux {
         // Allow the construction of a ref<T> from a ref<S>
         template<class S> GPUSAFE ref(const ref<S>& _ref)
           : _val(reinterpret_cast<T*>(_ref._val)) {
-            _R_("Casting reference " << &_ref << "(" << _ref._val
-                                     << ") of type " << TYPENAME(S)
-                                     << " to type " << TYPENAME(T)
-                                     << " into " << this << "("<<_val<<")");
         }
 
         // Allow the assignment of a ref<S> to a ref<T>
         template<class S> GPUSAFE const ref<T> &operator=(const ref<S>& _ref) {
             _val = reinterpret_cast<T*>(_ref._val);
-            _R_("Casting reference " << &_ref << "(" << _ref._val
-                                     << ") of type " << TYPENAME(S)
-                                     << " to type " << TYPENAME(T)
-                                     << " into " << this << "("<<_val<<")");
             return *this;
         }
 
         T& GPUSAFE operator*() const {
-            _R_("Accessing object (*) via reference " << this << "(" << _val
-                                      << ") of type " << TYPENAME(T));
             return *(T*)_val;
         }
 
         T* GPUSAFE operator->() const { 
-            _R_("Accessing object (*) via reference " << this << "(" << _val
-                                      << ") of type " << TYPENAME(T));
             return (T*)_val;
         }
 
         bool GPUSAFE isNull() const {
-            _R_("Nullcheck reference " << this << "(" << _val
-                                      << ") of type " << TYPENAME(T));
             return _val == NULL;
         }
 
@@ -137,7 +116,7 @@ namespace x10aux {
 
     #define X10_NULL x10aux::ref<x10::lang::NullType>(NULL)
 
-} //namespace x10
+} //namespace x10aux
 
 
 #endif

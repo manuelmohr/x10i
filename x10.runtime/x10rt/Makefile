@@ -19,7 +19,7 @@ GZIP            ?= gzip
 override CXXFLAGS += -Iinclude -Icommon ${JNI_INCLUDES}
 override CXXFLAGS += ${CXX_WARNING_FLAGS}
 
-BASE_TESTS      = test/x10rt_basic test/x10rt_gups test/x10rt_topology test/x10rt_coll
+BASE_TESTS      = test/x10rt_basic test/x10rt_gups test/x10rt_topology test/x10rt_coll test/x10rt_crash
 
 EXECUTABLES     =
 
@@ -44,7 +44,7 @@ APP_LDLIBS := $(LDLIBS)
 APP_LDFLAGS := $(LDFLAGS) 
 SO_LDLIBS := 
 SO_LDFLAGS = $(LDFLAGS_SHARED)
-X10RT_TEST_LDFLAGS := -L"$(X10_HOME)"/x10.runtime/x10rt/lib
+X10RT_TEST_LDFLAGS += -L"$(X10_HOME)"/x10.runtime/x10rt/lib
 
 ifdef ENABLE_X10RT_CUDA
 	override CXXFLAGS += -DENABLE_CUDA -isystem/usr/local/cuda/include

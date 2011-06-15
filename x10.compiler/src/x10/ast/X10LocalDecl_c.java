@@ -39,7 +39,6 @@ import polyglot.types.Types;
 import polyglot.util.CodeWriter;
 import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.util.Position;
-import polyglot.visit.AscriptionVisitor;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.NodeVisitor;
 import polyglot.visit.PrettyPrinter;
@@ -91,7 +90,7 @@ public class X10LocalDecl_c extends LocalDecl_c implements X10VarDecl {
 		
 
 	@Override
-	public Node buildTypes(TypeBuilder tb) throws SemanticException {
+	public Node buildTypes(TypeBuilder tb) {
 		X10LocalDecl_c n = this;
 		if (type instanceof UnknownTypeNode) {
 			if (init == null)
@@ -123,12 +122,7 @@ public class X10LocalDecl_c extends LocalDecl_c implements X10VarDecl {
 	}
 	
     public NodeVisitor typeCheckEnter(TypeChecker tc) {
-        try {
-            return super.typeCheckEnter(tc);
-        } catch (SemanticException e) {
-            Errors.issue(tc.job(), e, this);
-            return tc;
-        }
+        return super.typeCheckEnter(tc);
     }
 
     /** Reconstruct the declaration. */
@@ -185,11 +179,25 @@ public class X10LocalDecl_c extends LocalDecl_c implements X10VarDecl {
                 TypeNode htn  = null;
                 if (hasType != null) {
                     htn = (TypeNode) visitChild(hasType, childtc);
-                    if (! tc.typeSystem().isSubtype(type().type(), htn.type(), tc.context())) {
-                        Errors.issue(tc.job(),
-                                     new Errors.TypeIsNotASubtypeOfTypeBound(type().type(),
-                                                                             htn.type(),
-                                                                             position()));
+                    boolean checkSubType = true;
+                    try {
+                        Types.checkMissingParameters(htn);
+                    } catch (SemanticException e) {
+                        Errors.issue(tc.job(), e, htn);
+                        checkSubType = false;
+                    }
+                    if (checkSubType && ! tc.typeSystem().isSubtype(type().type(), htn.type(), tc.context())) {
+                        Context xc = (Context) enterChildScope(init, tc.context());
+                        Expr newInit = Converter.attemptCoercion(tc.context(xc), init, htn.type());
+                        if (newInit == null) {
+                            Errors.issue(tc.job(),
+                                         new Errors.TypeIsNotASubtypeOfTypeBound(type().type(),
+                                                                                 htn.type(),
+                                                                                 position()));
+                        } else {
+                            init = newInit;
+                            r.update(newInit.type()); 
+                        }
                     }
                 }
 
@@ -220,7 +228,7 @@ public class X10LocalDecl_c extends LocalDecl_c implements X10VarDecl {
         try {
             Types.checkMissingParameters(typeNode);
         } catch (SemanticException e) {
-            Errors.issue(tc.job(), e, this);
+            Errors.issue(tc.job(), e, typeNode);
         }
         // Replace here by PlaceTerm because this local variable may be referenced
         // later by code that has been place-shifted, and will have a different 
@@ -253,7 +261,7 @@ public class X10LocalDecl_c extends LocalDecl_c implements X10VarDecl {
             Expr newInit = Converter.attemptCoercion(tc, n.init, type);
             if (newInit != null)
                 return n.init(newInit);
-            Errors.issue(tc.job(), new Errors.CannotAssign(n.init, type, n.init.position()), n);
+            Errors.issue(tc.job(), Errors.CannotAssign.make(n.init, type, tc, n.init.position()), n);
         }
 
         return n;
@@ -269,26 +277,32 @@ public class X10LocalDecl_c extends LocalDecl_c implements X10VarDecl {
 		+ ">";
 	}
 
+
+    /**
+     * Add the declaration of the variable as we enter the scope of the
+     * intializer.
+     * In Java you can write this code:
+     * int i= (i=2)+4;
+     * But after XTENLANG-2387 we disallow it in X10:
+     * var i:Int = (i=2)+4; // ERR!
+     */
 	public Context enterChildScope(Node child, Context c) {
+		Context oldC=c;
+        if (child == init) {
+            c = c.pushBlock();
+            // addDecls(c); - this will allow writing code like a local: int i= (i=2);
+        }
 		if (child == this.type || child == this.hasType) {
-			Context xc = (Context) c.pushBlock();
+			if (oldC==c)
+			 c=c.pushBlock();
 			LocalDef li = localDef();
-			xc.addVariable(li.asInstance());
-			xc.setVarWhoseTypeIsBeingElaborated(li);
-			c = xc;
+			c.addVariable(li.asInstance());
+			c.setVarWhoseTypeIsBeingElaborated(li);
 		}
 		Context cc = super.enterChildScope(child, c);
 		return cc;
 	}
 	
-	public Type childExpectedType(Expr child, AscriptionVisitor av) {
-	    if (child == init) {
-	        TypeSystem ts = av.typeSystem();
-	        return type.type();
-	    }
-	    return child.type();
-	}
-
 	/** Visit the children of the declaration. */
 	public Node visitChildren(NodeVisitor v) {
 	    X10LocalDecl_c n = (X10LocalDecl_c) super.visitChildren(v);

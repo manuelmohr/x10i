@@ -15,7 +15,7 @@ import java.util.List;
  * @see XEQV
  *
  */
-public class XUQV extends XVar {
+public class XUQV extends XRoot {
 
     public final int num;
     public final String str;
@@ -41,11 +41,15 @@ public class XUQV extends XVar {
         return false;
     }
 
+
+    public boolean okAsNestedTerm() {
+    	return true;
+    }
     public boolean hasVar(XVar v) {
         return equals(v);
     }
     @Override
     public String toString() {
-        return str == null ? "uqv" + num: str;
+        return str == null ? "uqv#" + num: str;
     }
 }

@@ -86,7 +86,7 @@ public class VarsBoxer extends ContextVisitor {
     @Override
     public NodeVisitor begin() {
         try {
-            localVarType = (X10ParsedClassType) xts.typeForName(LOCAL_VAR);
+            localVarType = (X10ParsedClassType) xts.forName(LOCAL_VAR);
         } catch (SemanticException e) {
             throw new InternalCompilerError("Something is terribly wrong", e);
         }
@@ -453,7 +453,7 @@ public class VarsBoxer extends ContextVisitor {
         
         X10ParsedClassType lvt = createLocalVarType(lilocal);
         
-        MethodDef md = xts.methodDef(pos, Types.ref(lvt), Flags.FINAL, Types.ref(lilocal.type()), mname, Collections.<Ref<? extends Type>>emptyList());
+        MethodDef md = xts.methodDef(pos, Types.ref(lvt), Flags.FINAL, Types.ref(localVarType.x10Def().typeParameters().get(0)), mname, Collections.<Ref<? extends Type>>emptyList());
         MethodInstance mi = md.asInstance();
         
         Local local = (Local) xnf.Local(pos, xnf.Id(pos, lilocal.name().toString() + POSTFIX_BOXED_VAR)).type(libox.type());
@@ -481,7 +481,7 @@ public class VarsBoxer extends ContextVisitor {
         
         X10ParsedClassType lvt = createLocalVarType(lilocal);
         
-        MethodDef md = xts.methodDef(pos, Types.ref(lvt), Flags.FINAL, Types.ref(lilocal.type()), mname, Collections.<Ref<? extends Type>>emptyList());
+        MethodDef md = xts.methodDef(pos, Types.ref(lvt), Flags.FINAL, Types.ref(localVarType.x10Def().typeParameters().get(0)), mname, Collections.<Ref<? extends Type>>emptyList());
         MethodInstance mi = md.asInstance();
         
         Local local = (Local) xnf.Local(pos, xnf.Id(pos, lilocal.name().toString() + POSTFIX_BOXED_VAR)).type(libox.type());

@@ -69,7 +69,7 @@ public class X10AmbAssign_c extends AmbAssign_c {
 
     
     @Override
-    public Node disambiguate(ContextVisitor ar) throws SemanticException {
+    public Node disambiguate(ContextVisitor ar) {
 	if (left instanceof Call) {
 	    Call c = (Call) left;
 	    if (c.target() instanceof Expr) {
@@ -81,8 +81,8 @@ public class X10AmbAssign_c extends AmbAssign_c {
 	return superDisambiguate(ar);
     }
     
-    private Node superDisambiguate(ContextVisitor ar) throws SemanticException {
-        AmbAssign_c n = (AmbAssign_c) super.disambiguate(ar);
+    private Node superDisambiguate(ContextVisitor ar) {
+        AmbAssign_c n = this;
         
         if (left instanceof Local) {
             LocalAssign a = ar.nodeFactory().LocalAssign(n.position(), (Local)left, operator(), right());
@@ -132,7 +132,7 @@ public class X10AmbAssign_c extends AmbAssign_c {
         // Didn't finish disambiguation; just return.
         return this;
     }
-    public Node typeCheck(ContextVisitor tc) throws SemanticException {
+    public Node typeCheck(ContextVisitor tc) {
         // Didn't finish disambiguation; just return.
         return this;
     }

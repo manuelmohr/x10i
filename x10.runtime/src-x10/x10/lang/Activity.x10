@@ -12,6 +12,7 @@
 package x10.lang;
 
 import x10.io.SerialData;
+import x10.util.Map;
 import x10.util.HashMap;
 
 /**
@@ -24,7 +25,7 @@ class Activity {
     static class ClockPhases extends HashMap[Clock,Int] {
         // compute spawnee clock phases from spawner clock phases in async clocked(clocks)
         // and register spawnee on these on clocks
-        static def make(clocks:Array[Clock](1){rail}) {
+        static def make(clocks:Rail[Clock]) {
             val clockPhases = new ClockPhases();
             for(var i:Int = 0; i < clocks.size; i++) 
                 clockPhases.put(clocks(i), clocks(i).register());
@@ -32,19 +33,19 @@ class Activity {
         }
 
         // next statement
-        def next() {
-            for(clock:Clock in keySet()) clock.resumeUnsafe();
-            for(clock:Clock in keySet()) clock.nextUnsafe();
+        def advanceAll() {
+            for(entry:Map.Entry[Clock,Int] in entries()) entry.getKey().resumeInternal(entry);
+            for(entry:Map.Entry[Clock,Int] in entries()) entry.getKey().advanceInternal(entry);
         }
 
         // resume all clocks
-        def resume() {
-            for(clock:Clock in keySet()) clock.resume();
+        def resumeAll() {
+            for(entry:Map.Entry[Clock,Int] in entries()) entry.getKey().resumeInternal(entry);
         }
 
         // drop all clocks
         def drop() {
-            for(clock:Clock in keySet()) clock.dropInternal();
+            for(entry:Map.Entry[Clock,Int] in entries()) entry.getKey().dropInternal(entry);
             clear();
         }
 

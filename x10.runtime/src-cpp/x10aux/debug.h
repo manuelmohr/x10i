@@ -138,12 +138,6 @@ struct _X10ArrayMap
 	uint32_t _x10typeIndex;  // Index of the X10 type into appropriate _X10typeMap (if applicable)
 };
 
-struct _X10RefMap
-{
-	uint32_t _x10type; // Classification of the type inside the reference
-	uint32_t _x10typeIndex; // Index of the X10 type into appropriate _X10typeMap (if applicable)
-};
-
 struct _X10TypedefMap
 {
 	uint32_t _x10type; // Classification of this type
@@ -163,7 +157,7 @@ enum _MetaLanguage {
 struct _MetaDebugInfo_t {
   unsigned short structSize;      // size of this structure
   unsigned char metalanguage;     // language (allows the use of this technique for other languages)
-  unsigned char debugVersion;     // version of this structure (so we can change it in future)
+  unsigned debugVersion;     	  // version of the debug maps.  Format: "YYMMDDHH". One byte for year, month, day, hour.
 
   // The remainder of this structure is language/version specific
   unsigned x10stringSize;         // the size in bytes of the string table (including the trailing NUL)
@@ -186,7 +180,7 @@ struct _MetaDebugInfo_t {
   const struct _X10ClassMap*    x10classMapList;   // The class mapping list
   const struct _X10ClosureMap*  x10closureMapList; // The async closure mapping list
   const struct _X10ArrayMap*    x10arrayMapList;   // The array mapping list
-  const struct _X10RefMap*      x10refMapList;     // The reference mapping list
+  const struct _X10ClassMap*    x10refMapList;     // The reference mapping list
 };
 
 //extern void _X10_Entry_Hook();     // A hook at the start of every X10 method.

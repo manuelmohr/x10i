@@ -11,6 +11,7 @@
 
 package x10.array;
 
+import x10.compiler.TempNoInline_0;
 import x10.util.ArrayList;
 import x10.io.Printer;
 
@@ -22,15 +23,13 @@ import x10.io.Printer;
 class PolyMatBuilder(rank: int) extends MatBuilder {
 
     // XTENLANG-49
-    static type PolyMat(rank:Int) = PolyMat{self.rank==rank};
-    static type PolyMatBuilder(rank:Int) = PolyMatBuilder{self.rank==rank};
 
 
     /**
      * Create a new empty builder.
      */
 
-    public def this(rank: int): PolyMatBuilder{self.rank==rank} {
+    public @TempNoInline_0 def this(rank: int): PolyMatBuilder{self.rank==rank} {
         super(rank+1);
         property(rank);
     }
@@ -41,7 +40,7 @@ class PolyMatBuilder(rank: int) extends MatBuilder {
      */
 
     public def toSortedPolyMat(isSimplified:boolean): PolyMat(rank) {
-        mat.sort(PolyRow.compare.(Row,Row));
+        mat.sort((x:Row,y:Row)=>PolyRow.compare(x,y));
         val result = new PolyMat(mat.size(), rank+1, (i:Int,j:Int)=>mat(i)(j), isSimplified);
         return result as PolyMat(rank); // XXXX
     }
@@ -67,7 +66,7 @@ class PolyMatBuilder(rank: int) extends MatBuilder {
 
     public def add(var coeff: int, op: int, k: int): void {
         coeff += ZERO;
-        val as_ = Rail.make[int](rank+1);
+        val as_ = new Rail[int](rank+1);
         for (var i: int = 0; i<rank; i++) {
             val a = (coeff&3) - 2;
             as_(i) = op==LE? a : - a;
@@ -77,3 +76,4 @@ class PolyMatBuilder(rank: int) extends MatBuilder {
         add((i:Int) => as_(i));
     }
 }
+type PolyMatBuilder(rank:Int) = PolyMatBuilder{self.rank==rank};

@@ -17,6 +17,7 @@ import polyglot.util.CodeWriter;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import polyglot.visit.*;
+import x10.errors.Errors;
 
 /**
  * A <code>LocalDecl</code> is an immutable representation of the declaration
@@ -140,20 +141,6 @@ public abstract class LocalDecl_c extends Stmt_c implements LocalDecl {
         return reconstruct(flags, type, name, init);
     }
 
-    /**
-     * Add the declaration of the variable as we enter the scope of the
-     * intializer.
-     * In Java and X10 you can write this code:
-     * int i= (i=2)+4; int i= (i=2)+i, j=3+i+(j=2);
-     * var i:Int = (i=2)+4;
-     */
-    public Context enterChildScope(Node child, Context c) {
-        if (child == init) {
-            c = c.pushBlock();
-            addDecls(c);
-        }
-        return super.enterChildScope(child, c);
-    }
 
     public void addDecls(Context c) {
         // Add the declaration of the variable in case we haven't already done
@@ -161,7 +148,7 @@ public abstract class LocalDecl_c extends Stmt_c implements LocalDecl {
         c.addVariable(li.asInstance());
     }
 
-    public Node buildTypes(TypeBuilder tb) throws SemanticException {
+    public Node buildTypes(TypeBuilder tb) {
         LocalDecl_c n = (LocalDecl_c) super.buildTypes(tb);
         TypeSystem ts = tb.typeSystem();
 
@@ -173,7 +160,7 @@ public abstract class LocalDecl_c extends Stmt_c implements LocalDecl {
      * Override superclass behavior to check if the variable is multiply
      * defined.
      */
-    public NodeVisitor typeCheckEnter(TypeChecker tc) throws SemanticException {
+    public NodeVisitor typeCheckEnter(TypeChecker tc) {
         // Check if the variable is multiply defined.
         // we do it in type check enter, instead of type check since
         // we add the declaration before we enter the scope of the
@@ -190,16 +177,17 @@ public abstract class LocalDecl_c extends Stmt_c implements LocalDecl {
         }
 
         if (outerLocal != null && c.isLocal(li.name())) {
-            throw new SemanticException("Local variable \"" + name + "\" multiply defined. Previous definition at " + outerLocal.position() + ".", position());
+            Errors.issue(tc.job(),
+                    new SemanticException("Local variable \"" + name + "\" multiply defined. Previous definition at " + outerLocal.position() + ".", position()));
         }
 
         return super.typeCheckEnter(tc);
     }
 
     /** Type check the declaration. */
-    public abstract Node typeCheck(ContextVisitor tc) throws SemanticException;
+    public abstract Node typeCheck(ContextVisitor tc);
 
-    public Node checkConstants(ContextVisitor tc) throws SemanticException {
+    public Node checkConstants(ContextVisitor tc) {
         if (init == null || ! init.isConstant() || ! li.flags().isFinal()) {
             li.setNotConstant();
         }
@@ -209,8 +197,6 @@ public abstract class LocalDecl_c extends Stmt_c implements LocalDecl {
 
         return this;
     }
-
-    public abstract Type childExpectedType(Expr child, AscriptionVisitor av);
 
     public abstract String toString();
 

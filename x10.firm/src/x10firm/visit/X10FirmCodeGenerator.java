@@ -72,6 +72,7 @@ import polyglot.ast.Unary_c;
 import polyglot.ast.While_c;
 import polyglot.frontend.Compiler;
 import polyglot.types.ConstructorInstance;
+import polyglot.types.Context;
 import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
@@ -126,7 +127,6 @@ import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorDef;
 import x10.types.X10ConstructorInstance;
-import x10.types.X10Context_c;
 import x10.types.X10Def;
 import x10.types.X10FieldInstance;
 import x10.types.X10MethodDef;
@@ -181,7 +181,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private Node returnNode;
 
 	/** X10 Context */
-	private X10Context_c x10Context = null;
+	private Context x10Context = null;
 
 	/** Our firm type system */
 	private final FirmTypeSystem firmTypeSystem;
@@ -227,7 +227,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		phiBlock.addPred(jmp1);
 		phiBlock.addPred(jmp2);
 		phiBlock.mature();
-		
+
 		con.setCurrentBlock(phiBlock);
 		return con.newPhi(new Node[]{one, zero}, mode);
 	}
@@ -275,7 +275,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		this.x10TypeSystem = x10TypeSystem;
 		this.xnf = nodeFactory;
 		this.query      = new X10ASTQuery(translator);
-		this.x10Context = new X10Context_c(x10TypeSystem);
+		this.x10Context = new Context(x10TypeSystem);
 
 		X10NameMangler.setup(x10TypeSystem);
 	}
@@ -320,16 +320,16 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private static final class GenericNodeInstance {
 		private final polyglot.ast.Node node;
 		private final ParameterTypeMapping mapping;
-		
+
 		public GenericNodeInstance(final polyglot.ast.Node node, final ParameterTypeMapping mapping) {
 			this.node = node;
 			this.mapping = mapping;
 		}
-		
+
 		public polyglot.ast.Node getNode() {
 			return node;
 		}
-		
+
 		public ParameterTypeMapping getMapping() {
 			return mapping;
 		}
@@ -351,28 +351,28 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		public int hashCode() {
 			return node.hashCode();
 		}
-		
+
 		@Override
 		public boolean equals(Object other) {
 			if (other.getClass() != this.getClass())
 				return false;
-			
+
 			final GenericNodeInstance rhs = (GenericNodeInstance) other;
 			return getDef() == rhs.getDef() && mapping.equals(rhs.mapping);
 		}
-		
+
 		@Override
 		public String toString() {
 			return node.toString() + " WITH " + mapping.toString();
 		}
 	}
-	
+
 	// This queue holds a list of nodes (either MethodDecls or ClassDecls)
 	// and their corresponding mapping of parameter types.
 	private Queue<GenericNodeInstance> workList = new LinkedList<GenericNodeInstance>();
-	
+
 	private void addToWorklist(GenericNodeInstance other) {
-		// Check for duplicates.		
+		// Check for duplicates.
 		for (GenericNodeInstance gi : workList)
 			if (gi.equals(other))
 				return;
@@ -417,33 +417,33 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		firmContext = firmContext.popFirmContext();
 	}
-	
+
 	private void createStructTypeNameMethodBody(final X10ClassDecl clazz, final MethodDecl_c meth) {
 		X10MethodDef def              = (X10MethodDef)meth.methodDef();
 		final MethodInstance methInstance = def.asInstance();
 		final Position pos = Position.COMPILER_GENERATED;
-		
+
 		// remove the native flag
 		def.setFlags(def.flags().clearNative());
-		
+
         List<Stmt> statements = new ArrayList<Stmt>();
-        
+
         // generate -> return "[packageName].ClassName";
         final Expr str = xnf.StringLit(pos, clazz.classDef().fullName().toString()).type(x10TypeSystem.String());
         final Return ret = xnf.X10Return(pos, str, false);
         statements.add(ret);
 
         final polyglot.ast.Block block = xnf.Block(pos, statements);
-        
+
         final Entity entity = firmTypeSystem.getMethodEntity(methInstance);
 
-        final OOConstruction savedConstruction = initConstruction(entity, methInstance.formalNames(), 
+        final OOConstruction savedConstruction = initConstruction(entity, methInstance.formalNames(),
         		new LinkedList<LocalInstance>(),
 				def.flags().isStatic(), methInstance, clazz.classDef().asType());
-        
+
         // Now generate the firm graph
         visitAppropriate(block);
-        
+
         finishConstruction(entity, savedConstruction);
 	}
 
@@ -462,13 +462,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 					final X10MethodDef def              = (X10MethodDef)meth.methodDef();
 					final MethodInstance methodInstance = def.asInstance();
 					final String name = methodInstance.name().toString();
-					
+
 					if(name.equals("typeName") && def.formalNames().size() == 0) {
 						createStructTypeNameMethodBody(n, meth);
 						continue;
 					}
 				}
-				
+
 				/* DELETE ME END: */
 				visitAppropriate(member);
 			}
@@ -960,7 +960,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			return meth;
 
 		final X10ClassType contType = (X10ClassType)field.container();
-		final X10ClassDef contDef = (X10ClassDef)contType.def();
+		final X10ClassDef contDef = contType.def();
 
 		final Position pos = Position.COMPILER_GENERATED;
 		// Create the method for accessing the field
@@ -986,7 +986,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final FieldDef fieldDef = dec.fieldDef();
 		final FieldInstance fieldInst = fieldDef.asInstance();
 		final X10ClassType contType = (X10ClassType)fieldInst.container();
-		final X10ClassDef contDef = (X10ClassDef)contType.def();
+		final X10ClassDef contDef = contType.def();
 
 		final Position pos = Position.COMPILER_GENERATED;
 		// Create a new static value for the given field for holding the status of the initialization
@@ -1696,7 +1696,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			bAfter.addPred(endIf);
 
 		bAfter.mature();
-		
+
 		if(!con.getCurrentBlock().isBad())
 			con.setCurrentBlock(bAfter);
 	}
@@ -1739,7 +1739,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			final List<ParameterType> paramTypes = ((X10MethodDef) methodInstance.def()).typeParameters();
 			final List<Type> actualTypes = methodInstance.typeParameters();
 			assert (actualTypes.size() == decl.typeParameters().size());
-			
+
 			ParameterTypeMapping ptm = new ParameterTypeMapping();
 			addToMapping(ptm, paramTypes, actualTypes);
 
@@ -1751,7 +1751,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			// method on.
 			if (n.target() != null && x10TypeSystem.isClass(n.target().type())) {
 				X10ClassType ct = (X10ClassType) Types.stripConstraints(n.target().type());
-				X10ClassDef def = (X10ClassDef) ct.def();
+				X10ClassDef def = ct.def();
 
 				final List<ParameterType> cParamTypes = def.typeParameters();
 				final List<Type> cActualTypes = ct.typeArguments();
@@ -1829,7 +1829,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			setReturnNode(ret);
 		}
 	}
-	
+
 	/**
 	 * Returns the appropriate sel node from the current frame for a given entity
 	 * @param entity The entity for which the sel node from the current frame should be returned
@@ -1846,7 +1846,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final LocalInstance loc = n.localInstance();
 
 		final X10VarEntry var = firmContext.getVarEntry(loc);
-		
+
 		assert(var != null);
 
 		if(var.getType() == X10VarEntry.STRUCT) {
@@ -2184,7 +2184,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
         }
 		return ret;
 	}
-	
+
 	private Expr transformArgument(final Type fType, final Expr arg) {
 		Expr ret = arg;
 		if (!x10TypeSystem.typeEquals(fType, arg.type(), x10Context))
@@ -2250,7 +2250,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		assert arguments.size() == paramCount : "parameters are off : "+ arguments.size() + " vs " + paramCount;
 		Node[] parameters = new Node[paramCount];
 
-		for (int i = 0; i < paramCount; i++) 
+		for (int i = 0; i < paramCount; i++)
 			parameters[i] = visitExpression(arguments.get(i));
 
 		final Node address = (isStaticBinding) ? con.newSymConst(entity) : con.newSel(parameters[0], entity);
@@ -2490,7 +2490,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(LocalTypeDef_c n) {
 		// DO NOTHING
 	}
-	
+
 	@Override
 	public void visit(Closure_c n) {
 		throw new RuntimeException("Closure should have been desugared earlier");

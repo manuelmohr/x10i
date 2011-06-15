@@ -58,7 +58,6 @@ public class MethodSynth extends AbstractStateSynth implements IClassMemberSynth
     List<Formal> formals;
     X10MethodDef methodDef; //only be created once;
     X10MethodDecl methodDecl; //only be created once;
-    XTerm placeTerm;
     
     
     public MethodSynth(NodeFactory xnf, Context xct, Position pos, ClassDef classDef, Name methodName,
@@ -87,7 +86,6 @@ public class MethodSynth extends AbstractStateSynth implements IClassMemberSynth
                 formalTypeRefs 
                 );//this constructor will not set formal names
         methodDef.setThisDef(((X10ClassDef) classDef).thisDef());
-        placeTerm = PlaceChecker.methodPT(flags, classDef);
         methodDef.setFormalNames(formalNames);
         classDef.addMethod(methodDef);
         
@@ -170,7 +168,7 @@ public class MethodSynth extends AbstractStateSynth implements IClassMemberSynth
      * @param name
      * @return
      */
-    public Expr addFormal(Position pos, Flags flags, Type type, Name name){
+    public Local addFormal(Position pos, Flags flags, Type type, Name name){
         TypeSystem xts = (TypeSystem) xct.typeSystem();
         LocalDef lDef = xts.localDef(pos, flags, Types.ref(type), name);
         Formal f = xnf.Formal(pos,
@@ -181,7 +179,7 @@ public class MethodSynth extends AbstractStateSynth implements IClassMemberSynth
     }
     
 
-    public Expr addFormal(Formal formal) {
+    public Local addFormal(Formal formal) {
         try {
             checkClose();
             ArrayList<LocalDef> formalNames = new ArrayList<LocalDef>(methodDef.formalNames());
@@ -243,7 +241,12 @@ public class MethodSynth extends AbstractStateSynth implements IClassMemberSynth
         FlagsNode flagNode = xnf.FlagsNode(pos, methodDef.flags());
         TypeNode returnTypeNode = xnf.CanonicalTypeNode(pos, methodDef.returnType());
         
-        Block block = codeBlockSynth.close();
+        Block block;
+        if (methodDef.flags().isAbstract()) {
+            block = null;
+        } else {
+            block = codeBlockSynth.close();
+        }
         methodDecl = (X10MethodDecl) xnf.MethodDecl(pos, flagNode, returnTypeNode, xnf.Id(pos, methodDef.name()), 
                 formals, block);
 
@@ -268,7 +271,6 @@ public class MethodSynth extends AbstractStateSynth implements IClassMemberSynth
         	methodDecl = methodDecl.typeParameters(tpNodes);
         }
 
-        ((X10MethodDecl_c) methodDecl).placeTerm = placeTerm;
         methodDecl = (X10MethodDecl) methodDecl.methodDef(methodDef); //Need set the method def to the method instance
         
         return methodDecl;

@@ -28,6 +28,7 @@ import polyglot.ast.Expr;
 import polyglot.ast.Field;
 import polyglot.ast.FieldAssign;
 import polyglot.ast.FloatLit;
+import polyglot.ast.For;
 import polyglot.ast.Formal;
 import polyglot.ast.Id;
 import polyglot.ast.IntLit;
@@ -97,6 +98,7 @@ import x10.constraint.XVar;
 import x10.emitter.Emitter;
 import x10.extension.X10Ext;
 import x10.extension.X10Ext_c;
+import x10.optimizations.ForLoopOptimizer;
 import x10.types.AsyncInstance;
 import x10.types.AtInstance;
 import x10.types.ClosureDef;
@@ -104,12 +106,14 @@ import x10.types.ConstrainedType;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 import x10.types.MethodInstance;
+import x10.types.X10FieldInstance;
 import x10.types.X10ParsedClassType;
 
 import x10.types.checker.Converter;
 import x10.types.checker.PlaceChecker;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.XConstrainedTerm;
+import x10.util.AltSynthesizer;
 import x10.util.ClosureSynthesizer;
 import x10.util.Synthesizer;
 import x10.util.synthesizer.InstanceCallSynth;
@@ -126,9 +130,11 @@ import x10.visit.Desugarer.Substitution;
  */
 public class Lowerer extends ContextVisitor {
     private final Synthesizer synth;
+    private final AltSynthesizer altsynth;
     public Lowerer(Job job, TypeSystem ts, NodeFactory nf) {
         super(job, ts, nf);
         synth = new Synthesizer(nf, ts);
+        altsynth = new AltSynthesizer(ts, nf);
     }
 
     private static int count;
@@ -147,8 +153,8 @@ public class Lowerer extends ContextVisitor {
     private static final Name RUN_UNCOUNTED_ASYNC = Name.make("runUncountedAsync");
     private static final Name HOME = Name.make("home");
     private static final Name HERE_INT = Name.make("hereInt");
-    private static final Name NEXT = Name.make("next");
-    private static final Name RESUME = Name.make("resume");
+    private static final Name NEXT = Name.make("advanceAll");
+    private static final Name RESUME = Name.make("resumeAll");
     private static final Name DROP = Name.make("drop");
     private static final Name MAKE = Name.make("make");
     
@@ -228,8 +234,9 @@ public class Lowerer extends ContextVisitor {
 				Stmt assign = nf.Eval(pos, synth.makeAssign(pos, outerLdRef, Assign.ASSIGN, ldRef, xc));
 				block = block.prepend(assign);
 				block = block.prepend(ld);
-				Block drop = nf.Block(pos,nf.Eval(pos, new InstanceCallSynth(nf, xc, pos, outerLdRef, DROP).genExpr()));
-				Stmt stm1 = nf.Try(pos, block, Collections.<Catch>emptyList(), drop);
+				Eval drop = nf.Eval(pos, new InstanceCallSynth(nf, xc, pos, outerLdRef, DROP).genExpr());
+	            Expr cond = nf.Binary(pos, outerLdRef, X10Binary_c.NE, nf.NullLit(pos).type(ts.Null())).type(ts.Boolean());
+				Stmt stm1 = nf.Try(pos, block, Collections.<Catch>emptyList(), nf.Block(pos, nf.If(pos, cond, drop)));
 				Node result = visitEdgeNoOverride(parent, nf.Block(pos, outerLd, nf.Finish(pos, stm1, false)));
 				return result;
 			} catch (SemanticException z) {
@@ -345,15 +352,10 @@ public class Lowerer extends ContextVisitor {
     }
 
     Expr getPlace(Position pos, Expr place) throws SemanticException{
-    	if (! ts.isImplicitCastValid(place.type(), ts.Place(), context())) {
-            	place = synth.makeInstanceCall(pos, place, ts.homeName(),
-            			Collections.<TypeNode>emptyList(),
-            			Collections.<Expr>emptyList(),
-            			ts.Place(),
-            			Collections.<Type>emptyList(),
-            			context());
-            }
-    	return place;
+        if (! ts.isImplicitCastValid(place.type(), ts.Place(), context())) {
+            throw new InternalCompilerError("The place argument of an \"at\" is not of type Place", place.position());
+        }
+        return place;
     }
 
     private Expr visitRemoteClosure(Closure c, Name implName, Expr place) throws SemanticException {
@@ -364,7 +366,7 @@ public class Lowerer extends ContextVisitor {
         ClosureDef cDef = c.closureDef().position(bPos);
         Expr closure = nf.Closure(c, bPos)
             .closureDef(cDef)
-        	.type(ClosureSynthesizer.closureAnonymousClassDef( ts, cDef).asType());
+        	.type(cDef.classDef().asType());
         List<Expr> args = new ArrayList<Expr>(Arrays.asList(new Expr[] { place, closure }));
         List<Type> mArgs = new ArrayList<Type>(Arrays.asList(new Type[] {
             ts.Place(), cDef.asType()
@@ -535,7 +537,7 @@ public class Lowerer extends ContextVisitor {
             if (!PlaceChecker.isAtPlace(r, p, xContext()))
                 return null;
     */
-            ClassType RemoteOperation = (ClassType) ts.typeForName(REMOTE_OPERATION);
+            ClassType RemoteOperation = (ClassType) ts.forName(REMOTE_OPERATION);
             Position pos = a.position();
             List<Expr> args = new ArrayList<Expr>();
             Expr p1 = (Expr) leaveCall(null, q, this);
@@ -558,7 +560,7 @@ public class Lowerer extends ContextVisitor {
             if (!PlaceChecker.isAtPlace(r, p, xContext()))
                 return null;
     */
-            ClassType RemoteOperation = (ClassType) ts.typeForName(REMOTE_OPERATION);
+            ClassType RemoteOperation = (ClassType) ts.forName(REMOTE_OPERATION);
             Position pos = a.position();
             List<Expr> args = new ArrayList<Expr>();
             Expr p1 = (Expr) leaveCall(null, p, this);
@@ -651,9 +653,9 @@ public class Lowerer extends ContextVisitor {
     private Stmt makeUncountedAsyncBody(Position pos, List<Expr> exprs, List<Type> types, Stmt body,
             List<VarInstance<? extends VarDef>> env) throws SemanticException {
         Closure closure = synth.makeClosure(body.position(), ts.Void(), synth.toBlock(body), context());
+        closure.closureDef().setCapturedEnvironment(env);
         CodeInstance<?> mi = findEnclosingCode(Types.get(closure.closureDef().methodContainer()));
         closure.closureDef().setMethodContainer(Types.ref(mi));
-        closure.closureDef().setCapturedEnvironment(env);
         exprs.add(closure);
         types.add(closure.closureDef().asType());
         Stmt result = nf.Eval(pos,
@@ -670,16 +672,16 @@ public class Lowerer extends ContextVisitor {
         return call(pos, HOME, ts.Place());
     }
 
-    // next; -> Runtime.next();
+    // next; -> Clock.advanceAll(); (deprecated)
     private Stmt visitNext(Next n) throws SemanticException {
         Position pos = n.position();
-        return nf.Eval(pos, call(pos, NEXT, ts.Void()));
+        return nf.Eval(pos, synth.makeStaticCall(pos, ts.Clock(), NEXT, ts.Void(), context()));
     }
     
-    // next; -> Runtime.next();
+    // resume; -> Clock.resumeAll(); (deprecated)
     private Stmt visitResume(Resume n) throws SemanticException {
         Position pos = n.position();
-        return nf.Eval(pos, call(pos, RESUME, ts.Void()));
+        return nf.Eval(pos, synth.makeStaticCall(pos, ts.Clock(), RESUME, ts.Void(), context()));
     }
 
     // atomic S; -> try { Runtime.enterAtomic(); S } finally { Runtime.exitAtomic(); }
@@ -698,9 +700,7 @@ public class Lowerer extends ContextVisitor {
         type = Types.baseType(type);
         if (ts.isBoolean(type)) {
             Type t = ts.Boolean();
-            try {
-                t = Types.addSelfBinding(t, val ? ts.TRUE() : ts.FALSE());
-            } catch (XFailure e) { }
+            t = Types.addSelfBinding(t, val ? ts.TRUE() : ts.FALSE());
             return nf.BooleanLit(pos, val).type(t);
         } else
             throw new InternalCompilerError(pos, "Unknown literal type: "+type);
@@ -753,7 +753,7 @@ public class Lowerer extends ContextVisitor {
         if (!Emitter.hasAnnotation(ts, f, IMMEDIATE))
             return null;
         Position pos = f.position();
-        ClassType target = (ClassType) ts.typeForName(REMOTE_OPERATION);
+        ClassType target = (ClassType) ts.forName(REMOTE_OPERATION);
         List<Expr> args = new ArrayList<Expr>();
         return nf.Block(pos, f.body(), nf.Eval(pos, synth.makeStaticCall(pos, target, FENCE, args, ts.Void(), context())));
     }
@@ -998,7 +998,8 @@ public class Lowerer extends ContextVisitor {
             else{ 
                 //implement interface case
                 for (Type t : ts.interfaces(thisType)) {
-                    ClassType baseType = ((X10ParsedClassType)t).def().asType();
+                	t = Types.baseType(t);
+                    ClassType baseType = ((ClassType) t).def().asType();
                     if(ts.isReducible(baseType)){
                         reducerTypeWithGenericType = (X10ParsedClassType) t;
                         break;
@@ -1058,9 +1059,8 @@ public class Lowerer extends ContextVisitor {
         Expr domain = a.domain();
         Type dType = domain.type();
         if (ts.isX10DistArray(dType)) {
-            FieldInstance fDist = dType.toClass().fieldNamed(DIST);
-            dType = fDist.type();
-            domain = nf.Field(pos, domain, nf.Id(pos, DIST)).fieldInstance(fDist).type(dType);
+            domain = altsynth.createFieldRef(pos, domain, DIST);
+            dType = domain.type();
         }
         LocalDef lDef = ts.localDef(pos, ts.Final(), Types.ref(dType), tmp);
         LocalDecl local = nf.LocalDecl(pos, nf.FlagsNode(pos, ts.Final()),
@@ -1100,11 +1100,18 @@ public class Lowerer extends ContextVisitor {
         Stmt body1 = async(bpos, inner, a.clocks(),
                 nf.Local(bpos, nf.Id(bpos, pTmp)).localInstance(pDef.asInstance()).type(pType),
                 null, env1);
+        Stmt outer = nf.ForLoop(pos, pFormal, places, body1);
+
+        // TODO: Instead of creating ForLoop's and then removing them, 
+        //       change the code above to create simple For's in the first place.
+        ForLoopOptimizer flo = new ForLoopOptimizer(job, ts, nf);
+        For newLoop = (For)outer.visit(((ContextVisitor)flo.begin()).context(context()));
+        
         return nf.Block(pos, 
         		nf.Eval(pos, call(pos, ENSURE_NOT_IN_ATOMIC, ts.Void())),
         		local, 
-        		nf.ForLoop(pos, pFormal, places, body1));
-    }
+        		newLoop);
+     }
 
     private Stmt visitEval(Eval n) throws SemanticException {
         Position pos = n.position();

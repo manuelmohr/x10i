@@ -18,16 +18,16 @@ import x10.compiler.NonEscaping;
 /**
  * The base class for all reference classes.
  */
-@NativeRep("java", "java.lang.Object", null, "x10.rtt.Types.OBJECT")
+// Fix for XTENLANG-1916
+@NativeRep("java", "x10.core.RefI", null, "x10.rtt.Types.OBJECT")
 @NativeRep("c++", "x10aux::ref<x10::lang::Object>", "x10::lang::Object", null)
-public class Object 
-        implements Any 
-{
+public class Object {
+
     /**
      * Default constructor.
      */
     // (for java) Note: new x10.lang.Object() returns x10.core.Ref instead of java.lang.Object  
-    @Native("java", "new x10.core.Ref()")
+    @Native("java", "x10.core.Ref.$make()")
     public native def this();
 
     /**
@@ -39,9 +39,9 @@ public class Object
      * @param that the given entity
      * @return true if this object is equal to the given entity.
      */
-    @Native("java", "#0.equals(#1)")
+    @Native("java", "#this.equals(#that)")
     @Native("c++", "(#this)->equals(#that)")
-    public native def equals(that:Any): boolean;
+    public native def equals(that:Any): Boolean;
 
     /**
      * Return the default (implementation-defined) hash code of this object. The method
@@ -52,7 +52,7 @@ public class Object
      * @seeAlso x10.lang.Any
      * @return the hash code of this object.
      */
-    @Native("java", "#0.hashCode()")
+    @Native("java", "#this.hashCode()")
     @Native("c++", "(#this)->hashCode()")
     public native def hashCode() : Int;
 
@@ -67,7 +67,7 @@ public class Object
      *
      * @return a string representation of this object.
      */
-    @Native("java", "#0.toString()")
+    @Native("java", "#this.toString()")
     @Native("c++", "(#this)->toString()")
     public native def toString() : String;
 
@@ -76,8 +76,8 @@ public class Object
      *
      * @return a string representation of the run-time type of this object.
      */
-    @Native("java", "x10.rtt.Types.typeName(#0)")
+    @Native("java", "x10.rtt.Types.typeName(#this)")
     @Native("c++", "x10aux::type_name(#this)")
-    @NonEscaping("")
+    @NonEscaping
     public native final def typeName():String;
 }

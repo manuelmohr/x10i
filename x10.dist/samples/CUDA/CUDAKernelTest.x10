@@ -1,4 +1,3 @@
-
 /*
  *  This file is part of the X10 project (http://x10-lang.org).
  *
@@ -24,12 +23,12 @@ public class CUDAKernelTest {
         val remote = CUDAUtilities.makeRemoteArray[Float](p,len,(Int)=>0.0 as Float); // allocate 
 
         finish async at (p) @CUDA {
-            finish for ([block] in 0..7) async {
-                clocked finish for ([thread] in 0..63) clocked async {
+            finish for (block in 0..7) async {
+                clocked finish for (thread in 0..63) clocked async {
                     val tid = block*64 + thread;
                     val tids = 8*64;
                     for (var i:Int=tid ; i<len ; i+=tids) {
-                        remote(i) = Math.sqrt(@NoInline init(i));
+                        remote(i) = Math.sqrtf(@NoInline init(i));
                     }
                 }
             }
@@ -61,18 +60,18 @@ public class CUDAKernelTest {
         val arr2 = new Array[Int](64);
 
         finish async at (p) @CUDA @CUDADirectParams {
-            finish for ([block] in 0..1) async {
+            finish for (block in 0..1) async {
                 val shm1 = new Array[Float](arr1);
                 val shm2 = new Array[Int](64, (x:Int)=>{val tmp = x+10; return tmp;});
                 val shm3 = new Array[Int](64, 0);
                 val shm4 = new Array[Float](64, (Int)=>0.0f);
-                clocked finish for ([thread] in 0..63) clocked async {
+                clocked finish for (thread in 0..63) clocked async {
                     shm1(thread) = thread;
-                    next;
+                    Clock.advanceAll();
                     shm2(thread) = @NoInline shm1(63-thread) as Int;
-                    next;
+                    Clock.advanceAll();
                     shm3(thread) = @NoInline shm2(63-thread);
-                    next;
+                    Clock.advanceAll();
                     remote(thread) = @NoInline shm3(63-thread);
                 }
             }
@@ -109,8 +108,8 @@ public class CUDAKernelTest {
 
         finish async at (p) @CUDA @CUDADirectParams {
             val ccache = arr1.sequence();
-            finish for ([block] in 0..(blocks-1)) async {
-                clocked finish for ([thread] in 0..(threads-1)) clocked async {
+            finish for (block in 0..(blocks-1)) async {
+                clocked finish for (thread in 0..(threads-1)) clocked async {
                     remote(threads*block + thread) = @NoInline ccache(thread);
                 }
             }

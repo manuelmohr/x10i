@@ -12,6 +12,7 @@
 package x10.constraint;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * A representation of a Field.
@@ -22,23 +23,36 @@ public class XField<T> extends XVar {
 
     public XVar receiver;
     public T field;
+    public  boolean hasEQV;
     
     // used by XPromise_c to determine if this field should occur in the output
     // representation of a constraint or not. hidden true for fake fields.
     private boolean hidden;
 
-    protected XField(XVar receiver, T field) {
+    public XTerm accept(TermVisitor visitor) {
+        XTerm res = visitor.visit(this);
+        if (res!=null) return res;
+        XVar newReceiver = (XVar) receiver.accept(visitor);
+        if (newReceiver==receiver) return this;
+        XField<T> newThis = (XField<T>) this.clone();
+        newThis.receiver = newReceiver;
+        return newThis;
+    }
+
+    public XField(XVar receiver, T field) {
         this(receiver, field, false);
     }
 
-    protected XField(XVar receiver, T field, boolean hidden) {
+    public XField(XVar receiver, T field, boolean hidden) {
         super();
         this.receiver = receiver;
         this.field = field;
         this.hidden = hidden;
+        this.hasEQV = receiver.hasEQV();
     }
 
     public boolean isHidden() { return hidden; }
+    @Override public boolean hasEQV(){ return hasEQV;}
 
     public XTermKind kind() { return XTermKind.FIELD_ACCESS; }
 
@@ -53,9 +67,14 @@ public class XField<T> extends XVar {
         }
         XField<T> result = clone();
         result.receiver = newReceiver;
+        result.hasEQV = newReceiver.hasEQV();
         return result;
     }
 
+
+    public boolean okAsNestedTerm() {
+    	return true;
+    }
     public List<XEQV> eqvs() {
         return receiver().eqvs();
     }
@@ -64,9 +83,30 @@ public class XField<T> extends XVar {
         return field;
     }
 
-    public XField<T> copy(XVar newReceiver) {
+    /** 
+     * if this is r.f, then return newReceiver.f.
+     * @param newReceiver
+     * @return
+     */
+    public XField<T> copyReceiver(XVar newReceiver) {
+    	if (newReceiver == receiver)
+    		return this;
         return new XField<T>(newReceiver, field, hidden);
     }
+    /** If this is r.f1.f2..fn, then return newRoot.f1.f2...fn.
+     * 
+     * @param newRoot
+     * @return
+     
+    public XField<T> copyRoot(XVar newRoot) {
+        if (receiver instanceof XField) {
+            XVar newReceiver = ((XField<?>) receiver).copyRoot(newRoot);
+            return copyReceiver(newReceiver);
+        }
+        // replace the root.
+        return copyReceiver(newRoot);
+    }
+    */
     public String name() {
         return field.toString();
     }
@@ -97,11 +137,6 @@ public class XField<T> extends XVar {
         return (receiver == null ? "" : receiver.toString() + ".") + field;
     }
 
-    public boolean hasEQV() {
-        if (receiver() == null)
-            assert false;
-        return receiver().hasEQV();
-    }
 
     @SuppressWarnings("unchecked")
     @Override
@@ -126,19 +161,6 @@ public class XField<T> extends XVar {
         return vars[0];
     }
 
-  /*  public boolean prefixes(XTerm t) {
-        if (equals(t))
-            return true;
-        if (!(t instanceof XVar))
-            return false;
-        XVar[] vars = ((XVar) t).vars();
-        boolean result = false;
-        for (int i = 0; (!result) && i < vars.length; i++) {
-            result = equals(vars[i]);
-        }
-        return result;
-    }
-*/
     @SuppressWarnings("unchecked")
     protected void initVars() {
         int count = 0;
@@ -152,4 +174,21 @@ public class XField<T> extends XVar {
                 f = ((XField<T>) f).receiver();
         }
     }
+    @Override
+	public XPromise nfp(XConstraint c) {
+		assert c != null;
+		XPromise root =  receiver.nfp(c);
+		root.ensureFields();
+		Map<Object, XPromise>  map = root.fields(); 
+		assert map != null;
+		XPromise entry = map.get(field);
+		if (entry == null) {
+			entry = new XPromise(this);
+			map.put(field, entry);
+			return entry;
+		}
+		entry = entry.lookup();
+		return entry;
+    }
+   
 }

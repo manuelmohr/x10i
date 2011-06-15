@@ -3,6 +3,7 @@
  */
 package x10.types.constraints;
 
+import polyglot.ast.Typed;
 import polyglot.types.Def;
 import polyglot.types.FieldDef;
 import polyglot.types.LocalDef;
@@ -22,23 +23,36 @@ import x10.types.X10MethodDef;
  * An XField with type information (either a MethodDef or a FieldDef).
  * 
  * @author vj
- *
  */
-public class CField  extends XField<Def> {
-    final String string;
+public class CField extends XField<Def> implements Typed {
+    // lazily initialized
+    private String string;
+    private String getString() {
+        if (string == null) {
+            if (field instanceof MethodDef) {
+                MethodDef fi = (MethodDef)field;
+                string = fi.name().toString() + "()";
+               // string = Types.get(fi.container()) + "#" + fi.name().toString()+ "()";
+            } else {
+                FieldDef fi = (FieldDef)field;
+                string = fi.name().toString();
+               // string = Types.get(fi.container()) + "#" + fi.name().toString();
+            }
+        }
+        return string;
+    }
+    
     public CField(XVar r, MethodDef fi) {
         this(r, fi, false);
     }
     public CField(XVar r, MethodDef fi, boolean hidden) {
         super(r, fi, hidden);
-        this.string = Types.get(fi.container()) + "#" + fi.name().toString()+ "()";
     }
     public CField(XVar r, FieldDef fi) {
         this(r, fi, false);
     }
     public CField(XVar r, FieldDef fi, boolean hidden) {
         super(r, fi, hidden);
-        this.string = Types.get(fi.container()) + "#" + fi.name().toString();
     }
   
     /**
@@ -46,10 +60,11 @@ public class CField  extends XField<Def> {
      * (In particular the new CField has the same Def information as the old CField.)
      */
     @Override
-    public CField copy(XVar newReceiver) {
+    public CField copyReceiver(XVar newReceiver) {
         return field instanceof MethodDef ? new CField(newReceiver, (MethodDef) field)
         : new CField(newReceiver, (FieldDef) field);
     }
+    
     /**
      * Return the Def associated with this field.
      * @return
@@ -79,7 +94,7 @@ public class CField  extends XField<Def> {
   
     @Override
     public String toString() {
-        return (receiver == null ? "" : receiver.toString() + ".") + string;
+        return (receiver == null ? "" : receiver.toString() + ".") + getString();
     }
     
 }

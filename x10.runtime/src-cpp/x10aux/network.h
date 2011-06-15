@@ -20,8 +20,12 @@
 
 namespace x10 { namespace lang { class VoidFun_0_0; } }
 namespace x10 { namespace lang { class Reference; } }
+namespace x10 { namespace lang { class String; } }
+namespace x10 { namespace util { template <class K, class V> class HashMap; } }
 
 namespace x10aux {
+
+    extern x10_int num_local_cores;
 
     typedef x10_short serialization_id_t;
 
@@ -77,6 +81,25 @@ namespace x10aux {
         x10rt_remote_free(p, ptr);
     }
 
+    extern x10rt_remote_op_params *opv;
+    extern size_t opc;
+    extern size_t remote_op_batch;
+
+    inline void remote_op (x10rt_place place, x10rt_remote_ptr remote_addr,
+                           x10rt_op_type type, unsigned long long value)
+    {
+        opv[opc].dest = place;
+        opv[opc].dest_buf = remote_addr;
+        opv[opc].op = type;
+        opv[opc].value = value;
+        opc++;
+        if (opc == remote_op_batch) {
+            x10rt_remote_ops(opv,opc);
+            opc = 0;
+        }
+    }
+
+
     msg_type register_async_handler (const char *cubin=NULL, const char *kernel=NULL);
     msg_type register_put_handler (void);
     msg_type register_get_handler (void);
@@ -90,13 +113,8 @@ namespace x10aux {
     extern volatile x10_long serialized_bytes;
     extern volatile x10_long deserialized_bytes;
 
-    x10_int num_threads();
-
-    x10_int max_threads();
-
-    x10_boolean no_steals();
-
-    x10_boolean static_threads();
+    extern x10_int platform_max_threads;
+    extern x10_boolean default_static_threads;
 
     inline void shutdown() {
         _X_("X10RT shutdown starting");
@@ -109,6 +127,8 @@ namespace x10aux {
 #include <x10aux/ref.h>
 
 namespace x10aux {
+
+    x10aux::ref<x10::util::HashMap<x10aux::ref<x10::lang::String>,x10aux::ref<x10::lang::String> > > loadenv();
 
     void run_closure_at (place p, x10aux::ref<x10::lang::Reference> body);
     void run_async_at (place p, x10aux::ref<x10::lang::Reference> body, x10aux::ref<x10::lang::Reference> fs);

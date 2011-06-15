@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 import polyglot.ast.Binary;
 import polyglot.ast.Binary.Operator;
@@ -25,24 +28,30 @@ import polyglot.main.Reporter;
 import polyglot.util.ErrorInfo;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
+import polyglot.util.Transformation;
+import polyglot.util.TransformingList;
 import polyglot.visit.ContextVisitor;
 import x10.ast.HasZeroTest;
 import x10.ast.Here;
 import x10.ast.ParExpr;
 
 import x10.ast.SubtypeTest;
+import x10.constraint.XEQV;
 import x10.constraint.XFailure;
 import x10.constraint.XLit;
+import x10.constraint.XLocal;
 import x10.constraint.XTerm;
 import x10.constraint.XTerms;
 import x10.constraint.XVar;
 import x10.errors.Errors;
 import x10.errors.Errors.TypeIsMissingParameters;
 import x10.types.ConstrainedType;
+import x10.types.FunctionType;
 import x10.types.MacroType;
 import x10.types.MacroType_c;
 import x10.types.ParameterType;
 import x10.types.ParameterType.Variance;
+import x10.types.ThisDef;
 import x10.types.TypeParamSubst;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassDef_c;
@@ -52,6 +61,7 @@ import x10.types.X10Def;
 import x10.types.X10FieldDef;
 import x10.types.X10FieldInstance;
 import x10.types.MethodInstance;
+import x10.types.X10LocalDef;
 import x10.types.X10ParsedClassType;
 import x10.types.X10ParsedClassType_c;
 import x10.types.X10ProcedureDef;
@@ -59,10 +69,16 @@ import x10.types.X10ProcedureInstance;
 import x10.types.X10ThisVar;
 import x10.types.XTypeTranslator;
 import x10.types.constraints.CConstraint;
+import x10.types.constraints.CLocal;
+import x10.types.constraints.CTerms;
+import x10.types.constraints.QualifiedVar;
 import x10.types.constraints.SubtypeConstraint;
 import x10.types.constraints.TypeConstraint;
 import x10.types.constraints.XConstrainedTerm;
 import x10.types.matcher.Matcher;
+import x10.types.matcher.Subst;
+import x10.types.matcher.X10FieldMatcher;
+import x10.X10CompilerOptions;
 
 
 public class Types {
@@ -104,34 +120,27 @@ public class Types {
         return new LazyRef_c<T>(defaultValue, resolver);
     }
 
-	public static Type addBinding(Type t, XTerm t1, XTerm t2) throws XFailure {
+	public static Type addBinding(Type t, XTerm t1, XTerm t2) {
 		//assert (! (t instanceof UnknownType));
-	
-	        CConstraint c = Types.xclause(t);
-	        c = c == null ? new CConstraint() :c.copy();
-	        c.addBinding(t1, t2);
-	        return Types.xclause(Types.baseType(t), c);
-	
+	    CConstraint c = Types.xclause(t);
+	    c = c == null ? new CConstraint() :c.copy();
+	    c.addBinding(t1, t2);
+	    return Types.xclause(Types.baseType(t), c);
 	}
 
 	public static Type addBinding(Type t, XTerm t1, XConstrainedTerm t2) {
 	 	assert (! (t instanceof UnknownType));
-	    try {
-	        CConstraint c = new CConstraint();
-	        c.addBinding(t1, t2);
-	        return Types.xclause(t, c);
-	    }
-	    catch (XFailure f) {
-	        throw new InternalCompilerError("Cannot bind " + t1 + " to " + t2 + ".", f);
-	    }
+	 	CConstraint c = new CConstraint();
+	 	c.addBinding(t1, t2);
+	 	return Types.xclause(t, c);
 	}
 
-	public static Type addSelfBinding(Type t, XTerm t1) throws XFailure {
+	public static Type addSelfBinding(Type t, XTerm t1) {
 	    assert (! (t instanceof UnknownType));
-	        CConstraint c = Types.xclause(t);
-	        c = c == null ? new CConstraint() :c.copy();
-	        c.addSelfBinding(t1);
-	        return Types.xclause(Types.baseType(t), c); 
+	    CConstraint c = Types.xclause(t);
+	    c = c == null ? new CConstraint() :c.copy();
+	    c.addSelfBinding(t1);
+	    return Types.xclause(Types.baseType(t), c); 
 	}
 
 	/**
@@ -232,6 +241,24 @@ public class Types {
 	    }
 	    return t;
 	}
+	
+	public static List<FunctionType> functionTypes(Type t) {
+	    List<FunctionType> ans = new ArrayList<FunctionType>();
+	    Type bt = Types.baseType(t);
+	    if (bt instanceof FunctionType) {
+	        ans.add((FunctionType)bt);
+	    } else {
+	        TypeSystem ts = t.typeSystem();
+	        if (ts.isFunctionType(bt)) {
+	            X10ClassType ct = (X10ClassType)bt;
+	            for (Type i : ct.interfaces()) {
+	                if (i instanceof FunctionType)
+	                    ans.add((FunctionType)i);
+	            }
+	        }	        
+	    }
+	    return ans;
+	}
 
 	public static ConstrainedType constrainedType(Type base, CConstraint c) {
 		return new ConstrainedType((TypeSystem) base.typeSystem(), base.position(), ref(base),
@@ -295,30 +322,39 @@ public class Types {
 		return null;
 	}
 
+	public static SemanticException error(Type t) {
+	    t = baseType(t);
+	    if (t instanceof X10ClassType) {
+	        X10ClassType ct = (X10ClassType) t;
+	        return ct.error();
+	    }
+	    return null;
+	}
+
 	/**
 	 * Returns a new constraint that allows null.
 	 * E.g., given "{self.home==here, self!=null}" it returns "{self.home==here}"
 	 * @param c a constraint "c" that doesn't allow null
 	 * @return a new constraint with all the constraints in "c" except {self!=null}
 	 * 
-	 * TODO: Rewrite to use an XGraphVisitor.
+	 * TODO: this implementation is wrong, see XTENLANG-1380
 	 */
-	public static CConstraint allowNull(CConstraint c) {
-	    final XVar self = c.self();
-	    CConstraint res = new CConstraint(self);
-	    assert !res.disEntails(self,XTerms.NULL);
-	    for (XTerm term : c.constraints()) {
-	        CConstraint copy = res.copy();
-	        try {
-	            copy.addTerm(term);
-	        } catch (XFailure xFailure) {
-	            assert false : xFailure;
-	        }
-	        if (!copy.disEntails(self,XTerms.NULL))
-	            res = copy;
-	    }
-	    return res;
-	}
+//	public static CConstraint allowNull(CConstraint c) {
+//	    final XVar self = c.self();
+//	    CConstraint res = new CConstraint(self);
+//	    assert !res.disEntails(self,XTerms.NULL);
+//	    for (XTerm term : c.constraints()) {
+//	        CConstraint copy = res.copy();
+//	        try {
+//	            copy.addTerm(term);
+//	        } catch (XFailure xFailure) {
+//	            assert false : xFailure;
+//	        }
+//	        if (!copy.disEntails(self,XTerms.NULL))
+//	            res = copy;
+//	    }
+//	    return res;
+//	}
 
 	public static void checkMissingParameters(Receiver receiver) throws SemanticException {
 	    Type xt = receiver.type();
@@ -346,7 +382,7 @@ public class Types {
 	public static Type arrayElementType(Type t) {
 		t = baseType(t);
 		TypeSystem xt = (TypeSystem) t.typeSystem();
-		if (xt.isX10Array(t) || xt.isX10DistArray(t) || xt.isRail(t)) {
+		if (xt.isX10Array(t) || xt.isX10DistArray(t)) {
 			if (t instanceof X10ParsedClassType) {
 				Type result = ((X10ParsedClassType) t).typeArguments().get(0);
 				return result;
@@ -395,6 +431,10 @@ public class Types {
 
 	public static X10ClassDef_c getDef(Type t) {
 	    if (t==null) return null;
+	    // GOLDEN
+	    if (t.typeSystem().hasUnknown(t)) {
+	    	return null;
+	    }
 	    return (X10ClassDef_c) ((X10ParsedClassType_c)baseType(t)).def();
 	}
 
@@ -417,12 +457,15 @@ public class Types {
 	public static boolean isClass(Type t) {
 	    return (t instanceof X10ClassType);
 	}
+	public static boolean isConstrainedType(Type t) {
+        return (t instanceof ConstrainedType);
+    }
 
 	public static Type instantiateSelf(XTerm t, Type type) {
 	 	//assert (! (t instanceof UnknownType));
 		 CConstraint c = Types.xclause(type);
 	        if (! ((c==null) || c.valid())) {
-	        	CConstraint env = c = c.copy().instantiateSelf(t);
+	        	CConstraint env = c = c.instantiateSelf(t);
 	        	if (false && ! c.consistent()) {
 	        		throw new InternalCompilerError("X10TypeMixin: Instantiating self on " + type + " with " + t + " is inconsistent.");
 	        	}
@@ -562,14 +605,13 @@ public class Types {
 	    } else if (ts.isDouble(t)) {
 	        zeroLit = XTerms.ZERO_DOUBLE;
 	    } else if (ts.isObjectOrInterfaceType(t, xc)) {
-	        if (Types.permitsNull(t)) return true;
+	        if (Types.permitsNull(xc, t)) return true;
 	        //zeroLit = XTerms.NULL;
 	    } else if (ts.isParameterType(t)) {
 	        // we have some type "T" which is a type parameter. Does it have a zero value?
 	        // So, type bounds (e.g., T<:Int) do not help, because  Int{self!=0}<:Int
 	        // Similarly, Int<:T doesn't help, because  Int<:Any{self!=null}
-	        // However, T==Int does help
-	        if (isConstrained(t)) return false; // if we have constraints on the type parameter, e.g., T{self!=null}, then we give up and return false.
+	        // However, T==Int does help, and so does an explicit T hasZero
 	        TypeConstraint typeConst = xc.currentTypeConstraint();
 	        List<SubtypeConstraint> env =  typeConst.terms();
 	        for (SubtypeConstraint sc : env) {
@@ -615,7 +657,10 @@ public class Types {
 	        if (!(def instanceof X10ClassDef_c)) return false;
 	        X10ClassDef_c x10ClassDef = (X10ClassDef_c) def;
 	
-	        // do we have an classInvariant? todo: class invariant are not treated correctly: X10ClassDecl_c.classInvariant is fine, but  X10ClassDef_c.classInvariant is wrong
+	        // do we have an classInvariant? 
+	        // todo: class invariant are not treated correctly: 
+	        // X10ClassDecl_c.classInvariant is fine, 
+	        // but  X10ClassDef_c.classInvariant is wrong
 	        final Ref<CConstraint> ref = x10ClassDef.classInvariant();
 	        if (ref!=null && ref.get().constraints().size()>0) return false; // the struct has a class invariant (so the zero value might not satisfy it)
 	
@@ -639,18 +684,41 @@ public class Types {
 	        }
 	        return true;
 	    }
+	    if (ts.isParameterType(t)) { // FIXME: why is this code duplicated?
+	        // we have some type "T" which is a type parameter. Does it have a zero value?
+	        // So, type bounds (e.g., T<:Int) do not help, because  Int{self!=0}<:Int
+	        // Similarly, Int<:T doesn't help, because  Int<:Any{self!=null}
+	        // However, T==Int does help, and so does an explicit T hasZero
+	        TypeConstraint typeConst = xc.currentTypeConstraint();
+	        List<SubtypeConstraint> env =  typeConst.terms();
+	        for (SubtypeConstraint sc : env) {
+	            if (sc.isEqualityConstraint()) {
+	                Type other = null;
+	                final Type sub = sc.subtype();
+	                final Type sup = sc.supertype();
+	                if (ts.typeEquals(t, sub,xc)) {
+	                    if (!ts.isParameterType(sub)) other = sub;
+	                    if (!ts.isParameterType(sup)) other = sup;
+	                }
+	                if (other!=null)
+	                	return isHaszero(other,xc);
+	            } else if (sc.isSubtypeConstraint()) {
+	                // doesn't help
+	            } else {
+	                assert sc.isHaszero();
+	                if (ts.typeEquals(t,sc.subtype(),xc)) {
+	                    return true;
+	                }
+	            }
+	        }
+	    }
 	    if (zeroLit==null) return false;
 	    if (!isConstrained(t)) return true;
 	    final CConstraint constraint = Types.xclause(t);
 	    final CConstraint zeroCons = new CConstraint(constraint.self());
 	    // make sure the zeroLit is not in the constraint
-	    try {
-	        zeroCons.addSelfBinding(zeroLit);
-	        return zeroCons.entails(constraint);
-	    } catch (XFailure xFailure) {
-	        return false;
-	    }
-	
+	    zeroCons.addSelfBinding(zeroLit);
+	    return zeroCons.entails(constraint);
 	}
 
 	public static Expr getZeroVal(TypeNode typeNode, Position p, ContextVisitor tc) { // see X10FieldDecl_c.typeCheck
@@ -723,6 +791,10 @@ public class Types {
 			MethodInstance mi = (MethodInstance) me;
 			return mi.flags().isStatic();
 		}
+		if (me instanceof MacroType) {
+			MacroType mt = (MacroType) me;
+			return mt.container()==null || mt.flags().isStatic();
+		}
 		return false;
 	}
 
@@ -787,7 +859,7 @@ public class Types {
 	    if (sizeField == null)
 	        throw new InternalCompilerError("Could not find size field of " + t, pos);
 	    try {
-	        XVar selfSize = ts.xtypeTranslator().translate(c.self(), sizeField);
+	        XTerm selfSize = ts.xtypeTranslator().translate(c.self(), sizeField);
 	        XLit sizeLiteral = XTypeTranslator.translate(size);
 	        c.addBinding(selfSize, sizeLiteral);
 	        Type result = Types.xclause(t, c);
@@ -825,10 +897,10 @@ public class Types {
 
 	    XTypeTranslator xt = ts.xtypeTranslator();
 	    XVar self = c.self();
-	    XVar selfRank = xt.translate(self, rankField);
-	    XVar selfRect = xt.translate(self, rectField);
-	    XVar selfZeroBased = xt.translate(self, zeroBasedField);
-	    XVar selfRail = xt.translate(self, railField);
+	    XTerm selfRank = xt.translate(self, rankField);
+	    XTerm selfRect = xt.translate(self, rectField);
+	    XTerm selfZeroBased = xt.translate(self, zeroBasedField);
+	    XTerm selfRail = xt.translate(self, railField);
 
 	    XLit rankLiteral = XTerms.makeLit(1);
 	    c.addBinding(selfRank, rankLiteral);
@@ -883,11 +955,11 @@ public class Types {
 	    return new CConstraint();
 	}
 	else if (t instanceof ConstrainedType) {
-	        return ((ConstrainedType) t).getRealXClause();
+	        return ((ConstrainedType) t).getRealXClause().copy();
 		}
 		else if (t instanceof X10ClassType) {
 			X10ClassType ct = (X10ClassType) t;
-			CConstraint c = ct.x10Def().getRootClause();
+			CConstraint c = ct.x10Def().getRealClause().copy();
 			return TypeParamSubst.reinstantiateConstraint(ct, c);
 		}
 		else if (t instanceof MacroType) {
@@ -895,7 +967,7 @@ public class Types {
 		    CConstraint c = realX(mt.definedType());
 		    CConstraint w = mt.guard();
 		    if (w != null && ! w.valid()) {
-               c = c.copy();
+              // c = c.copy();
                c.addIn(w); // c may have become inconsistent.
 		    }
 		    return c;
@@ -994,12 +1066,7 @@ public class Types {
 		else {
 			c = c.copy();
 		}
-		try {
-			c.addSelfBinding(v);
-		}
-		catch (XFailure e) {
-			throw new SemanticException(e.getMessage(), t.position());
-		}
+		c.addSelfBinding(v);
 		return Types.xclause(baseType(t), c);
 	}
 
@@ -1063,28 +1130,6 @@ public class Types {
 	        return ct.properties();
 	    }
 	    return Collections.<FieldInstance>emptyList();
-	}
-
-	
-
-
-	/*
-	
-
-	*/
-
-	public static Type railBaseType(Type t) {
-		t = baseType(t);
-		if (t instanceof X10ClassType) {
-			X10ClassType ct = (X10ClassType) t;
-			TypeSystem ts = (TypeSystem) t.typeSystem();
-			ClassType a = (ClassType) ts.Rail();
-			if (ct.def() == a.def())
-				return ct.typeArguments().get(0);
-			else
-				arrayBaseType(ct.superClass());
-		}
-		return null;
 	}
 
 	public static boolean isX10Array(Type t) {
@@ -1167,12 +1212,16 @@ public class Types {
 	    return isDefAnnotated(def,ts,"x10.compiler.SuppressTransientError");
 	}
 
-	public static boolean permitsNull(Type t) {
+	public static boolean permitsNull(Context cxt, Type t) {
 		if (isX10Struct(t))
 			return false;
-		if (disEntailsSelf(t, XTerms.NULL))
-			return false;
-		TypeSystem ts = ((TypeSystem) t.typeSystem());
+		CConstraint c = Types.xclause(t);
+		if (c!= null && ! c.valid()) {
+			c.addIn(cxt.constraintProjection(c));
+			if (c.disEntails(c.self(), XTerms.NULL))
+				return false;
+		}
+		TypeSystem ts = t.typeSystem();
 		if (ts.isParameterType(t)) {			
 			return false; // a parameter type might be instantiated with a struct that doesn't permit null.
 		}
@@ -1241,10 +1290,17 @@ public class Types {
 			ProcedureInstance<?> xp1, ProcedureInstance<?> xp2,
 			Context context, TypeSystem ts, Type ct1, Type t1, Type t2,
 			boolean descends) {
+	    XVar[] ys = toVarArray(toLocalDefList(xp2.formalNames()), getPlaceTerm(xp2));
+	    XVar[] xs = toVarArray(toLocalDefList(xp1.formalNames()), getPlaceTerm(xp1));
 	    // if the formal params of p1 can be used to call p2, p1 is more specific
 	    if (xp1.formalTypes().size() == xp2.formalTypes().size() ) {
 	        for (int i = 0; i < xp1.formalTypes().size(); i++) {
 	            Type f1 = xp1.formalTypes().get(i);
+	            try {
+	                f1 = Subst.subst(f1, ys, xs, new Type[]{}, new ParameterType[]{});
+	            } catch (SemanticException e) {
+	                throw new InternalCompilerError("Unexpected exception while comparing methods", e);
+	            }
 	            Type f2 = xp2.formalTypes().get(i);
 	            // Ignore constraints.  This avoids an anomaly with the translation with erased constraints
 	            // having inverting the result of the most-specific test.  Fixes XTENLANG-455.
@@ -1281,6 +1337,16 @@ public class Types {
 	    return true;
 	}
 
+	static ProcedureInstance<?> orig(ProcedureInstance<?> xp) {
+		if (xp instanceof MethodInstance) {
+		return ((MethodInstance) xp).origMI();
+		}
+		if (xp instanceof X10ConstructorInstance) {
+			return ((X10ConstructorInstance) xp).origMI();
+		}
+		assert false;
+		return null;
+	}
 	/**
 	 * 
 	 * @param xp1 -- the first procedure instance
@@ -1318,6 +1384,13 @@ public class Types {
 	    			// Now determine that a call can be made to thisMI2 using the
 	    			// argument list obtained from thisMI1. If not, return false.
 	    			List<Type> argTypes = new ArrayList<Type>(origMI1.formalTypes());
+	    			XVar[] ys = toVarArray(toLocalDefList(origMI2.formalNames()), getPlaceTerm(origMI2));
+	    			XVar[] xs = toVarArray(toLocalDefList(origMI1.formalNames()), getPlaceTerm(origMI1));
+	    			try {
+	    			    argTypes = Subst.subst(argTypes, ys, xs);
+	    			} catch (SemanticException e) {
+	    			    throw new InternalCompilerError("Unexpected exception while comparing methods", e);
+	    			}
 	    			if (xp2.formalTypes().size() != argTypes.size())
 	        			return false;
 	    			// For xp1 to be more specific than xp2, it must have the same number of type parameters
@@ -1355,7 +1428,13 @@ public class Types {
 	            	X10ConstructorInstance origMI1 = (X10ConstructorInstance) xmi1.origMI();
 	            	assert origMI1 != null;
 	            	List<Type> argTypes = new ArrayList<Type>(origMI1.formalTypes());
-	            	
+	            	XVar[] ys = toVarArray(toLocalDefList(origMI2.formalNames()));
+	            	XVar[] xs = toVarArray(toLocalDefList(origMI1.formalNames()));
+	            	try {
+	            	    argTypes = Subst.subst(argTypes, ys, xs);
+	            	} catch (SemanticException e) {
+	            	    throw new InternalCompilerError("Unexpected exception while comparing constructors", e);
+	            	}
 	    			if (xp2.formalTypes().size() != argTypes.size())
 	        			return false;
 	    			// TODO: Figure out how to do type inference.
@@ -1385,9 +1464,46 @@ public class Types {
 	// I have kept the logic below from 2.0.6 for now. 
 	// TODO: Determine whether this should stay or not.
 	    // If the formal types are all equal, check the containers; otherwise p1 is more specific.
+	    XVar[] ys = toVarArray(toLocalDefList(xp2.formalNames()));
+	    XVar[] xs = toVarArray(toLocalDefList(xp1.formalNames()));
+	    // Need to substitute the same variable for the thisVars of the two methods
+	    // since they could be different. e.g. if pi is defined on Ci, then the
+	    // thisVars will be C1#this and C2#this.Neeed 
+	    XVar thisVar = XTerms.makeUQV();
+	    xp1 = orig(xp1);
+	    xp2 = orig(xp2);
+	    boolean descends2 = descends 
+	       || (t1 != null && t2 != null && ts.descendsFrom(ts.classDefOf(t2), ts.classDefOf(t1)));
+	    
+	    XVar p1This = descends2 ? xp1.def().thisVar(): null;
+	    XVar p2This = descends2 ? xp2.def().thisVar() : null;
 	    for (int i = 0; i < xp1.formalTypes().size(); i++) {
+	    	// Need to use original type information. The current type
+	    	// information may have call specific uqv's in the constraints
+	    	// rather than the declared formals.
 	        Type f1 = xp1.formalTypes().get(i);
+	        try {
+	            f1 = Subst.subst(f1, ys, xs); // , new Type[]{}, new ParameterType[]{});
+	            if (descends2) {
+	                // Substitute for both p1This and p2This, since only one of them
+	                // might occur in both.
+	                f1 = Subst.subst(f1, thisVar, p1This);
+	                f1 = Subst.subst(f1, thisVar, p2This);
+	            }
+	        } catch (SemanticException e) {
+	            throw new InternalCompilerError("Unexpected exception while comparing methods", e);
+	        }
 	        Type f2 = xp2.formalTypes().get(i);
+	        if (descends2)try { 
+	            
+	                // Substitute for both p1This and p2This, since only one of them
+                    // might occur in both.
+	                f2 = Subst.subst(f2, thisVar, p2This);
+	                f2 = Subst.subst(f2, thisVar, p1This);
+	            
+	        } catch (SemanticException e) {
+	            throw new InternalCompilerError("Unexpected exception while comparing methods", e);
+	        }
 	        if (! ts.typeEquals(f1, f2, context)) {
 	        	return true;
 	        }
@@ -1408,6 +1524,11 @@ public class Types {
 	    }
 	
 	    return true;
+	}
+
+	public static XVar getPlaceTerm(ProcedureInstance<?> mi) {
+	    XConstrainedTerm pt = ((ProcedureDef) mi.def()).placeTerm();
+	    return pt != null && pt.term() instanceof XVar ? (XVar) pt.term() : XTerms.makeUQV();
 	}
 
 	public static boolean isTypeConstraintExpression(Expr e) {
@@ -1460,6 +1581,25 @@ public class Types {
 	    return typeArg(baseType(t), i);
 	}
 
+    ////////////////////////////////////////////////////////////////
+    // For better error reporting, we remove the constraints if we ran with DYNAMIC_CALLS.
+    public static Type stripConstraintsIfDynamicCalls(Type t) {
+        if (t==null) return null;
+	    if (((X10CompilerOptions)t.typeSystem().extensionInfo().getOptions()).x10_config.STATIC_CHECKS)
+            return t;
+        return stripConstraints(t);
+    }
+	public static Collection<Type> stripConstraintsIfDynamicCalls(Collection<Type> t) {
+        if (t==null) return null;
+        if (t.size()==0) return t;
+	    if (((X10CompilerOptions)t.iterator().next().typeSystem().extensionInfo().getOptions()).x10_config.STATIC_CHECKS)
+            return t;
+        ArrayList<Type> res = new ArrayList<Type>(t.size());
+        for (Type tt : t)
+            res.add(stripConstraints(tt));
+        return res;
+    }
+    // completely erases all constraints (from type arguments as well)
 	public static Type stripConstraints(Type t) {
 	    TypeSystem ts = (TypeSystem) t.typeSystem();
 	    t = ts.expandMacros(t);
@@ -1518,13 +1658,7 @@ public class Types {
 	 */
 	public static CConstraint xclause(XVar v, Type t) {
 		CConstraint c = xclause(t);
-		try {
-		return c.substitute(v, c.self());
-		} catch (XFailure z) {
-			CConstraint c1 = new CConstraint();
-			c1.setInconsistent();
-			return c1;
-		}
+		return c.instantiateSelf(v);
 	}
 
 	/**
@@ -1562,7 +1696,7 @@ public class Types {
 	    TypeSystem xts = t.typeSystem();
 	    try {
 	        Context c = xts.emptyContext();
-	        X10FieldInstance fi = xts.findField(t, xts.FieldMatcher(t, propName, c));
+	        X10FieldInstance fi = xts.findField(t, t, propName, c);
 	        if (fi != null && fi.isProperty()) {
 	            return fi;
 	        }
@@ -1611,6 +1745,243 @@ public class Types {
 	 */
 	public static String MORE_SPECIFIC_WARNING = "Please check definitions p1 and p2.  ";
 
-	
 
+
+    private static Type instantiateThis(X10ParsedClassType_c classType, Type t, Type superType) {
+        try {
+            return X10FieldMatcher.instantiateAccess(t,superType,classType.x10Def().thisVar(),false);
+        } catch (SemanticException e) {
+            throw new InternalCompilerError(e);
+        }
+    }
+    //abstract class A implements Iterable<A> {}
+    //abstract class B extends A implements Iterable<B> {} // ERR in Java, but ok in X10
+    // There can be multiple Iterable[T] due to type parameter upper bounds: X<:Dist && X<:Iterable[...]
+    public static HashSet<Type> getIterableIndex(Type t, Context context) {
+        HashSet<Type> res = new HashSet<Type>();
+        final TypeSystem ts = t.typeSystem();
+        Type base = Types.baseType(t);
+        if (ts.isParameterType(base)) {
+            // Now get the upper bound.
+            List<Type> upperBounds = ts.env(context).upperBounds(t, false); // should return non-parameter types
+            for (Type upper : upperBounds)
+                res.addAll(getIterableIndex(upper, context));
+        }
+        if (t instanceof ObjectType && base instanceof X10ParsedClassType_c) {
+            X10ParsedClassType_c classType_c = (X10ParsedClassType_c) base;
+            ObjectType ot = (ObjectType) t;
+            final Type superType = ot.superClass();
+            if (superType!=null) res.addAll(getIterableIndex(instantiateThis(classType_c,t,superType),context));
+            final List<Type> interfaces = ot.interfaces();
+            for (Type tt : interfaces)
+                res.addAll(getIterableIndex(instantiateThis(classType_c,t,tt),context));
+
+            if (base instanceof X10ParsedClassType) {
+                X10ParsedClassType classType = (X10ParsedClassType) base;
+                final ClassDef iterable = ts.Iterable().def();
+                if (classType.def()==iterable && classType.typeArguments().size()==1) {
+                    Type arg = classType.typeArguments().get(0);
+                    CConstraint xclause = Types.xclause(t);
+			        final XVar tt = XTerms.makeEQV();
+                    try {
+                        xclause = Subst.subst(xclause, tt, xclause.self());
+                    } catch (SemanticException e) {
+                        assert false;
+                    }
+                    res.add(Types.xclause(arg, xclause));
+                }
+            }
+        }
+        return res;
+    }
+
+	public static Type removeLocals(Context ctx, Type t) {
+		t = t.typeSystem().expandMacros(t);
+	
+	    if (t instanceof X10ClassType) {
+	        X10ClassType ct = (X10ClassType) t;
+	        if (ct.typeArguments() == null)
+	            return ct;
+	        List<Type> types = new ArrayList<Type>(ct.typeArguments().size());
+	        for (Type ti : ct.typeArguments()) {
+	            Type ti2 = removeLocals(ctx, ti);
+	            types.add(ti2);
+	        }
+	        return ct.typeArguments(types);
+	    }
+	    Type b = baseType(t);
+	    if (b != t)
+	        b = removeLocals(ctx, b);
+	    CConstraint c = xclause(t);
+	    if (c == null)
+	        return b;
+	    c = removeLocals(ctx, c);
+	    return xclause(b, c);
+	}
+
+	/** Remove all local variables that are not formals from this constraint.
+	 * 
+	 * @param cxt
+	 * @param c0
+	 * @return
+	 */
+	public static CConstraint removeLocals(Context cxt, CConstraint c0) {
+	    CConstraint c = new CConstraint();
+	    c.addIn(c0); // ensure that this has a different selfVar.
+	    Set<XTerm> roots = c.rootTerms();
+	    if (roots.size() > 0) {
+	        for (XTerm term : roots) {
+	            if (term instanceof XVar) {
+	                XVar[] vars = ((XVar) term).vars();
+	                if (vars.length > 0) { // lits can have length 0
+	                    XVar root = vars[0];
+	                    if (root instanceof CLocal) {
+	                        CLocal rootL = (CLocal) root;
+	                        X10LocalDef name = rootL.localDef();
+	                        if (! cxt.isFormalParameter(name) && cxt.isLocalExcludingAsyncAt(name.name())) {
+	                            // This is a local variable. Eliminate!
+	                            c = c.project(rootL);
+	                        }
+	                    }
+	                }
+	            }
+	        }
+	    }
+	   return c;
+	}
+
+	public static XVar[] toVarArray(List<? extends VarDef> formalNames) {
+	    int size = formalNames.size();
+	    XVar[] oldFNs = new XVar[size];
+	    toVarArray(oldFNs, 0, formalNames);
+	    return oldFNs;
+	}
+
+	public static XVar[] toVarArray(List<? extends VarDef> formalNames, XVar v) {
+	    int size = formalNames.size();
+	    XVar[] oldFNs = new XVar[size+1];
+	    toVarArray(oldFNs, 0, formalNames);
+	    oldFNs[size] = v;
+	    return oldFNs;
+	}
+
+	public static XVar[] toVarArray(List<? extends VarDef> formalNames, XVar v, XVar w) {
+	    int size = formalNames.size();
+	    XVar[] oldFNs = new XVar[size+2];
+	    toVarArray(oldFNs, 0, formalNames);
+	    oldFNs[size] = v;
+	    oldFNs[size+1] = w;
+	    return oldFNs;
+	}
+
+	private static void toVarArray(XVar[] oldFNs, int offset, List<? extends VarDef> formalNames) {
+	    int sz = formalNames.size();
+	    for (int i = 0; i < sz; i++) {
+	        VarDef f = formalNames.get(i);
+	        if (f instanceof X10LocalDef) {
+	            oldFNs[offset+i] = CTerms.makeLocal((X10LocalDef) f);
+	        } else if (f instanceof ThisDef) {
+	            oldFNs[offset+i] = ((ThisDef) f).thisVar();
+	        }
+	    }
+	}
+
+	public static List<LocalDef> toLocalDefList(List<LocalInstance> lis) {
+	    return new TransformingList<LocalInstance, LocalDef>(lis,
+	            new Transformation<LocalInstance,LocalDef>() {
+	                public LocalDef transform(LocalInstance o) {
+	                    return o.def();
+	                }
+	            });
+    }
+
+    public static ClassType getClassType(Type t, TypeSystem ts, Context context) {
+        Type baseType = Types.baseType(t);
+        if (baseType instanceof ParameterType) {
+            final List<Type> upperBounds = ts.env(context).upperBounds(baseType, false);
+            baseType = null;
+            for (Type up : upperBounds) {
+                if (!(Types.baseType(up) instanceof ParameterType))
+                    baseType = up;
+            }
+        }
+        return baseType==null ? null : baseType.toClass();
+    }
+    public static ClassType getClassType(Type t, TypeSystem ts) {
+        return getClassType(t, ts, null);
+    }
+    
+    public static Type projectOutLocalVariables(Context cxt, Type t) {
+    	CConstraint c0 = xclause(t);
+    	if (c0==null)
+    		return t;
+    	CConstraint c = new CConstraint();
+    	c.addIn(c0); // ensure that this has a different selfVar.
+    	Set<XTerm> roots = c.rootTerms();
+    	if (roots.size() > 0) {
+    		CodeDef def = cxt.currentCode();
+    		List<LocalDef> formals = null;
+    		if (def instanceof ProcedureDef) {
+    			formals = ((ProcedureDef) def).formalNames();
+    		}
+    		for (XTerm term : roots) {
+    			if (term instanceof XVar) {
+    				XVar[] vars = ((XVar) term).vars();
+    				XVar root = vars[0];
+    				if (root instanceof CLocal) {
+    					CLocal rootL = (CLocal) root;
+    					X10LocalDef name = rootL.localDef();
+    					if (formals != null && ! formals.contains(name)) {
+    						// This is a local variable. Eliminate!
+    						c = c.project(rootL);
+    					}
+    				}
+    			}
+    		}
+    	}
+    	return constrainedType(baseType(t), c);
+    }
+    public static Type addInOuterClauses(Type type, Type outer) {
+        CConstraint xclause = Types.xclause(outer);
+        if (xclause != null && ! xclause.valid()) {
+            // there is some information to transfer.
+            CConstraint result = new CConstraint();
+            XVar qvar = new QualifiedVar(Types.baseType(outer), result.self());
+            xclause = xclause.instantiateSelf(qvar);
+            result.addIn(xclause);
+            type = Types.addConstraint(type, result);
+        }
+        return type;
+    }
+    public static Type container(Type type, ClassType newContainer) {
+        if (type instanceof ClassType) 
+            return ((ClassType) type).container(newContainer);
+        if (type instanceof ConstrainedType) {
+            ConstrainedType ct = ((ConstrainedType) type).copy();
+            Type newBase = container(ct.baseType().get(), newContainer);
+            ((Ref<Type>) ct.baseType()).update(newBase);
+            return ct;
+        }
+       //return type;
+        assert false;
+        return null;
+    }
+    /** The list of outer types for a type. That is if a type is A.B.C.D, 
+     * return {A.B.C.D, A.B.C, A.B, A}.
+     * 
+     * @param type
+     * @return
+     */
+    public static List<X10ClassDef> outerTypes(Type type) {
+        List<X10ClassDef> result = new ArrayList<X10ClassDef>();
+        Type base = Types.baseType(type);
+        if (base instanceof ClassType) {
+            ClassType outer = (ClassType) base;
+            while (outer != null) {
+                result.add(outer.def());
+                outer = outer.outer();
+            }
+        }
+        return result;
+    }
 }

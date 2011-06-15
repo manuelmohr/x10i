@@ -16,7 +16,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class LocalVar<T> extends x10.core.Ref {
 
-    public static final x10.rtt.RuntimeType<LocalVar<?>> _RTT =
+	private static final long serialVersionUID = 1L;
+
+    public static final x10.rtt.RuntimeType<LocalVar<?>> $RTT =
         new x10.rtt.NamedType<LocalVar<?>>(
                 "x10.compiler.LocalVar",
                 /* base class */ LocalVar.class,
@@ -24,11 +26,11 @@ public class LocalVar<T> extends x10.core.Ref {
                 /* parents */ new x10.rtt.Type[] { x10.rtt.Types.OBJECT }
     );
 
-    public x10.rtt.RuntimeType<?> getRTT() {
-        return _RTT;
+    public x10.rtt.RuntimeType<?> $getRTT() {
+        return $RTT;
     }
 
-    public x10.rtt.Type<?> getParam(int i) {
+    public x10.rtt.Type<?> $getParam(int i) {
         if (i == 0) return T;
         return null;
     }
@@ -44,8 +46,24 @@ public class LocalVar<T> extends x10.core.Ref {
     private static final Object nullObject = new Object();
     private static AtomicLong lastId = new AtomicLong(0);
 
-    private final x10.rtt.Type<?> T;
-    private final long id;
+    private x10.rtt.Type<?> T;
+    private long id;
+
+    public LocalVar(java.lang.System[] $dummy) {
+        super($dummy);
+    }
+
+    public LocalVar $init(final x10.rtt.Type<?> T, final T local, java.lang.Class<?> $dummy0) {
+        super.$init();
+        this.T = T;
+        long temp = lastId.getAndIncrement();
+        while (idToObject.containsKey(temp)) {
+            temp = lastId.getAndIncrement();
+        }
+        id = temp;
+        idToObject.put(id, local == null ? nullObject : local);
+        return this;
+    }
 
     public LocalVar(final x10.rtt.Type<?> T, final T local, java.lang.Class<?> $dummy0) {
         super();
@@ -57,7 +75,7 @@ public class LocalVar<T> extends x10.core.Ref {
         id = temp;
         idToObject.put(id, local == null ? nullObject : local);
     }
-
+    
     public T $apply$G() {
         Object local = idToObject.remove(id);
         return (T) (local == nullObject ? null : local);

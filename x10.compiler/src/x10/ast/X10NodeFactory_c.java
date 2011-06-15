@@ -97,13 +97,6 @@ public class X10NodeFactory_c extends NodeFactory_c {
 	    return n;
 	}
 
-	public X10AmbQualifierNode AmbQualifierNode(Position pos, Prefix prefix, Id name) {
-		X10AmbQualifierNode_c n = new X10AmbQualifierNode_c(pos, prefix, name);
-		n = (X10AmbQualifierNode_c) n.ext(extFactory().extAmbQualifierNode());
-		n = (X10AmbQualifierNode_c) n.del(delFactory().delAmbQualifierNode());
-		return n;
-	}
-
 	public UnknownTypeNode UnknownTypeNode(Position pos) {
 		UnknownTypeNode_c n = new UnknownTypeNode_c(pos);
 		n = (UnknownTypeNode_c)n.ext(extFactory().extTypeNode());
@@ -172,14 +165,17 @@ public class X10NodeFactory_c extends NodeFactory_c {
 	    n = (AmbMacroTypeNode)n.del(delFactory().delTypeNode());
 	    return n;
 	}
-	public TypeNode AmbDepTypeNode(Position pos, Prefix prefix, Id name, List<TypeNode> typeArgs, List<Expr> args, DepParameterExpr dep) {
+	public TypeNode AmbDepTypeNode(Position pos, AmbMacroTypeNode base, DepParameterExpr dep) {
 	    if (dep == null) {
-	        return AmbMacroTypeNode(pos, prefix, name, typeArgs, args);
+	        return base;
 	    }
-		AmbDepTypeNode n = new AmbDepTypeNode_c(pos, AmbMacroTypeNode(pos, prefix, name, typeArgs, args), dep);
-		n = (AmbDepTypeNode)n.ext(extFactory().extTypeNode());
-		n = (AmbDepTypeNode)n.del(delFactory().delTypeNode());
-		return n;
+	    AmbDepTypeNode n = new AmbDepTypeNode_c(pos, base, dep);
+	    n = (AmbDepTypeNode)n.ext(extFactory().extTypeNode());
+	    n = (AmbDepTypeNode)n.del(delFactory().delTypeNode());
+	    return n;
+	}
+	public TypeNode AmbDepTypeNode(Position pos, Prefix prefix, Id name, List<TypeNode> typeArgs, List<Expr> args, DepParameterExpr dep) {
+	    return AmbDepTypeNode(pos, AmbMacroTypeNode(pos, prefix, name, typeArgs, args), dep);
 	}
 	public TypeNode AmbDepTypeNode(Position pos, Prefix prefix, Id name, DepParameterExpr dep) {
 		return AmbDepTypeNode(pos, prefix, name, Collections.<TypeNode>emptyList(), Collections.<Expr>emptyList(), dep);
@@ -200,7 +196,7 @@ public class X10NodeFactory_c extends NodeFactory_c {
 		return Block(statement.position(), l);
 	}
 
-	// Wrap the body of the async in a Block so as to ease further code transforamtions.
+	// Wrap the body of the async in a Block so as to ease further code transformations.
 	public Async Async(Position pos, List<Expr> clocks, Stmt body) {
 		Async a = new Async_c(pos,  clocks, asBlock(body));
 		X10ExtFactory_c ext_fac = (X10ExtFactory_c) extFactory();
@@ -217,7 +213,7 @@ public class X10NodeFactory_c extends NodeFactory_c {
 		a = (Async) a.del(del_fac.delAsyncImpl());
 		return a;
 	}
-	// Wrap the body of the async in a Block so as to ease further code transforamtions.
+	// Wrap the body of the at in a Block so as to ease further code transformations.
 	public AtStmt AtStmt(Position pos, Expr place, Stmt body) {
 		AtStmt a = new AtStmt_c(pos, place, asBlock(body));
 		X10ExtFactory_c ext_fac = (X10ExtFactory_c) extFactory();
@@ -225,6 +221,31 @@ public class X10NodeFactory_c extends NodeFactory_c {
 		X10DelFactory_c del_fac = (X10DelFactory_c) delFactory();
 		a = (AtStmt) a.del(del_fac.delAsyncImpl());
 		return a;
+	}
+	public AtStmt AtStmt(Position pos, Expr place, List<Node> captures, Stmt body) {
+	    AtStmt a = new AtStmt_c(pos, place, captures, asBlock(body));
+	    X10ExtFactory_c ext_fac = (X10ExtFactory_c) extFactory();
+	    a = (AtStmt) a.ext(ext_fac.extAsyncImpl());
+	    X10DelFactory_c del_fac = (X10DelFactory_c) delFactory();
+	    a = (AtStmt) a.del(del_fac.delAsyncImpl());
+	    return a;
+	}
+
+	public AtHomeStmt AtHomeStmt(Position pos, List<Expr> vars, Stmt body) {
+	    AtHomeStmt a = new AtHomeStmt_c(pos, vars, asBlock(body));
+	    X10ExtFactory_c ext_fac = (X10ExtFactory_c) extFactory();
+	    a = (AtHomeStmt) a.ext(ext_fac.extAsyncImpl());
+	    X10DelFactory_c del_fac = (X10DelFactory_c) delFactory();
+	    a = (AtHomeStmt) a.del(del_fac.delAsyncImpl());
+	    return a;
+	}
+	public AtHomeStmt AtHomeStmt(Position pos, List<Expr> vars, List<Node> captures, Stmt body) {
+	    AtHomeStmt a = new AtHomeStmt_c(pos, vars, captures, asBlock(body));
+	    X10ExtFactory_c ext_fac = (X10ExtFactory_c) extFactory();
+	    a = (AtHomeStmt) a.ext(ext_fac.extAsyncImpl());
+	    X10DelFactory_c del_fac = (X10DelFactory_c) delFactory();
+	    a = (AtHomeStmt) a.del(del_fac.delAsyncImpl());
+	    return a;
 	}
 
 	// Wrap the body of an atomic in a block to facilitate code transformation.
@@ -235,18 +256,40 @@ public class X10NodeFactory_c extends NodeFactory_c {
 		return a;
 	}
 	
-	public AtExpr AtExpr(Position pos, Expr place, TypeNode returnType, Block body) {
-		return AtExpr(pos, place, returnType, null, body);
-	}
-	public AtExpr AtExpr(Position pos, Expr place, TypeNode returnType, TypeNode offerType, Block body) {
-		AtExpr f = new AtExpr_c(this, pos, place, returnType,offerType, body);
+	public AtExpr AtExpr(Position pos, Expr place, Block body) {
+		AtExpr f = new AtExpr_c(this, pos, place, body);
 		X10ExtFactory_c ext_fac = (X10ExtFactory_c) extFactory();
 		f = (AtExpr) f.ext(ext_fac.extExpr()); // FIXME
         X10DelFactory_c del_fac = (X10DelFactory_c) delFactory();
         f = (AtExpr) f.del(del_fac.delFutureImpl()); // FIXME
 		return f;
 	}
+	public AtExpr AtExpr(Position pos, Expr place, List<Node> captures, Block body) {
+	    AtExpr f = new AtExpr_c(this, pos, place, captures, body);
+	    X10ExtFactory_c ext_fac = (X10ExtFactory_c) extFactory();
+	    f = (AtExpr) f.ext(ext_fac.extExpr()); // FIXME
+	    X10DelFactory_c del_fac = (X10DelFactory_c) delFactory();
+	    f = (AtExpr) f.del(del_fac.delFutureImpl()); // FIXME
+	    return f;
+	}
 
+	public AtHomeExpr AtHomeExpr(Position pos, List<Expr> vars, Block body) {
+	    AtHomeExpr f = new AtHomeExpr_c(this, pos, vars, body);
+	    X10ExtFactory_c ext_fac = (X10ExtFactory_c) extFactory();
+	    f = (AtHomeExpr) f.ext(ext_fac.extExpr()); // FIXME
+	    X10DelFactory_c del_fac = (X10DelFactory_c) delFactory();
+	    f = (AtHomeExpr) f.del(del_fac.delFutureImpl()); // FIXME
+	    return f;
+	}
+	public AtHomeExpr AtHomeExpr(Position pos, List<Expr> vars, List<Node> captures, Block body) {
+	    AtHomeExpr f = new AtHomeExpr_c(this, pos, vars, captures, body);
+	    X10ExtFactory_c ext_fac = (X10ExtFactory_c) extFactory();
+	    f = (AtHomeExpr) f.ext(ext_fac.extExpr()); // FIXME
+	    X10DelFactory_c del_fac = (X10DelFactory_c) delFactory();
+	    f = (AtHomeExpr) f.del(del_fac.delFutureImpl()); // FIXME
+	    return f;
+	}
+	
 	public Here Here(Position pos) {
 		Here f = new Here_c(pos);
 		f = (Here) f.ext(extFactory().extStmt());
@@ -301,12 +344,11 @@ public class X10NodeFactory_c extends NodeFactory_c {
 
 	private X10ClassDecl ClassDecl(Position pos, FlagsNode flags, Id name, List<TypeParamNode> typeParameters, List<PropertyDecl> properties,
 			TypeNode superClass, List<TypeNode> interfaces, ClassBody body, DepParameterExpr tci) {
-	    boolean isInterface = flags.flags().isInterface();
-	    if (flags.flags().isInterface()) {
+	    /*if (flags.flags().isInterface()) {
 	    	body = PropertyDecl_c.addAbstractGetters(properties, body, this);
 	    } else {
 	    	  body = PropertyDecl_c.addPropertyGetters(properties, body, this);
-	    }
+	    }*/
 	    X10ClassDecl n = new X10ClassDecl_c(pos, flags, name, typeParameters, properties, tci, superClass, interfaces, body);
 		n = (X10ClassDecl)n.ext(extFactory().extClassDecl());
 		n = (X10ClassDecl)n.del(delFactory().delClassDecl());
@@ -418,9 +460,9 @@ public class X10NodeFactory_c extends NodeFactory_c {
 
 	public Assign Assign(Position pos, Expr left, Assign.Operator op, Expr right)
 	{
-	    if (left instanceof Call) {
-		Call c = (Call) left;
-		return SettableAssign(pos, (Expr) c.target(), c.arguments(), op, right);
+	    if (left instanceof InlinableCall) {
+	        InlinableCall c = (InlinableCall) left;
+	        return SettableAssign(pos, (Expr) c.target(), c.arguments(), op, right);
 	    }
 	    return SUPER_Assign(pos, left, op, right);
 	}
@@ -729,15 +771,14 @@ public class X10NodeFactory_c extends NodeFactory_c {
        return Closure(pos,  c.formals(), c.guard(), c.returnType(), 
     		   c.body());
 	}
-	public ClosureCall ClosureCall(Position pos, Expr closure, /*List<TypeNode> typeArgs,*/ List<Expr> args) {
-		ClosureCall n = new ClosureCall_c(pos, closure,  args);
+	public ClosureCall ClosureCall(Position pos, Expr closure, List<TypeNode> typeArgs, List<Expr> args) {
+		ClosureCall n = new ClosureCall_c(pos, closure, typeArgs, args);
 		n = (ClosureCall) n.ext(extFactory().extExpr());
 		n = (ClosureCall) n.del(delFactory().delExpr());
 		return n;
 	}
-	public ClosureCall ClosureCall(Position pos, Expr closure, List<TypeNode> typeArgs, List<Expr> args) {
-		assert typeArgs==null || typeArgs.size()==0 : "Closures do not have type args.";
-		return ClosureCall(pos, closure, args);
+	public ClosureCall ClosureCall(Position pos, Expr closure, List<Expr> args) {
+		return ClosureCall(pos, closure, Collections.<TypeNode>emptyList(), args);
 	
 	}
 

@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.HashSet;
 
 import polyglot.ast.Block;
 import polyglot.ast.ClassBody;
@@ -34,6 +35,8 @@ import polyglot.ast.Stmt;
 import polyglot.ast.Term;
 import polyglot.ast.TypeNode;
 import polyglot.ast.Special;
+import polyglot.ast.Field;
+import polyglot.ast.Call;
 import polyglot.frontend.Job;
 import polyglot.frontend.Source;
 import polyglot.main.Reporter;
@@ -91,6 +94,7 @@ import x10.types.X10LocalDef;
 import x10.types.X10MethodDef;
 import x10.types.MethodInstance;
 import x10.types.X10ParsedClassType;
+import x10.types.X10TypeEnv_c;
 
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.TypeConstraint;
@@ -112,7 +116,7 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
     protected List<TypeNode> interfaces;
     protected ClassBody body;
     protected ConstructorDef defaultCI;
-    protected ClassDef type;
+    protected X10ClassDef type;
     
     List<PropertyDecl> properties;
 
@@ -207,7 +211,7 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
     }
     
     @Override
-    protected void setSuperClass(TypeSystem ts, ClassDef thisType) throws SemanticException {
+    protected void setSuperClass(TypeSystem ts, ClassDef thisType) {
         TypeNode superClass = this.superClass;
 
         final TypeSystem xts = (TypeSystem) ts;
@@ -245,7 +249,7 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
         }
     }
     
-    private void superSetSuperClass(TypeSystem ts, ClassDef thisType) throws SemanticException {
+    private void superSetSuperClass(TypeSystem ts, ClassDef thisType) {
         TypeNode superClass = this.superClass;
         Reporter reporter = ts.extensionInfo().getOptions().reporter;
         
@@ -274,7 +278,7 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
     }
     
     @Override
-    protected void setInterfaces(TypeSystem ts, ClassDef thisType) throws SemanticException {
+    protected void setInterfaces(TypeSystem ts, ClassDef thisType) {
     	final TypeSystem xts = (TypeSystem) ts;
     	Reporter reporter = xts.extensionInfo().getOptions().reporter;
 
@@ -322,14 +326,14 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
         n.interfaces = TypedList.copyAndCheck(interfaces, TypeNode.class, true);
         return n;
     }
-    public X10ClassDecl classDef(ClassDef type) {
+    public X10ClassDecl classDef(X10ClassDef type) {
     	if (type == this.type) return this;
         X10ClassDecl_c n = (X10ClassDecl_c) copy();
         n.type = type;
         return n;
     }
     public X10ClassDef classDef() {
-        return (X10ClassDef) type;
+        return  type;
     }
 
     @Override
@@ -339,120 +343,73 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
 
     @Override
     public Context enterChildScope(Node child, Context c) {
-    	Context xc = (Context) c;
+        X10ClassDef_c type = (X10ClassDef_c) this.type;
     	if (child != this.body ) {
-    		
-    		X10ClassDef_c type = (X10ClassDef_c) this.type;
     		if (child == this.classInvariant) {
-        		xc = (Context) xc.pushClass(type, type.asType());
-        		// Add type parameters
-        		for (ParameterType t : type.typeParameters()) {
-        			xc.addNamed(t);
-        		}
+        		c = c.pushClass(type, type.asType());
     		} else {
-    			xc = xc.pushSuperTypeDeclaration(type);
+    			c = c.pushSuperTypeDeclaration(type);
 
     			// Add this class to the context, but don't push a class scope.
     			// This allows us to detect loops in the inheritance
     			// hierarchy, but avoids an infinite loop.
-    			xc = (Context) xc.pushBlock();
-    			xc.addNamed(type.asType());
+    			c = c.pushBlock();
+    			c.addNamed(type.asType());
     		}
 
     		// Add type parameters
     		for (ParameterType t : type.typeParameters()) {
-    			xc.addNamed(t);
+    			c.addNamed(t);
     		}
 
     		for (PropertyDecl pd : properties) {
     			FieldDef fd = pd.fieldDef();
-    			xc.addVariable(fd.asInstance());
+    			c.addVariable(fd.asInstance());
+    			if (pd==child)
+    				break; // do not add downstream properties
     		}
-
-    		//               for (ClassMember cm : body.members()) {
-    		//        	   if (cm instanceof PropertyDecl) {
-    		//        	       PropertyDecl pd = (PropertyDecl) cm;
-    		//        	       FieldDef fd = pd.fieldDef();
-    		//        	       xc.addVariable(fd.asInstance());
-    		//        	   }
-    		//               }
-
-    		//               for (FieldDef f : type.properties()) {
-    		//                   xc.addVariable(f.asInstance());
-    		//               }
-
-    		return child.del().enterScope(xc); 
+    	} else {
+    	    c = c.pushClass(type, type.asType());
+    	    // Add type parameters
+    	    for (ParameterType t : type.typeParameters()) {
+    	        c.addNamed(t);
+    	    }
+    	    // The class invariant should be added only when entering 
+    	    // children (field, method) that are not static. 
+    	    /* DepParameterExpr v = classInvariant();
+    	    
+    	    if (v != null) {
+    	        Ref<TypeConstraint> tc = v.typeConstraint();
+    	        if (tc != null) {
+    	            c.setCurrentTypeConstraint(tc); // todo: what about setCurrentConstraint ?
+    	        }
+    	    }*/
     	}
-
-    	//    	   if (child == this.classInvariant) {
-    	//    	       X10ClassDef_c type = (X10ClassDef_c) this.type;
-    	//    	       xc = (X10Context) xc.pushClass(type, type.asType());
-    	//               // Add type parameters
-    	//               for (ParameterType t : type.typeParameters()) {
-    	//        	   xc.addNamed(t);
-    	//               }
-    	//    	       return child.del().enterScope(xc); 
-    	//    	   }
-
-        assert child==this.body; // see the previous if statement
-        // todo: this whole next if is therefore stupid and meaningless...
-    	if (child == this.body || child == this.properties || (this.properties != null && this.properties.contains(child))) {
-    		X10ClassDef_c type = (X10ClassDef_c) this.type;
-    		xc = (Context) xc.pushClass(type, type.asType());
-    		// Add type parameters
-    		for (ParameterType t : type.typeParameters()) {
-    			xc.addNamed(t);
-    		}
-    		 DepParameterExpr v = classInvariant();
-               if (v != null) {
-            	   Ref<TypeConstraint> tc = v.typeConstraint();
-            	   if (tc != null) {
-            		    xc.setCurrentTypeConstraint(tc); // todo: what about setCurrentConstraint ?
-            	   }
-               }
-    		 
-    		// Now add this.home == currentHome
-/*    		XConstrainedTerm placeTerm = xc.currentPlaceTerm().copy();
-    		XRoot thisVar = type.thisVar();
-    		XTerm placeVar = ((X10TypeSystem) type.typeSystem()).locVar(type.thisVar(), xc);
-    		assert placeVar != null;
-    		placeTerm.addBinding(placeTerm.term(), placeVar);
-    		xc = (X10Context) xc.pushPlace(placeTerm); */
-    		
-    		return child.del().enterScope(xc); 
-    	}
-
-    	if (child == this.body) {
-            TypeSystem ts = c.typeSystem();
-            c = c.pushClass(type, type.asType());
-        }
-        else if (child == this.superClass || this.interfaces.contains(child)) {
-            // Add this class to the context, but don't push a class scope.
-            // This allows us to detect loops in the inheritance
-            // hierarchy, but avoids an infinite loop.
-            c = c.pushBlock();
-            c.addNamed(this.type.asType());
-        }
-        return super.enterChildScope(child, c);
+        return super.enterChildScope(child, c); 
+    	
     }
     
     public Node visitSignature(NodeVisitor v) {
     	FlagsNode flags = (FlagsNode) visitChild(this.flags, v);
         Id name = (Id) visitChild(this.name, v);
+        List<TypeParamNode> tps = visitList(this.typeParameters, v);
         TypeNode superClass = (TypeNode) visitChild(this.superClass, v);
         List<TypeNode> interfaces = visitList(this.interfaces, v);
+        DepParameterExpr ci = (DepParameterExpr) visitChild(this.classInvariant, v);
+        List<PropertyDecl> ps = visitList(this.properties, v);
         ClassBody body = this.body;
         X10ClassDecl_c n = (X10ClassDecl_c) reconstruct(flags, name, superClass, interfaces, body);
-//        List<TypeParamNode> tps = visitList(this.typeParameters, v);
-//        n = (X10ClassDecl_c) n.typeParameters(tps);
-        List<PropertyDecl> ps = visitList(this.properties, v);
-        n = (X10ClassDecl_c) n.properties(ps);
-        DepParameterExpr ci = (DepParameterExpr) visitChild(this.classInvariant, v);
-        return ci == this.classInvariant ? n : n.classInvariant(ci);
+        if (!CollectionUtil.allEqual(tps, this.typeParameters) || !CollectionUtil.allEqual(ps, this.properties) || ci != this.classInvariant) {
+            if (n == this) n = (X10ClassDecl_c) n.copy();
+            n.typeParameters = new ArrayList<TypeParamNode>(tps);
+            n.properties = new ArrayList<PropertyDecl>(ps);
+            n.classInvariant = ci;
+        }
+        return n;
     }
     
     @Override
-    public X10ClassDecl_c preBuildTypes(TypeBuilder tb) throws SemanticException {
+    public X10ClassDecl_c preBuildTypes(TypeBuilder tb) {
         X10ClassDecl_c n = (X10ClassDecl_c) superPreBuildTypes(tb);
         
         final X10ClassDef def = (X10ClassDef) n.type;
@@ -531,10 +488,10 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
                 final UnknownTypeNode returnType = nf.UnknownTypeNode(pos);
                 final QName fullName = curr.fullName();
                 MethodDecl md = nf.MethodDecl(pos,nf.FlagsNode(pos,flags),returnType,nf.Id(pos,getThisMethod(containerName,fullName)),Collections.<Formal>emptyList(),
-                        nf.Block(pos,nf.Return(pos,nf.Special(pos, Special.Kind.THIS, nf.TypeNodeFromQualifiedName(pos,fullName)))));
+                        nf.Block(pos,nf.Return(pos,nf.Special(pos, Special.Kind.THIS, nf.CanonicalTypeNode(pos, curr)))));
                 n = (X10ClassDecl_c) n.body(n.body().addMember(md));
 
-                if (curr.flags().isStatic()) break; // a static class doesn't have an outer instance
+                if (curr.flags().isStatic() || !curr.isMember()) break; // a non-member class doesn't have an outer instance
                 curr = curr.outer();
             }
         }
@@ -549,11 +506,23 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
                 n.toString().replace('.','$')+
                         "$this");
     }
-    
-    private X10ClassDecl_c superPreBuildTypes(TypeBuilder tb) throws SemanticException {
-        tb = tb.pushClass(position(), flags.flags(), name.id());
 
-        ClassDef type = tb.currentClass();
+    private SemanticException errorInAST;
+
+    public SemanticException errorInAST() {
+        return errorInAST;
+    }
+
+    public X10ClassDecl_c errorInAST(SemanticException error) {
+        X10ClassDecl_c n = (X10ClassDecl_c) copy();
+        n.errorInAST = error;
+        return n;
+    }
+
+    private X10ClassDecl_c superPreBuildTypes(TypeBuilder tb) {
+        tb = tb.pushClass(position(), flags.flags(), name.id(), errorInAST);
+
+        X10ClassDef type = tb.currentClass();
 
         // Member classes of interfaces are implicitly public and static.
         if (type.isMember() && type.outer().get().flags().isInterface()) {
@@ -588,7 +557,7 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
     }
     
     @Override
-    public X10ClassDecl_c postBuildTypes(TypeBuilder tb) throws SemanticException {
+    public X10ClassDecl_c postBuildTypes(TypeBuilder tb) {
         
     	X10ClassDecl_c n = (X10ClassDecl_c) this.copy();
     	
@@ -624,8 +593,6 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
         final LazyRef<CConstraint> c = new LazyRef_c<CConstraint>(new CConstraint());
 
         final X10ClassDecl_c nn = n;
-        
-        // Add all the constraints on the supertypes into the invariant.
         c.setResolver(new Runnable() {
         	public void run() {
         	    CConstraint x = new CConstraint();
@@ -633,22 +600,6 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
         	        CConstraint xi = ci.valueConstraint().get();
         	        if (xi != null && ! xi.valid())
         	            x.addIn(xi);
-        	        TypeConstraint ti = ci.typeConstraint().get();
-        	        // TODO: Figure out what's happening with ti?!?
-        	    }
-        	    if (nn.superClass != null) {
-        	        Type t = nn.superClass.type();
-        	        CConstraint tc = Types.xclause(t);
-        	        if (tc != null && ! tc.valid()) {
-        	            x.addIn(tc);
-        	        }
-        	    }
-        	    for (TypeNode tn : nn.interfaces) {
-        	        Type t = tn.type();
-        	        CConstraint tc = Types.xclause(t);
-        	        if (tc != null && ! tc.valid()) {
-        	            x.addIn(tc);
-        	        }
         	    }
         	    c.update(x);
         	}
@@ -886,7 +837,6 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
                 Errors.issue(tc.job(), new Errors.TypedefMustBeStatic(mt, def.position()), this);
             }
         }
-      
         
         // fix for XTENLANG-978
 //        Map<X10ClassDef,X10ClassType> map = CollectionFactory.newHashMap();
@@ -905,9 +855,12 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
         
     	n = (X10ClassDecl_c) n.adjustAbstractMethods(oldtc);
     	
-    	if (flags().flags().isStruct()) {
-    		if (n.classDef().isInnerClass() && ! flags().flags().isStatic()) {
+    	Flags flags = n.flags().flags();
+    	if (flags.isStruct()) {
+    		if (n.classDef().isInnerClass() && ! flags.isStatic()) {
     			Errors.issue(tc.job(), new Errors.StructMustBeStatic(n));
+    			n.classDef().setFlags(n.classDef().flags().Static());
+    			n = (X10ClassDecl_c) n.flags(n.flags().flags(flags.Static()));
     		}
     		n.checkStructMethods(parent, tc);
     	}
@@ -916,6 +869,24 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
         if (n.superClass!=null) Types.checkVariance(n.superClass, ParameterType.Variance.COVARIANT,tc.job());
         for (TypeNode typeNode : n.interfaces)
             Types.checkVariance(typeNode, ParameterType.Variance.COVARIANT,tc.job());
+
+        // check normal interfaces do not have property fields, but only annotation-interfaces
+        if (flags.isInterface() && properties.size()>0) {
+            Type A;
+            try {
+                A = xts.systemResolver().findOne(QName.make("x10.lang.annotations.Annotation"));
+            } catch (SemanticException e) {
+                throw new InternalCompilerError("Couldn't find x10.lang.annotations.Annotation",e);
+            }
+            if (!classDef().asType().isSubtype(A,tc.context())) {
+                Errors.issue(tc.job(), new SemanticException("Interfaces that do not extend Annotation cannot have property fields. Use property methods instead.",position));                
+            }
+        }
+
+        // check properties are always simpler than their container
+        if (((X10ClassDef_c)classDef()).hasCircularProperty())
+            Errors.issue(tc.job(), new SemanticException("A class can only have properties of a 'simpler' type, i.e., there must be an ordering for all types such that if A has a property of type B then B is 'simpler' than A, and if A extends B then B is 'simpler' than A.",position));            
+
     	return n;
     }
     
@@ -998,10 +969,12 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
     	Context context = (Context) tc.context();
     	
     	X10ClassDef cd = (X10ClassDef) classDef();
-        CConstraint c =  cd.classInvariant().get();
-        if (c != null && ! c.consistent()) {
-            Errors.issue(tc.job(), new Errors.InconsistentInvariant(cd, position()));
-        }
+    	{ 
+    		CConstraint c =  cd.classInvariant().get();
+    		if (c != null && ! c.consistent()) {
+    			Errors.issue(tc.job(), new Errors.InconsistentInvariant(cd, position()));
+    		}
+    	}
         
     	// Check that we're in the right file.
     	if (flags.flags().isPublic() && type.isTopLevel()) {
@@ -1033,11 +1006,11 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
     	    for (PropertyDecl pd : properties()) {
     	        SemanticException ex = null;
     	        try {
-    	            FieldInstance fi = ts.findField(superClass, ts.FieldMatcher(type.asType(), pd.name().id(), tc.context()));
+    	            FieldInstance fi = ts.findField(superClass, type.asType(), pd.name().id(), tc.context());
     	            if (fi instanceof X10FieldInstance) {
     	                X10FieldInstance xfi = (X10FieldInstance) fi;
     	                if (xfi.isProperty())
-    	                    ex = new Errors.ClassCannotOerridePropertyOfSuperclass(type, fi, position());
+    	                    ex = new Errors.ClassCannotOverridePropertyOfSuperclass(type, fi, position());
     	            }
     	        }
     	        catch (SemanticException e) {
@@ -1061,7 +1034,7 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
     private Node superConformanceCheck(ContextVisitor tc) {
         TypeSystem ts = tc.typeSystem();
 
-        ClassType type = this.type.asType();
+        X10ClassType type = this.type.asType();
         Name name = this.name.id();
 
         // The class cannot have the same simple name as any enclosing class.
@@ -1105,17 +1078,17 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
             }                
         }
 
-        // check that inner classes do not declare member interfaces
-        if (type.isMember() && type.flags().isInterface() && type.outer().isInnerClass()) {
-            // it's a member interface in an inner class.
-            Errors.issue(tc.job(),
-                    new Errors.InnerDeclaredInterface(type, position()));
-        }
-
-        // Make sure that static members are not declared inside inner classes
-        if (type.isMember() && type.flags().isStatic() && type.outer().isInnerClass()) {
-            Errors.issue(tc.job(),
-                    new Errors.InnerDeclaredStatic(type, position()));
+        if (type.isMember() && (type.outer().isInnerClass() || type.outer().isLocal() || type.outer().isAnonymous())) {
+            if (type.flags().isInterface()) {
+                // check that inner classes do not declare member interfaces
+                Errors.issue(tc.job(),
+                        new Errors.InnerDeclaredInterface(type, type.outer(), position()));
+            } else 
+            if (type.flags().isStatic()) {
+                // Make sure that static members are not declared inside inner classes
+                Errors.issue(tc.job(),
+                        new Errors.InnerDeclaredStatic(type, type.outer(), position()));
+            }
         }
 
         if (type.superClass() != null && isValidType(type.superClass())) {
@@ -1166,8 +1139,9 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
         //@ERR abstract C3 extends B2 implements A {}
         // (other kinds of method collisions are checked in MethodDecl_c.overrideMethodCheck)
         // optimization: methods in Any&Object cannot cause problems (such errors will be caught in MethodDecl_c)
+        X10ParsedClassType_c myClassType = (X10ParsedClassType_c) type;
         if (interfaces.size()>=1) {
-            final List<X10ParsedClassType_c> directSuperTypes = new ArrayList<X10ParsedClassType_c>(((X10ParsedClassType_c) type).directSuperTypes());
+            final List<X10ParsedClassType_c> directSuperTypes = new ArrayList<X10ParsedClassType_c>(myClassType.directSuperTypes());
             int len = directSuperTypes.size();
             for (int i1=0; i1<len; i1++) {
                 X10ParsedClassType_c it1 = directSuperTypes.get(i1);
@@ -1186,20 +1160,58 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
                         final List<MethodInstance> implementedBy = ((TypeSystem_c) ts).implemented(mi, (ContainerType) it2, context);
                         for (MethodInstance mj : implementedBy) {
                             if (mi==mj) continue;
-                            // either mi can override mj, or the opposite.
-                            try {
-                                // due to covariant return type, the first argument should be the one with return type who is a subtype of the second
-                                ts.checkOverride(mi, mj, context);
-                            } catch (SemanticException e2) {
-                                try {
-                                    ts.checkOverride(mj, mi, context);
-                                } catch (SemanticException e) {
-                                    e.setPosition(this.position());
-                                    Errors.issue(tc.job(),e, this);
-                                }
-                            }
+                            checkOverride(tc, ts, context, mi, mj);
                         }
                     }
+                }
+            }
+        }
+
+        {
+            // methods with the same erased signature must have the exact same signature (see XTENLANG-547)
+            Context context2 = context.pushClass(this.type, type);
+            ArrayList<MethodInstance> allMethods = myClassType.getAllMethods();
+            for (int i=0; i<allMethods.size(); i++) {
+                MethodInstance mi = allMethods.get(i);
+                List<Type> types1 = mi.formalTypes();
+                int formalNum = types1.size();
+                if (formalNum ==0) continue;
+                if (! ts.isAccessible(mi, context2)) continue;
+                Name name1 = mi.name();
+
+                for (int j=i+1; j<allMethods.size(); j++) {
+                    MethodInstance mj = allMethods.get(j);
+                    List<Type> types2 = mj.formalTypes();
+                    if (types2.size()==0) continue;
+                    if (! ts.isAccessible(mj, context2)) continue;
+                    Name name2 = mj.name();
+
+                    if (name1!=name2) continue;
+                    if (formalNum !=types2.size()) continue;
+                    int typeParamNum = mi.typeParameters().size();
+                    if (typeParamNum !=mj.typeParameters().size()) continue;
+                    boolean isDifferent = false;
+                    for (int p=0; p<formalNum;p++) {
+                        Type t1 = Types.stripConstraints(types1.get(p));
+                        Type t2 = Types.stripConstraints(types2.get(p));
+                        // replace type-parameters in mi with mj, e.g.,
+                        // def m[U](U)
+                        // def m[H](H)
+                        if (typeParamNum!=0) {
+                            List<ParameterType> param1 = (List<ParameterType>) (List) mi.typeParameters();
+                            List<Type> param2 = mj.typeParameters();
+                            TypeParamSubst subst = new TypeParamSubst(ts, param2, param1);
+                            t1 = subst.reinstantiate(t1);
+                        }
+                        if (!ts.typeEquals(t1,t2,context2)) {
+                            isDifferent = true;
+                            break;
+                        }
+                    }
+                    if (isDifferent) continue;
+                    // now we require that one overrides the other
+                    // either mi can override mj, or the opposite.
+                    checkOverride(tc, ts, context2, mi, mj);
                 }
             }
         }
@@ -1229,6 +1241,27 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
         return this;
     }
 
+    private void checkOverride(ContextVisitor tc, TypeSystem ts, Context context, MethodInstance mi, MethodInstance mj) {
+        // either mi can override mj, or the opposite.
+        try {
+            // due to covariant return type, the first argument should be the one with return type who is a subtype of the second
+            MethodInstance mj2 = expandMacros(tc, ts, mi, mj);
+            ts.checkOverride(mi, mj2, context);
+        } catch (SemanticException e2) {
+            try {
+                MethodInstance mi2 = expandMacros(tc, ts, mj, mi);
+                ts.checkOverride(mj, mi2, context);
+            } catch (SemanticException e) {
+                e.setPosition(this.position());
+                Errors.issue(tc.job(),e, this);
+            }
+        }
+    }
+
+    public static MethodInstance expandMacros(ContextVisitor tc, TypeSystem ts, MethodInstance mi, MethodInstance mj) {
+        return ((X10TypeEnv_c)ts.env(tc.context())).expandPropertyInMethod(Types.getClassType(mi.container(),ts,tc.context()),mj);
+    }
+
     protected boolean isValidType(Type type) {
         TypeSystem xts = (TypeSystem) type.typeSystem();
         return !xts.hasUnknown(type);
@@ -1246,13 +1279,13 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
      * Visit this term in evaluation order.
      */
     public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
-	v.visitCFGList(this.properties(), this.body(), ENTRY);
+        v.visitCFGList(this.properties(), this.body(), ENTRY);
         v.visitCFG(this.body(), this, EXIT);
         return succs;
     }
 
     protected ConstructorDecl createDefaultConstructor(ClassDef _thisType,
-    		TypeSystem ts, NodeFactory nf) throws SemanticException
+    		TypeSystem ts, final NodeFactory nf)
     {
         X10ClassDef thisType = (X10ClassDef) _thisType;
         Position pos = Position.compilerGenerated(body().position());
@@ -1268,7 +1301,6 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
         Stmt s2 = null; 
         List<TypeParamNode> typeFormals = Collections.<TypeParamNode>emptyList();
         List<Formal> formals = Collections.<Formal>emptyList();
-        DepParameterExpr guard = null;
 
         if (! properties.isEmpty()) {
             // build type parameters.
@@ -1291,9 +1323,7 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
                 actuals.add(xnf.Local(pos, name));
             }
 
-            guard = classInvariant();
             s2 = xnf.AssignPropertyCall(pos, Collections.<TypeNode>emptyList(), actuals);
-            // TODO: add constraint on the return type
         }
         block = s2 == null ? (s1 == null ? nf.Block(pos) : nf.Block(pos, s1))
                 : (s1 == null ? nf.Block(pos, s2) : nf.Block(pos, s1, s2));
@@ -1305,15 +1335,50 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
             List<Type> typeArgs = new ArrayList<Type>(typeParams);
             resultType = (X10ClassType) resultType.typeArguments(typeArgs);
         }
+        // no need to bind properties because the return type is HasType  i.e.,   <: BlaBla
         X10CanonicalTypeNode returnType = (X10CanonicalTypeNode) xnf.CanonicalTypeNode(pos, resultType);
 
+        DepParameterExpr guard = classInvariant();
+        if (guard!=null) {
+            // we gather the property names so we can convert all the this.p in the invariant to locals for the default ctor
+            //class A1(i:Int) {this.i==2} {
+            //    def this() { property(2); }
+            //}
+            //class B1(b:Int) {this.i!=3} extends A1 {}
+            final HashSet<Name> propNames = new HashSet<Name>();
+            for (PropertyDecl p : properties)
+                propNames.add(p.name().id());              
+
+            // replace "this" in the invariant with no qualifiers for the guard
+            class CannotConvertInvariantToGuard extends RuntimeException {}
+            try {
+                guard = (DepParameterExpr) guard.visit(new NodeVisitor() {
+                    @Override
+                    public Node override(Node n) {
+                        if (n instanceof Call)
+                            throw new CannotConvertInvariantToGuard();
+                        if (!(n instanceof Field)) return null;
+                        Field f = (Field) n;
+                        if (!(f.target() instanceof X10Special)) return null;
+                        // This is not a good test cause you can refer to a super property with "this".
+                        // ((X10Special) f.target()).kind()==Special.Kind.THIS)
+                        if (propNames.contains(f.name().id()))
+                            return nf.Local(n.position(),f.name());
+                        throw new CannotConvertInvariantToGuard();
+                    }
+                });
+            } catch (CannotConvertInvariantToGuard e) {
+                guard = null;
+                Errors.issue(ts.extensionInfo(), new SemanticException("Cannot create the default constructor because the class invariant uses property methods, self, or super. Please define a constructor explicitly."), classInvariant.position());
+            }
+        }
         ConstructorDecl cd = xnf.X10ConstructorDecl(pos,
                 nf.FlagsNode(pos, Flags.PUBLIC),
                 nf.Id(pos, TypeSystem.CONSTRUCTOR_NAME), 
-                returnType,
+                nf.HasType(returnType),
                 typeFormals,
                 formals,
-                guard, 
+                guard,
                 null, // offerType
                 block);
         return cd;
@@ -1490,7 +1555,7 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
         return body == n.body ? n : n.body(body);
     }
 
-    public Node buildTypesOverride(TypeBuilder tb) throws SemanticException {
+    public Node buildTypesOverride(TypeBuilder tb) {
     	X10ClassDecl_c n = this;
     	n = n.preBuildTypes(tb);
     	n = n.buildTypesBody(tb);
@@ -1498,7 +1563,7 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
     	return n;
     }
 
-    private X10ClassDecl_c buildTypesBody(TypeBuilder tb) throws SemanticException {
+    private X10ClassDecl_c buildTypesBody(TypeBuilder tb) {
     	X10ClassDecl_c n = this;
     	TypeBuilder tb2 = tb.pushClass(n.type);
     	ClassBody body = (ClassBody) n.visitChild(n.body, tb2);
@@ -1547,6 +1612,20 @@ public class X10ClassDecl_c extends ClassDecl_c implements X10ClassDecl {
             n.checkSupertypeCycles(tc.typeSystem());
         } catch (SemanticException e) {
             Errors.issue(tc.job(), e, this);
+        }
+        if (superClass != null) {
+            try {
+                Types.checkMissingParameters(superClass);
+            } catch (SemanticException e) {
+                Errors.issue(tc.job(), e, this);
+            }
+        }
+        for (TypeNode itn : interfaces) {
+            try {
+                Types.checkMissingParameters(itn);
+            } catch (SemanticException e) {
+                Errors.issue(tc.job(), e, this);
+            }
         }
 
         return n;

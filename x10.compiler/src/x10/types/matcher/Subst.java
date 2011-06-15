@@ -61,7 +61,7 @@ public class Subst {
      * @return -- The type t, with c added to each component (recursively).
      * @throws XFailure -- If one of the component types is inconsistent.
      */
-    public static Type addIn(Type t, CConstraint in) throws XFailure {
+    public static Type addIn(Type t, CConstraint in) {
         if (t == null)
             return null;
 
@@ -74,6 +74,7 @@ public class Subst {
         if (t instanceof UnknownType)
             return t;
         if (t instanceof ParameterType) {
+            if (in.valid()) return t;
             return Types.xclause(t, in);
         }
         if (ts.isVoid(t)) {
@@ -159,8 +160,14 @@ public class Subst {
      */
     public static List<Type> subst(List<Type> ts, XTerm[] y, XVar[] x) throws SemanticException {
         List<Type> result= new ArrayList<Type>(ts.size());
-        for (Type t : ts) 
-            result.add(subst(t, y, x));
+        boolean changed = false;
+        for (Type t : ts) {
+            Type nt = subst(t, y, x);
+            if (nt != t)
+                changed = true;
+            result.add(nt);
+        }
+        if (!changed) return ts;
         return result;
     }
 
@@ -183,26 +190,30 @@ public class Subst {
             if (ct.typeArguments() == null)
                 return ct;
             List<Type> newArgs = new ArrayList<Type>();
+            boolean changed = false;
             for (Type at : ct.typeArguments()) {
                 Type at2 = subst(at, y, x);
                 newArgs.add(at2);
+                if (at2 != at) changed = true;
             }
-            if (! newArgs.isEmpty())
+            if (changed && ! newArgs.isEmpty())
                 return ct.typeArguments(newArgs);
         } else 
             if (c != null) {
-                c = c.copy();
-                base = subst(base, y, x);
+                CConstraint newC = c;
+                Type newBase = subst(base, y, x);
 
                 try {
-                    c = c.substitute(y, x);
-                    //                  c = c.saturate();
+                    newC = newC.substitute(y, x);
+                    //                  newC = newC.saturate();
                 }
                 catch (XFailure e) {
                     throw new SemanticException("Cannot instantiate formal parameters on actuals.");
                 }
 
-                return Types.xclause(base, c);
+                if (newBase != base || newC != c) {
+                    return Types.xclause(newBase, newC);
+                }
             }
 
 
@@ -276,6 +287,7 @@ public class Subst {
         return subst(t, new XTerm[] { y }, new XVar[] { x }, new Type[0], new ParameterType[0]);
     }
 
+    // FIXME: this is wrong, because types may appear in the constraint
     public static CConstraint subst(CConstraint t, Type Y, ParameterType X) throws SemanticException {
         return t;
     }
@@ -390,6 +402,21 @@ public class Subst {
         if (newFormalTypes != formalTypes) {
             ci = ci.formalTypes(newFormalTypes);
         }
+        List<LocalInstance> newFormalNames = new ArrayList<LocalInstance>();
+        boolean changed = false;
+        for (LocalInstance li : ci.formalNames()) {
+            try {
+                LocalInstance newLI = subst((X10LocalInstance) li, y, x);
+                if (newLI != li) changed = true;
+                newFormalNames.add(newLI);
+            }
+            catch (SemanticException e) {
+                newFormalNames.add(li);
+            }
+        }
+        if (changed) {
+            ci = (X10ConstructorInstance) ci.formalNames(newFormalNames);
+        }
         ContainerType ct = (ContainerType) subst(ci.container(), y, x);
         if (ct != ci.container()) {
             ci =  (X10ConstructorInstance) ci.container(ct);
@@ -418,6 +445,21 @@ public class Subst {
         List<Type> newFormalTypes = subst(formalTypes, y, x);
         if (newFormalTypes != formalTypes) {
             mi = mi.formalTypes(newFormalTypes);
+        }
+        List<LocalInstance> newFormalNames = new ArrayList<LocalInstance>();
+        boolean changed = false;
+        for (LocalInstance li : mi.formalNames()) {
+            try {
+                LocalInstance newLI = subst((X10LocalInstance) li, y, x);
+                if (newLI != li) changed = true;
+                newFormalNames.add(newLI);
+            }
+            catch (SemanticException e) {
+                newFormalNames.add(li);
+            }
+        }
+        if (changed) {
+            mi = (MethodInstance) mi.formalNames(newFormalNames);
         }
         ContainerType ct = (ContainerType) subst(mi.container(), y, x);
         if (ct != mi.container()) {

@@ -40,18 +40,20 @@ import polyglot.util.ErrorQueue;
 import polyglot.util.QuotedStringTokenizer;
 import polyglot.visit.Translator;
 import x10.X10CompilerOptions;
+import x10.util.FileUtils;
 import x10c.X10CCompilerOptions;
 
 public class X10Translator extends Translator {
+	
+    private boolean inInnerClass;
+
     public X10Translator(Job job, TypeSystem ts, NodeFactory nf, TargetFactory tf) {
            super(job, ts, nf, tf);
            inInnerClass = false;
     }
     
-    boolean inInnerClass;
-
     private static String escapePath(String path) {
-        StringBuffer sb = new StringBuffer();
+    	StringBuilder sb = new StringBuilder();
         for (int i = 0; i < path.length(); ++i) {
             char c = path.charAt(i);
             if (c == '\\') {
@@ -63,15 +65,22 @@ public class X10Translator extends Translator {
         }
         return sb.toString();
     }
+    
+    @Override
     public void print(Node parent, Node n, CodeWriter w) {
-        if (n != null && n.position().line() > 0 &&
-                ((n instanceof Stmt && (! (n instanceof Block))) ||
+    	assert n != null;
+    	int line = n.position().line();
+    	String file = n.position().file();
+        if (line > 0 &&
+                ((n instanceof Stmt && !(n instanceof Block)) ||
                  (n instanceof FieldDecl) ||
                  (n instanceof MethodDecl) ||
                  (n instanceof ConstructorDecl) ||
                  (n instanceof ClassDecl)))
-//            w.write("\n//#line " + n.position().line() + "\n");
-            w.write("\n//#line " + n.position().line() + " \"" + escapePath(n.position().file()) + "\"\n");
+        {
+//            w.write("\n//#line " + line + "\n");
+            w.write("\n//#line " + line + " \"" + escapePath(file) + "\"\n");
+        }
 
         super.print(parent, n, w);
     }
@@ -95,7 +104,6 @@ public class X10Translator extends Translator {
 	    NodeFactory nf = nodeFactory();
 	    TargetFactory tf = this.tf;
 	    int outputWidth = job.compiler().outputWidth();
-	    Collection<String> outputFiles = job.compiler().outputFiles();
 	    CodeWriter w= null;
 
 	    try {
@@ -112,7 +120,7 @@ public class X10Translator extends Translator {
 	        of = tf.outputFile(pkg, sfn.source());
 
 	        String opfPath = of.getPath();
-	        if (!opfPath.endsWith("$")) outputFiles.add(of.getPath());
+	        if (!opfPath.endsWith("$")) job.compiler().addOutputFile(sfn, of.getPath());
 	        w = tf.outputCodeWriter(of, outputWidth);
 
 	        writeHeader(sfn, w);
@@ -129,35 +137,25 @@ public class X10Translator extends Translator {
 
 	        w.flush();
 
-            X10CCompilerOptions options = (X10CCompilerOptions) ts.extensionInfo().getOptions();
+            X10CompilerOptions options = (X10CompilerOptions) ts.extensionInfo().getOptions();
             if (options.post_compiler != null && !options.output_stdout && options.executable_path != null) {
                 // copy *.x10 to output_directory in order to add them in a jar file
                 File sourceFile = null; 
                 File targetFile = null;
-                java.io.FileInputStream sourceInputStream = null;
-                java.io.FileOutputStream targetOutputStream = null;
                 try {
                     String sourceFilepath = sfn.source().toString();
                     sourceFile = new File(sourceFilepath);
-                    
                     if (sourceFile.isFile()) {
-                    String targetDirpath = options.output_directory.getAbsolutePath();
-                    if (pkg != null) {
-                        targetDirpath += File.separator + pkg.toString().replace('.', File.separatorChar);
-                    }
-                    File targetDir = new File(targetDirpath);
-//                    targetDir.mkdirs();
-                    targetFile = new File(targetDir, sfn.source().name());
-                    
-                    sourceInputStream = new java.io.FileInputStream(sourceFile);
-                    java.nio.channels.FileChannel sourceChannel = sourceInputStream.getChannel();
-                    targetOutputStream = new java.io.FileOutputStream(targetFile);
-                    java.nio.channels.FileChannel targetChannel = targetOutputStream.getChannel();
-                    sourceChannel.transferTo(0, sourceChannel.size(), targetChannel);
+                        String targetDirpath = options.output_directory.getAbsolutePath();
+                        if (pkg != null) {
+                            targetDirpath += File.separator + pkg.toString().replace('.', File.separatorChar);
+                        }
+                        File targetDir = new File(targetDirpath);
+//                        targetDir.mkdirs();
+                        targetFile = new File(targetDir, sfn.source().name());
+                        FileUtils.copyFile(sourceFile, targetFile);
                     }
                 } finally {
-                    if (sourceInputStream != null) sourceInputStream.close();
-                    if (targetOutputStream != null) targetOutputStream.close();
                     if (sourceFile != null && targetFile != null) { 
                         targetFile.setLastModified(sourceFile.lastModified());
                     }
@@ -190,38 +188,42 @@ public class X10Translator extends Translator {
 
         if (options.post_compiler != null && !options.output_stdout) {
             Runtime runtime = Runtime.getRuntime();
+            java.util.ArrayList<String> javacCmd = new java.util.ArrayList<String>();
+            String[] strarray = new String[0];
             QuotedStringTokenizer st = new QuotedStringTokenizer(options.post_compiler, '?');
-            int pc_size = st.countTokens();
-            String[] javacCmd = new String[pc_size+2+compiler.outputFiles().size()];
-            int j = 0;
-            for (int i = 0; i < pc_size; i++) {
-                javacCmd[j++] = st.nextToken();
+            while (st.hasMoreTokens()) {
+            	javacCmd.add(st.nextToken());
             }
-            javacCmd[j++] = "-classpath";
-            javacCmd[j++] = options.constructPostCompilerClasspath();
+            
+            javacCmd.add("-classpath");
+            javacCmd.add(options.constructPostCompilerClasspath());
+            
+            javacCmd.add("-encoding");
+            javacCmd.add("utf-8");
+            
+//            javacCmd.add("-warn:+boxing");	// only for ecj
 
-            Iterator<String> iter = compiler.outputFiles().iterator();
-            for (; iter.hasNext(); j++) {
-                javacCmd[j] = (String) iter.next();
+            for (Collection<String> files : compiler.outputFiles().values()) {
+                javacCmd.addAll(files);
             }
 
             Reporter reporter = options.reporter;
             if (reporter.should_report(postcompile, 1)) {
-                StringBuffer cmdStr = new StringBuffer();
-                for (int i = 0; i < javacCmd.length; i++)
-                    cmdStr.append(javacCmd[i]+" ");
+            	StringBuilder cmdStr = new StringBuilder();                
+                for (int i = 0; i < javacCmd.size(); i++)
+                    cmdStr.append(javacCmd.get(i)+" ");
                 reporter.report(1, "Executing post-compiler " + cmdStr);
             }
 
             try {
-                Process proc = runtime.exec(javacCmd);
+                Process proc = runtime.exec(javacCmd.toArray(strarray));
 
                 InputStreamReader err = new InputStreamReader(proc.getErrorStream());
 
                 try {
                     char[] c = new char[72];
                     int len;
-                    StringBuffer sb = new StringBuffer();
+                    StringBuilder sb = new StringBuilder();
                     while((len = err.read(c)) > 0) {
                         sb.append(String.valueOf(c, 0, len));
                     }
@@ -237,12 +239,12 @@ public class X10Translator extends Translator {
                 proc.waitFor();
 
                 if (!options.keep_output_files) {
-                    String[] rmCmd = new String[1+compiler.outputFiles().size()];
-                    rmCmd[0] = "rm";
-                    iter = compiler.outputFiles().iterator();
-                    for (int i = 1; iter.hasNext(); i++)
-                        rmCmd[i] = (String) iter.next();
-                    runtime.exec(rmCmd);
+                	java.util.ArrayList<String> rmCmd = new java.util.ArrayList<String>();
+                	rmCmd.add("rm");
+                	for (Collection<String> files : compiler.outputFiles().values()) {
+                	    rmCmd.addAll(files);
+                	}
+                    runtime.exec(rmCmd.toArray(strarray));
                 }
 
                 if (proc.exitValue() > 0) {
@@ -280,7 +282,7 @@ public class X10Translator extends Translator {
                         // add Main-Class attribute for executable jar
                         out.println("Main-Class: " + main_class + "$" + X10PrettyPrinterVisitor.MAIN_CLASS);
                         // TODO Cannot add x10.jar in Class-Path attribute because it will be loaded by system class loader and static initialization will fail
-                        //out.println("Class-Path: x10.jar commons-math-2.1.jar");
+                        //out.println("Class-Path: x10.jar commons-math-2.2.jar");
                     }
                     out.println("Created-By: " + compiler.sourceExtension().compilerName() + " version " + compiler.sourceExtension().version());
                     out.close();
@@ -300,13 +302,13 @@ public class X10Translator extends Translator {
                     jarCmdList.add(options.output_directory.getAbsolutePath()); // -d output_directory
                     jarCmdList.add(".");
                     
-                    String[] jarCmd = jarCmdList.toArray(new String[0]);
+                    String[] jarCmd = jarCmdList.toArray(strarray);
                     Process jarProc = runtime.exec(jarCmd);
                     InputStreamReader jarErr = new InputStreamReader(jarProc.getErrorStream());
                     try {
                         char[] c = new char[72];
                         int len;
-                        StringBuffer sb = new StringBuffer();
+                        StringBuilder sb = new StringBuilder();
                         while ((len = jarErr.read(c)) > 0) {
                             sb.append(String.valueOf(c, 0, len));
                         }

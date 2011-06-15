@@ -12,8 +12,12 @@
 package x10.emitter;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
+import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.visit.Translator;
 import x10.types.ConstrainedType;
@@ -21,10 +25,14 @@ import x10.types.FunctionType;
 import x10.types.ParameterType;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
+import x10.types.X10FieldInstance;
 import polyglot.types.TypeSystem;
 import x10.visit.X10PrettyPrinterVisitor;
 
 final public class RuntimeTypeExpander extends Expander {
+
+	// XTENLANG-2488
+    public static final boolean useReflectionToGetRTT = true;
 
     private final Type at;
 
@@ -48,10 +56,42 @@ final public class RuntimeTypeExpander extends Expander {
         this.at = at;
     }
 
+    @Override
     public String toString() {
     	return "RuntimeTypeExpander{#" + hashCode() + // todo: using hashCode leads to non-determinism in the output of the compiler
                 ", " + at.toString() + "}";
     }
+    
+    public static boolean hasConflictingField(X10ClassType ct, Translator tr) {
+    	if (!useReflectionToGetRTT) {
+    		return false;
+    	}
+        TypeSystem xts = tr.typeSystem();
+        boolean hasConflictingField = false;
+        try {
+        	// container is available only if ct is a member
+        	if (ct.isMember()) {
+        		X10ClassType container = ct.container();
+        		X10FieldInstance fi = xts.findField(container, container, ct.name(), tr.context());
+        		hasConflictingField = fi != null;
+        	}
+        } catch (SemanticException e) {
+        	// exception means no such field
+        }
+        return hasConflictingField;
+    }
+
+    public static String getRTT(String qualifiedClassName, boolean hasConflictingField) {
+    	String rttString = null;
+    	if (useReflectionToGetRTT && hasConflictingField) {
+    		rttString = X10PrettyPrinterVisitor.X10_RTT_TYPES + ".<" + qualifiedClassName + "> $RTT(" + qualifiedClassName + ".class)";
+    	} else {
+    		rttString = qualifiedClassName + "." + X10PrettyPrinterVisitor.RTT_NAME;
+    	}
+    	return rttString;
+    }
+    
+    @Override
     public void expand(Translator tr) {
         String s = typeof(at);
         if (s != null) {
@@ -61,7 +101,7 @@ final public class RuntimeTypeExpander extends Expander {
         
         if (at instanceof ParameterType) {
             ParameterType pt = (ParameterType) at;
-            er.w.write(pt.name().toString());
+            er.w.write(Emitter.mangleParameterType(pt));
             return;
         }
 
@@ -93,43 +133,63 @@ final public class RuntimeTypeExpander extends Expander {
         if (at instanceof X10ClassType) {
             X10ClassType ct = (X10ClassType) at;
             X10ClassDef cd = ct.x10Def();
-            String pat = er.getJavaRTTRep(cd);
+            String pat = Emitter.getJavaRTTRep(cd);
             
             // Check for @NativeRep with null RTT class
-            if (pat == null && er.getJavaRep(cd) != null) {
-            	er.w.write("x10.rtt.Types.runtimeType(");
+            if (pat == null && Emitter.getJavaRep(cd) != null) {
+                er.w.write("new x10.rtt.RuntimeType<Class<?>>(");
             	er.printType(at, 0);
             	er.w.write(".class");
             	er.w.write(")");
             	return;
             }
             
-            List<Type> typeArgs = ct.typeArguments();
-            if (typeArgs == null) typeArgs = Collections.<Type>emptyList();
+            List<Type> classTypeArgs = ct.typeArguments();
+            if (classTypeArgs == null) classTypeArgs = Collections.<Type>emptyList();
             if (pat == null) {
+            	String rttString = getRTT(Emitter.mangleQName(cd.fullName()).toString(), hasConflictingField(ct, tr));
                 // XTENLANG-1102
-                if (ct.isGloballyAccessible() && typeArgs.size() == 0) {
-                    er.w.write(cd.fullName().toString() + "." + "_RTT");
+                if (ct.isGloballyAccessible() && classTypeArgs.size() == 0) {
+                    er.w.write(rttString);
                 } else {
                     er.w.write("new x10.rtt.ParameterizedType(");
-                    er.w.write(cd.fullName().toString() + "." + "_RTT");
-                    for (int i = 0; i < typeArgs.size(); i++) {
+                    er.w.write(rttString);
+                    for (int i = 0; i < classTypeArgs.size(); i++) {
                         er.w.write(", ");
-                        new RuntimeTypeExpander(er, typeArgs.get(i)).expand(tr);
+                        new RuntimeTypeExpander(er, classTypeArgs.get(i)).expand(tr);
                     }
                     er.w.write(")");
                 }
                 return;
             }
             else {
-            	Object[] components = new Object[1 + typeArgs.size() * 2];
+                List<ParameterType> classTypeParams  = cd.typeParameters();
+//                if (classTypeParams == null) classTypeParams = Collections.<ParameterType>emptyList();
+                Iterator<ParameterType> classTypeParamsIter = null;
+                if (classTypeParams != null) {
+                    classTypeParamsIter = classTypeParams.iterator();
+                }
+            	Map<String,Object> components = new HashMap<String,Object>();
             	int i = 0;
-            	components[i++] = new TypeExpander(er, ct, X10PrettyPrinterVisitor.PRINT_TYPE_PARAMS | X10PrettyPrinterVisitor.BOX_PRIMITIVES);
-            	for (Type at : typeArgs) {
-            		components[i++] = new TypeExpander(er, at, X10PrettyPrinterVisitor.PRINT_TYPE_PARAMS | X10PrettyPrinterVisitor.BOX_PRIMITIVES);
-            		components[i++] = new RuntimeTypeExpander(er, at);
+            	Object component;
+            	String name;
+            	component =  new TypeExpander(er, ct, X10PrettyPrinterVisitor.PRINT_TYPE_PARAMS | X10PrettyPrinterVisitor.BOX_PRIMITIVES);
+            	components.put(String.valueOf(i++), component);
+            	components.put("class", component);
+            	for (Type at : classTypeArgs) {
+                    if (classTypeParamsIter != null) {
+                        name = classTypeParamsIter.next().name().toString();
+                    } else {
+                        name = null;
+                    }
+            		component = new TypeExpander(er, at, X10PrettyPrinterVisitor.PRINT_TYPE_PARAMS | X10PrettyPrinterVisitor.BOX_PRIMITIVES);
+                	components.put(String.valueOf(i++), component);
+                    if (name != null) { components.put(name+Emitter.NATIVE_ANNOTATION_BOXED_REP_SUFFIX, component); }
+            		component = new RuntimeTypeExpander(er, at);
+                	components.put(String.valueOf(i++), component);
+                    if (name != null) { components.put(name+Emitter.NATIVE_ANNOTATION_RUNTIME_TYPE_SUFFIX, component); }
             	}
-            	er.dumpRegex("Native", components, tr, pat);
+            	er.dumpRegex("NativeRep", components, tr, pat);
             	return;
             }
         }
@@ -141,7 +201,7 @@ final public class RuntimeTypeExpander extends Expander {
             return;
         }
 
-        er.w.write("x10.rtt.Types.runtimeType(");
+        er.w.write("new x10.rtt.RuntimeType<Class<?>>(");
         er.printType(at, 0);
         er.w.write(".class");
         er.w.write(")");
@@ -149,13 +209,13 @@ final public class RuntimeTypeExpander extends Expander {
 
     private void printFunRTT(FunctionType ct, List<Type> args, Type ret) {
         if (ret.isVoid()) {
-            er.w.write("x10.core.fun.VoidFun");
+            er.w.write(X10PrettyPrinterVisitor.X10_VOIDFUN_CLASS_PREFIX);
         } else {
-            er.w.write("x10.core.fun.Fun");
+            er.w.write(X10PrettyPrinterVisitor.X10_FUN_CLASS_PREFIX);
         }
         er.w.write("_" + ct.typeParameters().size());
         er.w.write("_" + args.size());
-        er.w.write("._RTT");
+        er.w.write("." + X10PrettyPrinterVisitor.RTT_NAME);
     }
 
     String typeof(Type t) {

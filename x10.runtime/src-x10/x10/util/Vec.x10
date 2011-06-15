@@ -13,9 +13,11 @@ package x10.util;
 
 import x10.compiler.Native;
 import x10.compiler.NativeRep;
+import x10.compiler.Mutable;
 
-@NativeRep("c++", "NativeVec<#T, ##size#-1#>", "NativeVec<#T, ##size#-1#>", null)
-public struct Vec[T] (@Native("c++","#this.size()")size:Int) {
+@NativeRep("java", "x10.core.Vec<#T$box>", null, "new x10.rtt.ParameterizedType(x10.core.Vec.$RTT, #T$rtt)")
+@NativeRep("c++", "x10::util::NativeVec<#T, ##size#-1#>", "x10::util::NativeVec<#T, ##size#-1#>", null)
+@Mutable public struct Vec[T] (@Native("c++","#this.size()")size:Int) {
 
     private backing : Array[T]{self.rank==1, self.size==this.size};
     private def this(s:Int) {T haszero} : Vec[T]{self.size==s} {
@@ -23,12 +25,15 @@ public struct Vec[T] (@Native("c++","#this.size()")size:Int) {
         backing = new Array[T](size);
     }
 
-    @Native("c++", "NativeVec<#U, #s>(#s)")
-    public static def make[U](s:Int) {U haszero} = new Vec[U](s);
+    @Native("java", "new x10.core.Vec<#U$box>(#U$rtt, #s)")
+    @Native("c++", "x10::util::NativeVec<#U, #s>(#s)")
+    public static def make[U](s:Int) {U haszero}: Vec[U]{self.size==s} = new Vec[U](s);
 
+    @Native("java", "#this.get(#i)")
     @Native("c++", "#this.get(#i)")
     public operator this(i:Int) : T = backing(i);
 
+    @Native("java", "#this.set(#i,#v)")
     @Native("c++", "#this.set(#v,#i)")
     public operator this(i:Int) = (v:T) : T = backing(i) = v;
 }

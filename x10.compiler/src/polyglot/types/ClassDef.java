@@ -14,6 +14,7 @@ import polyglot.frontend.Source;
 import polyglot.util.Position;
 import x10.types.ParameterType;
 import x10.types.TypeDef;
+import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
 import x10.types.X10FieldDef;
 import x10.types.constraints.CConstraint;
@@ -103,7 +104,7 @@ public interface ClassDef extends MemberDef
     List<Ref<? extends ClassType>> memberClasses();
 
     /** The class's outer class if this is a nested class, or null. */
-    Ref<? extends ClassDef> outer();
+    Ref<? extends X10ClassDef> outer();
     
     /**
      * Position of the type's declaration.
@@ -194,7 +195,7 @@ public interface ClassDef extends MemberDef
     /**
      * Set the class's outer class.
      */
-    void outer(Ref<ClassDef> outer);
+    void outer(Ref<X10ClassDef> outer);
 
     /**
      * Set the name of the class.  Throws <code>InternalCompilerError</code>
@@ -211,11 +212,24 @@ public interface ClassDef extends MemberDef
      * for the class, with the invariants for its superclass and the 
      * interfaces it implements, and for each property f:C{c},
      * the constraint c[self.f/self,self/this]
+     * 
+     * <p>This will force computation of the real clause if it is not computed already.
      * @return
      */
-	CConstraint getRootClause();
-	
-    //void setRootClause(Ref<CConstraint> c);
+	CConstraint getRealClause();
+	/**
+	 * Return the lazy ref so you can decide whether to force it or not.
+	 * @return
+	 */
+     Ref<CConstraint>  realClause();
+     
+     /**
+      * Return the lazy ref so you can decide whether to force it or not.
+      * When forced, it will return the real clause with this substituted
+      * for self.
+      * @return
+      */
+      Ref<CConstraint>  realClauseWithThis();
     
     /**
      * Throw a SemanticException if the real clause is invalid.
@@ -239,6 +253,7 @@ public interface ClassDef extends MemberDef
     List<ParameterType.Variance> variances();
     List<ParameterType> typeParameters();
     void addTypeParameter(ParameterType p, ParameterType.Variance v);
+    void replaceTypeParameter(int i, ParameterType p, ParameterType.Variance v);
     
     /** Add a member type to the class. */
     List<TypeDef> memberTypes();
@@ -260,4 +275,12 @@ public interface ClassDef extends MemberDef
      * Does this class def have a custom deserialization constructor defined?
      */
     boolean hasDeserializationConstructor(Context context);
+    /**
+     * True if the class def used to be a non-static member class (used by {@link InnerClassRemover}).
+     */
+    boolean wasInner();
+    /**
+     * Mark the class def as having been a non-static member class (used by {@link InnerClassRemover}).
+     */
+    void setWasInner(boolean v);
 }

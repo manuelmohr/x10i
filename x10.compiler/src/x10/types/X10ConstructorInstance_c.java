@@ -119,11 +119,6 @@ public class X10ConstructorInstance_c extends ConstructorInstance_c implements X
         return n;
     }
 
-    /** Constraint on superclass constructor call return type. */
-    public CConstraint supClause() { 
-        return Types.get(x10Def().supClause());
-    }
-
     @Override
     public X10ConstructorInstance container(ContainerType container) {
         if (container == this.container) return this;
@@ -158,6 +153,7 @@ public class X10ConstructorInstance_c extends ConstructorInstance_c implements X
     
     public List<LocalInstance> formalNames() {
 	if (this.formalNames == null) {
+		// Why is this not cached in this.formalNames?
 	    return new TransformingList<LocalDef, LocalInstance>(x10Def().formalNames(),
 	        new Transformation<LocalDef,LocalInstance>() {
 	            public LocalInstance transform(LocalDef o) {
@@ -228,9 +224,9 @@ public class X10ConstructorInstance_c extends ConstructorInstance_c implements X
                 String s = "";
                 String t = formalTypes.get(i).toString();
                 if (formalNames != null && i < formalNames.size()) {
-                    LocalInstance a = formalNames.get(i);
-                    if (a != null && ! a.name().toString().equals(""))
-                        s = a.name() + ": " + t; 
+                    X10LocalInstance a = (X10LocalInstance) formalNames.get(i);
+                    if (a != null && ! a.x10Def().isUnnamed())
+                        s = a.name() + ": " + t;
                     else
                         s = t;
                 }

@@ -123,10 +123,10 @@ import x10.X10CompilerOptions;
  * <code>@ERR {i=3;}</code>
  *
  *
- * By default we run the compiler with VERBOSE_CALLS.
+ * By default we run the compiler with VERBOSE_CHECKS.
  * If the file contains the line:
-//OPTIONS: -STATIC_CALLS
- * then we run it with STATIC_CALLS.
+//OPTIONS: -STATIC_CHECKS
+ * then we run it with STATIC_CHECKS.
 
  * Some directories are permenantly excluded from the test suite
  * (see EXCLUDE_DIRS and EXCLUDE_FILES fields)
@@ -147,9 +147,11 @@ public class RunTestSuite {
     public static boolean SEPARATE_COMPILER = getBoolProp("SEPARATE_COMPILER");
     public static boolean SHOW_EXPECTED_ERRORS = getBoolProp("SHOW_EXPECTED_ERRORS");
     public static boolean SHOW_RUNTIMES = getBoolProp("SHOW_RUNTIMES");
+    public static boolean SKIP_CRASHES = getBoolProp("SKIP_CRASHES");
     public static boolean QUIET = !SHOW_EXPECTED_ERRORS && getBoolProp("QUIET");
 
     public static String SOURCE_PATH_SEP = File.pathSeparator; // on MAC the separator is ":" and on windows it is ";"
+    public static String LANGSPEC = "LangSpec"; // in LangSpec directory we ignore multiple errors on the same line (so one ERR marker matches any number of errors)
 
     private static void println(String s) {
         if (!QUIET) {
@@ -172,6 +174,8 @@ public class RunTestSuite {
             //"_MustFailCompile.x10",
     };
     private static final String[] EXCLUDE_DIRS = {
+            "LangSpec", // Bard has too many errors...
+            "WorkStealing", // it has copies of existing tests
             "AutoGen", // it takes too long to compile these files
             "NOT_WORKING", // to exclude some benchmarks: https://x10.svn.sourceforge.net/svnroot/x10/benchmarks/trunk
     };
@@ -252,8 +256,8 @@ public class RunTestSuite {
         remainingArgs.remove(0);
 
         for (String s : args) {
-            if (s.contains("STATIC_CALLS") || s.contains("VERBOSE_CALLS"))
-                throw new RuntimeException("You should run the test suite without -VERBOSE_CALLS or -STATIC_CALLS");
+            if (s.contains("STATIC_CHECKS") || s.contains("VERBOSE_CHECKS"))
+                throw new RuntimeException("You should run the test suite without -VERBOSE_CHECKS or -STATIC_CHECKS");
         }
         if (SEPARATE_COMPILER)
             println("Running each file with a separate (new) compiler object, so it's less efficient but more stable.");
@@ -310,11 +314,24 @@ public class RunTestSuite {
         for (FileSummary f : summaries) {
             compileFile(f,remainingArgs);
         }
+        // report remaining errors that were not matched in any file
+        printRemaining(null);
         if (SHOW_RUNTIMES) println("Total running time to compile all files="+(System.currentTimeMillis()-start));
         
         if (EXIT_CODE!=0) System.out.println("Summary of all errors:\n\n"+ALL_ERRORS);
         System.out.println("\n\n\n\n\n"+ (EXIT_CODE==0 ? "SUCCESS" : "FAILED") + "\n\n\n");
         System.exit(EXIT_CODE);
+    }
+    private static void printRemaining(File file) {
+        for (Iterator<ErrorInfo> it = remainingErrors.iterator(); it.hasNext();) {
+            ErrorInfo err = it.next();
+            final Position pos = err.getPosition();
+            if (file==null || pos==null || isInFile(pos,file)) {
+                it.remove();
+                err((err.getErrorKind()==ErrorInfo.WARNING ? "Warning":"ERROR")+" in position:\n"+ pos +"\nMessage: "+err+"\n");
+            }
+        }
+
     }
     private static int count(String s, String sub) {
         final int len = sub.length();
@@ -329,19 +346,23 @@ public class RunTestSuite {
     private static SilentErrorQueue errQueue = new SilentErrorQueue(MAX_ERR_QUEUE,"TestSuiteErrQueue");
     private static Main MAIN = new Main();
     private static Compiler COMPILER;
-    public static ArrayList<ErrorInfo> runCompiler(String[] newArgs, boolean COMPILER_CRASHES, boolean STATIC_CALLS) {
+    public static ArrayList<ErrorInfo> runCompiler(String[] newArgs, boolean COMPILER_CRASHES, boolean STATIC_CHECKS) {
         errQueue.getErrors().clear();
         LinkedHashSet<String> sources = new LinkedHashSet<String>();
         final Compiler comp = MAIN.getCompiler(newArgs, null, errQueue, sources);
         if (SEPARATE_COMPILER || COMPILER==null)
             COMPILER = comp;
         X10CompilerOptions opts = (X10CompilerOptions) COMPILER.sourceExtension().getOptions();
-        opts.x10_config.STATIC_CALLS = STATIC_CALLS;
-        opts.x10_config.VERBOSE_CALLS = !STATIC_CALLS;
+        opts.x10_config.STATIC_CHECKS = STATIC_CHECKS;
+        opts.x10_config.VERBOSE_CHECKS = !STATIC_CHECKS;
+        opts.x10_config.VERBOSE = true;
         long start = System.currentTimeMillis();
         Throwable err = null;
         try {
-            COMPILER.compileFiles(sources);
+            if (COMPILER_CRASHES && SKIP_CRASHES) {
+                err = new RuntimeException("We do not want to compile crashes when SKIP_CRASHES=true");
+            } else
+                COMPILER.compileFiles(sources);
         } catch (Throwable e) {
             err = e;
         }
@@ -372,7 +393,7 @@ public class RunTestSuite {
             file = f;
             fileName = f.getAbsolutePath().replace('\\','/');
         }
-        boolean STATIC_CALLS = false;
+        boolean STATIC_CHECKS = false;
         boolean COMPILER_CRASHES;
         boolean SHOULD_NOT_PARSE;
         ArrayList<String> options = new ArrayList<String>();
@@ -390,8 +411,8 @@ public class RunTestSuite {
             if (optionsIndex>=0) {
                 final String option = line.substring(optionsIndex + "OPTIONS:".length()).trim();
                 res.options.add(option);
-                if (option.equals("-STATIC_CALLS"))
-                    res.STATIC_CALLS = true;
+                if (option.equals("-STATIC_CHECKS"))
+                    res.STATIC_CHECKS = true;
             }
             line = line.trim();
             int commentIndex = line.indexOf("//");
@@ -411,17 +432,17 @@ public class RunTestSuite {
     private static void compileFile(FileSummary summary, List<String> args) throws IOException {
         File file = summary.file;
 
-        boolean STATIC_CALLS = summary.STATIC_CALLS; // all the files without ERR markers are done in my batch, using STATIC_CALLS (cause they shouldn't have any errors)
+        boolean STATIC_CHECKS = summary.STATIC_CHECKS; // all the files without ERR markers are done in my batch, using STATIC_CHECKS (cause they shouldn't have any errors)
 
         // Now running polyglot
         List<String> allArgs = new ArrayList<String>();
         allArgs.add(summary.fileName);
         allArgs.addAll(args);
         String[] newArgs = allArgs.toArray(new String[allArgs.size()+2]);
-        newArgs[newArgs.length-2] = STATIC_CALLS ? "-STATIC_CALLS" : "-VERBOSE_CALLS";
-        newArgs[newArgs.length-1] = STATIC_CALLS ? "-VERBOSE_CALLS=false" : "-STATIC_CALLS=false";
+        newArgs[newArgs.length-2] = STATIC_CHECKS ? "-STATIC_CHECKS" : "-VERBOSE_CHECKS";
+        newArgs[newArgs.length-1] = STATIC_CHECKS ? "-VERBOSE_CHECKS=false" : "-STATIC_CHECKS=false";
         println("Running: "+ summary.fileName);
-        ArrayList<ErrorInfo> errors = runCompiler(newArgs, summary.COMPILER_CRASHES, STATIC_CALLS);
+        ArrayList<ErrorInfo> errors = runCompiler(newArgs, summary.COMPILER_CRASHES, STATIC_CHECKS);
         // remove SHOULD_BE_ERR_MARKER and
         // parsing errors (if SHOULD_NOT_PARSE)
         // treating @ERR and @ShouldNotBeERR as if it were a comment (adding a LineSummary)
@@ -429,7 +450,8 @@ public class RunTestSuite {
         for (Iterator<ErrorInfo> it = errors.iterator(); it.hasNext(); ) {
             ErrorInfo info = it.next();
             final int kind = info.getErrorKind();
-            if (ErrorInfo.isErrorKind(kind)) didFailCompile = true;
+            if (ErrorInfo.isErrorKind(kind))
+                didFailCompile = true;
 
             if ((kind==ErrorInfo.SHOULD_BE_ERR_MARKER) ||
                 (summary.SHOULD_NOT_PARSE && (kind==ErrorInfo.LEXICAL_ERROR || kind==ErrorInfo.SYNTAX_ERROR)))
@@ -454,9 +476,11 @@ public class RunTestSuite {
             }
         }
 
-        if (didFailCompile!=summary.fileName.endsWith("_MustFailCompile.x10")) {
+        if (didFailCompile!=summary.fileName.endsWith("_MustFailCompile.x10") && !summary.fileName.contains("TorontoSuite")) {
             println("WARNING: "+ summary.fileName+" "+(didFailCompile ? "FAILED":"SUCCESSFULLY")+" compiled, therefore it should "+(didFailCompile?"":"NOT ")+"end with _MustFailCompile.x10. "+(summary.lines.isEmpty()?"":"It did have @ERR markers but they might match warnings."));
         }
+        errors.addAll(remainingErrors);
+        remainingErrors.clear();
 
         // Now checking the errors reported are correct and match ERR markers
         // 1. find all ERR markers that don't have a corresponding error
@@ -469,7 +493,7 @@ public class RunTestSuite {
                 for (Iterator<ErrorInfo> it=errors.iterator(); it.hasNext(); ) {
                     ErrorInfo err = it.next();
                     final Position position = err.getPosition();
-                    if (position!=null && new File(position.file()).equals(file) && position.line()==lineNum) {
+                    if (position!=null && isInFile(position,file) && position.line()==lineNum) {
                         // found it!
                         errorsFound.add(err);
                         it.remove();
@@ -479,30 +503,24 @@ public class RunTestSuite {
                     }
                 }
                 if (expectedErrCount!=foundErrCount &&
-                        // we try to have at most 1 or 2 errors in a line.
-                        (expectedErrCount<3 || foundErrCount<3)) { // if the compiler reports more than 3 errors, and we marked more than 3, then it's too many errors on one line and it marks the fact the compiler went crazy and issues too many wrong errors.
+                        // we try to have at most 1 error in a line when writing the tests, but sometimes an error cascades into multiple ones
+                        (expectedErrCount<2 || foundErrCount<2)) { // if the compiler reports more than 2 errors, and we marked more than 2, then it's too many errors on one line and it marks the fact the compiler went crazy and issues too many wrong errors.
+                    if (foundErrCount>1 && expectedErrCount==1 && summary.fileName.contains(LANGSPEC)) {
+                        // nothing to do - a single ERR marker in LangSpec match multiple errors
+                    } else
                     err("File "+file+" has "+expectedErrCount+" ERR markers on line "+lineNum+", but the compiler reported "+ foundErrCount+" errors on that line! errorsFound=\n"+errorsFound);
                 }
             }
 
         // 2. report all the remaining errors that didn't have a matching ERR marker
-        // first report warnings
-        int warningCount = 0;
-        for (ErrorInfo err : errors)
-            if (err.getErrorKind()==ErrorInfo.WARNING) {
-                if (!err.getMessage().startsWith(Types.MORE_SPECIFIC_WARNING)) { // ignore those warning messages
-                    err("Got a warning in position: "+err.getPosition()+"\nMessage: "+err+"\n");
-                }
-                warningCount++;
-            }
-        if (errors.size()>warningCount) {
-            err("\nThe following errors did not have a matching ERR marker:\n\n");
-            for (ErrorInfo err : errors)
-                if (err.getErrorKind()!=ErrorInfo.WARNING)
-                    err("Position:\n"+err.getPosition()+"\nMessage: "+err+"\n");
-        }
+        remainingErrors.addAll(errors);
+        printRemaining(file);
         // todo: check that for each file (without errors) we generated a *.class file, and load them and run their main method (except for the ones with _MustFailTimeout)
     }
+    static boolean isInFile(Position position, File file) {
+        return new File(position.file()).equals(file);
+    }
+    static ArrayList<ErrorInfo> remainingErrors = new ArrayList<ErrorInfo>(); // sometimes when compiling one file it uses another that has an ERR marker, so we keep those errors so we will match them to ERR markers in the other file (e.g., Activity.x10 uses HashMap.x10 that has an ERR marker for a warning)
     private static void recurse(File dir, ArrayList<File> files) {
         if (files.size()>=MAX_FILES_NUM) return;
         // sort the result, so the output is identical for diff purposes (see SHOW_EXPECTED_ERRORS)

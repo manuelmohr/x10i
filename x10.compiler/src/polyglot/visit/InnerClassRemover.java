@@ -15,7 +15,8 @@ import polyglot.util.InternalCompilerError;
 import polyglot.util.Pair;
 import polyglot.util.Position;
 import polyglot.util.UniqueID;
-import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
+import polyglot.util.CollectionUtil;
+import x10.util.CollectionFactory;
 
 // TODO:
 //Convert closures to anon
@@ -39,6 +40,7 @@ public abstract class InnerClassRemover extends ContextVisitor {
     Expr getContainer(Position pos, Expr this_, ClassType currentClass, ClassType containerClass) {
         if (containerClass.def() == currentClass.def())
             return this_;
+        pos = pos.markCompilerGenerated();
         ClassType currentContainer = currentClass.container().toClass();
         FieldDef fi = boxThis(currentClass, currentContainer);
         Field f = nf.Field(pos, this_, nf.Id(pos, OUTER_FIELD_NAME));
@@ -113,7 +115,7 @@ public abstract class InnerClassRemover extends ContextVisitor {
         Context context = this.context();
         if (s.qualifier().type().toClass().def() == context.currentClassDef())
             return s;
-        Position pos = s.position();
+        Position pos = s.position().markCompilerGenerated();
         return getContainer(pos, nf.This(pos).type(context.currentClass()), context.currentClass(), s.qualifier().type().toClass());
     }
 
@@ -221,8 +223,13 @@ public abstract class InnerClassRemover extends ContextVisitor {
         return cc;
     }
 
+    public static boolean isInner(ClassDef def) {
+        return def.isMember() && (!def.flags().isStatic() || def.wasInner());
+    }
+
     protected ClassDecl fixClassDecl(ClassDecl cd) {
-        if (cd.classDef().isMember() && ! cd.flags().flags().isStatic()) {
+        if (cd.classDef().isMember() && !cd.flags().flags().isStatic()) {
+            cd.classDef().setWasInner(true);
             cd.classDef().flags(cd.classDef().flags().Static());
             Flags f = cd.classDef().flags();
             cd = cd.flags(cd.flags().flags(f));
@@ -302,7 +309,7 @@ public abstract class InnerClassRemover extends ContextVisitor {
                     if (f.target() instanceof Special) {
                         Special s = (Special) f.target();
                         if (s.kind() == Special.THIS && f.name().id().equals(OUTER_FIELD_NAME)) {
-                            Local l = nf.Local(n.position(), f.name());
+                            Local l = nf.Local(n.position().markCompilerGenerated(), f.name());
                             l = l.localInstance(li.asInstance());
                             l = (Local) l.type(li.asInstance().type());
                             return l;
@@ -314,7 +321,7 @@ public abstract class InnerClassRemover extends ContextVisitor {
                     if (f.target() instanceof Special) {
                 	Special s = (Special) f.target();
                 	if (s.kind() == Special.THIS && f.name().id().equals(OUTER_FIELD_NAME)) {
-                	    Local l = nf.Local(n.position(), f.name());
+                	    Local l = nf.Local(n.position().markCompilerGenerated(), f.name());
                 	    l = l.localInstance(li.asInstance());
                 	    l = (Local) l.type(li.asInstance().type());
                 	    return l;
@@ -337,7 +344,7 @@ public abstract class InnerClassRemover extends ContextVisitor {
         List<ClassMember> newMembers = new ArrayList<ClassMember>();
         for (Iterator<FieldDef> i = newFields.iterator(); i.hasNext(); ) {
             FieldDef fi = i.next();
-            Position pos = fi.position();
+            Position pos = fi.position().markCompilerGenerated();
             FieldDecl fd = nf.FieldDecl(pos, nf.FlagsNode(pos, fi.flags()), nf.CanonicalTypeNode(pos, fi.type()), nf.Id(pos, fi.name()));
             fd = fd.fieldDef(fi);
             newMembers.add(fd);
@@ -353,7 +360,7 @@ public abstract class InnerClassRemover extends ContextVisitor {
                 List<LocalDef> locals = new ArrayList<LocalDef>();
                 
                 for (FieldDef fi : newFields) {
-                    Position pos = fi.position();
+                    Position pos = fi.position().markCompilerGenerated();
                     LocalDef li = ts.localDef(pos, Flags.FINAL, fi.type(), fi.name());
                     li.setNotConstant();
                     Formal formal = nf.Formal(pos, nf.FlagsNode(pos, li.flags()), nf.CanonicalTypeNode(pos, li.type()), nf.Id(pos, li.name()));
@@ -374,7 +381,7 @@ public abstract class InnerClassRemover extends ContextVisitor {
                     FieldDef fi = newFields.get(j);
                     LocalDef li = formals.get(j).localDef();
 
-                    Position pos = fi.position();
+                    Position pos = fi.position().markCompilerGenerated();
 
                     Local l = nf.Local(pos, nf.Id(pos, li.name()));
                     l = (Local) l.type(li.asInstance().type());

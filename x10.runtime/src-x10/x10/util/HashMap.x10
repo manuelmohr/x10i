@@ -11,6 +11,7 @@
 
 package x10.util;
 
+import x10.compiler.TempNoInline_0;
 import x10.compiler.TempNoInline_1;
 import x10.compiler.NonEscaping;
 import x10.io.CustomSerialization;
@@ -36,7 +37,7 @@ import x10.io.SerialData;
     }
     
     /** The actual table, must be of size 2**n */
-    var table: Rail[HashEntry[K,V]];
+    var table: IndexedMemoryChunk[HashEntry[K,V]];
     
     /** Number of non-null, non-removed entries in the table. */
     var size: Int;
@@ -70,7 +71,7 @@ import x10.io.SerialData;
         assert (sz & -sz) == sz;
         assert sz >= MIN_SIZE;
     
-        table = Rail.make[HashEntry[K,V]](sz);
+        table = IndexedMemoryChunk.allocateZeroed[HashEntry[K,V]](sz);
         mask = sz - 1;
         size = 0;
         occupation = 0;
@@ -92,7 +93,7 @@ import x10.io.SerialData;
     public def get(k: K): Box[V] {
         val e = getEntry(k);
         if (e == null || e.removed) return null;
-        return e.value as Box[V];
+        return new Box[V](e.value);
     }
     
     public def getOrElse(k: K, orelse: V): V {
@@ -136,7 +137,7 @@ import x10.io.SerialData;
                         shouldRehash = true;
                     return e;
                 }
-                if (i - h > table.length) {
+                if (i - h > table.length()) {
                     if (i - h > MAX_PROBES)
                         shouldRehash = true;
                     return null;
@@ -146,8 +147,8 @@ import x10.io.SerialData;
     }
     
     public def put(k: K, v: V): Box[V] = putInternal(k,v);
-    @NonEscaping protected final def putInternal(k: K, v: V): Box[V] {
-        if (occupation == table.length || (shouldRehash && occupation >= table.length / 2))
+    @NonEscaping @TempNoInline_0 protected final def putInternal(k: K, v: V): Box[V] {
+        if (occupation == table.length() || (shouldRehash && occupation >= table.length() / 2))
             rehashInternal();
 
         val h = hashInternal(k);
@@ -176,23 +177,23 @@ import x10.io.SerialData;
                     size++;
                     return null;
                 }
-                return (old as V) as Box[V];
+                return new Box[V](old);
             }
         }
     }
     
-    public def rehash():void  = rehashInternal();
-    @NonEscaping protected final def rehashInternal(): void {
+    public def rehash():void { rehashInternal(); }
+    @TempNoInline_0 @NonEscaping protected final def rehashInternal(): void {
         modCount++;
         val t = table;
         val oldSize = size;
-        table = Rail.make[HashEntry[K,V]](t.length*2);
-        mask = table.length - 1;
+        table = IndexedMemoryChunk.allocateZeroed[HashEntry[K,V]](t.length()*2);
+        mask = table.length() - 1;
         size = 0;
         occupation = 0;
         shouldRehash = false;
 
-        for (var i: int = 0; i < t.length; i++) {
+        for (var i: int = 0; i < t.length(); i++) {
             if (t(i) != null && ! t(i).removed) {
                 putInternal(t(i).key, t(i).value);
                 shouldRehash = false;
@@ -213,7 +214,7 @@ import x10.io.SerialData;
         if (e != null && ! e.removed) {
             size--;
             e.removed = true;
-            return e.value as Box[V];
+            return new Box[V](e.value);
         }
         return null;
     }
@@ -235,7 +236,7 @@ import x10.io.SerialData;
         def this(map: HashMap[Key,Value]) { this.map = map; this.i = 0; originalModCount = map.modCount; } // you call advance() after the ctor
 
         def advance(): void {
-            while (i < map.table.length) {
+            while (i < map.table.length()) {
                if (map.table(i) != null && ! map.table(i).removed)
                    return;
                i++;
@@ -243,7 +244,7 @@ import x10.io.SerialData;
         }
         
         public def hasNext(): Boolean {
-            if (i < map.table.length) {
+            if (i < map.table.length()) {
 //              assert map.table(i) != null && ! map.table(i).removed : "map entry " + i + " is null or removed";
                 return true;
             }
@@ -321,7 +322,7 @@ import x10.io.SerialData;
      */
     public def this(x:SerialData) {
         this();
-        val state = x.data as State[K,V];
+        val state = x.data as State[K,V]; // Warning: This is an unsound cast because the object or the target type might have constraints and X10 currently does not perform constraint solving at runtime on generic parameters.
 	    for (p in state.content) {
 	        val pair = state.content(p);
             putInternal(pair.first, pair.second);

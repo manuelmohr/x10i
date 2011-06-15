@@ -13,6 +13,7 @@ package x10.constraint;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The representation of a local variable reference in the constraint system.
@@ -22,7 +23,7 @@ import java.util.List;
  * @author vj
  * 
  */
-public class XLocal<T> extends XVar  {
+public class XLocal<T> extends XRoot  {
     
 	public final T name;
 	public XLocal(T name) {
@@ -54,6 +55,10 @@ public class XLocal<T> extends XVar  {
 		return name;
 	}
 
+
+    public boolean okAsNestedTerm() {
+    	return true;
+    }
 	public String toString() {
 		String s = name.toString();
 		// This could should not belong here.
@@ -63,17 +68,5 @@ public class XLocal<T> extends XVar  {
 			return "this";
 		return s;
 	}
-
-	/*
-	public boolean prefixes(XTerm t) {
-		if (equals(t))
-			return true;
-		if (!(t instanceof XVar))
-			return false;
-		XTerm[] vars = ((XVar) t).vars();
-
-		return vars.length > 0 && equals(vars[0]);
-	}
-*/
 	
 }

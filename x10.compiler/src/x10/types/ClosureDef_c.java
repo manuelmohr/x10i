@@ -26,7 +26,9 @@ import polyglot.types.TypeSystem;
 import polyglot.types.Types;
 import polyglot.types.VarDef;
 import polyglot.types.VarInstance;
-import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
+import polyglot.util.CollectionUtil;
+import x10.util.ClosureSynthesizer;
+import x10.util.CollectionFactory;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import polyglot.util.TypedList;
@@ -50,7 +52,6 @@ public class ClosureDef_c extends Def_c implements ClosureDef {
     //protected Ref<TypeConstraint> typeGuard;
     protected CodeInstance<?> asInstance;
     
-    protected XConstrainedTerm placeTerm;
     protected Ref<? extends Type> offerType;
     
     protected List<VarInstance<? extends VarDef>> capturedEnvironment;
@@ -78,6 +79,7 @@ public class ClosureDef_c extends Def_c implements ClosureDef {
         this.thisDef = thisDef;
         this.offerType = offerType;
         this.capturedEnvironment = new ArrayList<VarInstance<? extends VarDef>>();
+        this.isStatic = Types.get(methodContainer).def().staticContext();
     }
     
     public Ref<? extends Type> offerType() {
@@ -89,18 +91,28 @@ public class ClosureDef_c extends Def_c implements ClosureDef {
     	return n;
     	
     }
-    FunctionType asType;
-    
-    public FunctionType asType() {
-	if (asType == null) {
-	    TypeSystem ts = (TypeSystem) this.ts;
-	    asType = ts.closureType(position(), returnType, 
-	    		// Collections.EMPTY_LIST, 
-	    		formalTypes, formalNames, guard);
-	}
-	return asType;
+
+    public X10ClassDef classDef() {
+        return asType().x10Def();
+    }
+
+    protected ClosureType asType;
+
+    public ClosureType asType() {
+        if (asType == null) {
+            asType = ts.closureType(this);
+        }
+        return asType;
     }
     
+    @Override
+    public ClosureDef_c copy() {
+        ClosureDef_c res = (ClosureDef_c) super.copy();
+        res.asInstance = null;
+        res.asType = null;
+        return res;
+    }
+
     protected boolean inferReturnType;
     public boolean inferReturnType() { return inferReturnType; }
     public void inferReturnType(boolean r) { this.inferReturnType = r; }
@@ -116,6 +128,7 @@ public class ClosureDef_c extends Def_c implements ClosureDef {
     
     public void setDefAnnotations(List<Ref<? extends Type>> annotations) {
         this.annotations = TypedList.<Ref<? extends Type>>copyAndCheck(annotations, Ref.class, true);
+        this.asInstance = null;
     }
     
     public List<Type> annotations() {
@@ -166,12 +179,13 @@ public class ClosureDef_c extends Def_c implements ClosureDef {
         this.thisDef = thisDef;
     }
     
-    public void setPlaceTerm(XConstrainedTerm p) {
-    	this.placeTerm = p;
+    protected XConstrainedTerm placeTerm;
+    public XConstrainedTerm placeTerm() { return placeTerm; }
+    public void setPlaceTerm(XConstrainedTerm pt) {
+        if (placeTerm != null && pt != null)
+            assert (placeTerm == null || pt == null);
+        placeTerm = pt;
     }
-    
-    public XConstrainedTerm placeTerm() { return placeTerm;}
-    
     
     public List<LocalDef> formalNames() {
 	return Collections.unmodifiableList(formalNames);
@@ -179,6 +193,8 @@ public class ClosureDef_c extends Def_c implements ClosureDef {
 
     public void setFormalNames(List<LocalDef> formalNames) {
 	this.formalNames = TypedList.copyAndCheck(formalNames, LocalDef.class, true);
+	this.asInstance = null;
+	this.asType = null;
     }
 
     public Ref<CConstraint> guard() {
@@ -187,6 +203,8 @@ public class ClosureDef_c extends Def_c implements ClosureDef {
     
     public void setGuard(Ref<CConstraint> s) {
 	    this.guard = s;
+	    this.asInstance = null;
+	    this.asType = null;
     }
     
     public Ref<TypeConstraint> typeGuard() {
@@ -203,6 +221,8 @@ public class ClosureDef_c extends Def_c implements ClosureDef {
      */
     public void setTypeContainer(Ref<? extends ClassType> container) {
         this.typeContainer = container;
+        this.asInstance = null;
+        this.asType = null;
     }
 
     public Ref<? extends CodeInstance<?>> methodContainer() {
@@ -211,6 +231,8 @@ public class ClosureDef_c extends Def_c implements ClosureDef {
 
     public void setMethodContainer(Ref<? extends CodeInstance<?>> container) {
         methodContainer = container;
+        this.asInstance = null;
+        this.asType = null;
     }
 
     public Ref<? extends Type> returnType() {
@@ -220,6 +242,8 @@ public class ClosureDef_c extends Def_c implements ClosureDef {
     public void setReturnType(Ref<? extends Type> returnType) {
         assert returnType != null;
         this.returnType = returnType;
+        this.asInstance = null;
+        this.asType = null;
     }
 
 
@@ -232,6 +256,8 @@ public class ClosureDef_c extends Def_c implements ClosureDef {
      */
      public void setFormalTypes(List<Ref<? extends Type>> formalTypes) {
          this.formalTypes = TypedList.copyAndCheck(formalTypes, Ref.class, true);
+         this.asInstance = null;
+         this.asType = null;
      }
 
      public List<VarInstance<? extends VarDef>> capturedEnvironment() {
@@ -272,11 +298,33 @@ public class ClosureDef_c extends Def_c implements ClosureDef {
      
      public void setStaticContext(boolean v) {
          isStatic = v;
+         this.asInstance = null;
+         this.asType = null;
      }
      
      
      public String signature() {
-         return "(" + CollectionUtil.listToString(formalTypes) + ")" + Types.get(guard());
+    	 StringBuilder sb = new StringBuilder("(");
+    	
+    	 List<LocalDef> names = formalNames();
+    	 List<Ref<? extends Type>> types = formalTypes();
+    	 assert types != null;
+    	 int size = types.size();
+    	 for (int i=0; i < size; i++) {
+    		 if (names != null && i < names.size())
+    			 sb.append(names.get(i).toString());
+    		 else {
+
+    			 sb.append(Types.get(types.get(i)).toString());
+    		 }
+    		 if (i < size-1)
+    			 sb.append(",");
+    	 }
+    	 sb.append(")");
+    	 if (guard != null)
+    		 sb.append(Types.get(guard).toString());
+    	 return sb.toString();
+    	
      }
 
      public String designator() {

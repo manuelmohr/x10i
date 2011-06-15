@@ -92,10 +92,11 @@ public abstract class ConstructorCall_c extends Stmt_c implements ConstructorCal
     }
 
     /** Reconstruct the constructor call. */
-    protected ConstructorCall_c reconstruct(Expr qualifier, List<Expr> arguments) {
-	if (qualifier != this.qualifier || ! CollectionUtil.allEqual(arguments, this.arguments)) {
+    protected ConstructorCall_c reconstruct(Expr qualifier, Expr target, List<Expr> arguments) {
+	if (qualifier != this.qualifier || target != this.target || ! CollectionUtil.allEqual(arguments, this.arguments)) {
 	    ConstructorCall_c n = (ConstructorCall_c) copy();
 	    n.qualifier = qualifier;
+	    n.target = target;
 	    n.arguments = TypedList.copyAndCheck(arguments, Expr.class, true);
 	    return n;
 	}
@@ -106,33 +107,10 @@ public abstract class ConstructorCall_c extends Stmt_c implements ConstructorCal
     /** Visit the children of the call. */
     public abstract Node visitChildren(NodeVisitor v);
 
-    public abstract Node buildTypes(TypeBuilder tb) throws SemanticException;
+    public abstract Node buildTypes(TypeBuilder tb);
 
     /** Type check the call. */
-    public abstract Node typeCheck(ContextVisitor tc) throws SemanticException;
-
-    public Type childExpectedType(Expr child, AscriptionVisitor av) {
-        TypeSystem ts = av.typeSystem();
-
-        if (child == qualifier) {
-            // FIXME: Can be more specific
-            return ts.Object();
-        }
-
-        Iterator<Expr> i = this.arguments.iterator();
-        Iterator<Type> j = ci.formalTypes().iterator();
-
-        while (i.hasNext() && j.hasNext()) {
-	    Expr e = i.next();
-	    Type t = j.next();
-
-            if (e == child) {
-                return t;
-            }
-        }
-
-        return child.type();
-    }
+    public abstract Node typeCheck(ContextVisitor tc);
 
     public abstract String toString();
 
@@ -172,6 +150,7 @@ public abstract class ConstructorCall_c extends Stmt_c implements ConstructorCal
 
     public <S> List<S> acceptCFG(CFGBuilder v, List<S> succs) {
         if (qualifier != null) {
+            assert (target == null);
             if (!arguments.isEmpty()) {
                 v.visitCFG(qualifier, listChild(arguments, null), ENTRY);
                 v.visitCFGList(arguments, this, EXIT);
@@ -179,8 +158,17 @@ public abstract class ConstructorCall_c extends Stmt_c implements ConstructorCal
                 v.visitCFG(qualifier, this, EXIT);
             }
         } else {
-            if (!arguments.isEmpty()) {
-                v.visitCFGList(arguments, this, EXIT);
+            if (target != null) {
+                if (!arguments.isEmpty()) {
+                    v.visitCFG(target, listChild(arguments, null), ENTRY);
+                    v.visitCFGList(arguments, this, EXIT);
+                } else {
+                    v.visitCFG(target, this, EXIT);
+                }
+            } else {
+                if (!arguments.isEmpty()) {
+                    v.visitCFGList(arguments, this, EXIT);
+                }
             }
         }
 
@@ -202,7 +190,6 @@ public abstract class ConstructorCall_c extends Stmt_c implements ConstructorCal
         if (target != this.target) {
             ConstructorCall_c n = (ConstructorCall_c) copy();
             n.target = target;
-            n.arguments = TypedList.copyAndCheck(arguments, Expr.class, true);
             return n;
         }
         return this;

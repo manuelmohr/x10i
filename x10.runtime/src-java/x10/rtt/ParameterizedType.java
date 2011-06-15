@@ -5,8 +5,10 @@ import x10.core.Any;
 
 public final class ParameterizedType<T> implements Type<T>{
 
-    private RuntimeType<T> rtt;
-    private Type<?>[] params;
+	private static final long serialVersionUID = 1L;
+
+    private final RuntimeType<T> rtt;
+    private final Type<?>[] params;
     
     RuntimeType<T> getRuntimeType() {
         return rtt;
@@ -25,7 +27,7 @@ public final class ParameterizedType<T> implements Type<T>{
         if (this == o) return true;
         if (o == Types.ANY) return true;
         if (o == Types.OBJECT) return !Types.isStructType(this);
-        if (!o.getJavaClass().isAssignableFrom(rtt.getJavaClass())) {
+        if (!o.getImpl().isAssignableFrom(rtt.getImpl())) {
             return false;
         }
         if (o instanceof ParameterizedType) {
@@ -51,7 +53,7 @@ public final class ParameterizedType<T> implements Type<T>{
         if (this == o) return true;
         if (o instanceof ParameterizedType<?>) {
             ParameterizedType<?> t = (ParameterizedType<?>) o;
-            if (!rtt.getJavaClass().equals(t.getJavaClass())) {
+            if (!rtt.getImpl().equals(t.getImpl())) {
                 return false;
             }
             Type<?>[] parameters = t.params;
@@ -73,8 +75,8 @@ public final class ParameterizedType<T> implements Type<T>{
         return rtt.getArray(array, i);
     }
 
-    public final Class<?> getJavaClass() {
-        return rtt.getJavaClass();
+    public final Class<?> getImpl() {
+        return rtt.getImpl();
     }
 
     public final int hashCode() {
@@ -89,8 +91,11 @@ public final class ParameterizedType<T> implements Type<T>{
         return rtt.makeArray(elems);
     }
 
-    public final T setArray(Object array, int i, T v) {
-        return rtt.setArray(array, i, v);
+//    public final T setArray(Object array, int i, T v) {
+//        return rtt.setArray(array, i, v);
+//    }
+    public final void setArray(Object array, int i, T v) {
+    	rtt.setArray(array, i, v);
     }
 
     public final String toString() {
@@ -99,23 +104,16 @@ public final class ParameterizedType<T> implements Type<T>{
 
     // Note: this method does not resolve UnresolvedType at runtime
     public final String typeName() {
-        String str = rtt.typeName();
-        str += "[";
-        for (int i = 0; i < params.length; i ++) {
-            if (i != 0) str += ",";
-            str += params[i].typeName();
-        }
-        str += "]";
-        return str;
+        return typeName(null);
     }
 
     private static final String printType(Type<?> t, Object o) {
         if (t instanceof UnresolvedType) {
             int index = ((UnresolvedType) t).getIndex();
             if (index >= 0) {
-                t = ((Any) o).getParam(index);
+                t = ((Any) o).$getParam(index);
             } else {
-                t = ((Any) o).getRTT();
+                t = ((Any) o).$getRTT();
             }
         }
         
@@ -127,14 +125,13 @@ public final class ParameterizedType<T> implements Type<T>{
     }
     
     public final String typeName(Object o) {
-        String str = rtt.typeName();
-        str += "[";
-        for (int i = 0; i < params.length; i ++) {
-            if (i != 0) str += ",";
-            str += printType(params[i], o);
+        if (rtt instanceof FunType) {
+            return typeNameForFun(o);
+        } else if (rtt instanceof VoidFunType) {
+            return typeNameForVoidFun(o);
+        } else {
+            return typeNameForOthers(o);
         }
-        str += "]";
-        return str;
     }
 
     // called from Static{Void}FunType.typeName(Object)
@@ -162,4 +159,15 @@ public final class ParameterizedType<T> implements Type<T>{
         return str;
     }
     
+    public final String typeNameForOthers(Object o) {
+        String str = rtt.typeName();
+        str += "[";
+        for (int i = 0; i < params.length; i ++) {
+            if (i != 0) str += ",";
+            str += printType(params[i], o);
+        }
+        str += "]";
+        return str;
+    }
+
 }

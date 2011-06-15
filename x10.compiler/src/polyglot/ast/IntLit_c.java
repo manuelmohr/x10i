@@ -17,6 +17,7 @@ import polyglot.util.*;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.PrettyPrinter;
 import x10.errors.Errors;
+import x10.errors.Errors.IllegalConstraint;
 import x10.types.constraints.CConstraint;
 import x10.constraint.XTerm;
 import x10.constraint.XFailure;
@@ -87,7 +88,7 @@ public class IntLit_c extends NumLit_c implements IntLit
         }
 
     }
-    public Node typeCheck(ContextVisitor tc) throws SemanticException {
+    public Node typeCheck(ContextVisitor tc) {
         // todo: handle LONG and ULONG
         rangeCheck(tc, Kind.INT, Kind.UINT, 1l+Integer.MAX_VALUE, Integer.MIN_VALUE, 0xffffffffl);
         rangeCheck(tc, Kind.SHORT, Kind.USHORT, 1l+Short.MAX_VALUE, Short.MIN_VALUE, 0xffffl);
@@ -123,11 +124,11 @@ public class IntLit_c extends NumLit_c implements IntLit
             throw new InternalCompilerError("bad integer literal kind", position());
         }
         CConstraint c = new CConstraint();
-        XTerm term = xts.xtypeTranslator().translate(c, this.type(Type), (Context) tc.context());
         try {
-            c.addSelfBinding(term);
-        }
-        catch (XFailure e) {
+         XTerm term = xts.xtypeTranslator().translate(c, this.type(Type), (Context) tc.context());
+         c.addSelfBinding(term);
+        } catch (IllegalConstraint z) {
+        	Errors.issue(tc.job(), z);
         }
         Type newType = Types.xclause(Type, c);
         return type(newType);

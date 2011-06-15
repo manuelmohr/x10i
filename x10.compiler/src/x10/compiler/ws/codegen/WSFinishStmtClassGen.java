@@ -12,18 +12,23 @@
 
 package x10.compiler.ws.codegen;
 
-import polyglot.ast.Block;
+import java.util.Collections;
+import java.util.List;
+
 import polyglot.ast.Expr;
-import polyglot.types.ClassDef;
+import polyglot.ast.Stmt;
+import polyglot.types.ClassType;
 import polyglot.types.Flags;
 import polyglot.types.SemanticException;
+import polyglot.types.Type;
+import polyglot.types.Types;
 import x10.ast.Finish;
+import x10.ast.FinishExpr;
 import x10.compiler.ws.util.TransCodes;
-import x10.compiler.ws.util.WSCodeGenUtility;
-import x10.types.X10ClassType;
-import x10.util.synthesizer.ClassSynth;
+import x10.compiler.ws.util.WSUtil;
+import x10.types.ConstrainedType;
+import x10.types.X10ParsedClassType;
 import x10.util.synthesizer.CodeBlockSynth;
-import x10.util.synthesizer.ConstructorSynth;
 import x10.util.synthesizer.InstanceCallSynth;
 import x10.util.synthesizer.SuperCallSynth;
 import x10.util.synthesizer.SwitchSynth;
@@ -35,51 +40,81 @@ import x10.util.synthesizer.SwitchSynth;
  * 
  */
 public class WSFinishStmtClassGen extends AbstractWSClassGen {
+    
+    Type reducerBaseType; //only used for collecting-finish frame
+    boolean isCollectingFinishFrame;
+    //For FinishStmt
     public WSFinishStmtClassGen(AbstractWSClassGen parent, Finish finishStmt) {
         super(parent, parent,
-                WSCodeGenUtility.getFinishStmtClassName(parent.getClassName()),
-                parent.wts.finishFrameType, finishStmt.body());
+                WSUtil.getFinishStmtClassName(parent.getClassName()),
+                parent.xts.FinishFrame(), finishStmt.body());
         
-        if(WSOptimizeConfig.OPT_PC_FIELD == 0){
-            addPCField();
+        if(!wts.OPT_PC_FIELD){
+            wsynth.createPCField(classSynth);
         }
+    }
+    
+    //For FinishExpr
+    public WSFinishStmtClassGen(AbstractWSClassGen parent, Type reducerBaseType, FinishExpr finishExpr) {
+        super(parent, parent,
+                WSUtil.getFinishStmtClassName(parent.getClassName()),
+                parent.xts.CollectingFinish().typeArguments(Collections.singletonList(reducerBaseType)),
+                finishExpr.body());
+        
+        if(!wts.OPT_PC_FIELD){
+            wsynth.createPCField(classSynth);
+        }
+        //now start extract the collecting finish's type.
+        this.reducerBaseType = reducerBaseType;
+        assert(reducerBaseType != null);
+        isCollectingFinishFrame = true;
     }
 
     protected void genClassConstructor() throws SemanticException {
-        Expr upRef = conSynth.addFormal(compilerPos, Flags.FINAL, wts.frameType, "up"); //up:Frame!
-        
-        CodeBlockSynth codeBlockSynth = conSynth.createConstructorBody(compilerPos);
-        SuperCallSynth superCallSynth = codeBlockSynth.createSuperCall(compilerPos, classSynth.getClassDef());
-        superCallSynth.addArgument(wts.frameType, upRef);
+        if(isCollectingFinishFrame){
+            wsynth.genClassConstructorType3Base(classSynth, getReducerBaseType());            
+        }
+        else{
+            wsynth.genClassConstructorType1Base(classSynth);            
+        }
+    }
+    
+    public Type getReducerBaseType() {
+        return reducerBaseType;
     }
 
     @Override
     protected void genMethods() throws SemanticException {
         
         CodeBlockSynth fastBodySynth = fastMSynth.getMethodBodySynth(compilerPos);
-        CodeBlockSynth resumeBodySynth = resumeMSynth.getMethodBodySynth(compilerPos);
-        CodeBlockSynth backBodySynth = backMSynth.getMethodBodySynth(compilerPos);
         
-
-        AbstractWSClassGen childFrameGen = genChildFrame(wts.regularFrameType, codeBlock, WSCodeGenUtility.getBlockFrameClassName(getClassName()));
-        TransCodes callCodes = this.genInvocateFrameStmts(1, childFrameGen);
+        AbstractWSClassGen childFrameGen = genChildFrame(xts.RegularFrame(), codeBlock, WSUtil.getBlockFrameClassName(getClassName()));
+        List<Stmt> fastCallCodes = wsynth.genInvocateFrameStmts(1, classSynth, fastMSynth, childFrameGen);
         
-        //now add codes to three path;
-        //fast path
-        fastBodySynth.addStmts(callCodes.first());
+        if(wts.DISABLE_EXCEPTION_HANDLE){
+            fastBodySynth.addStmts(fastCallCodes);
+        }
+        else{
+            fastBodySynth.addStmt(wsynth.genExceptionHandler(fastCallCodes, classSynth));
+            fastBodySynth.addStmt(wsynth.genRethrowStmt(classSynth));
+        }
         
         //resume/back path
-        if(WSOptimizeConfig.OPT_PC_FIELD == 0){
-            Expr pcRef = synth.makeFieldAccess(compilerPos, getThisRef(), PC, xct);
+        if(!wts.OPT_PC_FIELD){
+            Expr pcRef = wsynth.genPCRef(classSynth);
+            CodeBlockSynth resumeBodySynth = resumeMSynth.getMethodBodySynth(compilerPos);
+            SwitchSynth resumeSwitchSynth = resumeBodySynth.createSwitchStmt(compilerPos, pcRef);     
+            List<Stmt> resumeCallCodes = wsynth.genInvocateFrameStmts(1, classSynth, resumeMSynth, childFrameGen);
             
-            SwitchSynth resumeSwitchSynth = resumeBodySynth.createSwitchStmt(compilerPos, pcRef);
-            SwitchSynth backSwitchSynth = backBodySynth.createSwitchStmt(compilerPos, pcRef);      
-            resumeSwitchSynth.insertStatementsInCondition(0, callCodes.second());
-            if(callCodes.third().size() > 0){ //only assign call has back
-                backSwitchSynth.insertStatementsInCondition(callCodes.getPcValue(), callCodes.third());
-                backSwitchSynth.insertStatementInCondition(callCodes.getPcValue(), xnf.Break(compilerPos));
+            if(wts.DISABLE_EXCEPTION_HANDLE){
+                resumeSwitchSynth.insertStatementsInCondition(0, resumeCallCodes);
+            }
+            else{
+                resumeSwitchSynth.insertStatementInCondition(0, wsynth.genExceptionHandler(resumeCallCodes, classSynth));
+                resumeSwitchSynth.insertStatementInCondition(0, wsynth.genRethrowStmt(classSynth));
             }
         }
-   }
+    }
 
+    
 }

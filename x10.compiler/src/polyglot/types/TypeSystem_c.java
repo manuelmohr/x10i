@@ -29,6 +29,7 @@ import x10.types.ClosureDef;
 import x10.types.ClosureDef_c;
 import x10.types.ClosureInstance;
 import x10.types.ClosureInstance_c;
+import x10.types.ClosureType;
 import x10.types.ConstrainedType;
 import x10.types.FunctionType;
 import x10.types.MacroType;
@@ -41,7 +42,6 @@ import x10.types.ThisInstance_c;
 import x10.types.TypeDefMatcher;
 import x10.types.TypeParamSubst;
 import x10.types.X10ConstructorInstance_c;
-import x10.types.X10Context_c;
 import x10.types.X10FieldDef_c;
 import x10.types.X10FieldInstance_c;
 import x10.types.X10LocalDef_c;
@@ -69,6 +69,7 @@ import x10.types.X10TypeEnv;
 import x10.types.X10TypeEnv_c;
 
 import x10.types.XTypeTranslator;
+import x10.types.X10ProcedureInstance;
 import x10.types.XTypeTranslator.XTypeLit;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.CField;
@@ -76,13 +77,10 @@ import x10.types.constraints.CLocal;
 import x10.types.constraints.CTerms;
 import x10.types.constraints.SubtypeConstraint;
 import x10.types.constraints.TypeConstraint;
-import x10.types.matcher.X10ConstructorMatcher;
-import x10.types.matcher.X10FieldMatcher;
-import x10.types.matcher.X10MemberTypeMatcher;
-import x10.types.matcher.X10MethodMatcher;
-import x10.types.matcher.X10TypeMatcher;
+import x10.types.matcher.*;
 import x10.util.ClosureSynthesizer;
 import x10.util.CollectionFactory;
+import x10.X10CompilerOptions;
 
 
 /**
@@ -108,6 +106,7 @@ public class TypeSystem_c implements TypeSystem
         this.creator = new Throwable().fillInStackTrace();
         this.creationTime = counter++;
         this.reporter = extInfo.getOptions().reporter;
+        EMPTY_CONTEXT = emptyContext();
         if (reporter.should_report("TypeSystem", 1))
             reporter.report(1, "Creating " + getClass() + " at " + creationTime);
     }
@@ -401,19 +400,19 @@ public class TypeSystem_c implements TypeSystem
                 null, null,  offerType);
     }
 
-    public X10ConstructorDef constructorDef(Position pos, Ref<? extends ClassType> container, Flags flags, Ref<? extends ClassType> returnType,
+    public X10ConstructorDef constructorDef(Position pos, Ref<? extends ContainerType> container, Flags flags, Ref<? extends Type> returnType,
             List<Ref<? extends Type>> argTypes, ThisDef thisDef, List<LocalDef> formalNames, Ref<CConstraint> guard, Ref<TypeConstraint> typeGuard,
             Ref<? extends Type> offerType)
     {
         assert_(container);
         assert_(argTypes);
 
-        X10ClassType t = (X10ClassType) Types.get(returnType);
+        Type t = (Type) Types.get(returnType);
         assert t != null : "Cannot set return type of constructor to " + t;
         if (t==null)
             throw new InternalCompilerError("Cannot set return type of constructor to " + t);
         //t = (X10ClassType) t.setFlags(X10Flags.ROOTED);
-        ((Ref<X10ClassType>)returnType).update(t);
+        ((Ref<Type>)returnType).update(t);
         //returnType = new Ref_c<X10ClassType>(t);
         return new X10ConstructorDef_c(this, pos, container, flags, returnType, argTypes, thisDef, formalNames, guard, typeGuard,  offerType);
     }
@@ -557,7 +556,7 @@ public class TypeSystem_c implements TypeSystem
 	assert_(toType);
 	return env(context).isImplicitCastValid(fromType, toType);
     }
-
+    
     /**
      * Returns true iff type1 and type2 represent the same type object.
      */
@@ -715,19 +714,19 @@ public class TypeSystem_c implements TypeSystem
     }
 
     public boolean isUByte(Type t) {
-        return isSubtype(t, UByte(), emptyContext());
+        return finalSubtype(t,UByte());
     }
 
     public boolean isUShort(Type t) {
-        return isSubtype(t, UShort(), emptyContext());
+        return finalSubtype(t,UShort());
     }
 
     public boolean isUInt(Type t) {
-        return isSubtype(t, UInt(), emptyContext());
+        return finalSubtype(t,UInt());
     }
 
     public boolean isULong(Type t) {
-        return isSubtype(t, ULong(), emptyContext());
+        return finalSubtype(t,ULong());
     }
 
     public boolean isNumeric(Type t) {
@@ -753,57 +752,58 @@ public class TypeSystem_c implements TypeSystem
         || isUByte(t) || isUShort(t) || isUInt(t) || isULong(t);
     }
 
-    public boolean isjavaVoid(Type t) {
-	Context context = emptyContext();
-	return typeEquals(t, Void(), context);
-    }
-
     public boolean isBoolean(Type t) {
-	Context context = emptyContext();
-	return isSubtype(t, Boolean(), context);
+	    return finalSubtype(t,Boolean());
     }
 
     public boolean isChar(Type t) {
-	Context context = emptyContext();
-	return isSubtype(t, Char(), context);
+	    return finalSubtype(t,Char());
     }
 
     public boolean isByte(Type t) {
-	Context context = emptyContext();
-	return isSubtype(t, Byte(), context);
+        return finalSubtype(t,Byte());
     }
 
     public boolean isShort(Type t) {
-	Context context = emptyContext();
-	return isSubtype(t, Short(), context);
+        return finalSubtype(t,Short());
     }
 
     public boolean isInt(Type t) {
-	Context context = emptyContext();
-	return isSubtype(t, Int(), context);
+        return finalSubtype(t,Int());
     }
 
     public boolean isLong(Type t) {
-	Context context = emptyContext();
-	return isSubtype(t, Long(), context);
+        return finalSubtype(t,Long());
     }
 
     public boolean isFloat(Type t) {
-	Context context = emptyContext();
-	return isSubtype(t, Float(), context);
+        return finalSubtype(t,Float());
     }
 
     public boolean isDouble(Type t) {
-	Context context = emptyContext();
-	return isSubtype(t, Double(), context);
+        return finalSubtype(t,Double());
     }
 
+    private final Context EMPTY_CONTEXT; // the context is a mutable object, but in isSubtype we do not mutate it.
+    private boolean emptyContextSubtype(Type t, X10ClassType xlass) {
+        return isSubtype(t, xlass, EMPTY_CONTEXT);
+    }
+    /**
+     * A shortcut version of the subtype test -- only works if xclass cannot be subclassed.
+     * @param t the type to test
+     * @param xlass the potential supertype
+     * @return true if t is a subtype of xclass, and false otherwise
+     */
+    private boolean finalSubtype(Type t, X10ClassType xlass) {
+        assert xlass.flags().isStruct() || xlass.flags().isFinal();
+        return hasSameClassDef(t,xlass) || isUnknown(t);        
+    }
     /**
      * Returns true iff an object of type <type> may be thrown.
      **/
     public boolean isThrowable(Type type) {
         assert_(type);
-        return isSubtype(type, Throwable(), emptyContext());
+        return emptyContextSubtype(type,Throwable());
     }
 
     
@@ -812,17 +812,7 @@ public class TypeSystem_c implements TypeSystem
      * uncheckedExceptions().
      */
     public boolean isUncheckedException(Type type) {
-        assert_(type);
-
-        if (type.isThrowable()) {
-            for (Type t : uncheckedExceptions()) {
-                if (isSubtype(type, t, emptyContext())) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return isThrowable(type);
     }
     /**
      * Returns a list of the Throwable types that need not be declared
@@ -843,8 +833,9 @@ public class TypeSystem_c implements TypeSystem
     public boolean isSubtype(Type t1, Type t2) {
         return isSubtype(t1, t2, emptyContext());
     }
-    
-    public MacroType findTypeDef(Type container, TypeDefMatcher matcher, Context context) throws SemanticException {
+
+    public MacroType findTypeDef(Type container, Name name, List<Type> typeArgs, List<Type> argTypes, Context context) throws SemanticException {
+        TypeDefMatcher matcher = new TypeDefMatcher(container,name,typeArgs,argTypes,context);
         List<MacroType> acceptable = findAcceptableTypeDefs(container, matcher, context);
 
         if (acceptable.size() == 0) {
@@ -892,8 +883,7 @@ public class TypeSystem_c implements TypeSystem
             throw new SemanticException("Reference to " + matcher.name() + " is ambiguous, multiple type defintions match: " + sb.toString());
         }
 
-        MacroType mi = maximal.iterator().next();
-
+        MacroType mi = maximal.iterator().next();        
         return mi;
     }
 
@@ -917,7 +907,7 @@ public class TypeSystem_c implements TypeSystem
      * in type <code>container</code> or a supertype.  The list
      * returned may be empty.
      */
-    public Set<FieldInstance> findFields(Type container, TypeSystem_c.FieldMatcher matcher) {
+    private Set<FieldInstance> findFields(Type container, TypeSystem_c.FieldMatcher matcher) {
         assert_(container);
 
         Set<FieldInstance> candidates = CollectionFactory.newHashSet();
@@ -934,7 +924,6 @@ public class TypeSystem_c implements TypeSystem
         
 	Name name = matcher.name();
 
-	Context context = matcher.context();
 	assert_(container);
 
 	if (container == null) {
@@ -975,10 +964,6 @@ public class TypeSystem_c implements TypeSystem
 
 	return fields;
     }
-   
-    public TypeDefMatcher TypeDefMatcher(Type container, Name name, List<Type> typeArgs, List<Type> argTypes, Context context) {
-        return new TypeDefMatcher(container, name, typeArgs, argTypes, context);
-    }
 
     public List<MacroType> findAcceptableTypeDefs(Type container, TypeDefMatcher matcher, Context context) throws SemanticException {
         assert_(container);
@@ -994,7 +979,7 @@ public class TypeSystem_c implements TypeSystem
             catch (SemanticException e) {
             }
             try {
-                return this.findTypeDef(t, this.TypeDefMatcher(t, name, Collections.<Type>emptyList(), Collections.<Type>emptyList(), context), context);
+                return this.findTypeDef(t, name, Collections.<Type>emptyList(), Collections.<Type>emptyList(), context);
             }
             catch (SemanticException e) {
             }
@@ -1061,15 +1046,19 @@ public class TypeSystem_c implements TypeSystem
     	return false;
     }
 
-    public static abstract class ConstructorMatcher extends BaseMatcher<ConstructorInstance> {
-	protected Type container;
-	protected List<Type> argTypes;
-	protected Context context;
+    public static class ConstructorMatcher extends BaseMatcher<ConstructorInstance> {
+	protected final Type container;
+	public final List<Type> argTypes;
+    public final List<Type> typeArgs;
+	protected final Context context;
+    public final boolean isDumbMatcher;
 
-	protected ConstructorMatcher(Type receiverType, List<Type> argTypes, Context context) {
+	protected ConstructorMatcher(Type container, List<Type> typeArgs, List<Type> argTypes, Context context, boolean isDumbMatcher) {
 	    super();
-	    this.container = receiverType;
+	    this.container = container;
 	    this.argTypes = argTypes;
+	    this.typeArgs = typeArgs;
+	    this.isDumbMatcher = isDumbMatcher;
 	    this.context = context;
 	}
 
@@ -1089,9 +1078,30 @@ public class TypeSystem_c implements TypeSystem
 	    return container + argumentString();
 	}
 
-	public abstract ConstructorInstance instantiate(ConstructorInstance ci) throws SemanticException;
+    public List<Type> arguments() {
+        return argTypes;
+    }
 
-	public abstract String argumentString();
+    public String argumentString() {
+        return "(" + CollectionUtil.listToString(argTypes) + ")";
+    }
+
+    public ConstructorInstance instantiate(ConstructorInstance ci) throws SemanticException {
+        if (ci.formalTypes().size() != argTypes.size())
+            return null;
+        if (ci instanceof X10ConstructorInstance) {
+            X10ConstructorInstance xmi = (X10ConstructorInstance) ci;
+            Type c = container != null ? container : xmi.container();
+
+            if (isDumbMatcher) {
+                X10ConstructorInstance newXmi = x10.types.matcher.Matcher.instantiate((Context) context, xmi, c, Collections.<Type>emptyList(), argTypes);
+                return newXmi;
+            }
+            return x10.types.matcher.Matcher.inferAndCheckAndInstantiate(context(),
+                    xmi, c, Collections.<Type>emptyList(), argTypes, ci.position());
+        }
+        return null;
+    }
 
 	public String toString() {
 	    return signature();
@@ -1102,18 +1112,22 @@ public class TypeSystem_c implements TypeSystem
 	}
     }
 
-    public abstract static class MethodMatcher extends BaseMatcher<MethodInstance> implements Cloneable {
+    public static class MethodMatcher extends BaseMatcher<MethodInstance> implements Cloneable {
 	protected Type container;
-	protected Name name;
-	protected List<Type> argTypes;
-	protected Context context;
+	protected final Name name;
+	protected final List<Type> argTypes;
+    protected final List<Type> typeArgs;
+	protected final Context context;
+    protected final boolean isDumbMatcher;
 
-	protected MethodMatcher(Type container, Name name, List<Type> argTypes, Context context) {
+	protected MethodMatcher(Type container, Name name, List<Type> typeArgs, List<Type> argTypes, Context context, boolean isDumbMatcher) {
 	    super();
 	    this.container = container;
 	    this.name = name;
 	    this.argTypes = argTypes;
+        this.typeArgs = typeArgs;
 	    this.context = context;
+        this.isDumbMatcher = isDumbMatcher;
 	}
 
 	public MethodMatcher container(Type container) {
@@ -1142,9 +1156,39 @@ public class TypeSystem_c implements TypeSystem
 	    return name;
 	}
 
-	public abstract MethodInstance instantiate(MethodInstance mi) throws SemanticException;
+	public MethodInstance instantiate(MethodInstance mi) throws SemanticException {
+        if (!mi.name().equals(name))
+            return null;
+        if (mi.formalTypes().size() != argTypes.size())
+            return null;
+        Type c = container != null ? container : mi.container();
+        if (isDumbMatcher) {
+            if (typeArgs.size() != mi.typeParameters().size())
+                return null;
+            if (typeArgs.size() == mi.typeParameters().size()) {
+                MethodInstance newXmi = x10.types.matcher.Matcher.instantiate((Context) context, mi, c, typeArgs, argTypes);
+                return newXmi;
+            }
+        } else {
+            if (typeArgs.isEmpty() || typeArgs.size() == mi.typeParameters().size())
+                return x10.types.matcher.Matcher.inferAndCheckAndInstantiate(context,
+                        mi, c, typeArgs, argTypes, mi.position());
+        }
+        return null;
+    }
 
-	public abstract String argumentString();
+    public final String typeArgsString() {
+        return (typeArgs.isEmpty() ? "" : "[" + CollectionUtil.listToString(typeArgs) + "]");
+    }
+    public String stripConstraints() {
+	    return name + typeArgsString() + "(" + CollectionUtil.listToString(Types.stripConstraintsIfDynamicCalls(argTypes)) + ")";
+    }
+    public final String argumentString() {
+        return typeArgsString() + "(" + CollectionUtil.listToString(argTypes) + ")";
+    }
+    public final List<Type> arguments() {
+        return argTypes;
+    }
 
 	public String toString() {
 	    return signature();
@@ -1159,7 +1203,7 @@ public class TypeSystem_c implements TypeSystem
 	}
     }
 
-    public abstract static class FieldMatcher extends BaseMatcher<FieldInstance> implements Cloneable {
+    public static class FieldMatcher extends BaseMatcher<FieldInstance> implements Cloneable {
 	protected Type container;
 	protected Name name;
 	protected Context context;
@@ -1201,7 +1245,12 @@ public class TypeSystem_c implements TypeSystem
 	    return name;
 	}
 
-	public abstract FieldInstance instantiate(FieldInstance mi) throws SemanticException;
+	public FieldInstance instantiate(FieldInstance mi) throws SemanticException {
+	    if (! mi.name().equals(name)) {
+		    return null;
+	    }
+        return mi;
+    }
 
 	public String toString() {
 	    return signature();
@@ -1270,7 +1319,7 @@ public class TypeSystem_c implements TypeSystem
         }
 
         public String signature() {
-            return container.fullName() + "." + name;
+            return container/*.fullName()*/ + "." + name;
         }
 
         public Object key() {
@@ -1303,8 +1352,8 @@ public class TypeSystem_c implements TypeSystem
 	if (acceptable.size() == 0) {
 	    throw new NoMemberException(NoMemberException.METHOD,
 	                                "No valid method call found for call in given type."
-	    		+ "\n\t Call: " + matcher.signature()
-	    		+ "\n\t Type: " + container);
+	    		+ "\n\t Call: " + matcher.stripConstraints()
+	    		+ "\n\t Type: " + Types.stripConstraintsIfDynamicCalls(container));
 
 	}
 
@@ -1328,9 +1377,8 @@ public class TypeSystem_c implements TypeSystem
 		}
 	    }
 
-	    throw new SemanticException("Reference to " + matcher.name() +
-	                                " is ambiguous, multiple methods match: "
-	                                + sb.toString());
+	    throw Errors.MultipleMethodDefsMatch.make(maximal, matcher.toString(),
+	                                              Position.COMPILER_GENERATED);
 	}
 
 	MethodInstance mi = maximal.iterator().next();
@@ -1389,8 +1437,11 @@ public class TypeSystem_c implements TypeSystem
 	while (i.hasNext()) {
 	    T p = i.next();
 
-	    if (msc.compare(first, p) == 0) {
-		maximal.add(p);
+	    if (msc.compare(first, p) == X10MostSpecificComparator.NEITHER_MORE_SPECIFIC) {
+	        maximal.add(p);
+	    }
+	    if (msc.compare(p,first) == X10MostSpecificComparator.FIRST_MOST_SPECIFIC) {
+	        maximal.add(p);
 	    }
 	}
 
@@ -1503,12 +1554,16 @@ public class TypeSystem_c implements TypeSystem
             this.container=container;
         }
 
+        public static int FIRST_MOST_SPECIFIC=-1;
+        public static int SECOND_MOST_SPECIFIC=1;
+        public static int NEITHER_MORE_SPECIFIC=0;
+        
         public int compare(T p1, T p2) {
             if (p1.moreSpecific(container, p2, context))
-            return -1;
+            return FIRST_MOST_SPECIFIC;
             if (p2.moreSpecific(container, p1, context))
-            return 1;
-            return 0;
+            return SECOND_MOST_SPECIFIC;
+            return NEITHER_MORE_SPECIFIC;
         }
 
         public Type container() {
@@ -1535,24 +1590,13 @@ public class TypeSystem_c implements TypeSystem
      */
     private List<MethodInstance> superFindAcceptableMethods(Type container, MethodMatcher matcher)
     throws SemanticException {
-
-	assert_(container);
-
-	Context context = matcher.context();
-
-	SemanticException error = null;
-
-	// The list of acceptable methods. These methods are accessible from
-	// currClass, the method call is valid, and they are not overridden
-	// by an unacceptable method (which can occur with protected methods
-	// only).
-	List<MethodInstance> acceptable = new ArrayList<MethodInstance>();
-
-	// A list of unacceptable methods, where the method call is valid, but
-	// the method is not accessible. This list is needed to make sure that
-	// the acceptable methods are not overridden by an unacceptable method.
-	List<MethodInstance> unacceptable = new ArrayList<MethodInstance>();
-
+        if (container==null) return Collections.EMPTY_LIST;
+        assert_(container);
+        
+    // Collect allMethods with the relevant name
+    Name name = matcher.name();
+    Context context = matcher.context();
+	List<MethodInstance> allMethods = new ArrayList<MethodInstance>();
 	Set<Type> visitedTypes = CollectionFactory.newHashSet();
 
 	LinkedList<Type> typeQueue = new LinkedList<Type>();
@@ -1579,60 +1623,7 @@ public class TypeSystem_c implements TypeSystem
 		    if (reporter.should_report(Reporter.types, 2))
 			reporter.report(2, "Searching type " + type + " for method " + matcher.signature());
 
-		    for (Iterator<MethodInstance> i = type.methodsNamed(matcher.name()).iterator(); i.hasNext(); ) {
-			MethodInstance mi = i.next();
-
-			if (reporter.should_report(Reporter.types, 3))
-			    reporter.report(3, "Trying " + mi);
-
-			try {
-				MethodInstance oldmi = mi;
-			    mi = matcher.instantiate(mi);
-
-			    if (mi == null) {
-				continue;
-			    }
-			    mi.setOrigMI(oldmi);
-			    if (isAccessible(mi, context)) {
-				if (reporter.should_report(Reporter.types, 3)) {
-				    reporter.report(3, "->acceptable: " + mi + " in "
-				                  + mi.container());
-				}
-
-				acceptable.add(mi);
-			    }
-			    else {
-				// method call is valid, but the method is
-				// unacceptable.
-				unacceptable.add(mi);
-				if (error == null) {
-				    error = new NoMemberException(NoMemberException.METHOD,
-				                                  "Method " + mi.signature() +
-				                                  " in " + container +
-				    " is inaccessible.");
-				}
-			    }
-
-			    continue;
-			}
-			catch (SemanticException e) {
-			    // Treat any instantiation errors as call invalid errors.
-			    if (error == null)
-				error = new NoMemberException(NoMemberException.METHOD,
-				                              "Method " + mi.signature() +
-				                              " in " + container +
-				                              " cannot be called with arguments " +
-				                              matcher.argumentString() + "; " + e.getMessage());
-			}
-
-			if (error == null) {
-			    error = new NoMemberException(NoMemberException.METHOD,
-			                                  "Method " + mi.signature() +
-			                                  " in " + container +
-			                                  " cannot be called with arguments " +
-			                                  matcher.argumentString() + ".");
-			}
-		    }
+            allMethods.addAll(type.methodsNamed(name));
 		}
 
 		if (t instanceof ObjectType) {
@@ -1646,26 +1637,128 @@ public class TypeSystem_c implements TypeSystem
 		}
 	    }
 
-	if (acceptable.size() > 0) {
-		// remove any method in acceptable that are overridden by an
-		// unacceptable
-		// method.
-		for (MethodInstance mi : unacceptable) {
-		    acceptable.removeAll(mi.overrides(context));
-		}
-	}
+        // Collected all methods, now let's filter them
+        List<Type> typeParams = matcher.typeArgs;
+        List<Type> argTypes = matcher.argTypes;
+        boolean isDumbMatcher = matcher.isDumbMatcher;
 
-	if (acceptable.size() == 0) {
-	    if (error == null) {
-	    	  throw new NoMemberException(NoMemberException.METHOD,
-                      "No valid method call found for call in given type."
-	+ "\n\t Call: " + matcher.signature()
-	+ "\n\t Type: " + container);
-	    }
-	    throw error;
-	}
+        SemanticException error = null;
+        List<MethodInstance> resolved = resolveProcedure(container, context, allMethods, typeParams, argTypes, isDumbMatcher);
 
-	return acceptable;
+        List<MethodInstance> acceptable = new ArrayList<MethodInstance>();
+		for (MethodInstance mi : resolved)	{
+				MethodInstance oldmi = mi;
+			    mi = matcher.instantiate(mi);
+
+			    if (mi == null) {
+				continue;
+			    }
+			    mi.setOrigMI(oldmi);
+			    if (isAccessible(mi, context)) {
+				    acceptable.add(mi);
+			    }
+			    else {
+                    // method call is valid, but the method is
+                    // unacceptable.
+                    if (error == null) {
+                        error = new NoMemberException(NoMemberException.METHOD,
+                                                      "Method " + mi.signature() +
+                                                      " in " + container +
+                        " is inaccessible.");
+                    }
+			    }
+			}
+
+        
+        if (acceptable.size() == 0) {
+            if (error == null) {
+                  throw new NoMemberException(NoMemberException.METHOD,
+                          "No valid method call found for call in given type."
+                            + "\n\t Call: " + matcher.stripConstraints()
+                            + "\n\t Type: " + Types.stripConstraintsIfDynamicCalls(container));
+            }
+            throw error;
+        }
+
+        return acceptable;
+    }
+
+    public static <D extends ProcedureDef, T extends X10ProcedureInstance<D> & MemberInstance<D>> List<T> resolveProcedure(Type container, Context context, List<T> allMethods, List<Type> typeParams, List<Type> argTypes, boolean dumbMatcher) {
+        int typeParamNum = typeParams.size();
+        int argNum = argTypes.size();
+        List<T> resolved = new ArrayList<T>();
+        TypeSystem ts = context.typeSystem();
+
+        for (T mi : allMethods) {
+            List<Type> formals = mi.formalTypes();
+            if (argNum !=formals.size()) continue;
+            List<ParameterType> miTypeParams = (List<ParameterType>)(List)mi.typeParameters();
+            int miTypeParamNum = miTypeParams.size();
+            if (typeParamNum!=0 && typeParamNum!=miTypeParamNum) continue;
+
+
+            boolean isOk = true;
+            if (!dumbMatcher) {
+                // handle type param
+                // def m[H](H)
+                TypeParamSubst subst = null;
+                List<Type> tmp_typeParams = typeParams;
+                if (miTypeParamNum!=0 && typeParamNum==0) {
+                    // infer typeParams
+                    Type c = container != null ? container : mi.container();
+                    try {
+                        Type[] Y = TypeConstraint.inferTypeArguments(mi, c, argTypes, formals, (List<Type>)(List)miTypeParams, context);
+                        assert Y.length==miTypeParamNum;
+                        for (int k=0; k<miTypeParamNum; k++)
+                            Y[k] = Types.stripConstraints(Y[k]);
+                        tmp_typeParams = Arrays.asList(Y);
+                    } catch (SemanticException e) {
+                        continue;
+                    }
+                }
+                if (tmp_typeParams.size()!=0) {
+                    subst = new TypeParamSubst(ts, tmp_typeParams, miTypeParams);
+                }
+
+                for (int p=0; p<argNum;p++) {
+                    Type arg = argTypes.get(p);
+                    Type formal = formals.get(p);
+
+                    if (subst!=null)
+                        formal = subst.reinstantiate(formal);
+
+                    if (!isSubtypeIgnoringConstraints(arg, formal, context)) {
+                        isOk = false;
+                        break;
+                    }
+                }
+            }
+            if (isOk)
+                resolved.add(mi);
+        }
+        return resolved;
+    }
+    private static boolean isSubtypeIgnoringConstraints(Type arg, Type formal, Context context) {
+        arg = Types.stripConstraints(arg);
+        formal = Types.stripConstraints(formal);
+
+        TypeSystem ts = context.typeSystem();
+        // stripConstraints doesn't work for closure types
+        // to get a more precise error message because I cannot strip constraints from closures
+        if (arg instanceof FunctionType && formal instanceof FunctionType) {
+            FunctionType argF = (FunctionType) arg;
+            FunctionType formalF = (FunctionType) formal;
+            List<Type> argA = argF.argumentTypes();
+            List<Type> formalA = formalF.argumentTypes();
+            if (formalA.size()!=argA.size()) return false;
+            if (!isSubtypeIgnoringConstraints(argF.returnType(), formalF.returnType(), context))
+                return false;
+            for (int i=0; i<formalA.size(); i++)
+                if (!isSubtypeIgnoringConstraints(formalA.get(i), argA.get(i), context))
+                    return false;
+            return true;
+        } else
+            return ts.isSubtype(arg, formal, context);
     }
 
     /**
@@ -1709,7 +1802,7 @@ public class TypeSystem_c implements TypeSystem
      * Requires: all type arguments are canonical.
      * Returns the least common ancestor of Type1 and Type2
      **/
-    public Type leastCommonAncestor(Type type1, Type type2, Context context) throws SemanticException {
+    public Type leastCommonAncestor(Type type1, Type type2, Context context) {
         assert_(type1);
         assert_(type2);
         return env(context).leastCommonAncestor(type1, type2);
@@ -1757,8 +1850,8 @@ public class TypeSystem_c implements TypeSystem
         if (acceptable.size() == 0) {
               throw new NoMemberException(NoMemberException.METHOD,
                       "No valid method call found for call in given type."
-                      + "\n\t Call: " + matcher.signature()
-                      + "\n\t Type: " + container);
+                      + "\n\t Call: " + matcher.stripConstraints()
+                      + "\n\t Type: " + Types.stripConstraintsIfDynamicCalls(container));
         }
         Collection<MethodInstance> maximal =
             findMostSpecificProcedures(acceptable, (Matcher<MethodInstance>) matcher, context);
@@ -1770,32 +1863,28 @@ public class TypeSystem_c implements TypeSystem
     }
 
 
-    public X10MethodMatcher MethodMatcher(Type container, Name name, List<Type> argTypes, Context context) {
-        return new X10MethodMatcher(container, name, argTypes, context);
+    public MethodMatcher MethodMatcher(Type container, Name name, List<Type> argTypes, Context context) {
+        return new MethodMatcher(container, name, Collections.EMPTY_LIST, argTypes, context, false);
     }
 
-    public X10MethodMatcher MethodMatcher(Type container, Name name, List<Type> typeArgs, List<Type> argTypes, Context context) {
-        return new X10MethodMatcher(container, name, typeArgs, argTypes, context);
+    public MethodMatcher MethodMatcher(Type container, Name name, List<Type> typeArgs, List<Type> argTypes, Context context) {
+        return new MethodMatcher(container, name, typeArgs, argTypes, context, false);
+    }
+    public MethodMatcher MethodMatcher(Type container, Name name, List<Type> typeArgs, List<Type> argTypes, Context context, boolean isDumbMatcher) {
+        return new MethodMatcher(container, name, typeArgs, argTypes, context, isDumbMatcher);
     }
 
-    public X10ConstructorMatcher ConstructorMatcher(Type container, List<Type> argTypes, Context context) {
-        return new X10ConstructorMatcher(container, argTypes, context);
+
+    public ConstructorMatcher ConstructorMatcher(Type container, List<Type> argTypes, Context context) {
+        return new ConstructorMatcher(container, Collections.EMPTY_LIST, argTypes, context, false);
     }
 
-    public X10ConstructorMatcher ConstructorMatcher(Type container, List<Type> typeArgs, List<Type> argTypes, Context context) {
-        return new X10ConstructorMatcher(container, typeArgs, argTypes, context);
+    public ConstructorMatcher ConstructorMatcher(Type container, List<Type> typeArgs, List<Type> argTypes, Context context) {
+        return new ConstructorMatcher(container, typeArgs, argTypes, context, false);
     }
-
-    public X10FieldMatcher FieldMatcher(Type container, Name name, Context context) {
-    	//container = X10TypeMixin.ensureSelfBound( container);
-        return new X10FieldMatcher(container, name, context);
+    public ConstructorMatcher ConstructorMatcher(Type container, List<Type> typeArgs, List<Type> argTypes, Context context, boolean isDumbMatcher) {
+        return new ConstructorMatcher(container, typeArgs, argTypes, context, isDumbMatcher);
     }
-
-    public X10FieldMatcher FieldMatcher(Type container, boolean contextKnowsReceiver, Name name, Context context) {
-    	//container = X10TypeMixin.ensureSelfBound( container);
-        return new X10FieldMatcher(container, contextKnowsReceiver, name, context);
-    }
-    
 
     /** Return true if t overrides mi */
     public boolean hasFormals(ProcedureInstance<? extends ProcedureDef> pi, List<Type> formalTypes, Context context) {
@@ -1825,9 +1914,9 @@ public class TypeSystem_c implements TypeSystem
 	env(context).checkOverride(mi, mj);
     }
 
-    public void checkOverride(MethodInstance mi, MethodInstance mj, boolean allowCovariantReturn, Context context) throws SemanticException {
-	env(context).checkOverride(mi, mj, allowCovariantReturn);
-    }
+   // public void checkOverride(MethodInstance mi, MethodInstance mj, boolean allowCovariantReturn, Context context) throws SemanticException {
+	//env(context).checkOverride(mi, mj, allowCovariantReturn);
+    //}
 
     /**
      * Returns true iff <m1> is the same method as <m2>
@@ -1862,7 +1951,7 @@ public class TypeSystem_c implements TypeSystem
     public X10ClassType load(String name) {
         QName qualName = QName.make(name);
         try {
-            return (X10ClassType) typeForName(qualName);
+            return (X10ClassType) forName(qualName);
         }
         catch (SemanticException e) {
             extensionInfo().compiler().errorQueue().enqueue(
@@ -1975,7 +2064,7 @@ public class TypeSystem_c implements TypeSystem
             if (fullName == null) {
                 return (X10ClassType) unknownClassDef().asType();
             }
-            return (X10ClassType) typeForName(fullName);
+            return (X10ClassType) forName(fullName);
         }
         catch (SemanticException e) {
             return createFakeClass(fullName, e);
@@ -2009,7 +2098,7 @@ public class TypeSystem_c implements TypeSystem
      * {@inheritDoc}
      * @deprecated
      */
-    public Type typeForName(QName name) throws SemanticException {
+    public final Type typeForName(QName name) throws SemanticException {
         return forName(name);
     }
 
@@ -2199,14 +2288,6 @@ public class TypeSystem_c implements TypeSystem
         return AtomicInteger_;
     }
 
-    protected X10ClassType nativeRail_;
-
-    public X10ClassType Rail() {
-        if (nativeRail_ == null)
-            nativeRail_ = load("x10.lang.Rail");
-        return nativeRail_;
-    }
-
     // protected X10ClassType XOBJECT_;
     // public X10ClassType X10Object() {
     // if (XOBJECT_ == null)
@@ -2282,7 +2363,11 @@ public class TypeSystem_c implements TypeSystem
     }
 
     public X10ClassType ClassCastException() {
-        return load("x10.lang.ClassCastException");
+        return FailedDynamicCheckException();
+    }
+
+    public X10ClassType FailedDynamicCheckException() {
+        return load("x10.lang.FailedDynamicCheckException");
     }
 
     public X10ClassType OutOfBoundsException() {
@@ -2446,6 +2531,14 @@ public class TypeSystem_c implements TypeSystem
         return runtimeType_;
     }
 
+    protected X10ClassType embedType_;
+
+    public X10ClassType Embed() {
+        if (embedType_ == null)
+            embedType_ = load("x10.compiler.Embed");
+        return embedType_;
+    }
+
     protected X10ClassType arrayType_ = null;
 
     public X10ClassType Array() {
@@ -2469,6 +2562,22 @@ public class TypeSystem_c implements TypeSystem
             distArrayType_ = load("x10.array.DistArray");
         return distArrayType_;
     }
+    
+    protected X10ClassType intRangeType_ = null;
+    public X10ClassType IntRange() {
+        if (intRangeType_ == null) {
+            intRangeType_ = load("x10.lang.IntRange");
+        }
+        return intRangeType_;
+    }
+
+    protected X10ClassType longRangeType_ = null;
+    public X10ClassType LongRange() {
+        if (longRangeType_ == null) {
+            longRangeType_ = load("x10.lang.LongRange");
+        }
+        return longRangeType_;
+    }
 
     protected X10ClassType mortalType_ = null;
 
@@ -2476,6 +2585,150 @@ public class TypeSystem_c implements TypeSystem
         if (mortalType_ == null)
             mortalType_ = load("x10.lang.Runtime.Mortal");
         return mortalType_;
+    }
+
+    protected X10ClassType frameType_;
+
+    public X10ClassType Frame() {
+        if (frameType_ == null)
+            frameType_ = load("x10.compiler.ws.Frame");
+        return frameType_;
+    }
+
+    protected X10ClassType finishFrameType_;
+
+    public X10ClassType FinishFrame() {
+        if (finishFrameType_ == null)
+            finishFrameType_ = load("x10.compiler.ws.FinishFrame");
+        return finishFrameType_;
+    }
+
+    protected X10ClassType asyncFrameType_;
+
+    public X10ClassType AsyncFrame() {
+        if (asyncFrameType_ == null)
+            asyncFrameType_ = load("x10.compiler.ws.AsyncFrame");
+        return asyncFrameType_;
+    }
+
+    protected X10ClassType collectingFinishType_;
+
+    public X10ClassType CollectingFinish() {
+        if (collectingFinishType_ == null)
+            collectingFinishType_ = load("x10.compiler.ws.CollectingFinish");
+        return collectingFinishType_;
+    }
+    
+    protected X10ClassType throwFrameType_;
+
+    public X10ClassType ThrowFrame() {
+        if (throwFrameType_ == null)
+            throwFrameType_ = load("x10.compiler.ws.ThrowFrame");
+        return throwFrameType_;
+    }
+
+    protected X10ClassType tryFrameType_;
+
+    public X10ClassType TryFrame() {
+        if (tryFrameType_ == null)
+            tryFrameType_ = load("x10.compiler.ws.TryFrame");
+        return tryFrameType_;
+    }
+
+    protected X10ClassType atFrameType_;
+
+    public X10ClassType AtFrame() {
+        if (atFrameType_ == null)
+            atFrameType_ = load("x10.compiler.ws.AtFrame");
+        return atFrameType_;
+    }
+
+    protected X10ClassType regularFrameType_;
+
+    public X10ClassType RegularFrame() {
+        if (regularFrameType_ == null)
+            regularFrameType_ = load("x10.compiler.ws.RegularFrame");
+        return regularFrameType_;
+    }
+
+    protected X10ClassType mainFrameType_;
+
+    public X10ClassType MainFrame() {
+        if (mainFrameType_ == null)
+            mainFrameType_ = load("x10.compiler.ws.MainFrame");
+        return mainFrameType_;
+    }
+
+    protected X10ClassType workerType_;
+
+    public X10ClassType Worker() {
+        if (workerType_ == null)
+            workerType_ = load("x10.compiler.ws.Worker");
+        return workerType_;
+    }
+
+    protected X10ClassType remoteFinishType_;
+
+    public X10ClassType RemoteFinish() {
+        if (remoteFinishType_ == null)
+            remoteFinishType_ = load("x10.compiler.ws.RemoteFinish");
+        return remoteFinishType_;
+    }
+
+    protected X10ClassType rootFinishType_;
+
+    public X10ClassType RootFinish() {
+        if (rootFinishType_ == null)
+            rootFinishType_ = load("x10.compiler.ws.RootFinish");
+        return rootFinishType_;
+    }
+
+    protected X10ClassType abortType_;
+
+    public X10ClassType Abort() {
+        if (abortType_ == null)
+            abortType_ = load("x10.compiler.Abort");
+        return abortType_;
+    }
+
+    protected X10ClassType stackAllocateType_;
+
+    public X10ClassType StackAllocate() {
+        if (stackAllocateType_ == null)
+            stackAllocateType_ = load("x10.compiler.StackAllocate");
+        return stackAllocateType_;
+    }
+
+    protected X10ClassType inlineOnlyType_;
+
+    public X10ClassType InlineOnly() {
+        if (inlineOnlyType_ == null)
+            inlineOnlyType_ = load("x10.compiler.InlineOnly");
+        return inlineOnlyType_;
+    }
+
+    protected X10ClassType headerType_;
+
+    public X10ClassType Header() {
+        if (headerType_ == null)
+            headerType_ = load("x10.compiler.Header");
+        return headerType_;
+    }
+
+    protected X10ClassType ephemeralType_;
+
+    public X10ClassType Ephemeral() {
+        if (ephemeralType_ == null)
+            ephemeralType_ = load("x10.compiler.Ephemeral");
+        return ephemeralType_;
+    }
+
+    protected X10ClassType uninitializedType_;
+
+    public X10ClassType Uninitialized() {
+        if (uninitializedType_ == null)
+            uninitializedType_ = load("x10.compiler.Uninitialized");
+        return uninitializedType_;
     }
 
 
@@ -2503,7 +2756,7 @@ public class TypeSystem_c implements TypeSystem
 		QName name = getTransformedClassName(ct);
 
 		TypeSystem_c ts = this;
-		LazyRef<ClassDef> sym = Types.lazyRef((ClassDef) unknownClassDef(), null);
+		LazyRef<X10ClassDef> sym = Types.lazyRef( unknownClassDef(), null);
 		Goal resolver = extInfo.scheduler().LookupGlobalTypeDef(sym, name);
 		resolver.update(Goal.Status.SUCCESS);
 		sym.setResolver(resolver);
@@ -2576,7 +2829,7 @@ public class TypeSystem_c implements TypeSystem
 
     public Type arrayOf(Position pos, Ref<? extends Type> type) {
         // Should be called only by the Java class file loader.
-        Type r = Rail();
+        Type r = Array();
         return Types.instantiate(r, type);
     }
     /**
@@ -2753,7 +3006,7 @@ public class TypeSystem_c implements TypeSystem
 	                            name + "\".");
     }
 
-    public final ClassDef createClassDef() {
+    public final X10ClassDef createClassDef() {
 	return createClassDef((Source) null);
     }
 
@@ -2761,7 +3014,7 @@ public class TypeSystem_c implements TypeSystem
         return new X10ClassDef_c(this, fromSource);
     }
 
-    public X10ParsedClassType createClassType(Position pos, Ref<? extends ClassDef> def) {
+    public X10ParsedClassType createClassType(Position pos, Ref<? extends X10ClassDef> def) {
         return new X10ParsedClassType_c(this, pos, def);
     }
 
@@ -2789,9 +3042,14 @@ public class TypeSystem_c implements TypeSystem
         return new ThisInstance_c(this, pos, def);
     }
 
-    public ThisDef thisDef(Position pos, Ref<? extends ClassType> type) {
-        assert_(type);
-        return new ThisDef_c(this, pos, type);
+    public ThisDef thisDef(Position pos, Ref<? extends ClassType> baseType) {
+        assert_(baseType);
+        return new ThisDef_c(this, pos, null, baseType);
+    }
+    public ThisDef thisDef(Position pos, Ref<? extends ClassType> qType, 
+                           Ref<? extends ClassType> baseType) {
+        assert_(baseType);
+        return new ThisDef_c(this, pos, qType, baseType);
     }
     
     public InitializerInstance createInitializerInstance(Position pos, Ref<? extends InitializerDef> def) {
@@ -3142,23 +3400,31 @@ public class TypeSystem_c implements TypeSystem
             if (fi.def()==fi2.def()) return true;
         return false;
    }
-    public X10FieldInstance findField(Type container, TypeSystem_c.FieldMatcher matcher)
-	throws SemanticException {
+    public X10FieldInstance findField(Type container, Type receiver, Name name, Context context) throws SemanticException {
+        return findField(container, false, new FieldMatcher(receiver, name, context));
+    }
+    public X10FieldInstance findField(Type container, Type receiver, Name name, Context context, boolean receiverInContext) throws SemanticException {
+        return findField(container, receiverInContext, new FieldMatcher(receiver, name, context));
+    }
+    public Set<FieldInstance>  findFields(Type container, Type receiver, Name name, Context context) {
+        return findFields(container, new FieldMatcher(receiver, name, context));
+    }
+    private X10FieldInstance findField(Type container, boolean receiverInContext, TypeSystem_c.FieldMatcher matcher) throws SemanticException {
 		Context context = matcher.context();
 
 		Collection<FieldInstance> fields = findFields(container, matcher);
 
 		if (fields.size() >= 2) {
             // if the field is defined in a class, then it will appear only once in "fields".
-            // if it is defined in an interface (then it is either a "static val" or a property such as home), then it may appear multiple times in "fields", so we need to filter duplicates.
+            // if it is defined in an interface (then it is either a "static val" or a property field), then it may appear multiple times in "fields", so we need to filter duplicates.
             // e.g.,
-//            interface I1 { static val a = 1;}
+//            interface I1(z:Int) { static val a = 1;}
 //            interface I2 extends I1 {}
 //            interface I3 extends I1 {}
 //            interface I4 extends I2,I3 {}
 //            class Example implements I4 {
 //              def example() = a;
-//              def m(a:Example{self.home.home.home==here}) = 1;
+//              def m(a:Example{self.z==1}) = 1;
 //            }
 			Collection<FieldInstance> newFields = CollectionFactory.newHashSet();
 			for (FieldInstance fi : fields) {
@@ -3172,11 +3438,14 @@ public class TypeSystem_c implements TypeSystem
 					newFields.add(fi);
 				}
 
-
+				
 			}
 			fields = newFields;
 		}
 		if (fields.size() == 0) {
+		    if (matcher.name().toString().equals("rank")) {
+		        int q =1;
+		    }
 		    throw new NoMemberException(NoMemberException.FIELD,
 		                                "Field " + matcher.signature() +
 		                                " not found in type \"" +
@@ -3199,6 +3468,10 @@ public class TypeSystem_c implements TypeSystem
 		    throw new SemanticException("Cannot access " + fi + ".");
 		}
 
+        // todo: check it is consistent   receiverInContext
+        fi = X10FieldMatcher.instantiateAccess(fi,matcher.name,matcher.container,receiverInContext,context);
+        
+
 		return fi;
 
    }
@@ -3213,11 +3486,6 @@ public class TypeSystem_c implements TypeSystem
         if (t.isShort()) return 2l;
         if (t.isInt()) return 4l;
         if (t.isLong()) return 8l;
-        if (isRail(t)) {
-            X10ClassType ctyp = (X10ClassType)t;
-            assert ctyp.typeArguments().size() == 1;
-            return size(ctyp.typeArguments().get(0));
-        }
         return null;
     }
     
@@ -3245,7 +3513,8 @@ public class TypeSystem_c implements TypeSystem
             return ts.typeEquals(Types.baseType(o), Types.baseType(p), context);
         }
     }
-    public List<MethodInstance> methods(ContainerType t, Name name, List<Type> typeParams, List<Type> argTypes, XVar thisVar, Context context) {
+    public List<MethodInstance> methods(ContainerType t, Name name, List<Type> typeParams, List<LocalInstance> formalNames, XVar thisVar, XVar placeTerm, Context context) {
+        XVar[] xvars = Types.toVarArray(Types.toLocalDefList(formalNames), placeTerm);
         List<MethodInstance> l = new ArrayList<MethodInstance>();
         for (MethodInstance mi : t.methodsNamed(name)) {
             List<XVar> ys = new ArrayList<XVar>(2);
@@ -3258,6 +3527,10 @@ public class TypeSystem_c implements TypeSystem
             mi = new X10TypeEnv_c(context).fixThis((MethodInstance) mi, y, x);
 
             if (mi.typeParameters().size() != typeParams.size()) {
+                continue;
+            }
+
+            if (mi.formalNames().size() != formalNames.size()) {
                 continue;
             }
 
@@ -3274,8 +3547,19 @@ public class TypeSystem_c implements TypeSystem
 //                l.add(mi);
 //            }
 
+            List<Type> formalTypes = new ArrayList<Type>();
+            for (LocalInstance li : formalNames) {
+                formalTypes.add(li.type());
+            }
+            try {
+                XVar pt = Types.getPlaceTerm(mi);
+                XVar[] yvars = Types.toVarArray(Types.toLocalDefList(mi.formalNames()), pt);
+                formalTypes = Subst.subst(formalTypes, yvars, xvars);
+            } catch (SemanticException e) {
+                throw new InternalCompilerError("Unexpected exception while translating a method instance", e);
+            }
             TypeParamSubst tps = new TypeParamSubst(this, typeParams, mi.x10Def().typeParameters());
-            if (CollectionUtil.allElementwise(argTypes, tps.reinstantiate(mi.formalTypes()), new TypeEquals(context))) {
+            if (CollectionUtil.allElementwise(formalTypes, tps.reinstantiate(mi.formalTypes()), new TypeEquals(context))) {
                 l.add(mi);
             }
         }
@@ -3294,10 +3578,15 @@ public class TypeSystem_c implements TypeSystem
         final XVar[] x = xs.toArray(new XVar[ys.size()]);
 
         mi = new X10TypeEnv_c(context).fixThis( mi, y, x);
+        XVar placeTerm = Types.getPlaceTerm(mi);
 
+        context = context.pushBlock();
+        CConstraint cc = context.currentConstraint();
+        cc.addIn(thisVar, Types.realX(ct));
+        context.setCurrentConstraint(cc);
         ContainerType curr = ct;
         while (curr != null) {
-            List<MethodInstance> possible = methods(curr, mi.name(), mi.typeParameters(), mi.formalTypes(), thisVar, context);
+            List<MethodInstance> possible = methods(curr, mi.name(), mi.typeParameters(), mi.formalNames(), thisVar, placeTerm, context);
             for (MethodInstance mj : possible) {
                 if ((includeAbstract || !mj.flags().isAbstract()) 
                         && ((isAccessible(mi, context) && isAccessible(mj, context)) 
@@ -3335,9 +3624,9 @@ public class TypeSystem_c implements TypeSystem
         return null;
     }
 
-    public void checkOverride(ClassType ct, MethodInstance mi0, MethodInstance mj0, Context context) throws SemanticException {
-        env(context).checkOverride(ct, mi0, mj0);
-    }
+   // public void checkOverride(ClassType ct, MethodInstance mi0, MethodInstance mj0, Context context) throws SemanticException {
+   //     env(context).checkOverride(ct, mi0, mj0);
+   // }
     public X10TypeEnv env(Context context) {
         return new X10TypeEnv_c(context == null ? emptyContext() : context);
     }
@@ -3626,25 +3915,11 @@ public class TypeSystem_c implements TypeSystem
     }
 
     public Context emptyContext() {
-        return new X10Context_c(this);
-    }
-
-    
-
-    
-    public boolean isRail(Type t) {
-        return hasSameClassDef(t, Rail());
-    }
-
-    public boolean isRailOf(Type t, Type p) {
-        if (!isRail(t)) return false;
-        List<Type> ta = ((X10ClassType)Types.baseType(t)).typeArguments();
-        assert (ta.size() == 1);
-        return ta.get(0).typeEquals(p, createContext());
+        return new Context(this);
     }
 
     public boolean isArray(Type t) {
-        return hasSameClassDef(t, Array());
+        return finalSubtype(t, Array());
     }
 
     public static Type getArrayComponentType(Type t) {
@@ -3658,7 +3933,7 @@ public class TypeSystem_c implements TypeSystem
     }
 
     public boolean isRemoteArray(Type t) {
-        return hasSameClassDef(t, RemoteArray());
+        return finalSubtype(t, RemoteArray());
     }
 
     public boolean isRemoteArrayOf(Type t, Type p) {
@@ -3682,11 +3957,6 @@ public class TypeSystem_c implements TypeSystem
         return false;
     }
 
-
-    public X10ClassType Rail(Type arg) {
-        return Types.instantiate(Rail(), arg);
-    }
-
     public X10ClassType Array(Type arg) {
         return Types.instantiate(Array(), arg);
     }
@@ -3695,12 +3965,8 @@ public class TypeSystem_c implements TypeSystem
         return Types.instantiate(Settable(), domain, range);
     }
 
-    public boolean isSettable(Type me) {
-        return hasSameClassDef(me, Settable());
-    }
-
     public boolean isX10Array(Type me) {
-        if (hasSameClassDef(me, Array())) {
+        if (finalSubtype(me, Array())) {
             return true;
         } else if (me.isClass()) {
             Type parent = me.toClass().superClass();
@@ -3711,7 +3977,7 @@ public class TypeSystem_c implements TypeSystem
     }
 
     public boolean isX10DistArray(Type me) {
-        if (hasSameClassDef(me, DistArray())) {
+        if (finalSubtype(me, DistArray())) {
             return true;
         } else if (me.isClass()) {
             Type parent = me.toClass().superClass();
@@ -3721,6 +3987,28 @@ public class TypeSystem_c implements TypeSystem
         }
     }
 
+    public boolean isIntRange(Type me) {
+        if (finalSubtype(me, IntRange())) {
+            return true;
+        } else if (me.isClass()) {
+            Type parent = me.toClass().superClass();
+            return parent != null && isIntRange(parent);
+        } else {
+            return false;
+        }
+    }
+    
+    public boolean isLongRange(Type me) {
+        if (finalSubtype(me, LongRange())) {
+            return true;
+        } else if (me.isClass()) {
+            Type parent = me.toClass().superClass();
+            return parent != null && isLongRange(parent);
+        } else {
+            return false;
+        }
+    }
+  
     public boolean isTypeConstrained(Type me) {
         return me instanceof ConstrainedType;
     }
@@ -3735,23 +4023,23 @@ public class TypeSystem_c implements TypeSystem
     }
 
     public boolean isClock(Type me) {
-        return isSubtype(me, Clock(), emptyContext());
+        return finalSubtype(me,Clock());
     }
 
     public boolean isPoint(Type me) {
-        return isSubtype(me, Point(), emptyContext());
+        return finalSubtype(me,Point());
     }
 
     public boolean isPlace(Type me) {
-        return isSubtype(me, Place(), emptyContext());
+        return finalSubtype(me,Place());
     }
 
     public boolean isRegion(Type me) {
-        return isSubtype(me, Region(), emptyContext());
+        return emptyContextSubtype(me,Region());
     }
 
     public boolean isDistribution(Type me) {
-        return isSubtype(me, Dist(), emptyContext());
+        return emptyContextSubtype(me,Dist());
     }
 
     public boolean isDistributedArray(Type me) {
@@ -3759,26 +4047,26 @@ public class TypeSystem_c implements TypeSystem
     }
 
     public boolean isComparable(Type me) {
-        return isSubtype(me, Comparable(), emptyContext());
+        return emptyContextSubtype(me,Comparable());
     }
 
     public boolean isIterable(Type me) {
-        return isSubtype(me, Iterable(), emptyContext());
+        return emptyContextSubtype(me,Iterable());
     }
 
     public boolean isIterator(Type me) {
-        return isSubtype(me, Iterator(), emptyContext());
+        return emptyContextSubtype(me,Iterator());
     }
     public boolean isReducible(Type me) {
-        return isSubtype(me, Reducible(), emptyContext());
+        return emptyContextSubtype(me,Reducible());
     }
 
     public boolean isContains(Type me) {
-        return isSubtype(me, Contains(), emptyContext());
+        return emptyContextSubtype(me,Contains());
     }
 
     public boolean isContainsAll(Type me) {
-        return isSubtype(me, ContainsAll(), emptyContext());
+        return emptyContextSubtype(me,ContainsAll());
     }
 
     public boolean isFunctionType(Type t) {
@@ -3805,9 +4093,6 @@ public class TypeSystem_c implements TypeSystem
         return (xt instanceof FunctionType) || ((X10ClassDef) xt.def()).isFunction();
     }
 
-   /* public boolean isBox(Type t) {
-        return hasSameClassDef(t, this.Box());
-    }*/
 
     public boolean isInterfaceType(Type t) {
         t = Types.baseType(t);
@@ -3847,6 +4132,7 @@ public class TypeSystem_c implements TypeSystem
 
     
 
+    
     public boolean isUnknown(Type t) {
         return Types.baseType(t) instanceof UnknownType;
     }
@@ -3933,26 +4219,46 @@ public class TypeSystem_c implements TypeSystem
                 argTypes, thisDef, formalNames, guard,  offerType);
     }
 
-    public FunctionType closureType(Position p, Ref<? extends Type> returnType,
-            // List<Ref<? extends Type>> typeParams,
-            List<Ref<? extends Type>> argTypes,
-            List<LocalDef> formalNames, Ref<CConstraint> guard
-          //  Ref<TypeConstraint> typeGuard,
-            ) {
+    public FunctionType functionType(Position p, Ref<? extends Type> returnType,
+            List<ParameterType> typeParameters,
+            List<Ref<? extends Type>> argTypes, List<LocalDef> formalNames, Ref<CConstraint> guard
+            //Ref<TypeConstraint> typeGuard,
+    ) {
         Type rt = Types.get(returnType);
-        X10ClassDef def = ClosureSynthesizer.closureBaseInterfaceDef(this, 0 /*typeParams.size()*/, argTypes.size(), rt.isVoid(), formalNames, guard);
+        X10ClassDef def = ClosureSynthesizer.closureBaseInterfaceDef(this, typeParameters.size(),
+                argTypes.size(), rt.isVoid(), formalNames, guard);
         FunctionType ct = (FunctionType) def.asType();
+        XVar[] yvars = Types.toVarArray(Types.toLocalDefList(ct.formalNames()));
+        XVar[] xvars = Types.toVarArray(formalNames);
         List<Type> typeArgs = new ArrayList<Type>();
         for (Ref<? extends Type> ref : argTypes) {
-            typeArgs.add(Types.get(ref));
+            Type t = Types.get(ref);
+            try {
+                t = Subst.subst(t, yvars, xvars);
+            } catch (SemanticException e) {
+                throw new InternalCompilerError("Unexpected exception while creating a function type", p, e);
+            }
+            typeArgs.add(t);
         }
-        if (!rt.isVoid())
+        if (!rt.isVoid()) {
+            try {
+                rt = Subst.subst(rt, yvars, xvars);
+            } catch (SemanticException e) {
+                throw new InternalCompilerError("Unexpected exception while creating a function type", p, e);
+            }
             typeArgs.add(rt);
+        }
         return (FunctionType) ct.typeArguments(typeArgs);
     }
 
+    public ClosureType closureType(ClosureDef cd) {
+        X10ClassDef def = ClosureSynthesizer.closureAnonymousClassDef(this, cd);
+        return (ClosureType) def.asType();
+    }
+    
 
     public Type expandMacros(Type t) {
+    
         return expandMacros(t, 0);
     }
     private Type expandMacros(Type t, int depth) {
@@ -3970,7 +4276,7 @@ public class TypeSystem_c implements TypeSystem
             Type base = ct.baseType().get();
             Type ebase = expandMacros(base, depth+1);
             if (base == ebase)
-                return t;
+                return t; // yoav todo: why are we looking only at the base and not at the constraint that we should expand???
             CConstraint c = ct.constraint().get();
             return Types.xclause(ebase, c);
         }
@@ -4042,48 +4348,36 @@ public class TypeSystem_c implements TypeSystem
     public Map<X10ClassDef_c, Boolean> structHaszero() {
         return structHaszero;
     }
-    
-    // Temporary hack:
-    //   use cache to break cycles checking for unknown type
-    //   WARNING: this code is NOT reentrant
-    //   FIXME: resolve cycles and remove this cache
-    private Map<Type, Boolean> unknownTypeMap = CollectionFactory.newHashMap();
+
     public boolean hasUnknown(Type t) {
-        unknownTypeMap = CollectionFactory.newHashMap();
-        return hasUnknownType(t);
+        return hasUnknownType(t,new HashSet<Type>());
     }
 
-    private boolean hasUnknownType(Type t) {
-        Boolean unknown = unknownTypeMap.get(t);
-        if (null == unknown) {
-            unknownTypeMap.put(t, false); // break circular check for unknown type (this value may get reset to true below)
-        } else {
-            return unknown.booleanValue();
+    private boolean hasUnknownType(Type t, HashSet<Type> visited) {
+        if (visited.contains(t)) {
+            return false;
         }
+        visited.add(t);
 
         if (isUnknown(t)) {
-            unknownTypeMap.put(t, true);
             return true;
         }
         if (t instanceof X10ClassType) {
             X10ClassType ct = (X10ClassType) t;
             if (ct.typeArguments() != null) {
             for (Type a : ct.typeArguments()) {
-                if (hasUnknownType(a)) {
-                    unknownTypeMap.put(t, true);
+                if (hasUnknownType(a, visited)) {
                     return true;
                 }
             }
             }
             if (ct.x10Def().isFunction()) {
                 // Look at the superclass and interfaces (if any)
-                if (hasUnknownType(ct.superClass())) {
-                    unknownTypeMap.put(t, true);
+                if (hasUnknownType(ct.superClass(),visited)) {
                     return true;
                 }
                 for (Type i : ct.interfaces()) {
-                    if (hasUnknownType(i)) {
-                        unknownTypeMap.put(t, true);
+                    if (hasUnknownType(i, visited)) {
                         return true;
                     }
                 }
@@ -4104,22 +4398,19 @@ public class TypeSystem_c implements TypeSystem
             }
         }*/
         if (t instanceof ConstrainedType) {
-            if (hasUnknownType(Types.baseType(t))) {
-                unknownTypeMap.put(t, true);
+            if (hasUnknownType(Types.baseType(t),visited)) {
                 return true;
             }
             ConstrainedType ct = (ConstrainedType) t;
             CConstraint c = Types.xclause(ct);
             for (XVar x : c.vars()) {
-                if (hasUnknown(x)) {
-                    unknownTypeMap.put(t, true);
+                if (hasUnknown(x, visited)) {
                     return true;
                 }
             }
             
             for (XFormula x : c.atoms()) {
-                if (hasUnknown(x)) {
-                    unknownTypeMap.put(t, true);
+                if (hasUnknown(x, visited)) {
                     return true;
                 }
             }
@@ -4127,25 +4418,25 @@ public class TypeSystem_c implements TypeSystem
         return false;
     }
 
-    private boolean hasUnknown(XFormula<?> x) {
+    private boolean hasUnknown(XFormula<?> x, HashSet<Type> visited) {
         for (XTerm a : x.arguments()) {
-            if (hasUnknown(a))
+            if (hasUnknown(a, visited))
                 return true;
         }
         return false;
     }
-    private boolean hasUnknown(XTerm x) {
+    private boolean hasUnknown(XTerm x, HashSet<Type> visited) {
         if (x instanceof XField<?>) {     
-            if (hasUnknown(((XField<?>) x).receiver()))
+            if (hasUnknown(((XField<?>) x).receiver(),visited))
                 return true;
             if (x instanceof CField)
-                return hasUnknownType(((CField) x).type());
+                return hasUnknownType(((CField) x).type(),visited);
         }
         if (x instanceof XTypeLit) {
-            return hasUnknownType(((XTypeLit) x).type());
+            return hasUnknownType(((XTypeLit) x).type(),visited);
         } 
         if (x instanceof CLocal) 
-            return hasUnknownType(((CLocal) x).type());
+            return hasUnknownType(((CLocal) x).type(),visited);
         
         return false;
     }

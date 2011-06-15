@@ -20,7 +20,6 @@ import polyglot.visit.Translator;
 import x10.ast.Closure;
 import x10.ast.ClosureCall;
 import x10.ast.ParExpr;
-import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
 import x10.types.X10MethodDef;
 import x10.util.HierarchyUtils;
@@ -132,7 +131,7 @@ public class X10ASTQuery {
 	            FieldDecl_c dec = (FieldDecl_c) member;
 	            if(dec.flags().flags().isStatic()) {
 	                X10ClassType container = (X10ClassType)dec.fieldDef().asInstance().container();
-	                if(((X10ClassDef)container.def()).typeParameters().size() != 0)
+	                if((container.def()).typeParameters().size() != 0)
 	                    continue;
 	                if(isGlobalInit(dec))
 	                    continue;

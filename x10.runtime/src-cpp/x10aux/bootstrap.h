@@ -29,11 +29,11 @@
 #include <x10/lang/Closure.h>
 
 #include <stdio.h>
+#include <unistd.h>
 
 namespace x10 { namespace array { template<class T> class Array; } }
 
 namespace x10aux {
-
     class StaticInitClosure : public x10::lang::Closure
     {
         public:
@@ -115,6 +115,8 @@ namespace x10aux {
 
         setlinebuf(stdout);
 
+        x10aux::num_local_cores = sysconf(_SC_NPROCESSORS_ONLN);
+
         x10aux::network_init(ac,av);
 
 #ifdef X10_USE_BDWGC
@@ -179,7 +181,7 @@ namespace x10aux {
 #endif
         x10aux::shutdown();
 
-        if (getenv("X10_RXTX")!=NULL)
+        if (x10aux::trace_rxtx)
             fprintf(stderr, "Place: %ld   rx: %lld/%lld   tx: %lld/%lld\n",
                 (long)x10aux::here,
                 (long long)x10aux::deserialized_bytes, (long long)x10aux::asyncs_received,

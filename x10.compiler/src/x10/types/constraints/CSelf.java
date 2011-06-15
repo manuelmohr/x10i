@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 
 import x10.constraint.XEQV;
+import x10.constraint.XRoot;
 import x10.constraint.XTerm;
 import x10.constraint.XTermKind;
 import x10.constraint.XVar;
@@ -17,7 +18,7 @@ import x10.constraint.XVar;
  * @author vj
  *
  */
-public class CSelf extends XVar {
+public class CSelf extends XRoot {
     public final int num;
     
 
@@ -29,6 +30,9 @@ public class CSelf extends XVar {
         return num;
     }
 
+    public boolean okAsNestedTerm() {
+    	return true;
+    }
     public boolean hasVar(XVar v) {
         return equals(v);
     }
@@ -42,7 +46,7 @@ public class CSelf extends XVar {
     }
 
     public String toString() {
-        return CTerms.SELF_VAR_PREFIX;
+        return CTerms.SELF_VAR_PREFIX;// + num;
       
     }
     

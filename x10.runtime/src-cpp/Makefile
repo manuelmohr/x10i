@@ -58,6 +58,7 @@ ifeq ($(X10RT_PLATFORM),cygwin)
   endif
 endif
 XRX_PROPERTIES = libx10.properties
+SHLIB_PROPERTIES = sharedlib.properties
 
 # this builds everything
 xrx: $(XRX_ARCHIVE)
@@ -87,7 +88,7 @@ XRX_REL_SRCS  = $(shell $(FIND) ../src-x10 -name .svn -prune -o -name '*.x10' -p
 XRX_SRCS = $(subst ../src-x10/,, $(XRX_REL_SRCS))
 
 #enable asserts, do not look in jar for x10 files
-X10CPPFLAGS += -J-Xmx1024M -J-ea -rtdev -commandlineonly
+X10CPPFLAGS += -STATIC_CHECKS -J-Xmx512M -J-ea -rtdev -commandlineonly
 
 # Generate .cc and .h files for all the X10 classes defined in the above
 # .x10 files.  Rebuilding occurs if the x10 compiler is updated or if any of the
@@ -111,6 +112,13 @@ $(XRX_PROPERTIES): $(XRX_REL_SRCS)
 	@echo "X10LIB_LDFLAGS=$(XRX_PROPS_LDFLAGS)" >> $@
 	@echo "X10LIB_LDLIBS=$(XRX_PROPS_LDLIBS)" >> $@
 	@echo "X10LIB_SRC_JAR=x10.jar" >> $@
+
+$(SHLIB_PROPERTIES): $(XRX_REL_SRCS)
+	@echo "X10LIB_CXXFLAGS_SHARED=$(CXXFLAGS_SHARED)" > $@
+	@echo "X10LIB_LDFLAGS_SHARED=$(LDFLAGS_SHARED)" >> $@
+	@echo "X10LIB_LIBPREFIX=$(LIBPREFIX)" >> $@
+	@echo "X10LIB_LIBSUFFIX=$(LIBSUFFIX)" >> $@
+	@echo "X10LIB_X10_STATIC_LIB=$(X10_STATIC_LIB)" >> $@
 
 ##########################
 # Manually-written Files #
@@ -146,7 +154,6 @@ ALL_XRCPP_OBJECTS = \
 	x10aux/ref.o \
 	x10aux/reference_logger.o \
 	x10aux/RTT.o \
-	x10aux/rail_utils.o \
 	x10aux/deserialization_dispatcher.o \
 	x10aux/serialization.o \
 	x10aux/short_utils.o \
@@ -166,16 +173,13 @@ ALL_XRCPP_OBJECTS = \
 	x10/lang/GlobalRef.o \
 	x10/lang/IBox.o \
 	x10/lang/Object.o \
-	x10/lang/Rail.o \
 	x10/lang/Reference.o \
 	x10/lang/String.o \
-	x10/lang/Struct.o \
 	x10/lang/Throwable.o \
 	x10/lang/Deque.o \
 	x10/lang/Lock__ReentrantLock.o \
 	x10/lang/PlaceLocalHandle_Impl.o \
 	x10/lang/Thread.o \
-	x10/util/GrowableRail.o \
 	x10/util/IndexedMemoryChunk.o \
 	x10/util/RemoteIndexedMemoryChunk.o \
 	x10/util/concurrent/AtomicReference.o 
@@ -220,16 +224,15 @@ else
   INC_FLAG=-T -
 endif
 
-install_props: $(XRX_PROPERTIES)
+install_props: $(XRX_PROPERTIES) $(SHLIB_PROPERTIES)
 	@cp -p $(XRX_PROPERTIES) "$(INSTDIR)"/$(XRX_PROPERTIES)
+	@cp -p $(SHLIB_PROPERTIES) "$(DISTDIR)"/etc/$(SHLIB_PROPERTIES)
 
 install: $(XRX_ARCHIVE) install_props
 	@echo "Installing into $(INSTDIR)"
 	@mkdir -p "$(INSTDIR)"/include "$(INSTDIR)"/lib
 	@(cd gen && $(FIND) . -name \*.h | tar cf - $(INC_FLAG)) | (cd "$(INSTDIR)"/include && tar xf -)
-	@(cd gen && $(FIND) . -name \*.struct_h | tar cf - $(INC_FLAG)) | (cd "$(INSTDIR)"/include && tar xf -)
 	@$(FIND) x10 -name \*.h | tar cf - $(INC_FLAG) | (cd "$(INSTDIR)"/include && tar xf -)
-	@$(FIND) x10 -name \*.struct_h | tar cf - $(INC_FLAG) | (cd "$(INSTDIR)"/include && tar xf -)
 	@$(FIND) x10aux -name \*.h | tar cf - $(INC_FLAG) | (cd "$(INSTDIR)"/include && tar xf -)
 	@$(FIND) x10aux -name \*.cuh | tar cf - $(INC_FLAG) | (cd "$(INSTDIR)"/include && tar xf -)
 	@cp -p x10rt.h "$(INSTDIR)"/include
@@ -270,7 +273,7 @@ cleanobj:
 
 #nuke everything
 cleangen:
-	-$(RM) -r gen $(XRX_ARCHIVE) $(XRX_PROPERTIES)
+	-$(RM) -r gen $(XRX_ARCHIVE) $(XRX_PROPERTIES) $(SHLIB_PROPERTIES)
 
 clean: cleanobj cleangen
 

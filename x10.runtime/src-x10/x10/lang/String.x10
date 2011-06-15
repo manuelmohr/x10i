@@ -14,6 +14,7 @@ package x10.lang;
 import x10.compiler.Native;
 import x10.compiler.NativeRep;
 import x10.util.Ordered;
+import x10.util.ArrayList;
 
 /**
  * The String class represents character strings.
@@ -30,7 +31,8 @@ import x10.util.Ordered;
  */
 @NativeRep("java", "java.lang.String", null, "x10.rtt.Types.STRING")
 @NativeRep("c++", "x10aux::ref<x10::lang::String>", "x10::lang::String", null)
-public final class String implements (Int) => Char/*TODO, (Range) => String*//*TODO, Ordered[String]*/, Comparable[String] {
+public final class String implements (Int) => Char, /*TODO Ordered[String],*/ Comparable[String] {
+
     /**
      * Default constructor.
      */
@@ -44,22 +46,14 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
     /**
      * Construct a String from an Array[Byte].
      */
-    @Native("java", "new java.lang.String((#1).raw().getByteArray(),#2,#3)")
+    @Native("java", "new java.lang.String((#r).raw().getByteArray(),#offset,#length)")
     public native def this(r:Array[Byte], offset:Int, length:Int): String;
 
     /**
      * Construct a String from an Array[Char].
      */
-    @Native("java", "new java.lang.String((#1).raw().getCharArray(),#2,#3)")
+    @Native("java", "new java.lang.String((#r).raw().getCharArray(),#offset,#length)")
     public native def this(r:Array[Char], offset:Int, length:Int): String;
-
-    /**
-     * Construct a String from a Rail[Char].
-     * @deprecated use the Array-based constructor
-     */
-    @Native("java", "new java.lang.String((#1).getCharArray(),#2,#3)")
-    public native def this(r:Rail[Char], offset:Int, length:Int): String;
-
 
     /**
      * Return true if the given entity is a String, and this String is equal
@@ -67,7 +61,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @param x the given entity
      * @return true if this String is equal to the given entity.
      */
-    @Native("java", "(#0).equals(#1)")
+    @Native("java", "(#this).equals(#that)")
     @Native("c++", "x10aux::equals(#this,#that)")
     public native def equals(that:Any): boolean;
 
@@ -77,7 +71,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @param x the given String
      * @return true if this String is equal to the given String ignoring case.
      */
-    @Native("java", "(#0).equalsIgnoreCase(#1)")
+    @Native("java", "(#this).equalsIgnoreCase(#that)")
     @Native("c++", "(#this)->equalsIgnoreCase(#that)")
     public native def equalsIgnoreCase(that:String): boolean;
 
@@ -92,7 +86,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * (The hash value of the empty string is zero.)
      * @return a hash code value for this String.
      */
-    @Native("java", "(#0).hashCode()")
+    @Native("java", "(#this).hashCode()")
     @Native("c++", "x10aux::hash_code(#this)")
     public native def hashCode(): int;
 
@@ -101,7 +95,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * Returns this String.
      * @return the String itself.
      */
-    @Native("java", "(#0).toString()")
+    @Native("java", "(#this).toString()")
     @Native("c++", "x10aux::to_string(#this)")
     public native def toString(): String;
 
@@ -110,7 +104,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * Returns the length of this String.
      * @return the length of this String.
      */
-    @Native("java", "(#0).length()")
+    @Native("java", "(#this).length()")
     @Native("c++", "(#this)->length()")
     public native def length(): Int;
 
@@ -121,7 +115,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @return the Char at the specified (0-based) index of this String.
      * @see #charAt(Int)
      */
-    @Native("java", "(#0).charAt(#1)")
+    @Native("java", "(#this).charAt(#index)")
     @Native("c++", "(#this)->charAt(#index)")
     public native operator this(index: Int): Char;
 
@@ -132,7 +126,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @return the Char at the specified (0-based) index of this String.
      * @see #operator(Int)
      */
-    @Native("java", "(#0).charAt(#1)")
+    @Native("java", "(#this).charAt(#index)")
     @Native("c++", "(#this)->charAt(#index)")
     public native def charAt(index: Int): Char;
 
@@ -142,18 +136,18 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      *         whose contents are initialized to contain the Chars in this String.
      * @see #bytes()
      */
-    @Native("java", "x10.core.RailFactory.<java.lang.Character>makeArrayFromJavaArray(x10.rtt.Types.CHAR, (#0).toCharArray())")
+    @Native("java", "x10.core.ArrayFactory.<java.lang.Character>makeArrayFromJavaArray(x10.rtt.Types.CHAR, (#this).toCharArray())")
     @Native("c++", "(#this)->chars()")
-    public native def chars():Array[Char](1){rail};
+    public native def chars():Rail[Char];
 
     /**
      * Encodes this String into a sequence of Bytes using the platform's default charset.
      * @return the Array of Bytes representing this String in the default charset.
      * @see #chars()
      */
-    @Native("java", "x10.core.RailFactory.<java.lang.Byte>makeArrayFromJavaArray(x10.rtt.Types.BYTE, (#0).getBytes())")
+    @Native("java", "x10.core.ArrayFactory.<java.lang.Byte>makeArrayFromJavaArray(x10.rtt.Types.BYTE, (#this).getBytes())")
     @Native("c++", "(#this)->bytes()")
-    public native def bytes():Array[Byte](1){rail};
+    public native def bytes():Rail[Byte];
 
     /**
      * Returns a new String that is a substring of this String.
@@ -163,7 +157,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @param toIndex the ending index, exclusive
      * @return the specified substring.
      */
-    @Native("java", "(#0).substring(#1, #2)")
+    @Native("java", "(#this).substring(#fromIndex, #toIndex)")
     @Native("c++", "(#this)->substring(#fromIndex, #toIndex)")
     public native def substring(fromIndex: Int, toIndex: Int): String;
 
@@ -174,7 +168,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @param fromIndex the starting index, inclusive
      * @return the specified substring.
      */
-    @Native("java", "(#0).substring(#1)")
+    @Native("java", "(#this).substring(#fromIndex)")
     @Native("c++", "(#this)->substring(#fromIndex)")
     public native def substring(fromIndex: Int): String;
 
@@ -193,7 +187,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @see #indexOf(String)
      * @see #lastIndexOf(Char)
      */
-    @Native("java", "(#0).indexOf(#1)")
+    @Native("java", "(#this).indexOf(#ch)")
     @Native("c++", "(#this)->indexOf(#ch)")
     public native def indexOf(ch: Char): Int;
 
@@ -215,7 +209,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @see #indexOf(String,Int)
      * @see #lastIndexOf(Char,Int)
      */
-    @Native("java", "(#0).indexOf(#1, #2)")
+    @Native("java", "(#this).indexOf(#ch, #i)")
     @Native("c++", "(#this)->indexOf(#ch, #i)")
     public native def indexOf(ch: Char, i: Int): Int;
 
@@ -234,7 +228,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @see #indexOf(Char)
      * @see #lastIndexOf(String)
      */
-    @Native("java", "(#0).indexOf(#1)")
+    @Native("java", "(#this).indexOf(#str)")
     @Native("c++", "(#this)->indexOf(#str)")
     public native def indexOf(str: String): Int;
 
@@ -255,7 +249,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @see #indexOf(Char,Int)
      * @see #lastIndexOf(String,Int)
      */
-    @Native("java", "(#0).indexOf(#1, #2)")
+    @Native("java", "(#this).indexOf(#str, #i)")
     @Native("c++", "(#this)->indexOf(#str, #i)")
     public native def indexOf(str: String, i: Int): Int;
 
@@ -275,7 +269,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @see #lastIndexOf(String)
      * @see #indexOf(Char)
      */
-    @Native("java", "(#0).lastIndexOf(#1)")
+    @Native("java", "(#this).lastIndexOf(#ch)")
     @Native("c++", "(#this)->lastIndexOf(#ch)")
     public native def lastIndexOf(ch: Char): Int;
 
@@ -298,7 +292,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @see #lastIndexOf(String,Int)
      * @see #indexOf(Char,Int)
      */
-    @Native("java", "(#0).lastIndexOf(#1, #2)")
+    @Native("java", "(#this).lastIndexOf(#ch, #i)")
     @Native("c++", "(#this)->lastIndexOf(#ch, #i)")
     public native def lastIndexOf(ch: Char, i: Int): Int;
 
@@ -319,7 +313,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @see #lastIndexOf(Char)
      * @see #indexOf(String)
      */
-    @Native("java", "(#0).lastIndexOf(#1)")
+    @Native("java", "(#this).lastIndexOf(#str)")
     @Native("c++", "(#this)->lastIndexOf(#str)")
     public native def lastIndexOf(str: String): Int;
 
@@ -342,28 +336,31 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @see #lastIndexOf(Char,Int)
      * @see #indexOf(String,Int)
      */
-    @Native("java", "(#0).lastIndexOf(#1, #2)")
+    @Native("java", "(#this).lastIndexOf(#str, #i)")
     @Native("c++", "(#this)->lastIndexOf(#str, #i)")
     public native def lastIndexOf(str: String, i: Int): Int;
 
 
     /**
-     * Splits this String around matches of the given regular expression.
+     * Splits this String around matches of the given string; 
+     * unlike in Java the splitting String is treated as a simple String
+     * to be matched character by character (as in indexOf), not as 
+     * a regular expression.
      * Trailing empty strings are not included in the resulting Array.
-     * @param regex the delimiting regular expression.
-     * @return the Array of Strings computed by splitting this String around matches of the given regular expression.
+     *
+     * @param split the String to use as a delimiter.
+     * @return the Array of Strings computed by splitting this String around matches of the delimiter.
      */
-    @Native("java", "x10.core.RailFactory.<java.lang.String>makeArrayFromJavaArray(x10.rtt.Types.STRING, (#0).split(#1))")
-//    @Native("java", "x10.core.StringAux.split((#0), (#1))")
-    @Native("c++", "(#this)->split(#regex)")
-    public native def split(regex: String):Array[String](1){rail};
+    @Native("java", "x10.lang.StringHelper.split(#regex, #this)")
+    @Native("c++", "x10::lang::StringHelper::split(#regex, #this)")
+    public native def split(regex: String):Rail[String];
 
 
     /**
      * Returns a copy of the string with leading and trailing whitespace removed.
      * @return The new string with no leading/trailing whitespace.
      */
-    @Native("java", "(#0).trim()")
+    @Native("java", "(#this).trim()")
     @Native("c++", "(#this)->trim()")
     public native def trim(): String;
 
@@ -374,7 +371,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @param v the given entity
      * @return a String representation of the given entity.
      */
-    @Native("java", "java.lang.String.valueOf(#4)")
+    @Native("java", "java.lang.String.valueOf(#v)")
     @Native("c++", "x10aux::safe_to_string(#v)")
     public native static def valueOf[T](v: T): String;
 
@@ -389,7 +386,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @param args the arguments referenced by the format specifiers in the format string.
      * @return a formatted string.
      */
-    @Native("java", "java.lang.String.format(#1,(Object[]) (#2).raw().value)")
+    @Native("java", "java.lang.String.format(#fmt,(Object[]) (#args).raw().value)")
     @Native("c++", "x10::lang::String::format(#fmt,#args)")
     public native static def format(fmt: String, args:Array[Any]): String;
 
@@ -399,7 +396,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * Converts all of the Chars in this String to lower case.
      * @return this String, converted to lowercase.
      */
-    @Native("java", "(#0).toLowerCase()")
+    @Native("java", "(#this).toLowerCase()")
     @Native("c++", "(#this)->toLowerCase()")
     public native def toLowerCase(): String;
 
@@ -408,7 +405,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * Converts all of the Chars in this String to upper case.
      * @return this String, converted to uppercase.
      */
-    @Native("java", "(#0).toUpperCase()")
+    @Native("java", "(#this).toUpperCase()")
     @Native("c++", "(#this)->toUpperCase()")
     public native def toUpperCase(): String;
 
@@ -431,7 +428,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @param arg the argument String
      * @return 0 if the argument String is equal to this String; a negative Int if this String is lexicographically less than the argument String; and a positive Int if this String is lexicographically greater than the argument String.
      */
-    @Native("java", "(#0).compareTo(#1)")
+    @Native("java", "(#this).compareTo(#arg)")
     @Native("c++", "(#this)->compareTo(#arg)")
     public native def compareTo(arg: String): Int;
 
@@ -444,7 +441,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @param arg the argument String
      * @return a negative Int, zero, or a positive Int as the argument String is greater than, equal to, or less than this String, ignoring case considerations.
      */
-    @Native("java", "(#0).compareToIgnoreCase(#1)")
+    @Native("java", "(#this).compareToIgnoreCase(#arg)")
     @Native("c++", "(#this)->compareToIgnoreCase(#arg)")
     public native def compareToIgnoreCase(arg: String): Int;
 
@@ -454,7 +451,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @return true if the argument string appears at the head of this String.
      *         The method returns false otherwise.
      */
-    @Native("java", "(#0).startsWith(#1)")
+    @Native("java", "(#this).startsWith(#arg)")
     @Native("c++", "(#this)->startsWith(#arg)")
     public native def startsWith(arg: String): Boolean;
 
@@ -464,7 +461,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @return true if the argument string appears at the tail of this String.
      *         The method returns false otherwise.
      */
-    @Native("java", "(#0).endsWith(#1)")
+    @Native("java", "(#this).endsWith(#arg)")
     @Native("c++", "(#this)->endsWith(#arg)")
     public native def endsWith(arg: String): Boolean;
 
@@ -476,7 +473,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @param x the other String
      * @return true if this String is strictly before the other String.
      */
-    @Native("java", "((#0).compareTo(#1) < 0)")
+    @Native("java", "((#this).compareTo(#x) < 0)")
     @Native("c++",  "((#this)->compareTo(#x) < 0)")
     public native operator this < (x:String): Boolean;
 
@@ -488,7 +485,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @param x the other String
      * @return true if this String is strictly after the other String.
      */
-    @Native("java", "((#0).compareTo(#1) > 0)")
+    @Native("java", "((#this).compareTo(#x) > 0)")
     @Native("c++",  "((#this)->compareTo(#x) > 0)")
     public native operator this > (x:String): Boolean;
 
@@ -500,7 +497,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @param x the other String
      * @return true if this String is before or equal to the other String.
      */
-    @Native("java", "((#0).compareTo(#1) <= 0)")
+    @Native("java", "((#this).compareTo(#x) <= 0)")
     @Native("c++",  "((#this)->compareTo(#x) <= 0)")
     public native operator this <= (x:String): Boolean;
 
@@ -512,7 +509,7 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @param x the other String
      * @return true if this String is after or equal to the other String.
      */
-    @Native("java", "((#0).compareTo(#1) >= 0)")
+    @Native("java", "((#this).compareTo(#x) >= 0)")
     @Native("c++",  "((#this)->compareTo(#x) >= 0)")
     public native operator this >= (x:String): Boolean;
 
@@ -520,36 +517,13 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * A string concatenation operator.
      * Appends the given entity to this String by calling the entity's
      * {@link x10.lang.Any#toString()} method.
-     * @param x the given entity
+     * @param x the given String
+     * @param y the given entity
      * @return the resulting String
      */
-    @Native("java", "((#0) + (#4))")
-    @Native("c++",  "((#this) + (#x))")
-    public final operator this + (x:String): String = this + x;
-
-    /**
-     * A string concatenation operator.
-     * Appends the given entity to this String by calling the entity's
-     * {@link x10.lang.Any#toString()} method.
-     * @param x the given entity
-     * @return the resulting String
-     */
-    @Native("java", "((#0) + (#4))")
-    @Native("c++",  "((#this) + (#x))")
-    public final operator[T] this + (x:T): String = this + x.toString(); 
-    
-    /**
-     * A string concatenation operator.
-     * Prepends the given entity to the given String by calling the entity's
-     * {@link x10.lang.Any#toString()} method.
-     * @param x the given entity
-     * @param y the given String
-     * @return the resulting String
-     */
-    @Native("java", "((#4) + (#5))")
-    @Native("c++",  "((#x) + (#y))")
-    public static native operator (x:String) + (y:String): String;
-    
+	@Native("java", "((#x) + (#y))")
+	@Native("c++",  "((#x) + (#y))")
+    public static operator[T] (x:String) + (y:T):String = x + y.toString();
 
     /**
      * A string concatenation operator.
@@ -559,8 +533,40 @@ public final class String implements (Int) => Char/*TODO, (Range) => String*//*T
      * @param y the given String
      * @return the resulting String
      */
-    @Native("java", "((#4) + (#5))")
+    @Native("java", "((#x) + (#y))")
     @Native("c++",  "((#x) + (#y))")
-    public static operator[T] (x:T) + (y:String): String = x.toString() + y; 
-    
+    public static operator[T] (x:T) + (y:String):String = x.toString() + y;
+
+    /**
+     * A string concatenation operator.
+     * Appends the second String to the first String (disambiguation).
+     * @param x the first String
+     * @param y the second String
+     * @return the resulting String
+     */
+    @Native("java", "((#x) + (#y))")
+    @Native("c++",  "((#x) + (#y))")
+    public native static operator (x:String) + (y:String): String;
+}
+
+public type String(s:String) = String{self==s};
+
+class StringHelper {
+    static def split(delim:String, str:String):Rail[String] {
+        if (delim.equals("")) {
+            return new Rail[String](str.length(), (i:int)=>str.substring(i, i+1));
+        }
+        val ans = new ArrayList[String]();
+        var pos:int = 0;
+        var nextMatch:int = str.indexOf(delim, pos);
+        while (nextMatch != -1) {
+          ans.add(str.substring(pos, nextMatch));
+          pos = nextMatch+delim.length();
+          nextMatch = str.indexOf(delim, pos);
+        }
+        if (pos < str.length()) {
+            ans.add(str.substring(pos, str.length()));
+        }
+        return ans.toArray();
+    }
 }

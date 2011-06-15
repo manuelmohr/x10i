@@ -11,6 +11,7 @@
 
 package x10.array;
 
+import x10.compiler.TempNoInline_0;
 import x10.io.Printer;
 
 
@@ -25,9 +26,6 @@ import x10.io.Printer;
  */
 class PolyMat(rank: int) extends Mat[PolyRow] {
 
-    static type PolyMat(rank:Int) = PolyMat{self.rank==rank};
-    static type PolyMatBuilder(rank:Int) = PolyMatBuilder{self.rank==rank};
-
     //
     // value
     //
@@ -39,9 +37,10 @@ class PolyMat(rank: int) extends Mat[PolyRow] {
      * Low-level constructor. For greater convenience use PolyMatBuilder.
      */
 
-    public def this(rows: Int, cols: Int, init: (i:Int,j:Int)=>int, isSimplified:boolean) {
+    public @TempNoInline_0 def this(rows: Int, cols: Int, init: (i:Int,j:Int)=>int, isSimplified:boolean) {
         super(rows, cols, new Array[PolyRow](rows, (i:Int)=>new PolyRow(cols, (j:Int)=>init(i,j))));
-        property(cols-1);
+        val cols1 = cols-1;
+        property(cols1);
         this.isSimplified = isSimplified;
     }
 
@@ -54,7 +53,7 @@ class PolyMat(rank: int) extends Mat[PolyRow] {
      * captures the strongest halfspace.
      */
 
-    def simplifyParallel(): PolyMat{self.rank==this.rank} {
+    def simplifyParallel(): PolyMat(rank) {
 
         if (rows==0)
             return this;
@@ -62,8 +61,8 @@ class PolyMat(rank: int) extends Mat[PolyRow] {
         val pmb = new PolyMatBuilder(rank);
         var last: PolyRow = null;
         for (next:PolyRow in this) {
-            if (last!=null && !next.isParallel(last as PolyRow))
-                pmb.add(last as PolyRow);
+            if (last!=null && !next.isParallel(last))
+                pmb.add(last);
             last = next;
         }
         pmb.add(last);
@@ -81,13 +80,13 @@ class PolyMat(rank: int) extends Mat[PolyRow] {
      * be expensive.
      */
 
-    public def simplifyAll(): PolyMat{self.rank==this.rank} {
+    public def simplifyAll(): PolyMat(rank) {
 
         if (isSimplified)
             return this;
 
         val pmb = new PolyMatBuilder(rank);
-        val removed = Rail.make[boolean](rows, (Int)=>false);
+        val removed = new Rail[boolean](rows, (Int)=>false);
 
         for (var i: int = 0; i<rows; i++) {
             val r = this(i);
@@ -121,7 +120,7 @@ class PolyMat(rank: int) extends Mat[PolyRow] {
      * by eliminating axis k
      */
 
-    def eliminate(k: int, simplifyDegenerate: boolean): PolyMat{self.rank==this.rank} {
+    def eliminate(k: int, simplifyDegenerate: boolean): PolyMat(rank) {
         val pmb = new PolyMatBuilder(rank);
         for (ir:PolyRow in this) {
             val ia = ir(k);
@@ -130,7 +129,7 @@ class PolyMat(rank: int) extends Mat[PolyRow] {
             } else {
                 for (jr:PolyRow in this) {
                     val ja = jr(k);
-                    val as_ = Rail.make[int](rank+1);
+                    val as_ = new Rail[int](rank+1);
                     if (ia>0 && ja<0) {
                         for (var l: int = 0; l<=rank; l++)
                             as_(l) = ia*jr(l) - ja*ir(l);
@@ -144,7 +143,7 @@ class PolyMat(rank: int) extends Mat[PolyRow] {
                         if (as_(l)!=0)
                             degenerate = false;
                     if (!degenerate) {
-                        var r: PolyRow = new PolyRow(new Array[int](as_.length, (i:int)=>as_(i)));
+                        var r: PolyRow = new PolyRow(new Array[int](as_.size, (i:int)=>as_(i)));
                         pmb.add(r);
                     }
                 }
@@ -178,7 +177,7 @@ class PolyMat(rank: int) extends Mat[PolyRow] {
         for (r:PolyRow in this) {
             val a = r(axis);
             if (a < 0)
-                return -r(rank()) / a;
+                return -r(rank) / a;
         }
 
         var msg: String = "axis " + axis + " has no minimum";
@@ -190,16 +189,16 @@ class PolyMat(rank: int) extends Mat[PolyRow] {
         for (r:PolyRow in this) {
             val a = r(axis);
             if (a > 0)
-                return -r(rank()) / a;
+                return -r(rank) / a;
         }
 
         val msg = "axis " + axis + " has no maximum";
         throw new UnboundedRegionException(msg);
     }
 
-    def rectMin() = Rail.make[int](rank, (i:Int)=>rectMin(i));
+    def rectMin() = new Rail[int](rank, (i:Int)=>rectMin(i));
 
-    def rectMax() = Rail.make[int](rank, (i:Int)=>rectMax(i));
+    def rectMax() = new Rail[int](rank, (i:Int)=>rectMax(i));
 
     def isZeroBased(): boolean {
         if (!isRect())
@@ -279,3 +278,4 @@ class PolyMat(rank: int) extends Mat[PolyRow] {
     }
 
 }
+public type PolyMat(rank:Int) = PolyMat{self.rank==rank};

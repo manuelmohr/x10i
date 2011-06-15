@@ -22,6 +22,7 @@ import polyglot.ast.Node;
 import polyglot.ast.Precedence;
 import polyglot.ast.Term;
 import polyglot.ast.TypeNode;
+import polyglot.main.Options;
 import polyglot.types.ClassDef;
 import polyglot.types.ConstructorDef;
 import polyglot.types.ConstructorInstance;
@@ -33,15 +34,19 @@ import polyglot.types.Type;
 import polyglot.types.TypeSystem;
 import polyglot.types.Types;
 import polyglot.util.CodeWriter;
+import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
-import polyglot.visit.AscriptionVisitor;
 import polyglot.visit.CFGBuilder;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.NodeVisitor;
 import polyglot.visit.PrettyPrinter;
+import x10.ExtensionInfo;
+import x10.X10CompilerOptions;
 import x10.errors.Errors;
+import x10.errors.Warnings;
 import x10.types.ParameterType;
 import x10.types.X10ClassType;
+import x10.types.X10ParsedClassType;
 import polyglot.types.TypeSystem;
 import x10.types.checker.Converter;
 import x10.types.checker.Converter.ConversionType;
@@ -141,9 +146,61 @@ public class X10Cast_c extends Cast_c implements X10Cast, X10CastInfo {
         }
         try {
             Expr e = Converter.converterChain(this, tc);
-            assert e.type() != null;
+            final Type type = e.type();
+            assert type != null;
             assert ! (e instanceof X10Cast_c) || ((X10Cast_c) e).conversionType() != Converter.ConversionType.UNKNOWN_CONVERSION;
             assert ! (e instanceof X10Cast_c) || ((X10Cast_c) e).conversionType() != Converter.ConversionType.UNKNOWN_IMPLICIT_CONVERSION;
+
+            // todo hack: after constraints will be kept at runtime, and we will do constraint solving at runtime, then all casts will be sound!
+            // X10 currently doesn't do constraint solving at runtime (and constraints are erased at runtime!),
+            // so given o:Any, a cast:
+            //  o as Array[Int]
+            // is unsound if "o" had constraints (e.g., Array[Int{self!=0}])
+            // obviously,   o as Array[Int{self!=0}]     is always unsound.
+            // Note that any generic struct will this warning due to the auto-generated equals method:
+            //struct A[T] {
+            //  public def equals(o:Any) {
+            //    if (o instanceof A[T]) {
+            //      val x = o as A[T]; // Warning: unsound cast!
+            //      ...
+            // Therefore we do not produce warnings in compiler-generated code (too confusing for the programmer).
+            // In addition, I also don't report the 3 warnings we have in XRX (or else every client of HashMap will have a warning)
+            if (!position.isCompilerGenerated() &&
+                    !position.file().contains("Array.x10")&&
+                    !position.file().contains("Box.x10")&&
+                    !position.file().contains("HashMap.x10")&&
+                    !position.file().contains("FinishState.x10")&&
+                    !position.file().contains("Runtime.x10")&& 
+                    !position.file().contains("HashSet.x10")) {
+                Type base = Types.baseType(type);
+                boolean isClassType = base instanceof X10ParsedClassType;
+                boolean isParamType = base instanceof ParameterType;
+                if (isClassType || isParamType) {
+                    List<Type> args = null;
+                    if (isClassType) {
+                        X10ParsedClassType classType = (X10ParsedClassType) base;
+                        args = classType.typeArguments();
+                    }
+                    if (isParamType || (args!=null && args.size()>0)) {
+                        boolean isOk = false;
+                        if (e instanceof X10Cast) {
+                            // ok, e.g., x:Array[Int],   x as Array[Int](3)
+                            final X10Cast cast = (X10Cast) e;
+                            if (cast.conversionType()== ConversionType.SUBTYPE)
+                                isOk = true;
+                            else if (tc.typeSystem().isSubtype(Types.baseType(cast.expr().type()),base, tc.context()))
+                                isOk = true;
+                        }
+                        if (!isOk) {
+                            final ExtensionInfo extensionInfo = (ExtensionInfo) tc.job().extensionInfo();
+                            X10CompilerOptions opts = extensionInfo.getOptions();
+                            if (opts.x10_config.VERBOSE) { // it used to be VERBOSE_CHECKS, but then how do I get this error if I want to run with STATIC_CHECKS???
+                                Warnings.issue(tc.job(), "This is an unsound cast because X10 currently does not perform constraint solving at runtime for generic parameters.", position);
+                            }
+                        }
+                    }
+                }
+            }
             return e;
         } catch (SemanticException e) {
             Errors.issue(tc.job(), e, this);
@@ -191,24 +248,6 @@ public class X10Cast_c extends Cast_c implements X10Cast, X10CastInfo {
         return succs;
     }
     
-    public Type childExpectedType(Expr child, AscriptionVisitor av) {
-        TypeSystem ts = av.typeSystem();
-
-        if (child == expr) {
-            if (castType.type().isReference()) {
-                return ts.Object();
-            }
-            else if (castType.type().isNumeric()) {
-                return ts.Double();
-            }
-            else if (castType.type().isBoolean()) {
-                return ts.Boolean();
-            }
-        }
-
-        return child.type();
-    }
-    
     /** Visit the children of the expression. */
     public Node visitChildren(NodeVisitor v) {
     	TypeNode castType = (TypeNode) visitChild(this.castType, v);
@@ -217,8 +256,10 @@ public class X10Cast_c extends Cast_c implements X10Cast, X10CastInfo {
     }
     
     public boolean isConstant() {
-    	return expr.isConstant() && castType.type().isJavaPrimitive();
-        }
+        if (!expr.isConstant()) return false;
+        if (castType.type().isNumeric()) return true;
+        return false;
+    }
         
     public Object constantValue() {
     	Object v = expr.constantValue();
@@ -227,64 +268,69 @@ public class X10Cast_c extends Cast_c implements X10Cast, X10CastInfo {
     	    return null;
     	}
     	
-    	if (v instanceof Boolean) {
-    		if (castType.type().isBoolean()) return v;
-    	}
+    	Type cType = castType.type();
     	
-    	if (v instanceof String) {
-    		TypeSystem ts = castType.type().typeSystem();
-    		if (castType.type().typeEquals(ts.String(), ts.emptyContext())) return v;
+    	if (v instanceof Boolean) {
+    		if (cType.isBoolean()) return v;
     	}
     	
     	if (v instanceof Double) {
     		double vv = ((Double) v).doubleValue();
     		
-    		if (castType.type().isDouble()) return Double.valueOf((double) vv);
-    		if (castType.type().isFloat()) return Float.valueOf((float) vv);
-    		if (castType.type().isLong()) return Long.valueOf((long) vv);
-    		if (castType.type().isInt()) return Integer.valueOf((int) vv);
-    		if (castType.type().isChar()) return Character.valueOf((char) vv);
-    		if (castType.type().isShort()) return Short.valueOf((short) vv);
-    		if (castType.type().isByte()) return Byte.valueOf((byte) vv);
+    		if (cType.isDouble()) return Double.valueOf((double) vv);
+    		if (cType.isFloat()) return Float.valueOf((float) vv);
+    		if (cType.isLong()) return Long.valueOf((long) vv);
+    		if (cType.isInt()) return Integer.valueOf((int) vv);
+    		if (cType.isChar()) return Character.valueOf((char) vv);
+    		if (cType.isShort()) return Short.valueOf((short) vv);
+    		if (cType.isByte()) return Byte.valueOf((byte) vv);
     	}
     	
     	if (v instanceof Float) {
     		float vv = ((Float) v).floatValue();
     		
-    		if (castType.type().isDouble()) return Double.valueOf((double) vv);
-    		if (castType.type().isFloat()) return Float.valueOf((float) vv);
-    		if (castType.type().isLong()) return Long.valueOf((long) vv);
-    		if (castType.type().isInt()) return Integer.valueOf((int) vv);
-    		if (castType.type().isChar()) return Character.valueOf((char) vv);
-    		if (castType.type().isShort()) return Short.valueOf((short) vv);
-    		if (castType.type().isByte()) return Byte.valueOf((byte) vv);
+    		if (cType.isDouble()) return Double.valueOf((double) vv);
+    		if (cType.isFloat()) return Float.valueOf((float) vv);
+    		if (cType.isLong()) return Long.valueOf((long) vv);
+    		if (cType.isInt()) return Integer.valueOf((int) vv);
+    		if (cType.isChar()) return Character.valueOf((char) vv);
+    		if (cType.isShort()) return Short.valueOf((short) vv);
+    		if (cType.isByte()) return Byte.valueOf((byte) vv);
     	}
 
     	if (v instanceof Number) {
     		long vv = ((Number) v).longValue();
     		
-    		if (castType.type().isDouble()) return Double.valueOf((double) vv);
-    		if (castType.type().isFloat()) return Float.valueOf((float) vv);
-    		if (castType.type().isLong()) return Long.valueOf((long) vv);
-    		if (castType.type().isInt()) return Integer.valueOf((int) vv);
-    		if (castType.type().isChar()) return Character.valueOf((char) vv);
-    		if (castType.type().isShort()) return Short.valueOf((short) vv);
-    		if (castType.type().isByte()) return Byte.valueOf((byte) vv);
+    		if (cType.isDouble()) return Double.valueOf((double) vv);
+    		if (cType.isFloat()) return Float.valueOf((float) vv);
+    		if (cType.isLong()) return Long.valueOf((long) vv);
+    		if (cType.isInt()) return Integer.valueOf((int) vv);
+    		if (cType.isChar()) return Character.valueOf((char) vv);
+    		if (cType.isShort()) return Short.valueOf((short) vv);
+    		if (cType.isByte()) return Byte.valueOf((byte) vv);
+    	}
+    	
+    	TypeSystem ts = cType.typeSystem();
+    	Context emptyContext = ts.emptyContext();
+    	
+    	if (v instanceof String) {
+    	    if (ts.String().isSubtype(cType, emptyContext)) return v;
     	}
     	
     	if (v instanceof Character) {
     		char vv = ((Character) v).charValue();
     		
-    		if (castType.type().isDouble()) return Double.valueOf((double) vv);
-    		if (castType.type().isFloat()) return Float.valueOf((float) vv);
-    		if (castType.type().isLong()) return Long.valueOf((long) vv);
-    		if (castType.type().isInt()) return Integer.valueOf((int) vv);
-    		if (castType.type().isChar()) return Character.valueOf((char) vv);
-    		if (castType.type().isShort()) return Short.valueOf((short) vv);
-    		if (castType.type().isByte()) return Byte.valueOf((byte) vv);
+    		if (cType.isDouble()) return Double.valueOf((double) vv);
+    		if (cType.isFloat()) return Float.valueOf((float) vv);
+    		if (cType.isLong()) return Long.valueOf((long) vv);
+    		if (cType.isInt()) return Integer.valueOf((int) vv);
+    		if (cType.isChar()) return Character.valueOf((char) vv);
+    		if (cType.isShort()) return Short.valueOf((short) vv);
+    		if (cType.isByte()) return Byte.valueOf((byte) vv);
     	}
 
-    	// not a constant
-    	return null;
+    	// Not null, but we can't figure out what to do with it.
+    	// Compiler is hosed because of a mismatch between constantValue and isConstant
+    	throw new InternalCompilerError("Can't process constant value "+v+" (type == "+v.getClass()+")");
     }
 }

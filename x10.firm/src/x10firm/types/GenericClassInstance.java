@@ -1,16 +1,8 @@
 package x10firm.types;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import polyglot.types.FieldInstance;
-
 import x10.types.ParameterType;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
-import x10.types.X10ConstructorDef;
-import firm.Entity;
-import firm.Type;
 
 public class GenericClassInstance {
 	private X10ClassDef def;

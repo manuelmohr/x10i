@@ -88,7 +88,11 @@ public class CheckEscapingThis extends NodeVisitor
             if (node instanceof ProcedureDecl) {
                 List<Item> filtered = filterItemsNonException(items, itemKeys);
                 if (filtered.isEmpty()) {
-                    return init;
+                    // see XTENLANG-1851
+                    DataFlowItem res = new DataFlowItem();
+                    for (FieldDef d : init.initStatus.keySet())
+                        res.initStatus.put(d, MinMaxInitCount.ONE);
+                    return res;
                 }
                 else if (filtered.size() == 1) {
                     return (Item)filtered.get(0);
@@ -178,9 +182,9 @@ public class CheckEscapingThis extends NodeVisitor
                 res = fieldReadWrite(true, propertyRepresentative,inItem);
 
             // I don't need to recurse into the constraint of a X10CanonicalTypeNode because:
-            // - in STATIC_CALLS it doesn't generate any code for them, therefore there is nothing to check.
+            // - in STATIC_CHECKS it doesn't generate any code for them, therefore there is nothing to check.
             // e.g. the following is legal: class A { val f1:A{this.f2==f1} = null; val f2:A = null; }
-            // - in DYNAMIC_CALLS it generates a cast, and we recurse into that cast next:
+            // - in DYNAMIC_CHECKS it generates a cast, and we recurse into that cast next:
             } else if (n instanceof X10Cast) {
                 X10Cast cast = (X10Cast)n;
                 // convert constraint to Expr
@@ -681,7 +685,7 @@ public class CheckEscapingThis extends NodeVisitor
             for (X10ConstructorDecl_c ctor : allCtors) {
                 // check super, this, and property calls
                 final CheckCtor checkCtor = new CheckCtor(ctor);
-                ctor.visit(checkCtor);
+                ctor.visit(checkCtor); // we check both the body and signature because we want to make sure that "this" is not used in the method guard
                 checkCtor.postCheck();
 
                 final ConstructorCall cc = getConstructorCall(ctor);
@@ -695,7 +699,7 @@ public class CheckEscapingThis extends NodeVisitor
             }
         }
     }
-    private static ConstructorCall getConstructorCall(X10ConstructorDecl_c ctor) {
+    public static ConstructorCall getConstructorCall(X10ConstructorDecl_c ctor) {
         // We can reuse ConstructorCallChecker, but for better efficiency, we just check it directly
         final Block ctorBody = ctor.body();
         assert ctorBody!=null;

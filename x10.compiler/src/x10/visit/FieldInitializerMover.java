@@ -52,6 +52,7 @@ import polyglot.types.FieldInstance;
 import polyglot.util.Position;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.NodeVisitor;
+import polyglot.visit.LocalClassRemover;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorDef;
 import x10.types.X10Def;
@@ -69,17 +70,6 @@ Yoav added:
  * Field initializers are placed after the AssignProperty call, because we have a 3-phase init: super, properties, ctor-code
  * Note that the type of a field may refer to a property, so even field assignment is prohibited until after the AssignProperty call.
  *
- * Finally, we do not move constant fields because it is possible to switch over a constant field (final fields with compile-time known value):
- * E.g., in Java (and similarly in X10):
-class Test {
-    final int i=2+1;
-    void test() {
-        switch(3*4) {
-            case i:
-            case 4:
-        }
-    }
-}
  */
 public class FieldInitializerMover extends ContextVisitor {
 
@@ -134,7 +124,7 @@ public class FieldInitializerMover extends ContextVisitor {
                 FieldDecl fd = (FieldDecl) cm;
                 FieldDef def = fd.fieldDef();
 
-                if (fd.init() != null && !def.flags().isStatic() && !def.isConstant()) {
+                if (fd.init() != null && !def.flags().isStatic()) {
                     final FieldInstance fieldInstance = def.asInstance();
 
                     FieldAssign a = nf.FieldAssign(p, this_, nf.Id(p, def.name()), Assign.ASSIGN, fd.init());
@@ -165,6 +155,7 @@ public class FieldInitializerMover extends ContextVisitor {
             final Flags flags = Flags.PRIVATE.Final();
             MethodDecl method = nf.MethodDecl(p,nf.FlagsNode(p, flags),returnType, nameId,
                     Collections.<Formal>emptyList(), nf.Block(p,assignments));
+            method = (MethodDecl) method.visit( new LocalClassRemover.MarkReachable() );
             MethodDef md = ts.methodDef(p, Types.ref(cdecl.classDef().asType()), flags, returnType.typeRef(), name, Collections.<Ref<? extends Type>>emptyList());
             method = method.methodDef(md);
             members.add(method);

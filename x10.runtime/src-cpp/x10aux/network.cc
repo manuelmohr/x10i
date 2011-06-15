@@ -15,6 +15,7 @@
 #include <x10aux/ref.h>
 #include <x10aux/RTT.h>
 #include <x10aux/basic_functions.h>
+#include <x10aux/string_utils.h>
 
 #include <x10aux/serialization.h>
 #include <x10aux/deserialization_dispatcher.h>
@@ -28,6 +29,10 @@
 
 #include <strings.h>
 
+#ifdef __MACH__
+#include <crt_externs.h>
+#endif
+
 using namespace x10::lang;
 using namespace x10aux;
 
@@ -36,6 +41,7 @@ x10aux::place x10aux::num_places = 0;
 x10aux::place x10aux::num_hosts = 0;
 x10aux::place x10aux::here = -1;
 bool x10aux::x10rt_initialized = false;
+x10_int x10aux::num_local_cores = 1; // this will be set in template_main
 
 // keep a counter for the session.
 volatile x10_long x10aux::asyncs_sent = 0;
@@ -142,11 +148,17 @@ void x10aux::registration_complete (void)
     x10aux::x10rt_initialized = true;
 }
 
+x10rt_remote_op_params *x10aux::opv;
+size_t x10aux::opc;
+size_t x10aux::remote_op_batch;
+
 void x10aux::network_init (int ac, char **av) {
     x10rt_init(&ac, &av);
     x10aux::here = x10rt_here();
     x10aux::num_places = x10rt_nplaces();
     x10aux::num_hosts = x10rt_nhosts();
+    remote_op_batch = get_remote_op_batch();
+    opv = (x10rt_remote_op_params*)malloc(remote_op_batch * sizeof(*opv));
 }
 
 void x10aux::run_async_at(x10aux::place p, x10aux::ref<Reference> real_body, x10aux::ref<x10::lang::Reference> fs_) {
@@ -176,6 +188,17 @@ void x10aux::run_async_at(x10aux::place p, x10aux::ref<Reference> real_body, x10
     assert(DeserializationDispatcher::getClosureKind(real_sid)!=x10aux::CLOSURE_KIND_GENERAL_ASYNC);
 
     buf.write(fs);
+    // We're playing a sleazy trick here and not following the general
+    // serialization protocol. We should be calling buf.write(real_body),
+    // but instead we are just calling it's serialize_body method directly.
+    // This is problematic because buf.write has the responsibility for
+    // creating the entry in buf's address_map to handle repeated references.
+    // The _deserialize method of real_body will call record_reference.
+    // Therefore we have to record the reference explicitly here to 
+    // to avoid an "off by one" error in the relative back count of objects
+    // that crosses this point in the address map.
+    // This happens when an object is reachable from both fs and real_body.
+    buf.manually_record_reference(real_body);
     real_body->_serialize_body(buf);
 
     unsigned long sz = buf.length();
@@ -238,56 +261,6 @@ void x10aux::send_put (x10aux::place place, x10aux::serialization_id_t id_,
     _X_(ANSI_BOLD<<ANSI_X10RT<<"Transmitting a put: "<<ANSI_RESET
         <<data<<" sid "<<id_<<" id "<<id<<" size "<<len<<" header "<<buf.length()<<" to place: "<<place);
     x10rt_send_put(&p, data, len);
-}
-
-x10_int x10aux::num_threads() {
-#ifdef __bg__
-    x10_int default_nthreads = 1;
-#else
-    x10_int default_nthreads = 2;
-#endif
-    const char* env = getenv("X10_NTHREADS");
-    if (env==NULL) return default_nthreads;
-    x10_int num = strtol(env, NULL, 10);
-    assert (num > 0);
-    return num;
-}
-
-x10_int x10aux::max_threads() {
-#ifdef __bg__
-    x10_int default_max_threads = 1;
-#else
-    x10_int default_max_threads = 1000;
-#endif
-    const char* env = getenv("X10_MAX_THREADS");
-    if (env==NULL) return default_max_threads;
-    x10_int num = strtol(env, NULL, 10);
-    assert (num > 0);
-#ifdef THREAD_TABLE_SZ // bdwgc cap on the number of threads
-    // we need to cap the number of threads potentially created by XRX
-    // here we assume there will be no more than 16 threads created outside of XRX (e.g., transport)
-    if (num > THREAD_TABLE_SZ - 16) num = THREAD_TABLE_SZ - 16;
-#endif
-    return num;
-}
-
-x10_boolean x10aux::no_steals()
-{
-    char* s = getenv("X10_NO_STEALS");
-    if (s && !(strcasecmp("false", s) == 0))
-        return true;
-    return false;
-}
-
-x10_boolean x10aux::static_threads() { 
-#ifdef __bg__
-    return true;
-#else
-    char* s = getenv("X10_STATIC_THREADS");
-    if (s && !(strcasecmp("false", s) == 0))
-        return true;
-    return false;
-#endif
 }
 
 static void receive_async (const x10rt_msg_params *p) {
@@ -475,9 +448,8 @@ void x10aux::cuda_put (place gpu, x10_ulong addr, void *var, size_t sz)
 // teams
 
 void *x10aux::coll_enter() {
-    x10aux::ref<x10::lang::Runtime> rt = x10::lang::PlaceLocalHandle_methods<x10aux::ref<x10::lang::Runtime> >::__apply(x10::lang::Runtime::FMGL(runtime));
-    x10aux::ref<x10::lang::FinishState> fs = rt->activity()->finishState();
-    fs->notifySubActivitySpawn(x10::lang::Place_methods::_make(x10aux::here));
+    x10aux::ref<x10::lang::FinishState> fs = Runtime::activity()->finishState();
+    fs->notifySubActivitySpawn(x10::lang::Place::_make(x10aux::here));
     fs->notifyActivityCreation();
     return fs._val;
 }
@@ -509,6 +481,26 @@ void x10aux::coll_handler2(x10rt_team id, void *arg) {
     *t = id;
     x10aux::dealloc(p);
     fs->notifyActivityTermination();
+}
+
+#ifndef __MACH__
+    extern char **environ;
+#endif
+
+x10aux::ref<x10::util::HashMap<x10aux::ref<x10::lang::String>,x10aux::ref<x10::lang::String> > > x10aux::loadenv() {
+#ifdef __MACH__
+    char** environ = *_NSGetEnviron();
+#endif
+    x10aux::ref<x10::util::HashMap<x10aux::ref<x10::lang::String>,x10aux::ref<x10::lang::String> > > map = x10::util::HashMap<x10aux::ref<x10::lang::String>, x10aux::ref<x10::lang::String> >::_make();
+    for (unsigned i=0 ; environ[i]!=NULL ; ++i) {
+        char *var = x10aux::string_utils::strdup(environ[i]);
+        *strchr(var,'=') = '\0';
+        char* val = getenv(var);
+        assert(val!=NULL);
+//        fprintf(stderr, "Loading environment variable %s=%s\n", var, val);
+        map->put(x10::lang::String::Lit(var), x10::lang::String::Lit(val));
+    }
+    return map;
 }
 
 

@@ -12,17 +12,45 @@
 package x10.core;
 
 import x10.lang.Place;
+import x10.rtt.NamedType;
 import x10.rtt.RuntimeType;
 import x10.rtt.RuntimeType.Variance;
 import x10.rtt.Type;
 
 public final class RemoteIndexedMemoryChunk<T> extends x10.core.Struct {
+
+	private static final long serialVersionUID = 1L;
+
     private static final java.util.ArrayList<Object> objects = new java.util.ArrayList<Object>(); // all referenced objects in this place
 
-    public final int length;
-    public final int id; // place local id of referenced object
-    public final Type<T> type;
-    public final Place home;
+    public int length;
+    public int id; // place local id of referenced object
+    public Type<T> type;
+    public Place home;
+    
+    public RemoteIndexedMemoryChunk(java.lang.System[] $dummy) {
+        super($dummy);
+    }
+
+    public RemoteIndexedMemoryChunk<T> $init(Type<T> type, int length, Object value) {
+        this.length = length;
+        this.type = type;
+        this.home = x10.lang.Runtime.home();
+
+        int size;
+        synchronized (objects) {
+            size = objects.size();
+            for (int id = size - 1; id >= 0; --id) {
+                if (objects.get(id) == value) {
+                    this.id = id;
+                    return this;
+                }
+            }
+            objects.add(value);
+        }
+        this.id = size;
+        return this;
+    }
 
     private RemoteIndexedMemoryChunk(Type<T> type, int length, Object value) {
         this.length = length;
@@ -61,31 +89,53 @@ public final class RemoteIndexedMemoryChunk<T> extends x10.core.Struct {
         return new IndexedMemoryChunk<T>(type, length, obj);
     }
 
-
-    @Override
-    public boolean _struct_equals(Object o) {
+    public boolean _struct_equals$O(Object o) {
         if (!(o instanceof RemoteIndexedMemoryChunk<?>)) return false;
         RemoteIndexedMemoryChunk<?> that = (RemoteIndexedMemoryChunk<?>)o;
         return this.id == that.id && this.home == that.home;
     }
 
-    public static final RuntimeType<RemoteIndexedMemoryChunk<?>> _RTT = new RuntimeType<RemoteIndexedMemoryChunk<?>>(
+    // TODO implement remote operations
+    public void remoteAdd(int idx, long v) {
+    	ThrowableUtilities.UnsupportedOperationException("Remote operations are not implemented.");
+    }
+    public void remoteAnd(int idx, long v) {
+    	ThrowableUtilities.UnsupportedOperationException("Remote operations are not implemented.");
+    }
+    public void remoteOr(int idx, long v) {
+    	ThrowableUtilities.UnsupportedOperationException("Remote operations are not implemented.");
+    }
+    public void remoteXor(int idx, long v) {
+    	ThrowableUtilities.UnsupportedOperationException("Remote operations are not implemented.");
+    }
+
+    public void remoteAdd(int idx, x10.lang.ULong v) {
+    	ThrowableUtilities.UnsupportedOperationException("Remote operations are not implemented.");
+    }
+    public void remoteAnd(int idx, x10.lang.ULong v) {
+    	ThrowableUtilities.UnsupportedOperationException("Remote operations are not implemented.");
+    }
+    public void remoteOr(int idx, x10.lang.ULong v) {
+    	ThrowableUtilities.UnsupportedOperationException("Remote operations are not implemented.");
+    }
+    public void remoteXor(int idx, x10.lang.ULong v) {
+    	ThrowableUtilities.UnsupportedOperationException("Remote operations are not implemented.");    	
+    }
+
+    public static final RuntimeType<RemoteIndexedMemoryChunk<?>> $RTT = new NamedType<RemoteIndexedMemoryChunk<?>>(
+        "x10.util.RemoteIndexedMemoryChunk",
         RemoteIndexedMemoryChunk.class,
-        new RuntimeType.Variance[] { Variance.INVARIANT }
-    ) {
-        @Override
-        public java.lang.String typeName() {
-            return "x10.util.RemoteIndexedMemoryChunk";
-        }
-    };
+        new RuntimeType.Variance[] { Variance.INVARIANT },
+        new Type[] { x10.rtt.Types.STRUCT }
+    );
     
     @Override
-    public RuntimeType<RemoteIndexedMemoryChunk<?>> getRTT() {
-        return _RTT;
+    public RuntimeType<RemoteIndexedMemoryChunk<?>> $getRTT() {
+        return $RTT;
     }
 
     @Override
-    public Type<?> getParam(int i) {
+    public Type<?> $getParam(int i) {
         return i == 0 ? type : null;
     }
 }

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +12,7 @@ import java.util.Set;
 
 import polyglot.types.ClassDef;
 import polyglot.types.ContainerType;
+import polyglot.types.Context;
 import polyglot.types.Def;
 import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
@@ -29,7 +31,6 @@ import x10.types.X10ClassDef;
 import x10.types.X10ClassDef_c;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
-import x10.types.X10Context_c;
 import x10.types.X10MethodDef;
 import x10.types.X10ParsedClassType;
 import firm.ClassType;
@@ -72,7 +73,7 @@ public class FirmTypeSystem {
 	private final Map<GenericClassInstance, GenericClassContext> genericContexts = new HashMap<GenericClassInstance, GenericClassContext>();
 
 	/** X10 Context */
-	private X10Context_c x10Context = null;
+	private Context x10Context = null;
 
 	/** All class instances share the same location for the vptr (the pointer to the vtable) */
 	private Entity vptrEntity;
@@ -93,7 +94,7 @@ public class FirmTypeSystem {
 	 */
 	public FirmTypeSystem(final GenericTypeSystem x10TypeSystem) {
 		this.x10TypeSystem = x10TypeSystem;
-		this.x10Context    = new X10Context_c(this.x10TypeSystem);
+		this.x10Context    = new Context(this.x10TypeSystem);
 	}
 
 	private String getUniqueBoxingName(final String structName) {
@@ -441,7 +442,6 @@ public class FirmTypeSystem {
 			Type firmSuperType = asFirmCoreType(superType);
 			result.addSuperType(firmSuperType);
 			new Entity(result, "$super", firmSuperType);
-
 		} else if (flags.isStruct() || classType.isAnonymous()) {
 			/* no superclass */
 		} else if(flags.isInterface()) {
@@ -454,9 +454,18 @@ public class FirmTypeSystem {
 		}
 
 		/* create interfaces */
-		for (polyglot.types.Type iface : classType.interfaces()) {
+		Set<polyglot.types.Type> interfaces = new LinkedHashSet<polyglot.types.Type>(classType.interfaces());
+		for (polyglot.types.Type iface : interfaces) {
+			assert ((polyglot.types.ClassType)iface).flags().isInterface() : "Not an interface: "+iface;
 			Type firmIface = asFirmCoreType(iface);
 			result.addSuperType(firmIface);
+		}
+
+		final X10ClassType ast_any = x10TypeSystem.Any();
+		if (noSuperType(result) && classType != ast_any) {
+			/* Every X10 type implements Any */
+			final Type firm_any = asFirmCoreType(ast_any);
+			result.addSuperType(firm_any);
 		}
 
 		/* create fields */
@@ -489,6 +498,10 @@ public class FirmTypeSystem {
 		// Layouting of classes must be done explicitly by finishTypes
 
 		return result;
+	}
+
+	private boolean noSuperType(ClassType result) {
+		return result.getNSuperTypes() == 0;
 	}
 
 	/**
@@ -531,7 +544,7 @@ public class FirmTypeSystem {
 		// FIXME:  Workaround.
 		if (origType instanceof X10ParsedClassType)
 			type = fixParsedClassType((X10ParsedClassType) origType);
-		
+
 		// isParsedClassType => !isMissingTypeArguments
 		assert (!(type instanceof X10ParsedClassType) || !((X10ParsedClassType) type).isMissingTypeArguments());
 
@@ -729,7 +742,7 @@ public class FirmTypeSystem {
 
 			// This should always be the case but unfortunately it is not.
 			if (clazz.typeArguments() != null && clazz.def().typeParameters().size() == clazz.typeArguments().size())
-				classInstance = new GenericClassInstance(clazz);	
+				classInstance = new GenericClassInstance(clazz);
 			else {
 				// FIXME:  This is a hack to workaround a problem in X10.
 				ParameterTypeMapping map = new ParameterTypeMapping();

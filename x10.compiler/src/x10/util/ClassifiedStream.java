@@ -24,6 +24,7 @@ public class ClassifiedStream extends SimpleCodeWriter {
     private boolean committed = false;
     private int startLineOffset = -1;
     private int lineNumber = 1;
+    private int linesToOmit = 0;
     private ClassifiedStream(ByteArrayOutputStream bs, String ext, int width) {
         super(bs, width);
         stream = bs;
@@ -36,12 +37,6 @@ public class ClassifiedStream extends SimpleCodeWriter {
     public void forceNewline() { pos = -1; newline(); }
     public void forceNewline(int n) { pos = -1; newline(n); }
     public String toString() { return "ClassifiedStream: '"+contents()+"'"; }
-
-    // Should be in polyglot...
-    public void writeln(String s) {
-        write(s);
-        newline();
-    }
 
     public void write(String s, int l) {
         if (this.committed())
@@ -57,6 +52,15 @@ public class ClassifiedStream extends SimpleCodeWriter {
         super.newline();
     }
 
+    public void omitLines(int num) { linesToOmit = num; }
+    
+    public int getOmittedLines() 
+    { 
+    	int n = linesToOmit;
+    	linesToOmit = 0;
+    	return n;
+    }
+    
     public int getStreamLineNumber() { return lineNumber; }
 
     public int getStartLineOffset() { return startLineOffset; }

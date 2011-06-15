@@ -43,6 +43,7 @@ import polyglot.types.CodeDef;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import polyglot.visit.ContextVisitor;
+import x10.errors.Errors;
 import x10.extension.X10Del;
 import x10.types.ClosureDef;
 import x10.types.X10ClassType;
@@ -50,6 +51,7 @@ import polyglot.types.Context;
 import x10.types.X10FieldInstance;
 
 import x10.types.MethodInstance;
+import x10.types.matcher.X10FieldMatcher;
 
 import polyglot.types.TypeSystem;
 import polyglot.types.TypeSystem_c;
@@ -92,7 +94,7 @@ public class X10Disamb_c extends Disamb_c {
 	    		// Now try properties.
 	    		FieldInstance fi = null;
 	    		try {
-	    		     fi = ts.findField(t, ts.FieldMatcher(t, this.name.id(), c));
+	    		     fi = ts.findField(t, t, this.name.id(), c);
 	    		}
 	    		catch (SemanticException ex) {
 	    		}
@@ -103,7 +105,7 @@ public class X10Disamb_c extends Disamb_c {
 	    		}
 
 	    		if (fi == null && vi instanceof FieldInstance && c.inStaticContext()) {
-	    		    throw new SemanticException("Cannot access a non-static field "+this.name+" from a static context.", pos);
+	    		    throw new Errors.CannotAccessNonStaticFromStaticContext((FieldInstance) vi, pos);
 	    		}
 
 	    		if (fi instanceof X10FieldInstance) {
@@ -169,7 +171,7 @@ public class X10Disamb_c extends Disamb_c {
 	            //while (p.pop() != null && ((p.currentClass() != null && !xts.typeEquals(p.currentClass(), fi.container(), p)) || p.currentCode() instanceof ClosureDef))
 	            //    p = p.pop();
 	            if (p.inStaticContext() && !fi.flags().isStatic())
-	                throw new SemanticException("Cannot access a non-static field "+this.name+" from a static context.", pos);
+	                throw new Errors.CannotAccessNonStaticFromStaticContext(fi, pos);
 	        }
 
 	        if (vi != null) {
@@ -189,6 +191,7 @@ public class X10Disamb_c extends Disamb_c {
     		    }
     		}
     		catch (SemanticException e) {
+    		    int q=1;
     		}
 	    }
 
@@ -262,7 +265,7 @@ public class X10Disamb_c extends Disamb_c {
 				for (FieldDef fd : tCt.x10Def().properties()) {
 				    if (fd.name().equals(name.id())) {
 					FieldInstance fi = fd.asInstance();
-					fi = ts.FieldMatcher(tType, name.id(), c).instantiate(fi);
+					fi = X10FieldMatcher.instantiateAccess((X10FieldInstance)fi,name.id(),tType,false,c);
 					if (fi != null) {
 					    // Found!
 					    X10Field_c result = (X10Field_c) nf.Field(pos, e, name);
@@ -318,9 +321,9 @@ public class X10Disamb_c extends Disamb_c {
 
 	public static Receiver makeMissingFieldTarget(FieldInstance fi, Position pos, ContextVisitor v) {
 	    Receiver r = null;
-	    NodeFactory nf = (NodeFactory) v.nodeFactory();
-	    TypeSystem ts = (TypeSystem) v.typeSystem();
-        Context c = (Context) v.context();
+	    NodeFactory nf = v.nodeFactory();
+	    TypeSystem ts = v.typeSystem();
+        Context c = v.context();
         ClassType cur = c.currentClass();
 
 	    try {

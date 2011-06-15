@@ -30,6 +30,23 @@ public class XFormula<T> extends XTerm {
 	    public List<XTerm> arguments;
 	    public final boolean isAtomicFormula;
 
+
+        public XTerm accept(TermVisitor visitor) {
+            XTerm res = visitor.visit(this);
+            if (res!=null) return res;
+            ArrayList<XTerm> newArgs = new ArrayList<XTerm>();
+            boolean wasNew = false;
+            for (XTerm xTerm : arguments) {
+                final XTerm newArg = xTerm.accept(visitor);
+                wasNew |= newArg!=xTerm;
+                newArgs.add(newArg);
+            }
+            if (!wasNew) return this;
+            XFormula<T> newThis = (XFormula<T>) this.clone();
+            newThis.arguments = newArgs;
+            return newThis;
+        }
+
 	    /**
 	     * Create a formula with the given op and given list of arguments.
 	     * @param op
@@ -125,7 +142,7 @@ public class XFormula<T> extends XTerm {
 	    public XPromise internIntoConstraint(XConstraint c, XPromise last)  {
 	        assert last == null;
 	        // Evaluate left == right, if both are literals.
-	        XPromise result = c.lookup(this);
+	        XPromise result = nfp(c);
 	        if (result != null) // this term has already been interned.
 	            return result;
 	        Map<Object, XPromise> fields = CollectionFactory.newHashMap();
@@ -145,7 +162,7 @@ public class XFormula<T> extends XTerm {
 	        XTerm v = this;
 	        // fields.put(new C_NameWrapper<Integer>(-1), c.intern(v));
 	        // create a new promise and return it.
-	        XPromise p = new XPromise_c(fields, v);
+	        XPromise p = new XPromise(fields, v);
 	        c.addPromise(v, p);
 	        result = p;
 	        return result;
@@ -208,5 +225,29 @@ public class XFormula<T> extends XTerm {
 
 	    public XPromise toPromise() {
 	        throw new Error("Not implemented yet.");
+	    }
+
+	    public boolean okAsNestedTerm() {
+	    	return false;
+	    }
+	    
+	    @Override
+	    public XPromise nfp(XConstraint c) {
+	    	assert c!=null;
+	    	XPromise p;
+	    	if (c.roots == null) {
+				c.roots = CollectionFactory.<XTerm, XPromise> newHashMap();
+				p = new XPromise(this);
+				c.roots.put(this, p);
+				return p;
+			} else {
+				p = c.roots.get(this);
+				if (p == null) {
+					p = new XPromise(this);
+					c.roots.put(this, p);
+					return p;
+				}
+			}
+			return p.lookup();
 	    }
 }

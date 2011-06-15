@@ -23,7 +23,7 @@ import x10.compiler.CompilerFlags;
  * is PlaceGroup.WORLD, then each Place p will be assigned
  * the region p.id..p.id.
  */
-final class UniqueDist extends Dist(1) {
+final class UniqueDist extends Dist/*(1)*/ {
 
    /**
     * The place group for this distribution
@@ -56,22 +56,23 @@ final class UniqueDist extends Dist(1) {
     public def numPlaces():int = pg.numPlaces();
 
     public def regions():Sequence[Region(rank)] {
-	return new Array[Region(rank)](pg.numPlaces(), (i:int)=>((i..i) as Region(rank))).sequence();
+	return new Array[Region(rank)](pg.numPlaces(), (i:int):Region(rank)=>((i..i))).sequence();
     }
 
     public def get(p:Place):Region(rank) {
         if (p == here) {
             if (regionForHere == null) {
                 val idx = pg.indexOf(here);
-                regionForHere = (idx..idx) as Region(rank);
+                regionForHere = (idx..idx);// as Region(rank);
             }
 	    return regionForHere;
         } else {
             val idx = pg.indexOf(p);
-            return (idx..idx) as Region(rank);
+            return (idx..idx);// as Region(rank);
         }
     }
 
+    // replicated from superclass to workaround xlC bug with using & itables
     public operator this(p:Place):Region(rank) = get(p);
 
     public operator this(pt:Point(rank)):Place = pg(pt(0));
@@ -94,14 +95,32 @@ final class UniqueDist extends Dist(1) {
         return 0;
     }
 
+    // replicated from superclass to workaround xlC bug with using & itables
+    // This code is completely unreachable
+    public operator this(i0:int, i1:int){rank==2}:Place {
+        throw new UnsupportedOperationException("operator(i0:int,i1:int)");
+    }
+
+    // replicated from superclass to workaround xlC bug with using & itables
+    // This code is completely unreachable
+    public operator this(i0:int, i1:int, i2:int){rank==3}:Place {
+        throw new UnsupportedOperationException("operator(i0:int,i1:int,i2:int)");
+    }
+
+    // replicated from superclass to workaround xlC bug with using & itables
+    // This code is completely unreachable
+    public operator this(i0:int, i1:int, i2:int, i3:int){rank==4}:Place {
+       throw new UnsupportedOperationException("operator(i0:int,i1:int,i2:int,i3:int)");
+    }
+
     public def maxOffset():int = 0;
 
     public def restriction(r:Region(rank)):Dist(rank) {
-	return new WrappedDistRegionRestricted(this, r) as Dist(rank); // TODO: cast should not be needed
+	return new WrappedDistRegionRestricted(this, r);// as Dist(rank); // TODO: cast should not be needed
     }
 
     public def restriction(p:Place):Dist(rank) {
-	return new WrappedDistPlaceRestricted(this, p) as Dist(rank); // TODO: cast should not be needed
+	return new WrappedDistPlaceRestricted(this, p) as Dist(rank);  
     }
 
     public def equals(thatObj:Any):boolean {

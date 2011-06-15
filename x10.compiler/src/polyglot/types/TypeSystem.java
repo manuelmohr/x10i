@@ -14,7 +14,6 @@ import polyglot.ast.Unary;
 import polyglot.frontend.ExtensionInfo;
 import polyglot.frontend.Source;
 import polyglot.types.TypeSystem_c.ConstructorMatcher;
-import polyglot.types.TypeSystem_c.FieldMatcher;
 import polyglot.types.TypeSystem_c.MethodMatcher;
 import polyglot.types.reflect.ClassFile;
 import polyglot.types.reflect.ClassFileLazyClassInitializer;
@@ -27,12 +26,12 @@ import x10.types.AsyncDef;
 import x10.types.AtDef;
 import x10.types.ClosureDef;
 import x10.types.ClosureInstance;
+import x10.types.ClosureType;
 import x10.types.FunctionType;
 import x10.types.MacroType;
 import x10.types.ParameterType;
 import x10.types.ThisDef;
 import x10.types.ThisInstance;
-import x10.types.TypeDefMatcher;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassDef_c;
 import x10.types.X10ClassType;
@@ -161,7 +160,7 @@ public interface TypeSystem {
     ConstructorDef defaultConstructor(Position pos, Ref<? extends ClassType> container);
 
     /** Get an unknown class def. */
-    ClassDef unknownClassDef();
+    X10ClassDef unknownClassDef();
 
     /** Get an unknown type. */
     UnknownType unknownType(Position pos);
@@ -307,7 +306,6 @@ public interface TypeSystem {
 
     Matcher<Type> TypeMatcher(Name name);
     Matcher<Type> MemberTypeMatcher(Type container, Name name, Context context);
-    TypeSystem_c.FieldMatcher FieldMatcher(Type container, Name name, Context context);
 
     /**
      * Find a member class.
@@ -543,7 +541,7 @@ public interface TypeSystem {
     /**
      * Create a new empty class.
      */
-    ClassDef createClassDef();
+    X10ClassDef createClassDef();
 
     InitializerInstance createInitializerInstance(Position pos, Ref<? extends InitializerDef> def);
 
@@ -821,9 +819,9 @@ public interface TypeSystem {
 
     Type futureOf(Position p, Ref<? extends Type> t);
 
-    FieldMatcher FieldMatcher(Type container, boolean contextKnowsReceiver, Name name, Context context);
     MethodMatcher MethodMatcher(Type container, Name name, List<Type> argTypes, Context context);
     MethodMatcher MethodMatcher(Type container, Name name, List<Type> typeArgs, List<Type> argTypes, Context context);
+    MethodMatcher MethodMatcher(Type container, Name name, List<Type> typeArgs, List<Type> argTypes, Context context, boolean isDumbMatcher);
 
     ConstructorMatcher ConstructorMatcher(Type container, List<Type> argTypes, Context context);
     ConstructorMatcher ConstructorMatcher(Type container, List<Type> typeArgs, List<Type> argTypes, Context context);
@@ -833,14 +831,15 @@ public interface TypeSystem {
      * @exception SemanticException if the field cannot be found or is
      * inaccessible.
      */
-    X10FieldInstance findField(Type container, FieldMatcher matcher) throws SemanticException;
+    X10FieldInstance findField(Type container, Type receiver, Name name, Context context) throws SemanticException;
+    X10FieldInstance findField(Type container, Type receiver, Name name, Context context, boolean receiverInContext) throws SemanticException;
 
     /**
      * Find matching fields.
      *
      * @exception SemanticException if no matching field can be found.
      */
-    Set<FieldInstance> findFields(Type container, FieldMatcher matcher);
+    Set<FieldInstance> findFields(Type container, Type receiver, Name name, Context context);
 
     /**
      * Find a method. We need to pass the class from which the method is being
@@ -879,7 +878,7 @@ public interface TypeSystem {
 
     X10ClassDef createClassDef(Source fromSource);
 
-    X10ParsedClassType createClassType(Position pos, Ref<? extends ClassDef> def);
+    X10ParsedClassType createClassType(Position pos, Ref<? extends X10ClassDef> def);
     X10ConstructorInstance createConstructorInstance(Position pos, Ref<? extends ConstructorDef> def);
     MethodInstance createMethodInstance(Position pos, Ref<? extends MethodDef> def);
     X10FieldInstance createFieldInstance(Position pos, Ref<? extends FieldDef> def);
@@ -914,6 +913,33 @@ public interface TypeSystem {
     X10ClassType FinishState();
 
     X10ClassType Runtime(); // used by asyncCodeInstance
+
+    /**
+     * <code>x10.lang.FailedDynamicCheckException</code>
+     */
+    X10ClassType FailedDynamicCheckException();
+
+    // types used in WS codegen
+    X10ClassType Frame();
+    X10ClassType FinishFrame();
+    X10ClassType RootFinish();
+    X10ClassType MainFrame();
+    X10ClassType RemoteFinish();
+    X10ClassType AtFrame();
+    X10ClassType RegularFrame();
+    X10ClassType AsyncFrame();
+    X10ClassType CollectingFinish();
+    X10ClassType TryFrame();
+    X10ClassType Worker();
+    X10ClassType Abort();
+    
+    // annotation types used in codegen
+    X10ClassType StackAllocate();
+    X10ClassType InlineOnly();
+    X10ClassType Ephemeral();
+    X10ClassType Header();
+    X10ClassType Uninitialized();
+    X10ClassType Embed();
 
     //Type Value();
 
@@ -952,6 +978,14 @@ public interface TypeSystem {
             Ref<? extends ClassType> typeContainer, boolean isStatic);
 
     ThisDef thisDef(Position pos, Ref<? extends ClassType> type);
+    /**
+     * To be called to generate qType.this, where this:baseType.
+     * @param pos
+     * @param qType
+     * @param baseType
+     * @return
+     */
+    ThisDef thisDef(Position pos, Ref<? extends ClassType> qType, Ref<? extends ClassType> baseType);
 
     /**
      * Create a closure instance.
@@ -983,7 +1017,7 @@ public interface TypeSystem {
             Flags flags, List<Ref<? extends Type>> argTypes,
             Ref<? extends Type> offerType);
 
-    X10ConstructorDef constructorDef(Position pos, Ref<? extends ClassType> container, Flags flags, Ref<? extends ClassType> returnType,
+    X10ConstructorDef constructorDef(Position pos, Ref<? extends ContainerType> container, Flags flags, Ref<? extends Type> returnType,
             List<Ref<? extends Type>> argTypes, ThisDef thisDef, List<LocalDef> formalNames, Ref<CConstraint> guard,
             Ref<TypeConstraint> typeGuard, Ref<? extends Type> offerType);
 
@@ -1014,27 +1048,13 @@ public interface TypeSystem {
     X10ClassType DistArray();
 
     /**
-     * Return the ClassType object for the x10.lang.Rail interface.
-     *
-     * @return
-     */
-    X10ClassType Rail();
-
-
-    /**
      * Return the ClassType object for the x10.lang.Runtime.Mortal interface.
      */
     X10ClassType Mortal();
 
-    boolean isRail(Type t); // todo: Rail was removed!
-
-    public boolean isRailOf(Type t, Type p);
-
     boolean isArray(Type t);
 
     public boolean isArrayOf(Type t, Type p);
-
-    X10ClassType Rail(Type arg);
 
     X10ClassType Array(Type arg);
 
@@ -1047,8 +1067,6 @@ public interface TypeSystem {
 
     X10ClassType CustomSerialization();
     X10ClassType SerialData();
-
-    boolean isSettable(Type me);
 
     boolean isAny(Type me);
 
@@ -1111,9 +1129,7 @@ public interface TypeSystem {
 
     Type performUnaryOperation(Type t, Type l, Unary.Operator op);
 
-    TypeDefMatcher TypeDefMatcher(Type container, Name name, List<Type> typeArgs, List<Type> argTypes, Context context);
-
-    MacroType findTypeDef(Type t, TypeDefMatcher matcher, Context context) throws SemanticException;
+    MacroType findTypeDef(Type container, Name name, List<Type> typeArgs, List<Type> argTypes, Context context) throws SemanticException;
 
     List<MacroType> findTypeDefs(Type container, Name name, ClassDef currClass) throws SemanticException;
 
@@ -1140,12 +1156,14 @@ public interface TypeSystem {
 
     boolean isInterfaceType(Type toType);
 
-    FunctionType closureType(Position position, Ref<? extends Type> typeRef,
-        //  List<Ref<? extends Type>> typeParams,
-            List<Ref<? extends Type>> formalTypes,
-            List<LocalDef> formalNames, Ref<CConstraint> guard
-           // Ref<TypeConstraint> typeGuard,
-            );
+    FunctionType functionType(Position position, Ref<? extends Type> returnType,
+            List<ParameterType> typeParameters,
+            List<Ref<? extends Type>> formalTypes, List<LocalDef> formalNames,
+            Ref<CConstraint> guard
+            //Ref<TypeConstraint> typeGuard,
+    );
+
+    ClosureType closureType(ClosureDef cd);
 
 
     Type expandMacros(Type arg);
@@ -1169,6 +1187,8 @@ public interface TypeSystem {
 
     X10ClassType Region();
 
+    X10ClassType IntRange();
+
     X10ClassType Iterator(Type formalType);
 
     boolean isUnsigned(Type r);
@@ -1182,6 +1202,10 @@ public interface TypeSystem {
     boolean isX10Array(Type me);
 
     boolean isX10DistArray(Type me);
+    
+    boolean isIntRange(Type me);
+
+    boolean isLongRange(Type me);
 
     Context emptyContext();
     boolean isExactlyFunctionType(Type t);
@@ -1222,8 +1246,8 @@ public interface TypeSystem {
     MethodInstance createFakeMethod(ClassType container, Flags flags, Name name, List<Type> typeArgs, List<Type> argTypes, 
                                     SemanticException error);
     List<LocalDef> dummyLocalDefs(List<Ref<? extends Type>> types);
-    List<MethodInstance> methods(ContainerType t, Name name, List<Type> typeParams, List<Type> argTypes, 
-                                 XVar thisVar, Context context);
+    List<MethodInstance> methods(ContainerType t, Name name, List<Type> typeParams, List<LocalInstance> formalNames, 
+                                 XVar thisVar, XVar placeTerm, Context context);
     boolean equalsStruct(Type a, Type b);
     X10ClassType AtomicInteger();
     boolean isRemoteArray(Type t);

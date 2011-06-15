@@ -30,13 +30,11 @@
  *   X10_USE_BDWGC     - enable BDW conservative GC
  *
  * The following debugging macros are supported:
- *   TRACE_REF         - trace reference operations
  *   TRACE_CAST        - trace casts
  *   TRACE_ALLOC       - trace allocation operations
  *   TRACE_ENV_VAR     - turn on support for the tracing variables listed below
  *
  * Note, tracing is not actually enabled unless the following environment variables are defined:
- *   X10_TRACE_INIT        - trace x10 class initialization
  *   X10_TRACE_X10RT       - trace x10rt invocations
  *   X10_TRACE_SER         - trace serialization operations
  *   X10_TRACE_STATIC_INIT - trace static initialization
@@ -83,6 +81,16 @@
 #else
 #define PLACE_CHECK_BOOL true
 #endif
+
+#ifdef __bg__
+#define DEFAULT_STATIC_THREADS true
+#else
+#define DEFAULT_STATIC_THREADS false
+#endif
+
+#define ENV_CONGRUENT_BASE "X10_CONGRUENT_BASE"
+#define ENV_CONGRUENT_SIZE "X10_CONGRUENT_SIZE"
+#define ENV_CONGRUENT_HUGE "X10_CONGRUENT_HUGE"
 
 #ifndef NO_IOSTREAM
 #  include <iostream>
@@ -144,49 +152,43 @@ typedef uint64_t x10_ulong;
 namespace x10aux {
     typedef x10_ulong x10_addr_t;
 
-    extern bool init_config_bools_done;
-    void init_config_bools (void);
-    extern bool use_ansi_colors_;
-    extern bool disable_dealloc_;
-    extern bool trace_init_;
-    extern bool trace_x10rt_;
-    extern bool trace_ser_;
-    extern bool trace_static_init_;
+    extern const bool trace_ansi_colors;
+    extern const bool trace_static_init;
+    extern const bool trace_x10rt;
+    extern const bool trace_ser;
+    extern const bool trace_rxtx;
+    extern const bool disable_dealloc;
+    extern const bool x10__assertions_enabled;
 
-    extern inline bool use_ansi_colors()
-    { if (!init_config_bools_done) init_config_bools() ; return use_ansi_colors_; }
-    extern inline bool trace_init()
-    { if (!init_config_bools_done) init_config_bools() ; return trace_init_; }
-    extern inline bool trace_x10rt()
-    { if (!init_config_bools_done) init_config_bools() ; return trace_x10rt_; }
-    extern inline bool trace_ser()
-    { if (!init_config_bools_done) init_config_bools() ; return trace_ser_; }
-    extern inline bool trace_static_init()
-    { if (!init_config_bools_done) init_config_bools() ; return trace_static_init_; }
+    char *get_congruent_base();
+    char *get_congruent_size();
+    bool get_congruent_huge();
+
+    size_t get_remote_op_batch();
 
     extern x10_int here;
     extern bool x10rt_initialized;
 }
 
-#define ANSI_RESET       (::x10aux::use_ansi_colors()?"\x1b[0m" :"")
+#define ANSI_RESET       (::x10aux::trace_ansi_colors?"\x1b[0m" :"")
 
-#define ANSI_BOLD        (::x10aux::use_ansi_colors()?"\x1b[1m" :"")
-#define ANSI_NOBOLD      (::x10aux::use_ansi_colors()?"\x1b[22m":"")
+#define ANSI_BOLD        (::x10aux::trace_ansi_colors?"\x1b[1m" :"")
+#define ANSI_NOBOLD      (::x10aux::trace_ansi_colors?"\x1b[22m":"")
 
-#define ANSI_UNDERLINE   (::x10aux::use_ansi_colors()?"\x1b[4m" :"")
-#define ANSI_NOUNDERLINE (::x10aux::use_ansi_colors()?"\x1b[24m":"")
+#define ANSI_UNDERLINE   (::x10aux::trace_ansi_colors?"\x1b[4m" :"")
+#define ANSI_NOUNDERLINE (::x10aux::trace_ansi_colors?"\x1b[24m":"")
 
-#define ANSI_REVERSE     (::x10aux::use_ansi_colors()?"\x1b[6m" :"")
-#define ANSI_NOREVERSE   (::x10aux::use_ansi_colors()?"\x1b[27m":"")
+#define ANSI_REVERSE     (::x10aux::trace_ansi_colors?"\x1b[6m" :"")
+#define ANSI_NOREVERSE   (::x10aux::trace_ansi_colors?"\x1b[27m":"")
 
-#define ANSI_BLACK       (::x10aux::use_ansi_colors()?"\x1b[30m":"")
-#define ANSI_RED         (::x10aux::use_ansi_colors()?"\x1b[31m":"")
-#define ANSI_GREEN       (::x10aux::use_ansi_colors()?"\x1b[32m":"")
-#define ANSI_YELLOW      (::x10aux::use_ansi_colors()?"\x1b[33m":"")
-#define ANSI_BLUE        (::x10aux::use_ansi_colors()?"\x1b[34m":"")
-#define ANSI_MAGENTA     (::x10aux::use_ansi_colors()?"\x1b[35m":"")
-#define ANSI_CYAN        (::x10aux::use_ansi_colors()?"\x1b[36m":"")
-#define ANSI_WHITE       (::x10aux::use_ansi_colors()?"\x1b[37m":"")
+#define ANSI_BLACK       (::x10aux::trace_ansi_colors?"\x1b[30m":"")
+#define ANSI_RED         (::x10aux::trace_ansi_colors?"\x1b[31m":"")
+#define ANSI_GREEN       (::x10aux::trace_ansi_colors?"\x1b[32m":"")
+#define ANSI_YELLOW      (::x10aux::trace_ansi_colors?"\x1b[33m":"")
+#define ANSI_BLUE        (::x10aux::trace_ansi_colors?"\x1b[34m":"")
+#define ANSI_MAGENTA     (::x10aux::trace_ansi_colors?"\x1b[35m":"")
+#define ANSI_CYAN        (::x10aux::trace_ansi_colors?"\x1b[36m":"")
+#define ANSI_WHITE       (::x10aux::trace_ansi_colors?"\x1b[37m":"")
 
 #define _MAYBE_DEBUG_MSG(col,type,msg,doit) do { \
     if (doit) _DEBUG_MSG(col,type,msg); \
@@ -203,8 +205,6 @@ namespace x10aux {
 
 #define ANSI_ALLOC ANSI_WHITE
 #define ANSI_CAST ANSI_RED
-#define ANSI_INIT ANSI_MAGENTA
-#define ANSI_REF ANSI_YELLOW
 #define ANSI_SER ANSI_CYAN
 #define ANSI_X10RT ANSI_BLUE
 
@@ -224,21 +224,7 @@ namespace x10aux {
 
 #if !defined(NO_IOSTREAM) && defined(TRACE_ENV_VAR)
 #include <stdio.h>
-#define _I_(x) _MAYBE_DEBUG_MSG(ANSI_INIT,"INIT",x,::x10aux::trace_init())
-#else
-#define _I_(x)
-#endif
-
-#if !defined(NO_IOSTREAM) && defined(TRACE_REF)
-#include <stdio.h>
-#define _R_(x) _DEBUG_MSG(ANSI_REF,"RR",x)
-#else
-#define _R_(x)
-#endif
-
-#if !defined(NO_IOSTREAM) && defined(TRACE_ENV_VAR)
-#include <stdio.h>
-#define _S_(x) _MAYBE_DEBUG_MSG(ANSI_SER,"SS",x,::x10aux::trace_ser())
+#define _S_(x) _MAYBE_DEBUG_MSG(ANSI_SER,"SS",x,::x10aux::trace_ser)
 #define _Sd_(x) x
 #else
 #define _S_(x)
@@ -247,7 +233,7 @@ namespace x10aux {
 
 #if !defined(NO_IOSTREAM) && defined(TRACE_ENV_VAR)
 #include <stdio.h>
-#define _SI_(x) _MAYBE_DEBUG_MSG(ANSI_SER,"SI",x,::x10aux::trace_static_init())
+#define _SI_(x) _MAYBE_DEBUG_MSG(ANSI_SER,"SI",x,::x10aux::trace_static_init)
 #define _SId_(x) x
 #else
 #define _SI_(x)
@@ -256,7 +242,7 @@ namespace x10aux {
 
 #if !defined(NO_IOSTREAM) && defined(TRACE_ENV_VAR)
 #include <stdio.h>
-#define _X_(x) _MAYBE_DEBUG_MSG(ANSI_X10RT,"XX",x,::x10aux::trace_x10rt())
+#define _X_(x) _MAYBE_DEBUG_MSG(ANSI_X10RT,"XX",x,::x10aux::trace_x10rt)
 #else
 #define _X_(x)
 #endif
@@ -266,6 +252,7 @@ namespace x10aux {
 // The c++ target has to mangle fields because c++ does not allow fields
 // and methods to have the same name.
 #define FMGL(x) x10__##x
+#define TPMGL(x) x10tp__##x
 
 //needed if you want to concat from another macro
 #ifndef __CONCAT

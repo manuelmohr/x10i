@@ -49,7 +49,6 @@ import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Pair;
 import polyglot.util.Position;
-import polyglot.visit.AscriptionVisitor;
 import polyglot.visit.CFGBuilder;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.FlowGraph;
@@ -62,6 +61,7 @@ import x10.constraint.XTerms;
 import x10.errors.Errors;
 import x10.errors.Warnings;
 import x10.types.MethodInstance;
+import x10.types.X10ClassType;
 import x10.types.X10Use;
 import x10.types.checker.Checker;
 import x10.types.checker.Converter;
@@ -157,22 +157,35 @@ public class X10Binary_c extends Binary_c implements X10Binary {
             return true;
         case ARROW:
         case DOT_DOT:
-        case IN:
             return false;
         }
         return false;
     }
 
 	public boolean isConstant() {
-		if (left.isConstant() && right.isConstant() && isPureOperation(left.type(), op, right.type()))
-			return true;
-		// FIXME [IP] An optimization: an object of a non-nullable type and "null"
-		// can never be equal.
-		Type lt = left.type();
-		Type rt = right.type();
-		TypeSystem xts = (TypeSystem) lt.typeSystem();
-		if (lt == null || rt == null)
-			return false;
+	    // Polyglot doesn't understand how to constant fold unsigned types.
+	    if (left.type().isUnsignedNumeric() || right.type().isUnsignedNumeric()) return false;
+	    
+		if (left.isConstant() && right.isConstant() && isPureOperation(left.type(), op, right.type())) {
+		    if (op == EQ || op == NE) {
+		        // Additional checks for type equality because conversions not applied for ==
+		        Type lt = left.type();
+		        Type rt = right.type();
+		        TypeSystem xts = (TypeSystem) lt.typeSystem();
+		        if (lt == null || rt == null)
+		            return false;
+		        if (lt.isClass() && rt.isClass()) {
+		            X10ClassType ltc = (X10ClassType)lt.toClass();
+		            X10ClassType rtc = (X10ClassType)rt.toClass();		            
+		            if (ltc.isX10Struct() || rtc.isX10Struct()) {
+		                return xts.typeBaseEquals(ltc, rtc, xts.emptyContext());
+		            }
+		        }
+		    }
+		   
+		    return true;
+		}
+		
 		return false;
 	}
 
@@ -220,11 +233,11 @@ public class X10Binary_c extends Binary_c implements X10Binary {
     	if (! isConstant()) {
     		return null;
     	}
-    	
-	    if (type.isUnsignedNumeric()) {
+
+	    if (left.type().isUnsignedNumeric() || right.type().isUnsignedNumeric()) {
 	    	return null;
 	    }
-	
+
 	    Object lv = left.constantValue();
         Object rv = right.constantValue();
 
@@ -417,11 +430,7 @@ public class X10Binary_c extends Binary_c implements X10Binary {
 
                 if (n1 instanceof TypeNode && n2 instanceof TypeNode) {
                     SubtypeTest n = nf.SubtypeTest(position(), (TypeNode) n1, (TypeNode) n2, true);
-                    try {
-                        n = (SubtypeTest) n.typeCheck(tc);
-                    } catch (SemanticException e) {
-                        throw new InternalCompilerError("Unexpected exception while typechecking "+n, position(), e);
-                    }
+                    n = (SubtypeTest) n.typeCheck(tc);
                     return n;
                 }
             }
@@ -451,7 +460,13 @@ public class X10Binary_c extends Binary_c implements X10Binary {
         methodNameMap.put(GE, "operator>=");
         methodNameMap.put(DOT_DOT, "operator..");
         methodNameMap.put(ARROW, "operator->");
-        methodNameMap.put(IN, "operator in");
+        methodNameMap.put(LARROW, "operator<-");
+        methodNameMap.put(FUNNEL, "operator-<");
+        methodNameMap.put(LFUNNEL, "operator>-");
+        methodNameMap.put(STARSTAR, "operator**");
+        methodNameMap.put(TWIDDLE, "operator~");
+        methodNameMap.put(NTWIDDLE, "operator!~");
+        methodNameMap.put(BANG, "operator!");
 
         String methodName = methodNameMap.get(op);
         if (methodName == null)
@@ -540,30 +555,31 @@ public class X10Binary_c extends Binary_c implements X10Binary {
         	return this.type(xts.unknownType(position()));
         
         if (op == EQ || op == NE || op == LT || op == GT || op == LE || op == GE) {
-            Object lv = left.isConstant() ? left.constantValue() : null;
-            Object rv = right.isConstant() ? right.constantValue() : null;
-            
-            // If comparing signed vs. unsigned, check if one operand is a constant convertible to the other (base) type.
-            // If so, insert the conversion and check again.
-            
-            if ((xts.isSigned(lbase) && xts.isUnsigned(rbase)) || (xts.isUnsigned(lbase) && xts.isSigned(rbase))) {
-                try {
-                    if (lv != null && xts.numericConversionValid(rbase, lbase, lv, context)) {
-                        Expr e = Converter.attemptCoercion(tc, left, rbase);
-                        if (e == left)
-                            return this.type(xts.Boolean());
-                        if (e != null)
-                            return Converter.check(this.left(e), tc);
-                    }
-                    if (rv != null && xts.numericConversionValid(lbase, rbase, rv, context)) {
-                        Expr e = Converter.attemptCoercion(tc, right, lbase);
-                        if (e == right)
-                            return this.type(xts.Boolean());
-                        if (e != null)
-                            return Converter.check(this.right(e), tc);
-                    }
-                } catch (SemanticException e) { } // FIXME
-            }
+            // XTENLANG-2156
+            //Object lv = left.isConstant() ? left.constantValue() : null;
+            //Object rv = right.isConstant() ? right.constantValue() : null;
+            //
+            //// If comparing signed vs. unsigned, check if one operand is a constant convertible to the other (base) type.
+            //// If so, insert the conversion and check again.
+            //
+            //if ((xts.isSigned(lbase) && xts.isUnsigned(rbase)) || (xts.isUnsigned(lbase) && xts.isSigned(rbase))) {
+            //    try {
+            //        if (lv != null && xts.numericConversionValid(rbase, lbase, lv, context)) {
+            //            Expr e = Converter.attemptCoercion(tc, left, rbase);
+            //            if (e == left)
+            //                return this.type(xts.Boolean());
+            //            if (e != null)
+            //                return Converter.check(this.left(e), tc);
+            //        }
+            //        if (rv != null && xts.numericConversionValid(lbase, rbase, rv, context)) {
+            //            Expr e = Converter.attemptCoercion(tc, right, lbase);
+            //            if (e == right)
+            //                return this.type(xts.Boolean());
+            //            if (e != null)
+            //                return Converter.check(this.right(e), tc);
+            //        }
+            //    } catch (SemanticException e) { } // FIXME
+            //}
             
             if (xts.isUnsigned(lbase) && xts.isSigned(rbase))
                 Errors.issue(tc.job(),
@@ -572,20 +588,6 @@ public class X10Binary_c extends Binary_c implements X10Binary {
             if (xts.isSigned(lbase) && xts.isUnsigned(rbase))
                 Errors.issue(tc.job(),
                         new Errors.CannotCompareSignedVersusUnsignedValues(position()));
-            
-            Type promoted = promote(xts, lbase, rbase);
-            
-            if (promoted != null &&
-                (! xts.typeBaseEquals(lbase, promoted, context) ||
-                 ! xts.typeBaseEquals(rbase, promoted, context)))
-            {
-                try {
-                Expr el = Converter.attemptCoercion(tc, left, promoted);
-                Expr er = Converter.attemptCoercion(tc, right, promoted);
-                if (el != null && er != null && (el != left || er != right))
-                	return Converter.check(this.left(el).right(er), tc);
-                } catch (SemanticException e) { } // FIXME
-            }
         }
         
         if (op == EQ || op == NE) {
@@ -593,7 +595,11 @@ public class X10Binary_c extends Binary_c implements X10Binary {
             // Coercions are handled above for numerics.  No other coercions are allowed.
             // Constraints are ignored so that things like x==k will not cause compile-time errors
             // when x is a final variable initialized to a constant != k.
-            if (xts.isCastValid(lbase, rbase, context) || xts.isCastValid(rbase, lbase, context)) {
+
+            // Yoav: I remove the constraints from inside generic arguments as well (see XTENLANG-2022)
+            Type lbbase = Types.stripConstraints(lbase);
+            Type rbbase = Types.stripConstraints(rbase);
+            if (xts.isCastValid(lbbase, rbbase, context) || xts.isCastValid(rbbase, lbbase, context)) {
                 return type(xts.Boolean());
             }
 //
@@ -677,7 +683,6 @@ public class X10Binary_c extends Binary_c implements X10Binary {
                 int i = 3;
             }
         }
-        Warnings.wasGuardChecked(tc,mi, call); // cannot use checkErrorAndGuard because mi.err() might not be null, but we won't report an error (see X10Unary_c.desugarUnaryOp :  n4 = X10Binary_c.typeCheckCall(tc, n4); ) 
         Type rt = Checker.rightType(mi.rightType(), mi.x10Def(), call.target(), tc.context());
         call = (X10Call_c) call.methodInstance(mi).type(rt);
         call = (X10Call_c) call.arguments(args);
@@ -701,7 +706,6 @@ public class X10Binary_c extends Binary_c implements X10Binary {
 
             // maybe the left operand can be cast to the right operand (e.g., Byte+Int should use Int.operator+(Int) and not Byte.operator+(Byte))
             Expr newFirst = Converter.attemptCoercion(
-                    false, // I do not want to report any warnings if coercion failed
                     tc, first,
                     Types.baseType(second.type())); // I use baseType because the constraints are irrelevant for resolution (and it can cause an error if the constraint contain "place23423423")
             if (newFirst!=first && newFirst!=null) {
@@ -715,6 +719,7 @@ public class X10Binary_c extends Binary_c implements X10Binary {
         Expr right = n.right();
         Binary.Operator op = n.operator();
         Position pos = n.position();
+        TypeSystem xts = tc.typeSystem();
 
         Type l = left.type();
         Type r = right.type();
@@ -744,16 +749,20 @@ public class X10Binary_c extends Binary_c implements X10Binary {
 
         if (methodName != null) {
             // Check if there is a static method of the left type with the appropriate name and type.   
-            X10Call_c n4 = (X10Call_c) nf.X10Call(pos, nf.CanonicalTypeNode(pos, Types.ref(l)), nf.Id(pos, methodName), Collections.<TypeNode>emptyList(), CollectionUtil.list(left, right));
+            X10Call_c n4 = (X10Call_c) nf.X10Call(pos, nf.CanonicalTypeNode(pos, Types.ref(l)), 
+            		nf.Id(pos, methodName), Collections.<TypeNode>emptyList(), 
+            		CollectionUtil.list(left, right));
             n4 = typeCheckCall(tc, n4);
             MethodInstance mi4 = (MethodInstance) n4.methodInstance();
             if (mi4.error() == null && mi4.def().flags().isStatic())
                 static_left = n4;
         }
 
-        if (methodName != null) {
+        if (methodName != null && !xts.hasSameClassDef(l, r)) {
             // Check if there is a static method of the right type with the appropriate name and type.   
-            X10Call_c n3 = (X10Call_c) nf.X10Call(pos, nf.CanonicalTypeNode(pos, Types.ref(r)), nf.Id(pos, methodName), Collections.<TypeNode>emptyList(), CollectionUtil.list(left, right));
+            X10Call_c n3 = (X10Call_c) nf.X10Call(pos, nf.CanonicalTypeNode(pos, Types.ref(r)), 
+            		nf.Id(pos, methodName), Collections.<TypeNode>emptyList(), 
+            		CollectionUtil.list(left, right));
             n3 = typeCheckCall(tc, n3);
             MethodInstance mi3 = (MethodInstance) n3.methodInstance();
             if (mi3.error() == null && mi3.def().flags().isStatic())
@@ -775,8 +784,6 @@ public class X10Binary_c extends Binary_c implements X10Binary {
             fake = typeCheckCall(tc, fake);
             return fake;
         }
-
-        TypeSystem xts = tc.typeSystem();
 
         List<X10Call_c> best = new ArrayList<X10Call_c>();
         X10Binary_c.Conversion bestConversion = X10Binary_c.Conversion.UNKNOWN;
@@ -825,14 +832,14 @@ public class X10Binary_c extends Binary_c implements X10Binary {
                     ClassDef bestcd = def(besttd);
                     assert (bestcd != null && cd != null);
 
-                    if (xts.descendsFrom(cd, bestcd)) {
+                    if (cd != bestcd && xts.descendsFrom(cd, bestcd)) {
                         // we found the method of a subclass; remove the superclass one
                         ci.remove();
                         isBetter = true;
                         assert (bestConversion == conversion);
                         bestConversion = conversion;
                     }
-                    else if (xts.descendsFrom(bestcd, cd)) {
+                    else if (cd != bestcd && xts.descendsFrom(bestcd, cd)) {
                         // best is still the best
                         isBetter = false;
                         break;
@@ -890,17 +897,30 @@ public class X10Binary_c extends Binary_c implements X10Binary {
         } 
         {
         MethodInstance mi = result.methodInstance();
-        Type lbase = Types.baseType(n.left().type());
-        Type rbase = Types.baseType(n.right().type());
+        boolean inverse = isInv(mi.name());
+        left = result.arguments().size() != 2 ? (Expr) result.target() : result.arguments().get(0);
+        right = result.arguments().size() != 2 ? result.arguments().get(0) : result.arguments().get(1);
+        Type lbase = Types.baseType(left.type());
+        Type rbase = Types.baseType(right.type());
         Context context = (Context) tc.context();
 
         // Add support for patching up the return type of Region's operator*().
         // The rank of the result is a+b, if the rank of the left arg is a and of the right arg is b,
-        // and a and b are literals. Further the result is rect if both args are rect.
+        // and a and b are literals. Further the result is rect if both args are rect, and zeroBased
+        // if both args are zeroBased.
         if (op == Binary.MUL && xts.typeEquals(xts.Region(), lbase, context)
         		&& xts.typeEquals(xts.Region(), rbase, context)) {
             Type type = result.type();
             type = BuiltInTypeRules.adjustReturnTypeForRegionMult(left, right, type, context);
+            mi = mi.returnType(type);
+            result = (X10Call_c) result.methodInstance(mi).type(type);
+        }
+        // Add support for patching up the return type of IntRegion's operator*().
+        // The rank of the result is 2.  Further the result is zeroBased if both args are zeroBased.
+        if (op == Binary.MUL && xts.typeEquals(xts.IntRange(), lbase, context)
+                && xts.typeEquals(xts.IntRange(), rbase, context)) {
+            Type type = result.type();
+            type = BuiltInTypeRules.adjustReturnTypeForRangeRangeMult(left, right, type, context);
             mi = mi.returnType(type);
             result = (X10Call_c) result.methodInstance(mi).type(type);
         }
@@ -1041,117 +1061,6 @@ public class X10Binary_c extends Binary_c implements X10Binary {
 	return reconstruct(left, right);
     }
     
-    public Type childExpectedType(Expr child, AscriptionVisitor av) {
-        Expr other;
-
-        if (child == left) {
-            other = right;
-        }
-        else if (child == right) {
-            other = left;
-        }
-        else {
-            return child.type();
-        }
-
-        TypeSystem ts = av.typeSystem();
-        Context context = av.context();
-
-        try {
-            if (op == EQ || op == NE) {
-                // Coercion to compatible types.
-                if ((child.type().isReference() || child.type().isNull()) &&
-                    (other.type().isReference() || other.type().isNull())) {
-                    return ts.leastCommonAncestor(child.type(), other.type(), context);
-                }
-
-                if (child.type().isBoolean() && other.type().isBoolean()) {
-                    return ts.Boolean();
-                }
-
-                if (child.type().isNumeric() && other.type().isNumeric()) {
-                    return ts.promote(child.type(), other.type());
-                }
-
-                if (child.type().isImplicitCastValid(other.type(), context)) {
-                    return other.type();
-                }
-
-                return child.type();
-            }
-
-            if (op == ADD && ts.typeEquals(type(), ts.String(), context)) {
-                // Implicit coercion to String. 
-                return ts.String();
-            }
-
-            if (op == GT || op == LT || op == GE || op == LE) {
-                if (child.type().isNumeric() && other.type().isNumeric()) {
-                    return ts.promote(child.type(), other.type());
-                }
-
-                return child.type();
-            }
-
-            if (op == COND_OR || op == COND_AND) {
-                return ts.Boolean();
-            }
-
-            if (op == BIT_AND || op == BIT_OR || op == BIT_XOR) {
-                if (other.type().isBoolean()) {
-                    return ts.Boolean();
-                }
-
-                if (child.type().isNumeric() && other.type().isNumeric()) {
-                    return ts.promote(child.type(), other.type());
-                }
-
-                return child.type();
-            }
-
-            if (op == ADD || op == SUB || op == MUL || op == DIV || op == MOD) {
-                if (child.type().isNumeric() && other.type().isNumeric()) {
-                    Type t = ts.promote(child.type(), other.type());
-
-                    if (ts.isImplicitCastValid(t, av.toType(), context)) {
-                        return t;
-                    }
-                    else {
-                        return av.toType();
-                    }
-                }
-
-                return child.type();
-            }
-
-            if (op == SHL || op == SHR || op == USHR) {
-                if (child.type().isNumeric() && other.type().isNumeric()) {
-                    if (child == left) {
-                        Type t = ts.promote(child.type());
-
-                        if (ts.isImplicitCastValid(t, av.toType(), context)) {
-                            return t;
-                        }
-                        else {
-                            return av.toType();
-                        }
-                    }
-                    else {
-                        return ts.promote(child.type());
-                    }
-                }
-
-                return child.type();
-            }
-
-            return child.type();
-        }
-        catch (SemanticException e) {
-        }
-
-        return child.type();
-    }
-
     /** Get the throwsArithmeticException of the expression. */
     public boolean throwsArithmeticException() {
 	// conservatively assume that any division or mod may throw

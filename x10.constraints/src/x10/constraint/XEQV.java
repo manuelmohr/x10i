@@ -28,7 +28,7 @@ import java.util.List;
  * @see XUQV
  *
  */
-public class XEQV extends XVar  {
+public class XEQV extends XRoot  {
 	
     public final int num;
     public XEQV(int n) {
@@ -38,8 +38,8 @@ public class XEQV extends XVar  {
     @Override
     public XTermKind kind() { return XTermKind.LOCAL;}
     @Override
-    public boolean prefersBeingBound() {
-        return true;
+    public int prefersBeingBound() {
+        return XTerm.TERM_PREFERS_BEING_BOUND;
     }
 
     public boolean hasVar(XVar v) {
@@ -58,6 +58,10 @@ public class XEQV extends XVar  {
 			return Collections.<XEQV>singletonList(this);
 	}
 
+
+    public boolean okAsNestedTerm() {
+    	return true;
+    }
     @Override
     public int hashCode() {
         return num;
@@ -74,6 +78,6 @@ public class XEQV extends XVar  {
     
     @Override
     public String toString() {
-        return "eqv" + num;
+        return "eqv#" + num;
     }
 }

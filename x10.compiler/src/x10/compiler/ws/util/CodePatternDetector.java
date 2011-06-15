@@ -40,9 +40,12 @@ import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.util.Pair;
 import x10.ast.Async;
+import x10.ast.AtStmt;
 import x10.ast.Finish;
 import x10.ast.FinishExpr;
 import x10.ast.ForLoop;
+import x10.ast.Offer;
+import x10.ast.StmtSeq;
 import x10.ast.When;
 import x10.compiler.ws.WSTransformState;
 import polyglot.types.Context;
@@ -78,22 +81,24 @@ import polyglot.types.TypeSystem;
  */
 public class CodePatternDetector {
     public static enum Pattern{ Finish,
-                  FinishAssign, //used in collecting finish
-                  Async,  
+                  FinishExprAssign, //used in collecting finish
+                  Async,
+                  At, // at(p) S
+                  AsyncAt, // async at(p) S
                   When,
                   LocalDecl, //local declare with the initializer is concurrent call
                   Call, //only the first level call is target call;
                   AssignCall, //only the first level call is target call;
                   If,
                   For,
-                  ForLoop,
+                  ForLoop, //should not happen after ExpressionFlattener
                   While,
                   DoWhile,
                   Switch,
-                  Block,
                   Try,
-                  Compound, //need flatten
                   Simple, 
+                  Block,
+                  StmtSeq, //need flatten
                   Unsupport, // async, future's place is not here
                   };
                   
@@ -106,18 +111,30 @@ public class CodePatternDetector {
      */
     public static Pattern detectAndTransform(final Stmt stmt, final WSTransformState wts){
         
-        if(!WSCodeGenUtility.isComplexCodeNode(stmt, wts)){
-            return Pattern.Simple;
+        if(stmt instanceof StmtSeq){
+            return Pattern.StmtSeq; //the stmt should be unwrapped
+        }
+        
+        if(!WSUtil.isComplexCodeNode(stmt, wts)){
+            return Pattern.Simple; // no need any transformation
         }
         
         if(stmt instanceof LocalDecl){
-            return Pattern.LocalDecl;
+            return Pattern.LocalDecl; //local decl with concurrent call - should not happen
         }
         
-        
-        //TODO: Check home == here;
         if(stmt instanceof Async){
-            return Pattern.Async;
+            Stmt asyncBodyStmt = WSUtil.unwrapToOneStmt(((Async)stmt).body());
+            if(asyncBodyStmt instanceof AtStmt){
+                return Pattern.AsyncAt; //async at one place
+            }
+            else{           
+                return Pattern.Async;
+            }
+        }
+        
+        if(stmt instanceof AtStmt){
+            return Pattern.At;
         }
         
         if(stmt instanceof Finish){
@@ -125,108 +142,56 @@ public class CodePatternDetector {
         }
         
         if(stmt instanceof When){
-            When w = (When)stmt;
-            if(WSCodeGenUtility.isComplexCodeNode(w.expr(), wts)){
-                //need flatten
-                return Pattern.Compound;
-            }
-            else{
-                //just normal when
-                return Pattern.When;
-            }
+            return Pattern.When;
         }
         
         if(stmt instanceof Eval){
-            return detectEval(stmt, wts);
+            //After code flatten, the eval should be call/assigncall/finishAssign
+            Expr expr = ((Eval)stmt).expr();
+            if(expr instanceof Call){
+                return Pattern.Call;
+            }
+            else if(expr instanceof Assign){
+                Expr rightExpr = ((Assign)expr).right();
+                if(rightExpr instanceof Call){
+                    return Pattern.AssignCall;
+                }
+                else if(rightExpr instanceof FinishExpr){
+                    return Pattern.FinishExprAssign;
+                }
+                else {
+                    return Pattern.Unsupport;
+                }
+            }
+            else {
+                return Pattern.Unsupport;
+            }
         }
         
         //next if
         if(stmt instanceof If){
-            If ifStmt = (If)stmt;
-            if(WSCodeGenUtility.isComplexCodeNode(ifStmt.cond(), wts)){
-                //need flatten
-                return Pattern.Compound;
-            }
-            else{
-                //just normal if
-                return Pattern.If;
-            }
+             return Pattern.If;
         }
         
         //next For
         if(stmt instanceof For){
-            For forStmt = (For)stmt;
-            List<Term> condTerms = new ArrayList<Term>();
-            condTerms.addAll(forStmt.inits());
-            condTerms.addAll(forStmt.iters());
-            condTerms.add(forStmt.cond());
-            
-            boolean compoundS = false;
-            for(Term t : condTerms){
-                if(WSCodeGenUtility.isComplexCodeNode(t, wts)){
-                    compoundS = true;
-                    break;
-                }
-            }
-            
-            if(compoundS){
-                return Pattern.Compound;
-            }
-            else{
-                return Pattern.For;
-            }
+            return Pattern.For;
         }
         
         if(stmt instanceof ForLoop){
-            ForLoop forloopStmt = (ForLoop)stmt;
-            
-            if(WSCodeGenUtility.isComplexCodeNode(forloopStmt.domain(), wts)){
-                return Pattern.Compound;
-            }
-            else{
-                return Pattern.ForLoop;
-            }
+            return Pattern.ForLoop; //Should not happen
         }
         
         if(stmt instanceof While){
-            While whileStmt = (While)stmt;
-            if(WSCodeGenUtility.isComplexCodeNode(whileStmt.cond(), wts)){
-                return Pattern.Compound;
-            }
-            else{
-                return Pattern.While;
-            }
+            return Pattern.While;
         }
         
         if(stmt instanceof Do){
-            Do doStmt = (Do)stmt;
-            if(WSCodeGenUtility.isComplexCodeNode(doStmt.cond(), wts)){
-                return Pattern.Compound;
-            }
-            else{
-                return Pattern.DoWhile;
-            }
+            return Pattern.DoWhile;
         }
         
         if(stmt instanceof Switch){
-            Switch ss = (Switch)stmt;
-            if(WSCodeGenUtility.isComplexCodeNode(ss.expr(), wts)){
-                return Pattern.Compound;
-            }
-            else{
-                return Pattern.Switch;
-            }
-        }
-
-        if(stmt instanceof Return){ //the return's expr must be complex
-            Return rStmt = (Return)stmt;
-            if(WSCodeGenUtility.isComplexCodeNode(rStmt.expr(), wts)){
-                return Pattern.Compound;
-            }
-            else{
-                //not possible. otherwise should return simple;
-                assert(false);
-            }
+            return Pattern.Switch;
         }
         
         if(stmt instanceof Block){
@@ -235,67 +200,20 @@ public class CodePatternDetector {
         
         if(stmt instanceof Try){
             //we only support try's block is complex, right now
-            
             Try tryStmt = (Try)stmt;
             for(Catch c : tryStmt.catchBlocks()){
-                if(WSCodeGenUtility.isComplexCodeNode(c.body(), wts)){
-                    System.out.println("----------> catch error");
+                if(WSUtil.isComplexCodeNode(c.body(), wts)){
                     return Pattern.Unsupport;
                 }
             }
-            if(WSCodeGenUtility.isComplexCodeNode(tryStmt.finallyBlock(), wts)){
-                System.out.println("----------> final error");
+            if(WSUtil.isComplexCodeNode(tryStmt.finallyBlock(), wts)){
                 return Pattern.Unsupport;
             }
-            
             return Pattern.Try;
         }
         
         //other statements no support right now
         return Pattern.Unsupport;
-    }
-
-    private static Pattern detectEval(final Stmt stmt, final WSTransformState wts) {
-        //should > 0. Other wise will not be sent to here for pattern detection
-        int concurrentCallNum = WSCodeGenUtility.calcConcurrentCallNums(stmt, wts);
-        assert(concurrentCallNum > 0);
-        Expr expr = ((Eval)stmt).expr();
-
-        if(expr instanceof Call){
-            Call aCall = (Call)expr;
-            if(wts.isConcurrentCallSite(aCall)
-                    && concurrentCallNum == 1){ //only this call is concurrent call
-                return Pattern.Call;
-            }
-            else{ //call==1, not in first level; or call > 1
-                return Pattern.Compound;
-            }
-        }
-        else if(expr instanceof Assign){
-            Assign assign = (Assign)expr;
-            Expr rightExpr = assign.right();
-            if(rightExpr instanceof Call){
-                Call aCall = (Call)rightExpr;
-                if(wts.isConcurrentCallSite(aCall)
-                        && concurrentCallNum == 1){ //only this call is concurrent call
-                    return Pattern.AssignCall;
-                }
-                else{ //call==1, not in first level; or call > 1
-                    return Pattern.Compound;
-                }
-            }
-            else if( rightExpr instanceof FinishExpr){
-                return Pattern.FinishAssign;
-            }
-            else{
-                //if right is not a call, must be a compound one
-                return Pattern.Compound;
-            }
-        }
-        else {
-            //other eval with concurrent call, must be compound
-            return Pattern.Compound;
-        }
     }
     
     /**
@@ -312,7 +230,8 @@ public class CodePatternDetector {
                 || pattern == Pattern.ForLoop
                 || pattern == Pattern.DoWhile
                 || pattern == Pattern.While
-                || pattern == Pattern.Switch){
+                || pattern == Pattern.Switch
+                || pattern == Pattern.FinishExprAssign){
             return true;
         }
         return false;

@@ -11,28 +11,35 @@
 
 package x10.core.io;
 
+import x10.rtt.NamedType;
 import x10.rtt.RuntimeType;
 import x10.rtt.Type;
 
 public class FileInputStream extends InputStream {
     
-    public FileInputStream(String name) throws java.io.FileNotFoundException {
+	private static final long serialVersionUID = 1L;
+
+	private FileInputStream(String name) throws java.io.FileNotFoundException {
         super(new java.io.FileInputStream(name));
+    }
+
+    public static FileInputStream make(String name) {
+        try {
+            return new FileInputStream(name);
+        } catch (java.io.FileNotFoundException e) {
+            throw x10.core.ThrowableUtilities.getCorrespondingX10Exception(e);
+        }
     }
     
     //
     // Runtime type information
     //
-    public static final RuntimeType<FileInputStream> _RTT = new RuntimeType<FileInputStream>(
+    public static final RuntimeType<FileInputStream> $RTT = new NamedType<FileInputStream>(
+        "x10.io.FileReader.FileInputStream",
         FileInputStream.class,
-        new Type[] { InputStream._RTT }
-    ) {
-        @Override
-        public String typeName() {
-            return "x10.io.FileReader.FileInputStream";
-        }
-    };
-    public RuntimeType<?> getRTT() { return _RTT; }
-    public Type<?> getParam(int i) { return null; }
+        new Type[] { InputStream.$RTT }
+    );
+    public RuntimeType<?> $getRTT() { return $RTT; }
+    public Type<?> $getParam(int i) { return null; }
 
 }

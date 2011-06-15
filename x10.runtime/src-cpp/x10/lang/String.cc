@@ -20,7 +20,6 @@
 #include <x10aux/char_utils.h>
 
 #include <x10/lang/String.h>
-#include <x10/lang/Rail.h>
 #include <x10/lang/StringIndexOutOfBoundsException.h>
 
 #include <x10/array/Array.h>
@@ -47,41 +46,32 @@ static inline void checkStringBounds(x10_int index, x10_int length) {
 #endif
 }
 
-x10aux::ref<String>
-String::_make(const char *content, bool steal) {
-    x10aux::ref<String> this_ = new (x10aux::alloc<String>()) String();
+void
+String::_constructor(const char *content, bool steal) {
     size_t len = strlen(content);
     if (!steal) content = string_utils::strdup(content);
-    this_->_constructor(content,len);
-    return this_;
+    this->Object::_constructor();
+    this->FMGL(content) = content;
+    this->FMGL(content_length) = len;
 }
 
-x10aux::ref<String>
-String::_make(x10aux::ref<String> s) {
-    x10aux::ref<String> this_ = new (x10aux::alloc<String>()) String();
+void
+String::_constructor() {
+    this->Object::_constructor();
+    this->FMGL(content) = "";
+    this->FMGL(content_length) = 0;
+}
+
+void
+String::_constructor(x10aux::ref<String> s) {
     nullCheck(s);
-    this_->_constructor(s->FMGL(content), s->FMGL(content_length));
-    return this_;
+    this->Object::_constructor();
+    this->FMGL(content) = s->FMGL(content);
+    this->FMGL(content_length) = s->FMGL(content_length);
 }
 
-x10aux::ref<String>
-String::_make(x10aux::ref<Rail<x10_char> > rail, x10_int start, x10_int length) {
-    x10aux::ref<String> this_ = new (x10aux::alloc<String>()) String();
-    nullCheck(rail);
-    x10_int i = 0;
-    char *content= x10aux::alloc<char>(length+1);
-    for (i=0; i<length; i++) {
-        content[i] = (char)((*rail)[start + i].v);
-    }
-    content[i] = '\0';
-
-    this_->_constructor(content, i);
-    return this_;
-}
-
-x10aux::ref<String>
-String::_make(x10aux::ref<x10::array::Array<x10_byte> > array, x10_int start, x10_int length) {
-    x10aux::ref<String> this_ = new (x10aux::alloc<String>()) String();
+void
+String::_constructor(x10aux::ref<x10::array::Array<x10_byte> > array, x10_int start, x10_int length) {
     nullCheck(array);
     x10_int i = 0;
     char *content= x10aux::alloc<char>(length+1);
@@ -89,14 +79,13 @@ String::_make(x10aux::ref<x10::array::Array<x10_byte> > array, x10_int start, x1
         content[i] = (char)(array->raw()[start + i]);
     }
     content[i] = '\0';
-
-    this_->_constructor(content, i);
-    return this_;
+    this->Object::_constructor();
+    this->FMGL(content) = content;
+    this->FMGL(content_length) = i;
 }
 
-x10aux::ref<String>
-String::_make(x10aux::ref<x10::array::Array<x10_char> > array, x10_int start, x10_int length) {
-    x10aux::ref<String> this_ = new (x10aux::alloc<String>()) String();
+void
+String::_constructor(x10aux::ref<x10::array::Array<x10_char> > array, x10_int start, x10_int length) {
     nullCheck(array);
     x10_int i = 0;
     char *content= x10aux::alloc<char>(length+1);
@@ -104,11 +93,10 @@ String::_make(x10aux::ref<x10::array::Array<x10_char> > array, x10_int start, x1
         content[i] = (char)(array->raw()[start + i].v);
     }
     content[i] = '\0';
-
-    this_->_constructor(content, i);
-    return this_;
+    this->Object::_constructor();
+    this->FMGL(content) = content;
+    this->FMGL(content_length) = i;
 }
-
 
 x10_int String::hashCode() {
     x10_int hc = 0;
@@ -177,13 +165,13 @@ static bool isws (char x) { return x <= 0x20; }
 x10aux::ref<String> String::trim() {
     const char *start = FMGL(content);
     x10_int l = FMGL(content_length);
+    bool didSomething = false;
     if (l==0) { return this; } // string is empty
-    while (isws(start[0]) && l>0) { start++; l--; }
-    while (isws(start[l-1]) && l>0) { l--; }
-    if (l==0) { return String::Lit(""); } // string was all whitespace
-    x10aux::ref<String> this_ = new (x10aux::alloc<String>()) String();
-    this_->_constructor(start, l);
-    return this_;
+    while (isws(start[0]) && l>0) { start++; l--; didSomething = true; }
+    while (isws(start[l-1]) && l>0) { l--; didSomething = true; }
+    if (!didSomething) { return this; }
+    char *trimmed = string_utils::strndup(start, l);
+    return _make(trimmed, true);
 }
 
 static const char *strnrstrn(const char *haystack, size_t haystack_sz,
@@ -254,37 +242,6 @@ ref<String> String::substring(x10_int start, x10_int end) {
     return String::Steal(str);
 }
 
-static ref<x10::array::Array<ref<String> > > split_all_chars(String* str) {
-    size_t sz = (size_t)str->length();
-    ref<x10::array::Array<ref<String> > > array = x10::array::Array<ref<String> >::_make(sz);
-    for (size_t i = 0; i < sz; ++i) {
-        array->__set(str->substring(i, i+1), i);
-    }
-    return array;
-}
-
-// FIXME: this does not treat pat as a regex
-ref<x10::array::Array<ref<String> > > String::split(ref<String> pat) {
-    nullCheck(pat);
-    int l = pat->length();
-    if (l == 0) // if splitting on an empty string, just return the chars
-        return split_all_chars(this);
-    int sz = 1; // we have at least one string
-    int i = -1; // count first
-    while ((i = indexOf(pat, i+l)) != -1) {
-        sz++;
-    }
-    ref<x10::array::Array<ref<String> > > array = x10::array::Array<ref <String> >::_make(sz);
-    int c = 0;
-    int o = 0; // now fill in the array
-    while ((i = indexOf(pat, o)) != -1) {
-        array->__set(substring(o, i), c++);
-        o = i+l;
-    }
-    array->__set(substring(o), c++);
-    assert (c == sz);
-    return array;
-}
 
 x10_char String::charAt(x10_int i) {
     checkStringBounds(i, FMGL(content_length));
@@ -296,7 +253,7 @@ ref<x10::array::Array<x10_char> > String::chars() {
     x10_int sz = length();
     ref<x10::array::Array<x10_char> > array = x10::array::Array<x10_char>::_make(sz);
     for (int i = 0; i < sz; ++i)
-        array->__set((x10_char) FMGL(content)[i], i);
+        array->__set(i, (x10_char) FMGL(content)[i]);
     return array;
 }
 
@@ -304,7 +261,7 @@ ref<x10::array::Array<x10_byte> > String::bytes() {
     x10_int sz = length();
     ref<x10::array::Array<x10_byte> > array = x10::array::Array<x10_byte>::_make(sz);
     for (int i = 0; i < sz; ++i)
-        array->__set(FMGL(content)[i], i); 
+        array->__set(i, FMGL(content)[i]); 
     return array;
 }
 
@@ -472,7 +429,7 @@ x10_boolean String::endsWith(ref<String> s) {
 }
 
 const serialization_id_t String::_serialization_id =
-    DeserializationDispatcher::addDeserializer(String::_deserializer<Reference>, x10aux::CLOSURE_KIND_NOT_ASYNC);
+    DeserializationDispatcher::addDeserializer(String::_deserializer, x10aux::CLOSURE_KIND_NOT_ASYNC);
 
 void String::_serialize_body(x10aux::serialization_buffer& buf) {
     this->Object::_serialize_body(buf);
@@ -500,6 +457,13 @@ void String::_deserialize_body(x10aux::deserialization_buffer &buf) {
     this->FMGL(content) = content;
     this->FMGL(content_length) = strlen(content);
     _S_("Deserialized string was: \""<<this<<"\"");
+}
+
+x10aux::ref<Reference> String::_deserializer(x10aux::deserialization_buffer& buf) {
+    x10aux::ref<String> this_ = new (x10aux::alloc<String>()) String();
+    buf.record_reference(this_);
+    this_->_deserialize_body(buf);
+    return this_;
 }
 
 Fun_0_1<x10_int, x10_char>::itable<String> String::_itable_Fun_0_1(&String::equals, &String::hashCode,

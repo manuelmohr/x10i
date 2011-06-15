@@ -1,18 +1,20 @@
 package x10.compiler.ws;
 
+import x10.compiler.Abort;
+import x10.compiler.Ifdef;
+
 public final class RootFinish extends FinishFrame {
     public def this() {
-        super(upcast[RootFrame,Frame](new RootFrame()));
+        super(null);
         asyncs = 1;
-        //move the assign to make
-        //redirect = upcast[RootFinish,FinishFrame](this); 
-        this.redirect = NULL[FinishFrame]();
     }
 
-    public def init() {
-        redirect = upcast[RootFinish,FinishFrame](this);
-        return this;
-    }
+    @Ifdef("__CPP__")
+    public def remap():RootFinish = this;
 
-    public def remap():FinishFrame = upcast[RootFinish,FinishFrame](this);
+    public def wrapResume(worker:Worker) {
+        super.wrapResume(worker);
+        Worker.stop();
+        throw Abort.ABORT;
+    }
 }

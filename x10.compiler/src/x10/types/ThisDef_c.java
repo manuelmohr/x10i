@@ -36,19 +36,55 @@ import x10.types.constraints.TypeConstraint;
 public class ThisDef_c extends VarDef_c implements ThisDef {
     private static final long serialVersionUID = 8939235355633300017L;
 
-    
-
-    public ThisDef_c(TypeSystem ts, Position pos, Ref<? extends ClassType> type) {
-        super(ts, pos, Flags.FINAL, type, ThisDef.THIS);
-        ClassType t = Types.get(type);
-       // String fullNameWithThis = t.def().fullName() + "#this";
-       // XName thisName = new XNameWrapper<Object>(new Object(), fullNameWithThis);
-        // TODO: Check -- do we really mean t here?
-        thisVar = CTerms.makeThis(t); // CTerms.makeThis(fullNameWithThis); //XTerms.makeLocal(thisName);
+    public ThisDef_c(TypeSystem ts, Position pos, 
+                     Ref<? extends ClassType> qType,
+                     Ref<? extends ClassType> baseType) {
+        super(ts, pos, Flags.FINAL, baseType, ThisDef.THIS);
+        ClassType bt = Types.get(baseType);
+        XVar baseVar = CTerms.makeThis(bt);  
+        thisVar =  qType==null?  baseVar
+                : CTerms.makeQualifiedVar(qType.get(), baseVar);
     }
 
     public String toString() {
         return "this : " + type;
+    }
+
+    @Override
+    public ThisDef_c copy() {
+        ThisDef_c res = (ThisDef_c) super.copy();
+        res.asInstance = null;
+        return res;
+    }
+
+    @Override
+    public void setConstantValue(Object constantValue) {
+        super.setConstantValue(constantValue);
+        this.asInstance = null;
+    }
+
+    @Override
+    public void setFlags(Flags flags) {
+        super.setFlags(flags);
+        this.asInstance = null;
+    }
+
+    @Override
+    public void setName(Name name) {
+        super.setName(name);
+        this.asInstance = null;
+    }
+
+    @Override
+    public void setNotConstant() {
+        super.setNotConstant();
+        this.asInstance = null;
+    }
+
+    @Override
+    public void setType(Ref<? extends Type> type) {
+        super.setType(type);
+        this.asInstance = null;
     }
 
     private XVar thisVar;
@@ -59,16 +95,6 @@ public class ThisDef_c extends VarDef_c implements ThisDef {
         this.thisVar = thisVar;
     }
 
-    private XTerm placeTerm;
-    public XTerm placeTerm() { return placeTerm; }
-    // FIXME Yoav: keep only the first is a bad strategy because these place terms are used in other types, and other constructs (like AtStmt_c)
-    public void setPlaceTerm(XTerm pt) {
-    	if (placeTerm == null)
-    		placeTerm = pt;
-    	//else 
-    	//	assert placeTerm == pt;
-    }
-    
     @Override
     public  Ref<? extends Type> type() {
     	 Ref<? extends Type> result = type;

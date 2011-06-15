@@ -13,6 +13,7 @@ package x10.array;
 
 import x10.compiler.Global;
 import x10.compiler.Native;
+import x10.compiler.TempNoInline_0;
 import x10.util.IndexedMemoryChunk;
 import x10.util.RemoteIndexedMemoryChunk;
 
@@ -30,7 +31,7 @@ import x10.util.RemoteIndexedMemoryChunk;
  * at (rawData.home()) { (this.rawData)() == (this.array)().raw() }
  * </pre>
  */
-public class RemoteArray[T](
+public final class RemoteArray[T](
         /**
          * The Region of the remote array
          */
@@ -54,12 +55,12 @@ public class RemoteArray[T](
     /**
      * The rank of the RemoteArray is equal to region.rank
      */
-    public property rank:Int = region.rank;
+    public property rank():Int = region.rank;
     
     /**
      * The home location of the RemoteArray is equal to array.home
      */
-    public property home:Place = array.home;
+    public property home():Place = array.home;
 
     /**
      * Create a RemoteArray wrapping the argument local Array.
@@ -82,7 +83,7 @@ public class RemoteArray[T](
      * simulates that semantics and provides an Array view on the chunk of
      * GPU memory represented by raw.
      */
-    public def this(reg:Region{self!=null}, raw:RemoteIndexedMemoryChunk[T]) {
+    public @TempNoInline_0 def this(reg:Region{self!=null}, raw:RemoteIndexedMemoryChunk[T]) {
         val arr:GlobalRef[Array[T]];
         if (raw.home().isCUDA()) @Native("c++", "{}") {
             // This block will never be executed; only here to placate the X10-level typechecker
@@ -105,8 +106,8 @@ public class RemoteArray[T](
      * @see #operator(Point)
      * @see #set(T, Int)
      */
-    @Native("cuda", "(#0).raw[#1]")
-    public operator this(i:Int) {here==array.home, rank==1} = this()(i);
+    @Native("cuda", "(#this).raw[#1]")
+    public operator this(i:Int) {here==array.home, rank==1}:T = this()(i);
 
     /**
      * Return the element of this array corresponding to the given point.
@@ -133,8 +134,8 @@ public class RemoteArray[T](
      * @see #operator(Int)
      * @see #set(T, Point)
      */
-    @Native("cuda", "(#0).raw[#2] = (#1)")
-    public operator this(i:Int)=(v:T) {here==array.home, rank==1} = this()(i)=v;
+    @Native("cuda", "(#this).raw[#i] = (#v)")
+    public operator this(i:Int)=(v:T) {here==array.home, rank==1}:T{self==v} = this()(i)=v;
 
     /**
      * Set the element of this array corresponding to the given point to the given value.

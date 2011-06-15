@@ -29,7 +29,7 @@ import polyglot.types.SemanticException;
 import x10.compiler.ws.util.AddIndirectLocalDeclareVisitor;
 import x10.compiler.ws.util.ClosureDefReinstantiator;
 import x10.compiler.ws.util.TransCodes;
-import x10.compiler.ws.util.WSCodeGenUtility;
+import x10.compiler.ws.util.WSUtil;
 import x10.util.synthesizer.CodeBlockSynth;
 import x10.util.synthesizer.InstanceCallSynth;
 import x10.util.synthesizer.NewLocalVarSynth;
@@ -45,8 +45,8 @@ public class WSSwitchClassGen extends WSRegularFrameClassGen {
     protected final Switch switchStmt;
     
     public WSSwitchClassGen(AbstractWSClassGen parent, Switch switchStmt) {
-        super(parent, null,
-              WSCodeGenUtility.getSwitchClassName(parent.getClassName()));
+        super(parent, switchStmt,
+              WSUtil.getSwitchClassName(parent.getClassName()));
         this.switchStmt = switchStmt;
     }
     
@@ -70,7 +70,7 @@ public class WSSwitchClassGen extends WSRegularFrameClassGen {
         Switch fastSwitch = switchStmt.expr(orgSwitchExpr);
         ArrayList<SwitchElement> fastSwitchElements = new ArrayList<SwitchElement>();
         //sPC = pc;
-        Expr pcRef = synth.makeFieldAccess(compilerPos, getThisRef(), PC, xct);
+        Expr pcRef = wsynth.genPCRef(classSynth);
         NewLocalVarSynth sPCLocalSynth = resumeBodySynth.createLocalVar(switchStmt.position(), pcRef);
         Local sPCRef = sPCLocalSynth.getLocal();
         Switch resumePCSetSwitch = switchStmt.expr(orgSwitchExpr); 
@@ -116,7 +116,7 @@ public class WSSwitchClassGen extends WSRegularFrameClassGen {
             sPCChangeStmts.add(xnf.Break(compilerPos));
             resumePCSetSwitchElements.add(xnf.SwitchBlock(compilerPos, sPCChangeStmts));
             
-            if(!WSCodeGenUtility.isComplexCodeNode(sb, wts)){
+            if(!WSUtil.isComplexCodeNode(sb, wts)){
                 //simple codes, just do local to 
                 sb = (SwitchBlock) replaceLocalVarRefWithFieldAccess(sb);
                 List<Stmt> stmts = new ArrayList<Stmt>(sb.statements());
@@ -127,19 +127,20 @@ public class WSSwitchClassGen extends WSRegularFrameClassGen {
                 resumeSwitchSynth.insertStatementInCondition(pcValue, xnf.SwitchBlock(sb.position(), stmts));
             }
             else{
-                TransCodes transCodes = transBlock(sb, pcValue, WSCodeGenUtility
+                TransCodes transCodes = transBlock(sb, pcValue, WSUtil
                                                    .getBlockFrameClassName(className));
                 //fast add to fast switch
-                List<Stmt> fastSS = transCodes.first();
+                List<Stmt> fastSS = transCodes.getFastStmts();
                 if(containsBreak) {
                     fastSS.add(xnf.Break(lastStmt.position()));
                 }
                 fastSwitchElements.add(xnf.SwitchBlock(sb.position(), fastSS));
-                
-                //slow add to slow
-                resumeSwitchSynth.insertStatementsInCondition(pcValue, transCodes.second());
+
                 //now change the pc
-                pcValue = transCodes.getPcValue(); //should increase one;
+                pcValue = transCodes.pcValue(); //should increase one;
+                //slow add to slow
+                resumeSwitchSynth.insertStatementsInCondition(pcValue, transCodes.getResumeStmts());
+
                 
                 //the second part of the slow
                 if(containsBreak){
@@ -173,20 +174,5 @@ public class WSSwitchClassGen extends WSRegularFrameClassGen {
         
         //finally the back
         backBodySynth.addStmt(backSwitchSynth);
-        
-        //need final process closure issues
-        fastBodySynth.addCodeProcessingJob(new ClosureDefReinstantiator(xts, xct,
-                                                                        this.getClassDef(),
-                                                                        fastMSynth.getDef()));
-        
-        resumeBodySynth.addCodeProcessingJob(new ClosureDefReinstantiator(xts, xct,
-                                                                        this.getClassDef(),
-                                                                        resumeMSynth.getDef()));
-        //add all references
-
-        fastBodySynth.addCodeProcessingJob(new AddIndirectLocalDeclareVisitor(xnf, this.getRefToDeclMap()));
-        resumeBodySynth.addCodeProcessingJob(new AddIndirectLocalDeclareVisitor(xnf, this.getRefToDeclMap()));    
-        backBodySynth.addCodeProcessingJob(new AddIndirectLocalDeclareVisitor(xnf, this.getRefToDeclMap()));
-
     }
 }

@@ -340,9 +340,9 @@ public class MethodInstance_c extends FunctionInstance_c<MethodDef> implements M
                 String s = "";
                 String t = formalTypes.get(i).toString();
                 if (formalNames != null && i < formalNames.size()) {
-                    LocalInstance a = formalNames.get(i);
-                    if (a != null && ! a.name().toString().equals(""))
-                        s = a.name() + ": " + t; 
+                    X10LocalInstance a = (X10LocalInstance) formalNames.get(i);
+                    if (a != null && ! a.x10Def().isUnnamed())
+                        s = a.name() + ": " + t;
                     else
                         s = t;
                 }
@@ -395,6 +395,13 @@ public class MethodInstance_c extends FunctionInstance_c<MethodDef> implements M
 
     Type rightType;
 
+    /**
+     * Iff this is a zero-ary property method invocation, add the clause
+     * self=term to the return type, where term is body if the method def has 
+     * a body, else, term is this.m().
+     * 
+     * Thus the resulting type may have occurrences of this.
+     */
     public Type rightType() {
         TypeSystem xts = (TypeSystem) ts;
 
@@ -423,29 +430,24 @@ public class MethodInstance_c extends FunctionInstance_c<MethodDef> implements M
                         assert receiver != null;
                     }
 
-                    try {
-                        // ### pass in the type rather than letting XField call fi.type();
-                        // otherwise, we'll get called recursively.
-                        XTerm self = body();
+                    // ### pass in the type rather than letting XField call fi.type();
+                    // otherwise, we'll get called recursively.
+                    XTerm self = body();
 
-                        CConstraint c = rc.copy();
+                    CConstraint c = rc.copy();
 
-                        // TODO: handle non-vars, like rail().body
-                        if (self == null || ! (self instanceof XVar)) {
-                            self = xts.xtypeTranslator().translate(receiver, this);
-                        }
-
-                        if (self != null) {
-                            c.addSelfBinding(self);
-                        }
-                        if (! flags.isStatic()) {
-                        	c.setThisVar((XVar) receiver);
-                        }
-                        rightType = Types.xclause(Types.baseType(t), c);
+                    // TODO: handle non-vars, like rail().body
+                    if (self == null || ! (self instanceof XVar)) {
+                        self = xts.xtypeTranslator().translate(receiver, this);
                     }
-                    catch (XFailure f) {
-                        throw new InternalCompilerError("Could not add self binding: " + f.getMessage(), f);
+
+                    if (self != null) {
+                        c.addSelfBinding(self);
                     }
+                    if (! flags.isStatic()) {
+                        c.setThisVar((XVar) receiver);
+                    }
+                    rightType = Types.xclause(Types.baseType(t), c);
                 }
             }
             else {
@@ -476,6 +478,7 @@ public class MethodInstance_c extends FunctionInstance_c<MethodDef> implements M
     return ts.canOverride((MethodInstance) this, mj, context);
     }
 
+    // nobody calls this.
     public final void checkOverride(MethodInstance mj, Context context) throws SemanticException {
     ts.checkOverride((MethodInstance) this, mj, context);
     }

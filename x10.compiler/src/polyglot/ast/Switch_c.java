@@ -13,6 +13,7 @@ import java.util.*;
 import polyglot.types.*;
 import polyglot.util.*;
 import polyglot.visit.*;
+import x10.errors.Errors;
 import x10.util.CollectionFactory;
 
 /**
@@ -83,19 +84,35 @@ public class Switch_c extends Stmt_c implements Switch
     }
 
     /** Type check the statement. */
-    public Node typeCheck(ContextVisitor tc) throws SemanticException {
+    public Node typeCheckOverride(Node parent, ContextVisitor tc) {
         TypeSystem ts = tc.typeSystem();
-	Context context = tc.context();
+        Context c = parent.enterChildScope(this, tc.context());
 
-	if (! ts.isImplicitCastValid(expr.type(), ts.Int(), context) && ! ts.isImplicitCastValid(expr.type(), ts.Char(), context)) {
-            throw new SemanticException("Switch index must be an integer.", position());
+        ContextVisitor childtc = c == tc.context() ? tc : tc.context(c);
+
+        Expr expr = (Expr) visitChild(this.expr, childtc);
+
+        Type t = expr.type();
+        if (!ts.isIntOrLess(t) && !ts.isUInt(t) && !ts.isChar(t)) {
+            Errors.issue(tc.job(),
+                    new SemanticException("Switch index must be a char or a (signed or unsigned) byte, short, or int, not "+t+".", position()));
         }
-        
-        return this;
+
+        Context bodyc = c.pushSwitchType(Types.baseType(t));
+
+        List<SwitchElement> elements = visitList(this.elements, childtc.context(bodyc));
+        Switch_c n = reconstruct(expr, elements);
+
+        n = (Switch_c) tc.leave(parent, this, n, childtc);
+
+        return n;
     }
 
-    public Node checkConstants(ContextVisitor tc) throws SemanticException {
+    public Node checkConstants(ContextVisitor tc) {
         Collection<Object> labels = CollectionFactory.newHashSet();
+
+        List<SwitchElement> newBody = new ArrayList<SwitchElement>();
+        boolean changed = false;
 
         // Check for duplicate labels.
         for (Iterator<SwitchElement> i = elements.iterator(); i.hasNext();) {
@@ -115,28 +132,27 @@ public class Switch_c extends Stmt_c implements Switch
                     str = c.expr().toString() + " (" + c.value() + ")";
                 }
                 else {
+                    newBody.add(s);
                     continue;
                 }
                 
                 if (labels.contains(key)) {
-                    throw new SemanticException("Duplicate case label: " +str + ".", c.position());
+                    Errors.issue(tc.job(),
+                            new SemanticException("Duplicate case label: " +str + ".", c.position()),
+                            this);
+                    changed = true;
+                } else {
+                    newBody.add(s);
+                    labels.add(key);
                 }
-                
-                labels.add(key);
             }
         }
         
-        return this;
-    }
-
-    public Type childExpectedType(Expr child, AscriptionVisitor av) {
-        TypeSystem ts = av.typeSystem();
-
-        if (child == expr) {
-            return ts.Int();
+        Switch n = this;
+        if (changed) {
+            n = n.elements(newBody);
         }
-
-        return child.type();
+        return n;
     }
 
     public String toString() {

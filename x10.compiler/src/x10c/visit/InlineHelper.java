@@ -132,7 +132,7 @@ public class InlineHelper extends ContextVisitor {
         Position pos = Position.COMPILER_GENERATED;
         if (n instanceof ClassDecl) {
             ClassDecl d = (ClassDecl) n;
-            final ClassDef cd = d.classDef();
+            final X10ClassDef cd = d.classDef();
             if (prepareForInlining(cd)) {
                 List<ClassMember> members = d.body().members();
                 List<ClassMember> nmembers = new ArrayList<ClassMember>(members.size());
@@ -157,13 +157,7 @@ public class InlineHelper extends ContextVisitor {
                                         if (n instanceof Call && ((Call)n).target() instanceof Special) {
                                             if (((Special)((Call)n).target()).kind().equals(Special.SUPER)) {
                                                 Call call = (Call) n;
-                                                boolean isContain = false;
-                                                for (Call c : supers) {
-                                                    if (c.methodInstance().signature().equals(call.methodInstance().signature())) {
-                                                        isContain = true;
-                                                    }
-                                                }
-                                                if (!isContain) {
+                                                if (!containsMethod(supers, call)) {
                                                     supers.add(call);
                                                 }
                                             }
@@ -171,13 +165,7 @@ public class InlineHelper extends ContextVisitor {
                                         if (parent instanceof Call && n instanceof Special) {
                                             if (((Special) n).kind().equals(Special.SUPER)) {
                                                 Call call = (Call) parent;
-                                                boolean isContain = false;
-                                                for (Call c : supers) {
-                                                    if (c.methodInstance().signature().equals(call.methodInstance().signature())) {
-                                                        isContain = true;
-                                                    }
-                                                }
-                                                if (!isContain) {
+                                                if (!containsMethod(supers, call)) {
                                                     supers.add(call);
                                                 }
                                             }
@@ -196,8 +184,9 @@ public class InlineHelper extends ContextVisitor {
                         List<Formal> formals = new ArrayList<Formal>(mdcl.formals());
                         Type ct = cd.asType();
                         ct = Types.instantiateTypeParametersExplicitly(ct);
-                        LocalDef ldef = xts.localDef(pos, Flags.FINAL, Types.ref(ct), cd.name());
+                        LocalDef ldef = null;
                         if (!mdcl.flags().flags().isStatic()) {
+                            ldef = xts.localDef(pos, Flags.FINAL, Types.ref(ct), cd.name());
                             formals.add(xnf.Formal(pos, xnf.FlagsNode(pos, Flags.FINAL), xnf.X10CanonicalTypeNode(pos, ct), xnf.Id(pos, cd.name())).localDef(ldef));
                         }
                         
@@ -377,7 +366,7 @@ public class InlineHelper extends ContextVisitor {
     }
 
     private Name makeSuperBridgeName(final ClassDef cd, Id name) {
-        return Name.make(cd.asType().fullName().toString().replace(".", "$") + "$" + Emitter.mangleToJava(name.id()) + BRIDGE_TO_SUPER_SUFFIX);
+        return Name.make(Emitter.mangleAndFlattenQName(cd.asType().fullName()) + "$" + Emitter.mangleToJava(name.id()) + BRIDGE_TO_SUPER_SUFFIX);
     }
 
     private Name makePrivateBridgeName(Id name) {
@@ -433,6 +422,15 @@ public class InlineHelper extends ContextVisitor {
     private boolean prepareForInlining(X10MethodDef xmd) {
         return true;
 //        return !xmd.annotationsMatching(InlineType).isEmpty();
+    }
+
+    private boolean containsMethod(final List<Call> calls, Call call) {
+        for (Call c : calls) {
+            if (c.methodInstance().isSameMethod(call.methodInstance(), context)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

@@ -14,6 +14,7 @@
 
 #include <x10/io/InputStreamReader__InputStream.h>
 #include <x10aux/io/FILEPtrInputStream.h>
+#include <x10/util/IndexedMemoryChunk.h>
 
 namespace x10 {
 
@@ -27,8 +28,13 @@ namespace x10 {
             RTT_H_DECLS_CLASS;
 
             FileReader__FileInputStream(FILE *f) : _inputStream(f) { } 
+            FileReader__FileInputStream() : _inputStream(NULL) { } 
 
             static x10aux::ref<FileReader__FileInputStream> _make(x10aux::ref<x10::lang::String> name);
+
+            void _constructor (x10aux::ref<x10::lang::String> file);
+            void _constructor (FILE* file);
+            void _constructor ();
 
             virtual char * gets(char *buf, int sz) {
                 return _inputStream.gets(buf,sz);
@@ -42,11 +48,9 @@ namespace x10 {
                 return _inputStream.read();
             }
 
-            virtual x10_int read(x10aux::ref<x10::lang::Rail<x10_byte> > b,
+            virtual x10_int read(x10::util::IndexedMemoryChunk<x10_byte> b,
                                  x10_int off,
-                                 x10_int len) {
-                return _inputStream.read(b, off, len);
-            }
+                                 x10_int len);
 
             virtual void skip(x10_int bytes) {
                 return _inputStream.skip(bytes);
@@ -58,21 +62,9 @@ namespace x10 {
                 return _serialization_id;
             }
             virtual void _serialize_body(x10aux::serialization_buffer& buf);
-            template<class __T> static x10aux::ref<__T> _deserializer(x10aux::deserialization_buffer& buf);
+            static x10aux::ref<x10::lang::Reference> _deserializer(x10aux::deserialization_buffer& buf);
             void _deserialize_body(x10aux::deserialization_buffer& buf);
-            // No specialized serialization methods - not optimizing this final class
         };
-
-        template<class __T> x10aux::ref<__T> FileReader__FileInputStream::_deserializer(x10aux::deserialization_buffer& buf) {
-            // TODO: attempting to serialize _outputStream is nonsensical.
-            //       The old 1.7 definition of this class simply didn't work either,
-            //       it just silently didn't serialize the FILEPtrInputSteam field.
-            // assert(false);
-            x10aux::ref<FileReader__FileInputStream> this_ = new (x10aux::alloc<FileReader__FileInputStream>()) FileReader__FileInputStream(NULL);
-            buf.record_reference(this_);
-            this_->_deserialize_body(buf);
-            return this_;
-        }
     }
 }
 

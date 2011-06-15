@@ -14,9 +14,14 @@ package x10.lang;
 import x10.compiler.*;
 
 import x10.util.HashMap;
+import x10.util.IndexedMemoryChunk;
 import x10.util.Pair;
 import x10.util.Stack;
+
 import x10.util.concurrent.AtomicInteger;
+import x10.util.concurrent.Lock;
+import x10.util.concurrent.SimpleLatch;
+
 import x10.io.CustomSerialization;
 import x10.io.SerialData;
 
@@ -51,7 +56,7 @@ abstract class FinishState {
         }
         public def waitForFinish() {
             notifyActivityTermination();
-            if (!Runtime.NO_STEALS) Runtime.worker().join(latch);
+            if (!Runtime.STRICT_FINISH) Runtime.worker().join(latch);
             latch.await();
             val t = MultipleExceptions.make(exceptions);
             if (null != t) throw t;
@@ -95,7 +100,7 @@ abstract class FinishState {
         }
         public def waitForFinish() {
             notifyActivityTermination();
-            if (!Runtime.NO_STEALS) Runtime.worker().join(latch);
+            if (!Runtime.STRICT_FINISH) Runtime.worker().join(latch);
             latch.await();
             val t = MultipleExceptions.make(exceptions);
             if (null != t) throw t;
@@ -171,7 +176,7 @@ abstract class FinishState {
             exception = t;
         }
         public def waitForFinish():void {
-            if (!Runtime.NO_STEALS) Runtime.worker().join(latch);
+            if (!Runtime.STRICT_FINISH) Runtime.worker().join(latch);
             latch.await();
             val t = MultipleExceptions.make(exception);
             if (null != t) throw t;
@@ -326,7 +331,7 @@ abstract class FinishState {
                 me = (ref as GlobalRef[FinishState]{home==here})();
             } else {
                 val _ref = ref;
-                me = Runtime.runtime().finishStates(ref, ()=>new RemoteFinish(_ref));
+                me = Runtime.finishStates(ref, ()=>new RemoteFinish(_ref));
             }
         }
     }
@@ -335,8 +340,8 @@ abstract class FinishState {
         @Embed protected transient var latch:SimpleLatch;
         protected var count:Int = 1;
         protected var exceptions:Stack[Throwable]; // lazily initialized
-        protected var counts:Rail[Int];
-        protected var seen:Rail[Boolean];
+        protected var counts:IndexedMemoryChunk[Int];
+        protected var seen:IndexedMemoryChunk[Boolean];
         def this() {
             latch = @Embed new SimpleLatch();
         }
@@ -351,9 +356,9 @@ abstract class FinishState {
                 latch.unlock();
                 return;
             }
-            if (null == counts) {
-                counts = Rail.make[Int](Place.MAX_PLACES, 0);
-                seen = Rail.make[Boolean](Place.MAX_PLACES, false);
+            if (counts.length() == 0) {
+                counts = IndexedMemoryChunk.allocateZeroed[Int](Place.MAX_PLACES);
+                seen = IndexedMemoryChunk.allocateZeroed[Boolean](Place.MAX_PLACES);
             }
             counts(p.id)++;
             latch.unlock();
@@ -364,7 +369,7 @@ abstract class FinishState {
                 latch.unlock();
                 return;
             }
-            if (null != counts) {
+            if (counts.length() != 0) {
                 for(var i:Int=0; i<Place.MAX_PLACES; i++) {
                     if (counts(i) != 0) {
                         latch.unlock();
@@ -386,11 +391,11 @@ abstract class FinishState {
         }
         public def waitForFinish():void {
             notifyActivityTermination();
-            if (!Runtime.NO_STEALS) Runtime.worker().join(latch);
+            if (!Runtime.STRICT_FINISH) Runtime.worker().join(latch);
             latch.await();
-            if (null != counts) {
+            if (counts.length() != 0) {
                 val root = ref();
-                val closure = ()=>@RemoteInvocation { Runtime.runtime().finishStates.remove(root); };
+                val closure = ()=>@RemoteInvocation { Runtime.finishStates.remove(root); };
                 seen(Runtime.hereInt()) = false;
                 for(var i:Int=0; i<Place.MAX_PLACES; i++) {
                     if (seen(i)) Runtime.runClosureAt(i, closure);
@@ -401,7 +406,7 @@ abstract class FinishState {
             if (null != t) throw t;
         }
 
-        protected def process(rail:Rail[Int]) {
+        protected def process(rail:IndexedMemoryChunk[Int]) {
             counts(ref().home.id) = -rail(ref().home.id);
             count += rail(ref().home.id);
             var b:Boolean = count == 0;
@@ -413,14 +418,14 @@ abstract class FinishState {
             if (b) latch.release();
         }
 
-        def notify(rail:Rail[Int]):void {
+        def notify(rail:IndexedMemoryChunk[Int]):void {
             latch.lock();
             process(rail);
             latch.unlock();
         }
 
-        protected def process(rail:Rail[Pair[Int,Int]]):void {
-            for(var i:Int=0; i<rail.length; i++) {
+        protected def process(rail:IndexedMemoryChunk[Pair[Int,Int]]):void {
+            for(var i:Int=0; i<rail.length(); i++) {
                 counts(rail(i).first) += rail(i).second;
                 seen(rail(i).first) = true;
             }
@@ -433,20 +438,20 @@ abstract class FinishState {
             latch.release();
         }
 
-        def notify(rail:Rail[Pair[Int,Int]]):void {
+        def notify(rail:IndexedMemoryChunk[Pair[Int,Int]]):void {
             latch.lock();
             process(rail);
             latch.unlock();
         }
 
-        def notify(rail:Rail[Int], t:Throwable):void {
+        def notify(rail:IndexedMemoryChunk[Int], t:Throwable):void {
             latch.lock();
             process(t);
             process(rail);
             latch.unlock();
         }
 
-        def notify(rail:Rail[Pair[Int,Int]], t:Throwable):void {
+        def notify(rail:IndexedMemoryChunk[Pair[Int,Int]], t:Throwable):void {
             latch.lock();
             process(t);
             process(rail);
@@ -460,8 +465,8 @@ abstract class FinishState {
         protected var exceptions:Stack[Throwable];
         @Embed protected transient var lock:Lock = @Embed new Lock();
         protected var count:Int = 0;
-        protected var counts:Rail[Int];
-        protected var places:Rail[Int];
+        protected var counts:IndexedMemoryChunk[Int];
+        protected var places:IndexedMemoryChunk[Int];
         protected var length:Int = 1;
         @Embed protected val local = @Embed new AtomicInteger(0);
         def this(ref:GlobalRef[FinishState]) {
@@ -478,12 +483,14 @@ abstract class FinishState {
                 lock.unlock();
                 return;
             }
-            if (null == counts) {
-                counts = Rail.make[Int](Place.MAX_PLACES, 0);
-                places = Rail.make[Int](Place.MAX_PLACES, 0);
+            if (counts.length() == 0) {
+                counts = IndexedMemoryChunk.allocateZeroed[Int](Place.MAX_PLACES);
+                places = IndexedMemoryChunk.allocateZeroed[Int](Place.MAX_PLACES);
                 places(0) = id;
             }
-            if (counts(place.id)++ == 0 && id != place.id) {
+            val old = counts(place.id);
+            counts(place.id)++;
+            if (old == 0 && id != place.id) {
                 places(length++) = place.id;
             }
             lock.unlock();
@@ -504,27 +511,32 @@ abstract class FinishState {
             val t = MultipleExceptions.make(exceptions);
             val ref = this.ref();
             val closure:()=>void;
-            if (null != counts) {
+            if (counts.length() != 0) {
                 counts(Runtime.hereInt()) = count;
                 if (2*length > Place.MAX_PLACES) {
-                    val message = Rail.make[Int](counts.length, 0, counts);
+                    val message = IndexedMemoryChunk.allocateUninitialized[Int](counts.length());
+                    IndexedMemoryChunk.copy(counts, 0, message, 0, counts.length());
                     if (null != t) {
                         closure = ()=>@RemoteInvocation { deref[RootFinish](ref).notify(message, t); };
                     } else {
                         closure = ()=>@RemoteInvocation { deref[RootFinish](ref).notify(message); };
                     }
                 } else {
-                    val message = Rail.make[Pair[Int,Int]](length, (i:Int)=>Pair[Int,Int](places(i), counts(places(i))));
+                    val message = IndexedMemoryChunk.allocateUninitialized[Pair[Int,Int]](length);
+                    for (i in 0..(length-1)) {
+                        message(i) = Pair[Int,Int](places(i), counts(places(i)));
+                    }
                     if (null != t) {
                         closure = ()=>@RemoteInvocation { deref[RootFinish](ref).notify(message, t); };
                     } else {
                         closure = ()=>@RemoteInvocation { deref[RootFinish](ref).notify(message); };
                     }
                 }
-                counts.reset(0);
+                counts.clear(0, counts.length());
                 length = 1;
             } else {
-                val message = Rail.make[Pair[Int,Int]](1, Pair[Int,Int](Runtime.hereInt(), count));
+                val message = IndexedMemoryChunk.allocateUninitialized[Pair[Int,Int]](1);
+                message(0) = Pair[Int,Int](Runtime.hereInt(), count);
                 if (null != t) {
                     closure = ()=>@RemoteInvocation { deref[RootFinish](ref).notify(message, t); };
                 } else {
@@ -542,25 +554,28 @@ abstract class FinishState {
     static class StatefulReducer[T] {
         val reducer:Reducible[T];
         var result:T;
-        var resultRail:Rail[T];
-        var workerFlag:Rail[Boolean] = Rail.make[Boolean](Runtime.MAX_WORKERS, false);
+        var resultRail:IndexedMemoryChunk[T];
+        var workerFlag:IndexedMemoryChunk[Boolean] = IndexedMemoryChunk.allocateZeroed[Boolean](Runtime.MAX_THREADS);
         def this(r:Reducible[T]) {
             reducer = r;
             val zero = reducer.zero();
             result = zero;
-            resultRail = Rail.make[T](Runtime.MAX_WORKERS, zero);
+            resultRail = IndexedMemoryChunk.allocateUninitialized[T](Runtime.MAX_THREADS);
+            for (i in 0..(resultRail.length()-1)) {
+                resultRail(i) = zero;
+            }
         }
         def accept(t:T) {
             result = reducer(result, t);
         }
         def accept(t:T, id:Int) {
-            if ((id >= 0) && (id < Runtime.MAX_WORKERS)) {
+            if ((id >= 0) && (id < Runtime.MAX_THREADS)) {
                 resultRail(id) = reducer(resultRail(id), t);
                 workerFlag(id) = true;
             }
         }
         def placeMerge() {
-            for(var i:Int=0; i<Runtime.MAX_WORKERS; i++) {
+            for(var i:Int=0; i<Runtime.MAX_THREADS; i++) {
                 if (workerFlag(i)) {
                     result = reducer(result, resultRail(i));
                     resultRail(i) = reducer.zero();
@@ -591,12 +606,12 @@ abstract class FinishState {
                 me = (ref as GlobalRef[FinishState]{home==here})();
             } else {
                 val _ref = ref;
-                me = Runtime.runtime().finishStates(ref, ()=>new RemoteCollectingFinish[T](_ref, tmpReducer));
+                me = Runtime.finishStates(ref, ()=>new RemoteCollectingFinish[T](_ref, tmpReducer));
             }
         }
         public def serialize():SerialData = new SerialData(reducer, super.serialize());
-        public def accept(t:T, id:Int) { (me as CollectingFinishState[T]).accept(t, id); }
-        public def waitForFinishExpr() = (me as RootCollectingFinish[T]).waitForFinishExpr();
+        public def accept(t:T, id:Int) { (me as CollectingFinishState[T]).accept(t, id); }   // Warning: This is an unsound cast because X10 currently does not perform constraint solving at runtime for generic parameters.
+        public def waitForFinishExpr() = (me as RootCollectingFinish[T]).waitForFinishExpr();// Warning: This is an unsound cast because X10 currently does not perform constraint solving at runtime for generic parameters.
     }
 
     static class RootCollectingFinish[T] extends RootFinish implements CollectingFinishState[T] {
@@ -608,13 +623,13 @@ abstract class FinishState {
         public def accept(t:T, id:Int) {
            sr.accept(t, id);
         }
-        def notifyValue(rail:Rail[Int], v:T):void {
+        def notifyValue(rail:IndexedMemoryChunk[Int], v:T):void {
             latch.lock();
             sr.accept(v);
             process(rail);
             latch.unlock();
         }
-        def notifyValue(rail:Rail[Pair[Int,Int]], v:T):void {
+        def notifyValue(rail:IndexedMemoryChunk[Pair[Int,Int]], v:T):void {
             latch.lock();
             sr.accept(v);
             process(rail);
@@ -651,27 +666,32 @@ abstract class FinishState {
             sr.placeMerge();
             val result = sr.result();
             sr.reset();
-            if (null != counts) {
+            if (counts.length() != 0) {
                 counts(Runtime.hereInt()) = count;
                 if (2*length > Place.MAX_PLACES) {
-                    val message = Rail.make[Int](counts.length, 0, counts);
+                    val message = IndexedMemoryChunk.allocateUninitialized[Int](counts.length());
+                    IndexedMemoryChunk.copy(counts, 0, message, 0, counts.length());
                     if (null != t) {
                         closure = ()=>@RemoteInvocation { deref[RootCollectingFinish[T]](ref).notify(message, t); };
                     } else {
                         closure = ()=>@RemoteInvocation { deref[RootCollectingFinish[T]](ref).notifyValue(message, result); };
                     }
                 } else {
-                    val message = Rail.make[Pair[Int,Int]](length, (i:Int)=>Pair[Int,Int](places(i), counts(places(i))));
+                    val message = IndexedMemoryChunk.allocateUninitialized[Pair[Int,Int]](length);
+                    for (i in 0..(length-1)) {
+                        message(i) = Pair[Int,Int](places(i), counts(places(i)));
+                    }
                     if (null != t) {
                         closure = ()=>@RemoteInvocation { deref[RootCollectingFinish[T]](ref).notify(message, t); };
                     } else {
                         closure = ()=>@RemoteInvocation { deref[RootCollectingFinish[T]](ref).notifyValue(message, result); };
                     }
                 }
-                counts.reset(0);
+                counts.clear(0, counts.length());
                 length = 1;
             } else {
-                val message = Rail.make[Pair[Int,Int]](1, Pair[Int,Int](Runtime.hereInt(), count));
+                val message = IndexedMemoryChunk.allocateUninitialized[Pair[Int,Int]](1);
+                message(0) = Pair[Int,Int](Runtime.hereInt(), count);
                 if (null != t) {
                     closure = ()=>@RemoteInvocation { deref[RootCollectingFinish[T]](ref).notify(message, t); };
                 } else {

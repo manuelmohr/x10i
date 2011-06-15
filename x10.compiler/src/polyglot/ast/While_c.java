@@ -77,17 +77,7 @@ public abstract class While_c extends Loop_c implements While
     }
 
     /** Type check the statement. */
-    public abstract Node typeCheck(ContextVisitor tc) throws SemanticException;
-
-    public Type childExpectedType(Expr child, AscriptionVisitor av) {
-        TypeSystem ts = av.typeSystem();
-
-        if (child == cond) {
-            return ts.Boolean();
-        }
-
-        return child.type();
-    }
+    public abstract Node typeCheck(ContextVisitor tc);
 
     public String toString() {
 	return "while (" + cond + ") ...";
