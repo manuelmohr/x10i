@@ -451,6 +451,11 @@ public class FirmTypeSystem {
 			/* the only thing left without a superclass should be x10.lang.Object */
 			assert classType.toString().equals("x10.lang.Object");
 			getVptrEntity().setOwner(result);
+
+			/* As of X10 2.2.0 (r21666) the "implements Any" is implicit.
+			 * Make it explicit here. */
+			final Type any = asFirmCoreType(x10TypeSystem.Any());
+			result.addSuperType(any);
 		}
 
 		/* create interfaces */
