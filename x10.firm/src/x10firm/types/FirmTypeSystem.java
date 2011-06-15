@@ -451,17 +451,19 @@ public class FirmTypeSystem {
 			/* the only thing left without a superclass should be x10.lang.Object */
 			assert classType.toString().equals("x10.lang.Object");
 			getVptrEntity().setOwner(result);
-
-			/* As of X10 2.2.0 (r21666) the "implements Any" is implicit.
-			 * Make it explicit here. */
-			final Type any = asFirmCoreType(x10TypeSystem.Any());
-			result.addSuperType(any);
 		}
 
 		/* create interfaces */
 		for (polyglot.types.Type iface : classType.interfaces()) {
 			Type firmIface = asFirmCoreType(iface);
 			result.addSuperType(firmIface);
+		}
+
+		final X10ClassType ast_any = x10TypeSystem.Any();
+		if (noSuperType(result) && classType != ast_any) {
+			/* Every X10 type implements Any */
+			final Type firm_any = asFirmCoreType(ast_any);
+			result.addSuperType(firm_any);
 		}
 
 		/* create fields */
@@ -494,6 +496,10 @@ public class FirmTypeSystem {
 		// Layouting of classes must be done explicitly by finishTypes
 
 		return result;
+	}
+
+	private boolean noSuperType(ClassType result) {
+		return result.getNSuperTypes() == 0;
 	}
 
 	/**
