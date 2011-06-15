@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -441,7 +442,6 @@ public class FirmTypeSystem {
 			Type firmSuperType = asFirmCoreType(superType);
 			result.addSuperType(firmSuperType);
 			new Entity(result, "$super", firmSuperType);
-
 		} else if (flags.isStruct() || classType.isAnonymous()) {
 			/* no superclass */
 		} else if(flags.isInterface()) {
@@ -454,7 +454,9 @@ public class FirmTypeSystem {
 		}
 
 		/* create interfaces */
-		for (polyglot.types.Type iface : classType.interfaces()) {
+		Set<polyglot.types.Type> interfaces = new LinkedHashSet<polyglot.types.Type>(classType.interfaces());
+		for (polyglot.types.Type iface : interfaces) {
+			assert ((polyglot.types.ClassType)iface).flags().isInterface() : "Not an interface: "+iface;
 			Type firmIface = asFirmCoreType(iface);
 			result.addSuperType(firmIface);
 		}
