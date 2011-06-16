@@ -141,7 +141,7 @@
         <ant antfile="${x10.doc.location}/build.xml" target="clean" inheritAll="false" dir="${x10.doc.location}"/>
     </target>
 
-    <target name="squeakyclean" depends="clean-java,clean-cpp,clean-bridge,clean-x10doc"/>
+    <target name="squeakyclean" depends="clean-java,clean-cpp,clean-bridge"/>
 
     <target name="distclean" depends="squeakyclean">
         <delete dir="${lib}" failonerror="false"/>
