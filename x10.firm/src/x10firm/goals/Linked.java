@@ -1,6 +1,7 @@
 package x10firm.goals;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import polyglot.frontend.Compiler;
 import polyglot.frontend.ExtensionInfo;
@@ -37,17 +38,19 @@ public class Linked extends PostCompiled {
 		                          ? x10DistPath + "/../liboo/build"
 		                          : "../liboo/build";
 
-		final String[] cmd = {
-				"gcc",
-				"-std=c99",
-				asmFilename,
-				stdlibPath + "/libx10std.a",
-				"-lm",
-				"-L" + libooPath,
-				"-Wl,-R" + libooPath,
-				"-loo_rt",
-				"-o", exeFilename
-		};
+		final List<String> cmd = new ArrayList<String>();
+		cmd.add("gcc");
+		cmd.add("-std=c99");
+		cmd.add(asmFilename);
+		cmd.add(stdlibPath + "/libx10std.a");
+		if (opts.x10_config.DEBUG)
+			cmd.add("-g");
+		cmd.add("-lm");
+		cmd.add("-L" + libooPath);
+		cmd.add("-Wl,-R" + libooPath);
+		cmd.add("-loo_rt");
+		cmd.add("-o");
+		cmd.add(exeFilename);
 
 		// C++ backend decides according to options, whether to delete the
 		// output files.
@@ -55,7 +58,7 @@ public class Linked extends PostCompiled {
 		outputFiles.add(asmFilename);
 
 		// Reuse the C++ backend.
-		if (!X10CPPTranslator.doPostCompile(options, eq, outputFiles, cmd)) {
+		if (!X10CPPTranslator.doPostCompile(options, eq, outputFiles, cmd.toArray(new String[0]))) {
 			eq.enqueue(ErrorInfo.POST_COMPILER_ERROR, "linking failed");
 			return false;
 		}
