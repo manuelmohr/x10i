@@ -11,11 +11,13 @@
 	<property name="liboo.location" value="${x10.home}/liboo"/>
 	<property name="x10.compiler.location" value="${x10.home}/x10.compiler"/>
 	<property name="x10.constraints.location" value="${x10.home}/x10.constraints"/>
+	<property name="x10.common.location" value="${x10.home}/x10.common"/>
 	<path id="project.classpath">
 		<path refid="jfirm.classpath"/>
 		<path refid="liboo.classpath"/>
 		<path refid="x10.constraints.classpath"/>
 		<path refid="x10.compiler.classpath"/>
+		<path refid="x10.common.classpath"/>
 	</path>
 	<path id="jfirm.classpath">
 		<pathelement location="${jfirm.location}/classes"/>
@@ -30,6 +32,9 @@
 	</path>
 	<path id="x10.compiler.classpath">
 		<pathelement location="${x10.compiler.location}/classes"/>
+	</path>
+	<path id="x10.common.classpath">
+		<pathelement location="${x10.common.location}/classes"/>
 	</path>
 
 	<target name="init">
