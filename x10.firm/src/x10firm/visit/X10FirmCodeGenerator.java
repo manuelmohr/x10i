@@ -200,7 +200,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	private void evaluateCondition(final Expr e, final Block trueBlock, final Block falseBlock) {
 		ConditionEvaluationCodeGenerator codegen
-			= new ConditionEvaluationCodeGenerator(trueBlock, falseBlock, this);
+			= new ConditionEvaluationCodeGenerator(trueBlock, falseBlock, this, x10TypeSystem);
 		codegen.visitAppropriate(e);
 	}
 
@@ -2392,7 +2392,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param expr The expression which should be boxed
 	 * @return A
 	 */
-	private Node genAutoboxing(final X10ClassType fromType, final Expr expr) {
+	public Node genAutoboxing(final X10ClassType fromType, final Expr expr) {
 		final X10ClassType boxType = firmTypeSystem.getBoxingType(fromType);
 
 		if(!initedBoxingTypes.contains(boxType)) {

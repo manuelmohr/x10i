@@ -6,9 +6,12 @@ import polyglot.ast.BooleanLit_c;
 import polyglot.ast.Expr;
 import polyglot.ast.Expr_c;
 import polyglot.types.Type;
+import polyglot.types.Types;
 import x10.ast.X10Binary_c;
 import x10.ast.X10Instanceof_c;
+import x10.types.X10ClassType;
 import x10.visit.X10DelegatingVisitor;
+import x10firm.types.GenericTypeSystem;
 import firm.Mode;
 import firm.Relation;
 import firm.nodes.Block;
@@ -27,15 +30,17 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	private Block falseBlock;
 	private OOConstruction con;
 	private X10FirmCodeGenerator codeGenerator;
+	private final GenericTypeSystem typeSystem;
 
 	/**
 	 * Creates a new code generator
 	 */
-	public ConditionEvaluationCodeGenerator(Block trueBlock, Block falseBlock, X10FirmCodeGenerator codeGenerator) {
+	public ConditionEvaluationCodeGenerator(Block trueBlock, Block falseBlock, X10FirmCodeGenerator codeGenerator, GenericTypeSystem typeSystem) {
 		this.trueBlock = trueBlock;
 		this.falseBlock = falseBlock;
 		this.codeGenerator = codeGenerator;
 		this.con = codeGenerator.getFirmConstruction();
+		this.typeSystem = typeSystem;
 	}
 
 	/**
@@ -68,11 +73,11 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 
 		if (op == Binary.COND_AND) {
 			ConditionEvaluationCodeGenerator subGenerator
-				= new ConditionEvaluationCodeGenerator(middleBlock, falseBlock, codeGenerator);
+				= new ConditionEvaluationCodeGenerator(middleBlock, falseBlock, codeGenerator, typeSystem);
 			subGenerator.visitAppropriate(binop.left());
 		} else if (op == Binary.COND_OR) {
 			ConditionEvaluationCodeGenerator subGenerator
-				= new ConditionEvaluationCodeGenerator(trueBlock, middleBlock, codeGenerator);
+				= new ConditionEvaluationCodeGenerator(trueBlock, middleBlock, codeGenerator, typeSystem);
 			subGenerator.visitAppropriate(binop.left());
 		} else {
 			/* all the other binary ops like the relational and other ops should
@@ -106,7 +111,16 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(X10Instanceof_c n) {
-		final Node objPtr = codeGenerator.visitExpression(n.expr());
+		final Type exprType = n.expr().type();
+		Node objPtr;
+
+		if (typeSystem.isStructType(exprType)) {
+			final X10ClassType ct = (X10ClassType) Types.stripConstraints(exprType);
+			objPtr = codeGenerator.genAutoboxing(ct, n.expr());
+		}
+		else
+			objPtr = codeGenerator.visitExpression(n.expr());
+
 		final Type type = n.compareType().typeRef().get();
 		final firm.Type firmType = codeGenerator.getFirmTypeSystem().asFirmCoreType(type);
 		final Node mem = con.getCurrentMem();
@@ -114,7 +128,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		final Node projM = con.newProj(instanceOf, Mode.getM(), InstanceOf.pnM);
 		con.setCurrentMem(projM);
 		final Node projRes = con.newProj(instanceOf, Mode.getIs(), InstanceOf.pnRes);
-		/* intanceof strangely returns mode_Is at the moment, so we need an additional
+		/* instanceof strangely returns mode_Is at the moment, so we need an additional
 		 * Cmp to get a mode_b out of it */
 		final Node one = con.newConst(Mode.getIs().getOne());
 		final Node cmp = con.newCmp(projRes, one, Relation.Equal);
