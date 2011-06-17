@@ -9,8 +9,8 @@ struct x10_string {
 	x10_char buf[1];
 };
 
-#define X10_STRING_BUF(s) 	((s)->buf)
-#define X10_STRING_CHAR(s,i) 	X10_STRING_BUF((s))[(i)]
+#define X10_STRING_BUF(s)       ((s)->buf)
+#define X10_STRING_CHAR(s,i)    X10_STRING_BUF((s))[(i)]
 
 X10_EXTERN x10_string *x10_string_from_wide_chars(const x10_char *);
 
@@ -20,7 +20,7 @@ X10_EXTERN x10_string *x10_string_literal(size_t, x10_char *);
 // this(String)
 X10_EXTERN x10_string *_ZN3x104lang6StringC1EPN3x104lang6StringE(x10_string *);
 // this()
-X10_EXTERN x10_string *_ZN3x104lang6StringC1Ev(); 
+X10_EXTERN x10_string *_ZN3x104lang6StringC1Ev();
 
 // String methods
 X10_EXTERN x10_boolean _ZN3x104lang6String6equalsEPN3x104lang3AnyE (x10_string *, x10_any *);
