@@ -30,10 +30,8 @@ x10_boolean name(type self, x10_any *other) \
 { \
 \
 	UNUSED(self); \
-	switch (X10_TYPE(other)) { \
-	default: \
-		return false; \
-	}; \
+	UNUSED(other); \
+	return X10_FALSE; \
 }
 
 #define X10_MAKE_HASHCODE(name, type) \

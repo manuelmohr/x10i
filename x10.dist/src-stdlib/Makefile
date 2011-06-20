@@ -16,7 +16,7 @@ ${SO_FILE}: ${O_FILES}
 	gcc -shared -Wl,-soname,lib${LIBNAME}.so -o lib${LIBNAME}.so.${VERSION} ${O_FILES}
 
 %.o: %.c ${H_FILES}
-	gcc $< -O3 -Wall -W -pedantic -std=c99 -c -o $@
+	gcc $< -O3 -fdollars-in-identifiers -Wall -W -pedantic -std=c99 -c -o $@
 
 .PHONY: clean distclean
 clean:

@@ -2227,9 +2227,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final Flags flags = mi.flags();
 		final boolean isStatic = flags.isStatic();
 		final boolean isFinal  = flags.isFinal();
-		final boolean isNative = flags.isNative();
 		final boolean isStruct = x10TypeSystem.isStructType(mi.container());
-		final boolean isStaticBinding = (isStatic || isFinal || isNative || isStruct);
+		final boolean isStaticBinding = (isStatic || isFinal || isStruct);
 		final Entity entity = firmTypeSystem.getMethodEntity(mi);
 
 		final MethodType type = (MethodType) entity.getType();

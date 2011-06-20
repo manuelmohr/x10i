@@ -2,10 +2,11 @@
 #define X10_OBJECT_H_
 
 #include "x10.h"
+#include "x10_string.h"
 
-struct x10_object {
+typedef struct {
 	X10_OBJECT_HEADER
-};
+} x10_object;
 
 // object constructor
 X10_EXTERN void _ZN3x104lang6ObjectC1Ev(x10_object *);

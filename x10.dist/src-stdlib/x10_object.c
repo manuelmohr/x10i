@@ -1,11 +1,12 @@
 #include "x10_object.h"
 
 #include "x10_string.h"
+#include "util.h"
 
 /* Object constructor */
 void _ZN3x104lang6ObjectC1Ev(x10_object *self)
 {
-	(void)self;
+	x10_init_object(self, &OBJECT_VTABLE);
 }
 
 // TODO: Implement me

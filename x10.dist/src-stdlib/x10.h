@@ -11,32 +11,30 @@
 #include <assert.h>
 #include <stdio.h>
 
-#define T_OBJECT   (1)
-#define T_STRING   (2)
-
-// TODO: Vtable etc
 typedef struct {
-  uintptr_t type;
+	uintptr_t dummy;
+} x10_vtable_t;
+
+typedef struct {
+	uintptr_t dummy;
+} x10_classinfo_t;
+
+#define OBJECT_CLASSINFO _ZN3x104lang6ObjectE$
+#define OBJECT_VTABLE    _ZTVN3x104lang6ObjectE
+#define STRING_CLASSINFO _ZN3x104lang6StringE$
+#define STRING_VTABLE    _ZTVN3x104lang6StringE
+extern const x10_vtable_t    OBJECT_VTABLE;
+extern const x10_classinfo_t OBJECT_CLASSINFO;
+extern const x10_vtable_t    STRING_VTABLE;
+extern const x10_classinfo_t STRING_CLASSINFO;
+
+typedef struct {
+	uintptr_t *vptr;
 } x10_object_header;
 
-#define X10_OBJECT_HEADER \
-  x10_object_header head;
-
-#define X10_OBJECT_HEAD(o)      ((x10_object_header *)(o))
-
-#define X10_TYPE(o)     (X10_OBJECT_HEAD(o)->type)
-#define X10_INIT_TYPE(o,t)   X10_TYPE(o) = (t)
-
-// TODO: more to come
-#define X10_INIT_OBJECT(o,t)   X10_INIT_TYPE(o,t)
-
-#define X10_INSTANCE_OF(o,t)    (X10_TYPE(o) == (t))
+#define X10_OBJECT_HEADER x10_object_header head;
 
 typedef void         x10_any;
-
-typedef struct x10_object   x10_object;
-typedef struct x10_string   x10_string;
-typedef struct x10_printer  x10_printer;
 
 typedef int64_t     x10_long;
 typedef uint64_t    x10_ulong;
@@ -54,12 +52,9 @@ typedef double      x10_double;
 #define X10_EXTERN extern
 
 #define X10_OBJECT_CAST(to, what) ((to *)(what))
-
 #define X10_ALLOC_OBJECT(o) (o *)X10_MALLOC(sizeof(o))
 
 #define UNUSED(s) (void)(s)
-
 #define T_(x) L##x
 
 #endif // X10_H
-
