@@ -2,6 +2,7 @@
 #define X10_PRIMITIVE_TYPES_H_
 
 #include "x10_util.h"
+#include "util.h"
 
 #define X10_MAKE_COMPARETO(name, type)	\
 	x10_int name(type self, type other) { return (self == other) ? 0 : (self < other) ? - 1 : 1; }
