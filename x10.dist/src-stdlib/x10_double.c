@@ -61,7 +61,7 @@ x10_string *_ZN3x104lang6Double8toStringEv(x10_double v)
 		swprintf(rest, STRBUF_SIZE + buf - rest, T_("E%d"), e);
 	}
 	return x10_string_from_wide_chars(buf);
-#undef BUF_SIZE
+#undef STRBUF_SIZE
 }
 
 

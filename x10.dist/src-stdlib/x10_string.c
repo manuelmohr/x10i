@@ -1,7 +1,8 @@
 #include "x10_string.h"
 #include "util.h"
 
-static inline x10_int get_str_len(const x10_string *str) {
+static inline x10_int get_str_len(const x10_string *str)
+{
 	return str->len;
 }
 
@@ -9,17 +10,20 @@ static inline x10_int get_str_len(const x10_string *str) {
 	X10_INIT_OBJECT(str, T_STRING); \
 	str->len = (len_);
 
-static inline x10_string* alloc_string(x10_int len) {
+static inline x10_string* alloc_string(x10_int len)
+{
 	return (x10_string *)x10_malloc(sizeof(x10_string) + (((len) + 1) * sizeof(x10_char)));
 }
 
-static inline void check_string_bounds(x10_string *str, x10_int idx) {
+static inline void check_string_bounds(x10_string *str, x10_int idx)
+{
 	if (idx < 0 || (x10_uint)idx > (str->len)) {
 		x10_throw_exception(new_exception("Index Out of Bounds", "Within string bounds check"));
 	}
 }
 
-static x10_string *x10_string_from_wide_buf(const size_t len, const x10_char *wchars) {
+static x10_string *x10_string_from_wide_buf(const size_t len, const x10_char *wchars)
+{
 	x10_string *str = alloc_string(len);
 
 	X10_STRING_INIT(str, len);
@@ -35,7 +39,8 @@ x10_string *x10_string_from_wide_chars(const x10_char *wchars)
 	return x10_string_from_wide_buf(wcslen(wchars), wchars);
 }
 
-x10_string *x10_string_literal(size_t len, x10_char *wchars) {
+x10_string *x10_string_literal(size_t len, x10_char *wchars)
+{
 	return x10_string_from_wide_buf(len, wchars);
 }
 

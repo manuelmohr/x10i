@@ -114,4 +114,3 @@ x10_int x10_hashCode(const unsigned char *k, x10_int length) {
 
     return c;
 }
-
