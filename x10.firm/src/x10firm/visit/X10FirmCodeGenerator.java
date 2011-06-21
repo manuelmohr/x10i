@@ -278,6 +278,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		this.x10Context = new Context(x10TypeSystem);
 
 		X10NameMangler.setup(x10TypeSystem);
+
+		// Always generate the vtable for x10.lang.String.
+		firmTypeSystem.asFirmCoreType(x10TypeSystem.String());
 	}
 
 	/** reset the remembered value of the returned node of an expression */
