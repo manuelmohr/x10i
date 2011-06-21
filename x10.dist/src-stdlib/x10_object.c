@@ -6,7 +6,6 @@
 /* Object constructor */
 void _ZN3x104lang6ObjectC1Ev(x10_object *self)
 {
-	x10_init_object(self, &OBJECT_VTABLE);
 }
 
 // TODO: Implement me
