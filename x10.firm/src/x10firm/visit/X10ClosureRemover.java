@@ -147,7 +147,7 @@ public class X10ClosureRemover extends ContextVisitor {
                     staticInnerClassDef.outer(Types.<X10ClassDef>ref(def));
                     staticInnerClassDef.setPackage(Types.ref(context.package_()));
                     staticInnerClassDef.flags(privateStatic);
-                    staticInnerClassDef.setInterfaces(Collections.<Ref<? extends Type>>singletonList(Types.ref(cld.asType())));
+                    staticInnerClassDef.setInterfaces(cld.classDef().interfaces());
                     staticInnerClassDef.setThisDef(ts.thisDef(pos, Types.ref(staticInnerClassDef.asType())));
 
                     // TODO set method bounds?
