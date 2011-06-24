@@ -153,8 +153,7 @@ public class X10ClosureRemover extends ContextVisitor {
                     // TODO set method bounds?
                     if (context.currentCode().staticContext()) {
                         staticInnerClassDef.setTypeBounds(Types.ref(new TypeConstraint()));
-                    }
-                    else {
+                    } else {
                         for (ParameterType pt :def.typeParameters()) {
                             staticInnerClassDef.addTypeParameter(pt, pt.getVariance());
                         }

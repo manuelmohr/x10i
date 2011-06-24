@@ -17,16 +17,20 @@ import polyglot.types.Def;
 import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
+import polyglot.types.LocalDef;
 import polyglot.types.MemberInstance;
 import polyglot.types.MethodDef;
 import polyglot.types.Name;
 import polyglot.types.Named;
 import polyglot.types.QName;
+import polyglot.types.Ref;
 import polyglot.types.TypeObject;
 import polyglot.types.Types;
 import polyglot.util.Position;
 import x10.types.MethodInstance;
 import x10.types.ParameterType;
+import x10.types.ThisDef;
+import x10.types.TypeParamSubst;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassDef_c;
 import x10.types.X10ClassType;
@@ -137,24 +141,64 @@ public class FirmTypeSystem {
         	if(intSet.contains(t)) continue;
         	intSet.add(t);
 
-        	final X10ClassType intervace = (X10ClassType)t;
+        	final X10ParsedClassType intervace = (X10ParsedClassType)t;
         	final X10ClassDef  intervaceDef = intervace.x10Def();
 
         	cd.addInterface(Types.ref(intervace));
+        	
+        	// only init the substitution if we really need it
+        	TypeParamSubst subst = null; 
+        	ArrayList<ParameterType> paramTypes = null; 
+        	ArrayList<polyglot.types.Type> argTypes = null; 
 
+    		ThisDef thisDef = x10TypeSystem.thisDef(pos, Types.ref(ct));
         	for(final MethodDef mDef : intervaceDef.methods())  {
-
-				/* DELETE ME START: "following methods are not supported yet" */
-        		final MethodInstance mi = mDef.asInstance();
-    			final String x = mi.name().toString();
-    			if (x.equals("compareTo")) {
-    				continue;
-    			}
-    			/* DELETE ME END: */
-
         		final X10MethodDef md = x10TypeSystem.methodDef(pos, Types.ref(ct), Flags.PUBLIC, mDef.returnType(), mDef.name(),
         										                mDef.formalTypes());
+        		md.setTypeParameters(mDef.typeParameters());
+        		md.setThisDef(thisDef);
+        		md.setGuard(mDef.guard());
+        		md.setTypeGuard(mDef.typeGuard());
+        		
+        		final List<Ref<? extends polyglot.types.Type>> formalTypes = new LinkedList<Ref<? extends polyglot.types.Type>>();
+        		final List<LocalDef> formalNames = new LinkedList<LocalDef>();
+        		
+        		final List<Ref<? extends polyglot.types.Type>> fTypes = mDef.formalTypes();
+        		final List<LocalDef> fNames = mDef.formalNames(); 
+        		
+        		assert(fTypes.size() == fNames.size()); 
+        		for(int i = 0; i < fTypes.size(); i++) {
+        			final polyglot.types.Type x = fTypes.get(i).get(); 
+        			Ref<? extends polyglot.types.Type> fType = fTypes.get(i);
+        			LocalDef fName = fNames.get(i); 
+        			
+        			// a subsitution
+        			if(x instanceof ParameterType) {
+        				// init the substitution
+        				if(subst == null || paramTypes == null || argTypes == null) {
+        		        	subst = intervace.subst(); 
+        		        	paramTypes = subst.copyTypeParameters();
+        		        	argTypes = subst.copyTypeArguments(); 
+        		        	assert(paramTypes.size() == argTypes.size()); 
+        				}
+        				int j = 0;
+        				for(; j < paramTypes.size(); j++) 
+        					if(paramTypes.get(j) == x)
+        						break;
 
+        				assert(j < paramTypes.size());
+        				fType = Types.ref(argTypes.get(j));
+        				
+        				fName = x10TypeSystem.localDef(Position.COMPILER_GENERATED, fName.flags(), fType, fName.name());
+        			} 
+        			
+        			formalNames.add(fName); 
+        			formalTypes.add(fType);
+        		}
+
+        		md.setFormalNames(formalNames);
+        		md.setFormalTypes(formalTypes);
+        		
                 cd.addMethod(md);
         	}
         }

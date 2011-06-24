@@ -459,7 +459,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			firmContext.setInitClassMembers(inits);
 
 			for (ClassMember member : body.members()) {
-				/* DELETE ME START: "following methods are not supported yet" */
 				if(member instanceof MethodDecl_c) {
 					final MethodDecl_c meth = (MethodDecl_c)member;
 					final X10MethodDef def              = (X10MethodDef)meth.methodDef();
@@ -471,8 +470,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 						continue;
 					}
 				}
-
-				/* DELETE ME END: */
 				visitAppropriate(member);
 			}
 		}
@@ -2315,7 +2312,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	/**
-	 * Initializes a given boxing type -> creates method etc.
+	 * Initializes a given boxing type -> creates methods etc.
 	 * @param boxedType The type of the boxed field
 	 * @param boxType The boxing type which should be initialized
 	 */
@@ -2352,6 +2349,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	        	final Expr rval = xnf.Local(pos, xnf.Id(pos, loc.name())).localInstance(loc).type(loc.type());
 	        	args.add(rval);
 	        }
+	        
 
 	        // find the appropriate method instance (concrete method) -> to avoid unnecessary dynamic delegation calls.
 	        MethodInstance im = null;
