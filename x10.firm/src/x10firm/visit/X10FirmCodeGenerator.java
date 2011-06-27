@@ -133,6 +133,7 @@ import x10.types.X10MethodDef;
 import x10.types.X10ProcedureInstance;
 import x10.types.checker.Converter;
 import x10.visit.X10DelegatingVisitor;
+import x10cpp.visit.ASTQuery;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
 import x10firm.types.ParameterTypeMapping;
@@ -1916,35 +1917,65 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param args The arguments of the constructor call (without the implicit this pointer)
 	 */
 	private void genConstructorCall(final Node objectThisNode, final X10ConstructorInstance instance, final List<Expr> args) {
+		assert (instance != null);
+
 		/* invoke class constructor */
-		if (instance != null) {
-			final Entity entity = firmTypeSystem.getConstructorEntity(instance);
-			final firm.MethodType entityType = (MethodType) entity.getType();
-			final Node address = con.newSymConst(entity);
+		final Entity entity = firmTypeSystem.getConstructorEntity(instance);
+		final firm.MethodType entityType = (MethodType) entity.getType();
+		final Node address = con.newSymConst(entity);
 
-			final int param_count = entityType.getNParams();
-			final Node[] parameters = new Node[param_count];
+		final int paramCount = entityType.getNParams();
+		final Node[] parameters = new Node[paramCount];
 
-			final List<Expr> arguments = transformArguments(instance.formalTypes(), args);
+		final List<Expr> arguments = transformArguments(instance.formalTypes(), args);
 
-			int p = 0;
-			parameters[p++] = objectThisNode; /* this argument */
+		int p = 0;
+		parameters[p++] = objectThisNode; /* this argument */
 
-			for(Expr arg : arguments) {
-				parameters[p++] = visitExpression(arg);
-			}
-			assert args.size()+1 == param_count;
+		for (Expr arg : arguments)
+			parameters[p++] = visitExpression(arg);
 
-			final Node mem = con.getCurrentMem();
-			final Node call = con.newCall(mem, address, parameters, entityType);
-			final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
+		assert args.size() + 1 == paramCount;
 
-			con.setCurrentMem(newMem);
+		final Node mem = con.getCurrentMem();
+		final Node call = con.newCall(mem, address, parameters, entityType);
+		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
 
-		} else {
-			assert(false): "No constructor given";
-			/* no constructor */
-		}
+		con.setCurrentMem(newMem);
+	}
+
+	private Node genNativeConstructorCall(final X10ConstructorInstance instance, final List<Expr> args) {
+		assert (instance != null);
+
+		final Entity entity = firmTypeSystem.getConstructorEntity(instance);
+		final firm.MethodType entityType = (MethodType) entity.getType();
+		final Node address = con.newSymConst(entity);
+
+		final int paramCount = entityType.getNParams();
+		// Native constructors do not have a this parameter.
+		final Node[] parameters = new Node[paramCount];
+
+		final List<Expr> arguments = transformArguments(instance.formalTypes(), args);
+
+		int p = 0;
+		for (Expr arg : arguments)
+			parameters[p++] = visitExpression(arg);
+
+		assert args.size() == paramCount;
+
+		final Node mem = con.getCurrentMem();
+		final Node call = con.newCall(mem, address, parameters, entityType);
+		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
+		con.setCurrentMem(newMem);
+
+		assert (entityType.getNRess() == 1);
+		final firm.Type retType = entityType.getResType(0);
+		final Node allResults = con.newProj(call, Mode.getT(), Call.pnTResult);
+		final Mode mode = retType.getMode();
+		assert (mode != null);
+		final Node ret = con.newProj(allResults, mode, 0);
+
+		return ret;
 	}
 
 	@Override
@@ -1971,15 +2002,21 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			addToWorklist(new GenericNodeInstance(decl, ptm));
 		}
 
-		if (x10TypeSystem.isStructType(n.type()))
-			objectThisNode = genStackAlloc(n.type(), type);
-		else
-			objectThisNode = genNewAlloc(n.type(), type);
+		if (n.constructorInstance().container() == x10TypeSystem.String()) {
+			final Node obj = genNativeConstructorCall(n.constructorInstance(), n.arguments());
+			setReturnNode(obj);
+		}
+		else {
+			if (x10TypeSystem.isStructType(n.type()))
+				objectThisNode = genStackAlloc(n.type(), type);
+			else
+				objectThisNode = genNewAlloc(n.type(), type);
 
-		assert(objectThisNode != null);
+			assert (objectThisNode != null);
 
-		genConstructorCall(objectThisNode, n.constructorInstance(), n.arguments());
-		setReturnNode(objectThisNode);
+			genConstructorCall(objectThisNode, n.constructorInstance(), n.arguments());
+			setReturnNode(objectThisNode);
+		}
 	}
 
 	private TargetValue getFloatLitTargetValue(FloatLit_c literal) {

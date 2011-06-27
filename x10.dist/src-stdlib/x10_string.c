@@ -10,29 +10,38 @@ static inline x10_int get_str_len(const x10_string *str)
 	return str->len;
 }
 
-static inline void x10_init_string(x10_string *str, size_t len)
+static inline void x10_init_string(x10_string *str)
 {
 	X10_INIT_OBJECT(str, &STRING_VTABLE);
-	str->len = len;
+	str->len = 0;
 }
 
-static inline x10_string* alloc_string(x10_int len)
+static x10_string* x10_allocate_string(x10_int len)
 {
-	return (x10_string *)x10_malloc(sizeof(x10_string) + (((len) + 1) * sizeof(x10_char)));
+	return x10_malloc(sizeof(x10_string) + (((len) + 1) * sizeof(x10_char)));
 }
 
 static inline void check_string_bounds(x10_string *str, x10_int idx)
 {
 	if (idx < 0 || (x10_uint)idx > (str->len)) {
-		x10_throw_exception(new_exception("Index Out of Bounds", "Within string bounds check"));
+		x10_throw_exception(new_exception("Index Out of Bounds",
+			"Within string bounds check"));
 	}
 }
 
-static x10_string *x10_string_from_wide_buf(const size_t len, const x10_char *wchars)
+static void x10_set_string(x10_string *str, const x10_char *wchars,
+		size_t len)
 {
-	x10_string *str = alloc_string(len);
-	x10_init_string(str, len);
+	str->len = len;
 	wcpncpy(x10_string_buf(str), wchars, len);
+}
+
+static x10_string *x10_string_from_wide_buf(size_t len, const x10_char *wchars)
+{
+	x10_string *str = x10_allocate_string(len);
+
+	x10_init_string(str);
+	x10_set_string(str, wchars, len);
 
 	return str;
 }
@@ -49,16 +58,16 @@ x10_string *x10_string_literal(size_t len, x10_char *wchars)
 }
 
 // constructors
+// this()
+x10_string *_ZN3x104lang6StringC1Ev()
+{
+	return x10_string_from_wide_buf(0, T_(""));
+}
+
 // this(String)
 x10_string *_ZN3x104lang6StringC1EPN3x104lang6StringE(x10_string *str)
 {
 	return x10_string_from_wide_buf(get_str_len(str), x10_string_buf(str));
-}
-
-// this()
-x10_string *_ZN3x104lang6StringC1Ev()
-{
-	return x10_string_literal(0, T_(""));
 }
 
 // String methods
@@ -302,9 +311,9 @@ x10_string *_ZN3x104lang6StringplEPN3x104lang6StringEPN3x104lang6StringE(x10_str
 {
 	const size_t len_x = get_str_len(x), len_y = get_str_len(y);
 	const size_t len_ret = len_x + len_y;
-	x10_string *ret = alloc_string(len_ret);
-
-	x10_init_string(ret, len_ret);
+	x10_string *ret = x10_allocate_string(len_ret);
+	x10_init_string(ret);
+	ret->len = len_ret;
 
 	wcpncpy(x10_string_buf(ret), x10_string_buf(x), len_x);
 	wcpncpy(x10_string_buf(ret) + len_x, x10_string_buf(y), len_y);

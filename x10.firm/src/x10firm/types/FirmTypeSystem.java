@@ -341,12 +341,41 @@ public class FirmTypeSystem {
 		       equalTypes(type, x10TypeSystem.Char());
 	}
 
+	public MethodType getNativeConstructorType(X10ConstructorInstance instance) {
+		assert (instance.flags().isNative());
+
+		final List<polyglot.types.Type> formalTypes = instance.formalTypes();
+		final int nParameters = formalTypes.size();
+		final int nResults = 1;
+		final X10ClassType owner = (X10ClassType) instance.container();
+		final Type[] parameterTypes = new firm.Type[nParameters];
+		final Type[] resultTypes = new firm.Type[nResults];
+
+		int p = 0;
+		final Type thisType = asFirmType(owner);
+		resultTypes[0] = thisType;
+
+		for (polyglot.types.Type type : formalTypes) {
+			final polyglot.types.Type simpType = simplifyType(type);
+			if (isFirmStructType(simpType)) {
+				parameterTypes[p++] = asFirmCoreType(simpType);
+			} else {
+				parameterTypes[p++] = asFirmType(simpType);
+			}
+		}
+		assert (p == nParameters);
+
+		return new MethodType(parameterTypes, resultTypes);
+	}
+
 	/**
 	 * create a method type for an X10 constructor
 	 */
 	public MethodType asFirmType(X10ConstructorInstance instance) {
-		final List<polyglot.types.Type> formalTypes
-			= instance.formalTypes();
+		if (instance.container() == x10TypeSystem.String())
+			return getNativeConstructorType(instance);
+
+		final List<polyglot.types.Type> formalTypes = instance.formalTypes();
 		final int nParameters = formalTypes.size() + 1;
 		final int nResults = 0;
 		final X10ClassType owner = (X10ClassType) instance.container();
@@ -356,9 +385,10 @@ public class FirmTypeSystem {
 		int p = 0;
 		final Type thisType = asFirmType(owner);
 		parameterTypes[p++] = thisType;
+
 		for (polyglot.types.Type type : formalTypes) {
 			final polyglot.types.Type simpType = simplifyType(type);
-			if(isFirmStructType(simpType)) {
+			if (isFirmStructType(simpType)) {
 				parameterTypes[p++] = asFirmCoreType(simpType);
 			} else {
 				parameterTypes[p++] = asFirmType(simpType);
