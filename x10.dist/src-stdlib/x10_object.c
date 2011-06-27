@@ -6,6 +6,7 @@
 /* Object constructor */
 void _ZN3x104lang6ObjectC1Ev(x10_object *self)
 {
+	UNUSED(self);
 }
 
 // TODO: Implement me
