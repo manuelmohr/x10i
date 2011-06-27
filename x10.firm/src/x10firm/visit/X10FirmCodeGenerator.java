@@ -133,7 +133,6 @@ import x10.types.X10MethodDef;
 import x10.types.X10ProcedureInstance;
 import x10.types.checker.Converter;
 import x10.visit.X10DelegatingVisitor;
-import x10cpp.visit.ASTQuery;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
 import x10firm.types.ParameterTypeMapping;
@@ -2452,56 +2451,53 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(X10Cast_c c) {
-
 		final TypeNode tn = c.castType();
-		assert tn instanceof CanonicalTypeNode;
+		assert (tn instanceof CanonicalTypeNode);
 
 		switch (c.conversionType()) {
 		case CHECKED:
 		case PRIMITIVE:
 		case SUBTYPE:
-        case UNCHECKED:
-
+		case UNCHECKED:
 			if (tn instanceof X10CanonicalTypeNode) {
 				final X10CanonicalTypeNode xtn = (X10CanonicalTypeNode) tn;
 
-                final Type toType = Types.baseType(xtn.type());
-                final Type fromType = Types.baseType(c.expr().type());
+				final Type toType = Types.baseType(xtn.type());
+				final Type fromType = Types.baseType(c.expr().type());
 
-                final Type to = Types.stripConstraints(toType);
-                final Type from = Types.stripConstraints(fromType);
+				final Type to = Types.stripConstraints(toType);
+				final Type from = Types.stripConstraints(fromType);
 
-                if (x10TypeSystem.typeEquals(from, to, x10Context)) {
-                	// types are statically equal no type conversion needed.
-                    visitAppropriate(c.expr());
-                } else if (c.conversionType() == Converter.ConversionType.SUBTYPE && x10TypeSystem.isSubtype(from, to, x10Context)) {
-                    // TODO: Add class cast checking
-                	if (   x10TypeSystem.isClass(to)   && x10TypeSystem.toClass(to).toClass().flags().isInterface()
-                	    && x10TypeSystem.isClass(from) && ((X10ClassType) x10TypeSystem.toClass(from)).isX10Struct()) {
-                        // An upcast of a struct to an implemented interface -> Need boxing
-                		final Node ret = genAutoboxing((X10ClassType) x10TypeSystem.toClass(from), c.expr());
-                		setReturnNode(ret);
-                    } else {
-                    	// TODO: no casting needed yet.
-                    	visitAppropriate(c.expr());
-                    }
-                } else {
-                	// An unchecked class cast.
-				    visitAppropriate(c.expr());
+				if (x10TypeSystem.typeEquals(from, to, x10Context)) {
+					// types are statically equal no type conversion needed.
+					visitAppropriate(c.expr());
+				} else if (c.conversionType() == Converter.ConversionType.SUBTYPE && x10TypeSystem.isSubtype(from, to, x10Context)) {
+					// TODO: Add class cast checking
+					if (   x10TypeSystem.isClass(to)   && x10TypeSystem.toClass(to).toClass().flags().isInterface()
+							&& x10TypeSystem.isClass(from) && ((X10ClassType) x10TypeSystem.toClass(from)).isX10Struct()) {
+						// An upcast of a struct to an implemented interface -> Need boxing
+						final Node ret = genAutoboxing((X10ClassType) x10TypeSystem.toClass(from), c.expr());
+						setReturnNode(ret);
+					} else {
+						// TODO: no casting needed yet.
+						visitAppropriate(c.expr());
+					}
+				} else {
+					// An unchecked class cast.
+					visitAppropriate(c.expr());
 				}
 			} else {
 				throw new InternalCompilerError("Ambiguous TypeNode survived type-checking.", tn.position());
 			}
 			break;
 
-        case CALL_CONVERSION:
-        	throw new InternalCompilerError("Unknown conversion type after type-checking.", c.position());
+		case CALL_CONVERSION:
 		case UNBOXING:
-			throw new InternalCompilerError("Unknown conversion type after type-checking.", c.position());
 		case UNKNOWN_IMPLICIT_CONVERSION:
-			throw new InternalCompilerError("Unknown conversion type after type-checking.", c.position());
 		case UNKNOWN_CONVERSION:
+		case DESUGAR_LATER:
 			throw new InternalCompilerError("Unknown conversion type after type-checking.", c.position());
+
 		case BOXING:
 			throw new InternalCompilerError("Boxing conversion should have been rewritten.", c.position());
 		}

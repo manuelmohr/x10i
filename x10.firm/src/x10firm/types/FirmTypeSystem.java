@@ -341,7 +341,7 @@ public class FirmTypeSystem {
 		       equalTypes(type, x10TypeSystem.Char());
 	}
 
-	public MethodType getNativeConstructorType(X10ConstructorInstance instance) {
+	private MethodType getNativeConstructorType(X10ConstructorInstance instance) {
 		assert (instance.flags().isNative());
 
 		final List<polyglot.types.Type> formalTypes = instance.formalTypes();
