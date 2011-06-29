@@ -1663,6 +1663,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			bFalse = bAfter;
 		}
 		evaluateCondition(n.cond(), bTrue, bFalse);
+		
 		con.setCurrentBlock(bTrue);
 
 		resetReturnNode();

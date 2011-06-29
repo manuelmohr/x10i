@@ -2,6 +2,7 @@ package x10firm.visit;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -115,9 +116,30 @@ public class X10ClosureRemover extends ContextVisitor {
             ClassBody body = cd.body();
             nmembers.addAll(0, body.members());
             return ((ClassDecl) n).body(body.members(nmembers));
-        }
+        } 
 
         return n;
+    }
+    
+    private static Map<Type, Type> closureClassMapping = new HashMap<Type, Type>();
+    
+    /**
+     * Returns the closure mapping type (static inner class) for a given closure type
+     * @param type The closure type
+     * @return The mapped closure type (static inner class) 
+     */
+    public static Type getClosureMappingType(final Type type) {
+    	return closureClassMapping.get(type);
+    }
+    
+    /**
+     * Creates a new closure mapping (closureType -> (static inner class))
+     * @param closure_type The closure type 
+     * @param mapped_type The mapped type
+     */
+    public static void putClosureMappingType(final Type closure_type, final Type mapped_type) {
+    	assert(!closureClassMapping.containsKey(closure_type));
+    	closureClassMapping.put(closure_type, mapped_type); 
     }
 
     private ContextVisitor createClosureToStaticInnerClassVisitor(final X10ClassDef def,final List<ClassMember> nmembers) {
@@ -131,6 +153,7 @@ public class X10ClosureRemover extends ContextVisitor {
                     final ClosureDef cld = cl.closureDef();
                     final Position pos = Position.COMPILER_GENERATED;
                     final Flags privateStatic = Flags.PRIVATE.Static();
+                    
 
                     final List<VarInstance<? extends VarDef>> capturedEnv = cld.capturedEnvironment();
 
@@ -303,6 +326,8 @@ public class X10ClosureRemover extends ContextVisitor {
                     final ClassBody cb = staticInnerClassDecl.body();
                     nmembers.add((ClassMember) staticInnerClassDecl.body(cb.members(cm)).typeCheck(this));
 
+                    putClosureMappingType(cld.asType(), staticInnerClassType);
+                    
                     return xnf.New(pos, xnf.CanonicalTypeNode(pos, Types.ref(staticInnerClassType)), args).constructorInstance(consd.asInstance()).type(cl.type());
                 }
 

@@ -27,6 +27,7 @@ import polyglot.types.Ref;
 import polyglot.types.TypeObject;
 import polyglot.types.Types;
 import polyglot.util.Position;
+import x10.types.FunctionType;
 import x10.types.MethodInstance;
 import x10.types.ParameterType;
 import x10.types.ThisDef;
@@ -37,6 +38,7 @@ import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10MethodDef;
 import x10.types.X10ParsedClassType;
+import x10firm.visit.X10ClosureRemover;
 import firm.ClassType;
 import firm.Entity;
 import firm.Ident;
@@ -65,7 +67,10 @@ public class FirmTypeSystem {
 
 	/** Maps some polyglot types to "native"/primitive firm types. */
 	private final Map<polyglot.types.Type, Type> firmTypes = new HashMap<polyglot.types.Type, Type>();
-
+	
+	/** Mapping for function types (Function type name! -> function type) -> Only for function types that are interfaces!!! */
+	private final Map<String, polyglot.types.Type> firmFunctionTypes = new HashMap<String, polyglot.types.Type>();
+	
 	/** Maps fields to firm entities */
 	private final Map<FieldInstance, Entity> fieldMap = new HashMap<FieldInstance, Entity>();
 
@@ -103,6 +108,54 @@ public class FirmTypeSystem {
 
 	private String getUniqueBoxingName(final String structName) {
 		return structName + "__FirmBox__" + (boxingID++);
+	}
+	
+	private polyglot.types.Type getTypeHelp(polyglot.types.Type type) {
+		final polyglot.types.Type tmp = X10ClosureRemover.getClosureMappingType(simplifyType(type));
+		if(tmp != null)
+			return tmp;
+		if(type instanceof FunctionType) {
+			final FunctionType func = (FunctionType)type;
+			if(func.flags().isInterface()) {
+				final polyglot.types.Type tmp2 = firmFunctionTypes.get(func.toString());
+				if(tmp2 != null)
+					return tmp2;
+				firmFunctionTypes.put(func.toString(), type);
+			}
+		}
+		return type;
+	}
+	
+	private void putFirmType(final polyglot.types.Type x10_type, Type firm_Type) {
+		firmTypes.put(getTypeHelp(x10_type), firm_Type);
+	}
+	
+	private Type getFirmType(final polyglot.types.Type x10_type) {
+		return firmTypes.get(getTypeHelp(x10_type));
+	}
+	
+	private boolean containsFirmType(final polyglot.types.Type x10_type) {
+		return firmTypes.containsKey(getTypeHelp(x10_type));
+	}
+	
+	private Type removeFirmType(final polyglot.types.Type x10_type) {
+		return firmTypes.remove(getTypeHelp(x10_type));
+	}
+	
+	private void putFirmCoreType(final polyglot.types.Type x10_type, Type firm_Type) {
+		firmCoreTypes.put(getTypeHelp(x10_type), firm_Type);
+	}
+	
+	private Type getFirmCoreType(final polyglot.types.Type x10_type) {
+		return firmCoreTypes.get(getTypeHelp(x10_type));
+	}
+	
+	private boolean containsFirmCoreType(final polyglot.types.Type x10_type) {
+		return firmCoreTypes.containsKey(getTypeHelp(x10_type));
+	}
+	
+	private Type removeFirmCoreType(final polyglot.types.Type x10_type) {
+		return firmCoreTypes.remove(getTypeHelp(x10_type));
 	}
 
 	/**
@@ -409,16 +462,18 @@ public class FirmTypeSystem {
 		/* strip type-constraints */
 		final polyglot.types.Type baseType = simplifyType(type);
 
-		firm.Type result = firmTypes.get(baseType);
+		firm.Type result = getFirmType(baseType); 
 		if (result != null)
 			return result;
-
-		result = asFirmCoreType(baseType);
+		
+		polyglot.types.Type type2 = getTypeHelp(baseType);
+		
+		result = asFirmCoreType(type2);
 		if (result instanceof ClassType) {
 			/* we really have references to classes */
 			result = new PointerType(result);
 		}
-		firmTypes.put(baseType, result);
+		putFirmType(type2, result); 
 
 		/* currently we should never produce types without modes here */
 		assert result.getMode() != null;
@@ -501,14 +556,14 @@ public class FirmTypeSystem {
 	@SuppressWarnings("unused")
 	private firm.Type createClassType(final X10ClassType classType) {
 		expandClassType(classType);
-
+		
 		final String className = X10NameMangler.mangleTypeObjectWithDefClass(classType);
 		final Flags flags = classType.flags();
 		ClassType result = new ClassType(className);
 
 		/* put the class into the core types already, because we could
 		 * have a field referencing ourself */
-		firmCoreTypes.put(classType, result);
+		putFirmCoreType(classType, result); 
 
 		/* create supertypes */
 		polyglot.types.Type superType = classType.superClass();
@@ -625,7 +680,7 @@ public class FirmTypeSystem {
 		/* strip type-constraints */
 		final polyglot.types.Type baseType = simplifyType(type);
 
-		firm.Type result = firmCoreTypes.get(baseType);
+		Type result = getFirmCoreType(baseType);
 		if (result != null)
 			return result;
 
@@ -633,7 +688,7 @@ public class FirmTypeSystem {
 			result = createClassType((X10ClassType) baseType);
 		} else {
 			/* remember to put new types into coreTypeCache */
-			firmCoreTypes.put(baseType, result);
+			putFirmCoreType(baseType, result);
 			throw new java.lang.RuntimeException("No implement to get firm type for: " + baseType);
 		}
 		return result;
@@ -657,57 +712,57 @@ public class FirmTypeSystem {
 		Mode modeLong = new Mode("Long", ir_mode_sort.irms_int_number, 64, 1,
 				ir_mode_arithmetic.irma_twos_complement, 64);
 		Type typeLong = new PrimitiveType(modeLong);
-		firmTypes.put(x10TypeSystem.Long(), typeLong);
+		putFirmType(x10TypeSystem.Long(), typeLong);
 
 		Mode modeULong = new Mode("ULong", ir_mode_sort.irms_int_number, 64, 0,
 				ir_mode_arithmetic.irma_twos_complement, 64);
 		Type typeULong = new PrimitiveType(modeULong);
-		firmTypes.put(x10TypeSystem.ULong(), typeULong);
+		putFirmType(x10TypeSystem.ULong(), typeULong);
 
 		Mode modeInt = new Mode("Int", ir_mode_sort.irms_int_number, 32, 1,
 				ir_mode_arithmetic.irma_twos_complement, 32);
 		Type typeInt = new PrimitiveType(modeInt);
-		firmTypes.put(x10TypeSystem.Int(), typeInt);
+		putFirmType(x10TypeSystem.Int(), typeInt);
 
 		Mode modeUInt = new Mode("UInt", ir_mode_sort.irms_int_number, 32, 0,
 				ir_mode_arithmetic.irma_twos_complement, 32);
 		Type typeUInt = new PrimitiveType(modeUInt);
-		firmTypes.put(x10TypeSystem.UInt(), typeUInt);
+		putFirmType(x10TypeSystem.UInt(), typeUInt);
 
 		Mode modeShort = new Mode("Short", ir_mode_sort.irms_int_number, 16, 1,
 				ir_mode_arithmetic.irma_twos_complement, 32);
 		Type typeShort = new PrimitiveType(modeShort);
-		firmTypes.put(x10TypeSystem.Short(), typeShort);
+		putFirmType(x10TypeSystem.Short(), typeShort);
 
 		Mode modeUShort = new Mode("UShort", ir_mode_sort.irms_int_number, 16,
 				0, ir_mode_arithmetic.irma_twos_complement, 32);
 		Type typeUShort = new PrimitiveType(modeUShort);
-		firmTypes.put(x10TypeSystem.UShort(), typeUShort);
+		putFirmType(x10TypeSystem.UShort(), typeUShort);
 
 		Mode modeByte = new Mode("Byte", ir_mode_sort.irms_int_number, 8, 1,
 				ir_mode_arithmetic.irma_twos_complement, 32);
 		Type typeByte = new PrimitiveType(modeByte);
-		firmTypes.put(x10TypeSystem.Byte(), typeByte);
+		putFirmType(x10TypeSystem.Byte(), typeByte);
 
 		Mode modeUByte = new Mode("UByte", ir_mode_sort.irms_int_number, 8, 0,
 				ir_mode_arithmetic.irma_twos_complement, 32);
 		Type typeUByte = new PrimitiveType(modeUByte);
-		firmTypes.put(x10TypeSystem.UByte(), typeUByte);
+		putFirmType(x10TypeSystem.UByte(), typeUByte);
 
 		Mode modeChar = new Mode("Char", ir_mode_sort.irms_int_number, 32, 0,
 				ir_mode_arithmetic.irma_twos_complement, 0);
 		Type typeChar = new PrimitiveType(modeChar);
-		firmTypes.put(x10TypeSystem.Char(), typeChar);
+		putFirmType(x10TypeSystem.Char(), typeChar);
 
 		Mode modeFloat = new Mode("Float", ir_mode_sort.irms_float_number, 32,
 				1, ir_mode_arithmetic.irma_ieee754, 0);
 		Type typeFloat = new PrimitiveType(modeFloat);
-		firmTypes.put(x10TypeSystem.Float(), typeFloat);
+		putFirmType(x10TypeSystem.Float(), typeFloat);
 
 		Mode modeDouble = new Mode("Double", ir_mode_sort.irms_float_number, 64,
 				1, ir_mode_arithmetic.irma_ieee754, 0);
 		Type typeDouble = new PrimitiveType(modeDouble);
-		firmTypes.put(x10TypeSystem.Double(), typeDouble);
+		putFirmType(x10TypeSystem.Double(), typeDouble);
 
 		/* Note that the mode_b in firm can't be used here, since it is an
 		 * internal mode which cannot be used for fields/call parameters/return
@@ -715,11 +770,11 @@ public class FirmTypeSystem {
 		 * conditional jumps. */
 		Mode modeBoolean = Mode.getBu();
 		Type typeBoolean = new PrimitiveType(modeBoolean);
-		firmTypes.put(x10TypeSystem.Boolean(), typeBoolean);
+		putFirmType(x10TypeSystem.Boolean(), typeBoolean);
 
 		Type unknown = Type.getUnknown();
 		Type nullRefType = new PointerType(unknown);
-		firmTypes.put(x10TypeSystem.Null(), nullRefType);
+		putFirmType(x10TypeSystem.Null(), nullRefType);
 		/* Note: there is no sensible firmCoreType for Null() */
 	}
 
@@ -892,15 +947,15 @@ public class FirmTypeSystem {
 		for (ParameterType param : ptm.getKeySet()) {
 			final polyglot.types.Type mappedType = ptm.getMappedType(param);
 
-			assert (firmCoreTypes.containsKey(mappedType) || firmTypes.containsKey(mappedType));
+			assert (containsFirmCoreType(mappedType) || containsFirmType(mappedType));
 
 			x10TypeSystem.addTypeMapping(param, mappedType);
 
-			if (firmCoreTypes.containsKey(mappedType))
-				firmCoreTypes.put(param, firmCoreTypes.get(mappedType));
+			if (containsFirmCoreType(mappedType))
+				putFirmCoreType(param, getFirmCoreType(mappedType));
 
-			if (firmTypes.containsKey(mappedType))
-				firmTypes.put(param, firmTypes.get(mappedType));
+			if (containsFirmType(mappedType))
+				putFirmType(param, firmTypes.get(mappedType));
 		}
 	}
 
@@ -912,11 +967,11 @@ public class FirmTypeSystem {
 		for (ParameterType param : ptm.getKeySet()) {
 			x10TypeSystem.removeTypeMapping(param);
 
-			if (firmCoreTypes.containsKey(param))
-				firmCoreTypes.remove(param);
+			if (containsFirmCoreType(param))
+				removeFirmCoreType(param);
 
-			if (firmTypes.containsKey(param))
-				firmTypes.remove(param);
+			if (containsFirmType(param))
+				removeFirmType(param);
 		}
 	}
 }
