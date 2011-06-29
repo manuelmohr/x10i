@@ -2,8 +2,8 @@
 #include "x10_primitive_types.h"
 #include "x10_string.h"
 
-X10_MAKE_COMPARETO(_ZN3x104lang4UInt9compareToEi, x10_uint)
-X10_MAKE_EQUALS(_ZN3x104lang4UInt6equalsEi, x10_uint)
+X10_MAKE_COMPARETO(_ZN3x104lang4UInt9compareToEj, x10_uint)
+X10_MAKE_EQUALS(_ZN3x104lang4UInt6equalsEj, x10_uint)
 X10_MAKE_HASHCODE(_ZN3x104lang4UInt8hashCodeEv, x10_uint)
 X10_MAKE_TOSTRING(_ZN3x104lang4UInt8toStringEv, x10_uint, "%u")
 X10_MAKE_TYPENAME(_ZN3x104lang4UInt8typeNameEv, x10_uint, "x10.lang.UInt")
