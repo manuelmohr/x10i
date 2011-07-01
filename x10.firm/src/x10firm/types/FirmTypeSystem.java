@@ -827,40 +827,26 @@ public class FirmTypeSystem {
 	}
 
 	/**
-	 * Returns the firm entity of a method which a given method instance maybe overwrites.
+	 * Returns the potentially overridden method of a given method 
 	 * @param instance The method instance which should be checked
-	 * @return The set of the appropriate firm entities
+	 * @return The overridden method instance or null
 	 */
-	private Set<Entity> getMethodOverride(MethodInstance instance) {
+	private MethodInstance getOverriddenMethod(MethodInstance instance) {
 		final Flags flags = instance.flags();
 		// static or abstract methods can't override other methods.
 		if (flags.isStatic() || flags.isAbstract())
-			return Collections.<Entity>emptySet();
+			return null; 
 
 		final List<MethodInstance> overrides = new LinkedList<MethodInstance>();
 
-		overrides.addAll(instance.implemented(x10Context));
 		overrides.addAll(instance.overrides(x10Context));
-
-		final Set<Entity> ret = new HashSet<Entity>();
-
-		ContainerType myContType = instance.container();
-		if (myContType instanceof X10ParsedClassType)
-			myContType = fixParsedClassType((X10ParsedClassType) myContType);
-
-		for (final MethodInstance meth: overrides) {
-			polyglot.types.Type contType = meth.container();
-			if (contType instanceof X10ParsedClassType)
-				contType = fixParsedClassType((X10ParsedClassType) contType);
-
-			if (x10TypeSystem.equals((TypeObject) myContType, (TypeObject) contType))
-				continue;
-
-			final Entity entity = getMethodEntity(meth);
-			ret.add(entity);
+		final X10ClassType myClassType = (X10ClassType)instance.container();
+		// Watch out for constructors of classes with super classes 
+		if(myClassType.superClass() != null && overrides.size() > 1) {
+			// the overridden methods in overrides are sorted !!!
+			return overrides.get(1); 
 		}
-
-		return ret;
+		return null;
 	}
 
 	private <T extends Def> GenericClassContext getDefiningContext(final MemberInstance<T> method) {
@@ -931,8 +917,11 @@ public class FirmTypeSystem {
 				entity.setVisibility(ir_visibility.ir_visibility_external);
 			}
 
-			for (final Entity overwrite: getMethodOverride(instance))
-				entity.addEntityOverwrites(overwrite);
+			final MethodInstance m = getOverriddenMethod(instance); 
+			if(m != null) {
+				final Entity ent = getMethodEntity(m); 
+				entity.addEntityOverwrites(ent); 
+			}
 
 			context.putMethodEntity(gMethodInstance, entity);
 		}
