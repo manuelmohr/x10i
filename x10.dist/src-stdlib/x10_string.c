@@ -2,14 +2,6 @@
 #include "util.h"
 #include "x10.h"
 
-#define _GNU_SOURCE
-#include <wchar.h>
-
-static inline x10_int get_str_len(const x10_string *str)
-{
-	return str->len;
-}
-
 static inline void x10_init_string(x10_string *str)
 {
 	X10_INIT_OBJECT(str, &STRING_VTABLE);
@@ -24,8 +16,7 @@ static x10_string* x10_allocate_string(x10_int len)
 static inline void check_string_bounds(x10_string *str, x10_int idx)
 {
 	if (idx < 0 || (x10_uint)idx > (str->len)) {
-		x10_throw_exception(new_exception("Index Out of Bounds",
-			"Within string bounds check"));
+		x10_throw_exception(T_("Index Out of Bounds"), T_("Within string bounds check"));
 	}
 }
 
@@ -67,7 +58,7 @@ x10_string *_ZN3x104lang6StringC1Ev()
 // this(String)
 x10_string *_ZN3x104lang6StringC1EPN3x104lang6StringE(x10_string *str)
 {
-	return x10_string_from_wide_buf(get_str_len(str), x10_string_buf(str));
+	return x10_string_from_wide_buf(x10_string_len(str), x10_string_buf(str));
 }
 
 // String methods
@@ -81,9 +72,9 @@ x10_boolean _ZN3x104lang6String6equalsEPN3x104lang3AnyE(x10_string *self,
 		return X10_FALSE;
 
 	x10_string *oth = X10_OBJECT_CAST(x10_string, other);
-	if (get_str_len(self) != get_str_len(oth))
+	if (x10_string_len(self) != x10_string_len(oth))
 		return X10_FALSE;
-	if (wcsncmp(x10_string_buf(self), x10_string_buf(oth), get_str_len(self)))
+	if (wcsncmp(x10_string_buf(self), x10_string_buf(oth), x10_string_len(self)))
 		return X10_FALSE;
 
 	return X10_TRUE;
@@ -91,7 +82,7 @@ x10_boolean _ZN3x104lang6String6equalsEPN3x104lang3AnyE(x10_string *self,
 
 x10_int _ZN3x104lang6String6lengthEv(x10_string *self)
 {
-	return get_str_len(self);
+	return x10_string_len(self);
 }
 
 x10_string *_ZN3x104lang6String8toStringEv(x10_string *self)
@@ -109,7 +100,7 @@ x10_int _ZN3x104lang6String7indexOfEDii(x10_string *self, x10_char c, x10_int id
 {
 	if (idx < 0)
 		idx = 0;
-	if (idx >= get_str_len(self))
+	if (idx >= x10_string_len(self))
 		return -1;
 
 	const x10_char *pos = wcschr(x10_string_buf(self) + idx, c);
@@ -146,13 +137,13 @@ x10_int _ZN3x104lang6String7indexOfEPN3x104lang6StringEi(x10_string *self, x10_s
 	x10_null_check(other);
 	if (idx < 0)
 		idx = 0;
-	if (idx >= get_str_len(self))
+	if (idx >= x10_string_len(self))
 		return -1;
 
 	const x10_char *haystack = x10_string_buf(self) + idx;
-	const size_t haystack_sz = get_str_len(self) - idx;
+	const size_t haystack_sz = x10_string_len(self) - idx;
 	const x10_char *needle = x10_string_buf(other);
-	const size_t needle_sz = get_str_len(other);
+	const size_t needle_sz = x10_string_len(other);
 	const x10_char *pos = wstrnrstrn(haystack, haystack_sz, needle, needle_sz);
 
 	if (pos == X10_NULL)
@@ -168,14 +159,14 @@ x10_int _ZN3x104lang6String7indexOfEPN3x104lang6StringE(x10_string *self, x10_st
 
 x10_int _ZN3x104lang6String11lastIndexOfEDi(x10_string *self, x10_char c)
 {
-	return _ZN3x104lang6String11lastIndexOfEDii(self, c, get_str_len(self) - 1);
+	return _ZN3x104lang6String11lastIndexOfEDii(self, c, x10_string_len(self) - 1);
 }
 
 x10_int _ZN3x104lang6String11lastIndexOfEDii(x10_string *self, x10_char c, x10_int idx)
 {
 	if (idx < 0)
 		idx = 0;
-	if (idx >= get_str_len(self))
+	if (idx >= x10_string_len(self))
 		return -1;
 
 	const x10_char *pos = wcsrchr(x10_string_buf(self) + idx, c);
@@ -188,7 +179,7 @@ x10_int _ZN3x104lang6String11lastIndexOfEDii(x10_string *self, x10_char c, x10_i
 
 x10_int _ZN3x104lang6String11lastIndexOfEPN3x104lang6StringE(x10_string *self, x10_string * other)
 {
-	return _ZN3x104lang6String11lastIndexOfEPN3x104lang6StringEi(self, other, get_str_len(self) - 1);
+	return _ZN3x104lang6String11lastIndexOfEPN3x104lang6StringEi(self, other, x10_string_len(self) - 1);
 }
 
 x10_int _ZN3x104lang6String11lastIndexOfEPN3x104lang6StringEi(x10_string *self, x10_string *other, x10_int idx)
@@ -196,11 +187,11 @@ x10_int _ZN3x104lang6String11lastIndexOfEPN3x104lang6StringEi(x10_string *self, 
 	x10_null_check(other);
 	if (idx < 0)
 		idx = 0;
-	if (idx >= get_str_len(self))
+	if (idx >= x10_string_len(self))
 		return -1;
 
 	const x10_char *needle = x10_string_buf(other);
-	const size_t needle_sz = get_str_len(other);
+	const size_t needle_sz = x10_string_len(other);
 	const x10_char *haystack = x10_string_buf(self);
 	const size_t haystack_sz = idx + 1;
 
@@ -215,7 +206,7 @@ x10_int _ZN3x104lang6String11lastIndexOfEPN3x104lang6StringEi(x10_string *self, 
 x10_string *_ZN3x104lang6String9substringEi(x10_string *self, x10_int start_idx)
 {
 	check_string_bounds(self, start_idx);
-	const size_t len = get_str_len(self) - start_idx;
+	const size_t len = x10_string_len(self) - start_idx;
 	return x10_string_from_wide_buf(len, x10_string_buf(self) + start_idx);
 }
 
@@ -224,7 +215,7 @@ x10_string *_ZN3x104lang6String9substringEii(x10_string *self, x10_int start_idx
 	check_string_bounds(self, start_idx);
 	check_string_bounds(self, to_idx);
 	if (start_idx > to_idx)
-		x10_throw_exception(new_exception("Index Out Of Bounds", "In substring"));
+		x10_throw_exception(T_("Index Out Of Bounds"), T_("In substring"));
 
 	const size_t len = to_idx - start_idx;
 	return x10_string_from_wide_buf(len, x10_string_buf(self) + start_idx);
@@ -235,8 +226,8 @@ x10_boolean _ZN3x104lang6String8endsWithEPN3x104lang6StringE(x10_string *self, x
 	if (other == X10_NULL)
 		return X10_FALSE;
 
-	const size_t len_self  = get_str_len(self);
-	const size_t len_other = get_str_len(other);
+	const size_t len_self  = x10_string_len(self);
+	const size_t len_other = x10_string_len(other);
 
 	if (len_other > len_self)
 		return X10_FALSE;
@@ -250,8 +241,8 @@ x10_boolean _ZN3x104lang6String10startsWithEPN3x104lang6StringE(x10_string *self
 	if (other == X10_NULL)
 		return X10_FALSE;
 
-	const size_t len_self  = get_str_len(self);
-	const size_t len_other = get_str_len(other);
+	const size_t len_self  = x10_string_len(self);
+	const size_t len_other = x10_string_len(other);
 	if (len_other > len_self)
 		return X10_FALSE;
 
@@ -263,7 +254,7 @@ x10_boolean _ZN3x104lang6String10startsWithEPN3x104lang6StringE(x10_string *self
 
 x10_string *_ZN3x104lang6String4trimEv(x10_string *self)
 {
-	x10_int len = get_str_len(self);
+	x10_int len = x10_string_len(self);
 	if (len == 0)
 		return self;
 
@@ -285,8 +276,8 @@ x10_string *_ZN3x104lang6String4trimEv(x10_string *self)
 x10_int _ZN3x104lang6String9compareToEPN3x104lang6StringE(x10_string *self, x10_string *other)
 {
 	x10_null_check(other);
-	const x10_int len_diff = get_str_len(self) - get_str_len(other);
-	const size_t min_len = MIN(get_str_len(self), get_str_len(other));
+	const x10_int len_diff = x10_string_len(self) - x10_string_len(other);
+	const size_t min_len = MIN(x10_string_len(self), x10_string_len(other));
 	const x10_int cmp = wcsncmp(x10_string_buf(self), x10_string_buf(other), min_len);
 	if (cmp != 0)
 		return cmp;
@@ -309,7 +300,7 @@ x10_string *_ZN3x104lang6StringplEPN3x104lang6StringE(x10_string *self, x10_stri
 // static operator+(String, String)
 x10_string *_ZN3x104lang6StringplEPN3x104lang6StringEPN3x104lang6StringE(x10_string *x, x10_string *y)
 {
-	const size_t len_x = get_str_len(x), len_y = get_str_len(y);
+	const size_t len_x = x10_string_len(x), len_y = x10_string_len(y);
 	const size_t len_ret = len_x + len_y;
 	x10_string *ret = x10_allocate_string(len_ret);
 	x10_init_string(ret);

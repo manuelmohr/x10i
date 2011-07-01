@@ -1,7 +1,10 @@
 #ifndef X10_STRING_H_
 #define X10_STRING_H_
 
+#include <wchar.h>
+
 #include "x10.h"
+
 
 typedef struct {
 	X10_OBJECT_HEADER
@@ -12,6 +15,11 @@ typedef struct {
 static inline x10_char *x10_string_buf(x10_string *s) {
 	return s->buf;
 }
+
+static inline x10_int x10_string_len(const x10_string *s) {
+	return s->len;
+}
+
 
 X10_EXTERN x10_string *x10_string_from_wide_chars(const x10_char *);
 X10_EXTERN x10_string *x10_string_literal(size_t, x10_char *);

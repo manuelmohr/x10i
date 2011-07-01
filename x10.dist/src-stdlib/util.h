@@ -10,9 +10,14 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
-static const void *X10_NULL = NULL;
+#define X10_NULL NULL
+
 static const bool X10_TRUE = true;
 static const bool X10_FALSE = false;
+
+#define X10_NULL_POINTER_EXCEPTION  T_("NullPointerException")
+#define X10_NUMBER_FORMAT_EXCEPTION T_("NumberFormatException")
+
 
 static inline x10_object_header *x10_object_head(const x10_object *obj)
 {
@@ -50,28 +55,33 @@ static inline void* x10_realloc(x10_object *obj, size_t size)
 
 static inline void x10_free(void *obj)
 {
-	(void) obj;
+	UNUSED(obj);
 	// Do nothing
 }
 
-static inline x10_object *new_exception(const char *name, const char *msg)
+static inline x10_object *x10_new_exception_object(const x10_char *name, const x10_char *msg)
 {
-	(void) name;
-	(void) msg;
+	UNUSED(name); 
+	UNUSED(msg); 
 	// TODO this is just a dummy!
-	return NULL;
+	return X10_NULL;
 }
 
-static inline void x10_throw_exception(x10_object *exc)
+static inline void x10_throw_exception_object(x10_object *obj)
 {
-	(void) exc;
-	// TODO
+	// TODO: Implement me
+	UNUSED(obj);
+}
+
+static inline void x10_throw_exception(const x10_char *name, const x10_char *msg)
+{
+	x10_throw_exception_object(x10_new_exception_object(name, msg));
 }
 
 static inline void x10_null_check(void *obj)
 {
 	if (obj == X10_NULL)
-		x10_throw_exception(new_exception("NullPointerException", "null check"));
+		x10_throw_exception(X10_NULL_POINTER_EXCEPTION, T_("null check"));
 }
 
 #endif // UTIL_H

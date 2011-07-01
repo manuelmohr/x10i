@@ -17,3 +17,32 @@ x10_short _ZN3x104lang5Shortv3rbsEs(x10_short a, x10_short b)
 	return (x10_short) ((x10_ushort) a >> (x10_ushort) b);
 }
 MAKE_CONFS(_ZN3x104lang5Short, x10_short)
+
+x10_short _ZN3x104lang5Short7reverseEv(x10_short self)
+{
+    x10_ushort ux = (x10_ushort)self;
+    x10_ushort b0 = ux & 0x0F;
+    x10_ushort b1 = (ux & 0xF0) >> 8;
+    ux = (b0 << 8) | b1;
+    return (x10_short)ux;
+}
+
+x10_short _ZN3x104lang5Short10parseShortEPN3x104lang6StringEi(x10_string *s, x10_int radix)
+{
+    x10_null_check(s); 
+    const x10_char *start = x10_string_buf(s); 
+    x10_char *end;
+    errno = 0;
+    x10_int ans = wcstol(start, &end, radix);
+    if (errno == ERANGE || (errno != 0 && ans == 0) || (ans != (x10_short)ans) || ((end-start) != x10_string_len(s))) {
+        x10_throw_exception(X10_NUMBER_FORMAT_EXCEPTION, x10_string_buf(s));
+    }
+    return (x10_short)ans;
+}
+
+x10_short _ZN3x104lang5Short10parseShortEPN3x104lang6StringE(x10_string *s)
+{
+	return _ZN3x104lang5Short10parseShortEPN3x104lang6StringEi(s, 10); 
+}
+
+

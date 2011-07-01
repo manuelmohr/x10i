@@ -23,3 +23,4 @@ x10_float _ZN3x104lang5FloatrmEf(x10_float a, x10_float b)
 	return fmodf(a, b);
 }
 MAKE_CONFS(_ZN3x104lang5Float, x10_float)
+
