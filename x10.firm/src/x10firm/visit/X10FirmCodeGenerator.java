@@ -2597,12 +2597,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Try_c n) {
-//		throw new RuntimeException("Not implemented yet");
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
 	public void visit(Catch_c n) {
-//		throw new RuntimeException("Not implemented yet");
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
@@ -2658,7 +2658,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Tuple_c c) {
-//		throw new RuntimeException("Not implemented yet");
+		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override

@@ -383,7 +383,7 @@ public class FirmTypeSystem {
 	 * @param type_ The type which should be checked
 	 * @return True if the given type is handled as a primitive type.
 	 */
-	public boolean isFirmPrimitiveType(final polyglot.types.Type type_) {
+	private boolean isFirmPrimitiveType(final polyglot.types.Type type_) {
 		final polyglot.types.Type type = simplifyType(type_);
 		return equalTypes(type, x10TypeSystem.Int())     || equalTypes(type, x10TypeSystem.UInt())   ||
 		   	   equalTypes(type, x10TypeSystem.Long())    || equalTypes(type, x10TypeSystem.ULong())  ||
@@ -393,7 +393,8 @@ public class FirmTypeSystem {
 		       equalTypes(type, x10TypeSystem.Boolean()) ||
 		       equalTypes(type, x10TypeSystem.Char());
 	}
-
+	
+	
 	private MethodType getNativeConstructorType(X10ConstructorInstance instance) {
 		assert (instance.flags().isNative());
 
