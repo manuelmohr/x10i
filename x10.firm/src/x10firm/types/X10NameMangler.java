@@ -110,6 +110,7 @@ public class X10NameMangler {
 		nameSubst.put("operator||",  "oo");
 		nameSubst.put("operator++",  "pp");
 		nameSubst.put("operator--",  "mm");
+		nameSubst.put("operator->",  "pt");
 
 		/* this is our addition */
 		nameSubst.put("operator>>>", "v3rbs");
