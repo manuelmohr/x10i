@@ -5,8 +5,7 @@ Bundle-SymbolicName: x10.compiler
 Bundle-Version: 2.2.0.qualifier
 Bundle-Localization: plugin
 Require-Bundle: x10.common,
- x10.constraints,
- lpg.runtime.java
+ x10.constraints
 Export-Package: polyglot.ast,
  polyglot.frontend,
  polyglot.lex,
