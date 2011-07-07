@@ -1,7 +1,6 @@
 package x10firm.types;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -11,7 +10,6 @@ import java.util.Map;
 import java.util.Set;
 
 import polyglot.types.ClassDef;
-import polyglot.types.ContainerType;
 import polyglot.types.Context;
 import polyglot.types.Def;
 import polyglot.types.FieldDef;
@@ -71,9 +69,6 @@ public class FirmTypeSystem {
 	/** Mapping for function types (Function type name! -> function type) -> Only for function types that are interfaces!!! */
 	private final Map<String, polyglot.types.Type> firmFunctionTypes = new HashMap<String, polyglot.types.Type>();
 	
-	/** Maps fields to firm entities */
-	private final Map<FieldInstance, Entity> fieldMap = new HashMap<FieldInstance, Entity>();
-
 	/** Maps struct types to the appropriate boxing types */
 	private final Map<X10ClassType, X10ClassType> structBoxingTypes = new HashMap<X10ClassType, X10ClassType>();
 
@@ -510,7 +505,8 @@ public class FirmTypeSystem {
 
 		entity.setLdIdent(name);
 		OO.setEntityBinding(entity, ddispatch_binding.bind_static);
-		fieldMap.put(field, entity);
+		final GenericClassContext context = getDefiningContext(field);
+		context.putFieldEntity(field.def(), entity);
 	}
 
 	/**
@@ -640,7 +636,8 @@ public class FirmTypeSystem {
 	 * the fields class.
 	 */
 	public Entity getEntityForField(FieldInstance instance) {
-		return fieldMap.get(instance);
+		final GenericClassContext context = getDefiningContext(instance);
+		return context.getFieldEntity(instance.def());
 	}
 
 	private X10ParsedClassType fixParsedClassType(X10ParsedClassType t) {
