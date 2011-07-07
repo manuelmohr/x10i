@@ -925,48 +925,47 @@ public class FirmTypeSystem {
 		final Flags flags = instance.flags();
 		// static or abstract methods can't override other methods.
 		if (flags.isStatic() || flags.isAbstract())
-			return null; 
+			return null;
 
 		final List<MethodInstance> overrides = new LinkedList<MethodInstance>();
 
 		overrides.addAll(instance.overrides(x10Context));
 		final X10ClassType myClassType = (X10ClassType)instance.container();
-		// Watch out for constructors of classes with super classes 
+		// Watch out for constructors of classes with super classes
 		if(myClassType.superClass() != null && overrides.size() > 1) {
 			// the overridden methods in overrides are sorted !!!
-			return overrides.get(1); 
+			return overrides.get(1);
 		}
 		return null;
 	}
 
 	private <T extends Def> GenericClassContext getDefiningContext(final MemberInstance<T> method) {
 		final X10ClassType clazz = (X10ClassType) method.container();
-		final boolean containedInGenericClass = clazz != null && clazz.def().typeParameters() != null && !clazz.def().typeParameters().isEmpty();
+		if (clazz == null)
+			return rootContext;
+		/* no type parameters, not a generic class */
+		final List<ParameterType> typeParameters = clazz.def().typeParameters();
+		if (typeParameters == null || typeParameters.isEmpty())
+			return rootContext;
 
-		if (containedInGenericClass) {
-			GenericClassInstance classInstance;
-
-			// This should always be the case but unfortunately it is not.
-			if (clazz.typeArguments() != null && clazz.def().typeParameters().size() == clazz.typeArguments().size())
-				classInstance = new GenericClassInstance(clazz);
-			else {
-				// FIXME:  This is a hack to workaround a problem in X10.
-				ParameterTypeMapping map = new ParameterTypeMapping();
-				for (ParameterType pt : clazz.def().typeParameters())
-					map.add(pt, x10TypeSystem.getConcreteType(pt));
-				classInstance = new GenericClassInstance(clazz.x10Def(), map);
-			}
-
-			GenericClassContext context = genericContexts.get(classInstance);
-			if (context == null) {
-				context = new GenericClassContext();
-				genericContexts.put(classInstance, context);
-			}
-
-			return context;
+		final GenericClassInstance classInstance;
+		// This should always be the case but unfortunately it is not.
+		if (clazz.typeArguments() != null && typeParameters.size() == clazz.typeArguments().size())
+			classInstance = new GenericClassInstance(clazz);
+		else {
+			// FIXME:  This is a hack to workaround a problem in X10.
+			ParameterTypeMapping map = new ParameterTypeMapping();
+			for (ParameterType pt : typeParameters)
+				map.add(pt, x10TypeSystem.getConcreteType(pt));
+			classInstance = new GenericClassInstance(clazz.x10Def(), map);
 		}
 
-		return rootContext;
+		GenericClassContext context = genericContexts.get(classInstance);
+		if (context == null) {
+			context = new GenericClassContext();
+			genericContexts.put(classInstance, context);
+		}
+		return context;
 	}
 
 	/**
