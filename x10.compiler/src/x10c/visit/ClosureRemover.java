@@ -434,7 +434,7 @@ public class ClosureRemover extends ContextVisitor {
                         FieldDecl fdcl = xnf.FieldDecl(pos, xnf.FlagsNode(pos, fd.flags()), xnf.X10CanonicalTypeNode(pos, vn.type()), xnf.Id(pos, name));
                         cm.add(fdcl.fieldDef(fd));
                         
-                        FieldAssign fa = xnf.FieldAssign(pos, xnf.Special(pos, Kind.THIS).type(staticNestedClassDef.asType()), xnf.Id(pos, name), Assign.ASSIGN, xnf.Local(pos, xnf.Id(pos, name)).localInstance(li.asInstance()).type(vn.type())).fieldInstance(fd.asInstance());
+                        Expr fa = xnf.FieldAssign(pos, xnf.Special(pos, Kind.THIS).type(staticNestedClassDef.asType()), xnf.Id(pos, name), Assign.ASSIGN, xnf.Local(pos, xnf.Id(pos, name)).localInstance(li.asInstance()).type(vn.type())).fieldInstance(fd.asInstance()).type(fd.type().get());
                         body2 = body2.append(xnf.Eval(pos, fa));
                     }
                     
