@@ -406,13 +406,14 @@ public class ClosureRemover extends ContextVisitor {
                             argTypes.add(vi.def().type());
                             args.add(createExpr(pos, vi));
                             
-                            X10FieldDef fi = xts.fieldDef(pos, Types.ref(staticNestedClassDef.asType()), Flags.FINAL.Private(), Types.ref(vi.type()), name);
+                            X10FieldDef fi = nameToLocalDef.get(name.toString());
+                            assert fi != null;
                             staticNestedClassDef.addField(fi);
                             
                             FieldDecl fdcl = xnf.FieldDecl(pos, xnf.FlagsNode(pos, Flags.FINAL.Private()), xnf.X10CanonicalTypeNode(pos, vi.type()), xnf.Id(pos, name));
                             cm.add(fdcl.fieldDef(fi));
                             
-                            FieldAssign fa = xnf.FieldAssign(pos, xnf.Special(pos, Kind.THIS).type(staticNestedClassDef.asType()), xnf.Id(pos, name), Assign.ASSIGN, xnf.Local(pos, xnf.Id(pos, name)).localInstance(li.asInstance()).type(vi.type())).fieldInstance(fi.asInstance());
+                            Expr fa = xnf.FieldAssign(pos, xnf.Special(pos, Kind.THIS).type(staticNestedClassDef.asType()), xnf.Id(pos, name), Assign.ASSIGN, xnf.Local(pos, xnf.Id(pos, name)).localInstance(li.asInstance()).type(vi.type())).fieldInstance(fi.asInstance()).type(fi.type().get());
                             body2 = body2.append(xnf.Eval(pos, fa));
                             break;
                         }
@@ -537,7 +538,11 @@ public class ClosureRemover extends ContextVisitor {
                             Special special = (Special) n;
                             if (special.kind() == Special.THIS) {
                                 Type type = Types.baseType(special.type());
-                                X10FieldDef fi = xts.fieldDef(pos, Types.ref(staticNestedClassDef.asType()), Flags.PRIVATE.Final(), Types.ref(type), OUTER_NAME);
+                                X10FieldDef fi = nameToFieldDef.get(OUTER_NAME.toString());
+                                if(fi == null) {
+                                    fi = xts.fieldDef(pos, Types.ref(staticNestedClassDef.asType()), Flags.PRIVATE.Final(), Types.ref(type), OUTER_NAME);
+                                    nameToFieldDef.put(OUTER_NAME.toString(), fi);
+                                }
                                 Special thiz = (Special) xnf.Special(pos, Kind.THIS).type(staticNestedClassDef.asType());
                                 return xnf.Field(pos, thiz, xnf.Id(pos, OUTER_NAME)).fieldInstance(fi.asInstance()).type(type);
                             }
