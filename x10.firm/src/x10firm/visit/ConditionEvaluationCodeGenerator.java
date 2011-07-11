@@ -127,12 +127,8 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		final Node instanceOf = con.newInstanceOf(mem, objPtr, firmType);
 		final Node projM = con.newProj(instanceOf, Mode.getM(), InstanceOf.pnM);
 		con.setCurrentMem(projM);
-		final Node projRes = con.newProj(instanceOf, Mode.getIs(), InstanceOf.pnRes);
-		/* instanceof strangely returns mode_Is at the moment, so we need an additional
-		 * Cmp to get a mode_b out of it */
-		final Node one = con.newConst(Mode.getIs().getOne());
-		final Node cmp = con.newCmp(projRes, one, Relation.Equal);
-		makeJumps(cmp);
+		final Node projRes = con.newProj(instanceOf, Mode.getb(), InstanceOf.pnRes);
+		makeJumps(projRes);
 	}
 
 	@Override
