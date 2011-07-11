@@ -44,6 +44,7 @@ import polyglot.types.ClassType;
 import polyglot.types.Context;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
+import polyglot.types.LocalDef;
 import polyglot.types.LocalInstance;
 import polyglot.types.Name;
 import polyglot.types.Ref;
@@ -451,6 +452,11 @@ public class ClosureRemover extends ContextVisitor {
                                                               Flags.PRIVATE,
                                                               argTypes);
                     
+                    ArrayList<LocalDef> formalNames = new ArrayList<LocalDef>();
+                    for(Formal form: formals)
+                        formalNames.add(form.localDef());
+                    consd.setFormalNames(formalNames);
+
                     cm.add((ClassMember) consdcl.constructorDef(consd).typeCheck(this));
                     
                     staticNestedClassDef.addConstructor(consd);
