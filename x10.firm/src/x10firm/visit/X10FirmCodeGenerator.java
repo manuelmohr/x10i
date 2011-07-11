@@ -2511,6 +2511,21 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	@Override
+	public void visit(SubtypeTest_c n) {
+		final Type subType = n.subtype().type();
+		final Type superType = n.supertype().type();
+		final Mode mode = firmTypeSystem.getFirmMode(x10TypeSystem.Boolean());
+		boolean res;
+
+		if (n.equals())
+			res = x10TypeSystem.typeBaseEquals(subType, superType, x10Context);
+		else
+			res = x10TypeSystem.isSubtype(subType, superType);
+
+		setReturnNode(con.newConst(res ? mode.getOne() : mode.getNull()));
+	}
+
+	@Override
 	public void visit(ParExpr_c n) {
 		visitAppropriate(n.expr());
 	}
@@ -2582,11 +2597,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Id_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(SubtypeTest_c n) {
 		throw new RuntimeException("Not implemented yet");
 	}
 
