@@ -2527,7 +2527,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Closure_c n) {
-		throw new RuntimeException("Closure should have been desugared earlier");
+		throw new RuntimeException("Closures should have been desugared earlier");
 	}
 
 	@Override
@@ -2572,12 +2572,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(X10Unary_c n) {
-		throw new RuntimeException("Not implemented yet");
+		throw new RuntimeException("Unary expressions should have been desugared earlier");
 	}
 
 	@Override
 	public void visit(Unary_c n) {
-		throw new RuntimeException("Not implemented yet");
+		throw new RuntimeException("Unary expressions should have been desugared earlier");
 	}
 
 	@Override
