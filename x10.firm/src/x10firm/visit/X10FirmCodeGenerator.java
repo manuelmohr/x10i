@@ -2545,16 +2545,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	//
 
 	@Override
-	public void visit(PackageNode_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(Import_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
 	public void visit(PropertyDecl_c n) {
 		throw new RuntimeException("Not implemented yet");
 	}
@@ -2692,6 +2682,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(AtExpr_c n) {
 		throw new RuntimeException("At expression should have been desugared earlier");
 	}
+
+	@Override
+	public void visit(PackageNode_c n) {
+		throw new RuntimeException("Package nodes should have been handled by an earlier pass");
+	}
+
+	@Override
+	public void visit(Import_c n) {
+		throw new RuntimeException("Imports should have been handled by an earlier pass");
+	}
+
 
 	/**
 	 * return current construction object
