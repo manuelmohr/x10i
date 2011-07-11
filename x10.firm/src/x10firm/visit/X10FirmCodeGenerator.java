@@ -2540,15 +2540,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		// DO NOTHING
 	}
 
-	@Override
-	public void visit(Closure_c n) {
-		throw new RuntimeException("Closures should have been desugared earlier");
-	}
-
-	@Override
-	public void visit(LocalClassDecl_c n) {
-		throw new RuntimeException("Local classes should have been removed by a separate pass");
-	}
+	//
+	//  TODO:  Implement.
+	//
 
 	@Override
 	public void visit(PackageNode_c n) {
@@ -2583,16 +2577,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(X10CanonicalTypeNode_c n) {
 		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(X10Unary_c n) {
-		throw new RuntimeException("Unary expressions should have been desugared earlier");
-	}
-
-	@Override
-	public void visit(Unary_c n) {
-		throw new RuntimeException("Unary expressions should have been desugared earlier");
 	}
 
 	@Override
@@ -2655,6 +2639,34 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		throw new RuntimeException("Not implemented yet");
 	}
 
+	@Override
+	public void visit(Tuple_c c) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	//
+	//  Will never be implemented.
+	//
+
+	@Override
+	public void visit(Closure_c n) {
+		throw new RuntimeException("Closures should have been desugared earlier");
+	}
+
+	@Override
+	public void visit(LocalClassDecl_c n) {
+		throw new RuntimeException("Local classes should have been removed by a separate pass");
+	}
+
+	@Override
+	public void visit(X10Unary_c n) {
+		throw new RuntimeException("Unary expressions should have been desugared earlier");
+	}
+
+	@Override
+	public void visit(Unary_c n) {
+		throw new RuntimeException("Unary expressions should have been desugared earlier");
+	}
 
 	@Override
 	public void visit(ArrayInit_c n) {
@@ -2664,11 +2676,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(SettableAssign_c n) {
 		throw new RuntimeException("Function assign should have been desugared earlier");
-	}
-
-	@Override
-	public void visit(Tuple_c c) {
-		throw new RuntimeException("Not implemented yet");
 	}
 
 	@Override
