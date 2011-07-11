@@ -11,6 +11,7 @@ import polyglot.types.TypeSystem;
 import polyglot.visit.NodeVisitor;
 import x10.ExtensionInfo.X10Scheduler;
 import x10.ast.X10NodeFactory_c;
+import x10c.visit.ClosureRemover;
 import x10firm.goals.AsmEmitted;
 import x10firm.goals.FirmGenerated;
 import x10firm.goals.GoalSequence;
@@ -19,7 +20,6 @@ import x10firm.goals.LoweringFirm;
 import x10firm.goals.SourceGoalSequence;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
-import x10firm.visit.X10ClosureRemover;
 
 /**
  * Setting the goals for the Firm backend and depend on the X10 scheduler for
@@ -27,7 +27,7 @@ import x10firm.visit.X10ClosureRemover;
  */
 class X10FirmScheduler extends X10Scheduler {
 	private final FirmTypeSystem firmTypeSystem;
-	
+
 	/**
 	 * Initialize the scheduler, duh.
 	 * @param info	"==ExtensionInfo.this", because this inner class is static
@@ -91,8 +91,9 @@ class X10FirmScheduler extends X10Scheduler {
     private Goal ClosureRemover(Job job) {
         TypeSystem ts = extInfo.typeSystem();
         NodeFactory nf = extInfo.nodeFactory();
-        return new ValidatingVisitorGoal("ClosureRemoved", job, new X10ClosureRemover(job, ts, nf)).intern(this);
-    }
+		return new ValidatingVisitorGoal("ClosureRemoved", job,
+				new ClosureRemover(job, ts, nf)).intern(this);
+	}
 
 	@Override
 	public Goal CodeGenerated(Job job) {

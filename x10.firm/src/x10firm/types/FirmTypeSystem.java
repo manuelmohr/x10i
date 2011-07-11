@@ -40,7 +40,6 @@ import x10.types.X10ConstructorInstance;
 import x10.types.X10MethodDef;
 import x10.types.X10ParsedClassType;
 import x10firm.CompilerOptions;
-import x10firm.visit.X10ClosureRemover;
 import firm.ClassType;
 import firm.Entity;
 import firm.Ident;
@@ -172,9 +171,6 @@ public class FirmTypeSystem {
 	}
 	
 	private polyglot.types.Type getTypeHelp(polyglot.types.Type type) {
-		final polyglot.types.Type tmp = X10ClosureRemover.getClosureMappingType(simplifyType(type));
-		if(tmp != null)
-			return tmp;
 		if(type instanceof FunctionType) {
 			final FunctionType func = (FunctionType)type;
 			if(func.flags().isInterface()) {
