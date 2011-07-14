@@ -651,7 +651,7 @@ public class Desugarer extends ContextVisitor {
         // if resType is void, then we shouldn't use return
         final boolean isVoid = ts.isVoid(resType);
         newExpr = (Expr) newExpr.visit(builder).visit(checker);
-        anIf = (If) anIf.visit(builder).visit(checker);
+        anIf = (If) anIf.visit(builder).visit(v);
         List<Stmt> statements = new ArrayList<Stmt>();
         statements.addAll(locals);
         statements.add(anIf);
@@ -872,7 +872,7 @@ public class Desugarer extends ContextVisitor {
                 nf.CanonicalTypeNode(pos, xDef.type()), nf.Id(pos, xn)).localDef(xDef);
         Expr xl = nf.Local(pos, nf.Id(pos, xn)).localInstance(xDef.asInstance()).type(t);
         List<Expr> condition = depClause.condition();
-        Expr cond = nf.Unary(pos, conjunction(depClause.position(), condition, xl), Unary.NOT).type(ts.Boolean());
+        Expr cond = visitUnary((Unary) nf.Unary(pos, conjunction(depClause.position(), condition, xl), Unary.NOT).type(ts.Boolean()));
         Type ccet = ts.ClassCastException();
         CanonicalTypeNode CCE = nf.CanonicalTypeNode(pos, ccet);
         Expr msg = nf.StringLit(pos, ot.toString()).type(ts.String());
@@ -914,7 +914,7 @@ public class Desugarer extends ContextVisitor {
         Expr cast = nf.X10Cast(pos, tn, xl, Converter.ConversionType.CHECKED).type(tn.type());
         List<Expr> condition = depClause.condition();
         Expr cond = conjunction(depClause.position(), condition, cast);
-        Expr rval = nf.Binary(pos, iof, Binary.COND_AND, cond).type(ts.Boolean());
+        Expr rval = visitBinary((Binary) nf.Binary(pos, iof, Binary.COND_AND, cond).type(ts.Boolean()));
         Block body = nf.Block(pos, nf.Return(pos, rval));
         Closure c = closure(pos, ts.Boolean(), Collections.singletonList(x), body);
         c.visit(new ClosureCaptureVisitor(this.context(), c.closureDef()));
