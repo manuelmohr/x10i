@@ -173,6 +173,7 @@ import firm.nodes.Store;
 public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/** names of builtin functions */
 	private static final String X10_STRING_LITERAL = "x10_string_literal";
+	private static final String X10_THROW_STUB     = "x10_throw_stub";
 
 	/** The current firm construction object */
 	private OOConstruction con;
@@ -2544,6 +2545,24 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	//  TODO:  Implement.
 	//
 
+	// Just a stub implementation for now.
+	@Override
+	public void visit(Throw_c n) {
+		final firm.Type[] parameterTypes = new firm.Type[0];
+		final firm.Type[] resultTypes = new firm.Type[0];
+		final MethodType type = new firm.MethodType(parameterTypes, resultTypes);
+		final Entity funcEnt = new Entity(Program.getGlobalType(), X10_THROW_STUB, type);
+		final Node address = con.newSymConst(funcEnt);
+
+		Node[] parameters = new Node[0];
+		final Node mem = con.getCurrentMem();
+		final Node call = con.newCall(mem, address, parameters, type);
+		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
+		con.setCurrentMem(newMem);
+
+		setReturnNode(call);
+	}
+
 	@Override
 	public void visit(PropertyDecl_c n) {
 		throw new RuntimeException("Not implemented yet");
@@ -2571,11 +2590,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Id_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(Throw_c n) {
 		throw new RuntimeException("Not implemented yet");
 	}
 
