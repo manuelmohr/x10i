@@ -201,7 +201,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	private void evaluateCondition(final Expr e, final Block trueBlock, final Block falseBlock) {
 		ConditionEvaluationCodeGenerator codegen
-			= new ConditionEvaluationCodeGenerator(trueBlock, falseBlock, this, x10TypeSystem);
+			= new ConditionEvaluationCodeGenerator(trueBlock, falseBlock, this, x10TypeSystem, firmTypeSystem);
 		codegen.visitAppropriate(e);
 	}
 
