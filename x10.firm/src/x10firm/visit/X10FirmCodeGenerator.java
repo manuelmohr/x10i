@@ -243,11 +243,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param locals A list with local instances
 	 * @return The unique mapping between local instances and firm enities.
 	 */
-	private Map<LocalInstance, Entity> calculatEntityMappingForLocals(final List<LocalInstance> locals) {
+	private Map<LocalInstance, Entity> calculateEntityMappingForLocals(final List<LocalInstance> locals) {
 		Map<LocalInstance, Entity> map = new HashMap<LocalInstance, Entity>();
 		final firm.Type frameType = con.getGraph().getFrameType();
-		for(LocalInstance loc : locals) {
-			if(needEntityForLocalInstance(loc) && !map.containsKey(loc)) {
+		for (LocalInstance loc : locals) {
+			if (needEntityForLocalInstance(loc) && !map.containsKey(loc)) {
 				Entity ent = new Entity(frameType, loc.name().toString(), firmTypeSystem.asFirmCoreType(loc.type()));
 				map.put(loc, ent);
 			}
@@ -551,7 +551,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		X10FirmContext newFirmContext = new X10FirmContext();
 
-		final Map<LocalInstance, Entity> map = calculatEntityMappingForLocals(locals);
+		final Map<LocalInstance, Entity> map = calculateEntityMappingForLocals(locals);
 
 		newFirmContext.setCurProcedure(proc);
 
@@ -2616,11 +2616,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	@Override
-	public void visit(Initializer_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
 	public void visit(Formal_c n) {
 		throw new RuntimeException("Not implemented yet");
 	}
@@ -2693,6 +2688,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	//
 	//  Will never be implemented.
 	//
+
+
+	// Initializer does not need to be implemented, see Igor's email from 2011-07-15 on this subject.
+	@Override
+	public void visit(Initializer_c n) {
+		throw new RuntimeException("Not implemented yet");
+	}
 
 	@Override
 	public void visit(Closure_c n) {
