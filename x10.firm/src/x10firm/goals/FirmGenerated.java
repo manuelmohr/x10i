@@ -60,17 +60,17 @@ public class FirmGenerated extends SourceGoal_c {
 		firmTypeSystem.beforeGraphConstruction();
 
 		final Translator tr = new Translator(job(), x10TypeSystem, null, null);
+		final Compiler compiler = job().compiler();
+		final CompilerOptions options =
+			(CompilerOptions) scheduler.extensionInfo().getOptions();
 
-		Compiler compiler = job().compiler();
 		final X10FirmCodeGenerator v = new X10FirmCodeGenerator(compiler,
-				firmTypeSystem, x10TypeSystem, nodeFactory, tr);
+				firmTypeSystem, x10TypeSystem, nodeFactory, tr, options);
 
 		v.visitAppropriate(ast);
 
 		firmTypeSystem.finishTypeSystem();
 
-		final CompilerOptions options =
-				(CompilerOptions) scheduler.extensionInfo().getOptions();
 		if (options.dump_firm_graphs) {
 			try {
 				Dump.dumpTypeGraph("typegraph_" + ast.toString() + ".vcg");

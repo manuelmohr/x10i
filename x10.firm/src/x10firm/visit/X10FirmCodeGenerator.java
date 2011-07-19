@@ -133,6 +133,7 @@ import x10.types.X10MethodDef;
 import x10.types.X10ProcedureInstance;
 import x10.types.checker.Converter;
 import x10.visit.X10DelegatingVisitor;
+import x10firm.CompilerOptions;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
 import x10firm.types.ParameterTypeMapping;
@@ -174,6 +175,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/** names of builtin functions */
 	private static final String X10_STRING_LITERAL = "x10_string_literal";
 	private static final String X10_THROW_STUB     = "x10_throw_stub";
+	private static final String X10_ASSERT         = "x10_assert";
 
 	/** The current firm construction object */
 	private OOConstruction con;
@@ -198,6 +200,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	/** current firm context */
 	private X10FirmContext firmContext = new X10FirmContext();
+
+	/** Command-line options */
+	private CompilerOptions options;
 
 	private void evaluateCondition(final Expr e, final Block trueBlock, final Block falseBlock) {
 		ConditionEvaluationCodeGenerator codegen
@@ -270,13 +275,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			final FirmTypeSystem firmTypeSystem,
 			final GenericTypeSystem x10TypeSystem,
 			final X10NodeFactory_c nodeFactory,
-			final Translator translator) {
+			final Translator translator,
+			final CompilerOptions options) {
 
 		this.firmTypeSystem = firmTypeSystem;
-		this.x10TypeSystem = x10TypeSystem;
-		this.xnf = nodeFactory;
-		this.query      = new X10ASTQuery(translator);
-		this.x10Context = new Context(x10TypeSystem);
+		this.x10TypeSystem  = x10TypeSystem;
+		this.xnf            = nodeFactory;
+		this.query          = new X10ASTQuery(translator);
+		this.x10Context     = new Context(x10TypeSystem);
+		this.options        = options;
 
 		X10NameMangler.setup(x10TypeSystem);
 
@@ -2092,11 +2099,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		setReturnNode(result);
 	}
 
-	@Override
-	public void visit(StringLit_c n) {
+	private Node createStringLiteral(String value) {
 		/* Construct call to builtin function, which creates an X10 string struct. */
-
-		final Node string_const = createStringSymConst(n.value());
+		final Node string_const = createStringSymConst(value);
 
 		final firm.Type[] parameterTypes = new firm.Type[2];
 		parameterTypes[0] = firmTypeSystem.asFirmType(x10TypeSystem.UInt());
@@ -2109,7 +2114,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final Node address = con.newSymConst(func_ent);
 
 		Node[] parameters = new Node[2];
-		parameters[0] = con.newConst(n.value().length(), Mode.getIu());
+		parameters[0] = con.newConst(value.length(), Mode.getIu());
 		parameters[1] = string_const;
 		final Node mem = con.getCurrentMem();
 		final Node call = con.newCall(mem, address, parameters, type);
@@ -2121,9 +2126,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final Node all_results = con.newProj(call, Mode.getT(), Call.pnTResult);
 		final Mode mode = ret_type.getMode();
 		assert (mode != null);
-		final Node ret = con.newProj(all_results, mode, 0);
+		return con.newProj(all_results, mode, 0);
+	}
 
-		setReturnNode(ret);
+	@Override
+	public void visit(StringLit_c n) {
+		setReturnNode(createStringLiteral(n.value()));
 	}
 
 	private Node createStringSymConst(String value) {
@@ -2541,6 +2549,45 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		// DO NOTHING
 	}
 
+	@Override
+	public void visit(Assert_c n) {
+		if (!options.assertions) {
+			setReturnNode(null);
+			return;
+		}
+
+		final Node cond = visitExpression(n.cond());
+
+		Node errMsg = null;
+		if (n.errorMessage() != null)
+			errMsg = visitExpression(n.errorMessage());
+		else
+			errMsg = con.newConst(0, firmTypeSystem.getFirmMode(x10TypeSystem.String()));
+
+		Node position = null;
+		if (n.position() != null)
+			position = createStringLiteral(n.position().nameAndLineString());
+		else
+			position = con.newConst(0, firmTypeSystem.getFirmMode(x10TypeSystem.String()));
+
+		final firm.Type[] parameterTypes = new firm.Type[3];
+		parameterTypes[0] = firmTypeSystem.asFirmType(x10TypeSystem.Boolean());
+		parameterTypes[1] = firmTypeSystem.asFirmType(x10TypeSystem.String());
+		parameterTypes[2] = firmTypeSystem.asFirmType(x10TypeSystem.String());
+		final firm.Type[] resultTypes = new firm.Type[0];
+		final MethodType type = new firm.MethodType(parameterTypes, resultTypes);
+		final Entity funcEnt = new Entity(Program.getGlobalType(), X10_ASSERT, type);
+		final Node address = con.newSymConst(funcEnt);
+
+		Node[] parameters = new Node[] { cond, errMsg, position };
+		final Node mem = con.getCurrentMem();
+		final Node call = con.newCall(mem, address, parameters, type);
+		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
+		con.setCurrentMem(newMem);
+
+		setReturnNode(call);
+	}
+
 	//
 	//  TODO:  Implement.
 	//
@@ -2570,11 +2617,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Initializer_c n) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	@Override
-	public void visit(Assert_c n) {
 		throw new RuntimeException("Not implemented yet");
 	}
 
