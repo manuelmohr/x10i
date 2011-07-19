@@ -24,7 +24,7 @@ public class AsmEmitted extends AllBarrierGoal {
 			UUID.randomUUID().toString() + ".s";
 
 	private Goal prereq_redirection = null;
-
+	
 	/** Constructor */
 	public AsmEmitted(Scheduler scheduler) {
 		super("AsmEmitted", scheduler);
@@ -32,18 +32,19 @@ public class AsmEmitted extends AllBarrierGoal {
 
 	@Override
 	public boolean runTask() {
+		
 		/* try to generate some assembly */
 		String compilationUnit = "x10program";
 
 		final CompilerOptions options =
 			(CompilerOptions) scheduler.extensionInfo().getOptions();
 
-		/* make sure all unreachable code is eliminated or the bakend
+		/* make sure all unreachable code is eliminated or the backend
 		 * may be confused */
 		for (Graph g : Program.getGraphs()) {
 			binding_irgopt.optimize_graph_df(g.ptr);
 			binding_iroptimize.optimize_cf(g.ptr);
-			if (options.dump_firm_graphs) {
+			if (options.isDumpFirmGraphs()) {
 				Dump.dumpGraph(g, "--before-backend");
 			}
 		}
@@ -69,9 +70,11 @@ public class AsmEmitted extends AllBarrierGoal {
 
 	@Override
 	public Goal prereqForJob(Job job) {
-		if (!scheduler.shouldCompile(job)) {
+		// TODO DELETE_ME: Delete the second condition when closures are implemented
+		if (!scheduler.shouldCompile(job) && !job.toString().endsWith("x10/lang/Thread.x10")) {
 			return null;
 		}
+		
 		return scheduler.End(job);
 	}
 }

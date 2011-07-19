@@ -6,6 +6,7 @@
 
 #include "x10.h"
 #include "x10_object.h"
+#include "debug.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
@@ -37,6 +38,16 @@ static inline bool x10_instance_of(const x10_object* o,
 		const x10_classinfo_t *c)
 {
 	return x10_object_head(o)->vptr[0] == (uintptr_t) c;
+}
+
+static inline void *x10_sysalloc(size_t size)
+{
+	return malloc(size); 
+}
+
+static inline void x10_sysfree(void *data)
+{
+	free(data); 
 }
 
 static inline void* x10_malloc(size_t size)

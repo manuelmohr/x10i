@@ -1,5 +1,7 @@
 package x10firm.types;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -8,6 +10,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.StringTokenizer;
 
 import polyglot.types.ClassDef;
 import polyglot.types.Context;
@@ -36,6 +39,7 @@ import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10MethodDef;
 import x10.types.X10ParsedClassType;
+import x10firm.CompilerOptions;
 import x10firm.visit.X10ClosureRemover;
 import firm.ClassType;
 import firm.Entity;
@@ -83,6 +87,26 @@ public class FirmTypeSystem {
 	private Entity vptrEntity;
 
 	private static long boxingID = 1;
+	
+	private static class NativeClassInfo {
+		private final int size; 
+		
+		private NativeClassInfo(final int size_) {
+			size = size_; 
+		}
+		
+		public int getSize() { return size; }
+		
+		public static NativeClassInfo newNativeClassInfo(final int size) {
+			return new NativeClassInfo(size); 
+		}
+	}
+	
+	/** Mapping between X10ClassTypes and the appropriate native class info */
+	private static final Map<X10ClassType, NativeClassInfo> x10NativeTypes = new HashMap<X10ClassType, NativeClassInfo>();
+	
+	/** Mapping between firm class types and the appropriate native object size */
+	private static final Map<firm.ClassType, NativeClassInfo> firmNativeTypes = new HashMap<firm.ClassType, NativeClassInfo>(); 
 
 	/**
 	 * Name of the boxed value.
@@ -103,6 +127,48 @@ public class FirmTypeSystem {
 
 	private String getUniqueBoxingName(final String structName) {
 		return structName + "__FirmBox__" + (boxingID++);
+	}
+	
+	private boolean inited = false; 
+	
+	/**
+	 * Initializes the firm type system 
+	 */
+	public void init(final CompilerOptions options) {
+		if(inited) return;
+		inited = true;
+		readFirmNativeTypesConfig(options.getFirmNativeTypesFilename()); 
+		initFirmTypes();
+		X10NameMangler.setup(x10TypeSystem);
+		// Always generate the vtable for x10.lang.String.
+		asFirmCoreType(x10TypeSystem.String());
+	}
+	
+	private void readFirmNativeTypesConfig(final String firmNativeTypesFilename) {
+		try {
+			BufferedReader in = new BufferedReader(new FileReader(firmNativeTypesFilename));
+			
+			String line = null;
+			while((line = in.readLine()) != null) {
+				StringTokenizer toker = new StringTokenizer(line);
+				assert toker.countTokens() == 3 : "Illegal format in " + firmNativeTypesFilename;
+				final String packName  = toker.nextToken();
+				final String className = toker.nextToken(); 
+				int size = 0;
+				try {
+					size = Integer.parseInt(toker.nextToken());
+				} catch(NumberFormatException nfexc) {
+					assert false: "Illegal size " + size  +" in " + firmNativeTypesFilename;
+				}
+				final X10ClassType klass = getNamedX10Type(packName, className); 
+				x10NativeTypes.put(klass, NativeClassInfo.newNativeClassInfo(size)); 
+			}
+			
+			in.close(); 
+		} catch(Exception exc) {
+			System.err.println("Error in reading file" + firmNativeTypesFilename + " Exception: "+ exc);
+			System.exit(-1); 
+		}
 	}
 	
 	private polyglot.types.Type getTypeHelp(polyglot.types.Type type) {
@@ -331,6 +397,11 @@ public class FirmTypeSystem {
 			layoutType(entity.getType());
 
 		klass.layoutFields();
+		// set the appropriate native size of the firm type
+		final NativeClassInfo classInfo = firmNativeTypes.get(klass);
+		if(classInfo != null) {
+			klass.setSizeBytes(classInfo.getSize()); 
+		}
 		klass.finishLayout();
 	}
 
@@ -557,6 +628,10 @@ public class FirmTypeSystem {
 		final String className = X10NameMangler.mangleTypeObjectWithDefClass(classType);
 		final Flags flags = classType.flags();
 		ClassType result = new ClassType(className);
+		final NativeClassInfo classInfo = x10NativeTypes.get(classType);
+		if(classInfo != null) {
+			firmNativeTypes.put(result, classInfo); 
+		}
 
 		/* put the class into the core types already, because we could
 		 * have a field referencing ourself */
@@ -705,7 +780,8 @@ public class FirmTypeSystem {
 	 * the ExtensionInfo we must not use the Int(), Boolean(), ... functions
 	 * yet.
 	 */
-	public void beforeGraphConstruction() {
+	private void initFirmTypes() {
+		
 		/* we "lower" some well-known types directly to firm modes */
 		Mode modeLong = new Mode("Long", ir_mode_sort.irms_int_number, 64, 1,
 				ir_mode_arithmetic.irma_twos_complement, 64);
@@ -786,6 +862,20 @@ public class FirmTypeSystem {
 	    final Named n = types.get(0);
 	    final X10ClassType objectType = (X10ClassType)n;
 		return objectType;
+	}
+	
+	/**
+	 * Returns a x10 type 
+	 * 
+	 * @param packageName Package name of the x10 type
+	 * @param className Class name of the x10 type 
+	 * 
+	 * @return	a class type for the given full class name 
+	 */
+	public X10ClassType getNamedX10Type(final String packageName, final String className) {
+		final QName fullName = QName.make(packageName, className);
+		final X10ClassType x10Type = x10TypeSystem.load(fullName.toString());
+		return x10Type; 
 	}
 
 	/**

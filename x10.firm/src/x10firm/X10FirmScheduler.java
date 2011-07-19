@@ -43,8 +43,8 @@ class X10FirmScheduler extends X10Scheduler {
 		 * javac/gcc on the generated source code.  In the Firm context this
 		 * corresponds to emitting assembler and linking with the stdlib.
 		 */
-
-		final Goal loweringFirm = new LoweringFirm();
+		
+		final Goal loweringFirm = new LoweringFirm(this, firmTypeSystem);
 		loweringFirm.intern(this);
 
 		final Goal asmEmitted = new AsmEmitted(this);

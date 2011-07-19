@@ -17,11 +17,28 @@ public class CompilerOptions extends X10CompilerOptions {
 	/**
 	 * Decides whether compiler outputs FIRM graphs.
 	 */
-	public boolean dump_firm_graphs = false;
+	private boolean dumpFirmGraphs = false;
+	
+	private String firmNativeTypesFilename = null; 
 
 	/** constructor */
 	public CompilerOptions(ExtensionInfo extension) {
 		super(extension);
+	}
+	
+	/**
+	 * @return True if the firm graphs should be dumped
+	 */
+	public boolean isDumpFirmGraphs() { 
+		return dumpFirmGraphs; 
+	}
+	
+	/**
+	 * @return The full filename of the firm native types configuration file 
+	 */
+	public String getFirmNativeTypesFilename() {
+		assert(firmNativeTypesFilename != null);
+		return firmNativeTypesFilename; 
 	}
 
 	@Override
@@ -42,8 +59,11 @@ public class CompilerOptions extends X10CompilerOptions {
 		}
 
 		if (args[i].equals("-dumpgraphs")) {
-			dump_firm_graphs = true;
+			dumpFirmGraphs = true;
 			return index + 1;
+		} else if(args[i].equals("-firmNativeTypes")) {
+			firmNativeTypesFilename = args[i+1]; 
+			return index + 2;
 		}
 
 		return index;
@@ -59,5 +79,7 @@ public class CompilerOptions extends X10CompilerOptions {
 				"Set firm backend options (use -bhelp for additional help)");
 		usageForFlag(out, "-dumpgraphs",
 				"Dump FIRM graphs");
+		usageForFlag(out, "-firmNativeTypes <pathname>", 
+				"Path of the firm native types configuration file");
 	}
 }
