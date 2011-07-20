@@ -2601,7 +2601,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
 		con.setCurrentMem(newMem);
 
-		setReturnNode(call);
+		con.getGraph().keepAlive(call);
+		con.getGraph().keepAlive(con.getCurrentBlock());
+		con.setCurrentBlockBad();
 	}
 
 	@Override
