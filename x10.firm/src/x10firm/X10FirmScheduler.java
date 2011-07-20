@@ -6,7 +6,9 @@ import java.util.List;
 import polyglot.ast.NodeFactory;
 import polyglot.frontend.Goal;
 import polyglot.frontend.Job;
+import polyglot.frontend.VisitorGoal;
 import polyglot.types.TypeSystem;
+import polyglot.visit.NodeVisitor;
 import x10.ExtensionInfo.X10Scheduler;
 import x10.ast.X10NodeFactory_c;
 import x10firm.goals.AsmEmitted;
@@ -74,6 +76,18 @@ class X10FirmScheduler extends X10Scheduler {
         }
         return goals;
     }
+    
+    // Visitor that does nothing 
+    private static class NoVisitor extends NodeVisitor {
+       public NoVisitor() { }
+    }
+    
+    @Override
+    // Get out of the native class visitor in firm 
+    public Goal NativeClassVisitor(Job job) {
+       return new VisitorGoal("NoVisitor", job, new NoVisitor()).intern(this);
+    }
+
 
     private Goal ClosureRemover(Job job) {
         TypeSystem ts = extInfo.typeSystem();
@@ -88,8 +102,7 @@ class X10FirmScheduler extends X10Scheduler {
 		final X10NodeFactory_c nodeFactory =
 				(X10NodeFactory_c) extInfo.nodeFactory();
 
-		final Goal firm_generated =
-				new FirmGenerated(job, typeSystem, firmTypeSystem, nodeFactory);
+		final Goal firm_generated = new FirmGenerated(job, typeSystem, firmTypeSystem, nodeFactory);
 		firm_generated.intern(this);
 
 		/*
