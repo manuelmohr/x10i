@@ -16,7 +16,7 @@ static x10_string* x10_allocate_string(x10_int len)
 static inline void check_string_bounds(x10_string *str, x10_int idx)
 {
 	if (idx < 0 || (x10_uint)idx > (str->len)) {
-		x10_throw_exception(T_("Index Out of Bounds"), T_("Within string bounds check"));
+		x10_throw_exception(X10_INDEX_OUT_OF_BOUNDS_EXCEPTION, T_("Within string bounds check"));
 	}
 }
 
@@ -215,7 +215,7 @@ x10_string *_ZN3x104lang6String9substringEii(x10_string *self, x10_int start_idx
 	check_string_bounds(self, start_idx);
 	check_string_bounds(self, to_idx);
 	if (start_idx > to_idx)
-		x10_throw_exception(T_("Index Out Of Bounds"), T_("In substring"));
+		x10_throw_exception(X10_INDEX_OUT_OF_BOUNDS_EXCEPTION, T_("In substring"));
 
 	const size_t len = to_idx - start_idx;
 	return x10_string_from_wide_buf(len, x10_string_buf(self) + start_idx);

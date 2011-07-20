@@ -18,6 +18,8 @@ static const bool X10_FALSE = false;
 
 #define X10_NULL_POINTER_EXCEPTION  T_("NullPointerException")
 #define X10_NUMBER_FORMAT_EXCEPTION T_("NumberFormatException")
+#define X10_INDEX_OUT_OF_BOUNDS_EXCEPTION T_("IndexOutOfBoundsException")
+#define X10_ILLEGAL_MONITOR_STATE_EXCEPTION T_("IllegalMonitorStateException")
 
 
 static inline x10_object_header *x10_object_head(const x10_object *obj)

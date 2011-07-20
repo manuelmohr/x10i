@@ -1,8 +1,6 @@
 #ifndef X10_H
 #define X10_H
 
-#define _GNU_SOURCE
-
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>

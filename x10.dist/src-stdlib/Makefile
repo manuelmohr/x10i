@@ -19,7 +19,7 @@ ${SO_FILE}: ${O_FILES} firmNativeTypes
 	gcc -shared -Wl,-soname,lib${LIBNAME}.so -o lib${LIBNAME}.so.${VERSION} ${O_FILES}
 
 %.o: %.c ${H_FILES} 
-	gcc $< -O3 -fdollars-in-identifiers -Wall -W -pedantic -std=c99 -c -o $@
+	gcc -D_GNU_SOURCE $< -O3 -fdollars-in-identifiers -Wall -W -pedantic -std=c99 -c -o $@
 
 firmNativeTypes:
 	gcc -o ${GEN_FIRM_NATIVE_SIZES} ${GEN_FIRM_NATIVE_SIZES}.c

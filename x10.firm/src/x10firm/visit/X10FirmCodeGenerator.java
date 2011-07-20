@@ -137,7 +137,6 @@ import x10firm.CompilerOptions;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
 import x10firm.types.ParameterTypeMapping;
-import x10firm.types.X10NameMangler;
 
 import com.sun.jna.Platform;
 

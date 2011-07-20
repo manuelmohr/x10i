@@ -2,6 +2,7 @@
 
 #include "x10.h"
 #include "x10_thread.h"
+#include "x10_lock.h"
 
 int main(int argc, char *argv[])
 {
@@ -12,9 +13,10 @@ int main(int argc, char *argv[])
 	}
 
 #define DEF_FIRM_NATIVE_TYPE(pack, name, type)	\
-	fprintf(file, "%s %s %i", pack, name, sizeof(type))
+	fprintf(file, "%s %s %i\n", pack, name, sizeof(type))
 	
-	DEF_FIRM_NATIVE_TYPE("x10.lang", "Thread", x10_thread); 
+	DEF_FIRM_NATIVE_TYPE("x10.lang", "Thread", x10_thread);
+	DEF_FIRM_NATIVE_TYPE("x10.util.concurrent", "Lock", x10_lock); 
 	
 	fclose(file); 
 	return 0; 
