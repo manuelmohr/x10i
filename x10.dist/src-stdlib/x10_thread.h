@@ -44,7 +44,7 @@ typedef struct {
 } x10_thread;
 
 // Returns the identifier of this thread.
-X10_EXTERN x10_long x10_thread_get_id(x10_thread *); 
+X10_EXTERN x10_long x10_thread_get_id(x10_thread *);
 // Returns the system thread id.
 X10_EXTERN x10_long x10_thread_get_tid();
 // Waits forever for this thread to die.
@@ -57,7 +57,7 @@ X10_EXTERN void x10_thread_interrupt(x10_thread *);
 // Thread methods
 X10_EXTERN x10_thread * _ZN3x104lang6ThreadC1EPN3x104lang6StringE(x10_thread *, x10_string *);
 X10_EXTERN x10_thread *_ZN3x104lang6Thread13currentThreadEv();
-X10_EXTERN void _ZN3x104lang6Thread5startEv(x10_thread *); 
+X10_EXTERN void _ZN3x104lang6Thread5startEv(x10_thread *);
 X10_EXTERN void _ZN3x104lang6Thread5sleepEx(x10_thread *, x10_long);
 X10_EXTERN void _ZN3x104lang6Thread5sleepExi(x10_thread *, x10_long, x10_int);
 X10_EXTERN void _ZN3x104lang6Thread4parkEv();
@@ -69,6 +69,6 @@ X10_EXTERN void _ZN3x104lang6ThreadapplyEv(x10_thread *);
 X10_EXTERN x10_string *_ZN3x104lang6Thread4nameEv(x10_thread *);
 
 // TODO: Add home struct as return type
-X10_EXTERN x10_any *_ZN3x104lang6Thread4homeEv(x10_thread *); 
+X10_EXTERN x10_any *_ZN3x104lang6Thread4homeEv(x10_thread *);
 
 #endif // X10_THREAD_H_
