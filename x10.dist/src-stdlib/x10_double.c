@@ -73,3 +73,25 @@ x10_double _ZN3x104lang6DoublermEd(x10_double a, x10_double b)
 	return fmod(a, b);
 }
 MAKE_CONFS(_ZN3x104lang6Double, x10_double)
+
+/* Use to move bits between x10_long/x10_double without confusing the compiler */
+typedef union TypePunner {
+    x10_long l;
+    x10_double d;
+} TypePunner;
+
+x10_long _ZN3x104lang6Double13toRawLongBitsEv(x10_double self)
+{
+    TypePunner tmp;
+    tmp.d = self;
+    return tmp.l;
+}
+
+x10_double _ZN3x104lang6Double12fromLongBitsEx(x10_long digits)
+{
+    TypePunner tmp;
+    tmp.l = digits;
+    return tmp.d;
+}
+
+
