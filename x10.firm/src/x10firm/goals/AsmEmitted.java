@@ -1,6 +1,8 @@
 package x10firm.goals;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 import polyglot.frontend.AllBarrierGoal;
@@ -35,7 +37,7 @@ public class AsmEmitted extends AllBarrierGoal {
 		
 		/* try to generate some assembly */
 		String compilationUnit = "x10program";
-
+		
 		final CompilerOptions options =
 			(CompilerOptions) scheduler.extensionInfo().getOptions();
 
@@ -67,11 +69,29 @@ public class AsmEmitted extends AllBarrierGoal {
 			prereq_redirection.addPrereq(goal);
 		}
 	}
+	
+	// TODO: DELETE ME: Need closure support
+	private static Set<String> allowedClassNames = new HashSet<String>();
+	static {
+		allowedClassNames.add("x10/lang/Thread.x10");
+		allowedClassNames.add("x10/util/concurrent/AtomicInteger.x10");
+		allowedClassNames.add("x10/util/concurrent/AtomicLong.x10");
+		allowedClassNames.add("x10/util/concurrent/AtomicBoolean.x10");
+		allowedClassNames.add("x10/util/concurrent/Lock.x10"); 
+	}
+	
+	// TODO DELETE ME: Delete this method when closures are implemented. 
+	public static boolean isAllowedClassName(final String className) {
+		for(final String str: allowedClassNames) 
+			if(className.endsWith(str))
+				return true;
+		return false; 
+	}
 
 	@Override
 	public Goal prereqForJob(Job job) {
-		// TODO DELETE_ME: Delete the second condition when closures are implemented
-		if (!scheduler.shouldCompile(job) && !job.toString().endsWith("x10/lang/Thread.x10")) {
+		// TODO DELETE ME: Delete the second condition when closures are implemented
+		if (!scheduler.shouldCompile(job) && !isAllowedClassName(job.toString())) {
 			return null;
 		}
 		

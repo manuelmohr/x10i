@@ -786,11 +786,13 @@ public class FirmTypeSystem {
 		Mode modeLong = new Mode("Long", ir_mode_sort.irms_int_number, 64, 1,
 				ir_mode_arithmetic.irma_twos_complement, 64);
 		Type typeLong = new PrimitiveType(modeLong);
+		typeLong.setAlignmentBytes(4);
 		putFirmType(x10TypeSystem.Long(), typeLong);
 
 		Mode modeULong = new Mode("ULong", ir_mode_sort.irms_int_number, 64, 0,
 				ir_mode_arithmetic.irma_twos_complement, 64);
 		Type typeULong = new PrimitiveType(modeULong);
+		typeULong.setAlignmentBytes(4);
 		putFirmType(x10TypeSystem.ULong(), typeULong);
 
 		Mode modeInt = new Mode("Int", ir_mode_sort.irms_int_number, 32, 1,

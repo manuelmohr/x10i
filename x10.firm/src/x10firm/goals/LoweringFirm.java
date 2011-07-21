@@ -73,7 +73,7 @@ public class LoweringFirm extends AllBarrierGoal {
 	@Override
 	public Goal prereqForJob(Job job) {
 		// TODO DELETE_ME: Delete the second condition when closures are implemented
-		if (!scheduler.shouldCompile(job) && !job.toString().endsWith("x10/lang/Thread.x10")) {
+		if (!scheduler.shouldCompile(job) && !AsmEmitted.isAllowedClassName(job.toString())) {
 			return null;
 		}
 		
