@@ -54,208 +54,193 @@ x10_long x10_atomic_ops_ppc_compareAndSet64(x10_long oldValue, volatile x10_long
 #endif
 
 #if !defined(_LP64)
-        X10_EXTERN void x10_atomic_ops_lock();
-        X10_EXTERN void x10_atomic_ops_unlock();
+X10_EXTERN void x10_atomic_ops_lock();
+X10_EXTERN void x10_atomic_ops_unlock();
 #endif
 
 #if (defined(_ARCH_PPC) || defined(_ARCH_450) || defined(_ARCH_450d)) && !defined(__xlC__)
-        /* inline ppc asms for gcc; can be nicely defined as private class member functions  */
-        static inline void x10_atomic_ops_ppc_isync() { asm("isync"); }
-        static inline void x10_atomic_ops_ppc_lwsync(){ asm("lwsync"); }
-        static inline void x10_atomic_ops_ppc_sync()  { asm("sync"); }
+/* inline ppc asms for gcc; can be nicely defined as private class member functions  */
+static inline void x10_atomic_ops_ppc_isync() { asm("isync"); }
+static inline void x10_atomic_ops_ppc_lwsync(){ asm("lwsync"); }
+static inline void x10_atomic_ops_ppc_sync()  { asm("sync"); }
 
-        static inline x10_int x10_atomic_ops_ppc_compareAndSet32(x10_int oldValue, volatile x10_int *address, x10_int newValue) {
-            x10_int result;
+static inline x10_int x10_atomic_ops_ppc_compareAndSet32(x10_int oldValue, volatile x10_int *address, x10_int newValue) {
+   x10_int result;
 #if defined(_AIX)
-            /* On AIX gcc uses the aix assembler for inline assembly so can't use labels */
-            asm("lwarx %0,0,%2\n\t"      /* Load and reserve address into result */
-                "cmpw %0,%4\n\t"         /* Compare old value with current */
-                "bne- $+12\n\t"          /* oldvalue changed -- bail */
-                "stwcx. %3,0,%2\n\t"     /* Store new value -- or set flags if no longer reserved */
-                "bne- $-16\n\t"          /* lost reservation -- retry */
-                "" : "=&r" (result), "+m" (*address) : "p" (address), "b" (newValue), "b" (oldValue) : "cc");
+   /* On AIX gcc uses the aix assembler for inline assembly so can't use labels */
+   asm("lwarx %0,0,%2\n\t"      /* Load and reserve address into result */
+       "cmpw %0,%4\n\t"         /* Compare old value with current */
+       "bne- $+12\n\t"          /* oldvalue changed -- bail */
+       "stwcx. %3,0,%2\n\t"     /* Store new value -- or set flags if no longer reserved */
+       "bne- $-16\n\t"          /* lost reservation -- retry */
+       "" : "=&r" (result), "+m" (*address) : "p" (address), "b" (newValue), "b" (oldValue) : "cc");
 #else
-            asm("0: lwarx %0,0,%2\n\t"   /* Load and reserve address into result */
-                "cmpw %0,%4\n\t"         /* Compare old value with current */
-                "bne- 1f\n\t"            /* oldvalue changed -- bail */
-                "stwcx. %3,0,%2\n\t"     /* Store new value -- or set flags if no longer reserved */
-                "bne- 0b\n\t"            /* lost reservation -- retry */
-                "1:" : "=&r" (result), "+m" (*address) : "p" (address), "b" (newValue), "b" (oldValue) : "cc");
+   asm("0: lwarx %0,0,%2\n\t"   /* Load and reserve address into result */
+       "cmpw %0,%4\n\t"         /* Compare old value with current */
+       "bne- 1f\n\t"            /* oldvalue changed -- bail */
+       "stwcx. %3,0,%2\n\t"     /* Store new value -- or set flags if no longer reserved */
+       "bne- 0b\n\t"            /* lost reservation -- retry */
+       "1:" : "=&r" (result), "+m" (*address) : "p" (address), "b" (newValue), "b" (oldValue) : "cc");
 #endif
-            return result;
-        }
+   return result;
+}
+        
+/**
+* Ensure that all loads before the barrier have loaded their
+* data before any load after the data accesses its data.
+*/
+X10_EXTERN void _ZN3x104util10concurrent6Fences15loadLoadBarrierEv();
+
+/**
+* Ensure that all loads before the barrier have loaded
+* their data before any data stored by a store after
+* the barrier has been flushed.
+*/
+X10_EXTERN void _ZN3x104util10concurrent6Fences16loadStoreBarrierEv();
+
+/**
+* Ensure that all data from stores before the barrier
+* has been flushed before any data for loads after the
+* barrier is accessed.
+*/
+X10_EXTERN void _ZN3x104util10concurrent6Fences16storeLoadBarrierEv();
+
+/**
+* Ensure that all data from stores before the barrier
+* has been flushed before any data for stores after
+* the barrier is flushed.
+*/
+X10_EXTERN void _ZN3x104util10concurrent6Fences17storeStoreBarrierEv();
 
 #if defined(_LP64)
-        static inline x10_long x10_atomic_ops_ppc_compareAndSet64(x10_long oldValue, volatile x10_long *address, x10_long newValue) {
-            x10_long result;
+static inline x10_long x10_atomic_ops_ppc_compareAndSet64(x10_long oldValue, volatile x10_long *address, x10_long newValue) {
+   x10_long result;
 #if defined(_AIX)
-            /* On AIX gcc uses the aix assembler for inline assembly so can't use labels */
-            asm("ldarx %0,0,%2\n\t"     /* Load and reserve address into result */
-                "cmpd %0,%4\n\t"        /* Compare old value with current */
-                "bne- $+12\n\t"         /* oldvalue changed -- bail */
-                "stdcx. %3,0,%2\n\t"    /* Store new value -- or set flags if no longer reserved */
-                "bne- $-16\n\t"         /* lost reservation -- retry */
-                "" : "=&r" (result), "+m" (*address) : "p" (address), "b" (newValue), "b" (oldValue) : "cc");
+   /* On AIX gcc uses the aix assembler for inline assembly so can't use labels */
+   asm("ldarx %0,0,%2\n\t"     /* Load and reserve address into result */
+       "cmpd %0,%4\n\t"        /* Compare old value with current */
+       "bne- $+12\n\t"         /* oldvalue changed -- bail */
+       "stdcx. %3,0,%2\n\t"    /* Store new value -- or set flags if no longer reserved */
+       "bne- $-16\n\t"         /* lost reservation -- retry */
+       "" : "=&r" (result), "+m" (*address) : "p" (address), "b" (newValue), "b" (oldValue) : "cc");
 #else
-            asm("0: ldarx %0,0,%2\n\t"  /* Load and reserve address into result */
-                "cmpd %0,%4\n\t"        /* Compare old value with current */
-                "bne- 1f\n\t"           /* oldvalue changed -- bail */
-                "stdcx. %3,0,%2\n\t"    /* Store new value -- or set flags if no longer reserved */
-                "bne- 0b\n\t"           /* lost reservation -- retry */
-                "1:" : "=&r" (result), "+m" (*address) : "p" (address), "b" (newValue), "b" (oldValue) : "cc");
+   asm("0: ldarx %0,0,%2\n\t"  /* Load and reserve address into result */
+       "cmpd %0,%4\n\t"        /* Compare old value with current */
+       "bne- 1f\n\t"           /* oldvalue changed -- bail */
+       "stdcx. %3,0,%2\n\t"    /* Store new value -- or set flags if no longer reserved */
+       "bne- 0b\n\t"           /* lost reservation -- retry */
+       "1:" : "=&r" (result), "+m" (*address) : "p" (address), "b" (newValue), "b" (oldValue) : "cc");
 #endif
-            return result;
-        }
+   return result;
+}
 #endif
 #endif
-        /**
-         * Ensure that all loads before the barrier have loaded their
-         * data before any load after the data accesses its data.
-         */
-        static inline void x10_atomic_ops_load_load_barrier() {
-#if (defined(_ARCH_PPC) || defined(_ARCH_450) || defined(_ARCH_450d))
-            ppc_sync(); /* TODO: sync is overkill for this barrier */
-#endif
-        }
 
-        /**
-         * Ensure that all loads before the barrier have loaded
-         * their data before any data stored by a store after
-         * the barrier has been flushed.
-         */
-        static inline void x10_atomic_ops_load_store_barrier() {
-#if (defined(_ARCH_PPC) || defined(_ARCH_450) || defined(_ARCH_450d))
-            ppc_isync();
-#endif
-        }
-
-        /**
-         * Ensure that all data from stores before the barrier
-         * has been flushed before any data for loads after the
-         * barrier is accessed.
-         */
-        static inline void x10_atomic_ops_store_load_barrier() {
-#if (defined(_ARCH_PPC) || defined(_ARCH_450) || defined(_ARCH_450d))
-            ppc_sync();
-#endif
-        }
-
-        /**
-         * Ensure that all data from stores before the barrier
-         * has been flushed before any data for stores after
-         * the barrier is flushed.
-         */
-        static inline void x10_atomic_ops_store_store_barrier() {
-#if (defined(_ARCH_PPC) || defined(_ARCH_450) || defined(_ARCH_450d))
-            ppc_lwsync();
-#endif
-        }
-
-        /**
-         * Atomic compare and swap of a 32 bit value.
-         * The semantics of this operation are:
-         * <pre>
-         *
-         * x10_int tmp;
-         * Atomic {
-         *    tmp = *address;
-         *    if (tmp == oldValue) *address = newValue;
-         * }
-         * return tmp;
-         *
-         * </pre>
-         */
-        static inline x10_int x10_atomic_ops_compareAndSet_32(volatile x10_int* address, x10_int oldValue, x10_int newValue) {
+/**
+* Atomic compare and swap of a 32 bit value.
+* The semantics of this operation are:
+* <pre>
+*
+* x10_int tmp;
+* Atomic {
+*    tmp = *address;
+*    if (tmp == oldValue) *address = newValue;
+* }
+* return tmp;
+*
+* </pre>
+*/
+static inline x10_int x10_atomic_ops_compareAndSet_32(volatile x10_int* address, x10_int oldValue, x10_int newValue) {
 #if defined(__i386__) || defined(__x86_64__)
-            __asm ("lock cmpxchgl %2, %3"
-                   : "=a" (oldValue), "+m" (*address)
-                   : "q" (newValue), "m" (*address), "0" (oldValue)
-                   : "cc");
-            return oldValue;
+   __asm ("lock cmpxchgl %2, %3"
+          : "=a" (oldValue), "+m" (*address)
+          : "q" (newValue), "m" (*address), "0" (oldValue)
+          : "cc");
+   return oldValue;
 #elif (defined(_ARCH_PPC) || defined(_ARCH_450) || defined(_ARCH_450d))
-            return ppc_compareAndSet32(oldValue, address, newValue);
+   return ppc_compareAndSet32(oldValue, address, newValue);
 #elif defined(__sparc__)
-            /* FIXME: is the memory barrier needed? */
-            __asm__ __volatile__("cas [%2], %3, %0\n\t"
-                                 "membar #StoreLoad | #StoreStore"
-                                 : "=&r" (newValue)
-                                 : "0" (newValue), "r" (address), "r" (oldValue)
-                                 : "memory");
-            return newValue;
+   /* FIXME: is the memory barrier needed? */
+   __asm__ __volatile__("cas [%2], %3, %0\n\t"
+                        "membar #StoreLoad | #StoreStore"
+                        : "=&r" (newValue)
+                        : "0" (newValue), "r" (address), "r" (oldValue)
+                        : "memory");
+   return newValue;
 #else
 #  error "Unknown architecture"
 #endif
-        }
+}
 
-        /**
-         * Atomic compare and swap of a 64 bit value.
-         * The semantics of this operation are:
-         * <pre>
-         *
-         * x10_int tmp;
-         * Atomic {
-         *    tmp = *address;
-         *    if (tmp == oldValue) *address = newValue;
-         * }
-         * return tmp;
-         *
-         * </pre>
-         */
-        static inline x10_long x10_atomic_ops_compareAndSet_64(volatile x10_long* address, x10_long oldValue, x10_long newValue) {
+/**
+* Atomic compare and swap of a 64 bit value.
+* The semantics of this operation are:
+* <pre>
+*
+* x10_int tmp;
+* Atomic {
+*    tmp = *address;
+*    if (tmp == oldValue) *address = newValue;
+* }
+* return tmp;
+*
+* </pre>
+*/
+static inline x10_long x10_atomic_ops_compareAndSet_64(volatile x10_long* address, x10_long oldValue, x10_long newValue) {
 #if !defined(_LP64)
-            /* TODO: in theory on i586 hardware we could do this with inline asm and cmpxchg8b instead of a mutex,
-             * but it isn't trivial to get the register constraints to work correctly.
-             */
-            x10_atomic_ops_lock();
-            x10_long curValue = *address;
-            if (curValue == oldValue) {
-                *address = newValue;
-            }
-            x10_atomic_ops_unlock();
-            return curValue;
+   /* TODO: in theory on i586 hardware we could do this with inline asm and cmpxchg8b instead of a mutex,
+    * but it isn't trivial to get the register constraints to work correctly.
+    */
+   x10_atomic_ops_lock();
+   x10_long curValue = *address;
+   if (curValue == oldValue) {
+       *address = newValue;
+   }
+   x10_atomic_ops_unlock();
+   return curValue;
 #else
 #if defined(__x86_64__)
-            __asm ("lock cmpxchgq %2, %3"
-                   : "=a" (oldValue), "+m" (*address)
-                   : "q" (newValue), "m" (*address), "0" (oldValue)
-                   : "cc");
-            return oldValue;
+   __asm ("lock cmpxchgq %2, %3"
+          : "=a" (oldValue), "+m" (*address)
+          : "q" (newValue), "m" (*address), "0" (oldValue)
+          : "cc");
+   return oldValue;
 #elif (defined(_ARCH_PPC) || defined(_ARCH_450) || defined(_ARCH_450d))
-            return ppc_compareAndSet64(oldValue, address, newValue);
+   return ppc_compareAndSet64(oldValue, address, newValue);
 #elif defined(__sparc__)
-            /* FIXME: is the memory barrier needed? */
-            __asm__ __volatile__("casx [%2], %3, %0\n\t"
-                                 "membar #StoreLoad | #StoreStore"
-                                 : "=&r" (newValue)
-                                 : "0" (newValue), "r" (address), "r" (oldValue)
-                                 : "memory");
-            return newValue;
+   /* FIXME: is the memory barrier needed? */
+   __asm__ __volatile__("casx [%2], %3, %0\n\t"
+                        "membar #StoreLoad | #StoreStore"
+                        : "=&r" (newValue)
+                        : "0" (newValue), "r" (address), "r" (oldValue)
+                        : "memory");
+   return newValue;
 #else
 #  error "Unknown architecture"
 #endif
 #endif
-        }
+}
 
-        /**
-         * Atomic compare and swap of a pointer value.
-         * The semantics of this operation are:
-         * <pre>
-         *
-         * x10_int tmp;
-         * Atomic {
-         *    tmp = *address;
-         *    if (tmp == oldValue) *address = newValue;
-         * }
-         * return tmp;
-         *
-         * </pre>
-         */
-        static inline void* x10_atomic_ops_compareAndSet_ptr(volatile void** address, void* oldValue, void* newValue) {
+/**
+* Atomic compare and swap of a pointer value.
+* The semantics of this operation are:
+* <pre>
+*
+* x10_int tmp;
+* Atomic {
+*    tmp = *address;
+*    if (tmp == oldValue) *address = newValue;
+* }
+* return tmp;
+*
+* </pre>
+*/
+static inline void* x10_atomic_ops_compareAndSet_ptr(volatile void** address, void* oldValue, void* newValue) {
 #if defined(_LP64)
-            return (void*)(x10_atomic_ops_compareAndSet_64((volatile x10_long*)address, (x10_long)oldValue, (x10_long)newValue));
+   return (void*)(x10_atomic_ops_compareAndSet_64((volatile x10_long*)address, (x10_long)oldValue, (x10_long)newValue));
 #else
-            return (void*)(x10_atomic_ops_compareAndSet_32((volatile x10_int*)address, (x10_int)oldValue, (x10_int)newValue));
+   return (void*)(x10_atomic_ops_compareAndSet_32((volatile x10_int*)address, (x10_int)oldValue, (x10_int)newValue));
 #endif
-        }
+}
 
 #endif // X10_ATOMIC_OPS_H_
