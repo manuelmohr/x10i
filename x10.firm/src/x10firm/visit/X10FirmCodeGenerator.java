@@ -607,10 +607,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private void finishConstruction(Entity entity, OOConstruction savedConstruction) {
 		// create Return node if there was no explicit return statement yet
 		if (!con.getCurrentBlock().isBad()) {
-			assert((MethodType)entity.getType()).getNRess() == 0;
-			Node mem = con.getCurrentMem();
-			Node ret = con.newReturn(mem, new Node[0]);
-			con.getGraph().getEndBlock().addPred(ret);
+			final MethodType meth = (MethodType)entity.getType();
+			if(meth.getNRess() == 0) {
+				Node mem = con.getCurrentMem();
+				Node ret = con.newReturn(mem, new Node[0]);
+				con.getGraph().getEndBlock().addPred(ret);
+			}
 		}
 
 		con.finish();
