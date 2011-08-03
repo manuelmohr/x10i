@@ -57,7 +57,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	/**
 	 * Create conditional jump to true/false Block.
 	 */
-	private void makeJumps(Node node) {
+	public static void makeJumps(final Node node, final Block trueBlock, final Block falseBlock, final OOConstruction con) {
 		final Node     cond      = con.newCond(node);
 		final Node     projTrue  = con.newProj(cond, Mode.getX(), Cond.pnTrue);
 		final Node     projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
@@ -162,34 +162,41 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 			// the result of handleStructEquals() with true.
 			final Node toCmp = con.newConst(Mode.getBu().getOne());
 			final Node cmp = con.newCmp(ret, toCmp, relation);
-			makeJumps(cmp);
+			makeJumps(cmp, trueBlock, falseBlock, con);
 		}
 		else {
 			final Node cmp = con.newCmp(retLeft, retRight, relation);
-			makeJumps(cmp);
+			makeJumps(cmp, trueBlock, falseBlock, con);
 		}
 	}
-
-	@Override
-	public void visit(X10Instanceof_c n) {
-		final Type exprType = n.expr().type();
-		Node objPtr;
-
+	
+	public static Node genInstanceOf(final Node node, final Type exprType, final Type compType, 
+			final X10FirmCodeGenerator codeGenerator, final GenericTypeSystem typeSystem, 
+			final OOConstruction con) {
+		
+		Node objPtr = node;
 		if (typeSystem.isStructType(exprType)) {
 			final X10ClassType ct = (X10ClassType) Types.stripConstraints(exprType);
-			objPtr = codeGenerator.genAutoboxing(ct, n.expr());
+			objPtr = codeGenerator.genBoxing(ct, objPtr);
 		}
-		else
-			objPtr = codeGenerator.visitExpression(n.expr());
 
-		final Type type = n.compareType().typeRef().get();
-		final firm.Type firmType = codeGenerator.getFirmTypeSystem().asFirmCoreType(type);
+		final firm.Type firmType = codeGenerator.getFirmTypeSystem().asFirmCoreType(compType);
 		final Node mem = con.getCurrentMem();
 		final Node instanceOf = con.newInstanceOf(mem, objPtr, firmType);
 		final Node projM = con.newProj(instanceOf, Mode.getM(), InstanceOf.pnM);
 		con.setCurrentMem(projM);
 		final Node projRes = con.newProj(instanceOf, Mode.getb(), InstanceOf.pnRes);
-		makeJumps(projRes);
+		return projRes;
+	}
+
+	@Override
+	public void visit(X10Instanceof_c n) {
+		final Type exprType = n.expr().type();
+		Node objPtr = codeGenerator.visitExpression(n.expr());
+		
+		final Node node = genInstanceOf(objPtr, exprType, n.compareType().typeRef().get(), 
+				codeGenerator, typeSystem, con);
+		makeJumps(node, trueBlock, falseBlock, con);
 	}
 
 	@Override
@@ -200,6 +207,6 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		final Mode mode = codeGenerator.getFirmTypeSystem().getFirmMode(expr.type());
 		final Node one = con.newConst(mode.getOne());
 		final Node cmp = con.newCmp(node, one, Relation.Equal);
-		makeJumps(cmp);
+		makeJumps(cmp, trueBlock, falseBlock, con);
 	}
 }

@@ -4,5 +4,6 @@
 
 X10_EXTERN void x10_throw_stub()
 {
-	assert(false && "throw is not implemented yet.");
+	exit(EXIT_SUCCESS);
+//	assert(false && "throw is not implemented yet.");
 }

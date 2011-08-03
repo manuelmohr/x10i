@@ -129,4 +129,8 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 
 		return t.toClass();
 	}
+	
+	public boolean isRefType(final Type type) {
+		return (type == Null() || isClass(type) || isInterfaceType(type)) && !isStructType(type);
+	}
 }

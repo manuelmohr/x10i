@@ -225,7 +225,7 @@ public class FirmTypeSystem {
 	 * @return The boxing type for the given struct type
 	 */
 	public X10ClassType getBoxingType(final X10ClassType type) {
-		assert Types.isX10Struct(type);
+		assert x10TypeSystem.isStructType(type);
 
 		final X10ClassType ret = structBoxingTypes.get(type);
 		if(ret != null) return ret;
@@ -449,7 +449,7 @@ public class FirmTypeSystem {
 	 * @param type_ The type which should be checked
 	 * @return True if the given type is handled as a primitive type.
 	 */
-	private boolean isFirmPrimitiveType(final polyglot.types.Type type_) {
+	public boolean isFirmPrimitiveType(final polyglot.types.Type type_) {
 		final polyglot.types.Type type = simplifyType(type_);
 		return equalTypes(type, x10TypeSystem.Int())     || equalTypes(type, x10TypeSystem.UInt())   ||
 		   	   equalTypes(type, x10TypeSystem.Long())    || equalTypes(type, x10TypeSystem.ULong())  ||
@@ -838,6 +838,7 @@ public class FirmTypeSystem {
 		Mode modeDouble = new Mode("Double", ir_mode_sort.irms_float_number, 64,
 				1, ir_mode_arithmetic.irma_ieee754, 0);
 		Type typeDouble = new PrimitiveType(modeDouble);
+		typeLong.setAlignmentBytes(4);
 		putFirmType(x10TypeSystem.Double(), typeDouble);
 
 		/* Note that the mode_b in firm can't be used here, since it is an

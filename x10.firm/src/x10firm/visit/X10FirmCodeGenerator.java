@@ -132,11 +132,15 @@ import x10.types.X10FieldInstance;
 import x10.types.X10MethodDef;
 import x10.types.X10ProcedureInstance;
 import x10.types.checker.Converter;
+import x10.types.checker.Converter.ConversionType;
 import x10.visit.X10DelegatingVisitor;
 import x10firm.CompilerOptions;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
 import x10firm.types.ParameterTypeMapping;
+import x10firm.visit.FirmCodeTemplate.FirmCodeCondTemplate;
+import x10firm.visit.FirmCodeTemplate.FirmCodeExprTemplate;
+import x10firm.visit.FirmCodeTemplate.FirmCodeStmtTemplate;
 
 import com.sun.jna.Platform;
 
@@ -175,9 +179,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private static final String X10_STRING_LITERAL = "x10_string_literal";
 	private static final String X10_THROW_STUB     = "x10_throw_stub";
 	private static final String X10_ASSERT         = "x10_assert";
-
+	
 	/** The current firm construction object */
-	private OOConstruction con;
+	OOConstruction con;
 
 	/** To return Firm nodes for constructing expressions */
 	private Node returnNode;
@@ -189,10 +193,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private final FirmTypeSystem firmTypeSystem;
 
 	/** The X10 type system */
-	private final GenericTypeSystem x10TypeSystem;
+	final GenericTypeSystem x10TypeSystem;
 
 	/** Our node factory */
-	private final X10NodeFactory_c xnf;
+	final X10NodeFactory_c xnf;
 
 	/** Our own AST query */
 	private final X10ASTQuery query;
@@ -202,8 +206,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	/** Command-line options */
 	private CompilerOptions options;
+	
+	/** firm code templates */
+	private FirmCodeTemplate fct = new FirmCodeTemplate();
 
-	private void evaluateCondition(final Expr e, final Block trueBlock, final Block falseBlock) {
+	/**
+	 * Evaluates a given expression and creates the appropriate firm nodes
+	 * @param e The expression
+	 * @param trueBlock The true block
+	 * @param falseBlock The false block
+	 */
+	void evaluateCondition(final Expr e, final Block trueBlock, final Block falseBlock) {
 		ConditionEvaluationCodeGenerator codegen
 			= new ConditionEvaluationCodeGenerator(trueBlock, falseBlock, this, x10TypeSystem, firmTypeSystem);
 		codegen.visitAppropriate(e);
@@ -240,7 +253,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/**
 	 * Calculates a unique mapping between local instances and firm entities.
 	 * @param locals A list with local instances
-	 * @return The unique mapping between local instances and firm enities.
+	 * @return The unique mapping between local instances and firm entities.
 	 */
 	private Map<LocalInstance, Entity> calculateEntityMappingForLocals(final List<LocalInstance> locals) {
 		Map<LocalInstance, Entity> map = new HashMap<LocalInstance, Entity>();
@@ -759,7 +772,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 				final FieldInstance fieldInst = fieldDecl.fieldDef().asInstance();
 				final Node objectPointer = getThis(Mode.getP());
-				genFieldAssign(objectPointer, fieldInst, fieldDecl.init());
+				final Node expr = visitExpression(fieldDecl.init());
+				genFieldAssign(objectPointer, fieldInst, expr);
 			} else {
 				assert(false): "Illegal class member";
 			}
@@ -932,19 +946,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return rightRet;
 	}
 
-	private Node genFieldAssign(final Node objectPointer, final FieldInstance instance, final Expr expr) {
-		final Node rightRet = visitExpression(expr);
-		genFieldAssign(objectPointer, instance, rightRet);
-
-		return rightRet;
-	}
-
-	private Node genStaticFieldAssign(final FieldInstance instance, final Expr expr) {
-		return genFieldAssign(null, instance, expr);
-	}
-
-	private Node genStaticFieldAssign(final FieldInstance instance, final Node rightRet) {
-		return genFieldAssign(null, instance, rightRet);
+	private Node genStaticFieldAssign(final FieldInstance instance, final Node node) {
+		return genFieldAssign(null, instance, node);
 	}
 
 	/**
@@ -1042,7 +1045,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		bAfter.addPred(projFalse);
 
 		con.setCurrentBlock(bTrue);
-		genStaticFieldAssign(fieldInst, dec.init());
+		final Node expr = visitExpression(dec.init());
+		genStaticFieldAssign(fieldInst, expr);
 
 		final Node nodeInitialized = con.newConst(new TargetValue(X10_STATIC_FIELD_STATUS_INITIALIZED, firmTypeSystem.getFirmMode(x10TypeSystem.Int())));
 		genStaticFieldAssign(statusFieldInst, nodeInitialized);
@@ -1316,7 +1320,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			final Field_c field = (Field_c) lhs;
 			final FieldInstance instance = field.fieldInstance().def().asInstance();
 			final Node objectPointer = visitExpression((Expr)field.target());
-			final Node ret = genFieldAssign(objectPointer, instance, rhs);
+			final Node rightRet = visitExpression(rhs);
+			final Node ret = genFieldAssign(objectPointer, instance, rightRet);
 			setReturnNode(ret);
 		} else {
 			throw new RuntimeException("Unexpected assignment target");
@@ -1604,6 +1609,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		con.setCurrentBlock(bFalse);
 	}
+	
+
 
 	@Override
 	public void visit(Conditional_c n) {
@@ -1621,91 +1628,71 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			visitExpression(n.alternative());
 			return;
 		}
-
-		final Block bTrue    = con.newBlock();
-		final Block bFalse   = con.newBlock();
-		final Block curBlock = con.getCurrentBlock();
-
-		con.setCurrentBlock(bTrue);
-
-		final Node trueExpr  = visitExpression(n.consequent());
-		final Node endIf     = con.newJmp();
-
-		con.setCurrentBlock(bFalse);
-
-		final Node falseExpr = visitExpression(n.alternative());
-		final Node endElse   = con.newJmp();
-
-		con.setCurrentBlock(curBlock);
-
-		evaluateCondition(n.cond(), bTrue, bFalse);
-
-		bFalse.mature();
-
-		// add a common phi block for the true and false expressions.
-		final Block phiBlock = con.newBlock();
-		phiBlock.addPred(endIf);
-		phiBlock.addPred(endElse);
-
-		con.setCurrentBlock(phiBlock);
-
-		phiBlock.mature();
-
-		final Node ret = con.newPhi(new Node[]{trueExpr, falseExpr}, falseExpr.getMode());
+		
+		final Conditional_c c = n;
+		final FirmCodeCondTemplate cond = new FirmCodeCondTemplate() {
+			@Override
+			public void genCode(Block trueBlock, Block falseBlock) {
+				evaluateCondition(c.cond(), trueBlock, falseBlock);
+			}
+		};
+		
+		final FirmCodeExprTemplate trueExpr = new FirmCodeExprTemplate() {
+			@Override
+			public Node genCode() {
+				return visitExpression(c.consequent());
+			}
+		};
+		
+		final FirmCodeExprTemplate falseExpr = new FirmCodeExprTemplate() {
+			@Override
+			public Node genCode() {
+				return visitExpression(c.alternative());
+			}
+		};
+		
+		final Node ret = fct.genConditional(con, cond, trueExpr, falseExpr);
 		setReturnNode(ret);
 	}
 
 	@Override
 	public void visit(If_c n) {
-		final Block bTrue  = con.newBlock();
-		final Block bAfter = con.newBlock();
-
-		Block bFalse = null; // block will only be created if we have an else stmt.
-		if (n.alternative() != null) {
-			bFalse = con.newBlock();
-		} else {
-			bFalse = bAfter;
-		}
-		evaluateCondition(n.cond(), bTrue, bFalse);
 		
-		con.setCurrentBlock(bTrue);
+		final If_c ifAst = n;
+		final FirmCodeCondTemplate cond = new FirmCodeCondTemplate() {
+			@Override
+			public void genCode(Block trueBlock, Block falseBlock) {
+				evaluateCondition(ifAst.cond(), trueBlock, falseBlock);
+			}
+		};
 
-		resetReturnNode();
-		visitAppropriate(n.consequent());
-
-		Node endIf = null;
-		if(con.getCurrentBlock().isBad())
-			con.setCurrentBlock(bTrue);
-		else
-			endIf = con.newJmp();
-
-		bTrue.mature();
-
-		if (n.alternative() != null) {
-			bFalse.mature();
+		final FirmCodeStmtTemplate ifStmt = new FirmCodeStmtTemplate() {
+			@Override
+			public void genCode() {
+				visitAppropriate(ifAst.consequent());
+			}
+		};
+		
+		FirmCodeStmtTemplate elseStmt = null;
+		if(n.alternative() != null) {
 			Stmt alternative = n.alternative();
 			if (alternative instanceof Block_c) {
 				Block_c block = (Block_c) alternative;
 				if (block.statements().size() == 1 && block.statements().get(0) instanceof If_c)
 					alternative = block.statements().get(0);
 			}
-
-			con.setCurrentBlock(bFalse);
-			visitAppropriate(alternative);
-
-			if(!con.getCurrentBlock().isBad())
-				bAfter.addPred(con.newJmp());
+			final Stmt elseBlock = alternative;
+			elseStmt = new FirmCodeStmtTemplate() {
+				@Override
+				public void genCode() {
+					visitAppropriate(elseBlock);
+				}
+			};
 		}
-
-		if(endIf != null)
-			bAfter.addPred(endIf);
-
-		bAfter.mature();
-
-		if(!con.getCurrentBlock().isBad())
-			con.setCurrentBlock(bAfter);
+		
+		fct.genIfStatement(con, cond, ifStmt, elseStmt);
 	}
-
+	
 	@Override
 	public void visit(Empty_c n) {
 		/* empty statements are irrelevant for Firm construction */
@@ -1808,9 +1795,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public Node visitExpression(Expr expr) {
 		resetReturnNode();
 		visitAppropriate(expr);
-		final Node ret = getReturnNode();
-
-		return ret;
+		return getReturnNode();
 	}
 
 	@Override
@@ -1859,8 +1844,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			setReturnNode(ret);
 		} else {
 			final int idx = var.getIdx();
-			// FIXME:  Check if it is correct to use n.type() instead of loc.type() here.
-			final Node ret = con.getVariable(idx, firmTypeSystem.getFirmMode(n.type()));
+			final Node ret = con.getVariable(idx, firmTypeSystem.getFirmMode(loc.type()));
 			setReturnNode(ret);
 		}
 	}
@@ -2349,7 +2333,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final Node thisPointer = getThis(Mode.getP());
 		for(int i = 0; i < properties.size(); i++) {
 			final FieldInstance field = properties.get(i);
-			genFieldAssign(thisPointer, field, args.get(i));
+			final Node node = visitExpression(args.get(i));
+			genFieldAssign(thisPointer, field, node);
 		}
 	}
 
@@ -2431,10 +2416,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/**
 	 * Creates the appropriate firm graph for an autoboxing
 	 * @param fromType The type which should be boxed
-	 * @param expr The expression which should be boxed
+	 * @param node The expression which should be boxed
 	 * @return A
 	 */
-	public Node genAutoboxing(final X10ClassType fromType, final Expr expr) {
+	public Node genBoxing(final X10ClassType fromType, final Node node) {
 		final X10ClassType boxType = firmTypeSystem.getBoxingType(fromType);
 
 		if(!initedBoxingTypes.contains(boxType)) {
@@ -2450,13 +2435,121 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		// save the boxed value in the box
 		final FieldInstance boxValue = boxType.fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE));
-		genFieldAssign(box, boxValue, expr);
+		genFieldAssign(box, boxValue, node);
 
 		return box;
 	}
+	
+	/**
+	 * Returns a throw statement with the given text message
+	 * @param msg The text message
+	 * @return A throw statement
+	 */
+	Stmt getThrowNewExceptionStmt(final Type excType, final String msg) {
+		final Position pos = Position.COMPILER_GENERATED;
+        final Expr excStr = xnf.StringLit(pos, msg);
+        final List<Expr> excArgs = new ArrayList<Expr>();
+        excArgs.add(excStr);
+        final Expr newClassCastExc = xnf.New(pos, xnf.CanonicalTypeNode(pos, excType), excArgs);
+        final Stmt throwStmt = xnf.Throw(pos, newClassCastExc);
+        return throwStmt;
+	}
+	
+	private void genSubtypeCheck(final Node node, final Type fromType, final Type toType) {
+		assert(toType instanceof X10ClassType);
+		final Type compType = x10TypeSystem.isStructType(toType) ? firmTypeSystem.getBoxingType((X10ClassType)toType) : toType;
 
+		final FirmCodeCondTemplate condTemplate = new FirmCodeCondTemplate() {
+			@Override
+			public void genCode(final Block trueBlock, final Block falseBlock) {
+				final Node ret = ConditionEvaluationCodeGenerator.genInstanceOf(node, fromType, compType, X10FirmCodeGenerator.this, x10TypeSystem, con);
+				ConditionEvaluationCodeGenerator.makeJumps(ret, falseBlock, trueBlock, con);
+			}
+		};
+
+		final FirmCodeStmtTemplate ifStmt = new FirmCodeStmtTemplate() {
+			@Override
+			public void genCode() {
+				final Stmt throwStmt = getThrowNewExceptionStmt(x10TypeSystem.ClassCastException(), 
+						"Cannot cast " + fromType + " to " + toType.toString());
+				visitAppropriate(throwStmt);
+			}
+		};
+		
+		fct.genIfStatement(con, condTemplate, ifStmt, null);
+	}
+
+	private void genCastNullCheck(final Node node, final Type type) {
+	
+		final FirmCodeCondTemplate condTemplate = new FirmCodeCondTemplate() {
+			@Override
+			public void genCode(final Block trueBlock, final Block falseBlock) {
+				final Position pos = Position.COMPILER_GENERATED;
+				final Node nullNode = visitExpression(xnf.NullLit(pos).type(x10TypeSystem.Null()));
+				final Node cmp = con.newCmp(node, nullNode, Relation.Equal);
+				ConditionEvaluationCodeGenerator.makeJumps(cmp, trueBlock, falseBlock, con);
+			}
+		};
+		
+		final FirmCodeStmtTemplate ifStmt = new FirmCodeStmtTemplate() {
+			@Override
+			public void genCode() {
+				final Stmt throwStmt = getThrowNewExceptionStmt(x10TypeSystem.ClassCastException(), 
+						"null cannot be cast to struct " + type);
+				visitAppropriate(throwStmt);
+			}
+		};
+		
+		fct.genIfStatement(con, condTemplate, ifStmt, null);
+	}
+	
+	private Node genUnboxing(final Node node, final Type fromType, final Type toType) {
+        genCastNullCheck(node, toType);
+		
+		final X10ClassType boxType = firmTypeSystem.getBoxingType((X10ClassType)toType);
+		final FieldInstance boxField = boxType.fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE));
+		assert(boxField != null);
+		genSubtypeCheck(node, fromType, toType);
+		final Node boxedValue = genFieldLoad(node, boxField);
+		return boxedValue;
+	}
+	
+	private Node genRefToRefCast(final Node node, final Type fromType, final Type tooType, final boolean checked) {
+		final FirmCodeCondTemplate cond = new FirmCodeCondTemplate() {
+			@Override
+			public void genCode(final Block trueBlock, final Block falseBlock) {
+				final Position pos = Position.COMPILER_GENERATED;
+				final Node nullNode = visitExpression(xnf.NullLit(pos).type(x10TypeSystem.Null()));
+				final Node cmp = con.newCmp(node, nullNode, Relation.Equal);
+				ConditionEvaluationCodeGenerator.makeJumps(cmp, trueBlock, falseBlock, con);
+			}
+		};
+		
+		final FirmCodeExprTemplate trueExpr = new FirmCodeExprTemplate() {
+			@Override
+			public Node genCode() {
+				final Position pos = Position.COMPILER_GENERATED;
+				return visitExpression(xnf.NullLit(pos).type(x10TypeSystem.Null()));
+			}
+		};
+		
+		final FirmCodeExprTemplate falseExpr = new FirmCodeExprTemplate() {
+			@Override
+			public Node genCode() {
+				// can have checked and unchecked casts 
+				if(checked) {
+					genSubtypeCheck(node, fromType, tooType);
+				}
+				return node;
+			}
+		};
+		
+		return fct.genConditional(con, cond, trueExpr, falseExpr);
+	}
+	
 	@Override
 	public void visit(X10Cast_c c) {
+		
 		final TypeNode tn = c.castType();
 		assert (tn instanceof CanonicalTypeNode);
 
@@ -2465,38 +2558,50 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		case PRIMITIVE:
 		case SUBTYPE:
 		case UNCHECKED:
-			if (tn instanceof X10CanonicalTypeNode) {
-				final X10CanonicalTypeNode xtn = (X10CanonicalTypeNode) tn;
+			final X10CanonicalTypeNode xtn = (X10CanonicalTypeNode) tn;
 
-				final Type toType = Types.baseType(xtn.type());
-				final Type fromType = Types.baseType(c.expr().type());
-
-				final Type to = Types.stripConstraints(toType);
-				final Type from = Types.stripConstraints(fromType);
-
-				if (x10TypeSystem.typeEquals(from, to, x10Context)) {
-					// types are statically equal no type conversion needed.
-					visitAppropriate(c.expr());
-				} else if (c.conversionType() == Converter.ConversionType.SUBTYPE && x10TypeSystem.isSubtype(from, to, x10Context)) {
-					// TODO: Add class cast checking
-					if (   x10TypeSystem.isClass(to)   && x10TypeSystem.toClass(to).toClass().flags().isInterface()
-							&& x10TypeSystem.isClass(from) && ((X10ClassType) x10TypeSystem.toClass(from)).isX10Struct()) {
+			final Type toType 	= Types.baseType(xtn.type());
+			final Type fromType = Types.baseType(c.expr().type());
+			
+			final Type to   = Types.stripConstraints(toType);
+			final Type from = Types.stripConstraints(fromType);
+			
+			if (x10TypeSystem.typeEquals(from, to, x10Context)) {
+				// types are statically equal no type conversion needed.
+				visitAppropriate(c.expr());
+				break;
+			} else if(x10TypeSystem.isRefType(from) && x10TypeSystem.isRefType(to)) {
+				// ref -> ref
+				final Node node = visitExpression(c.expr());
+				final Node ret = genRefToRefCast(node, c.expr().type(), to, c.conversionType() == Converter.ConversionType.CHECKED);
+				setReturnNode(ret);
+				break;
+			} else if(x10TypeSystem.isStructType(from) && x10TypeSystem.isRefType(to)) {
+				// struct -> ref
+				// Check for boxing
+				if (c.conversionType() == Converter.ConversionType.SUBTYPE && x10TypeSystem.isSubtype(from, to, x10Context)) {
+					if (x10TypeSystem.isInterfaceType(to) && x10TypeSystem.isStructType(from)) {
 						// An upcast of a struct to an implemented interface -> Need boxing
-						final Node ret = genAutoboxing((X10ClassType) x10TypeSystem.toClass(from), c.expr());
+						final Node node = visitExpression(c.expr());
+						final Node ret = genBoxing((X10ClassType) x10TypeSystem.toClass(from), node);
 						setReturnNode(ret);
-					} else {
-						// TODO: no casting needed yet.
-						visitAppropriate(c.expr());
+						break;
 					}
-				} else {
-					// An unchecked class cast.
-					visitAppropriate(c.expr());
 				}
-			} else {
-				throw new InternalCompilerError("Ambiguous TypeNode survived type-checking.", tn.position());
+				assert(false);
+				break;
+			} else if(x10TypeSystem.isRefType(from) && x10TypeSystem.isStructType(to)) {
+				// ref -> struct
+				// Unboxing -> must be a checked cast !!!
+				assert(c.conversionType() == ConversionType.CHECKED);
+				final Node box = visitExpression(c.expr());
+				final Node ret = genUnboxing(box, c.expr().type(), to);
+				setReturnNode(ret);
+				break;
 			}
-			break;
 
+			assert(false);
+			//$FALL-THROUGH$
 		case CALL_CONVERSION:
 		case UNBOXING:
 		case UNKNOWN_IMPLICIT_CONVERSION:
@@ -2605,7 +2710,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		con.getGraph().keepAlive(call);
 		con.getGraph().keepAlive(con.getCurrentBlock());
-		con.setCurrentBlockBad();
+		//con.setCurrentBlockBad();
 	}
 
 	@Override
@@ -2687,7 +2792,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	//  Will never be implemented.
 	//
 
-
 	// Initializer does not need to be implemented, see Igor's email from 2011-07-15 on this subject.
 	@Override
 	public void visit(Initializer_c n) {
@@ -2748,7 +2852,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Import_c n) {
 		throw new RuntimeException("Imports should have been handled by an earlier pass");
 	}
-
 
 	/**
 	 * return current construction object
