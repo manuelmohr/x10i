@@ -4,6 +4,13 @@
 #include "x10_util.h"
 #include "util.h"
 
+#define X10_MAKE_TYPENAME(name, type, str) \
+x10_string *name(type self) \
+{ \
+   UNUSED(self); \
+   return x10_string_from_wide_chars(L##str); \
+}
+
 #define X10_MAKE_COMPARETO(name, type)	\
 	x10_int name(type self, type other) { return (self == other) ? 0 : (self < other) ? - 1 : 1; }
 
@@ -16,13 +23,6 @@ x10_string *name(type self) \
 	wchar_t buf[64]; \
 	swprintf(buf, sizeof(buf) / sizeof(wchar_t), L##fmt, self); \
 	return x10_string_from_wide_chars(buf); \
-}
-
-#define X10_MAKE_TYPENAME(name, type, str) \
-x10_string *name(type self) \
-{ \
-	UNUSED(self); \
-	return x10_string_from_wide_chars(L##str); \
 }
 
 // TODO:  Implement me.
@@ -47,42 +47,58 @@ x10_int name(type self) \
 	} \
 }
 
-#define BINOP(name, type, op)  \
-	type name(type a, type b) { return a op b; }
+#define BINOP(name, type_ret, type1, type2, op)  \
+	type_ret name(type1 a, type2 b) { return a op b; }
+	
+#define BINOP2(name, type_ret, type, op) \
+	BINOP(name, type_ret, type, type, op)
+	
+#define BINOP3(name, type, op) \
+	BINOP(name, type, type, type, op)
 
 #define MAKE_BINOPS(prefix, postfix, type) \
-	BINOP(prefix ## plE ## postfix, type, +) \
-	BINOP(prefix ## miE ## postfix, type, -) \
-	BINOP(prefix ## mlE ## postfix, type, *) \
-	BINOP(prefix ## dvE ## postfix, type, /)
+	BINOP3(prefix ## plE ## postfix, type, +) \
+	BINOP3(prefix ## miE ## postfix, type, -) \
+	BINOP3(prefix ## mlE ## postfix, type, *) \
+	BINOP3(prefix ## dvE ## postfix, type, /)
 
 #define MAKE_CMPOPS(prefix, postfix, type) \
-	BINOP(prefix ## eqE ## postfix, type, ==) \
-	BINOP(prefix ## neE ## postfix, type, !=) \
-	BINOP(prefix ## ltE ## postfix, type, <) \
-	BINOP(prefix ## gtE ## postfix, type, >) \
-	BINOP(prefix ## leE ## postfix, type, <=) \
-	BINOP(prefix ## geE ## postfix, type, >=)
+	BINOP3(prefix ## eqE ## postfix, type, ==) \
+	BINOP3(prefix ## neE ## postfix, type, !=) \
+	BINOP3(prefix ## ltE ## postfix, type,  <) \
+	BINOP3(prefix ## gtE ## postfix, type,  >) \
+	BINOP3(prefix ## leE ## postfix, type, <=) \
+	BINOP3(prefix ## geE ## postfix, type, >=)
 
 #define MAKE_INT_BINOPS(prefix, postfix, type) \
 	MAKE_BINOPS(prefix, postfix, type) \
-	BINOP(prefix ## rmE ## postfix, type, %) \
-	BINOP(prefix ## anE ## postfix, type, &) \
-	BINOP(prefix ## orE ## postfix, type, |) \
-	BINOP(prefix ## eoE ## postfix, type, ^) \
-	BINOP(prefix ## lsE ## postfix, type, <<) \
-	BINOP(prefix ## rsE ## postfix, type, >>)
+	BINOP3(prefix ## rmE ## postfix, type, %) \
+	BINOP3(prefix ## anE ## postfix, type, &) \
+	BINOP3(prefix ## orE ## postfix, type, |) \
+	BINOP3(prefix ## eoE ## postfix, type, ^) \
+	BINOP3(prefix ## lsE ## postfix, type, <<) \
+	BINOP3(prefix ## rsE ## postfix, type, >>)
+	
+/* for byte, short ... -> "<<" and ">>" have int as the second argument */
+#define MAKE_INT_BINOPS2(prefix, postfix, type) \
+	MAKE_BINOPS(prefix, postfix, type) \
+	BINOP3(prefix ## rmE ## postfix, type, %) \
+	BINOP3(prefix ## anE ## postfix, type, &) \
+	BINOP3(prefix ## orE ## postfix, type, |) \
+	BINOP3(prefix ## eoE ## postfix, type, ^) \
+	BINOP(prefix  ## lsE ## i, type, type, x10_int, <<) \
+	BINOP(prefix  ## rsE ## i, type, type, x10_int, >>)
 
 #define UNOP(name, type, op)  \
 	type name(type a) { return op a; }
 
 #define MAKE_UNOPS(prefix, postfix, type) \
 	UNOP(prefix ## psE ## postfix, type, +) \
-	UNOP(prefix ## ngE ## postfix, type, -)
+	UNOP(prefix ## ngE ## postfix, type, -) 
 
 #define MAKE_INT_UNOPS(prefix, postfix, type) \
 	MAKE_UNOPS(prefix, postfix, type) \
-	UNOP(prefix ## coE ## postfix, type, ~)
+	UNOP(prefix ## v3utiE ## postfix, type, ~)
 
 #define MAKE_CONF(prefix, suffix, fromtype, totype) \
 	totype prefix##cv##E##suffix (fromtype a) { return (totype) a; }

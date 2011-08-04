@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <errno.h>
+#include <math.h>
 
 typedef struct {
 	uintptr_t dummy;

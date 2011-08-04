@@ -2,11 +2,12 @@
 #include "x10_primitive_types.h"
 #include "x10_string.h"
 
+X10_MAKE_TYPENAME(_ZN3x104lang4Long8typeNameEv, x10_long, "x10.lang.Long")
+
 X10_MAKE_COMPARETO(_ZN3x104lang4Long9compareToEx, x10_long)
 X10_MAKE_EQUALS(_ZN3x104lang4Long6equalsEx, x10_long)
 X10_MAKE_HASHCODE(_ZN3x104lang4Long8hashCodeEv, x10_long)
 X10_MAKE_TOSTRING(_ZN3x104lang4Long8toStringEv, x10_long, "%ld")
-X10_MAKE_TYPENAME(_ZN3x104lang4Long8typeNameEv, x10_long, "x10.lang.Long")
 X10_MAKE_EQUALS_ANY(_ZN3x104lang4Long6equalsEPN3x104lang3AnyE, x10_long)
 
 MAKE_INT_BINOPS(_ZN3x104lang4Long, x, x10_long)

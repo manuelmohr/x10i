@@ -142,6 +142,7 @@ import x10firm.visit.FirmCodeTemplate.FirmCodeCondTemplate;
 import x10firm.visit.FirmCodeTemplate.FirmCodeExprTemplate;
 import x10firm.visit.FirmCodeTemplate.FirmCodeStmtTemplate;
 
+import com.sun.jna.Native;
 import com.sun.jna.Platform;
 
 import firm.ArrayType;
@@ -473,7 +474,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			final List<ClassMember> inits = query.extractInits(members);
 			firmContext.setInitClassMembers(inits);
 
-			for (ClassMember member : body.members()) {
+			for(ClassMember member : body.members()) {
 				if(member instanceof MethodDecl_c) {
 					final MethodDecl_c meth = (MethodDecl_c)member;
 					final X10MethodDef def              = (X10MethodDef)meth.methodDef();
@@ -2035,14 +2036,20 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final Mode mode;
 
 		final polyglot.ast.IntLit.Kind kind = literal.kind();
-		if (kind == IntLit.ULONG) {
-			mode = firmTypeSystem.getFirmMode(x10TypeSystem.ULong());
+		if (literal.kind() == IntLit.INT) {
+			mode = firmTypeSystem.getFirmMode(x10TypeSystem.Int());
 		} else if (literal.kind() == IntLit.UINT) {
 			mode = firmTypeSystem.getFirmMode(x10TypeSystem.UInt());
 		} else if (literal.kind() == IntLit.LONG) {
 			mode = firmTypeSystem.getFirmMode(x10TypeSystem.Long());
-		} else if (literal.kind() == IntLit.INT) {
-			mode = firmTypeSystem.getFirmMode(x10TypeSystem.Int());
+		} else if (kind == IntLit.ULONG) {
+			mode = firmTypeSystem.getFirmMode(x10TypeSystem.ULong());
+		} else if (kind == IntLit.SHORT) {
+			mode = firmTypeSystem.getFirmMode(x10TypeSystem.Short());
+		} else if (kind == IntLit.USHORT) {
+			mode = firmTypeSystem.getFirmMode(x10TypeSystem.UShort());
+		} else if (kind == IntLit.BYTE) {
+			mode = firmTypeSystem.getFirmMode(x10TypeSystem.Byte()); 
 		} else {
 			throw new InternalCompilerError("Unrecognized IntLit kind " + kind);
 		}

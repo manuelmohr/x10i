@@ -73,7 +73,12 @@ public class AsmEmitted extends AllBarrierGoal {
 	// TODO: DELETE ME: Need closure support
 	private static Set<String> allowedClassNames = new HashSet<String>();
 	static {
-		//allowedClassNames.add("x10/lang/Int.x10");
+/*		allowedClassNames.add("x10/lang/Int.x10");
+		allowedClassNames.add("x10/lang/Float.x10");
+		allowedClassNames.add("x10/lang/Short.x10");
+		allowedClassNames.add("x10/lang/Byte.x10");
+*/
+		
 		allowedClassNames.add("x10/lang/Thread.x10");
 		
 		allowedClassNames.add("x10/util/concurrent/AtomicFloat.x10");

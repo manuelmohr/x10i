@@ -2,10 +2,11 @@
 #include "x10_primitive_types.h"
 #include "x10_string.h"
 
+X10_MAKE_TYPENAME(_ZN3x104lang5Float8typeNameEv, x10_float, "x10.lang.Float")
+
 X10_MAKE_COMPARETO(_ZN3x104lang5Float9compareToEf, x10_float)
 X10_MAKE_HASHCODE(_ZN3x104lang5Float8hashCodeEv, x10_float)
 X10_MAKE_EQUALS(_ZN3x104lang5Float6equalsEf, x10_float)
-X10_MAKE_TYPENAME(_ZN3x104lang5Float8typeNameEv, x10_float, "x10.lang.Float")
 X10_MAKE_EQUALS_ANY(_ZN3x104lang5Float6equalsEPN3x104lang3AnyE, x10_float)
 
 /* Just call the toString() function for double */
@@ -44,4 +45,19 @@ x10_float _ZN3x104lang5Float11fromIntBitsEi(x10_int digits)
 	return tmp.f;
 }
 
+x10_boolean _ZN3x104lang5Float5isNaNEv(x10_float self)
+{
+	return isnan(self) != 0 ? X10_TRUE : X10_FALSE;
+}
+
+x10_boolean _ZN3x104lang5Float10isInfiniteEv(x10_float self)
+{
+	return isinf(self) != 0 ? X10_TRUE : X10_FALSE;
+}
+
+x10_int _ZN3x104lang5Float9toIntBitsEv(x10_float self)
+{
+	 // Check for NaN and return canonical NaN value
+    return _ZN3x104lang5Float5isNaNEv(self) ? 0x7fc00000 : _ZN3x104lang5Float12toRawIntBitsEv(self);
+}
 
