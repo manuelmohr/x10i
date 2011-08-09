@@ -20,9 +20,11 @@ import polyglot.visit.Translator;
 import x10.ast.Closure;
 import x10.ast.ClosureCall;
 import x10.ast.ParExpr;
+import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
 import x10.types.X10MethodDef;
 import x10.util.HierarchyUtils;
+import x10cpp.visit.ASTQuery;
 
 /**
  * Our main class for AST queries.
@@ -153,5 +155,15 @@ public class X10ASTQuery {
      */
 	public boolean isMainMethod(X10MethodDef md) {
 		return HierarchyUtils.isMainMethod(md, tr.context());
+	}
+	
+	
+	/**
+	 * Checks if a given class def has a "native rep" property
+	 * @param def The class def
+	 * @return True if the given class def has a "native rep" property
+	 */
+	public boolean isNativeRepClass(X10ClassDef def) {
+		return ASTQuery.getCppRepParam(def, 1) != null;
 	}
 }

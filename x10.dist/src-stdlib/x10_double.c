@@ -63,7 +63,6 @@ x10_string *_ZN3x104lang6Double8toStringEv(x10_double v)
 #undef STRBUF_SIZE
 }
 
-
 MAKE_BINOPS(_ZN3x104lang6Double, d, x10_double)
 MAKE_CMPOPS(_ZN3x104lang6Double, d, x10_double)
 MAKE_UNOPS(_ZN3x104lang6Double, v, x10_double)
@@ -93,4 +92,26 @@ x10_double _ZN3x104lang6Double12fromLongBitsEx(x10_long digits)
     return tmp.d;
 }
 
+x10_string *_ZN3x104lang6Double11toHexStringEv(x10_double self)
+{
+	TypePunner tmp;
+	tmp.d = self;
+	extern x10_string *_ZN3x104lang4Long11toHexStringEv(x10_long);
+	return _ZN3x104lang4Long11toHexStringEv(tmp.l);
+}
+
+x10_boolean _ZN3x104lang6Double5isNaNEv(x10_double self)
+{
+	return isnan(self) != 0 ? X10_TRUE : X10_FALSE;
+}
+
+x10_boolean _ZN3x104lang6Double10isInfiniteEv(x10_double self)
+{
+	return isinf(self) != 0 ? X10_TRUE : X10_FALSE;
+}
+
+x10_long _ZN3x104lang6Double10toLongBitsEv(x10_double self)
+{
+	return _ZN3x104lang6Double5isNaNEv(self) ? 0x7ff8000000000000LL : _ZN3x104lang6Double13toRawLongBitsEv(self);
+}
 

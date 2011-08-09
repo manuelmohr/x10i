@@ -7,15 +7,15 @@ X10_MAKE_TYPENAME(_ZN3x104lang4Long8typeNameEv, x10_long, "x10.lang.Long")
 X10_MAKE_COMPARETO(_ZN3x104lang4Long9compareToEx, x10_long)
 X10_MAKE_EQUALS(_ZN3x104lang4Long6equalsEx, x10_long)
 X10_MAKE_HASHCODE(_ZN3x104lang4Long8hashCodeEv, x10_long)
-X10_MAKE_TOSTRING(_ZN3x104lang4Long8toStringEv, x10_long, "%ld")
+X10_MAKE_TOSTRING(_ZN3x104lang4Long8toStringEv, x10_long, "%lld")
 X10_MAKE_EQUALS_ANY(_ZN3x104lang4Long6equalsEPN3x104lang3AnyE, x10_long)
 
-MAKE_INT_BINOPS(_ZN3x104lang4Long, x, x10_long)
+MAKE_INT_BINOPS2(_ZN3x104lang4Long, x, x10_long)
 MAKE_CMPOPS(_ZN3x104lang4Long, x, x10_long)
 MAKE_INT_UNOPS(_ZN3x104lang4Long, v, x10_long)
-x10_long _ZN3x104lang4Longv3rbsEx(x10_long a, x10_long b)
+x10_long _ZN3x104lang4Longv3rbsEi(x10_long a, x10_int b)
 {
-	return (x10_long) ((x10_ulong) a >> (x10_ulong) b);
+	return ((x10_long)((x10_ulong) (a) >> (0x3f & (b))));
 }
 MAKE_CONFS(_ZN3x104lang4Long, x10_long)
 
@@ -124,4 +124,48 @@ x10_long _ZN3x104lang4Long7reverseEv(x10_long self)
     return _ZN3x104lang4Long12reverseBytesEv((x10_long)ux);
 }
 
+x10_string *_ZN3x104lang4Long8toStringEi(x10_long value, x10_int radix)
+{
+	 if (0 == value) return x10_string_from_wide_chars(T_("0"));
+    assert(radix>=2);
+    assert(radix<=36);
+    static x10_char numerals[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a',
+                               	  'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
+                               	  'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w',
+                               	  'x', 'y', 'z' };
+    // worst case is binary of Long.MIN_VALUE -- - plus 32 digits and a '\0'
+    x10_char buf[66] = T_(""); //zeroes entire buffer (S6.7.8.21)
+    x10_long value2 = 0;
+    if (value<0) {
+        value2 = 0x8000000000000000LL;
+        value &= 0x7FFFFFFFFFFFFFFFLL;
+    }
+    value2 += value;
+    x10_char *b;
+    // start on the '\0', will predecrement so will not clobber it
+    for (b=&buf[65] ; value2>0 ; value2/=radix) {
+        *(--b) = numerals[value2 % radix];
+    }
+    return x10_string_from_wide_chars(b);
+}
+
+x10_string *_ZN3x104lang4Long11toHexStringEv(x10_long self)
+{
+	return _ZN3x104lang4Long8toStringEi(self, 16);
+}
+
+x10_string *_ZN3x104lang4Long13toOctalStringEv(x10_long self)
+{
+	return _ZN3x104lang4Long8toStringEi(self, 8);
+}
+
+x10_string *_ZN3x104lang4Long14toBinaryStringEv(x10_long self)
+{
+	return _ZN3x104lang4Long8toStringEi(self, 2);
+}
+
+x10_int _ZN3x104lang4Long6signumEv(x10_long self)
+{
+	return (self >> 63) | (((x10_ulong)(-self)) >> 63);
+}
 

@@ -142,7 +142,6 @@ import x10firm.visit.FirmCodeTemplate.FirmCodeCondTemplate;
 import x10firm.visit.FirmCodeTemplate.FirmCodeExprTemplate;
 import x10firm.visit.FirmCodeTemplate.FirmCodeStmtTemplate;
 
-import com.sun.jna.Native;
 import com.sun.jna.Platform;
 
 import firm.ArrayType;
@@ -421,6 +420,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(X10ClassDecl_c n) {
 		final X10ClassDef def = n.classDef();
+		
+		/* don`t emit firm code for native rep classes */
+//		if(query.isNativeRepClass(def)) return;
+		
 		final X10ClassType classType = def.asType();
 
 		final X10FirmContext newFirmContext = new X10FirmContext();

@@ -27,7 +27,7 @@ x10_int _ZN3x104lang3Int8parseIntEPN3x104lang6StringEi(x10_string *s, x10_int ra
     errno = 0;
     x10_int ans = wcstol(start, &end, radix);
     if (errno == ERANGE || (errno != 0 && ans == 0) || ((end-start) != x10_string_len(s))) {
-	x10_throw_exception(X10_NUMBER_FORMAT_EXCEPTION, x10_string_buf(s)); 
+	    x10_throw_exception(X10_NUMBER_FORMAT_EXCEPTION, x10_string_buf(s)); 
     }
     return ans;
 }
