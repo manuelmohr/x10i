@@ -88,7 +88,6 @@ class X10FirmScheduler extends X10Scheduler {
        return new VisitorGoal("NoVisitor", job, new NoVisitor()).intern(this);
     }
 
-
     private Goal ClosureRemover(Job job) {
         TypeSystem ts = extInfo.typeSystem();
         NodeFactory nf = extInfo.nodeFactory();
@@ -111,8 +110,7 @@ class X10FirmScheduler extends X10Scheduler {
 		 * method.
 		 */
 
-		final SourceGoalSequence seq =
-				new SourceGoalSequence("FirmTransformationSequence", job);
+		final SourceGoalSequence seq = new SourceGoalSequence("FirmTransformationSequence", job);
 		seq.append(firm_generated);
 
 		return seq.intern(this);

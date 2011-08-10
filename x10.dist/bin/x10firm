@@ -31,7 +31,8 @@ append_classpath() {
 }
 
 append_classpath "${X10_TOP}/x10.compiler/classes"
-append_classpath "${X10_TOP}/x10.runtime/classes"
+#append_classpath "${X10_TOP}/x10.runtime/classes"
+append_classpath "${X10_TOP}/x10.firm_runtime/classes"
 append_classpath "${X10_TOP}/x10.common/classes"
 append_classpath "${X10_TOP}/x10.constraints/classes"
 append_classpath "${X10_TOP}/x10.dist/lib/lpg.jar"
@@ -51,7 +52,7 @@ export DYLD_LIBRARY_PATH="$JNA_LIBRARY_PATH"
 
 # Collect arguments for the x10firm compiler
 args="-extclass x10firm.ExtensionInfo"
-args="${args} -x10lib ${X10_TOP}/x10.dist/stdlib/libx10.properties"
+args="${args} -x10lib ${X10_TOP}/x10.dist/firm-stdlib/libx10.properties"
 args="${args} -sourcepath ${X10_TOP}/x10.dist/src-stdlib"
 args="${args} -firmNativeTypes ${X10_TOP}/x10.dist/firmNativeTypes.conf"
 
