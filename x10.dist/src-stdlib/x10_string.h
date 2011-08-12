@@ -2,6 +2,7 @@
 #define X10_STRING_H_
 
 #include <wchar.h>
+#include <wctype.h>
 
 #include "x10.h"
 
@@ -30,11 +31,13 @@ X10_EXTERN x10_string *_ZN3x104lang6StringC1EPN3x104lang6StringE(
 
 
 // String methods
-X10_EXTERN x10_boolean _ZN3x104lang6String6equalsEPN3x104lang3AnyE(
-		x10_string *, x10_any *);
+X10_EXTERN x10_boolean _ZN3x104lang6String6equalsEPN3x104lang3AnyE(x10_string *, x10_any *);
+X10_EXTERN x10_int _ZN3x104lang6String8hashCodeEv(x10_string *);
+X10_EXTERN x10_boolean _ZN3x104lang6String16equalsIgnoreCaseEPN3x104lang6StringE(x10_string *, x10_string *);
 X10_EXTERN x10_int _ZN3x104lang6String6lengthEv(x10_string *);
 X10_EXTERN x10_string *_ZN3x104lang6String8toStringEv(x10_string *);
 X10_EXTERN x10_string *_ZN3x104lang6String8typeNameEv(x10_string *);
+X10_EXTERN x10_char _ZN3x104lang6StringapplyEi(x10_string *, x10_int);
 X10_EXTERN x10_char _ZN3x104lang6String6charAtEi(x10_string *, x10_int);
 X10_EXTERN x10_int _ZN3x104lang6String7indexOfEDi(x10_string *, x10_char);
 X10_EXTERN x10_int _ZN3x104lang6String7indexOfEDii(x10_string *, x10_char, x10_int);
@@ -49,8 +52,19 @@ X10_EXTERN x10_string *_ZN3x104lang6String9substringEii(x10_string *, x10_int, x
 X10_EXTERN x10_boolean _ZN3x104lang6String8endsWithEPN3x104lang6StringE(x10_string *, x10_string *);
 X10_EXTERN x10_boolean _ZN3x104lang6String10startsWithEPN3x104lang6StringE(x10_string *, x10_string *);
 X10_EXTERN x10_string *_ZN3x104lang6String4trimEv(x10_string *);
+X10_EXTERN x10_string *_ZN3x104lang6String11toLowerCaseEv(x10_string *);
+X10_EXTERN x10_string *_ZN3x104lang6String11toUpperCaseEv(x10_string *);
 X10_EXTERN x10_int _ZN3x104lang6String9compareToEPN3x104lang6StringE(x10_string *, x10_string *);
+X10_EXTERN x10_int _ZN3x104lang6String19compareToIgnoreCaseEPN3x104lang6StringE(x10_string *, x10_string *);
 
+// operator <(String)
+X10_EXTERN x10_boolean _ZN3x104lang6StringltEPN3x104lang6StringE(x10_string *, x10_string *);
+// operator <=(String)
+X10_EXTERN x10_boolean _ZN3x104lang6StringleEPN3x104lang6StringE(x10_string *, x10_string *);
+// operator >(String)
+X10_EXTERN x10_boolean _ZN3x104lang6StringgtEPN3x104lang6StringE(x10_string *, x10_string *);
+// operator >=(String)
+X10_EXTERN x10_boolean _ZN3x104lang6StringgeEPN3x104lang6StringE(x10_string *, x10_string *);
 // operator+(String)
 X10_EXTERN x10_string *_ZN3x104lang6StringplEPN3x104lang6StringE(x10_string *, x10_string *);
 // static operator+(String, String)

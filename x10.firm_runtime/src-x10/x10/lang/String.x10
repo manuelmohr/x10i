@@ -373,7 +373,8 @@ public final class String implements (Int) => Char, /*TODO Ordered[String],*/ Co
      */
     @Native("java", "java.lang.String.valueOf(#v)")
     @Native("c++", "x10aux::safe_to_string(#v)")
-    public native static def valueOf[T](v: T): String;
+    /* [FIRM_CHANGE] */
+    public static def valueOf[T](v: T): String = v.toString();
 
 
     /**

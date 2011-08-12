@@ -43,7 +43,11 @@ import x10.util.concurrent.SimpleLatch;
 
     @Native("java", "java.lang.System.err.println(#any)")
     @Native("c++", "x10aux::system_utils::println(x10aux::to_string(#any)->c_str())")
-    public native static def println(any:Any) : void;
+    /* [FIRM_CHANGE] */
+    public static def println(any:Any) : void { println(any.toString()); }
+    
+    /* [FIRM_CHANGE] */
+    public native static def println(str: String) : void;
 
     @Native("java", "java.lang.System.err.println()")
     @Native("c++", "x10aux::system_utils::println(\"\")")

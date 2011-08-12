@@ -456,7 +456,6 @@ public class FirmTypeSystem {
 		       equalTypes(type, x10TypeSystem.Char());
 	}
 	
-	
 	private MethodType getNativeConstructorType(X10ConstructorInstance instance) {
 		assert (instance.flags().isNative());
 

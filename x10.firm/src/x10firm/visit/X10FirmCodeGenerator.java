@@ -1614,8 +1614,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		con.setCurrentBlock(bFalse);
 	}
 	
-
-
 	@Override
 	public void visit(Conditional_c n) {
 
@@ -1997,8 +1995,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		if (n.constructorInstance().container() == x10TypeSystem.String()) {
 			final Node obj = genNativeConstructorCall(n.constructorInstance(), n.arguments());
 			setReturnNode(obj);
-		}
-		else {
+		} else {
 			if (x10TypeSystem.isStructType(n.type()))
 				objectThisNode = genStackAlloc(n.type(), type);
 			else

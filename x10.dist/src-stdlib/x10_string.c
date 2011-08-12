@@ -80,6 +80,34 @@ x10_boolean _ZN3x104lang6String6equalsEPN3x104lang3AnyE(x10_string *self,
 	return X10_TRUE;
 }
 
+x10_boolean _ZN3x104lang6String16equalsIgnoreCaseEPN3x104lang6StringE(x10_string *self, x10_string *other)
+{
+	if(other == X10_NULL)
+		return X10_FALSE;
+	
+	x10_int self_len  = x10_string_len(self);
+	x10_int other_len = x10_string_len(other);
+	if(self_len != other_len)
+		return X10_FALSE;
+	
+	const x10_char *self_buf  = (const x10_char *)x10_string_buf(self);
+	const x10_char *other_buf = (const x10_char *)x10_string_buf(other);
+	
+	return wcscasecmp(self_buf, other_buf) == 0;
+}
+
+x10_int _ZN3x104lang6String8hashCodeEv(x10_string *self)
+{
+    x10_int hc = 0;
+    x10_int l = x10_string_len(self);
+    const x10_char * k = (const x10_char*)x10_string_buf(self);
+    for (; l > 0; k++, l--) {
+        hc *= 31;
+        hc += (x10_int) *k;
+    }
+    return hc;
+}
+
 x10_int _ZN3x104lang6String6lengthEv(x10_string *self)
 {
 	return x10_string_len(self);
@@ -94,6 +122,11 @@ x10_char _ZN3x104lang6String6charAtEi(x10_string *self, x10_int idx)
 {
 	check_string_bounds(self, idx);
 	return x10_string_buf(self)[idx];
+}
+
+x10_char _ZN3x104lang6StringapplyEi(x10_string *self, x10_int idx)
+{
+	return _ZN3x104lang6String6charAtEi(self, idx);
 }
 
 x10_int _ZN3x104lang6String7indexOfEDii(x10_string *self, x10_char c, x10_int idx)
@@ -273,12 +306,52 @@ x10_string *_ZN3x104lang6String4trimEv(x10_string *self)
 	return x10_string_from_wide_buf(len, buf);
 }
 
+x10_string *_ZN3x104lang6String11toLowerCaseEv(x10_string *self)
+{
+	x10_int len = x10_string_len(self);
+	x10_char *self_buf = x10_string_buf(self); 
+	x10_string *ret = x10_allocate_string(len);
+	x10_char *ret_buf = x10_string_buf(ret);
+	x10_int i;
+	for(i = 0; i < len; i++) 
+		ret_buf[i] = towlower(self_buf[i]);
+	return ret;
+}
+
+x10_string *_ZN3x104lang6String11toUpperCaseEv(x10_string *self)
+{
+	x10_int len = x10_string_len(self);
+	x10_char *self_buf = x10_string_buf(self); 
+	x10_string *ret = x10_allocate_string(len);
+	x10_char *ret_buf = x10_string_buf(ret);
+	x10_int i;
+	for(i = 0; i < len; i++) 
+		ret_buf[i] = towupper(self_buf[i]);
+	return ret;
+}
+
 x10_int _ZN3x104lang6String9compareToEPN3x104lang6StringE(x10_string *self, x10_string *other)
 {
 	x10_null_check(other);
-	const x10_int len_diff = x10_string_len(self) - x10_string_len(other);
-	const size_t min_len = MIN(x10_string_len(self), x10_string_len(other));
+	const x10_int self_len = x10_string_len(self), other_len = x10_string_len(other);
+	
+	const x10_int len_diff = self_len - other_len;
+	const size_t min_len = MIN(self_len, other_len);
 	const x10_int cmp = wcsncmp(x10_string_buf(self), x10_string_buf(other), min_len);
+	if (cmp != 0)
+		return cmp;
+
+	return len_diff;
+}
+
+x10_int _ZN3x104lang6String19compareToIgnoreCaseEPN3x104lang6StringE(x10_string *self, x10_string *other)
+{
+	x10_null_check(other);
+	const x10_int self_len = x10_string_len(self), other_len = x10_string_len(other);
+	
+	const x10_int len_diff = self_len - other_len;
+	const size_t min_len = MIN(self_len, other_len);
+	const x10_int cmp = wcsncasecmp(x10_string_buf(self), x10_string_buf(other), min_len);
 	if (cmp != 0)
 		return cmp;
 
@@ -289,6 +362,30 @@ x10_string *_ZN3x104lang6String8typeNameEv(x10_string *self)
 {
 	UNUSED(self);
 	return x10_string_from_wide_chars(T_("x10.lang.String"));
+}
+
+// operator <(String)
+x10_boolean _ZN3x104lang6StringltEPN3x104lang6StringE(x10_string *self, x10_string *other)
+{
+	return _ZN3x104lang6String9compareToEPN3x104lang6StringE(self, other) < 0;
+}
+
+// operator <=(String)
+x10_boolean _ZN3x104lang6StringleEPN3x104lang6StringE(x10_string *self, x10_string *other)
+{
+	return _ZN3x104lang6String9compareToEPN3x104lang6StringE(self, other) <= 0;
+}
+
+// operator >(String)
+x10_boolean _ZN3x104lang6StringgtEPN3x104lang6StringE(x10_string *self, x10_string *other)
+{
+	return _ZN3x104lang6String9compareToEPN3x104lang6StringE(self, other) > 0;
+}
+
+// operator >=(String)
+x10_boolean _ZN3x104lang6StringgeEPN3x104lang6StringE(x10_string *self, x10_string *other)
+{
+	return _ZN3x104lang6String9compareToEPN3x104lang6StringE(self, other) >= 0;
 }
 
 // operator+(String)

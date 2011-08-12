@@ -87,6 +87,7 @@ public class AsmEmitted extends AllBarrierGoal {
 		allowedClassNames.add("x10/lang/Double.x10");
 		*/
 		
+//		allowedClassNames.add("x10/lang/String.x10");
 		allowedClassNames.add("x10/lang/Thread.x10");
 		
 		allowedClassNames.add("x10/util/concurrent/AtomicFloat.x10");
