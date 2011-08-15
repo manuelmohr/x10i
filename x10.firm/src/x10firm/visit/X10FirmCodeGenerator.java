@@ -421,9 +421,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(X10ClassDecl_c n) {
 		final X10ClassDef def = n.classDef();
 		
-		/* don`t emit firm code for native rep classes */
-//		if(query.isNativeRepClass(def)) return;
-		
 		final X10ClassType classType = def.asType();
 
 		final X10FirmContext newFirmContext = new X10FirmContext();

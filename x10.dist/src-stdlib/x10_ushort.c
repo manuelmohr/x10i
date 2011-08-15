@@ -8,7 +8,6 @@ X10_MAKE_COMPARETO(_ZN3x104lang6UShort9compareToEt, x10_ushort)
 X10_MAKE_EQUALS(_ZN3x104lang6UShort6equalsEt, x10_ushort)
 X10_MAKE_HASHCODE(_ZN3x104lang6UShort8hashCodeEv, x10_ushort)
 X10_MAKE_TOSTRING(_ZN3x104lang6UShort8toStringEv, x10_ushort, "%hu")
-X10_MAKE_EQUALS_ANY(_ZN3x104lang6UShort6equalsEPN3x104lang3AnyE, x10_ushort)
 
 
 MAKE_INT_BINOPS(_ZN3x104lang6UShort, t, x10_ushort)

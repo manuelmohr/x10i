@@ -9,7 +9,6 @@ X10_MAKE_COMPARETO(_ZN3x104lang4Byte9compareToEa, x10_byte)
 X10_MAKE_HASHCODE(_ZN3x104lang4Byte8hashCodeEv, x10_byte)
 X10_MAKE_EQUALS(_ZN3x104lang4Byte6equalsEa, x10_byte)
 X10_MAKE_TOSTRING(_ZN3x104lang4Byte8toStringEv, x10_byte, "%d")
-X10_MAKE_EQUALS_ANY(_ZN3x104lang4Byte6equalsEPN3x104lang3AnyE, x10_byte)
 
 MAKE_INT_BINOPS2(_ZN3x104lang4Byte, a, x10_byte)
 

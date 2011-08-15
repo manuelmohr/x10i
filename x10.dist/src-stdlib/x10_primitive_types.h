@@ -25,16 +25,6 @@ x10_string *name(type self) \
 	return x10_string_from_wide_chars(buf); \
 }
 
-// TODO:  Implement me.
-#define X10_MAKE_EQUALS_ANY(name, type) \
-x10_boolean name(type self, x10_any *other) \
-{ \
-\
-	UNUSED(self); \
-	UNUSED(other); \
-	return X10_FALSE; \
-}
-
 #define X10_MAKE_HASHCODE(name, type) \
 x10_int name(type self) \
 { \
@@ -88,6 +78,22 @@ x10_int name(type self) \
 	BINOP3(prefix ## eoE ## postfix, type, ^) \
 	BINOP(prefix  ## lsE ## i, type, type, x10_int, <<) \
 	BINOP(prefix  ## rsE ## i, type, type, x10_int, >>)
+	
+/* for unsigned types -> operators '&', '|', '^' have 3 forms; -> 
+	1. Form: Normal operator with posftix1 as the first argument; 
+	2. Form: Normal operator with postfix2 as the first argument
+	3. Form: Inverse operator with postfix2 as the first argument
+	Comment: 'v3i' is the prefix for inverse operators 
+	-> '<<' and '>>' have int as the second argument 
+*/
+#define MAKE_U_BINOPS2(prefix, postfix1, postfix2, type) \
+	MAKE_INT_BINOPS2(prefix, postfix1, type) \
+	BINOP3(prefix ## anE ## postfix2, type, &) \
+	BINOP3(prefix ## orE ## postfix2, type, |) \
+	BINOP3(prefix ## eoE ## postfix2, type, ^) \
+	BINOP3(prefix ## v3i ## anE ## postfix2, type, &) \
+	BINOP3(prefix ## v3i ## orE ## postfix2, type, |) \
+	BINOP3(prefix ## v3i ## eoE ## postfix2, type, ^) 
 
 #define UNOP(name, type, op)  \
 	type name(type a) { return op a; }

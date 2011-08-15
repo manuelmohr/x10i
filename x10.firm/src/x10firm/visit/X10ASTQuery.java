@@ -156,14 +156,4 @@ public class X10ASTQuery {
 	public boolean isMainMethod(X10MethodDef md) {
 		return HierarchyUtils.isMainMethod(md, tr.context());
 	}
-	
-	
-	/**
-	 * Checks if a given class def has a "native rep" property
-	 * @param def The class def
-	 * @return True if the given class def has a "native rep" property
-	 */
-	public boolean isNativeRepClass(X10ClassDef def) {
-		return ASTQuery.getCppRepParam(def, 1) != null;
-	}
 }

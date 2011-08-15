@@ -23,9 +23,10 @@ import x10.util.Ordered;
  * that define conversions from other data types, including String,
  * as well as some Int constants.
  */
-@NativeRep("java", "int", null, "x10.rtt.Types.INT")
+/* [FIRM_CHANGE] */
+//@NativeRep("java", "int", null, "x10.rtt.Types.INT")
 //                 v-- when used
-@NativeRep("c++", "x10_int", "x10_int", null)
+//@NativeRep("c++", "x10_int", "x10_int", null)
 //                            ^ when constructed
 public struct Int implements Comparable[Int] /*TODO implements Arithmetic[Int], Bitwise[Int], Ordered[Int]*/ {
 
@@ -541,6 +542,7 @@ public struct Int implements Comparable[Int] /*TODO implements Arithmetic[Int], 
      */
     @Native("java", "x10.lang.IntRange.$make(#x, #y)")
     @Native("c++", "x10::lang::IntRange::_make(#1, #2)")
-    public native static operator (x:Int) .. (y:Int):IntRange{min==x,max==y};
+    /* [FIRM_CHANGE] */
+    public static operator (x:Int) .. (y:Int):IntRange{min==x,max==y} = IntRange(x, y);
 }
 public type Int(b:Int) = Int{self==b};

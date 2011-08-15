@@ -7,7 +7,6 @@ X10_MAKE_TYPENAME(_ZN3x104lang6Double8typeNameEv, x10_double, "x10.lang.Double")
 X10_MAKE_COMPARETO(_ZN3x104lang6Double9compareToEd, x10_double)
 X10_MAKE_HASHCODE(_ZN3x104lang6Double8hashCodeEv, x10_double)
 X10_MAKE_EQUALS(_ZN3x104lang6Double6equalsEd, x10_double)
-X10_MAKE_EQUALS_ANY(_ZN3x104lang6Double6equalsEPN3x104lang3AnyE, x10_int)
 
 /*
  * For Double, we need a special toString() method to be compatible

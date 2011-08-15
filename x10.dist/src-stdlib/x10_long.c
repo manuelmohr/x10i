@@ -8,7 +8,6 @@ X10_MAKE_COMPARETO(_ZN3x104lang4Long9compareToEx, x10_long)
 X10_MAKE_EQUALS(_ZN3x104lang4Long6equalsEx, x10_long)
 X10_MAKE_HASHCODE(_ZN3x104lang4Long8hashCodeEv, x10_long)
 X10_MAKE_TOSTRING(_ZN3x104lang4Long8toStringEv, x10_long, "%lld")
-X10_MAKE_EQUALS_ANY(_ZN3x104lang4Long6equalsEPN3x104lang3AnyE, x10_long)
 
 MAKE_INT_BINOPS2(_ZN3x104lang4Long, x, x10_long)
 MAKE_CMPOPS(_ZN3x104lang4Long, x, x10_long)

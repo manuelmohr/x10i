@@ -15,8 +15,6 @@ x10_string *_ZN3x104lang7Boolean8toStringEv(x10_boolean self)
 		x10_string_from_wide_chars(T_("false"));
 }
 
-X10_MAKE_EQUALS_ANY(_ZN3x104lang7Boolean6equalsEPN3x104lang3AnyE, x10_int)
-
 // compareTo from Comparable
 x10_int _ZN3x104lang7Boolean9compareToEb(x10_boolean self, x10_boolean other)
 {

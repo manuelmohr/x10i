@@ -7,7 +7,6 @@ X10_MAKE_TYPENAME(_ZN3x104lang5Float8typeNameEv, x10_float, "x10.lang.Float")
 X10_MAKE_COMPARETO(_ZN3x104lang5Float9compareToEf, x10_float)
 X10_MAKE_HASHCODE(_ZN3x104lang5Float8hashCodeEv, x10_float)
 X10_MAKE_EQUALS(_ZN3x104lang5Float6equalsEf, x10_float)
-X10_MAKE_EQUALS_ANY(_ZN3x104lang5Float6equalsEPN3x104lang3AnyE, x10_float)
 
 /* Just call the toString() function for double */
 X10_EXTERN x10_string *_ZN3x104lang6Double8toStringEv(x10_double);
