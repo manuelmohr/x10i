@@ -86,7 +86,7 @@ x10_int name(type self) \
 	Comment: 'v3i' is the prefix for inverse operators 
 	-> '<<' and '>>' have int as the second argument 
 */
-#define MAKE_U_BINOPS2(prefix, postfix1, postfix2, type) \
+#define MAKE_UNSIGNED_BINOPS(prefix, postfix1, postfix2, type) \
 	MAKE_INT_BINOPS2(prefix, postfix1, type) \
 	BINOP3(prefix ## anE ## postfix2, type, &) \
 	BINOP3(prefix ## orE ## postfix2, type, |) \

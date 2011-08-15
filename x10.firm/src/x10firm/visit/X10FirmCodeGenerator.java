@@ -2047,6 +2047,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			mode = firmTypeSystem.getFirmMode(x10TypeSystem.UShort());
 		} else if (kind == IntLit.BYTE) {
 			mode = firmTypeSystem.getFirmMode(x10TypeSystem.Byte()); 
+		} else if (kind == IntLit.UBYTE) {
+			mode = firmTypeSystem.getFirmMode(x10TypeSystem.UByte());
 		} else {
 			throw new InternalCompilerError("Unrecognized IntLit kind " + kind);
 		}

@@ -7,7 +7,7 @@ X10_MAKE_EQUALS(_ZN3x104lang4UInt6equalsEj, x10_uint)
 X10_MAKE_HASHCODE(_ZN3x104lang4UInt8hashCodeEv, x10_uint)
 X10_MAKE_TOSTRING(_ZN3x104lang4UInt8toStringEv, x10_uint, "%u")
 
-MAKE_U_BINOPS2(_ZN3x104lang4UInt, j, i, x10_uint)
+MAKE_UNSIGNED_BINOPS(_ZN3x104lang4UInt, j, i, x10_uint)
 MAKE_CMPOPS(_ZN3x104lang4UInt, j, x10_uint)
 MAKE_INT_UNOPS(_ZN3x104lang4UInt, v, x10_uint)
 x10_int _ZN3x104lang4UIntv3rbsEi(x10_uint a, x10_int b)
