@@ -41,10 +41,10 @@ x10_string *_ZN3x104lang5UByte13toOctalStringEv(x10_ubyte self)
 	return _ZN3x104lang3Int13toOctalStringEv(self);
 }
 
-x10_string *_ZN3x104lang5UByte8toStringEi(x10_ubyte self)
+x10_string *_ZN3x104lang5UByte8toStringEi(x10_ubyte self, x10_int radix)
 {
-	extern x10_string *_ZN3x104lang3Int8toStringEi(x10_int);
-	return _ZN3x104lang3Int8toStringEi(self);
+	extern x10_string *_ZN3x104lang3Int8toStringEi(x10_int, x10_int);
+	return _ZN3x104lang3Int8toStringEi(self, radix);
 }
 
 x10_string *_ZN3x104lang5UByte11toHexStringEv(x10_ubyte self)
