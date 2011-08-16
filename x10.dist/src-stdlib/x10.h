@@ -59,4 +59,6 @@ typedef double      x10_double;
 #define UNUSED(s) (void)(s)
 #define T_(x) L##x
 
+#define X10_UNIMPLEMENTED() fprintf(stderr, "%s not implemented yet", __FUNCTION__); abort();
+
 #endif // X10_H

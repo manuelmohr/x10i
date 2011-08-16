@@ -2,8 +2,6 @@
 #include "x10_primitive_types.h"
 #include "x10_string.h"
 
-X10_MAKE_TYPENAME(_ZN3x104lang7Boolean8typeNameEv, x10_boolean,"x10.lang.Boolean")
-
 /* Booleans */
 X10_MAKE_EQUALS(_ZN3x104lang7Boolean6equalsEb, x10_boolean)
 X10_MAKE_HASHCODE(_ZN3x104lang7Boolean8hashCodeEv, x10_boolean)

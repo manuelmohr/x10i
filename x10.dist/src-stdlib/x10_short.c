@@ -2,8 +2,6 @@
 #include "x10_primitive_types.h"
 #include "x10_string.h"
 
-X10_MAKE_TYPENAME(_ZN3x104lang5Short8typeNameEv, x10_short, "x10.lang.Short")
-
 X10_MAKE_COMPARETO(_ZN3x104lang5Short9compareToEs, x10_short)
 X10_MAKE_EQUALS(_ZN3x104lang5Short6equalsEs, x10_short)
 X10_MAKE_HASHCODE(_ZN3x104lang5Short8hashCodeEv, x10_short)

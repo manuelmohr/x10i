@@ -511,7 +511,12 @@ public struct Int implements Comparable[Int] /*TODO implements Arithmetic[Int], 
      */
     @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
     @Native("c++", "x10aux::equals(#0,#1)")
-    public native def equals(x:Any):Boolean;
+    /* [FIRM_CHANGE] */
+    public def equals(x:Any):Boolean {
+    	if(x instanceof Int) 
+    		return equals(x as Int);
+    	return false;
+    }
 
     /**
      * Returns true if this Int is equal to the given Int.
@@ -543,6 +548,6 @@ public struct Int implements Comparable[Int] /*TODO implements Arithmetic[Int], 
     @Native("java", "x10.lang.IntRange.$make(#x, #y)")
     @Native("c++", "x10::lang::IntRange::_make(#1, #2)")
     /* [FIRM_CHANGE] */
-    public static operator (x:Int) .. (y:Int):IntRange{min==x,max==y} = IntRange(x, y);
+    public native static operator (x:Int) .. (y:Int):IntRange{min==x,max==y};
 }
 public type Int(b:Int) = Int{self==b};

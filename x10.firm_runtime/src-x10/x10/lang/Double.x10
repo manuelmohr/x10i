@@ -391,7 +391,12 @@ public struct Double implements Comparable[Double] /*TODO implements Arithmetic[
      */
     @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
     @Native("c++", "x10aux::equals(#0,#1)")
-    public native def equals(x:Any):Boolean;
+    /* [FIRM_CHANGE] */
+    public def equals(x:Any):Boolean {
+    	if(x instanceof Double)
+    		return equals(x as Double);
+    	return false;
+    }
 
     /**
      * Returns true if this Double is equal to the given Double.

@@ -393,7 +393,12 @@ public struct Float implements Comparable[Float] /*TODO implements Arithmetic[Fl
      */
     @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
     @Native("c++", "x10aux::equals(#0,#1)")
-    public native def equals(x:Any):Boolean;
+    /* [FIRM_CHANGE] */
+    public def equals(x:Any):Boolean {
+    	if(x instanceof Float)
+    		return equals(x as Float);
+    	return false;
+    }
 
     /**
      * Returns true if this Float is equal to the given Float.

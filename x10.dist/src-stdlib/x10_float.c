@@ -2,8 +2,6 @@
 #include "x10_primitive_types.h"
 #include "x10_string.h"
 
-X10_MAKE_TYPENAME(_ZN3x104lang5Float8typeNameEv, x10_float, "x10.lang.Float")
-
 X10_MAKE_COMPARETO(_ZN3x104lang5Float9compareToEf, x10_float)
 X10_MAKE_HASHCODE(_ZN3x104lang5Float8hashCodeEv, x10_float)
 X10_MAKE_EQUALS(_ZN3x104lang5Float6equalsEf, x10_float)
@@ -59,4 +57,12 @@ x10_int _ZN3x104lang5Float9toIntBitsEv(x10_float self)
 	 // Check for NaN and return canonical NaN value
     return _ZN3x104lang5Float5isNaNEv(self) ? 0x7fc00000 : _ZN3x104lang5Float12toRawIntBitsEv(self);
 }
+
+x10_string *_ZN3x104lang5Float11toHexStringEv(x10_float self)
+{
+	UNUSED(self);
+	X10_UNIMPLEMENTED();
+	return X10_NULL;
+}
+
 

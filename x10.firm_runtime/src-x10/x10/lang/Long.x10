@@ -507,7 +507,12 @@ public struct Long implements Comparable[Long] /*TODO implements Arithmetic[Long
      */
     @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
     @Native("c++", "x10aux::equals(#0,#1)")
-    public native def equals(x:Any):Boolean;
+    /* [FIRM_CHANGE] */
+    public def equals(x:Any):Boolean {
+    	if(x instanceof Long)
+    		return equals(x as Long);
+    	return false;
+    }
 
     /**
      * Returns true if this Long is equal to the given Long.

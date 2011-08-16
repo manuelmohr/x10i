@@ -78,18 +78,15 @@ public class AsmEmitted extends AllBarrierGoal {
 		allowedClassNames.add("x10/lang/UByte.x10");
 		allowedClassNames.add("x10/lang/UShort.x10");
 		allowedClassNames.add("x10/lang/ULong.x10");
-		
-//		allowedClassNames.add("x10/lang/Int.x10");
-		/*
-		
-		allowedClassNames.add("x10/lang/Float.x10");
 		allowedClassNames.add("x10/lang/Short.x10");
 		allowedClassNames.add("x10/lang/Byte.x10");
 		allowedClassNames.add("x10/lang/Boolean.x10");
 		allowedClassNames.add("x10/lang/Long.x10");
+		allowedClassNames.add("x10/lang/Int.x10");
+		allowedClassNames.add("x10/lang/Float.x10");
 		allowedClassNames.add("x10/lang/Double.x10");
-		*/
-		
+//		
+
 //		allowedClassNames.add("x10/lang/IntRange.x10");
 		
 //		allowedClassNames.add("x10/lang/String.x10");

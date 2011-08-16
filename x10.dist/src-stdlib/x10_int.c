@@ -2,7 +2,6 @@
 #include "x10_primitive_types.h"
 #include "x10_string.h"
 
-X10_MAKE_TYPENAME(_ZN3x104lang3Int8typeNameEv, x10_int, "x10.lang.Int")
 X10_MAKE_COMPARETO(_ZN3x104lang3Int9compareToEi, x10_int)
 X10_MAKE_HASHCODE(_ZN3x104lang3Int8hashCodeEv, x10_float)
 X10_MAKE_EQUALS(_ZN3x104lang3Int6equalsEi, x10_int)

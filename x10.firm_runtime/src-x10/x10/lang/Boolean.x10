@@ -118,7 +118,11 @@ public struct Boolean implements Comparable[Boolean] {
     //FIXME Java: use equalsequals()?
     @Native("java", "((((#x) instanceof boolean) && #this == ((boolean)#x)) || (((#x) instanceof Boolean) && #this == ((Boolean) #x).booleanValue()))")
     @Native("c++", "x10aux::equals(#0,#1)")
-    public native def equals(x:Any):Boolean;
+    public def equals(x:Any):Boolean {
+    	if(x instanceof Boolean)
+    		return equals(x as Boolean);
+    	return false;
+    }
 
     /**
      * Returns true if this Boolean is equal to the given Boolean.

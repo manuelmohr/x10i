@@ -2,8 +2,6 @@
 #include "x10_primitive_types.h"
 #include "x10_string.h"
 
-X10_MAKE_TYPENAME(_ZN3x104lang6Double8typeNameEv, x10_double, "x10.lang.Double")
-
 X10_MAKE_COMPARETO(_ZN3x104lang6Double9compareToEd, x10_double)
 X10_MAKE_HASHCODE(_ZN3x104lang6Double8hashCodeEv, x10_double)
 X10_MAKE_EQUALS(_ZN3x104lang6Double6equalsEd, x10_double)
@@ -91,14 +89,6 @@ x10_double _ZN3x104lang6Double12fromLongBitsEx(x10_long digits)
     return tmp.d;
 }
 
-x10_string *_ZN3x104lang6Double11toHexStringEv(x10_double self)
-{
-	TypePunner tmp;
-	tmp.d = self;
-	extern x10_string *_ZN3x104lang4Long11toHexStringEv(x10_long);
-	return _ZN3x104lang4Long11toHexStringEv(tmp.l);
-}
-
 x10_boolean _ZN3x104lang6Double5isNaNEv(x10_double self)
 {
 	return isnan(self) != 0 ? X10_TRUE : X10_FALSE;
@@ -112,5 +102,12 @@ x10_boolean _ZN3x104lang6Double10isInfiniteEv(x10_double self)
 x10_long _ZN3x104lang6Double10toLongBitsEv(x10_double self)
 {
 	return _ZN3x104lang6Double5isNaNEv(self) ? 0x7ff8000000000000LL : _ZN3x104lang6Double13toRawLongBitsEv(self);
+}
+
+x10_string *_ZN3x104lang6Double11toHexStringEv(x10_double self)
+{
+	UNUSED(self);
+	X10_UNIMPLEMENTED();
+	return X10_NULL;
 }
 
