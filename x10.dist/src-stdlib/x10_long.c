@@ -62,7 +62,7 @@ x10_long _ZN3x104lang4Long12lowestOneBitEv(x10_long self)
    return self & (-self);
 }
 
-x10_long _ZN3x104lang4Long8bitCountEv(x10_long self)
+x10_int _ZN3x104lang4Long8bitCountEv(x10_long self)
 {
     x10_ulong ux = (x10_ulong)self;
     ux = ux - ((ux >> 1) & 0x5555555555555555LL);
@@ -74,7 +74,7 @@ x10_long _ZN3x104lang4Long8bitCountEv(x10_long self)
     return (x10_int)(ux & 0x7F);
 }
 
-x10_long _ZN3x104lang4Long20numberOfLeadingZerosEv(x10_long self)
+x10_int _ZN3x104lang4Long20numberOfLeadingZerosEv(x10_long self)
 {
     self |= (self >> 1);
     self |= (self >> 2);
@@ -85,7 +85,7 @@ x10_long _ZN3x104lang4Long20numberOfLeadingZerosEv(x10_long self)
     return _ZN3x104lang4Long8bitCountEv(~self);
 }
 
-x10_long _ZN3x104lang4Long21numberOfTrailingZerosEv(x10_long self)
+x10_int _ZN3x104lang4Long21numberOfTrailingZerosEv(x10_long self)
 {
    return _ZN3x104lang4Long8bitCountEv(~self & (self-1));
 }
