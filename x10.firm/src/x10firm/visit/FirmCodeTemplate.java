@@ -49,8 +49,9 @@ public class FirmCodeTemplate {
 	 * @param falseExpr The false expression template
 	 * @return Phi node
 	 */
-	public Node genConditional(final OOConstruction con, final FirmCodeCondTemplate cond, 
+	public Node genConditional(final OOConstruction con, final FirmCodeCondTemplate cond,
 			final FirmCodeExprTemplate trueExpr, final FirmCodeExprTemplate falseExpr) {
+		
 		final Block bTrue    = con.newBlock();
 		final Block bFalse   = con.newBlock();
 		final Block curBlock = con.getCurrentBlock();
@@ -107,7 +108,7 @@ public class FirmCodeTemplate {
 		con.setCurrentBlock(bTrue);
 		
 		ifStmt.genCode();
-
+		
 		Node endIf = null;
 		if(con.getCurrentBlock().isBad())
 			con.setCurrentBlock(bTrue);

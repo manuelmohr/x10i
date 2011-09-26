@@ -4,14 +4,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 import polyglot.types.FieldDef;
-import polyglot.types.FieldInstance;
 
 import x10.types.X10ConstructorDef;
 import firm.Entity;
 
 public class GenericClassContext {
-	/** Mapping between MethodDefs and firm entities. */
-	private final Map<GenericMethodInstance, Entity> methodEntities = new HashMap<GenericMethodInstance, Entity>();
+   /** Mapping between MethodDefs and firm entities. */
+   private final Map<GenericMethodInstance, Entity> methodEntities = new HashMap<GenericMethodInstance, Entity>();
 
 	/**
 	 * Mapping between X10ConstructorDefs and firm entities. Constructors are
@@ -23,8 +22,8 @@ public class GenericClassContext {
 	/** Mapping between FieldDefs and firm entities. */
 	private final Map<FieldDef, Entity> fieldEntities = new HashMap<FieldDef, Entity>();
 
-
 	public GenericClassContext() {
+		
 	}
 
 	public Entity getMethodEntity(GenericMethodInstance inst) {

@@ -98,7 +98,9 @@ public class AsmEmitted extends AllBarrierGoal {
 		allowedClassNames.add("x10/util/concurrent/AtomicLong.x10");
 		allowedClassNames.add("x10/util/concurrent/AtomicBoolean.x10");
 		allowedClassNames.add("x10/util/concurrent/Fences.x10");
-		allowedClassNames.add("x10/util/concurrent/Lock.x10"); 
+		allowedClassNames.add("x10/util/concurrent/Lock.x10");
+		
+		allowedClassNames.add("x10/compiler/InitDispatcher.x10");
 	}
 	
 	// TODO DELETE ME: Delete this method when closures are implemented. 
@@ -106,7 +108,7 @@ public class AsmEmitted extends AllBarrierGoal {
 		for(final String str: allowedClassNames) 
 			if(className.endsWith(str))
 				return true;
-		return false; 
+		return false;
 	}
 
 	@Override

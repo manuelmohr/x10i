@@ -73,17 +73,14 @@ import polyglot.ast.While_c;
 import polyglot.frontend.Compiler;
 import polyglot.types.ConstructorInstance;
 import polyglot.types.Context;
-import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
 import polyglot.types.LocalInstance;
 import polyglot.types.Name;
-import polyglot.types.Ref;
 import polyglot.types.Type;
 import polyglot.types.Types;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
-import polyglot.visit.Translator;
 import x10.ast.AssignPropertyCall_c;
 import x10.ast.Async_c;
 import x10.ast.AtEach_c;
@@ -130,7 +127,6 @@ import x10.types.X10ConstructorInstance;
 import x10.types.X10Def;
 import x10.types.X10FieldInstance;
 import x10.types.X10MethodDef;
-import x10.types.X10ProcedureInstance;
 import x10.types.checker.Converter;
 import x10.types.checker.Converter.ConversionType;
 import x10.visit.X10DelegatingVisitor;
@@ -159,6 +155,7 @@ import firm.Relation;
 import firm.TargetValue;
 import firm.bindings.binding_ircons.ir_linkage;
 import firm.bindings.binding_ircons.ir_where_alloc;
+import firm.bindings.binding_irprog.ir_segment_t;
 import firm.bindings.binding_typerep.ir_type_state;
 import firm.bindings.binding_typerep.ir_visibility;
 import firm.nodes.Alloc;
@@ -179,6 +176,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private static final String X10_STRING_LITERAL = "x10_string_literal";
 	private static final String X10_THROW_STUB     = "x10_throw_stub";
 	private static final String X10_ASSERT         = "x10_assert";
+	private static final String X10_STATIC_INITIALIZER = "x10_static_initializer";
 	
 	/** The current firm construction object */
 	OOConstruction con;
@@ -209,7 +207,67 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	
 	/** firm code templates */
 	private FirmCodeTemplate fct = new FirmCodeTemplate();
+	
+	/** holds all static initializer blocks */
+	private static List<polyglot.ast.Initializer> static_init_blocks = new LinkedList<polyglot.ast.Initializer>();
 
+	/**
+	 * Constructor for creating a new X10FirmCodeGenerator
+	 *
+	 * @param compiler The main compiler
+	 * @param firmTypeSystem The FIRM type system
+	 * @param x10TypeSystem The X10 type system
+	 */
+	public X10FirmCodeGenerator(final Compiler compiler,
+			final FirmTypeSystem firmTypeSystem,
+			final GenericTypeSystem x10TypeSystem,
+			final X10NodeFactory_c nodeFactory,
+			final CompilerOptions options) {
+
+		this.firmTypeSystem = firmTypeSystem;
+		this.x10TypeSystem  = x10TypeSystem;
+		this.xnf            = nodeFactory;
+		this.query          = new X10ASTQuery(x10TypeSystem);
+		this.x10Context     = new Context(x10TypeSystem);
+		this.options        = options;
+	}
+	
+	/** Do all post compile tasks */
+	public void genPostCompile() {
+		genStaticInitializationSupportCode();
+	}
+
+	/** Generate the static initialization constructor */
+	private void genStaticInitializationSupportCode() {
+		// get the "constructor" segment and then put the static initialization code in the "constructor" segment. 
+		ClassType con_segment = Program.getSegmentType(ir_segment_t.IR_SEGMENT_CONSTRUCTORS.val);
+		
+		final firm.Type[] parameterTypes = new firm.Type[0];
+		final firm.Type[] resultTypes = new firm.Type[0];
+		
+		firm.Type method_type  		= new MethodType(parameterTypes, resultTypes);
+		Entity method_entity 		= new Entity(Program.getGlobalType(), X10_STATIC_INITIALIZER, method_type);
+		firm.Type ptr_method_type 	= new PointerType(method_type);
+		
+		Entity con_entity = new Entity(con_segment, "$ctor", ptr_method_type);
+		final Graph graph = Program.getConstCodeGraph();
+		final Node val = graph.newSymConst(method_entity);
+		
+		con_entity.setLdIdent(X10_STATIC_INITIALIZER);
+		con_entity.setCompilerGenerated(true);
+		con_entity.setVisibility(ir_visibility.ir_visibility_private);
+		con_entity.setLinkage(ir_linkage.IR_LINKAGE_HIDDEN_USER.val | ir_linkage.IR_LINKAGE_CONSTANT.val);
+		con_entity.setAtomicValue(val);
+		
+		OOConstruction savedConstruction = initConstruction(method_entity,  Collections.<LocalInstance>emptyList(), 
+				Collections.<LocalInstance>emptyList(), Flags.STATIC, x10TypeSystem.Void(), null);
+		
+		for(polyglot.ast.Initializer n : static_init_blocks)
+			visitAppropriate(n.body());
+		
+		finishConstruction(method_entity, savedConstruction);
+	}
+	
 	/**
 	 * Evaluates a given expression and creates the appropriate firm nodes
 	 * @param e The expression
@@ -274,28 +332,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 */
 	private boolean needEntityForLocalInstance(final LocalInstance loc) {
 		return firmTypeSystem.isFirmStructType(loc.type());
-	}
-
-	/**
-	 * Constructor for creating a new X10FirmCodeGenerator
-	 *
-	 * @param compiler The main compiler
-	 * @param firmTypeSystem The FIRM type system
-	 * @param x10TypeSystem The X10 type system
-	 */
-	public X10FirmCodeGenerator(final Compiler compiler,
-			final FirmTypeSystem firmTypeSystem,
-			final GenericTypeSystem x10TypeSystem,
-			final X10NodeFactory_c nodeFactory,
-			final Translator translator,
-			final CompilerOptions options) {
-
-		this.firmTypeSystem = firmTypeSystem;
-		this.x10TypeSystem  = x10TypeSystem;
-		this.xnf            = nodeFactory;
-		this.query          = new X10ASTQuery(translator);
-		this.x10Context     = new Context(x10TypeSystem);
-		this.options        = options;
 	}
 
 	/** reset the remembered value of the returned node of an expression */
@@ -427,10 +463,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		firmContext = firmContext.pushFirmContext(newFirmContext);
 
 		if (classType.flags().isInterface()) {
-			// Nothing to do.
+			// DO NOTHING
 		} else if (classType.isX10Struct()) {
 			visitStruct(n);
-		} else {
+		} else if (classType.isClass()) {
 			visitClass(n);
 		}
 
@@ -458,7 +494,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
         final OOConstruction savedConstruction = initConstruction(entity, methInstance.formalNames(),
         		new LinkedList<LocalInstance>(),
-				def.flags().isStatic(), methInstance, clazz.classDef().asType());
+				def.flags(), methInstance.returnType(), clazz.classDef().asType());
 
         // Now generate the firm graph
         visitAppropriate(block);
@@ -550,7 +586,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @return A reference to the current (saved) construction
 	 */
 	private OOConstruction initConstruction(final Entity entity, final List<LocalInstance> formals,
-			final List<LocalInstance> locals, final boolean isStatic, final X10ProcedureInstance<?> proc, final X10ClassType owner) {
+			final List<LocalInstance> locals, final Flags flags, final Type retType, final X10ClassType owner) {
+		
+		final boolean isStatic = flags.isStatic();
 		final int nVars = formals.size() + locals.size() + (isStatic ? 0 : 1);
 
 		final Graph graph = new Graph(entity, nVars);
@@ -561,12 +599,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		final Map<LocalInstance, Entity> map = calculateEntityMappingForLocals(locals);
 
-		newFirmContext.setCurProcedure(proc);
+		newFirmContext.setReturnType(retType);
 
 		firmContext = firmContext.pushFirmContext(newFirmContext);
 
 		final Node args = graph.getArgs();
 		if(!isStatic) {
+			assert(owner != null);
 			final firm.Type ownerFirm = firmTypeSystem.asFirmType(owner);
 
 			/* map 'this' */
@@ -637,9 +676,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	private void constructGraph(final Entity entity, final CodeBlock code, final List<LocalInstance> formals,
-			final List<LocalInstance> locals, final boolean isStatic, final X10ProcedureInstance<?> proc, final X10ClassType owner) {
+			final List<LocalInstance> locals, final Flags flags, final Type retType, final X10ClassType owner) {
 
-		OOConstruction savedConstruction = initConstruction(entity, formals, locals, isStatic, proc, owner);
+		OOConstruction savedConstruction = initConstruction(entity, formals, locals, flags, retType, owner);
 
 		// Walk body and construct graph
 		visitAppropriate(code.body());
@@ -687,12 +726,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 
 		final List<LocalInstance> formals = defInstance.formalNames();
-		final boolean isStatic = flags.isStatic();
 		final X10ClassType owner = (X10ClassType) methodInstance.container();
 
 		// extract all formals and locals from the method.
 		final List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(dec);
-		constructGraph(entity, dec, formals, locals, isStatic, defInstance, owner);
+		constructGraph(entity, dec, formals, locals, flags, defInstance.returnType(), owner);
 
 		if (query.isMainMethod(def)) {
 			processMainMethod(entity);
@@ -752,18 +790,16 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 
 		final List<LocalInstance> formals = instance.formalNames();
-		final boolean isStatic = flags.isStatic();
 		final X10ClassType owner = (X10ClassType) instance.container();
 
 		// extract all formals and locals from the method.
 		final List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(dec);
 		final List<ClassMember> initClassMembers = firmContext.getInitClassMembers();
 
-		final OOConstruction savedConstruction = initConstruction(entity, formals, locals, isStatic, instance, owner);
+		final OOConstruction savedConstruction = initConstruction(entity, formals, locals, flags, instance.returnType(), owner);
 
 		// The instance variables must be initialized first
 		for(ClassMember member : initClassMembers) {
-			// TODO: How we will handle Initializer_c ???
 			if(member instanceof FieldDecl_c) {
 				final FieldDecl_c fieldDecl = (FieldDecl_c)member;
 				assert(fieldDecl.init() != null);
@@ -878,12 +914,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return result;
 	}
 
-	private static final String X10_STATIC_FIELD_STATUS_SUFFIX = "__status";
-	private static final String X10_STATIC_FIELD_ACCESSOR_SUFFIX = "__get";
-
-	private static final int    X10_STATIC_FIELD_STATUS_UNITIALIZED = 0;
-	private static final int    X10_STATIC_FIELD_STATUS_INITIALIZED = 1;
-
 	private Node getFieldAddress(final Node objectPointer, final FieldInstance instance) {
 		final FieldInstance def = instance.def().asInstance();
 		final Flags flags = def.flags();
@@ -903,7 +933,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	private Node genFieldLoad(final Node objectPointer, final FieldInstance fInst) {
 		final Node fieldPointer = getFieldAddress(objectPointer, fInst);
-
 		return genFieldLoadHelp(fieldPointer, fInst);
 	}
 
@@ -924,6 +953,16 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	private Node genStaticFieldLoad(final FieldInstance instance) {
 		return genFieldLoad(null, instance);
+	}
+	
+	private Node genFieldAssign(final Field_c field, final Expr expr) {
+		final FieldInstance instance = field.fieldInstance().def().asInstance();
+		Node objectNode = null;
+		if(field.target() instanceof Expr)
+			objectNode = visitExpression((Expr)field.target());
+		final Node rightRet = visitExpression(expr);
+		final Node ret = genFieldAssign(objectNode, instance, rightRet);
+		return ret;
 	}
 
 	private Node genFieldAssign(final Node objectPointer, final FieldInstance fInst, final Node rightRet) {
@@ -947,147 +986,22 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return rightRet;
 	}
 
-	private Node genStaticFieldAssign(final FieldInstance instance, final Node node) {
-		return genFieldAssign(null, instance, node);
-	}
-
-	/**
-	 * Mapping between static non const fields and the appropriate getter method entities.
-	 */
-	private Map<FieldInstance, MethodInstance> staticFieldGetterMethodMap = new HashMap<FieldInstance, MethodInstance>();
-
-	/**
-	 * Returns the getter method for a given static non constant field
-	 * @param field The field for which the appropriate getter method should be returned
-	 * @return The appropriate getter method for the given field
-	 */
-	private MethodInstance getGetterMethodForStaticField(final FieldInstance field) {
-		assert(field.flags().isStatic() && !field.isConstant());
-		final MethodInstance meth = staticFieldGetterMethodMap.get(field);
-		if(meth != null)
-			return meth;
-
-		final X10ClassType contType = (X10ClassType)field.container();
-		final X10ClassDef contDef = contType.def();
-
-		final Position pos = Position.COMPILER_GENERATED;
-		// Create the method for accessing the field
-		final X10MethodDef mi = x10TypeSystem.methodDef(pos, Types.ref(contType),
-				x10TypeSystem.Public().Static(), Types.ref(field.type()),
-				Name.make(field.name().toString() + X10_STATIC_FIELD_ACCESSOR_SUFFIX),
-				new LinkedList<Ref<? extends Type>>());
-		contDef.addMethod(mi);
-
-		final MethodInstance staticAccMeth = mi.asInstance();
-
-		staticFieldGetterMethodMap.put(field, staticAccMeth);
-
-		return staticAccMeth;
-	}
-
-	/**
-	 * Creates a new getter method for a static non const field
-	 * @param dec The field declaration for which the getter method should be created.
-	 */
-	private void generateStaticNonConstFieldDecl(final FieldDecl_c dec) {
-		assert(!dec.init().isConstant());
-		final FieldDef fieldDef = dec.fieldDef();
-		final FieldInstance fieldInst = fieldDef.asInstance();
-		final X10ClassType contType = (X10ClassType)fieldInst.container();
-		final X10ClassDef contDef = contType.def();
-
-		final Position pos = Position.COMPILER_GENERATED;
-		// Create a new static value for the given field for holding the status of the initialization
-    	final FieldDef statusField = x10TypeSystem.fieldDef(pos, Types.ref(contType), x10TypeSystem.Public().Static(),
-    			Types.ref(x10TypeSystem.Int()), Name.make(fieldDef.name().toString() + X10_STATIC_FIELD_STATUS_SUFFIX));
-    	contDef.addField(statusField);
-
-    	final FieldInstance statusFieldInst = statusField.asInstance();
-
-    	firmTypeSystem.addExtraStaticField(statusFieldInst);
-
-    	final MethodInstance staticFieldGetterMethod = getGetterMethodForStaticField(fieldInst);
-        final Entity staticFieldGetterEntity = firmTypeSystem.getMethodEntity(staticFieldGetterMethod);
-        final OOConstruction savedConstruction = initConstruction(staticFieldGetterEntity, new LinkedList<LocalInstance>(),
-        		new LinkedList<LocalInstance>(), true, staticFieldGetterMethod, (X10ClassType)staticFieldGetterMethod.container());
-        final Entity statusFieldEnt = firmTypeSystem.getEntityForField(statusFieldInst);
-
-        // Set the default "UNITIALIZED" value for "field".__status;
-        final Initializer staticFieldStatusInitializer = new Initializer(new TargetValue(X10_STATIC_FIELD_STATUS_UNITIALIZED, firmTypeSystem.getFirmMode(x10TypeSystem.Int())));
-        statusFieldEnt.setInitializer(staticFieldStatusInitializer);
-
-        /** Generate the following code for the "field"__get method
-         *  #define INITIALIZED 1
-         *  #define UNITIALIZED 0
-         *
-         *  "field".__status is initialized with UNITIALIZED
-         *
-         *  if("field".__status != INITIALIZED) {
-         *      "field" = "field".init();
-         *      "field".__status = INITIALIZED;
-         *  }
-         *  return "field";
-         */
-
-		final Block bTrue  = con.newBlock();
-		final Block bAfter = con.newBlock();
-
-		final Node retLeft  = genStaticFieldLoad(statusFieldInst);
-		final Node retRight = con.newConst(new TargetValue(X10_STATIC_FIELD_STATUS_INITIALIZED, firmTypeSystem.getFirmMode(x10TypeSystem.Int())));
-
-		final Node c  = con.newCmp(retLeft, retRight, Relation.LessGreater);
-
-		final Node cond = con.newCond(c);
-
-		final Node projTrue  = con.newProj(cond, Mode.getX(), Cond.pnTrue);
-		final Node projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
-
-		bTrue.addPred(projTrue);
-		bAfter.addPred(projFalse);
-
-		con.setCurrentBlock(bTrue);
-		final Node expr = visitExpression(dec.init());
-		genStaticFieldAssign(fieldInst, expr);
-
-		final Node nodeInitialized = con.newConst(new TargetValue(X10_STATIC_FIELD_STATUS_INITIALIZED, firmTypeSystem.getFirmMode(x10TypeSystem.Int())));
-		genStaticFieldAssign(statusFieldInst, nodeInitialized);
-
-		bAfter.addPred(con.newJmp());
-		bTrue.mature();
-		con.setCurrentBlock(bAfter);
-
-		final Node mem = con.getCurrentMem();
-		final Node retValue = genStaticFieldLoad(fieldInst);
-		final Node retNode = con.newReturn(mem, new Node[]{retValue});
-
-		/* for error detection */
-		con.getGraph().getEndBlock().addPred(retNode);
-		con.setCurrentBlockBad();
-
-		bAfter.mature();
-
-        finishConstruction(staticFieldGetterEntity, savedConstruction);
-	}
-
 	@Override
 	public void visit(FieldDecl_c dec) {
 		final Flags flags = dec.flags().flags();
 
-		/* make sure enclosing classtype has been created */
+		/* make sure enclosing class type has been created */
 		final FieldInstance instance = dec.fieldDef().asInstance();
 		firmTypeSystem.asFirmType(instance.container());
 
 		/* static fields may have initializers */
 		if (flags.isStatic()) {
 			final Expr init = dec.init();
-			if (init != null) {
-				if(dec.init().isConstant()) {
-					final Initializer initializer = expr2Initializer(init);
-					final Entity entity = firmTypeSystem.getEntityForField(dec.fieldDef().asInstance());
-					entity.setInitializer(initializer);
-				} else {
-					generateStaticNonConstFieldDecl(dec);
-				}
+			// Check for in place initializer
+			if (init != null && query.isGlobalInit(dec)) {
+				final Initializer initializer = expr2Initializer(init);
+				final Entity entity = firmTypeSystem.getEntityForField(dec.fieldDef().asInstance());
+				entity.setInitializer(initializer);
 			}
 		}
 	}
@@ -1319,10 +1233,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			}
 		} else if (lhs instanceof Field_c) {
 			final Field_c field = (Field_c) lhs;
-			final FieldInstance instance = field.fieldInstance().def().asInstance();
-			final Node objectPointer = visitExpression((Expr)field.target());
-			final Node rightRet = visitExpression(rhs);
-			final Node ret = genFieldAssign(objectPointer, instance, rightRet);
+			final Node ret = genFieldAssign(field, rhs);
 			setReturnNode(ret);
 		} else {
 			throw new RuntimeException("Unexpected assignment target");
@@ -1334,11 +1245,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		Node ret = null;
 
 		if(n.expr() != null) {
-			final X10ProcedureInstance<?> curProc = firmContext.getCurProcedure();
-			assert(curProc != null);
+			final Type retType = firmContext.getReturnType();
+			assert(retType != null);
 
 			// autoboxing
-			final Expr expr = x10Cast(n.expr(), curProc.returnType());
+			final Expr expr = x10Cast(n.expr(), retType);
 			ret = visitExpression(expr);
 		}
 
@@ -1802,14 +1713,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final FieldInstance instance = n.fieldInstance();
 
 		final Flags flags = instance.flags();
-
-		if(flags.isStatic() && !instance.isConstant()) {
-			// a static non constant field -> do a static method call to the "field".__get method
-			final MethodInstance staticGetterMethod = getGetterMethodForStaticField(instance);
-
-			final Node ret = genX10Call(staticGetterMethod, new ArrayList<Expr>(), null);
-			setReturnNode(ret);
-		} else if(flags.isStatic()) {
+		
+		if(flags.isStatic()) {
 			final Node ret = genStaticFieldLoad(instance);
 			setReturnNode(ret);
 		} else {
@@ -1891,9 +1796,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final Node alloc = con.newAlloc(mem, count, firmType, where);
 		final Node newMem = con.newProj(alloc, Mode.getM(), Alloc.pnM);
 		final Node res = con.newProj(alloc, resType.getMode(), Alloc.pnRes);
-
 		con.setCurrentMem(newMem);
-
 		return res;
 	}
 
@@ -1905,7 +1808,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 */
 	private void genConstructorCall(final Node objectThisNode, final X10ConstructorInstance instance, final List<Expr> args) {
 		assert (instance != null);
-
+		
 		/* invoke class constructor */
 		final Entity entity = firmTypeSystem.getConstructorEntity(instance);
 		final firm.MethodType entityType = (MethodType) entity.getType();
@@ -2233,6 +2136,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @return A list of expressions where improper types are adjusted by explicit casts.
 	 */
 	private List<Expr> transformArguments(final List<Type> formalTypes, final List<Expr> args) {
+		assert(formalTypes.size() == args.size());
 		List<Expr> ret = new LinkedList<Expr>();
 
 		int i = 0;
@@ -2273,7 +2177,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		// add implicit this pointer
 		if (!isStatic) {
-			assert(target != null && target instanceof Expr);
+			assert(target != null && target instanceof Expr) : mi.toString();
 			final Expr receiver = (Expr)target;
 			arguments.add(0, transformArgument(mi.container(), receiver));
 		}
@@ -2371,7 +2275,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	         */
 
 	        final OOConstruction savedConstruction = initConstruction(entity, m.formalNames(), new LinkedList<LocalInstance>(),
-	        														  flags.isStatic(), m, boxType);
+	        														  flags, m.returnType(), boxType);
 
 	        // The receiver of the delegated method call -> the boxed value
 	        final Expr bxdField = xnf.Field(pos, xnf.This(pos).type(boxType), xnf.Id(pos, boxedField.name())).fieldInstance(boxedField).type(boxedType);
@@ -2461,7 +2365,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
         return throwStmt;
 	}
 	
-	private void genSubtypeCheck(final Node node, final Type fromType, final Type toType) {
+	/**
+	 * Generate firm code for sub type checks. 
+	 * @param node The node which should be checked
+	 * @param fromType The from type
+	 * @param toType The to type
+	 */
+	void genSubtypeCheck(final Node node, final Type fromType, final Type toType) {
 		assert(toType instanceof X10ClassType);
 		final Type compType = x10TypeSystem.isStructType(toType) ? firmTypeSystem.getBoxingType((X10ClassType)toType) : toType;
 
@@ -2511,7 +2421,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	
 	private Node genUnboxing(final Node node, final Type fromType, final Type toType) {
         genCastNullCheck(node, toType);
-		
 		final X10ClassType boxType = firmTypeSystem.getBoxingType((X10ClassType)toType);
 		final FieldInstance boxField = boxType.fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE));
 		assert(boxField != null);
@@ -2543,9 +2452,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			@Override
 			public Node genCode() {
 				// can have checked and unchecked casts 
-				if(checked) {
+				if(checked)
 					genSubtypeCheck(node, fromType, tooType);
-				}
+				
 				return node;
 			}
 		};
@@ -2558,7 +2467,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		
 		final TypeNode tn = c.castType();
 		assert (tn instanceof CanonicalTypeNode);
-
+		
 		switch (c.conversionType()) {
 		case CHECKED:
 		case PRIMITIVE:
@@ -2799,9 +2708,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	//
 
 	// Initializer does not need to be implemented, see Igor's email from 2011-07-15 on this subject.
+	// XXX: Eduard; Why ? -> The static initializer creates static blocks !!!
 	@Override
 	public void visit(Initializer_c n) {
-		throw new RuntimeException("Not implemented yet");
+	    if (n.flags().flags().isStatic()) {
+	    	static_init_blocks.add(n);
+	    } else {
+	    	throw new RuntimeException("Not implemented yet");
+	    }
 	}
 
 	@Override

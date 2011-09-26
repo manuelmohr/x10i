@@ -18,7 +18,7 @@ X10_EXTERN x10_string *_ZN3x104lang7Boolean8toStringEv(x10_boolean);
 void _ZN9SimpleLib5printEx(x10_long v)
 {
 	x10_string *s = _ZN3x104lang4Long8toStringEv(v);
-	wprintf(T_("%ls\n"), s);
+	wprintf(T_("%ls\n"), x10_string_buf(s));
 }
 
 void _ZN9SimpleLib5printEy(x10_ulong v)

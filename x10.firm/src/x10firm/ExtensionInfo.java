@@ -1,7 +1,9 @@
 package x10firm;
 
+import polyglot.ast.NodeFactory;
 import polyglot.frontend.Scheduler;
 import x10.X10CompilerOptions;
+import x10c.ast.X10CNodeFactory_c;
 import x10firm.types.GenericTypeSystem;
 import firm.Firm;
 import firm.OO;
@@ -40,6 +42,11 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 	protected polyglot.types.TypeSystem createTypeSystem() {
 		return new GenericTypeSystem(this);
 	}
+	
+	@Override
+    protected NodeFactory createNodeFactory() {
+    	return new X10CNodeFactory_c(this);
+    }
 
 	@Override
 	protected X10CompilerOptions createOptions() {

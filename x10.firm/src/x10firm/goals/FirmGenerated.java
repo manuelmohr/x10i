@@ -5,7 +5,6 @@ import polyglot.frontend.Compiler;
 import polyglot.frontend.Job;
 import polyglot.frontend.SourceGoal_c;
 import polyglot.types.TypeSystem;
-import polyglot.visit.Translator;
 import x10.ast.X10NodeFactory_c;
 import x10.extension.X10Ext;
 import x10firm.CompilerOptions;
@@ -38,6 +37,7 @@ public class FirmGenerated extends SourceGoal_c {
 	public FirmGenerated(final Job job, final TypeSystem x10TypeSystem,
 			final FirmTypeSystem firmTypeSystem,
 			final X10NodeFactory_c nodeFactory) {
+		
 		super("FirmGenerated", job);
 		this.firmTypeSystem = firmTypeSystem;
 		this.x10TypeSystem = (GenericTypeSystem) x10TypeSystem;
@@ -53,13 +53,10 @@ public class FirmGenerated extends SourceGoal_c {
 			return false;
 		
 		final CompilerOptions options = (CompilerOptions) scheduler.extensionInfo().getOptions();
-		firmTypeSystem.init(options); 
-		
-		final Translator tr = new Translator(job(), x10TypeSystem, null, null);
+		firmTypeSystem.init(options);
 
 		Compiler compiler = job().compiler();
-		final X10FirmCodeGenerator v = new X10FirmCodeGenerator(compiler, firmTypeSystem, x10TypeSystem, nodeFactory, tr, options);
-
+		final X10FirmCodeGenerator v = new X10FirmCodeGenerator(compiler, firmTypeSystem, x10TypeSystem, nodeFactory, options);
 		v.visitAppropriate(ast);
 
 		return true;

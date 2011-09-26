@@ -63,7 +63,9 @@ import firm.bindings.binding_typerep.ir_visibility;
  * because the runtime is loaded dynamically.
  */
 public class FirmTypeSystem {
-	/** Maps polyglot types to firm types. */
+	/** Maps polyglot types to firm types. 
+	 * TODO: Use the polyglot.types.Type for the hashing n
+	 * */
 	private final Map<polyglot.types.Type, Type> firmCoreTypes = new HashMap<polyglot.types.Type, Type>();
 
 	/** Maps some polyglot types to "native"/primitive firm types. */
@@ -71,7 +73,7 @@ public class FirmTypeSystem {
 	
 	/** Mapping for function types (Function type name! -> function type) -> Only for function types that are interfaces!!! */
 	private final Map<String, polyglot.types.Type> firmFunctionTypes = new HashMap<String, polyglot.types.Type>();
-	
+
 	/** Maps struct types to the appropriate boxing types */
 	private final Map<X10ClassType, X10ClassType> structBoxingTypes = new HashMap<X10ClassType, X10ClassType>();
 
@@ -84,8 +86,6 @@ public class FirmTypeSystem {
 
 	/** All class instances share the same location for the vptr (the pointer to the vtable) */
 	private Entity vptrEntity;
-
-	private static long boxingID = 1;
 	
 	private static class NativeClassInfo {
 		private final int size; 
@@ -125,7 +125,7 @@ public class FirmTypeSystem {
 	}
 
 	private String getUniqueBoxingName(final String structName) {
-		return structName + "__FirmBox__" + (boxingID++);
+		return structName + "__FirmBox__";
 	}
 	
 	private boolean inited = false; 
@@ -174,15 +174,15 @@ public class FirmTypeSystem {
 		if(type instanceof FunctionType) {
 			final FunctionType func = (FunctionType)type;
 			if(func.flags().isInterface()) {
-				final polyglot.types.Type tmp2 = firmFunctionTypes.get(func.toString());
-				if(tmp2 != null)
-					return tmp2;
+			final polyglot.types.Type tmp2 = firmFunctionTypes.get(func.toString());
+			if(tmp2 != null)
+				return tmp2;
 				firmFunctionTypes.put(func.toString(), type);
 			}
 		}
 		return type;
 	}
-	
+
 	private void putFirmType(final polyglot.types.Type x10_type, Type firm_Type) {
 		firmTypes.put(getTypeHelp(x10_type), firm_Type);
 	}
@@ -535,7 +535,7 @@ public class FirmTypeSystem {
 			/* we really have references to classes */
 			result = new PointerType(result);
 		}
-		putFirmType(type2, result); 
+		putFirmType(type2, result);
 
 		/* currently we should never produce types without modes here */
 		assert result.getMode() != null;
@@ -555,11 +555,12 @@ public class FirmTypeSystem {
 	 * Adds a new field to the type system
 	 * @param field The field which should be added
 	 * @param klass The defining class of the field
+	 * @return The firm entity for the field
 	 */
-	private void addField(final FieldInstance field, final firm.Type klass) {
+	private Entity addField(final FieldInstance field, final firm.Type klass) {
 		final Flags fieldFlags = field.flags();
 		final String name = X10NameMangler.mangleTypeObjectWithDefClass(field);
-
+		
 		firm.Type type;
 		if(isFirmStructType(field.type()))
 			type = asFirmCoreType(field.type());
@@ -573,17 +574,8 @@ public class FirmTypeSystem {
 		OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 		final GenericClassContext context = getDefiningContext(field);
 		context.putFieldEntity(field.def(), entity);
-	}
-
-	/**
-	 * Adds a new static field instance to the type system
-	 * @param field The field instance which should be added
-	 */
-	public void addExtraStaticField(final FieldInstance field) {
-		assert field.flags().isStatic();
-
-		final firm.Type klass = asFirmCoreType(field.container());
-		addField(field, klass);
+		
+		return entity;
 	}
 
 	/**
@@ -707,7 +699,13 @@ public class FirmTypeSystem {
 	 */
 	public Entity getEntityForField(FieldInstance instance) {
 		final GenericClassContext context = getDefiningContext(instance);
-		return context.getFieldEntity(instance.def());
+		Entity ent = context.getFieldEntity(instance.def());
+		// TODO: HACK; need better solution 
+		if(ent == null) {
+			ent = addField(instance, asFirmType(instance.container()));
+			assert(ent != null);
+		}
+		return ent;
 	}
 
 	private X10ParsedClassType fixParsedClassType(X10ParsedClassType t) {

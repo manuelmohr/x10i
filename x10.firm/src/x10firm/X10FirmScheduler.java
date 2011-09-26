@@ -20,6 +20,7 @@ import x10firm.goals.LoweringFirm;
 import x10firm.goals.SourceGoalSequence;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
+import x10firm.visit.X10StaticInitializer;
 
 /**
  * Setting the goals for the Firm backend and depend on the X10 scheduler for
@@ -40,6 +41,7 @@ class X10FirmScheduler extends X10Scheduler {
 
 	@Override
 	protected Goal PostCompiled() {
+		
 		/*
 		 * The other X10 backends and Polyglot use this goal to invoke
 		 * javac/gcc on the generated source code.  In the Firm context this
@@ -65,11 +67,12 @@ class X10FirmScheduler extends X10Scheduler {
 	
     @Override
     public List<Goal> goals(Job job) {
-    	// add the closure remover to the goals
         List<Goal> superGoals = super.goals(job);
         List<Goal> goals = new ArrayList<Goal>(superGoals.size()+10);
+        final Goal cg = CodeGenerated(job);
         for (Goal g : superGoals) {
-            if (g == CodeGenerated(job)) {
+            if (g == cg) {
+                goals.add(StaticInitializer(job));
                 goals.add(ClosureRemover(job));
             }
             goals.add(g);
@@ -91,16 +94,20 @@ class X10FirmScheduler extends X10Scheduler {
     private Goal ClosureRemover(Job job) {
         TypeSystem ts = extInfo.typeSystem();
         NodeFactory nf = extInfo.nodeFactory();
-		return new ValidatingVisitorGoal("ClosureRemoved", job,
-				new ClosureRemover(job, ts, nf)).intern(this);
+		return new ValidatingVisitorGoal("ClosureRemoved", job, new ClosureRemover(job, ts, nf)).intern(this);
 	}
+    
+    private Goal StaticInitializer(Job job) {
+        TypeSystem ts = extInfo.typeSystem();
+        NodeFactory nf = extInfo.nodeFactory();
+        return new ValidatingVisitorGoal("StaticInitialized", job, new X10StaticInitializer(job, ts, nf)).intern(this);
+    }
 
 	@Override
 	public Goal CodeGenerated(Job job) {
 
 		final TypeSystem typeSystem = extInfo.typeSystem();
-		final X10NodeFactory_c nodeFactory =
-				(X10NodeFactory_c) extInfo.nodeFactory();
+		final X10NodeFactory_c nodeFactory = (X10NodeFactory_c) extInfo.nodeFactory();
 
 		final Goal firm_generated = new FirmGenerated(job, typeSystem, firmTypeSystem, nodeFactory);
 		firm_generated.intern(this);

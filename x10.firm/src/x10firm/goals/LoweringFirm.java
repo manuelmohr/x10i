@@ -3,11 +3,15 @@ package x10firm.goals;
 import java.io.IOException;
 
 import polyglot.frontend.AllBarrierGoal;
+import polyglot.frontend.ExtensionInfo;
 import polyglot.frontend.Goal;
 import polyglot.frontend.Job;
 import polyglot.frontend.Scheduler;
+import x10.ast.X10NodeFactory_c;
 import x10firm.CompilerOptions;
 import x10firm.types.FirmTypeSystem;
+import x10firm.types.GenericTypeSystem;
+import x10firm.visit.X10FirmCodeGenerator;
 import firm.Backend;
 import firm.Dump;
 import firm.Graph;
@@ -32,9 +36,15 @@ public class LoweringFirm extends AllBarrierGoal {
 	
 	@Override
 	public boolean runTask() {
+		final ExtensionInfo info 					= scheduler.extensionInfo();
+		final polyglot.frontend.Compiler compiler 	= info.compiler();
+		final CompilerOptions options 				= (CompilerOptions)info.getOptions();
+		final X10NodeFactory_c nodeFactory 			= (X10NodeFactory_c)info.nodeFactory();
+		final GenericTypeSystem x10TypeSystem 		= (GenericTypeSystem)info.typeSystem();
 		
-		final CompilerOptions options =
-			(CompilerOptions) scheduler.extensionInfo().getOptions();
+		// do post compile 
+		X10FirmCodeGenerator firmGen = new X10FirmCodeGenerator(compiler, firmTypeSystem, x10TypeSystem, nodeFactory, options);
+		firmGen.genPostCompile();
 		
 		/* dump the firm typegraph */
 		if (options.isDumpFirmGraphs()) {
@@ -76,6 +86,7 @@ public class LoweringFirm extends AllBarrierGoal {
 		if (!scheduler.shouldCompile(job) && !AsmEmitted.isAllowedClassName(job.toString())) {
 			return null;
 		}
+
 		
 		return scheduler.End(job);
 	}
