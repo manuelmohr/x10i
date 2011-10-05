@@ -74,6 +74,8 @@ public class AsmEmitted extends AllBarrierGoal {
 	private static Set<String> allowedClassNames = new HashSet<String>();
 	static {
 		
+		allowedClassNames.add("x10/lang/Object.x10");
+		
 		allowedClassNames.add("x10/lang/UInt.x10");
 		allowedClassNames.add("x10/lang/UByte.x10");
 		allowedClassNames.add("x10/lang/UShort.x10");
@@ -88,11 +90,11 @@ public class AsmEmitted extends AllBarrierGoal {
 		
 		allowedClassNames.add("x10/lang/Math.x10");
 		allowedClassNames.add("x10/lang/Complex.x10");
-//
-
-//		allowedClassNames.add("x10/lang/IntRange.x10");
-
-//		allowedClassNames.add("x10/lang/String.x10");
+		allowedClassNames.add("x10/lang/Cell.x10");
+		
+		allowedClassNames.add("x10/lang/Iterable.x10");
+		allowedClassNames.add("x10/lang/Iterator.x10");
+		
 		allowedClassNames.add("x10/lang/Thread.x10");
 		
 		allowedClassNames.add("x10/util/concurrent/AtomicFloat.x10");

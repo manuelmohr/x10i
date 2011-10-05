@@ -112,17 +112,16 @@ public class X10NameMangler {
 		nameSubst.put("operator--",  "mm");
 		nameSubst.put("operator->",  "pt");
 
-		/* this is our addition */
-		nameSubst.put("operator>>>", "v3rbs");
-
 		/* inverse operators -> same as the upper operators with a 'v' <digit> 'i' prefix
 		 * our own additions
 		 */
 		Map<String, String> invNameSubs = new HashMap<String, String>();
 		for(String key : nameSubst.keySet())
 			invNameSubs.put("inverse_" + key, "v3i" + nameSubst.get(key));
-
-		// our own addition for -> closure apply operator
+		
+		/* this are our own additions */
+		nameSubst.put("operator>>>", "v3rbs");
+		nameSubst.put("operator()=", "v3aps");
 		nameSubst.put("operator()",  "apply");
 
 		nameSubst.putAll(invNameSubs);
