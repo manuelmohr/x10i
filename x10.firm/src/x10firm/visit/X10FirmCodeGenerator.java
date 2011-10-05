@@ -1685,7 +1685,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		int p = 0;
 		parameters[p++] = getThis(Mode.getP());
 
-		final List<Expr> arguments = transformArguments(instance.formalTypes(), n.arguments());
+		final List<Expr> arguments = wrapArguments(instance.formalTypes(), n.arguments());
 
 		for(Expr expr : arguments)
 			parameters[p++] = visitExpression(expr);
@@ -1756,47 +1756,34 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	/**
 	 * Create the appropriate firm nodes for a heap allocation.
-	 * @param x10ResType The result type (reference)
-	 * @param x10Type The type of object which should be allocated
+	 * @param x10ResType The x10 type of the object
 	 *
 	 * @return A proj node to the allocated memory.
 	 */
-	private Node genNewAlloc(final Type x10ResType, final Type x10Type) {
-		final firm.Type resType  = firmTypeSystem.asFirmType(x10ResType);
-		final firm.Type firmType = firmTypeSystem.asFirmCoreType(x10Type);
-		return genNewAlloc(resType, firmType);
-	}
-
-	/**
-	 * Create the appropriate firm nodes for a heap allocation.
-	 * @param resType The result type (reference)
-	 * @param type The type of object which should be allocated
-	 *
-	 * @return A proj node to the allocated memory.
-	 */
-	private Node genNewAlloc(final firm.Type resType, final firm.Type type) {
-		return genAlloc(resType, type, ir_where_alloc.heap_alloc);
+	private Node genNewAlloc(final Type x10Type) {
+		final firm.Type refType  = firmTypeSystem.asFirmType(x10Type);
+		final firm.Type coreType = firmTypeSystem.asFirmCoreType(x10Type);
+		return genAlloc(refType, coreType, ir_where_alloc.heap_alloc);
 	}
 
 	/**
 	 * Create the appropriate firm nodes for a stack allocation.
-	 * @param x10ResType The result type (reference)
-	 * @param x10Type The type of object which should be allocated
+	 * @param x10ResType The x10 type of the object
 	 *
 	 * @return A proj node to the allocated memory.
 	 */
-	private Node genStackAlloc(final Type x10ResType, final Type x10Type) {
-		final firm.Type resType  = firmTypeSystem.asFirmType(x10ResType);
-		final firm.Type firmType = firmTypeSystem.asFirmCoreType(x10Type);
-		return genAlloc(resType, firmType, ir_where_alloc.stack_alloc);
+	private Node genStackAlloc(final Type x10Type) {
+		final firm.Type refType  = firmTypeSystem.asFirmType(x10Type);
+		final firm.Type coreType = firmTypeSystem.asFirmCoreType(x10Type);
+		return genAlloc(refType, coreType, ir_where_alloc.stack_alloc);
 	}
 
-	private Node genAlloc(final firm.Type resType, final firm.Type firmType, final ir_where_alloc where) {
+	private Node genAlloc(final firm.Type refType, final firm.Type coreType, final ir_where_alloc where) {
 		final Node mem = con.getCurrentMem();
 		final Node count = con.newConst(1, Mode.getIu());
-		final Node alloc = con.newAlloc(mem, count, firmType, where);
+		final Node alloc = con.newAlloc(mem, count, coreType, where);
 		final Node newMem = con.newProj(alloc, Mode.getM(), Alloc.pnM);
-		final Node res = con.newProj(alloc, resType.getMode(), Alloc.pnRes);
+		final Node res = con.newProj(alloc, refType.getMode(), Alloc.pnRes);
 		con.setCurrentMem(newMem);
 		return res;
 	}
@@ -1818,7 +1805,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final int paramCount = entityType.getNParams();
 		final Node[] parameters = new Node[paramCount];
 
-		final List<Expr> arguments = transformArguments(instance.formalTypes(), args);
+		final List<Expr> arguments = wrapArguments(instance.formalTypes(), args);
 
 		int p = 0;
 		parameters[p++] = objectThisNode; /* this argument */
@@ -1846,7 +1833,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		// Native constructors do not have a this parameter.
 		final Node[] parameters = new Node[paramCount];
 
-		final List<Expr> arguments = transformArguments(instance.formalTypes(), args);
+		final List<Expr> arguments = wrapArguments(instance.formalTypes(), args);
 
 		int p = 0;
 		for (Expr arg : arguments)
@@ -1898,9 +1885,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			setReturnNode(obj);
 		} else {
 			if (x10TypeSystem.isStructType(n.type()))
-				objectThisNode = genStackAlloc(n.type(), type);
+				objectThisNode = genStackAlloc(type);
 			else
-				objectThisNode = genNewAlloc(n.type(), type);
+				objectThisNode = genNewAlloc(type);
 
 			assert (objectThisNode != null);
 
@@ -2121,7 +2108,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return ret;
 	}
 
-	private Expr transformArgument(final Type fType, final Expr arg) {
+	private Expr wrapArgument(final Type fType, final Expr arg) {
 		Expr ret = arg;
 		if (!x10TypeSystem.typeEquals(fType, arg.type(), x10Context))
 			ret = x10Cast(arg, fType);
@@ -2129,14 +2116,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	/**
-	 * Transforms a list of expressions to another list of expressions where types are adjusted by explicit casts.
+	 * Wraps a list of expressions into another list of expressions where types are adjusted by explicit casts.
 	 * (Adjustment is done by wrapping the expressions into cast nodes)
 	 *
 	 * @param formalTypes A list with the formal types.
 	 * @param args The list with the expressions.
 	 * @return A list of expressions where improper types are adjusted by explicit casts.
 	 */
-	private List<Expr> transformArguments(final List<Type> formalTypes, final List<Expr> args) {
+	private List<Expr> wrapArguments(final List<Type> formalTypes, final List<Expr> args) {
 		assert(formalTypes.size() == args.size());
 		List<Expr> ret = new LinkedList<Expr>();
 
@@ -2144,7 +2131,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		for (Expr arg : args) {
 		    final Type fType = formalTypes.get(i);
 
-		    arg = transformArgument(fType, arg);
+		    arg = wrapArgument(fType, arg);
 
 		    ret.add(arg);
 		    i++;
@@ -2174,13 +2161,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		List<Expr> arguments = new LinkedList<Expr>();
 
 		// add the other arguments
-		arguments.addAll(transformArguments(mi.formalTypes(), args));
+		arguments.addAll(wrapArguments(mi.formalTypes(), args));
 
 		// add implicit this pointer
 		if (!isStatic) {
 			assert(target != null && target instanceof Expr) : mi.toString();
 			final Expr receiver = (Expr)target;
-			arguments.add(0, transformArgument(mi.container(), receiver));
+			arguments.add(0, wrapArgument(mi.container(), receiver));
 		}
 
 		assert arguments.size() == paramCount : "parameters are off : "+ arguments.size() + " vs " + paramCount;
@@ -2340,9 +2327,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 
 		// Generate the box
-		final firm.Type firmBoxType = firmTypeSystem.asFirmType(boxType);
-		final firm.Type firmCoreBoxType = firmTypeSystem.asFirmCoreType(boxType);
-		final Node box = genNewAlloc(firmBoxType, firmCoreBoxType);
+		final Node box = genNewAlloc(boxType);
 
 		// save the boxed value in the box
 		final FieldInstance boxValue = boxType.fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE));
