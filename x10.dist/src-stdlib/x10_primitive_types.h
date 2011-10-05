@@ -7,7 +7,7 @@
 #define X10_MAKE_TYPENAME(name, type, str) \
 x10_string *name(type self) \
 { \
-   UNUSED(self); \
+   X10_UNUSED(self); \
    return x10_string_from_wide_chars(L##str); \
 }
 

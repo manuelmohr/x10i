@@ -14,7 +14,7 @@ void __thread_start_trap() {}
 static void thread_bind_cpu(x10_thread *self)
 {
 // TODO: Implement me
-	UNUSED(self);
+	X10_UNUSED(self);
 /*
 	// open the file specified by X10RT_CPUMAP
 	char * filename = getenv("X10RT_CPUMAP");
@@ -91,7 +91,7 @@ static void x10_thread_thread_permit_cleanup(void *arg)
 // Dummy interrupt handler.
 static void x10_thread_intr_hndlr(int signo)
 {
-	UNUSED(signo);
+	X10_UNUSED(signo);
 	__xrxDPr();
 }
 
@@ -297,7 +297,7 @@ void _ZN3x104lang6Thread5sleepEx(x10_thread *self, x10_long millis)
 
 void _ZN3x104lang6Thread5sleepExi(x10_thread *self, x10_long millis, x10_int nanos)
 {
-	UNUSED(self);
+	X10_UNUSED(self);
 	cond_mutex_t *cmp;
 	x10_boolean done = false;
 	struct timeval tval;
@@ -414,14 +414,14 @@ void _ZN3x104lang6Thread4nameEPN3x104lang6StringE(x10_thread *self, x10_string *
 
 void _ZN3x104lang6ThreadapplyEv(x10_thread *self)
 {
-	UNUSED(self);
+	X10_UNUSED(self);
 	// DO NOTHING -> We will call the Thread "threadStartHook___" hook for dynamic binding of operator()
 }
 
 // TODO: Add home struct as return type
 x10_any *_ZN3x104lang6Thread4homeEv(x10_thread *self)
 {
-	UNUSED(self);
+	X10_UNUSED(self);
 
 	return X10_NULL;
 }

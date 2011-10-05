@@ -56,7 +56,7 @@ typedef double      x10_double;
 #define X10_OBJECT_CAST(to, what) ((to *)(what))
 #define X10_ALLOC_OBJECT(o) (o *)X10_MALLOC(sizeof(o))
 
-#define UNUSED(s) (void)(s)
+#define X10_UNUSED(s) (void)(s)
 #define T_(x) L##x
 
 #define X10_UNIMPLEMENTED() fprintf(stderr, "%s not implemented yet", __FUNCTION__); abort();

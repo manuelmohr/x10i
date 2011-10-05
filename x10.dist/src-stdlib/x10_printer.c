@@ -7,6 +7,6 @@
 void _ZN3x102io7Printer7printlnEPN3x104lang3AnyE(
 	x10_printer *printer, x10_any *any)
 {
-	UNUSED(printer);
-	UNUSED(any);
+	X10_UNUSED(printer);
+	X10_UNUSED(any);
 }

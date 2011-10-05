@@ -85,7 +85,7 @@ x10_int _ZN3x104util10concurrent4Lock12getHoldCountEv(x10_lock *self)
         return 0;
     #endif /* __64BIT__ */
     #else /* !_AIX */
-    UNUSED(self); 
+    X10_UNUSED(self); 
         return -1;
     #endif /* _AIX */
 }

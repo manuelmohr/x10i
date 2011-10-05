@@ -360,7 +360,7 @@ x10_int _ZN3x104lang6String19compareToIgnoreCaseEPN3x104lang6StringE(x10_string 
 
 x10_string *_ZN3x104lang6String8typeNameEv(x10_string *self)
 {
-	UNUSED(self);
+	X10_UNUSED(self);
 	return x10_string_from_wide_chars(T_("x10.lang.String"));
 }
 

@@ -68,14 +68,14 @@ static inline void* x10_realloc(x10_object *obj, size_t size)
 
 static inline void x10_free(void *obj)
 {
-	UNUSED(obj);
+	X10_UNUSED(obj);
 	// Do nothing
 }
 
 static inline x10_object *x10_new_exception_object(const x10_char *name, const x10_char *msg)
 {
-	UNUSED(name); 
-	UNUSED(msg); 
+	X10_UNUSED(name); 
+	X10_UNUSED(msg); 
 	// TODO this is just a dummy!
 	return X10_NULL;
 }
@@ -83,7 +83,7 @@ static inline x10_object *x10_new_exception_object(const x10_char *name, const x
 static inline void x10_throw_exception_object(x10_object *obj)
 {
 	// TODO: Implement me
-	UNUSED(obj);
+	X10_UNUSED(obj);
 }
 
 static inline void x10_throw_exception(const x10_char *name, const x10_char *msg)

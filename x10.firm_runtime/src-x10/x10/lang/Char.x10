@@ -307,7 +307,12 @@ public struct Char implements Comparable[Char] /*TODO implements Ordered[Char]*/
      */
     @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
     @Native("c++", "x10aux::equals(#0,#1)")
-    public native def equals(x:Any):Boolean;
+    /* [FIRM_CHANGE] */
+    public def equals(x:Any):Boolean {
+       if(x instanceof Char) 
+          return equals(x as Char);
+    	 return false;
+    }
 
     /**
      * Returns true if this Byte is equal to the given Byte.

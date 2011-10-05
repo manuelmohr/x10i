@@ -60,7 +60,7 @@ x10_int _ZN3x104lang5Float9toIntBitsEv(x10_float self)
 
 x10_string *_ZN3x104lang5Float11toHexStringEv(x10_float self)
 {
-	UNUSED(self);
+	X10_UNUSED(self);
 	X10_UNIMPLEMENTED();
 	return X10_NULL;
 }

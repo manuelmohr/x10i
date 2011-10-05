@@ -106,7 +106,7 @@ x10_long _ZN3x104lang6Double10toLongBitsEv(x10_double self)
 
 x10_string *_ZN3x104lang6Double11toHexStringEv(x10_double self)
 {
-	UNUSED(self);
+	X10_UNUSED(self);
 	X10_UNIMPLEMENTED();
 	return X10_NULL;
 }
