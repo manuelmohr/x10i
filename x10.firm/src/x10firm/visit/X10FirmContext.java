@@ -10,7 +10,6 @@ import polyglot.ast.Stmt;
 import polyglot.types.LocalInstance;
 import polyglot.types.Type;
 import polyglot.types.VarInstance;
-import x10.types.X10ProcedureInstance;
 import firm.Entity;
 
 /**

@@ -4,11 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import polyglot.ast.NodeFactory;
+import polyglot.frontend.AllBarrierGoal;
+import polyglot.frontend.BarrierGoal;
 import polyglot.frontend.Goal;
 import polyglot.frontend.Job;
 import polyglot.frontend.VisitorGoal;
 import polyglot.types.TypeSystem;
 import polyglot.visit.NodeVisitor;
+import x10.ExtensionInfo;
 import x10.ExtensionInfo.X10Scheduler;
 import x10.ast.X10NodeFactory_c;
 import x10c.visit.ClosureRemover;
@@ -69,7 +72,7 @@ class X10FirmScheduler extends X10Scheduler {
     public List<Goal> goals(Job job) {
         List<Goal> superGoals = super.goals(job);
         List<Goal> goals = new ArrayList<Goal>(superGoals.size()+10);
-        final Goal cg = CodeGenerated(job);
+        final Goal cg = codegenPrereq(job);
         for (Goal g : superGoals) {
             if (g == cg) {
                 goals.add(StaticInitializer(job));
@@ -79,6 +82,34 @@ class X10FirmScheduler extends X10Scheduler {
         }
         return goals;
     }
+    
+    @Override
+    public Goal CodeGenBarrier() {
+        String name = "CodeGenBarrier";
+        if (extInfo.getOptions().compile_command_line_only) {
+            return new BarrierGoal(name, commandLineJobs()) {
+                private static final long serialVersionUID = 2258041064037983928L;
+                @Override
+                public Goal prereqForJob(Job job) {
+                    return codegenPrereq(job);
+                }
+            }.intern(this);
+        } else {
+            return new AllBarrierGoal(name, this) {
+                private static final long serialVersionUID = 4089824072381830523L;
+                @Override
+                public Goal prereqForJob(Job job) {
+                	if(super.scheduler.shouldCompile(job)) {
+                		return codegenPrereq(job);
+                	} else if(AsmEmitted.isAllowedClassName(job.toString())) // DELETE ME (whole else if): Need library support 
+                		return codegenPrereq(job);
+                	
+                    return null;
+                }
+            }.intern(this);
+        }
+    }
+    
     
     // Visitor that does nothing 
     private static class NoVisitor extends NodeVisitor {

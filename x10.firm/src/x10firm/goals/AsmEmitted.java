@@ -70,7 +70,7 @@ public class AsmEmitted extends AllBarrierGoal {
 		}
 	}
 	
-	// TODO: DELETE ME: Need closure support
+	// TODO: DELETE ME: Need library support
 	private static Set<String> allowedClassNames = new HashSet<String>();
 	static {
 		
@@ -85,10 +85,10 @@ public class AsmEmitted extends AllBarrierGoal {
 		allowedClassNames.add("x10/lang/Int.x10");
 		allowedClassNames.add("x10/lang/Float.x10");
 		allowedClassNames.add("x10/lang/Double.x10");
-//		
+//
 
 //		allowedClassNames.add("x10/lang/IntRange.x10");
-		
+
 //		allowedClassNames.add("x10/lang/String.x10");
 		allowedClassNames.add("x10/lang/Thread.x10");
 		
@@ -103,7 +103,7 @@ public class AsmEmitted extends AllBarrierGoal {
 		allowedClassNames.add("x10/compiler/InitDispatcher.x10");
 	}
 	
-	// TODO DELETE ME: Delete this method when closures are implemented. 
+	// TODO DELETE ME: Delete this method when library support is implemented. 
 	public static boolean isAllowedClassName(final String className) {
 		for(final String str: allowedClassNames) 
 			if(className.endsWith(str))
@@ -113,7 +113,7 @@ public class AsmEmitted extends AllBarrierGoal {
 
 	@Override
 	public Goal prereqForJob(Job job) {
-		// TODO DELETE ME: Delete the second condition when closures are implemented
+		// TODO DELETE ME: Delete the second condition when library support is implemented
 		if (!scheduler.shouldCompile(job) && !isAllowedClassName(job.toString())) {
 			return null;
 		}

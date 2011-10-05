@@ -86,7 +86,6 @@ public class LoweringFirm extends AllBarrierGoal {
 		if (!scheduler.shouldCompile(job) && !AsmEmitted.isAllowedClassName(job.toString())) {
 			return null;
 		}
-
 		
 		return scheduler.End(job);
 	}

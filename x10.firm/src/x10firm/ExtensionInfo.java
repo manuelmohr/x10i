@@ -1,9 +1,12 @@
 package x10firm;
 
+import java.io.File;
+
 import polyglot.ast.NodeFactory;
 import polyglot.frontend.Scheduler;
 import x10.X10CompilerOptions;
 import x10c.ast.X10CNodeFactory_c;
+import x10firm.goals.AsmEmitted;
 import x10firm.types.GenericTypeSystem;
 import firm.Firm;
 import firm.OO;

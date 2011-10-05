@@ -154,6 +154,7 @@ public class FirmTypeSystem {
 				final String packName  = toker.nextToken();
 				final String className = toker.nextToken(); 
 				int size = 0;
+				
 				try {
 					size = Integer.parseInt(toker.nextToken());
 				} catch(NumberFormatException nfexc) {
@@ -674,7 +675,7 @@ public class FirmTypeSystem {
 
 		OO.setClassVPtrEntity(result, getVptrEntity());
 
-		if (!flags.isInterface() && !flags.isStruct()) {
+		if (!(flags.isInterface() || flags.isStruct())) {
 			Entity vtable = new Entity(Program.getGlobalType(), X10NameMangler.mangleVTable(classType), Mode.getP().getType());
 			OO.setClassVTableEntity(result, vtable);
 		}
@@ -700,11 +701,6 @@ public class FirmTypeSystem {
 	public Entity getEntityForField(FieldInstance instance) {
 		final GenericClassContext context = getDefiningContext(instance);
 		Entity ent = context.getFieldEntity(instance.def());
-		// TODO: HACK; need better solution 
-		if(ent == null) {
-			ent = addField(instance, asFirmType(instance.container()));
-			assert(ent != null);
-		}
 		return ent;
 	}
 

@@ -461,13 +461,13 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		final X10FirmContext newFirmContext = new X10FirmContext();
 		firmContext = firmContext.pushFirmContext(newFirmContext);
-
-		if (classType.flags().isInterface()) {
-			// DO NOTHING
-		} else if (classType.isX10Struct()) {
+		
+		if(classType.isX10Struct()) {
 			visitStruct(n);
-		} else if (classType.isClass()) {
+		} else if (classType.isClass() || classType.flags().isInterface()) {
 			visitClass(n);
+		} else {
+			assert(false) : "Unknown class declaration";
 		}
 
 		firmContext = firmContext.popFirmContext();
@@ -538,11 +538,12 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			for (ClassMember member : body.members()) {
 				if (member instanceof X10MethodDecl) {
 					final X10MethodDecl md = (X10MethodDecl) member;
-					if (md.typeParameters().isEmpty())
+					if (md.typeParameters().isEmpty()) {
 						visitAppropriate(member);
-				}
-				else
+					}
+				} else {
 					visitAppropriate(member);
+				}
 			}
 		}
 	}
@@ -2603,6 +2604,15 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		setReturnNode(call);
 	}
+	
+	@Override
+	public void visit(Initializer_c n) {
+	    if (n.flags().flags().isStatic()) {
+	    	static_init_blocks.add(n);
+	    } else {
+	    	throw new RuntimeException("Not implemented yet");
+	    }
+	}
 
 	//
 	//  TODO:  Implement.
@@ -2706,17 +2716,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	//
 	//  Will never be implemented.
 	//
-
-	// Initializer does not need to be implemented, see Igor's email from 2011-07-15 on this subject.
-	// XXX: Eduard; Why ? -> The static initializer creates static blocks !!!
-	@Override
-	public void visit(Initializer_c n) {
-	    if (n.flags().flags().isStatic()) {
-	    	static_init_blocks.add(n);
-	    } else {
-	    	throw new RuntimeException("Not implemented yet");
-	    }
-	}
 
 	@Override
 	public void visit(Closure_c n) {

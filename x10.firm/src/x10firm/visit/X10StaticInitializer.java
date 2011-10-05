@@ -2,6 +2,8 @@ package x10firm.visit;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -91,6 +93,8 @@ public class X10StaticInitializer extends ContextVisitor {
     
     private final WeakHashMap<X10ProcedureDef,ProcedureDecl> procDeclCache = new WeakHashMap<X10ProcedureDef,ProcedureDecl>();
     private final WeakHashMap<Block,Boolean> procBodyCache = new WeakHashMap<Block,Boolean>();
+    // caching of shadow classes 
+    private static Map<X10ClassDef, X10ClassDef> shadow_class_map = new HashMap<X10ClassDef, X10ClassDef>();
     
     private X10CompilerOptions opts = (X10CompilerOptions) job.extensionInfo().getOptions();
 
@@ -143,6 +147,7 @@ public class X10StaticInitializer extends ContextVisitor {
             List<ClassMember> newMembers = createNewMembers(classDef);
             currMembers.addAll(newMembers);
         } else {
+        	
             // create a nested shadow class
             X10ClassDecl shadowDecl = createNestedShadowClass(ct);
 
@@ -167,6 +172,10 @@ public class X10StaticInitializer extends ContextVisitor {
         Position CG = Position.compilerGenerated(null);
         List<ClassMember> members = new ArrayList<ClassMember>();
         List<Stmt> initStmts = new ArrayList<Stmt>();
+        
+        // we must collect all needed static field infos, because we
+        // can`t modify the staticFinalFields field while iterating over it (ConcurrentModificationException)
+        List<StaticFieldInfo> initFields = new LinkedList<StaticFieldInfo>();
 
         for (Map.Entry<Pair<Type,Name>, StaticFieldInfo> entry : staticFinalFields.entrySet()) {
             Name fName = entry.getKey().snd();
@@ -194,10 +203,8 @@ public class X10StaticInitializer extends ContextVisitor {
 
                 // gen new initialize method
                 md = makeInitMethod(CG, fName, fieldInfo, fdCond.fieldDef(), classDef);
-
-                // register in the table for x10-level static initialization later
-                initStmts.add(makeAddInitializer(CG, fieldInfo, classDef));
-
+                
+                initFields.add(fieldInfo);
             } else {
                 // gen a fake initialization method
                 md = makeFakeInitMethod(CG, fName, fieldInfo, classDef);
@@ -206,7 +213,12 @@ public class X10StaticInitializer extends ContextVisitor {
             // add in the bottom
             members.add(md);
         }
-
+        
+        for(final StaticFieldInfo sfi: initFields) {
+            // register in the table for x10-level static initialization later
+            initStmts.add(makeAddInitializer(CG, sfi, classDef));
+        }
+        
         if (!initStmts.isEmpty()) {
             // gen initializer block
             Block initBlockBody = xnf.Block(CG, initStmts);
@@ -221,7 +233,7 @@ public class X10StaticInitializer extends ContextVisitor {
 
     private X10ClassDecl createNestedShadowClass(ClassDecl_c interfaceClass) {
         // create ClassDef first
-        X10ClassDef cDef = createShadowClassDef(interfaceClass.classDef());
+        X10ClassDef cDef = getShadowClassDef(interfaceClass.classDef());
 
         // create ClassDecl
         Position CG = Position.compilerGenerated(null);
@@ -235,9 +247,12 @@ public class X10StaticInitializer extends ContextVisitor {
                                                           body).classDef(cDef);
         return cDecl;
     }
-
-    private X10ClassDef createShadowClassDef(X10ClassDef interfaceClassDef) {
-        X10ClassDef cDef = xts.createClassDef(interfaceClassDef.sourceFile());
+    
+    private X10ClassDef getShadowClassDef(X10ClassDef interfaceClassDef) {
+    	X10ClassDef cDef = shadow_class_map.get(interfaceClassDef);
+    	if(cDef != null) return cDef;
+    	
+        cDef = xts.createClassDef(interfaceClassDef.sourceFile());
         cDef.superType(Types.ref(xts.Any()));
         List<Ref<? extends Type>> interfacesRef = Collections.<Ref<? extends Type>>emptyList();
         cDef.setInterfaces(interfacesRef);
@@ -245,6 +260,9 @@ public class X10StaticInitializer extends ContextVisitor {
         cDef.setFlags(Flags.PUBLIC.Abstract());
         cDef.kind(ClassDef.MEMBER);
         cDef.outer(Types.ref(interfaceClassDef));
+        
+        shadow_class_map.put(interfaceClassDef, cDef);
+        
         return cDef;
     }
 
@@ -296,7 +314,7 @@ public class X10StaticInitializer extends ContextVisitor {
                                 X10ClassDef targetClassDef = ((ParsedClassType)targetType).def();
                                 if (targetClassDef.flags().isInterface())
                                     // target nested shadow class within interface
-                                    targetType = createShadowClassDef(targetClassDef).asType();
+                                    targetType = getShadowClassDef(targetClassDef).asType();
                             }
                             else if (targetType instanceof ConstrainedType)
                                 targetType = ((ConstrainedType)targetType).baseType().get();
@@ -732,7 +750,7 @@ public class X10StaticInitializer extends ContextVisitor {
             X10ClassDef targetClassDef = ((ParsedClassType)targetType).def();
             if (targetClassDef.flags().isInterface())
                 // target nested shadow class within interface
-                targetType = createShadowClassDef(targetClassDef).asType();
+                targetType = getShadowClassDef(targetClassDef).asType();
         } else if (targetType instanceof ConstrainedType)
             targetType = ((ConstrainedType)targetType).baseType().get();
 
