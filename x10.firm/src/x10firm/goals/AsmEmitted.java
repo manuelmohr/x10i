@@ -1,8 +1,6 @@
 package x10firm.goals;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 
 import polyglot.frontend.AllBarrierGoal;
@@ -10,6 +8,7 @@ import polyglot.frontend.Goal;
 import polyglot.frontend.Job;
 import polyglot.frontend.Scheduler;
 import x10firm.CompilerOptions;
+import x10firm.ExtensionInfo;
 import firm.Backend;
 import firm.Dump;
 import firm.Graph;
@@ -22,8 +21,7 @@ import firm.bindings.binding_iroptimize;
  */
 public class AsmEmitted extends AllBarrierGoal {
 	/** name of the intermediate asm file */
-	public static final String ASM_FILENAME =
-			UUID.randomUUID().toString() + ".s";
+	public static final String ASM_FILENAME = UUID.randomUUID().toString() + ".s";
 
 	private Goal prereq_redirection = null;
 	
@@ -70,57 +68,10 @@ public class AsmEmitted extends AllBarrierGoal {
 		}
 	}
 	
-	// TODO: DELETE ME: Need library support
-	private static Set<String> allowedClassNames = new HashSet<String>();
-	static {
-		
-		allowedClassNames.add("x10/lang/Object.x10");
-		
-		allowedClassNames.add("x10/lang/UInt.x10");
-		allowedClassNames.add("x10/lang/UByte.x10");
-		allowedClassNames.add("x10/lang/UShort.x10");
-		allowedClassNames.add("x10/lang/ULong.x10");
-		allowedClassNames.add("x10/lang/Short.x10");
-		allowedClassNames.add("x10/lang/Byte.x10");
-		allowedClassNames.add("x10/lang/Boolean.x10");
-		allowedClassNames.add("x10/lang/Long.x10");
-		allowedClassNames.add("x10/lang/Int.x10");
-		allowedClassNames.add("x10/lang/Float.x10");
-		allowedClassNames.add("x10/lang/Double.x10");
-		allowedClassNames.add("x10/lang/Char.x10");
-		
-		allowedClassNames.add("x10/lang/Math.x10");
-		allowedClassNames.add("x10/lang/Complex.x10");
-		allowedClassNames.add("x10/lang/Cell.x10");
-		
-		allowedClassNames.add("x10/lang/Iterable.x10");
-		allowedClassNames.add("x10/lang/Iterator.x10");
-		
-		allowedClassNames.add("x10/lang/Thread.x10");
-		
-		allowedClassNames.add("x10/util/concurrent/AtomicFloat.x10");
-		allowedClassNames.add("x10/util/concurrent/AtomicDouble.x10");
-		allowedClassNames.add("x10/util/concurrent/AtomicInteger.x10");
-		allowedClassNames.add("x10/util/concurrent/AtomicLong.x10");
-		allowedClassNames.add("x10/util/concurrent/AtomicBoolean.x10");
-		allowedClassNames.add("x10/util/concurrent/Fences.x10");
-		allowedClassNames.add("x10/util/concurrent/Lock.x10");
-		
-		allowedClassNames.add("x10/compiler/InitDispatcher.x10");
-	}
-	
-	// TODO DELETE ME: Delete this method when library support is implemented. 
-	public static boolean isAllowedClassName(final String className) {
-		for(final String str: allowedClassNames) 
-			if(className.endsWith(str))
-				return true;
-		return false;
-	}
-
 	@Override
 	public Goal prereqForJob(Job job) {
 		// TODO DELETE ME: Delete the second condition when library support is implemented
-		if (!scheduler.shouldCompile(job) && !isAllowedClassName(job.toString())) {
+		if (!scheduler.shouldCompile(job) && !ExtensionInfo.isAllowedClassName(job.toString())) {
 			return null;
 		}
 		

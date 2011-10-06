@@ -101,7 +101,7 @@ class X10FirmScheduler extends X10Scheduler {
                 public Goal prereqForJob(Job job) {
                 	if(super.scheduler.shouldCompile(job)) {
                 		return codegenPrereq(job);
-                	} else if(AsmEmitted.isAllowedClassName(job.toString())) // DELETE ME (whole else if): Need library support 
+                	} else if(x10firm.ExtensionInfo.isAllowedClassName(job.toString())) // DELETE ME (whole else if): Need library support 
                 		return codegenPrereq(job);
                 	
                     return null;

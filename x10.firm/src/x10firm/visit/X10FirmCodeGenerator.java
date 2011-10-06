@@ -2620,7 +2620,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		con.getGraph().keepAlive(call);
 		con.getGraph().keepAlive(con.getCurrentBlock());
-		//con.setCurrentBlockBad();
 	}
 
 	@Override

@@ -88,8 +88,8 @@ import x10c.types.X10CTypeSystem_c;
 public class X10StaticInitializer extends ContextVisitor {
 
     private final X10CTypeSystem_c xts;
-    private final X10CNodeFactory_c xnf;
-    private final X10ASTQuery query;
+    final X10CNodeFactory_c xnf;
+    final X10ASTQuery query;
     
     private final WeakHashMap<X10ProcedureDef,ProcedureDecl> procDeclCache = new WeakHashMap<X10ProcedureDef,ProcedureDecl>();
     private final WeakHashMap<Block,Boolean> procBodyCache = new WeakHashMap<Block,Boolean>();
@@ -248,7 +248,7 @@ public class X10StaticInitializer extends ContextVisitor {
         return cDecl;
     }
     
-    private X10ClassDef getShadowClassDef(X10ClassDef interfaceClassDef) {
+    X10ClassDef getShadowClassDef(X10ClassDef interfaceClassDef) {
     	X10ClassDef cDef = shadow_class_map.get(interfaceClassDef);
     	if(cDef != null) return cDef;
     	
@@ -330,7 +330,7 @@ public class X10StaticInitializer extends ContextVisitor {
         return c;
     }
 
-    private StaticFieldInfo checkFieldDeclRHS(final X10FieldDecl fd, final X10ClassDef cd) {
+    StaticFieldInfo checkFieldDeclRHS(final X10FieldDecl fd, final X10ClassDef cd) {
         // traverse nodes in RHS
         Id leftName = fd.name();
 
@@ -411,7 +411,7 @@ public class X10StaticInitializer extends ContextVisitor {
         return fieldInfo;
     }
 
-    private Call makeStaticCall(Position pos, X10ClassType receiver, Id id, Type returnType) {
+    Call makeStaticCall(Position pos, X10ClassType receiver, Id id, Type returnType) {
         // create MethodDef
         Name name = Name.make(initializerPrefix+id);
         StaticFieldInfo fieldInfo = getFieldEntry(receiver, id.id());
@@ -457,7 +457,7 @@ public class X10StaticInitializer extends ContextVisitor {
         return result;
     }
 
-    private Expr getDefaultValue(Position pos, Type type) {
+    Expr getDefaultValue(Position pos, Type type) {
         if (type.isBoolean())
             return xnf.BooleanLit(pos, false).type(type);
         else if (type.isChar())
@@ -484,7 +484,7 @@ public class X10StaticInitializer extends ContextVisitor {
             return null;
     }
     
-    private boolean checkProcedureBody(final Block body, final int count) {
+    boolean checkProcedureBody(final Block body, final int count) {
         Boolean r = procBodyCache.get(body);
         if (r != null)
             return (r == Boolean.TRUE);
@@ -497,7 +497,8 @@ public class X10StaticInitializer extends ContextVisitor {
         // check static field references in the body of constructor or method
         final AtomicBoolean found = new AtomicBoolean(false);
         body.visit(new NodeVisitor() {
-            public Node override(Node n) {
+            @Override
+			public Node override(Node n) {
                 if (found.get())
                     // already found
                     return n;
@@ -586,7 +587,8 @@ public class X10StaticInitializer extends ContextVisitor {
         // find the target declaration of constructor or method
         final ProcedureDecl[] decl = new ProcedureDecl[1];
         ast.visit(new NodeVisitor() {
-            public Node override(Node n) {
+            @Override
+			public Node override(Node n) {
                 if (decl[0] != null)
                     // already found the decl, short-circuit search
                     return n;
@@ -618,7 +620,7 @@ public class X10StaticInitializer extends ContextVisitor {
         return decl[0];
     }
     
-    private X10ConstructorDecl getConstructorDeclaration(X10ConstructorInstance ci) {
+    X10ConstructorDecl getConstructorDeclaration(X10ConstructorInstance ci) {
         X10ConstructorDef cd = ci.x10Def();
         X10ClassType containerBase = (X10ClassType) Types.get(cd.container());
         X10ClassDef container = containerBase.x10Def();
@@ -627,7 +629,7 @@ public class X10StaticInitializer extends ContextVisitor {
         return (X10ConstructorDecl)getProcedureDeclaration(cd, container);
     }
 
-    private X10MethodDecl getMethodDeclaration(MethodInstance mi) {
+    X10MethodDecl getMethodDeclaration(MethodInstance mi) {
         X10MethodDef md = mi.x10Def();
         // get container and declaration for method
         X10ClassType containerBase = (X10ClassType) Types.get(md.container());
@@ -769,7 +771,7 @@ public class X10StaticInitializer extends ContextVisitor {
         return fieldInfo;
     }
     
-    private boolean checkFieldRefReplacementRequired(X10Field_c f) {
+    boolean checkFieldRefReplacementRequired(X10Field_c f) {
         Pair<Type,Name> key = new Pair<Type,Name>(f.target().type(), f.name().id());
         StaticFieldInfo fieldInfo = staticFinalFields.get(key);
         // not yet registered, or registered as replacement required
