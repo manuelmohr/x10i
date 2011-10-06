@@ -28,7 +28,6 @@ import polyglot.types.Ref;
 import polyglot.types.TypeObject;
 import polyglot.types.Types;
 import polyglot.util.Position;
-import x10.types.FunctionType;
 import x10.types.MethodInstance;
 import x10.types.ParameterType;
 import x10.types.ThisDef;
@@ -70,9 +69,6 @@ public class FirmTypeSystem {
 
 	/** Maps some polyglot types to "native"/primitive firm types. */
 	private final Map<polyglot.types.Type, Type> firmTypes = new HashMap<polyglot.types.Type, Type>();
-	
-	/** Mapping for function types (Function type name! -> function type) -> Only for function types that are interfaces!!! */
-	private final Map<String, polyglot.types.Type> firmFunctionTypes = new HashMap<String, polyglot.types.Type>();
 	
 	/** Maps struct types to the appropriate boxing types */
 	private final Map<X10ClassType, X10ClassType> structBoxingTypes = new HashMap<X10ClassType, X10ClassType>();
@@ -171,49 +167,36 @@ public class FirmTypeSystem {
 		}
 	}
 
-	private polyglot.types.Type getTypeHelp(polyglot.types.Type type) {
-		if(type instanceof FunctionType) {
-			final FunctionType func = (FunctionType)type;
-			if(func.flags().isInterface()) {
-			final polyglot.types.Type tmp2 = firmFunctionTypes.get(func.toString());
-			if(tmp2 != null)
-				return tmp2;
-				firmFunctionTypes.put(func.toString(), type);
-			}
-		}
-		return type;
-	}
-
 	private void saveFirmType(final polyglot.types.Type x10_type, Type firm_Type) {
-		firmTypes.put(getTypeHelp(x10_type), firm_Type);
+		firmTypes.put(x10_type, firm_Type);
 	}
 	
 	private Type getFirmType(final polyglot.types.Type x10_type) {
-		return firmTypes.get(getTypeHelp(x10_type));
+		return firmTypes.get(x10_type);
 	}
 	
 	private boolean hasFirmType(final polyglot.types.Type x10_type) {
-		return firmTypes.containsKey(getTypeHelp(x10_type));
+		return firmTypes.containsKey(x10_type);
 	}
 	
 	private Type removeFirmType(final polyglot.types.Type x10_type) {
-		return firmTypes.remove(getTypeHelp(x10_type));
+		return firmTypes.remove(x10_type);
 	}
 	
 	private void saveFirmCoreType(final polyglot.types.Type x10_type, Type firm_Type) {
-		firmCoreTypes.put(getTypeHelp(x10_type), firm_Type);
+		firmCoreTypes.put(x10_type, firm_Type);
 	}
 	
 	private Type getFirmCoreType(final polyglot.types.Type x10_type) {
-		return firmCoreTypes.get(getTypeHelp(x10_type));
+		return firmCoreTypes.get(x10_type);
 	}
 	
 	private boolean hasFirmCoreType(final polyglot.types.Type x10_type) {
-		return firmCoreTypes.containsKey(getTypeHelp(x10_type));
+		return firmCoreTypes.containsKey(x10_type);
 	}
 	
 	private Type removeFirmCoreType(final polyglot.types.Type x10_type) {
-		return firmCoreTypes.remove(getTypeHelp(x10_type));
+		return firmCoreTypes.remove(x10_type);
 	}
 
 	/**

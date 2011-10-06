@@ -281,7 +281,7 @@ public class ClosureSynthesizer {
         QName fullName = QName.make("x10.lang", name);
         Type n = SystemResolver.first(xts.systemResolver().check(fullName));
 
-        if (guard1 == null && n instanceof X10ClassType) {
+        if (n instanceof X10ClassType) {
             X10ClassType ct = (X10ClassType) n;
             return ct.x10Def();
         }
@@ -347,9 +347,9 @@ public class ClosureSynthesizer {
         // NOTE: don't call cd.asType() until after the type parameters are
         // added.
         FunctionType ct = (FunctionType) cd.asType();
-        if (guard1 == null) {
+//        if (guard1 == null) {
             xts.systemResolver().install(fullName, ct);
-        }
+//        }
 
         ThisDef thisDef = cd.thisDef();
 

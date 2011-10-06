@@ -94,20 +94,20 @@ class X10FirmScheduler extends X10Scheduler {
                     return codegenPrereq(job);
                 }
             }.intern(this);
-        } else {
-            return new AllBarrierGoal(name, this) {
-                private static final long serialVersionUID = 4089824072381830523L;
-                @Override
-                public Goal prereqForJob(Job job) {
-                	if(super.scheduler.shouldCompile(job)) {
-                		return codegenPrereq(job);
-                	} else if(x10firm.ExtensionInfo.isAllowedClassName(job.toString())) // DELETE ME (whole else if): Need library support 
-                		return codegenPrereq(job);
-                	
-                    return null;
-                }
-            }.intern(this);
-        }
+        } 
+        
+        return new AllBarrierGoal(name, this) {
+            private static final long serialVersionUID = 4089824072381830523L;
+            @Override
+            public Goal prereqForJob(Job job) {
+            	if(super.scheduler.shouldCompile(job)) {
+            		return codegenPrereq(job);
+            	} else if(x10firm.ExtensionInfo.isAllowedClassName(job.toString())) // DELETE ME (whole else if): Need library support 
+            		return codegenPrereq(job);
+            	
+                return null;
+            }
+        }.intern(this);
     }
     
     
