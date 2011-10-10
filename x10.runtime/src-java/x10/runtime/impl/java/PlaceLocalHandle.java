@@ -11,24 +11,31 @@
 
 package x10.runtime.impl.java;
 
+import x10.x10rt.X10JavaDeserializer;
+import x10.x10rt.X10JavaSerializable;
+import x10.x10rt.X10JavaSerializer;
+
+import java.io.IOException;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 
 /**
  * Implementation of PlaceLocalHandle service for Java-based runtime.
  */
-public final class PlaceLocalHandle<T> implements java.io.Serializable {
+public final class PlaceLocalHandle<T> implements java.io.Serializable, X10JavaSerializable {
 
 	private static final long serialVersionUID = 1L;
+    private static final short _serialization_id = x10.x10rt.DeserializationDispatcher.addDispatcher(x10.x10rt.DeserializationDispatcher.ClosureKind.CLOSURE_KIND_NOT_ASYNC, PlaceLocalHandle.class);
 
-    private static final HashMap<Integer,Object> data = new HashMap<Integer,Object>();
+    private static final HashMap<Long,Object> data = new HashMap<Long,Object>();
     
-	private static final int placeShift = 20;
-	private static int nextLocalId = 1;
+	private static final int placeShift = 48;
+	private static AtomicLong lastId = new AtomicLong(0L);
 
 	transient private boolean initialized = false;
 	transient private Object myData = null;
-	private int id;
+	private Long id;
     
 	// TODO: The X10 code currently ensures that PlaceLocalHandle's are only
 	//       created at Place 0 by doing an at.  We've contemplated moving to
@@ -39,10 +46,10 @@ public final class PlaceLocalHandle<T> implements java.io.Serializable {
 	//       Since we are thinking about making this change, I went ahead and did a poor-man's
 	//       version of it here instead of asserting nextId is only called at place 0 
 	//       (which would have been true currently).
-	private static synchronized int nextId() {
-	    int here = Thread.currentThread().home().id;
-	    int newId  = nextLocalId++;
-	    assert newId < (1<< placeShift);
+	private static long nextId() {
+	    long here = Thread.currentThread().home().id;
+	    long newId  = lastId.incrementAndGet();
+	    assert newId < (1L << placeShift);
 	    newId |= (here << placeShift);
 	    return newId;
 	}
@@ -52,23 +59,24 @@ public final class PlaceLocalHandle<T> implements java.io.Serializable {
     	return this;
     }
 
-    public PlaceLocalHandle(java.lang.System[] $dummy) {
-        //super($dummy);
+    // constructor just for allocation
+    public PlaceLocalHandle(java.lang.System[] $dummy, x10.rtt.Type<T> T) {
     }
     
-    public PlaceLocalHandle $init(x10.rtt.Type<T> T) {
+    public PlaceLocalHandle $init() {
         id = nextId();
         return this;
     }
-    
-    public PlaceLocalHandle(x10.rtt.Type<T> T) {
-        id = nextId();
-    }
+
+    // not used
+//    public PlaceLocalHandle(x10.rtt.Type<T> T) {
+//        id = nextId();
+//    }
 
     // TODO haszero
     // zero value constructor
     public PlaceLocalHandle(x10.rtt.Type<T> T, java.lang.System $dummy) {
-        this(T);
+        id = nextId();
     }
 
     public T $apply$G() {
@@ -81,7 +89,7 @@ public final class PlaceLocalHandle<T> implements java.io.Serializable {
         return (T) myData;
     }
 
-    public void set_0_$$x10$lang$PlaceLocalHandle_T(T value) {
+    public void set__0x10$lang$PlaceLocalHandle$$T(T value) {
         synchronized(data) {
             Object old = data.put(id, value);
             assert old == null : "Set called on already initialized local object";
@@ -93,4 +101,22 @@ public final class PlaceLocalHandle<T> implements java.io.Serializable {
         return "PlaceLocalHandle(" + this.id + ")";
     }
 
+	public void $_serialize(X10JavaSerializer serializer) throws IOException {
+		serializer.write((long) id);
+	}
+
+	public static X10JavaSerializable $_deserialize_body(PlaceLocalHandle placeLocalHandle, X10JavaDeserializer deserializer) throws IOException {
+        placeLocalHandle.id = (Long) deserializer.readLong();
+        return placeLocalHandle;
+	}
+
+	public short $_get_serialization_id() {
+		return _serialization_id;
+	}
+
+    public static X10JavaSerializable $_deserializer(X10JavaDeserializer deserializer) throws IOException {
+        PlaceLocalHandle placeLocalHandle = new PlaceLocalHandle((java.lang.System[]) null, (x10.rtt.Type<?>) null);
+        deserializer.record_reference(placeLocalHandle);
+		return $_deserialize_body(placeLocalHandle, deserializer);
+	}
 }

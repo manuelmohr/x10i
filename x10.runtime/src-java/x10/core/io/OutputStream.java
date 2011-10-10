@@ -23,6 +23,7 @@ public class OutputStream extends Ref {
     // XTENLANG-2680
     /*private*/public java.io.OutputStream stream;
 
+    // constructor just for allocation
     public OutputStream(java.lang.System[] $dummy) {
         super($dummy);
     }
@@ -69,7 +70,7 @@ public class OutputStream extends Ref {
     }
     
     // XTENLANG-2680
-    public void write_0_$_x10$lang$Byte_$(x10.array.Array buf) {
+    public void write__0$1x10$lang$Byte$2(x10.array.Array buf) {
         try {
             stream.write(buf.raw().getByteArray());
         } catch (java.io.IOException e) {
@@ -86,12 +87,39 @@ public class OutputStream extends Ref {
     }
     
     // XTENLANG-2680
-    public void write_0_$_x10$lang$Byte_$(x10.array.Array buf, int off, int len) {
+    public void write__0$1x10$lang$Byte$2(x10.array.Array buf, int off, int len) {
         try {
             stream.write(buf.raw().getByteArray(), off, len);
         } catch (java.io.IOException e) {
             throw x10.core.ThrowableUtilities.getCorrespondingX10Exception(e);
         }
+    }
+
+    public static OutputStream getNativeOutputStream(x10.io.Writer w) {
+        OutputStream os = null;
+        x10.io.Writer ww = w;
+        while (true) {
+            if (ww instanceof x10.io.FilterWriter) {
+                ww = ((x10.io.FilterWriter) ww).w;
+            }
+            else if (ww instanceof x10.io.OutputStreamWriter) {
+                os = ((x10.io.OutputStreamWriter) ww).out;
+                break;
+            }
+            else if (ww instanceof x10.io.StringWriter) {
+                // TODO
+                assert false;
+                break;
+            }
+            else {
+                if (ww != null) {
+                    // TODO unknown subtype of Writer
+                    assert false;
+                }
+                break;
+            }
+        }
+        return os;
     }
 
     //

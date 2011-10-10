@@ -30,6 +30,7 @@ import polyglot.types.MethodDef;
 import polyglot.types.ProcedureDef;
 import polyglot.types.Ref;
 import polyglot.types.Type;
+import polyglot.types.TypeSystem;
 import polyglot.util.QuotedStringTokenizer;
 import polyglot.util.StringUtil;
 import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
@@ -255,7 +256,7 @@ public class LineNumberMap extends StringTable {
 		assert (c != null);
 		assert (f != null);
 		String sc = c.toString().replace("$", "::");
-		String sn = n == null ? "this" : n;
+		String sn = n == null ? TypeSystem.CONSTRUCTOR_NAME : n;
 		String sr = r == null ? "" : r.toString();
 		String[] sa = new String[f.size()];
 		for (int i = 0; i < sa.length; i++) {
@@ -379,6 +380,8 @@ public class LineNumberMap extends StringTable {
 		if (type.contains("_closure_"))
 			return 100;
 		return 101; // generic class
+		// type 102 = generic structure
+		// type 103 = generic base class
 	}
 	
 	static String getInnerType(String type)
@@ -412,6 +415,8 @@ public class LineNumberMap extends StringTable {
 	
 	public int addReferenceMap(String name, String type, int startline, int endline, int refType)
 	{
+		if (type.contains("$Anonymous$") || type.equals("x10.lang.PlaceLocalHandle[T]")) // can't properly account for these types
+			return -1;
 		if (referenceMembers == null)
 			referenceMembers = new LinkedHashMap<Integer, ClassMapInfo>();
 				
@@ -425,7 +430,7 @@ public class LineNumberMap extends StringTable {
 				cm._type = 203; // special case
 			else
 				cm._type = refType;
-			cm._sizeOfArg = type.replace(".", "::").replace('[', '<').replace("]", " >");
+			cm._sizeOfArg = type.replace(".", "::").replace('[', '<').replace("]", " >").replace("$", "__");
 			int properties = cm._sizeOfArg.indexOf('{');
 			if (properties > -1)
 			{
@@ -453,6 +458,20 @@ public class LineNumberMap extends StringTable {
 				}
 				String temp = cm._sizeOfArg.substring(start+1).replace(",", "), TPMGL(").replaceFirst(">", ")>");
 				cm._sizeOfArg = cm._sizeOfArg.substring(0, start+1).concat("TPMGL(").concat(temp);
+			}
+			else
+			{
+				int argstart = cm._sizeOfArg.lastIndexOf('<');
+				if (argstart > 0)					
+				{					
+					int argend = cm._sizeOfArg.indexOf('>');
+					if (cm._sizeOfArg.substring(argstart, argend).indexOf(':') == -1)
+					{
+						String temp = cm._sizeOfArg.substring(0, argstart+1) + "class TPMGL(";
+						temp = temp + cm._sizeOfArg.substring(argstart+1, argend) + ")";
+						cm._sizeOfArg = temp + cm._sizeOfArg.substring(argend);
+					}
+				}
 			}
 			referenceMembers.put(id, cm);
 			int returnValue = referenceMembers.size()-1;
@@ -621,8 +640,11 @@ public class LineNumberMap extends StringTable {
 		localVariables.add(v);
 	}
 	
-	public void addClassMemberVariable(String name, String type, String containingClass, boolean isStruct, boolean isConstructorArg)
+	public void addClassMemberVariable(String name, String type, String containingClass, boolean isStruct, boolean isConstructorArg, boolean isSuper)
 	{
+		if (containingClass.indexOf('{') != -1 || containingClass.indexOf("[") != -1) // skip these - the compiler didn't flag them properly
+			return;
+
 		if (memberVariables == null)
 			memberVariables = new LinkedHashMap<Integer, ClassMapInfo>();
 		ClassMapInfo cm = memberVariables.get(stringId(containingClass));
@@ -660,12 +682,19 @@ public class LineNumberMap extends StringTable {
 			v._x10memberName = stringId("{...}");
 		else
 			v._x10memberName = stringId(name);
-		v._cppMemberName = stringId("x10__"+Emitter.mangled_non_method_name(name));
+		
+		if (isSuper)
+		{
+			v._x10type = 103;
+			v._cppMemberName = stringId(Emitter.mangled_non_method_name(name));
+		}
+		else
+			v._cppMemberName = stringId("x10__"+Emitter.mangled_non_method_name(name));
 		v._cppClass = stringId(containingClass);
 		cm._members.add(v);
 	}
 	
-	public void addClosureMember(String name, String type, String containingClass, String file, int startLine, int endLine)
+	public void addClosureMember(String name, String type, String containingClass, String containerWithTemplateArgs, String file, int startLine, int endLine)
 	{
 		if (closureMembers == null)
 			closureMembers = new LinkedHashMap<Integer, ClassMapInfo>();
@@ -675,7 +704,7 @@ public class LineNumberMap extends StringTable {
 			addLocalVariableMapping("this", containingClass, startLine, endLine, file, true, closureMembers.size(), false);
 			cm = new ClassMapInfo();			
 			cm._members = new ArrayList<LineNumberMap.MemberVariableMapInfo>();
-			cm._sizeOfArg = containingClass;
+			cm._sizeOfArg = containerWithTemplateArgs.replace("TPMGL(", " class TPMGL(");
 			cm._type = 100; // all closures are type 100
 			cm._file = file;
 			closureMembers.put(stringId(containingClass), cm);
@@ -1163,7 +1192,7 @@ public class LineNumberMap extends StringTable {
 		        {
 		        	int typeIndex = 0;
 		        	// convert types from simple names to memberVariable table indexes.
-		        	if (v._x10type==101 || v._x10type==102)
+		        	if (v._x10type >= 101 && v._x10type <= 103)
 		        	{
 		        		if (memberVariables != null && memberVariables.containsKey(v._x10typeIndex))
 		        		{
@@ -1231,7 +1260,7 @@ public class LineNumberMap extends StringTable {
 			        {
 			        	MemberVariableMapInfo v = cmi._members.get(j);
 			        	boolean skip = false;
-			        	if (v._x10type == 101 || v._x10type == 102)
+			        	if (v._x10type >= 101 && v._x10type <= 103)
 			        	{
 				        	int index = 0;
 				            for (Integer memberId : memberVariables.keySet())
@@ -1249,6 +1278,8 @@ public class LineNumberMap extends StringTable {
 				            	}
 				            	index++;
 				            }
+				            if (index >= memberVariables.size() && v._x10typeIndex > 0)
+				            	v._x10typeIndex = offsets[v._x10typeIndex] * -1;
 			        	}
 			        	if (!skip)
 			        	{
@@ -1284,7 +1315,7 @@ public class LineNumberMap extends StringTable {
 				        for (MemberVariableMapInfo v : cmi._members)
 				        {
 				        	int typeIndex;
-				        	if (v._x10type == 101 || v._x10type == 102)
+				        	if (v._x10type >= 101 && v._x10type <= 103)
 				        	{
 				        		// see if this class is defined in our class mappings				        	
 				        		typeIndex = -1;
@@ -1331,7 +1362,7 @@ public class LineNumberMap extends StringTable {
 		    {
 		    	int maintype = iterator.next();
 		    	int innertype = iterator.next();
-		    	if ((maintype == 101 || maintype == 102) && innertype != -1)
+		    	if ((maintype >= 101 && maintype <= 103) && innertype != -1)
 		    	{
 		    		int lookingFor = innertype;
 		    		innertype = -1;
@@ -1388,7 +1419,7 @@ public class LineNumberMap extends StringTable {
         w.newline(4); w.begin(0);
         w.writeln("sizeof(struct _MetaDebugInfo_t),");
         w.writeln("X10_META_LANG,");
-        w.writeln("0x0B051711, // 2011-05-23, 17:00"); // Format: "YYMMDDHH". One byte for year, month, day, hour.
+        w.writeln("0x0B08170C, // 2011-08-23, 12:00"); // Format: "YYMMDDHH". One byte for year, month, day, hour.
         w.writeln("sizeof(_X10strings),");
         if (!m.isEmpty()) {
             w.writeln("sizeof(_X10sourceList),");
@@ -1408,7 +1439,7 @@ public class LineNumberMap extends StringTable {
         	w.writeln("sizeof(_X10variableNameList),");
         else
         	w.writeln("0,  // no local variable mappings");
-        if (memberVariables != null)
+        if (!m.isEmpty() && memberVariables != null)
         	w.writeln("sizeof(_X10ClassMapList),");
         else
         	w.writeln("0, // no class mappings");
@@ -1453,7 +1484,7 @@ public class LineNumberMap extends StringTable {
         }
         else
         	w.writeln("NULL,");
-        if (memberVariables != null)
+        if (!m.isEmpty() && memberVariables != null)
         {
         	w.writeln("_X10ClassMapList,");
         	memberVariables.clear();

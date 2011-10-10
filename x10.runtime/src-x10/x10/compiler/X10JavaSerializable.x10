@@ -9,16 +9,16 @@
  *  (C) Copyright IBM Corporation 2006-2010.
  */
 
-package x10.ast;
+package x10.compiler;
 
-import polyglot.ast.Binary;
-import polyglot.ast.Expr;
-import x10.types.MethodInstance;
-
+import x10.compiler.NativeRep;
 
 /**
- * An immutable representation of a binary operation.
- * @author vj
+ * Used for generating static initialization code in Java backend.
+ * 
  */
-public interface X10Binary extends Binary {
+@NativeRep("java", "x10.x10rt.X10JavaSerializable", null, null)
+interface X10JavaSerializable {
 }
+
+// vim:shiftwidth=4:tabstop=4:expandtab

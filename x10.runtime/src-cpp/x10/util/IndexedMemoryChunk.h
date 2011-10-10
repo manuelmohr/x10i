@@ -1,3 +1,15 @@
+/*
+ *  This file is part of the X10 project (http://x10-lang.org).
+ *
+ *  This file is licensed to You under the Eclipse Public License (EPL);
+ *  You may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *      http://www.opensource.org/licenses/eclipse-1.0.php
+ *
+ *  (C) Copyright IBM Corporation 2010.
+ *  (C) Copyright Australian National University 2011.
+ */
+
 #ifndef __X10_UTIL_INDEXEDMEMORYCHUNK_H
 #define __X10_UTIL_INDEXEDMEMORYCHUNK_H
 
@@ -49,14 +61,28 @@ namespace x10 {
     
             x10_ulong data; /* TODO: We would like this to be const */
             x10_int len; /* TODO: we would like this to be const */ /* TODO, this should be an x10_long */
+
+            /*
+             * Knowing the delta is required to support deallocation in the presence of alignment.
+             * We have to have the real pointer as returned from x10aux::alloc to pass back to x10aux::dealloc.
+             * There is nor real space cost for keeping this because C++ struct alignment constraints already
+             * force sizeof(IndexedMemoryChunk) to 16 even without this field.
+             * (8 for data + 4 for length == 12, which gets padded to 16).
+             */
+            x10_int deltaToAlloced;
+            
             x10_int length() { return len; } 
             T *raw (void) const { return (T*)(size_t)data; }
             T &operator[] (int index) { return raw()[index]; }
             const T &operator[] (int index) const { return raw()[index]; }
 
-            IndexedMemoryChunk(): data(0), len(0) {}
-            IndexedMemoryChunk(T* _data, x10_int _len): data((size_t)_data), len(_len) {}
-            IndexedMemoryChunk(x10_ulong _data, x10_int _len): data(_data), len(_len) {}
+            IndexedMemoryChunk(): data(0), len(0), deltaToAlloced(0) {}
+            IndexedMemoryChunk(T* rawMem, T* alignedMem, x10_int _len) : data((size_t)alignedMem),
+                len(_len),
+                deltaToAlloced((x10_int)((size_t)alignedMem - (size_t)rawMem)) {}
+            IndexedMemoryChunk(x10_ulong rawData, x10_ulong alignedData, x10_int _len): data(alignedData),
+                len(_len),
+                deltaToAlloced((x10_int)(alignedData-rawData)) {}
 
             inline T __apply(x10_int index) { 
                 checkBounds(index, len);
@@ -179,8 +205,8 @@ namespace x10 {
                                                                                         x10_int alignment,
                                                                                         x10_boolean congruent, 
                                                                                         x10_boolean zeroed) {
-	    if (0 == numElements) {
-                return IndexedMemoryChunk<T>((T*)NULL, (x10_int)numElements);
+            if (0 == numElements) {
+                return IndexedMemoryChunk<T>((T*)NULL, (T*)NULL, (x10_int)numElements);
             }
 
             assert((alignment & (alignment-1)) == 0);
@@ -206,7 +232,7 @@ namespace x10 {
             size_t alignDelta = alignment-1;
             size_t alignMask = ~alignDelta;
             size_t alignedMem = ((size_t)allocMem + alignDelta) & alignMask;
-            return IndexedMemoryChunk<T>((T*)alignedMem, (x10_int)numElements);
+            return IndexedMemoryChunk<T>(allocMem, (T*)alignedMem, (x10_int)numElements);
         }
 
     }
@@ -307,7 +333,9 @@ template<class T> void x10::util::IndexedMemoryChunk<T>::clear(x10_long index, x
 
 template<class T> void x10::util::IndexedMemoryChunk<T>::deallocate() {
     if (0 != data) {
-        x10aux::dealloc(raw());
+        x10_ulong basePtr = data - deltaToAlloced;
+        x10aux::dealloc((T*)basePtr);
+        // fprintf(stderr, "Dealloc %p %p %d\n", (T*)basePtr, (T*)data, deltaToAlloced);
     }
     data = 0;
     len = 0;
@@ -393,7 +421,6 @@ x10::util::RemoteIndexedMemoryChunk<T> x10::util::IndexedMemoryChunk<T>::getCong
 {
     return RemoteIndexedMemoryChunk<T>(raw(), length(), p);
 }
-    
 
 template<class T> void x10::util::IndexedMemoryChunk<T>::_serialize(x10::util::IndexedMemoryChunk<T> this_,
                                                                     x10aux::serialization_buffer& buf) {
@@ -416,9 +443,76 @@ template<class T> void x10::util::IndexedMemoryChunk<T>::_deserialize_body(x10au
         size_t alignMask = ~alignDelta;
         size_t alignedMem = ((size_t)allocMem + alignDelta) & alignMask;
         data = (x10_ulong)alignedMem;
-
+        deltaToAlloced = (x10_int)(alignedMem - (size_t)allocMem);
+        
         for (int i=0; i<len; i++) {
             __set(i, buf.read<T>());
+        }
+    }
+}
+
+#define PRIMITIVE_COPY_SERIALIZATION(TYPE) \
+template<> inline void x10::util::IndexedMemoryChunk<TYPE>::_serialize(x10::util::IndexedMemoryChunk<TYPE> this_, \
+                                                                    x10aux::serialization_buffer& buf) {\
+    buf.write((this_->len));\
+    buf.copyIn(buf, this_->raw(), this_->len, sizeof(TYPE));\
+}\
+template<> inline void x10::util::IndexedMemoryChunk<TYPE>::_deserialize_body(x10aux::deserialization_buffer& buf) {\
+    len = buf.read<x10_int>();\
+    if (0 == len) {\
+        data = 0;\
+    } else {\
+        size_t alignment = X10_MIN_INDEXEDMEMORYCHUNK_ALIGNMENT;\
+        size_t size = alignment + len*sizeof(TYPE);\
+        TYPE* allocMem = x10aux::alloc<TYPE>(size, false);\
+        size_t alignDelta = alignment-1;\
+        size_t alignMask = ~alignDelta;\
+        size_t alignedMem = ((size_t)allocMem + alignDelta) & alignMask;\
+        data = (x10_ulong)alignedMem;\
+        deltaToAlloced = (x10_int)(alignedMem - (size_t)allocMem);\
+        buf.copyOut(buf, raw(), (x10_long)len, sizeof(TYPE));   \
+    }\
+}
+namespace x10 {
+    namespace lang {
+        class Complex;
+    }
+    namespace util {
+        PRIMITIVE_COPY_SERIALIZATION(x10_boolean)
+        PRIMITIVE_COPY_SERIALIZATION(x10_byte)
+        PRIMITIVE_COPY_SERIALIZATION(x10_ubyte)
+        PRIMITIVE_COPY_SERIALIZATION(x10_char)
+        PRIMITIVE_COPY_SERIALIZATION(x10_short)
+        PRIMITIVE_COPY_SERIALIZATION(x10_ushort)
+        PRIMITIVE_COPY_SERIALIZATION(x10_int)
+        PRIMITIVE_COPY_SERIALIZATION(x10_uint)
+        PRIMITIVE_COPY_SERIALIZATION(x10_long)
+        PRIMITIVE_COPY_SERIALIZATION(x10_ulong)
+        PRIMITIVE_COPY_SERIALIZATION(x10_float)
+        PRIMITIVE_COPY_SERIALIZATION(x10_double)
+
+        template<> inline void x10::util::IndexedMemoryChunk<x10::lang::Complex>::_serialize(x10::util::IndexedMemoryChunk<x10::lang::Complex> this_, x10aux::serialization_buffer& buf) {
+            buf.write((this_->len));
+            // Complex is serialized as two doubles
+            buf.copyIn(buf, this_->raw(), this_->len*2, sizeof(x10_double));
+        }
+
+        template<> inline void x10::util::IndexedMemoryChunk<x10::lang::Complex>::_deserialize_body(x10aux::deserialization_buffer& buf) {
+            len = buf.read<x10_int>();
+            if (0 == len) {
+                data = 0;
+            } else {
+                size_t alignment = X10_MIN_INDEXEDMEMORYCHUNK_ALIGNMENT;
+                // Complex is serialized as two doubles
+                size_t size = alignment + len*2*sizeof(x10_double);
+                x10::lang::Complex* allocMem = x10aux::alloc<x10::lang::Complex>(size, false);
+                size_t alignDelta = alignment-1;
+                size_t alignMask = ~alignDelta;
+                size_t alignedMem = ((size_t)allocMem + alignDelta) & alignMask;
+                data = (x10_ulong)alignedMem;
+                deltaToAlloced = (x10_int)(alignedMem - (size_t)allocMem);
+                buf.copyOut(buf, raw(), (x10_long)(len*2), sizeof(x10_double));
+            }
         }
     }
 }
@@ -436,7 +530,15 @@ template<class T> x10_boolean x10::util::IndexedMemoryChunk<T>::_struct_equals(x
 }
 
 template<class T> x10aux::ref<x10::lang::String> x10::util::IndexedMemoryChunk<T>::toString() {
-    char* tmp = x10aux::alloc_printf("x10.util.IndexedMemoryChunk<%s>(%llx of %llx elements)", x10aux::getRTT<T>()->name(), data, (unsigned long long)len);
+    char* tmp = x10aux::alloc_printf("IndexedMemoryChunk(");
+    int sz = length() > 10 ? 10 : length();
+    for (int i = 0; i < sz; i++) {
+        if (i > 0)
+            tmp = x10aux::realloc_printf(tmp, ",");
+        tmp = x10aux::realloc_printf(tmp,"%s",x10aux::to_string(__apply(i))->c_str());
+    }
+    if (sz < length()) tmp = x10aux::realloc_printf(tmp, "...(omitted %d elements", length() - sz);
+    tmp = x10aux::realloc_printf(tmp, ")");
     return x10::lang::String::Steal(tmp);
 }
 

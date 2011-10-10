@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/param.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <signal.h>
@@ -25,7 +26,9 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <stdarg.h>
+#ifndef BSD
 #include <alloca.h>
+#endif
 #include <arpa/inet.h>
 #include <sched.h>
 #include <errno.h>
@@ -240,7 +243,10 @@ void Launcher::startChildren()
 							#ifdef DEBUG
 								fprintf(stderr, "Runtime %u forked with gdb in an xterm.  Running exec.\n", _myproc);
 							#endif
-							newargv = (char**)alloca(8*sizeof(char*));
+							int numArgs = 0;
+							while (_argv[numArgs] != NULL)
+								numArgs++;
+							newargv = (char**)alloca((numArgs+8)*sizeof(char*));
 							if (newargv == NULL)
 								DIE("Allocating space for exec-ing gdb runtime %d\n", _myproc);
 							char* title = (char*)alloca(32);
@@ -251,7 +257,10 @@ void Launcher::startChildren()
 							newargv[3] = (char*)"-e";
 							newargv[4] = (char*)"gdb";
 							newargv[5] = _argv[0];
-							newargv[6] = (char*)NULL;
+							newargv[6] = (char*)"--args";
+							for (int i=0; i<numArgs; i++)
+								newargv[i+7] = _argv[i];
+							newargv[numArgs+7] = (char*)NULL;
 						}
 						else
 						{
@@ -406,7 +415,10 @@ void Launcher::handleRequestsLoop(bool onlyCheckForNewConnections)
 	    int status;
  		if (waitpid(_pidlst[_numchildren], &status, 0) == _pidlst[_numchildren])
 		{
- 			exitcode = WEXITSTATUS(status);
+ 			if (WIFSIGNALED(status) && WTERMSIG(status) != SIGPIPE)
+ 				exitcode = 128 + WTERMSIG(status);
+ 			else
+ 				exitcode = WEXITSTATUS(status);
 			#ifdef DEBUG
 			if (exitcode != 0)
 				fprintf(stderr, "Launcher %d: Non-zero return code from local runtime (pid=%d), status=%d (previous stored status=%d)\n", _myproc, _pidlst[_numchildren], exitcode, _returncode);
@@ -448,7 +460,9 @@ void Launcher::handleRequestsLoop(bool onlyCheckForNewConnections)
 /*     prepare FD sets to listen to in main loop                           */
 /* *********************************************************************** */
 
+#ifndef MAX
 #define MAX(a,b) (((a)<(b))?(b):(a))
+#endif
 int Launcher::makeFDSets(fd_set * infds, fd_set * outfds, fd_set * efds)
 {
 	int fd_max = 0;
@@ -896,11 +910,14 @@ void Launcher::cb_sighandler_cld(int signo)
 			if (i == _singleton->_numchildren)
 			{
 				#ifdef DEBUG
-				fprintf(stderr, "Launcher %d: SIGCHLD from runtime (pid=%d), status=%d\n", _singleton->_myproc, pid, WEXITSTATUS(status));
+				fprintf(stderr, "Launcher %d: SIGCHLD from runtime (pid=%d), status=%d, signaled=%d, wtermsig=%d\n", _singleton->_myproc, pid, WEXITSTATUS(status), WIFSIGNALED(status), WTERMSIG(status));
 				if (WEXITSTATUS(status) != 0)
 					fprintf(stderr, "Launcher %d: non-zero return code from local runtime (pid=%d), status=%d (previous stored status=%d)\n", _singleton->_myproc, pid, WEXITSTATUS(status), WEXITSTATUS(_singleton->_returncode));
 				#endif
-				_singleton->_returncode = WEXITSTATUS(status);
+				if (WIFSIGNALED(status) && WTERMSIG(status) != SIGPIPE)
+					_singleton->_returncode = 128 + WTERMSIG(status);
+				else
+					_singleton->_returncode = WEXITSTATUS(status);
 				if (_singleton->_runtimePort[0] != '\0')
 					sprintf(_singleton->_runtimePort, "PLACE_%u_IS_DEAD", _singleton->_myproc);
 			}

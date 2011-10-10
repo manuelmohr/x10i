@@ -12,15 +12,29 @@
 package x10.rtt;
 
 
-public class CharType extends RuntimeType<Character> {
+import x10.x10rt.X10JavaDeserializer;
+import x10.x10rt.X10JavaSerializable;
+import x10.x10rt.X10JavaSerializer;
 
-	private static final long serialVersionUID = 1L;
+import java.io.IOException;
+
+public class CharType extends RuntimeType<x10.core.Char> {
+//public class CharType extends RuntimeType<x10.core.Char>implements X10JavaSerializable {
+
+
+    private static final long serialVersionUID = 1L;
+//    private static final short _serialization_id = x10.x10rt.DeserializationDispatcher.addDispatcher(DeserializationDispatcher.ClosureKind.CLOSURE_KIND_NOT_ASYNC, CharType.class.getName());
+
+    // make sure deserialized RTT object is not duplicated
+    private Object readResolve() throws java.io.ObjectStreamException {
+        return Types.CHAR;
+    }
 
     public CharType() {
-//        super(char.class,
-        super(Character.class,
+        super(x10.core.Char.class,
               new Type[] {
                   new ParameterizedType(Types.COMPARABLE, UnresolvedType.THIS),
+                  new ParameterizedType(x10.util.Ordered.$RTT, UnresolvedType.THIS),
                   Types.STRUCT
               });
     }
@@ -32,8 +46,8 @@ public class CharType extends RuntimeType<Character> {
 
     // for shortcut 
     @Override
-    public boolean instanceof$(Object o) {
-        return o instanceof java.lang.Character;
+    public boolean instanceOf(Object o) {
+        return o instanceof x10.core.Char;
     }
 
     @Override
@@ -51,20 +65,18 @@ public class CharType extends RuntimeType<Character> {
     }
     
     @Override
-    public Character getArray(Object array, int i) {
-        return ((char[]) array)[i];
+    public x10.core.Char getArray(Object array, int i) {
+        return x10.core.Char.$box(((char[]) array)[i]);
     }
     
 //    @Override
-//    public Character setArray(Object array, int i, Character v) {
-//        // avoid boxing again
-////        return ((char[]) array)[i] = v;
-//        ((char[]) array)[i] = v;
+//    public Character setArray(Object array, int i, x10.core.Char v) {
+//        ((char[]) array)[i] = x10.core.Char.$unbox(v);
 //        return v;
 //    }
     @Override
-    public void setArray(Object array, int i, Character v) {
-        ((char[]) array)[i] = v;
+    public void setArray(Object array, int i, x10.core.Char v) {
+        ((char[]) array)[i] = x10.core.Char.$unbox(v);
     }
     
     @Override
@@ -72,4 +84,20 @@ public class CharType extends RuntimeType<Character> {
     	return ((char[]) array).length;
     }
 
+//    public void $_serialize(X10JavaSerializer serializer) throws IOException {
+//    }
+//
+//    public short $_get_serialization_id() {
+//        return _serialization_id;
+//    }
+//
+//    public static X10JavaSerializable $_deserializer(X10JavaDeserializer deserializer) throws IOException {
+//		return $_deserialize_body(null, deserializer);
+//	}
+//
+//    public static X10JavaSerializable $_deserialize_body(CharType t, X10JavaDeserializer deserializer) throws IOException {
+//        CharType charType = (CharType) Types.CHAR;
+//        deserializer.record_reference(charType);
+//        return charType;
+//    }
 }

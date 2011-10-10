@@ -770,6 +770,7 @@ public interface TypeSystem {
     public Flags Abstract();
 
     boolean isNumeric(Type t);
+    boolean isSignedNumeric(Type t);
     boolean isUnsignedNumeric(Type t);
     boolean isIntOrLess(Type t);
     boolean isLongOrLess(Type t);
@@ -919,6 +920,8 @@ public interface TypeSystem {
      */
     X10ClassType FailedDynamicCheckException();
 
+    X10ClassType IndexedMemoryChunk();
+
     // types used in WS codegen
     X10ClassType Frame();
     X10ClassType FinishFrame();
@@ -935,10 +938,13 @@ public interface TypeSystem {
     
     // annotation types used in codegen
     X10ClassType StackAllocate();
+    X10ClassType Inline();
     X10ClassType InlineOnly();
+    X10ClassType NoInline();
     X10ClassType Ephemeral();
     X10ClassType Header();
     X10ClassType Uninitialized();
+    X10ClassType SuppressTransientError();
     X10ClassType Embed();
 
     //Type Value();
@@ -949,6 +955,10 @@ public interface TypeSystem {
 
     X10ClassType NativeType();
     X10ClassType NativeRep();
+    X10ClassType NativeClass();
+    X10ClassType CompileTimeConstant();
+
+    X10ClassType Endpoint();
 
     XLit FALSE();
 

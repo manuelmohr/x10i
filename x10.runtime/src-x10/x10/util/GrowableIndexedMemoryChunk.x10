@@ -11,6 +11,10 @@
 
 package x10.util;
 
+import x10.compiler.CompilerFlags;
+import x10.compiler.Inline;
+import x10.compiler.NoInline;
+import x10.compiler.NoReturn;
 import x10.io.CustomSerialization;
 import x10.io.SerialData;
 
@@ -87,7 +91,7 @@ public final class GrowableIndexedMemoryChunk[T] implements CustomSerialization 
         val addLen = items.length();
         val newLen = length + addLen;
         val movLen = length - p;
-        if (movLen < 0) throw new UnsupportedOperationException("Insert would have created gap (length = "+length+", p= "+p+")");
+        if (CompilerFlags.checkBounds() && movLen < 0) illegalGap(p, length);
         if (newLen > capacity()) grow(newLen);
         if (movLen > 0) {
             IndexedMemoryChunk.copy(imc, p, imc, p+addLen, movLen);
@@ -96,13 +100,13 @@ public final class GrowableIndexedMemoryChunk[T] implements CustomSerialization 
         length = newLen;
     }
 
-    public operator this(idx:Int):T {
-        if (idx >= length) throw new ArrayIndexOutOfBoundsException();
+    public @Inline operator this(idx:Int):T {
+        if (CompilerFlags.checkBounds() && idx >= length) raiseIndexOutOfBounds(idx, length);
         return imc(idx);
-    }        
+    }
 
-    public operator this(idx:Int)=(v:T):void {
-        if (idx > length) throw new UnsupportedOperationException("Insert would have created gap (length = "+length+", idx= "+idx+")");
+    public @Inline operator this(idx:Int)=(v:T):void {
+        if (CompilerFlags.checkBounds() && idx > length) illegalGap(idx, length);
         if (idx == length) {
             add(v);
         } else {
@@ -128,6 +132,14 @@ public final class GrowableIndexedMemoryChunk[T] implements CustomSerialization 
         imc.clear(length-1,1);
         length = length-1;
         shrink(length+1);
+    }
+
+    /** 
+     * Remove all elements.
+     */
+    public def clear():void {
+        imc.clear(0,length-1);
+        length = 0;
     }
 
     /**
@@ -170,7 +182,7 @@ public final class GrowableIndexedMemoryChunk[T] implements CustomSerialization 
       return new Array[T](toIndexedMemoryChunk());
     }
 
-    private def grow(var newCapacity:int):void {
+    public def grow(var newCapacity:int):void {
         var oldCapacity:int = capacity();
         if (newCapacity < oldCapacity*2) {
             newCapacity = oldCapacity*2;
@@ -186,7 +198,7 @@ public final class GrowableIndexedMemoryChunk[T] implements CustomSerialization 
         imc = tmp;
     }
 
-    private def shrink(var newCapacity:int):void {
+    public def shrink(var newCapacity:int):void {
         if (newCapacity > capacity()/4 || newCapacity < 8)
             return;
         newCapacity = x10.lang.Math.max(newCapacity, length);
@@ -198,5 +210,12 @@ public final class GrowableIndexedMemoryChunk[T] implements CustomSerialization 
         imc = tmp;
     }
 
+    private static @NoInline @NoReturn def raiseIndexOutOfBounds(idx:int, length:int) {
+        throw new ArrayIndexOutOfBoundsException("Index is "+idx+"; length is "+length);
+    }
+
+    private static @NoInline @NoReturn def illegalGap(idx:int, length:int) {
+        throw new UnsupportedOperationException("Insert at "+idx+" would have created gap (length = "+length+")");
+    }
 }
 

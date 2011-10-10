@@ -10,20 +10,19 @@
  */
 package x10.visit;
 
-//import java.util.*;
-//import polyglot.ast.*;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.Stack;
 
 import polyglot.ast.Block;
 import polyglot.ast.Branch;
+import polyglot.ast.Eval;
+import polyglot.ast.Expr;
+import polyglot.ast.For;
+import polyglot.ast.Id;
 import polyglot.ast.Labeled;
-import polyglot.ast.Local;
-import polyglot.ast.LocalDecl;
 import polyglot.ast.Node;
 import polyglot.ast.NodeFactory;
 import polyglot.ast.Return;
@@ -31,15 +30,11 @@ import polyglot.ast.Stmt;
 import polyglot.ast.SwitchBlock;
 import polyglot.ast.Throw;
 import polyglot.frontend.Job;
-import polyglot.main.Reporter;
-import polyglot.types.LocalDef;
 import polyglot.types.Name;
 import polyglot.types.TypeSystem;
-import polyglot.util.CollectionUtil;
-import polyglot.util.InternalCompilerError;
+import polyglot.util.Position;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.NodeVisitor;
-import x10.ast.AtStmt;
 import x10.ast.StmtExpr;
 import x10.ast.StmtSeq;
 import x10.extension.X10Ext;
@@ -53,11 +48,12 @@ public class CodeCleanUp extends ContextVisitor {
 
     private TypeSystem xts;
     private NodeFactory xnf;
-    protected OneScopeRenamer oneScopeRen;
-    protected boolean report;
-    protected boolean reportStats;
+    final protected boolean report;
+    final protected boolean reportStats;
     static protected long blockCount;
     static protected long unreachableCount;
+    protected X10AlphaRenamer alphaRenamer;
+    protected Map<Name, Integer> labelInfo;
 
     /**
      * Creates a visitor for cleaning code.
@@ -68,228 +64,80 @@ public class CodeCleanUp extends ContextVisitor {
         super(job, ts, nf);
         xts = ts;
         xnf = nf;
-        this.oneScopeRen = new OneScopeRenamer();
         this.report = reporter.should_report("CodeCleanUp", 1);
         this.reportStats = reporter.should_report("CodeCleanUpStats", 1);
+        this.alphaRenamer = new X10AlphaRenamer(this, true);
+        this.labelInfo = CollectionFactory.newHashMap();
     }
 
-    private class OneScopeRenamer extends NodeVisitor {
-        
-        protected Map<Name,Name> renamingMap;
+    @Override
+    public Object shallowCopy() {
+        CodeCleanUp copy = (CodeCleanUp) super.shallowCopy();
+        return copy;
+    }
 
-        protected Map<LocalDef, Name> oldNamesMap;
-        
-        // Tracks the set of variables known to be fresh.
-        protected Set<Name> freshVars;
-
-        protected Map<Name,Name> labelMap;
-        
-        public int scopeLevel;
-
-        /**
-         * Creates a visitor for alpha-renaming locals.
-         *
-         * @param nf  The node factory to be used when generating new nodes.
-         **/
-        public OneScopeRenamer() {
-
-            this.oldNamesMap = CollectionFactory.newHashMap();
-            this.renamingMap = CollectionFactory.newHashMap();
-            this.labelMap = CollectionFactory.newHashMap();
-            this.freshVars = CollectionFactory.newHashSet();
-            this.scopeLevel = 0;
+    @Override
+    protected NodeVisitor enterCall(Node parent, Node child) {
+        if (child instanceof Labeled) {
+            Name labelName = ((Labeled) child).labelNode().id();
+            assert !labelInfo.containsKey(labelName) : "CodeCleanup: "+labelName+" already in map! Shadowed labels?";
+            labelInfo.put(labelName, 0);
+        } else if (child instanceof Branch) {
+            Id labelNode = ((Branch) child).labelNode();
+            if (labelNode != null) {
+                labelInfo.put(labelNode.id(), labelInfo.get(labelNode.id()) + 1);
+            }
         }
 
-        /** Map from local def to old names. */
-        public Map<LocalDef, Name> getMap() {
-            return oldNamesMap;
-        }
-
-        public static final String LABEL_PREFIX = "label ";
-
-        public NodeVisitor enter(Node n) {
-            if (n instanceof Block) {
-                if (!((n instanceof StmtSeq) || n instanceof StmtExpr)) {
-                    // Bump the scope level
-                    scopeLevel++;
-                }
-            }
-
-            if (scopeLevel == 1) {
-                if (n instanceof LocalDecl) {
-                    LocalDecl l = (LocalDecl) n;
-                    Name name = l.name().id();
-
-                    if (!freshVars.contains(name)) {
-                        // Add a new entry to the current renaming map.
-                        Name name_ = Name.makeFresh(name);
-
-                        freshVars.add(name_);
-
-                        renamingMap.put(name, name_);
-                    }
-                }
-
-                if (n instanceof Labeled) {
-                    Labeled l = (Labeled) n;
-                    Name name = l.labelNode().id();
-                    Name key = Name.make(LABEL_PREFIX + name.toString());
-                    if (!freshVars.contains(key)) {
-                        Name name_ = Name.makeFresh(name);
-                        Name key_ = Name.make(LABEL_PREFIX + name_.toString());
-
-                        freshVars.add(key_);
-
-                        labelMap.put(key, name_);
-                    }
-                }
-            }
-            return this;
-        }
-
-        public Node leave(Node old, Node n, NodeVisitor v) {
-            if (n instanceof Block) {
-                if (!((n instanceof StmtSeq) || n instanceof StmtExpr)) {
-                    scopeLevel--;
-                    if (scopeLevel == 0) {
-                        // Pop the current name set off the stack and remove the
-                        // corresponding
-                        // entries from the renaming map.
-                        renamingMap.keySet().clear();
-                        labelMap.keySet().clear();
-                    }
-                }
-                assert (scopeLevel >= 0); 
-                return n;
-            }
-
-            if (n instanceof Local) {
-                // Rename the local if its name is in the renaming map.
-                Local l = (Local) n;
-                Name name = l.name().id();
-
-                if (!renamingMap.containsKey(name)) {
-                    return n;
-                }
-
-                // Update the local instance as necessary.
-                Name newName = renamingMap.get(name);
-                // LocalType li = l.localInstance();
-                // if (li != null) li.setName(newName);
-
-                return l.name(l.name().id(newName));
-            }
-
-            if (n instanceof LocalDecl) {
-                // Rename the local decl.
-                LocalDecl l = (LocalDecl) n;
-                Name name = l.name().id();
-
-                if (freshVars.contains(name)) {
-                    return n;
-                }
-
-                if (!renamingMap.containsKey(name)) {
-                    return n;
-                }
-
-                // Update the local instance as necessary.
-                Name newName = renamingMap.get(name);
-                LocalDef li = l.localDef();
-                if (li != null) {
-                    oldNamesMap.put(li, li.name());
-                    li.setName(newName);
-                }
-                return l.name(l.name().id(newName));
-            }
-
-            if (n instanceof Branch) {
-                // Rename the label if its name is in the renaming map.
-                Branch b = (Branch) n;
-
-                if (b.labelNode() == null) {
-                    return n;
-                }
-
-                Name name = b.labelNode().id();
-                Name key = Name.make(LABEL_PREFIX + name.toString());
-
-                if (!labelMap.containsKey(key)) {
-                    return n;
-                }
-
-                Name newName = labelMap.get(key);
-
-                return b.labelNode(b.labelNode().id(newName));
-            }
-
-            if (n instanceof Labeled) {
-                Labeled l = (Labeled) n;
-                Name name = l.labelNode().id();
-                Name key = Name.make(LABEL_PREFIX + name.toString());
-
-                if (freshVars.contains(key)) {
-                    return n;
-                }
-
-                if (!labelMap.containsKey(key)) {
-                    return n;
-                }
-
-                Name newName = labelMap.get(key);
-                return l.labelNode(l.labelNode().id(newName));
-            }
-
-            return n;
-        }
+        return this;        
     }
 
     @Override
     protected Node leaveCall(Node parent, Node old, Node n, NodeVisitor v) {
-        if (!(n instanceof Block) || n instanceof StmtExpr || n instanceof SwitchBlock) {
-            return n;
-        }
-        if (parent instanceof AtStmt) {
-            return n;
+        if (n instanceof Labeled) {
+            int uses = labelInfo.remove(((Labeled) n).labelNode().id());    // unboxing is safe as we always removing an element we put before
+            // If the label was never used, then eliminate the Labeled node and just return the statement itself.
+            if (uses == 0) return ((Labeled)n).statement();
+            else if (uses == 1 && isBreakLast((Labeled)n)) return removeBreakLast((Labeled)n);
+            else return n;
+        } 
+        
+        if (n instanceof Eval && ((Eval)n).expr() instanceof StmtExpr  && !(parent instanceof For)) {
+            return sinkEval((StmtExpr)((Eval)n).expr(), n.position());
         }
         
-        // We can flatten labeled blocks when there is no reference to the label
-        // within the block. If we have a labeled block consisting of just one
-        // statement and there is a reference to the label, then we might be
-        // tempted
-        // to flatten the block and label the statement instead. But that would
-        // be
-        // wrong as the CPP backend needs the surrounding block structure to
-        // trigger
-        // the placement of an "end" label use for the goto
+        if (!(n instanceof Block) || n instanceof SwitchBlock) {
+            return n;
+        }
 
-        /*
-         * Leave this code out for the moment ... if (n instanceof Labeled) {
-         * Labeled l = (Labeled) n; if (!(l.statement() instanceof Block )||
-         * l.statement() instanceof StmtExpr || l.statement() instanceof
-         * SwitchBlock) { return n; }
-         * 
-         * Block b = (Block) l.statement(); if (!((X10Ext)
-         * b.ext()).annotations().isEmpty()) { return n; } if
-         * (!labelRefs(b).contains(l.labelNode().id())) { // There's no
-         * reference to the label within the block, so // flatten and clean up
-         * unreachable code. Node returnNode; if (b instanceof StmtSeq) {
-         * returnNode = nf.StmtSeq(b.position(), clean(flattenBlock(b))); } else
-         * { returnNode = nf.Block(b.position(), clean(flattenBlock(b))); }
-         * return returnNode; } else { // Can't flatten the block, but we can
-         * clean up // unreachable code. return n; }
-         * 
-         * }
-         */
-
-        // Flatten any blocks that may be contained in this one, and clean up
-        // unreachable code.
+        // Flatten any blocks that may be contained in this one
+        // and eliminate unreachable code.
         Block b = (Block) n;
         if (!((X10Ext) b.ext()).annotations().isEmpty()) {
             return n;
         }
         b = clean(flattenBlock(b));
 
+        return b;
+    }
+
+    // Eval(StmtExpr(Block(S), e) ===> B(S, Eval(e))
+    private Block sinkEval(StmtExpr stexp, Position pos) {
+        Block b = nf.Block(pos, stexp.statements());
+        if (!((X10Ext)stexp.ext()).annotations().isEmpty()) {
+            b = (Block)((X10Ext)b.ext()).annotations(((X10Ext)stexp.ext()).annotations());
+        }
+        
+        Expr result = stexp.result();
+        if (result != null) {
+            if (result instanceof StmtExpr) {
+                b = b.append(sinkEval((StmtExpr)result, result.position()));
+                b = clean(flattenBlock(b));
+            } else {
+                b = b.append(nf.Eval(result.position(), result));
+            }
+        }
+        
         return b;
     }
 
@@ -304,12 +152,12 @@ public class CodeCleanUp extends ContextVisitor {
             if (stmt instanceof Block) {
                 boolean innerIsStmtSeq = stmt instanceof StmtSeq;
                 Block inner = (Block) stmt;
-                if (!bIsStmtSeq || innerIsStmtSeq && ((X10Ext) inner.ext()).annotations().isEmpty()) {
+                if ((!bIsStmtSeq || innerIsStmtSeq) && ((X10Ext) inner.ext()).annotations().isEmpty()) {
                     // Alpha-rename local decls in the block that we're
                     // flattening.
                     if (report) System.out.println("Cleaning up a block" + inner.position());
                     if (reportStats) blockCount++;
-                    if (!innerIsStmtSeq) inner = (Block) inner.visit(oneScopeRen);
+                    if (!innerIsStmtSeq) inner = (Block) inner.visit(alphaRenamer);
                     // Could add a check here that scopeLevel is back to 0???
                     stmtList.addAll(inner.statements());
                     changeMade = true;
@@ -353,29 +201,37 @@ public class CodeCleanUp extends ContextVisitor {
         }
         return b;
     }
+    
+    /**
+     * Checks if `break label;` is the last statement in labeled block `label: { ... }`
+     */
+    private boolean isBreakLast(Labeled labeled) {
+        Name label = labeled.labelNode().id();
+        Stmt stmt = labeled.statement();
+        if (stmt instanceof Block) {
+            Block block = (Block) stmt;
+            List<Stmt> statements = block.statements();
+            Stmt last = statements.get(statements.size()-1);
+            if (last != null && last instanceof Branch) {
+                Branch branch = (Branch) last;
+                if (branch.kind() == Branch.BREAK && branch.labelNode() != null && branch.labelNode().id().equals(label))
+                    return true;
+            }
+        }
+        return false;
+    }
+    
+    private Block removeBreakLast(Labeled labeled) {
+        List<Stmt> osts = ((Block) labeled.statement()).statements();
+        List<Stmt> statements = new ArrayList<Stmt>(osts);
+        statements.remove(statements.size() - 1);
+        return xnf.Block(labeled.position(), statements);
+    }
 
     public void finish() {
         if (reportStats) {
             System.out.println("CodeCleanUp: Blocks removed " + blockCount);
             System.out.println("CodeCleanUp: Unreachable code removed " + unreachableCount);
         }
-    }
-
-    /**
-     * Traverses a Block and determines the set of label references.
-     **/
-    protected Set<Name> labelRefs(Block b) {
-        final Set<Name> result = CollectionFactory.newHashSet();
-        b.visit(new NodeVisitor() {
-            public Node leave(Node old, Node n, NodeVisitor v) {
-                if (n instanceof Branch) {
-                    result.add(((Branch) n).labelNode().id());
-                }
-
-                return n;
-            }
-        });
-
-        return result;
     }
 }

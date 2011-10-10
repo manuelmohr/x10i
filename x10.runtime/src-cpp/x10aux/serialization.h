@@ -55,7 +55,7 @@
  *
  * There is an additional complication of breaking cyclic object graphs by indicating
  * that we are about to read an object that has already been read.  This is indicated
- * by the serialization id 0xFFFFFFFF followed by an offset (in objects) to the
+ * by the serialization id 0xFFFF followed by an offset (in objects) to the
  * object which has been repeatedly serialized.
  *
  * Serialization ids are generated at runtime in a place-independent fashion.  Classes obtain their id by
@@ -153,17 +153,34 @@ namespace x10aux {
 
 
 
-    // Endian encoding/decoding support
-    template<class T> void code_bytes(T *x) {
-        (void) x;
+    // copy bytes with Endian encoding/decoding support
+    inline void copy_bytes(void *dest, const void *src, size_t n) {
         #if defined(__i386__) || defined(__x86_64__)
-        unsigned char *buf = (unsigned char*) x;
-        for (int i=0,j=sizeof(T)-1 ; i<j ; ++i,--j) {
-            std::swap(buf[i], buf[j]);
+        unsigned char *x = (unsigned char*) dest;
+        unsigned char *y = (unsigned char*) src;
+        for (size_t i=0,j=n-1; i<n; ++i,--j) {
+            x[i] = y[j];
         }
+        #else
+        memcpy(dest, src, n);
         #endif
     }
 
+    // copy bulk data of size n of a given length, with Endian encoding/decoding support
+    inline void copy_bulk(void *dest, const void *src, x10_long length, size_t n) {
+        #if defined(__i386__) || defined(__x86_64__)
+        unsigned char *x = (unsigned char*) dest;
+        unsigned char *y = (unsigned char*) src;
+        for (x10_long k=0; k<length; k++) {
+            for (size_t i=0,j=n-1; i<n; ++i,--j) {
+                x[i] = y[j];
+            }
+            x += n; y += n;
+        }
+        #else
+        memcpy(dest, src, length*n);
+        #endif
+    }
 
     // A growable buffer for serializing into
     class serialization_buffer {
@@ -172,6 +189,8 @@ namespace x10aux {
         char *limit;
         char *cursor;
         addr_map map;
+
+        void grow (size_t new_capacity);
 
     public:
 
@@ -192,6 +211,7 @@ namespace x10aux {
         char *borrow() { return buffer; }
 
         static void serialize_reference(serialization_buffer &buf, ref<x10::lang::Reference>);
+        static void copyIn(serialization_buffer &buf, const void* data, x10_long length, size_t sizeOfT);
 
         template <class T> void manually_record_reference(ref<T> val) {
             map.previous_position(val);
@@ -227,8 +247,7 @@ namespace x10aux {
                           <<(int)val<<" into buf: "<<&buf); \
         /* *(TYPE*) buf.cursor = val; // Cannot do this because of alignment */ \
         if (buf.cursor + sizeof(TYPE) >= buf.limit) buf.grow(); \
-        memcpy(buf.cursor, &val, sizeof(TYPE)); \
-        code_bytes((TYPE*)buf.cursor); \
+        copy_bytes(buf.cursor, &val, sizeof(TYPE)); \
         buf.cursor += sizeof(TYPE); \
     }
     #define PRIMITIVE_WRITE(TYPE) \
@@ -238,8 +257,7 @@ namespace x10aux {
                           <<val<<" into buf: "<<&buf); \
         /* *(TYPE*) buf.cursor = val; // Cannot do this because of alignment */ \
         if (buf.cursor + sizeof(TYPE) >= buf.limit) buf.grow(); \
-        memcpy(buf.cursor, &val, sizeof(TYPE)); \
-        code_bytes((TYPE*)buf.cursor); \
+        copy_bytes(buf.cursor, &val, sizeof(TYPE)); \
         buf.cursor += sizeof(TYPE); \
     }
     #define PRIMITIVE_VOLATILE_WRITE(TYPE) \
@@ -249,8 +267,7 @@ namespace x10aux {
                           <<val<<" into buf: "<<&buf); \
         /* *(TYPE*) buf.cursor = val; // Cannot do this because of alignment */ \
         if (buf.cursor + sizeof(TYPE) >= buf.limit) buf.grow(); \
-        memcpy(buf.cursor, const_cast<TYPE*>(&val), sizeof(TYPE));  \
-        code_bytes((TYPE*)buf.cursor); \
+        copy_bytes(buf.cursor, const_cast<TYPE*>(&val), sizeof(TYPE)); \
         buf.cursor += sizeof(TYPE); \
     }
     PRIMITIVE_WRITE(x10_boolean)
@@ -282,13 +299,24 @@ namespace x10aux {
             int pos = buf.map.previous_position(val);
             if (pos != 0) {
                 _S_("\tRepeated ("<<pos<<") serialization of a "<<ANSI_SER<<ANSI_BOLD<<TYPENAME(T)<<ANSI_RESET<<" into buf: "<<&buf);
-                buf.write((x10_uint) 0xFFFFFFFF);
+                buf.write((x10aux::serialization_id_t) 0xFFFF);
                 buf.write((x10_int) pos);
                 return;
             }
         }
         serialize_reference(buf, ref<x10::lang::Reference>(val));
     }
+
+    inline void serialization_buffer::copyIn(serialization_buffer &buf,
+                                                const void *data,
+                                                x10_long length,
+                                                size_t sizeOfT) {
+        size_t numBytes = length * sizeOfT;
+        if (buf.cursor + numBytes >= buf.limit) buf.grow(buf.length() + numBytes);
+        copy_bulk(buf.cursor, data, length, sizeOfT);
+        buf.cursor += numBytes;
+    }
+
     
     // Case for captured stack variables e.g. captured_ref_lval<T> and captured_struct_lval<T>.
     template<class T> struct serialization_buffer::Write<captured_ref_lval<T> > {
@@ -333,6 +361,7 @@ namespace x10aux {
         size_t consumed (void) { return cursor - buffer; }
 
         static ref<x10::lang::Reference> deserialize_reference(deserialization_buffer &buf);
+        static void copyOut(deserialization_buffer &buf, void* data, x10_long length, size_t sizeOfT);
         
         // Default case for primitives and other things that never contain pointers
         template<class T> struct Read;
@@ -381,14 +410,21 @@ namespace x10aux {
         return T::_deserialize(buf);
     }
 
+    inline void deserialization_buffer::copyOut(deserialization_buffer &buf,
+                                                void *data,
+                                                x10_long length,
+                                                size_t sizeOfT) {
+        copy_bulk(data, buf.cursor, length, sizeOfT);
+        buf.cursor += length * sizeOfT;
+    }
+
     // Specializations for all simple primitives
     #define PRIMITIVE_READ_AS_INT(TYPE) \
     template<> inline TYPE deserialization_buffer::Read<TYPE>::_(deserialization_buffer &buf) { \
         /* //TYPE &val = *(TYPE*) buf.cursor; // Cannot do this because of alignment */ \
         TYPE val; \
-        memcpy(&val, buf.cursor, sizeof(TYPE)); \
+        copy_bytes(&val, buf.cursor, sizeof(TYPE)); \
         buf.cursor += sizeof(TYPE); \
-        code_bytes(&val); \
         _S_("Deserializing "<<star_rating<TYPE>()<<" a "<<ANSI_SER<<TYPENAME(TYPE)<<ANSI_RESET<<": " \
             <<(int)val<<" from buf: "<<&buf); \
         return val; \
@@ -397,9 +433,8 @@ namespace x10aux {
     template<> inline TYPE deserialization_buffer::Read<TYPE>::_(deserialization_buffer &buf) { \
         /* //TYPE &val = *(TYPE*) buf.cursor; // Cannot do this because of alignment */ \
         TYPE val; \
-        memcpy(&val, buf.cursor, sizeof(TYPE)); \
+        copy_bytes(&val, buf.cursor, sizeof(TYPE)); \
         buf.cursor += sizeof(TYPE); \
-        code_bytes(&val); \
         _S_("Deserializing "<<star_rating<TYPE>()<<" a "<<ANSI_SER<<TYPENAME(TYPE)<<ANSI_RESET<<": " \
             <<val<<" from buf: "<<&buf); \
         return val; \
@@ -424,9 +459,9 @@ namespace x10aux {
     };
     template<class T> ref<T> deserialization_buffer::Read<ref<T> >::_(deserialization_buffer &buf) {
         _S_("Deserializing a "<<ANSI_SER<<ANSI_BOLD<<TYPENAME(T)<<ANSI_RESET<<" from buf: "<<&buf);
-        x10_uint code = buf.peek<x10_uint>();
-        if (code == (x10_uint) 0xFFFFFFFF) {
-            buf.read<x10_uint>();
+        x10aux::serialization_id_t code = buf.peek<x10aux::serialization_id_t>();
+        if (code == (x10aux::serialization_id_t) 0xFFFF) {
+            buf.read<x10aux::serialization_id_t>();
             int pos = (int) buf.read<x10_int>();
             _S_("\tRepeated ("<<pos<<") deserialization of a "<<ANSI_SER<<ANSI_BOLD<<TYPENAME(T)<<ANSI_RESET<<" from buf: "<<&buf);
             return buf.map.get_at_position<T>(pos);

@@ -11,8 +11,6 @@
 
 package x10.util;
 
-import x10.compiler.TempNoInline_0;
-
 public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
 
     private val a: GrowableIndexedMemoryChunk[T];
@@ -86,6 +84,7 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
     public def isEmpty(): Boolean = size() == 0;
 
     public def toArray() = a.toArray();
+    public def toIndexedMemoryChunk() = a.toIndexedMemoryChunk();
 
     public def this() {
         a = new GrowableIndexedMemoryChunk[T]();
@@ -238,9 +237,27 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
         qsort(a, l+1, hi, cmp);
     }
 
-    private @TempNoInline_0 def exch(a: GrowableIndexedMemoryChunk[T], i: int, j: int): void {
+    private def exch(a: GrowableIndexedMemoryChunk[T], i: int, j: int): void {
         val temp = a(i);
         a(i) = a(j);
         a(j) = temp;
+    }
+
+    /**
+     * Return the string representation of this ArrayList.
+     * 
+     * @return the string representation of this ArrayList.
+     */
+    public def toString(): String {
+        val sb = new x10.util.StringBuilder();
+        sb.add("[");
+        val sz = Math.min(size(), 10);
+        for (var i:Int = 0; i < sz; ++i) {
+            if (i > 0) sb.add(",");
+            sb.add("" + this(i));
+        }
+        if (sz < size()) sb.add("...(omitted " + (size() - sz) + " elements)");
+        sb.add("]");
+        return sb.toString();
     }
 }

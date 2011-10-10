@@ -150,7 +150,7 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
                                     + ", which is declared in "
                                     + rt.toClass().fullName(), ct.position());
                             Map<String, Object> map = CollectionFactory.newHashMap();
-                            map.put(CodedErrorInfo.ERROR_CODE_KEY, 1004);
+                            map.put(CodedErrorInfo.ERROR_CODE_KEY, CodedErrorInfo.ERROR_CODE_METHOD_NOT_IMPLEMENTED);
                             Name name = ct.name();
                             if (name == null) {
                                 name = ANONYMOUS;
@@ -1556,7 +1556,7 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
                     
             // Check if adding self==value makes the constraint on t inconsistent.
             
-            XLit val = XTerms.makeLit(value);
+            XLit val = CTerms.makeLit(value, base);
 
             CConstraint c = new CConstraint();
             c.addSelfBinding(val);
@@ -2074,18 +2074,28 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
 
         // FIXME: is this the same as entails(CConstraint, CConstraint)?
         boolean entails = true;
+
         final CConstraint mig = Subst.subst(mi.guard(), newSymbols, miSymbols);
         final CConstraint mjg = Subst.subst(mj.guard(), newSymbols, mjSymbols);
         if (mjg == null) {
-            entails = mig == null || mig.valid();
+            entails &= mig == null || mig.valid();
         }
         else {
-            entails = mig == null 
+            entails &= mig == null 
             || mjg.entails(mig, new ConstraintMaker() {
                 public CConstraint make() throws XFailure {
-                    return  context.constraintProjection(mjg, mig);
+                    return context.constraintProjection(mjg, mig);
                 }
             });          
+        }
+
+        final TypeConstraint mitg = Subst.subst(mi.typeGuard(), newSymbols, miSymbols);
+        final TypeConstraint mjtg = Subst.subst(mj.typeGuard(), newSymbols, mjSymbols);
+        if (mjtg == null) {
+            entails &= mitg == null;
+        }
+        else {
+            entails &= mitg == null || mjtg.entails(mitg, context);          
         }
 
         if (! entails) {
@@ -2289,7 +2299,7 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
 	    if (error == null) {
 	    	error = new NoMemberException(NoMemberException.CONSTRUCTOR, "No valid constructor found for " + matcher.signature() + ".");
 	    	Map<String, Object> map = CollectionFactory.newHashMap();
-            map.put(CodedErrorInfo.ERROR_CODE_KEY, 1003);
+            map.put(CodedErrorInfo.ERROR_CODE_KEY, CodedErrorInfo.ERROR_CODE_CONSTRUCTOR_NOT_FOUND);
             map.put("CONSTRUCTOR", matcher.name().toString());
             map.put("ARGUMENTS", matcher.argumentString());
             error.setAttributes(map);
