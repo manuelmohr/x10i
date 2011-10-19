@@ -2,13 +2,9 @@
 #include "x10_primitive_types.h"
 #include "x10_string.h"
 
-#include <math.h>
-
 X10_MAKE_COMPARETO(_ZN3x104lang6Double9compareToEd, x10_double)
 X10_MAKE_HASHCODE(_ZN3x104lang6Double8hashCodeEv, x10_double)
 X10_MAKE_EQUALS(_ZN3x104lang6Double6equalsEd, x10_double)
-X10_MAKE_TYPENAME(_ZN3x104lang6Double8typeNameEv, x10_double, "x10.lang.Double")
-X10_MAKE_EQUALS_ANY(_ZN3x104lang6Double6equalsEPN3x104lang3AnyE, x10_int)
 
 /*
  * For Double, we need a special toString() method to be compatible
@@ -61,9 +57,8 @@ x10_string *_ZN3x104lang6Double8toStringEv(x10_double v)
 		swprintf(rest, STRBUF_SIZE + buf - rest, T_("E%d"), e);
 	}
 	return x10_string_from_wide_chars(buf);
-#undef BUF_SIZE
+#undef STRBUF_SIZE
 }
-
 
 MAKE_BINOPS(_ZN3x104lang6Double, d, x10_double)
 MAKE_CMPOPS(_ZN3x104lang6Double, d, x10_double)
@@ -73,3 +68,46 @@ x10_double _ZN3x104lang6DoublermEd(x10_double a, x10_double b)
 	return fmod(a, b);
 }
 MAKE_CONFS(_ZN3x104lang6Double, x10_double)
+
+/* Use to move bits between x10_long/x10_double without confusing the compiler */
+typedef union TypePunner {
+    x10_long l;
+    x10_double d;
+} TypePunner;
+
+x10_long _ZN3x104lang6Double13toRawLongBitsEv(x10_double self)
+{
+    TypePunner tmp;
+    tmp.d = self;
+    return tmp.l;
+}
+
+x10_double _ZN3x104lang6Double12fromLongBitsEx(x10_long digits)
+{
+    TypePunner tmp;
+    tmp.l = digits;
+    return tmp.d;
+}
+
+x10_boolean _ZN3x104lang6Double5isNaNEv(x10_double self)
+{
+	return isnan(self) != 0 ? X10_TRUE : X10_FALSE;
+}
+
+x10_boolean _ZN3x104lang6Double10isInfiniteEv(x10_double self)
+{
+	return isinf(self) != 0 ? X10_TRUE : X10_FALSE;
+}
+
+x10_long _ZN3x104lang6Double10toLongBitsEv(x10_double self)
+{
+	return _ZN3x104lang6Double5isNaNEv(self) ? 0x7ff8000000000000LL : _ZN3x104lang6Double13toRawLongBitsEv(self);
+}
+
+x10_string *_ZN3x104lang6Double11toHexStringEv(x10_double self)
+{
+	X10_UNUSED(self);
+	X10_UNIMPLEMENTED();
+	return X10_NULL;
+}
+

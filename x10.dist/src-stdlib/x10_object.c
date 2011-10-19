@@ -1,17 +1,18 @@
 #include "x10_object.h"
 
 #include "x10_string.h"
+#include "util.h"
 
 /* Object constructor */
 void _ZN3x104lang6ObjectC1Ev(x10_object *self)
 {
-	(void)self;
+	X10_UNUSED(self);
 }
 
 // TODO: Implement me
 x10_string *_ZN3x104lang6Object8typeNameEv(x10_object *self)
 {
-	UNUSED(self);
+	X10_UNUSED(self);
 	return x10_string_from_wide_chars(T_("Object"));
 }
 

@@ -1,32 +1,43 @@
 #ifndef X10_STRING_H_
 #define X10_STRING_H_
 
+#include <wchar.h>
+#include <wctype.h>
+
 #include "x10.h"
 
-struct x10_string {
+
+typedef struct {
 	X10_OBJECT_HEADER
 	size_t len;
 	x10_char buf[1];
-};
+} x10_string;
 
-#define X10_STRING_BUF(s) 	((s)->buf)
-#define X10_STRING_CHAR(s,i) 	X10_STRING_BUF((s))[(i)]
+static inline x10_char *x10_string_buf(x10_string *s) {
+	return s->buf;
+}
+
+static inline x10_int x10_string_len(const x10_string *s) {
+	return s->len;
+}
+
 
 X10_EXTERN x10_string *x10_string_from_wide_chars(const x10_char *);
-
 X10_EXTERN x10_string *x10_string_literal(size_t, x10_char *);
 
-// constructors
-// this(String)
-X10_EXTERN x10_string *_ZN3x104lang6StringC1EPN3x104lang6StringE(x10_string *);
-// this()
-X10_EXTERN x10_string *_ZN3x104lang6StringC1Ev(); 
+X10_EXTERN x10_string *_ZN3x104lang6StringC1Ev();
+X10_EXTERN x10_string *_ZN3x104lang6StringC1EPN3x104lang6StringE(
+		x10_string *str);
+
 
 // String methods
-X10_EXTERN x10_boolean _ZN3x104lang6String6equalsEPN3x104lang3AnyE (x10_string *, x10_any *);
+X10_EXTERN x10_boolean _ZN3x104lang6String6equalsEPN3x104lang3AnyE(x10_string *, x10_any *);
+X10_EXTERN x10_int _ZN3x104lang6String8hashCodeEv(x10_string *);
+X10_EXTERN x10_boolean _ZN3x104lang6String16equalsIgnoreCaseEPN3x104lang6StringE(x10_string *, x10_string *);
 X10_EXTERN x10_int _ZN3x104lang6String6lengthEv(x10_string *);
 X10_EXTERN x10_string *_ZN3x104lang6String8toStringEv(x10_string *);
 X10_EXTERN x10_string *_ZN3x104lang6String8typeNameEv(x10_string *);
+X10_EXTERN x10_char _ZN3x104lang6StringapplyEi(x10_string *, x10_int);
 X10_EXTERN x10_char _ZN3x104lang6String6charAtEi(x10_string *, x10_int);
 X10_EXTERN x10_int _ZN3x104lang6String7indexOfEDi(x10_string *, x10_char);
 X10_EXTERN x10_int _ZN3x104lang6String7indexOfEDii(x10_string *, x10_char, x10_int);
@@ -41,13 +52,22 @@ X10_EXTERN x10_string *_ZN3x104lang6String9substringEii(x10_string *, x10_int, x
 X10_EXTERN x10_boolean _ZN3x104lang6String8endsWithEPN3x104lang6StringE(x10_string *, x10_string *);
 X10_EXTERN x10_boolean _ZN3x104lang6String10startsWithEPN3x104lang6StringE(x10_string *, x10_string *);
 X10_EXTERN x10_string *_ZN3x104lang6String4trimEv(x10_string *);
+X10_EXTERN x10_string *_ZN3x104lang6String11toLowerCaseEv(x10_string *);
+X10_EXTERN x10_string *_ZN3x104lang6String11toUpperCaseEv(x10_string *);
 X10_EXTERN x10_int _ZN3x104lang6String9compareToEPN3x104lang6StringE(x10_string *, x10_string *);
+X10_EXTERN x10_int _ZN3x104lang6String19compareToIgnoreCaseEPN3x104lang6StringE(x10_string *, x10_string *);
 
+// operator <(String)
+X10_EXTERN x10_boolean _ZN3x104lang6StringltEPN3x104lang6StringE(x10_string *, x10_string *);
+// operator <=(String)
+X10_EXTERN x10_boolean _ZN3x104lang6StringleEPN3x104lang6StringE(x10_string *, x10_string *);
+// operator >(String)
+X10_EXTERN x10_boolean _ZN3x104lang6StringgtEPN3x104lang6StringE(x10_string *, x10_string *);
+// operator >=(String)
+X10_EXTERN x10_boolean _ZN3x104lang6StringgeEPN3x104lang6StringE(x10_string *, x10_string *);
 // operator+(String)
 X10_EXTERN x10_string *_ZN3x104lang6StringplEPN3x104lang6StringE(x10_string *, x10_string *);
 // static operator+(String, String)
 X10_EXTERN x10_string *_ZN3x104lang6StringplEPN3x104lang6StringEPN3x104lang6StringE(x10_string *, x10_string *);
 
-
 #endif // X10_STRING_H_
-

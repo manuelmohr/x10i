@@ -8,6 +8,7 @@ import polyglot.frontend.Goal;
 import polyglot.frontend.Job;
 import polyglot.frontend.Scheduler;
 import x10firm.CompilerOptions;
+import x10firm.ExtensionInfo;
 import firm.Backend;
 import firm.Dump;
 import firm.Graph;
@@ -20,11 +21,10 @@ import firm.bindings.binding_iroptimize;
  */
 public class AsmEmitted extends AllBarrierGoal {
 	/** name of the intermediate asm file */
-	public static final String ASM_FILENAME =
-			UUID.randomUUID().toString() + ".s";
+	public static final String ASM_FILENAME = UUID.randomUUID().toString() + ".s";
 
 	private Goal prereq_redirection = null;
-
+	
 	/** Constructor */
 	public AsmEmitted(Scheduler scheduler) {
 		super("AsmEmitted", scheduler);
@@ -32,18 +32,19 @@ public class AsmEmitted extends AllBarrierGoal {
 
 	@Override
 	public boolean runTask() {
+		
 		/* try to generate some assembly */
 		String compilationUnit = "x10program";
-
+		
 		final CompilerOptions options =
 			(CompilerOptions) scheduler.extensionInfo().getOptions();
 
-		/* make sure all unreachable code is eliminated or the bakend
+		/* make sure all unreachable code is eliminated or the backend
 		 * may be confused */
 		for (Graph g : Program.getGraphs()) {
 			binding_irgopt.optimize_graph_df(g.ptr);
 			binding_iroptimize.optimize_cf(g.ptr);
-			if (options.dump_firm_graphs) {
+			if (options.isDumpFirmGraphs()) {
 				Dump.dumpGraph(g, "--before-backend");
 			}
 		}
@@ -66,12 +67,14 @@ public class AsmEmitted extends AllBarrierGoal {
 			prereq_redirection.addPrereq(goal);
 		}
 	}
-
+	
 	@Override
 	public Goal prereqForJob(Job job) {
-		if (!scheduler.shouldCompile(job)) {
+		// TODO DELETE ME: Delete the second condition when library support is implemented
+		if (!scheduler.shouldCompile(job) && !ExtensionInfo.isAllowedClassName(job.toString())) {
 			return null;
 		}
+		
 		return scheduler.End(job);
 	}
 }

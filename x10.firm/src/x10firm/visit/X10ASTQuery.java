@@ -9,6 +9,7 @@ import polyglot.ast.Cast;
 import polyglot.ast.ClassMember;
 import polyglot.ast.Conditional;
 import polyglot.ast.Expr;
+import polyglot.ast.FieldDecl;
 import polyglot.ast.FieldDecl_c;
 import polyglot.ast.FloatLit;
 import polyglot.ast.Initializer_c;
@@ -16,11 +17,16 @@ import polyglot.ast.IntLit;
 import polyglot.ast.Return;
 import polyglot.ast.Stmt;
 import polyglot.ast.Unary;
-import polyglot.visit.Translator;
+import polyglot.types.QName;
+import polyglot.types.SemanticException;
+import polyglot.types.Type;
+import polyglot.types.TypeSystem;
 import x10.ast.Closure;
 import x10.ast.ClosureCall;
 import x10.ast.ParExpr;
 import x10.types.X10ClassType;
+import x10.types.X10Def;
+import x10.types.X10FieldDef;
 import x10.types.X10MethodDef;
 import x10.util.HierarchyUtils;
 
@@ -29,14 +35,14 @@ import x10.util.HierarchyUtils;
  */
 public class X10ASTQuery {
 
-	private final Translator tr;
+	private final TypeSystem x10TypeSystem;
 
 	/**
 	 * X10ASTQuery Constructor
-	 * @param tr Translator
+	 * @param x10TypeSystem The x10 type system
 	 */
-	public X10ASTQuery(final Translator tr) {
-		this.tr = tr;
+	public X10ASTQuery(final TypeSystem x10TypeSystem) {
+		this.x10TypeSystem = x10TypeSystem;
 	}
 
 	/**
@@ -102,12 +108,13 @@ public class X10ASTQuery {
      * @param fd The field decl which should be checked
      * @return True if the given field decl is a global init field decl.
      */
-	private boolean isGlobalInit(FieldDecl_c fd) {
+	public boolean isGlobalInit(FieldDecl fd) {
 	    return (fd.init() != null &&
 	            fd.flags().flags().isStatic() && fd.flags().flags().isFinal() &&
 	            isConstantExpression(fd.init()) &&
 	            (fd.init().type().isNumeric() || fd.init().type().isBoolean() ||
-	             fd.init().type().isChar() || fd.init().type().isNull()));
+	             fd.init().type().isChar() || fd.init().type().isNull()))
+	             || isPerProcess((X10FieldDef) fd.fieldDef());
 	}
 
 	/**
@@ -144,6 +151,15 @@ public class X10ASTQuery {
 
 	    return ret;
 	}
+	
+    public boolean isPerProcess(X10Def def) {
+        try {
+            Type t = x10TypeSystem.systemResolver().findOne(QName.make("x10.compiler.PerProcess"));
+            return !def.annotationsMatching(t).isEmpty();
+        } catch (SemanticException e) {
+            return false;
+        }
+    }
 
     /** test if a method is the main method (the one we start first when the
      * program runs)
@@ -152,6 +168,6 @@ public class X10ASTQuery {
      * unnecessarily depends on a Translator which we don't have)
      */
 	public boolean isMainMethod(X10MethodDef md) {
-		return HierarchyUtils.isMainMethod(md, tr.context());
+		return HierarchyUtils.isMainMethod(md, x10TypeSystem.emptyContext());
 	}
 }

@@ -8,8 +8,8 @@ import java.util.Map;
 import polyglot.ast.ClassMember;
 import polyglot.ast.Stmt;
 import polyglot.types.LocalInstance;
+import polyglot.types.Type;
 import polyglot.types.VarInstance;
-import x10.types.X10ProcedureInstance;
 import firm.Entity;
 
 /**
@@ -24,9 +24,9 @@ public class X10FirmContext {
 	private Map<VarInstance<?>, X10VarEntry> varEntryMapper = new HashMap<VarInstance<?>, X10VarEntry>();
 
 	/**
-	 * Reference to the current procedure type
+	 * Reference to the current procedure return type
 	 */
-	private X10ProcedureInstance<?> curProcedure;
+	private Type returnType;
 
 	/**
 	 * Will hold the corresponding statement if we have reached a labeled statement. Otherwise null.
@@ -52,26 +52,23 @@ public class X10FirmContext {
 	 * Create a new Firm context
 	 */
 	public X10FirmContext() {
+		
 	}
-
-	/**
-	 * Sets the current procedure
-	 * @param procedure The current procedure
+	
+	/** Sets the return type of the current method
+	 * @param retType The return type
 	 */
-	public void setCurProcedure(final X10ProcedureInstance<?> procedure) {
-		this.curProcedure = procedure;
+	public void setReturnType(final Type retType) {
+		returnType = retType;
+	}
+	
+	/** Returns the return type of the current method */
+	public Type getReturnType() {
+		return returnType;
 	}
 
 	/**
-	 * Returns the current procedure
-	 * @return The current procedure
-	 */
-	public X10ProcedureInstance<?> getCurProcedure() {
-		return curProcedure;
-	}
-
-	/**
-	 * Sets the class members which must be intialized explicitly
+	 * Sets the class members which must be initialized explicitly
 	 */
 	public void setInitClassMembers(List<ClassMember> members) {
 		assert(initClassMembers == null); // method should only be called once

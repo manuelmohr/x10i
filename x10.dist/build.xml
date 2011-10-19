@@ -35,6 +35,7 @@
     <property name="compiler.jar" value="x10c.jar"/>
     <property name="config" value="standard.cfg"/>
     <property name="x10.runtime.location" location="${x10.home}/x10.runtime"/>
+    <property name="x10.firm_runtime.location" location="${x10.home}/x10.firm_runtime" />
     <property name="xrx.src.dir" location="${x10.home}/x10.runtime/src-x10" />
     <property name="runtime.jar" value="x10.jar"/>
     <property name="x10.tests.location" location="${x10.home}/x10.tests"/>
@@ -106,6 +107,7 @@
         <ant antfile="${x10.constraints.location}/build.xml" target="clean" inheritAll="false" dir="${x10.constraints.location}"/>
         <ant antfile="${x10.common.location}/build.xml" target="clean" inheritAll="false" dir="${x10.common.location}"/>
         <ant antfile="${x10.runtime.location}/build.xml" target="clean-java" inheritAll="false" dir="${x10.runtime.location}"/>
+        <ant antfile="${x10.firm_runtime.location}/build.xml" target="clean-firm" inheritAll="false" dir="${x10.firm_runtime.location}"/>
         <ant antfile="${x10.compiler.location}/build.xml" target="clean" inheritAll="false" dir="${x10.compiler.location}"/>
     </target>
 
@@ -142,6 +144,7 @@
             </fileset>
         </delete>
         <ant antfile="${x10.runtime.location}/build.xml" target="distclean" inheritAll="false" dir="${x10.runtime.location}"/>
+        <ant antfile="${x10.firm_runtime.location}/build.xml" target="distclean" inheritAll="false" dir="${x10.firm_runtime.location}"/>
     </target>
 
     <target name="clean-bridge">
@@ -156,7 +159,8 @@
     <target name="dist-java" depends="init,build,common-jar,constraints-jar,compiler-jar,runtime-java"/>
     <target name="dist-cpp" depends="dist-java,runtime-cpp"/>
     <target name="dist-x10rt" depends="runtime-x10rt"/>
-    <target name="dist" depends="dist-java,dist-cpp,dist-bridge,dist-x10doc"/>
+    <target name="dist-firm" depends="dist-java,runtime-firm"/>
+    <target name="dist" depends="dist-java,dist-cpp,dist-firm,dist-bridge,dist-x10doc"/>
     <target name="dist-java-cpp" depends="init,build,common-jar,constraints-jar,compiler-jar">
         <ant antfile="${x10.runtime.location}/build.xml" target="dist-par" inheritAll="false" dir="${x10.runtime.location}"/>
     </target>
@@ -329,6 +333,10 @@
 
     <target name="runtime-java" depends="init,common-jar,constraints-jar">
         <ant antfile="${x10.runtime.location}/build.xml" target="dist-java" inheritAll="false" dir="${x10.runtime.location}"/>
+    </target>
+    
+    <target name="runtime-firm" depends="init,common-jar,constraints-jar">
+        <ant antfile="${x10.firm_runtime.location}/build.xml" target="dist-firm" inheritAll="false" dir="${x10.firm_runtime.location}"/>
     </target>
 
     <target name="runtime-cpp" depends="init">

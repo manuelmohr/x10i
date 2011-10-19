@@ -5,8 +5,6 @@
 X10_MAKE_COMPARETO(_ZN3x104lang5Float9compareToEf, x10_float)
 X10_MAKE_HASHCODE(_ZN3x104lang5Float8hashCodeEv, x10_float)
 X10_MAKE_EQUALS(_ZN3x104lang5Float6equalsEf, x10_float)
-X10_MAKE_TYPENAME(_ZN3x104lang5Float8typeNameEv, x10_float, "x10.lang.Float")
-X10_MAKE_EQUALS_ANY(_ZN3x104lang5Float6equalsEPN3x104lang3AnyE, x10_float)
 
 /* Just call the toString() function for double */
 X10_EXTERN x10_string *_ZN3x104lang6Double8toStringEv(x10_double);
@@ -23,3 +21,48 @@ x10_float _ZN3x104lang5FloatrmEf(x10_float a, x10_float b)
 	return fmodf(a, b);
 }
 MAKE_CONFS(_ZN3x104lang5Float, x10_float)
+
+/* Use to move bits between x10_float/x10_int without confusing the compiler */
+typedef union TypePunner {
+    x10_int i;
+    x10_float f;
+} TypePunner;
+
+x10_int _ZN3x104lang5Float12toRawIntBitsEv(x10_float self) 
+{
+    TypePunner tmp;
+    tmp.f = self;
+    return tmp.i;
+}
+
+x10_float _ZN3x104lang5Float11fromIntBitsEi(x10_int digits)
+{
+	TypePunner tmp;
+	tmp.i = digits;
+	return tmp.f;
+}
+
+x10_boolean _ZN3x104lang5Float5isNaNEv(x10_float self)
+{
+	return isnan(self) != 0 ? X10_TRUE : X10_FALSE;
+}
+
+x10_boolean _ZN3x104lang5Float10isInfiniteEv(x10_float self)
+{
+	return isinf(self) != 0 ? X10_TRUE : X10_FALSE;
+}
+
+x10_int _ZN3x104lang5Float9toIntBitsEv(x10_float self)
+{
+	 // Check for NaN and return canonical NaN value
+    return _ZN3x104lang5Float5isNaNEv(self) ? 0x7fc00000 : _ZN3x104lang5Float12toRawIntBitsEv(self);
+}
+
+x10_string *_ZN3x104lang5Float11toHexStringEv(x10_float self)
+{
+	X10_UNUSED(self);
+	X10_UNIMPLEMENTED();
+	return X10_NULL;
+}
+
+
