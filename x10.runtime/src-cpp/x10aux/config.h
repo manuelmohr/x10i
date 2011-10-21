@@ -12,8 +12,8 @@
 #ifndef X10AUX_CONFIG_H
 #define X10AUX_CONFIG_H
 
-#ifdef __CYGWIN__
-#undef __STRICT_ANSI__ // Strict ANSI mode is too strict in Cygwin
+#if defined(__CYGWIN__) || defined(__FreeBSD__)
+#undef __STRICT_ANSI__ // Strict ANSI mode is too strict in Cygwin and FreeBSD
 #endif
 
 /*
@@ -159,7 +159,8 @@ namespace x10aux {
     extern const bool trace_rxtx;
     extern const bool disable_dealloc;
     extern const bool x10__assertions_enabled;
-
+    extern const bool x10_native_debug_messages;
+    
     char *get_congruent_base();
     char *get_congruent_size();
     bool get_congruent_huge();

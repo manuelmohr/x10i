@@ -31,7 +31,7 @@ import x10.util.ArrayList;
  */
 @NativeRep("java", "java.lang.String", null, "x10.rtt.Types.STRING")
 @NativeRep("c++", "x10aux::ref<x10::lang::String>", "x10::lang::String", null)
-public final class String implements (Int) => Char, /*TODO Ordered[String],*/ Comparable[String] {
+public final class String implements (Int) => Char, Ordered[String], Comparable[String] {
 
     /**
      * Default constructor.
@@ -136,7 +136,7 @@ public final class String implements (Int) => Char, /*TODO Ordered[String],*/ Co
      *         whose contents are initialized to contain the Chars in this String.
      * @see #bytes()
      */
-    @Native("java", "x10.core.ArrayFactory.<java.lang.Character>makeArrayFromJavaArray(x10.rtt.Types.CHAR, (#this).toCharArray())")
+    @Native("java", "x10.core.ArrayFactory.<x10.core.Char>makeArrayFromJavaArray(x10.rtt.Types.CHAR, (#this).toCharArray())")
     @Native("c++", "(#this)->chars()")
     public native def chars():Rail[Char];
 
@@ -386,7 +386,7 @@ public final class String implements (Int) => Char, /*TODO Ordered[String],*/ Co
      * @param args the arguments referenced by the format specifiers in the format string.
      * @return a formatted string.
      */
-    @Native("java", "java.lang.String.format(#fmt,(Object[]) (#args).raw().value)")
+    @Native("java", "x10.core.String.format(#fmt,(Object[]) (#args).raw().value)")
     @Native("c++", "x10::lang::String::format(#fmt,#args)")
     public native static def format(fmt: String, args:Array[Any]): String;
 
@@ -521,9 +521,9 @@ public final class String implements (Int) => Char, /*TODO Ordered[String],*/ Co
      * @param y the given entity
      * @return the resulting String
      */
-	@Native("java", "((#x) + (#y))")
-	@Native("c++",  "((#x) + (#y))")
-    public static operator[T] (x:String) + (y:T):String = x + y.toString();
+    @Native("java", "((#x) + (#y))")
+    @Native("c++",  "((#x) + (#y))")
+    public native static operator[T] (x:String) + (y:T): String;
 
     /**
      * A string concatenation operator.
@@ -535,7 +535,7 @@ public final class String implements (Int) => Char, /*TODO Ordered[String],*/ Co
      */
     @Native("java", "((#x) + (#y))")
     @Native("c++",  "((#x) + (#y))")
-    public static operator[T] (x:T) + (y:String):String = x.toString() + y;
+    public native static operator[T] (x:T) + (y:String): String;
 
     /**
      * A string concatenation operator.

@@ -11,24 +11,41 @@
 
 package x10.core;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 import x10.core.fun.VoidFun_0_0;
 import x10.lang.Place;
 import x10.lang.UnsupportedOperationException;
+import x10.rtt.BooleanType;
+import x10.rtt.ByteType;
+import x10.rtt.CharType;
+import x10.rtt.DoubleType;
+import x10.rtt.FloatType;
+import x10.rtt.IntType;
+import x10.rtt.LongType;
 import x10.rtt.NamedType;
+import x10.rtt.ParameterizedType;
 import x10.rtt.RuntimeType;
 import x10.rtt.RuntimeType.Variance;
+import x10.rtt.ShortType;
+import x10.rtt.StringType;
 import x10.rtt.Type;
+import x10.x10rt.DeserializationDispatcher;
+import x10.x10rt.X10JavaDeserializer;
+import x10.x10rt.X10JavaSerializable;
+import x10.x10rt.X10JavaSerializer;
 
-public final class IndexedMemoryChunk<T> extends x10.core.Struct {
+public final class IndexedMemoryChunk<T> extends x10.core.Struct implements X10JavaSerializable {
 
 	private static final long serialVersionUID = 1L;
+	private static final short _serialization_id = x10.x10rt.DeserializationDispatcher.addDispatcher(DeserializationDispatcher.ClosureKind.CLOSURE_KIND_NOT_ASYNC, IndexedMemoryChunk.class, "x10.util.IndexedMemoryChunk");
 
     public int length;
     public Object value;
     public Type<T> type;
 
+    // constructor just for allocation
     public IndexedMemoryChunk(java.lang.System[] $dummy) {
         super($dummy);
     }
@@ -82,6 +99,7 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
         return new IndexedMemoryChunk<T>(type, length, zeroed);
     }
 
+    @Override
     public java.lang.String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("IndexedMemoryChunk(");
@@ -140,6 +158,12 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
     public static <T> void asyncCopy(IndexedMemoryChunk<T> src, final int srcIndex, 
                                      final RemoteIndexedMemoryChunk<T> dst, final int dstIndex,
                                      final int numElems) {
+        // synchronous version for the same place
+        if (dst.home.id == x10.lang.Runtime.home().id) {
+            System.arraycopy(src.value, srcIndex, dst.$apply$G().value, dstIndex, numElems);
+            return;
+        }
+        
         // extra copy here simplifies logic and allows us to do this entirely at the Java level.
         // We'll eventually need to optimize this by writing custom native/JNI code instead of treating
         // it as just another async to execute remotely.
@@ -173,12 +197,17 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
     }
     
     // static nested class version of copyBody
-    static class $Closure$0 extends x10.core.Ref implements VoidFun_0_0 {
+    public static class $Closure$0 extends x10.core.Ref implements VoidFun_0_0 {
         private static final long serialVersionUID = 1L;
-        final Object srcData;
-        final int dstId;
-        final int dstIndex;
-        final int numElems;
+        private static final short _serialization_id = x10.x10rt.DeserializationDispatcher.addDispatcher(DeserializationDispatcher.ClosureKind.CLOSURE_KIND_SIMPLE_ASYNC, $Closure$0.class);
+        public Object srcData;
+        public int dstId;
+        public int dstIndex;
+        public int numElems;
+
+        // Just for allocation
+        $Closure$0() {
+        }
         $Closure$0(Object srcData, int dstId, int dstIndex, int numElems) {
         	this.srcData = srcData;
         	this.dstId = dstId;
@@ -192,11 +221,75 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
         public static final RuntimeType<$Closure$0> $RTT =
         	new x10.rtt.StaticVoidFunType<$Closure$0>($Closure$0.class, new Type[] { VoidFun_0_0.$RTT, x10.rtt.Types.OBJECT });
         public RuntimeType<$Closure$0> $getRTT() { return $RTT; }
+
+        //TODO Keith This is not compatible with C++ at the moment cause the java backend does not implement send_put
+        public void $_serialize(X10JavaSerializer serializer) throws IOException {
+            serializer.write(this.numElems);
+            if (this.numElems > 0) {
+                if (this.srcData instanceof int[] ||
+                        this.srcData instanceof double[] ||
+                        this.srcData instanceof float[] ||
+                        this.srcData instanceof short[] ||
+                        this.srcData instanceof char[] ||
+                        this.srcData instanceof byte[] ||
+                        this.srcData instanceof long[] ||
+                        this.srcData instanceof boolean[]) {
+                    serializer.write(DeserializationDispatcher.javaClassID);
+                    serializer.writeObject(this.srcData);
+                } else if (this.srcData instanceof String[]) {
+                    serializer.write(DeserializationDispatcher.STRING_ID);
+                    serializer.write((String[]) this.srcData);
+                } else {
+                    serializer.write((X10JavaSerializable[]) this.srcData);
+                }
+            }
+            serializer.write(this.dstId);
+            serializer.write(this.dstIndex);
+        }
+
+        public static X10JavaSerializable $_deserializer(X10JavaDeserializer deserializer) throws IOException {
+            $Closure$0 closure$0 = new $Closure$0();
+            deserializer.record_reference(closure$0);
+            return $_deserialize_body(closure$0, deserializer);
+        }
+
+        public static X10JavaSerializable $_deserialize_body($Closure$0 closure$0, X10JavaDeserializer deserializer) throws IOException {
+            Object srcData = null;
+            int numElems = deserializer.readInt();
+            if (numElems > 0) {
+                short type = deserializer.readShort();
+                if (type == DeserializationDispatcher.javaClassID) {
+                    srcData = deserializer.readObject();
+                } else if (type == DeserializationDispatcher.STRING_ID) {
+                    srcData = deserializer.readStringArray();
+                } else  {
+                    srcData = deserializer.readRef();
+                }
+            }
+            int dstId = deserializer.readInt();
+            int dstIndex = deserializer.readInt();
+            closure$0.srcData = srcData;
+            closure$0.dstId = dstId;
+            closure$0.dstIndex = dstIndex;
+            closure$0.numElems = numElems;
+            return (X10JavaSerializable) closure$0;
+        }
+
+        public short $_get_serialization_id() {
+            return _serialization_id;
+        }
     }
 
     public static <T> void asyncCopy(IndexedMemoryChunk<T> src, int srcIndex, 
                                      RemoteIndexedMemoryChunk<T> dst, int dstIndex,
                                      int numElems, VoidFun_0_0 notifier) {
+        // synchronous version for the same place
+        if (dst.home.id == x10.lang.Runtime.home().id) {
+            System.arraycopy(src.value, srcIndex, dst.$apply$G().value, dstIndex, numElems);
+            notifier.$apply();
+            return;
+        }
+
         throw new UnsupportedOperationException("asyncCopy with notifier not implemented for multivm");
         // notifier.$apply();
     }
@@ -204,6 +297,12 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
     public static <T> void asyncCopy(final RemoteIndexedMemoryChunk<T> src, final int srcIndex, 
                                      IndexedMemoryChunk<T> dst, final int dstIndex,
                                      final int numElems) {
+        // synchronous version for the same place
+        if (src.home.id == x10.lang.Runtime.home().id) {
+            System.arraycopy(src.$apply$G().value, srcIndex, dst.value, dstIndex, numElems);
+            return;
+        }
+
         // A really bad implementation!  Leaks dst!!  Non-optimized copies! Extra distributed async/finish traffic!
         final RemoteIndexedMemoryChunk<T> dstWrapper = RemoteIndexedMemoryChunk.wrap(dst);
         
@@ -257,16 +356,21 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
     }
     
     // static nested class version of copyBody1
-    static class $Closure$1<T> extends x10.core.Ref implements VoidFun_0_0 {
+    public static class $Closure$1<T> extends x10.core.Ref implements VoidFun_0_0 {
         private static final long serialVersionUID = 1L;
-        final int srcId;
-        final int srcLength;
-        final Type<T> srcType;
-        final int srcIndex;
-        final int dstWrapperId;
-        final Place dstWrapperHome;
-        final int dstIndex;
-        final int numElems;
+        private static final short _serialization_id = x10.x10rt.DeserializationDispatcher.addDispatcher(DeserializationDispatcher.ClosureKind.CLOSURE_KIND_SIMPLE_ASYNC, $Closure$1.class);
+        public int srcId;
+        public int srcLength;
+        public Type<T> srcType;
+        public int srcIndex;
+        public int dstWrapperId;
+        public Place dstWrapperHome;
+        public int dstIndex;
+        public int numElems;
+
+        //Just for allocation
+        $Closure$1() {
+        }
         $Closure$1(RemoteIndexedMemoryChunk<T> src, int srcIndex, RemoteIndexedMemoryChunk<T> dstWrapper, int dstIndex, int numElems) {
         	this.srcId = src.id;
         	this.srcLength = src.length;
@@ -301,11 +405,60 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
         public static final RuntimeType<$Closure$1<?>> $RTT =
         	new x10.rtt.StaticVoidFunType<$Closure$1<?>>($Closure$1.class, new Type[] { VoidFun_0_0.$RTT, x10.rtt.Types.OBJECT });
         public RuntimeType<$Closure$1<?>> $getRTT() { return $RTT; }
+
+        //TODO Keith This is not compatible with C++ at the moment cause the java backend does not implement send_put
+        public void $_serialize(X10JavaSerializer serializer) throws IOException {
+            serializer.write(this.srcId);
+            serializer.write(this.srcLength);
+            serializer.write(this.srcType);
+            serializer.write(this.srcIndex);
+            serializer.write(this.dstWrapperId);
+            serializer.write(this.dstWrapperHome);
+            serializer.write(this.dstIndex);
+            serializer.write(this.numElems);
+        }
+
+        public static X10JavaSerializable $_deserializer(X10JavaDeserializer deserializer) throws IOException {
+            $Closure$1 closure$1 = new $Closure$1();
+            deserializer.record_reference(closure$1);
+            return $_deserialize_body(closure$1, deserializer);
+        }
+
+        public static X10JavaSerializable $_deserialize_body($Closure$1 closure$1, X10JavaDeserializer deserializer) throws IOException {
+            int srcId = deserializer.readInt();
+            int srcLength = deserializer.readInt();
+            Type srcType = (Type) deserializer.readRef();
+            int srcIndex = deserializer.readInt();
+            int dstWrapperId = deserializer.readInt();
+            Place dstWrapperHome = (Place) deserializer.readRef();
+            int dstIndex = deserializer.readInt();
+            int numElems = deserializer.readInt();
+            closure$1.srcId = srcId;
+        	closure$1.srcLength = srcLength;
+        	closure$1.srcType = srcType;
+        	closure$1.srcIndex = srcIndex;
+        	closure$1.dstWrapperId = dstWrapperId;
+        	closure$1.dstWrapperHome = dstWrapperHome;
+        	closure$1.dstIndex = dstIndex;
+        	closure$1.numElems = numElems;
+            return (X10JavaSerializable) closure$1;
+        }
+
+        public short $_get_serialization_id() {
+            return _serialization_id;
+        }
     }
 
     public static <T> void asyncCopy(RemoteIndexedMemoryChunk<T> src, int srcIndex, 
                                      IndexedMemoryChunk<T> dst, int dstIndex,
                                      int numElems, VoidFun_0_0 notifier) {
+        // synchronous version for the same place
+        if (src.home.id == x10.lang.Runtime.home().id) {
+            System.arraycopy(src.$apply$G().value, srcIndex, dst.value, dstIndex, numElems);
+            notifier.$apply();
+            return;
+        }
+
         throw new UnsupportedOperationException("asyncCopy with notifier not implemented for multivm");
         // notifier.$apply();
     }
@@ -356,6 +509,76 @@ public final class IndexedMemoryChunk<T> extends x10.core.Struct {
     public float[] getFloatArray() { return (float[]) value; }
     public double[] getDoubleArray() { return (double[]) value; }
     public Object[] getObjectArray() { return (Object[]) value; }
+
+	public void $_serialize(X10JavaSerializer serializer) throws IOException {
+        serializer.write(length);
+        serializer.write(type);
+
+        // If the type is a primitive java type we use default java serialization here
+        // cause its much faster than writing a single element at a time
+        if (type instanceof FloatType ||
+                type instanceof IntType ||
+                type instanceof ByteType ||
+                type instanceof DoubleType||
+                type instanceof LongType ||
+                type instanceof CharType ||
+                type instanceof ShortType||
+                type instanceof BooleanType) {
+                serializer.writeObject(value);
+        } else if (type instanceof StringType) {
+            java.lang.String [] castValue = (java.lang.String[]) value;
+            for (java.lang.String v : castValue) {
+                serializer.write(v);
+            }
+        } else {
+            Object [] castValue = (Object[]) value;
+            for (Object v : castValue) {
+                serializer.write((X10JavaSerializable)v);
+            }
+        }
+	}
+
+	public static X10JavaSerializable $_deserializer(X10JavaDeserializer deserializer) throws IOException {
+        IndexedMemoryChunk imc = new IndexedMemoryChunk((java.lang.System[]) null);
+        deserializer.record_reference(imc);
+        return _deSerialize_body(imc, deserializer);
+	}
+
+	public short $_get_serialization_id() {
+		return _serialization_id;
+	}
+
+    public static X10JavaSerializable _deSerialize_body(IndexedMemoryChunk imc, X10JavaDeserializer deserializer) throws IOException {
+        int length = deserializer.readInt();
+        imc.length = length;
+        imc.type = (Type) deserializer.readRef();
+
+        // If the type is a primitive java type we use default java serialization here
+        // cause its much faster than reading a single element at a time
+        if (imc.type instanceof FloatType ||
+                imc.type instanceof IntType ||
+                imc.type instanceof ByteType ||
+                imc.type instanceof DoubleType||
+                imc.type instanceof LongType ||
+                imc.type instanceof CharType ||
+                imc.type instanceof ShortType||
+                imc.type instanceof BooleanType) {
+                imc.value = deserializer.readObject();
+        } else if (imc.type instanceof StringType) {
+            java.lang.String[] values = (java.lang.String[]) imc.type.makeArray(length);
+            for (int i = 0; i < length; i++) {
+                values[i] = deserializer.readString();
+            }
+            imc.value = values;
+        } else  {
+            Object[] values = (Object[]) imc.type.makeArray(length);
+            for (int i = 0; i < length; i++) {
+                   values[i] = deserializer.readRef();
+            }
+            imc.value = values;
+        }
+        return imc;
+    }
 
     // this is broken
     /*

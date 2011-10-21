@@ -17,7 +17,9 @@ import x10.compiler.Global;
 import x10.compiler.PerProcess;
 import x10.compiler.Pragma;
 import x10.compiler.StackAllocate;
-import x10.compiler.TempNoInline_1;
+
+import x10.io.CustomSerialization;
+import x10.io.SerialData;
 
 import x10.util.Random;
 import x10.util.Stack;
@@ -77,17 +79,26 @@ import x10.util.concurrent.SimpleLatch;
     @Native("java", "x10.runtime.impl.java.Runtime.runClosureAt(#id, #body)")
     @Native("c++", "x10aux::run_closure_at(#id, #body)")
     static def runClosureAt(id:Int, body:()=>void):void { body(); }
+    
+    @Native("java", "x10.runtime.impl.java.Runtime.runClosureAt(#id, #body)")
+    @Native("c++", "x10aux::run_closure_at(#id, #body, #endpoint)")
+    static def runClosureAt(id:Int, body:()=>void, endpoint:Int):void { body(); }
 
     @Native("java", "x10.runtime.impl.java.Runtime.runClosureCopyAt(#id, #body)")
     @Native("c++", "x10aux::run_closure_at(#id, #body)")
     static def runClosureCopyAt(id:Int, body:()=>void):void { body(); }
+    
+    @Native("java", "x10.runtime.impl.java.Runtime.runClosureCopyAt(#id, #body)")
+    @Native("c++", "x10aux::run_closure_at(#id, #body, #endpoint)")
+    static def runClosureCopyAt(id:Int, body:()=>void, endpoint:Int):void { body(); }
 
+    @Native("java", "x10.runtime.impl.java.Runtime.runAsyncAt(#id, #body, #finishState)")
     @Native("c++", "x10aux::run_async_at(#id, #body, #finishState)")
-    static def runAsyncAt(id:Int, body:()=>void, finishState:FinishState):void {
-        val closure = ()=> @x10.compiler.RemoteInvocation {execute(body, finishState);};
-        runClosureCopyAt(id, closure);
-        dealloc(closure);
-    }
+    static def runAsyncAt(id:Int, body:()=>void, finishState:FinishState):void { body(); }
+
+    @Native("java", "x10.runtime.impl.java.Runtime.runAsyncAt(#id, #body, #finishState, #endpoint)")
+    @Native("c++", "x10aux::run_async_at(#id, #body, #finishState, #endpoint)")
+    static def runAsyncAt(id:Int, body:()=>void, finishState:FinishState, endpoint:Int):void { body(); }
 
     /**
      * Must be called once XRX is initialized prior to sending messages.
@@ -137,6 +148,111 @@ import x10.util.concurrent.SimpleLatch;
 
     @Native("c++","x10aux::deserialized_bytes = #v")
     static def setDeserializedBytes(v:Long):void { }
+
+    public static def serializedSize[T](v:T) {
+        var r:Long;
+        @Native("java", "r = x10.runtime.impl.java.Runtime.serialize(v).length;")
+        @Native("c++", "x10aux::serialization_buffer buf; buf.write(v); r = buf.length();")
+        { r = -1L; }
+        return r;
+    }
+
+    public static struct X10RTMessageStats {
+        public def this () {
+            this.bytesSent = 0;
+            this.messagesSent = 0;
+            this.bytesReceived = 0;
+            this.messagesReceived = 0;
+        }
+        public def this (bytesSent:Long, messagesSent:Long, bytesReceived:Long, messagesReceived:Long) {
+            this.bytesSent = bytesSent;
+            this.messagesSent = messagesSent;
+            this.bytesReceived = bytesReceived;
+            this.messagesReceived = messagesReceived;
+        }
+        public bytesSent:Long;
+        public messagesSent:Long;
+        public bytesReceived:Long;
+        public messagesReceived:Long;
+
+        public operator + this = this;
+        public operator - this = X10RTMessageStats(-bytesSent, -messagesSent, -bytesReceived, -messagesReceived);
+        public operator this + (that:X10RTMessageStats) = X10RTMessageStats(bytesSent+that.bytesSent,
+                                                                            messagesSent+that.messagesSent,
+                                                                            bytesReceived+that.bytesReceived,
+                                                                            messagesReceived+that.messagesReceived);
+        public operator this - (that:X10RTMessageStats) = this + (-that);
+
+        public def toString () = "[out:"+bytesSent+"/"+messagesSent+" in:"+bytesReceived+"/"+messagesReceived+"]";
+    }
+
+    public static struct X10RTStats {
+        public def this () {
+            this.msg = X10RTMessageStats();
+            this.put = X10RTMessageStats();
+            this.putCopiedBytesSent = 0;
+            this.putCopiedBytesReceived = 0;
+            this.get = X10RTMessageStats();
+            this.getCopiedBytesSent = 0;
+            this.getCopiedBytesReceived = 0;
+        }
+        public def this (msg:X10RTMessageStats,
+                         put:X10RTMessageStats, putCopiedBytesSent:Long, putCopiedBytesReceived:Long,
+                         get:X10RTMessageStats, getCopiedBytesSent:Long, getCopiedBytesReceived:Long) {
+            this.msg = msg;
+            this.put = put;
+            this.putCopiedBytesSent = putCopiedBytesSent;
+            this.putCopiedBytesReceived = putCopiedBytesReceived;;
+            this.get = get;
+            this.getCopiedBytesSent = getCopiedBytesSent;
+            this.getCopiedBytesReceived = getCopiedBytesReceived;
+
+        }
+
+        public msg:X10RTMessageStats;
+
+        public put:X10RTMessageStats;
+        public putCopiedBytesSent:Long;
+        public putCopiedBytesReceived:Long;
+
+        public get:X10RTMessageStats;
+        public getCopiedBytesSent:Long;
+        public getCopiedBytesReceived:Long;
+
+        public operator + this = this;
+        public operator - this = X10RTStats(-msg,
+                                            -put,-putCopiedBytesSent,-putCopiedBytesReceived,
+                                            -get,-getCopiedBytesSent,-getCopiedBytesReceived);
+        public operator this + (that:X10RTStats) = X10RTStats(msg+that.msg,
+                                                              put+that.put,
+                                                              putCopiedBytesSent+that.putCopiedBytesSent,
+                                                              putCopiedBytesReceived+that.putCopiedBytesReceived,
+                                                              get+that.get,
+                                                              getCopiedBytesSent+that.getCopiedBytesSent,
+                                                              getCopiedBytesReceived+that.getCopiedBytesReceived);
+        public operator this - (that:X10RTStats) = this + (-that);
+
+        public def toString () = 
+            "msg:"+msg+
+            " put:"+put+
+            " putCopiedBytesSent:"+putCopiedBytesSent+
+            " putCopiedBytesReceived:"+putCopiedBytesReceived+
+            " get:"+get+
+            " getCopiedBytesSent:"+getCopiedBytesSent+
+            " getCopiedBytesReceived:"+getCopiedBytesReceived;
+    }
+
+
+    /** Fetch the current state of the X10RT-level counters, including Array.asyncCopy (i.e. get/put) information. */
+    public static def getX10RTStats () {
+        @Native("c++", "return x10aux::get_X10RTStats<x10::lang::Runtime__X10RTStats,x10::lang::Runtime__X10RTMessageStats>();")
+        {
+            return X10RTStats();
+        }
+    }
+
+    /** Fetch the current state of the X10RT-level counters, excluding anything related to Array.asyncCopy */
+    public static def getX10RTMessageStats () = getX10RTStats().msg;
 
     // Methods for explicit memory management
 
@@ -200,6 +316,15 @@ import x10.util.concurrent.SimpleLatch;
         return DEFAULT_STATIC_THREADS;
     }
 
+    private static def x10_warn_on_thread_creation():Boolean {
+        try {
+            val v = env.getOrThrow("X10_WARN_ON_THREAD_CREATION");
+            return !(v.equalsIgnoreCase("false") || v.equalsIgnoreCase("f") || v.equals("0"));
+        } catch (NoSuchElementException) {
+        }
+        return DEFAULT_STATIC_THREADS;
+    }
+
     /**
      * The number of logical processors available on the host.
      */
@@ -214,6 +339,7 @@ import x10.util.concurrent.SimpleLatch;
     @PerProcess public static NTHREADS = x10_nthreads();
     @PerProcess public static MAX_THREADS = x10_max_threads();
     @PerProcess public static STATIC_THREADS = x10_static_threads();
+    @PerProcess public static WARN_ON_THREAD_CREATION = x10_warn_on_thread_creation();
 
     //Work-Stealing Runtime Related Interface
     
@@ -333,7 +459,7 @@ import x10.util.concurrent.SimpleLatch;
         def available():Int = permits;
     }
 
-    @Pinned public final static class Worker extends Thread {
+    @Pinned public final static class Worker extends Thread implements CustomSerialization {
         // bound on loop iterations to help j9 jit
         private static BOUND = 100;
 
@@ -386,9 +512,7 @@ import x10.util.concurrent.SimpleLatch;
         }
 
         // inner loop to help j9 jit
-        @TempNoInline_1
         private def loop():Boolean {
-            @TempNoInline_1
             for (var i:Int = 0; i < BOUND; i++) {
                 activity = poll();
                 if (activity == null) {
@@ -396,13 +520,12 @@ import x10.util.concurrent.SimpleLatch;
                     if (activity == null) return false;
                 }
                 activity.run();
+                deallocObject(activity);
             }
             return true;
         }
 
-        @TempNoInline_1
         def probe():void {
-            @TempNoInline_1
             // process all queued activities
             val tmp = activity; // save current activity
             event_probe();
@@ -413,6 +536,7 @@ import x10.util.concurrent.SimpleLatch;
                     return;
                 }
                 activity.run();
+                deallocObject(activity);
             }
         }
 
@@ -424,9 +548,7 @@ import x10.util.concurrent.SimpleLatch;
         }
 
         // inner loop to help j9 jit
-        @TempNoInline_1
         private def loop2(latch:SimpleLatch):Boolean {
-            @TempNoInline_1
             for (var i:Int = 0; i < BOUND; i++) {
                 if (latch()) return false;
                 activity = poll();
@@ -436,6 +558,7 @@ import x10.util.concurrent.SimpleLatch;
 //                    return false;
 //                }
                 activity.run();
+                deallocObject(activity);
             }
             return true;
         }
@@ -454,6 +577,23 @@ import x10.util.concurrent.SimpleLatch;
             if (!STATIC_THREADS) {
                 super.unpark();
             }
+        }
+        
+        /**
+         * Serialization of Worker objects is forbidden.
+         * @throws UnsupportedOperationException
+         */
+        public def serialize():SerialData {
+        	throw new UnsupportedOperationException("Cannot serialize "+typeName());
+        }
+
+        /**
+         * Serialization of Worker objects is forbidden.
+         * @throws UnsupportedOperationException
+         */
+        public def this(a:SerialData) {
+        	super(a);
+        	throw new UnsupportedOperationException("Cannot deserialize "+typeName());
         }
     }
 
@@ -503,8 +643,11 @@ import x10.util.concurrent.SimpleLatch;
                 val i = size++;
                 lock.unlock();
                 if (i >= MAX_THREADS) {
-                    println("TOO MANY THREADS... ABORTING");
+                    println(here+": TOO MANY THREADS... ABORTING");
                     System.exit(1);
+                }
+                if (WARN_ON_THREAD_CREATION) {
+                    println(here+": WARNING: A new OS-level thread was created (there are now "+size+" threads).");
                 }
                 val worker = new Worker(i);
                 workers(i) = worker;
@@ -619,13 +762,15 @@ import x10.util.concurrent.SimpleLatch;
                 // (happens when main activity terminates)
                 pool(NTHREADS);
 
-                // root finish has terminated, kill remote processes if any
-                for (var i:Int=1; i<Place.MAX_PLACES; i++) {
-                    runClosureAt(i, ()=> @x10.compiler.RemoteInvocation {pool.latch.release();});
-                }
-
                 // we need to call waitForFinish here to see the exceptions thrown by main if any
-                rootFinish.waitForFinish();
+                try {
+                    rootFinish.waitForFinish();
+                } finally {
+                    // root finish has terminated, kill remote processes if any
+                    for (var i:Int=1; i<Place.MAX_PLACES; i++) {
+                        runClosureAt(i, ()=> @x10.compiler.RemoteInvocation {pool.latch.release();});
+                    }
+                }
             } else {
                 // wait for thread pool to die
                 // (happens when a kill signal is received from place 0)
@@ -649,6 +794,10 @@ import x10.util.concurrent.SimpleLatch;
      * Run async at
      */
     public static def runAsync(place:Place, clocks:Rail[Clock], body:()=>void):void {
+    	runAsync(place, clocks, body, 0);
+    }
+    
+    public static def runAsync(place:Place, clocks:Rail[Clock], body:()=>void, endpoint:Int):void {
         // Do this before anything else
         val a = activity();
         a.ensureNotInAtomic();
@@ -660,13 +809,17 @@ import x10.util.concurrent.SimpleLatch;
             execute(new Activity(deepCopy(body), state, clockPhases));
         } else {
             val closure = ()=> @x10.compiler.RemoteInvocation { execute(new Activity(body, state, clockPhases)); };
-            runClosureCopyAt(place.id, closure);
+            runClosureCopyAt(place.id, closure, endpoint);
             dealloc(closure);
         }
         dealloc(body);
     }
-
+    
     public static def runAsync(place:Place, body:()=>void):void {
+    	runAsync(place, body, 0);
+    }
+
+    public static def runAsync(place:Place, body:()=>void, endpoint:Int):void {
         // Do this before anything else
         val a = activity();
         a.ensureNotInAtomic();
@@ -676,7 +829,7 @@ import x10.util.concurrent.SimpleLatch;
         if (place.id == hereInt()) {
             execute(new Activity(deepCopy(body), state));
         } else {
-            runAsyncAt(place.id, body, state); // optimized case
+            runAsyncAt(place.id, body, state, endpoint); // optimized case
         }
         dealloc(body);
     }
@@ -713,6 +866,10 @@ import x10.util.concurrent.SimpleLatch;
      * Run @Uncounted async at
      */
     public static def runUncountedAsync(place:Place, body:()=>void):void {
+    	runUncountedAsync(place, body, 0);
+    }
+    
+    public static def runUncountedAsync(place:Place, body:()=>void, endpoint:Int):void {
         // Do this before anything else
         val a = activity();
         a.ensureNotInAtomic();
@@ -721,7 +878,7 @@ import x10.util.concurrent.SimpleLatch;
             execute(new Activity(deepCopy(body), FinishState.UNCOUNTED_FINISH));
         } else {
             val closure = ()=> @x10.compiler.RemoteInvocation { execute(new Activity(body, FinishState.UNCOUNTED_FINISH)); };
-            runClosureCopyAt(place.id, closure);
+            runClosureCopyAt(place.id, closure, endpoint);
             dealloc(closure);
         }
         dealloc(body);
@@ -754,6 +911,11 @@ import x10.util.concurrent.SimpleLatch;
      * Run at statement
      */
     public static def runAt(place:Place, body:()=>void):void {
+        runAt(place, body, 0);
+    }
+
+    public static def runAt(place:Place, body:()=>void, endpoint:Int):void {
+        // for now the endpoint parameter is ignored
         Runtime.ensureNotInAtomic();
         if (place.id == hereInt()) {
             try {
@@ -798,7 +960,7 @@ import x10.util.concurrent.SimpleLatch;
      */
     static class Remote[T] extends RemoteControl {
         public def this() { super(); }
-        private def this(Any) {
+        private def this(SerialData) {
             throw new UnsupportedOperationException("Cannot deserialize "+typeName());
         }
         var t:Box[T] = null;
@@ -950,6 +1112,7 @@ import x10.util.concurrent.SimpleLatch;
         val a = activity();
         val finishState = a.swapFinish(f);
         finishState.waitForFinish();
+        deallocObject(finishState);
     }
 
     /**

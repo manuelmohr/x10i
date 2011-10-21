@@ -14,6 +14,7 @@ package x10.ast;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import polyglot.ast.AmbExpr;
 import polyglot.ast.AmbTypeNode_c;
@@ -49,6 +50,7 @@ import polyglot.types.TypeSystem;
 import polyglot.types.Types;
 import polyglot.util.CodeWriter;
 import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
+import polyglot.util.CodedErrorInfo;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import polyglot.util.TypedList;
@@ -116,10 +118,6 @@ public class AmbMacroTypeNode_c extends X10AmbTypeNode_c implements AmbMacroType
     
     public List<Expr> args() {
         return this.args;
-    }
-    Flags flags;
-    public void addFlags(Flags f) {
-  	  this.flags = f;
     }
     public AmbMacroTypeNode args(List<Expr> args) {
 	    AmbMacroTypeNode_c n = (AmbMacroTypeNode_c) copy();
@@ -202,7 +200,12 @@ public class AmbMacroTypeNode_c extends X10AmbTypeNode_c implements AmbMacroType
         	throw new SemanticException("Annotation type must be an interface.", position());
             }
 
-            ex = new SemanticException("Could not find type \"" +(prefix == null ? name.toString() : prefix.toString() + "." + name.toString()) + "\".", pos);
+            String typeName = (prefix == null ? name.toString() : prefix.toString() + "." + name.toString());
+            ex = new SemanticException("Could not find type \"" + typeName + "\".", pos);
+            Map<String, Object> map = CollectionFactory.newHashMap();
+            map.put(CodedErrorInfo.ERROR_CODE_KEY, CodedErrorInfo.ERROR_CODE_TYPE_NOT_FOUND);
+            map.put("TYPE", typeName);
+            ex.setAttributes(map);
         }
         catch (SemanticException e) {
             ex = e;
@@ -311,8 +314,14 @@ public class AmbMacroTypeNode_c extends X10AmbTypeNode_c implements AmbMacroType
             }
         }
 
-        if (ex == null)
-            ex = new SemanticException("Could not find type \"" + (prefix == null ? name.toString() : prefix.toString() + "." + name.toString()) + argsString() + "\".", pos);
+        if (ex == null) {
+        	String typeName =  (prefix == null ? name.toString() : prefix.toString() + "." + name.toString());
+            ex = new SemanticException("Could not find type \"" + typeName + argsString() + "\".", pos);
+            Map<String, Object> map = CollectionFactory.newHashMap();
+            map.put(CodedErrorInfo.ERROR_CODE_KEY, CodedErrorInfo.ERROR_CODE_TYPE_NOT_FOUND);
+            map.put("TYPE", typeName);
+            ex.setAttributes(map);
+        }
 
         throw ex;
     }
@@ -335,9 +344,18 @@ public class AmbMacroTypeNode_c extends X10AmbTypeNode_c implements AmbMacroType
         return sb.toString();
     }
     
+    public Context enterChildScope(Node child, Context c) {
+        if (child != this.prefix) {
+            TypeSystem ts = c.typeSystem();
+            c = c.pushDepType(Types.<Type>ref(ts.unknownType(this.position)));
+        }
+        Context cc = super.enterChildScope(child, c);
+        return cc;
+    }
+    
     public Node typeCheckOverride(Node parent, ContextVisitor tc) {
-        TypeSystem ts =  tc.typeSystem();
-        NodeFactory nf = (NodeFactory) tc.nodeFactory();
+        TypeSystem ts = tc.typeSystem();
+        NodeFactory nf = tc.nodeFactory();
         
         AmbMacroTypeNode_c n = this;
         
@@ -380,7 +398,7 @@ public class AmbMacroTypeNode_c extends X10AmbTypeNode_c implements AmbMacroType
         	IllegalConstraint error;
         	@Override
         	public Node override(Node n) {
-        		if (n instanceof Binary ) {
+        		if (n instanceof Binary) {
         			Binary b = (Binary) n;
         			Binary.Operator bop = b.operator();
         			if (b.type().isBoolean() && bop.equals(Binary.COND_AND) 
@@ -398,13 +416,27 @@ public class AmbMacroTypeNode_c extends X10AmbTypeNode_c implements AmbMacroType
         		return null;
         	}
         }
-        CheckMacroCallArgsVisitor v = new CheckMacroCallArgsVisitor();
         for (Expr arg : args) {
-        	arg = (Expr) arg.visit(v);
-        	if (v.error !=null) {
-        		Errors.issue(tc.job(), v.error);
-        	}
+            CheckMacroCallArgsVisitor v = new CheckMacroCallArgsVisitor();
+            arg.visit(v);
+            if (v.error != null) {
+                Errors.issue(tc.job(), v.error, arg);
+            }
         }
+
+        for (Expr arg : args) {
+            VarChecker ac = (VarChecker) new VarChecker(childtc.job()).context(childtc.context());
+            try {
+                arg.visit(ac);
+            } catch (InternalCompilerError e) {
+                Errors.issue(childtc.job(),
+                        new Errors.GeneralError(e.getMessage(), e.position()), arg);
+            }
+            if (ac.error != null) {
+                Errors.issue(childtc.job(), ac.error, arg);
+            }
+        }
+
         try {
             tn = n.disambiguateBase(tc);
         }
@@ -482,19 +514,6 @@ public class AmbMacroTypeNode_c extends X10AmbTypeNode_c implements AmbMacroType
     	result = (X10CanonicalTypeNode) ((X10Del) result.del()).annotations(((X10Del) n.del()).annotations());
     	result = (X10CanonicalTypeNode) ((X10Del) result.del()).setComment(((X10Del) n.del()).comment());
     	result = (X10CanonicalTypeNode) result.typeCheck(childtc);
-    	{
-    	    VarChecker ac = (VarChecker) new VarChecker(childtc.job()).context(childtc.context());
-    	    try {
-    	        result.visit(ac);
-    	    } catch (InternalCompilerError e) {
-    	        Errors.issue(childtc.job(),
-    	                new Errors.GeneralError(e.getMessage(), e.position()), result);
-    	    }
-    	    
-    	    if (ac.error != null) {
-    	        Errors.issue(childtc.job(), ac.error, result);
-    	    }
-    	}
     	return result;
     }
     

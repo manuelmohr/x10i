@@ -11,17 +11,27 @@
 
 package x10.core;
 
+import x10.array.Array;
 import x10.rtt.NamedType;
 import x10.rtt.ParameterizedType;
 import x10.rtt.RuntimeType;
 import x10.rtt.Type;
 import x10.rtt.Types;
+import x10.x10rt.X10JavaDeserializer;
+import x10.x10rt.X10JavaSerializable;
+import x10.x10rt.X10JavaSerializer;
 
-public class Vec<T> extends x10.core.Struct {
+import java.io.IOException;
+
+public final class Vec<T> extends x10.core.Struct {
+
+    private static final long serialVersionUID = 1L;
+    private static final short _serialization_id = x10.x10rt.DeserializationDispatcher.addDispatcher(x10.x10rt.DeserializationDispatcher.ClosureKind.CLOSURE_KIND_NOT_ASYNC, Vec.class);
 
     public int size;
     public x10.array.Array<T> backing;
 
+    @Override
     public Vec<T> clone() {
         return new Vec<T>(T, this);
     }
@@ -52,11 +62,12 @@ public class Vec<T> extends x10.core.Struct {
         oos.defaultWriteObject();
     }
     
+    // constructor just for allocation
     public Vec(java.lang.System[] $dummy) {
         super($dummy);
     }
 
-    public Vec $init(final Type<T> T, final int s) {
+    public Vec<T> $init(final Type<T> T, final int s) {
         this.T = T;
         this.size = s;
         this.backing = x10.array.Array.<T> $make(T, size);
@@ -69,23 +80,27 @@ public class Vec<T> extends x10.core.Struct {
         this.backing = x10.array.Array.<T> $make(T, size);
     }
 
-    public Vec $init(final Type<T> T, Vec<T> other) {
+    public Vec<T> $init(final Type<T> T, Vec<T> other) {
         this.T = T;
         this.size = other.size;
-        this.backing = x10.array.Array.<T> $make(T, other.size);
-        for (int i = 0; i < this.size; ++i) {
-            this.backing.$set_1_$$x10$array$Array_T$G(i, other.backing.$apply$G(i));
-        }
+        // optimized
+//        this.backing = x10.array.Array.<T> $make(T, other.size);
+//        for (int i = 0; i < this.size; ++i) {
+//            this.backing.$set_1x10$array$Array$$T$G(i, other.backing.$apply$G(i));
+//        }
+        this.backing = x10.array.Array.<T> $make(T, other.backing, (java.lang.Class<?>[][][][][][]) null);
         return this;
     }
 
     public Vec(final Type<T> T, Vec<T> other) {
         this.T = T;
         this.size = other.size;
-        this.backing = x10.array.Array.<T> $make(T, other.size);
-        for (int i = 0; i < this.size; ++i) {
-            this.backing.$set_1_$$x10$array$Array_T$G(i, other.backing.$apply$G(i));
-        }
+        // optimized
+//        this.backing = x10.array.Array.<T> $make(T, other.size);
+//        for (int i = 0; i < this.size; ++i) {
+//            this.backing.$set_1x10$array$Array$$T$G(i, other.backing.$apply$G(i));
+//        }
+        this.backing = x10.array.Array.<T> $make(T, other.backing, (java.lang.Class<?>[][][][][][]) null);
     }
 
     // zero value constructor
@@ -104,7 +119,7 @@ public class Vec<T> extends x10.core.Struct {
     }
 
     final public T set(final int i, final T v) {
-        return backing.$set_1_$$x10$array$Array_T$G(i, v);
+        return backing.$set__1x10$array$Array$$T$G(i, v);
     }
 
     final public int size() {
@@ -113,10 +128,12 @@ public class Vec<T> extends x10.core.Struct {
 
     final native public java.lang.String typeName();
 
+    @Override
     final public java.lang.String toString() {
-        return "struct x10.util.Vec: size=" + size + " backing=" + this.backing;
+        return "struct x10.util.Vec: size=" + size;
     }
 
+    @Override
     final public int hashCode() {
         int result = 1;
         result = 8191 * result + ((java.lang.Object) this.size).hashCode();
@@ -124,35 +141,95 @@ public class Vec<T> extends x10.core.Struct {
         return result;
     }
 
-    final public boolean equals(java.lang.Object other) {
-        if (!Vec.$RTT.instanceof$(other, T)) {
-            return false;
+    // not needed
+//    @Override
+//    final public boolean equals(java.lang.Object other) {
+//        if (!Vec.$RTT.instanceOf(other, T)) return false;
+//        return this.equals_0$1x10$util$Vec$$T$2((Vec) Types.asStruct(new ParameterizedType(Vec.$RTT, T), other));
+//    }
+//
+//    final public boolean equals_0$1x10$util$Vec$$T$2(Vec other) {
+//        if (this.size != other.size) return false;
+//        for (int i = 0; i < this.size; ++i) {
+//            if (!this.backing.$apply$G(i).equals(other.backing.$apply$G(i))) return false;
+//        }
+//        return true;
+//    }
+
+    final public boolean _struct_equals$O(java.lang.Object otherObj) {
+        if (!Vec.$RTT.instanceOf(otherObj, T)) return false;
+        Vec<T> other = (Vec<T>) Types.asStruct(new ParameterizedType(Vec.$RTT, T), otherObj);
+        // optimized
+//      if (this.size != other.size) return false;
+//      for (int i = 0; i < this.size; ++i) {
+//          if (!this.backing.$apply$G(i).equals(other.backing.$apply$G(i))) return false;
+//      }
+//      return true;
+        Object thisValue = this.backing.raw.value;
+        Object otherValue = other.backing.raw.value;
+        if (T == Types.BYTE || T == Types.UBYTE) {
+            return java.util.Arrays.equals((byte[]) thisValue, (byte[]) otherValue);
         }
-        return this.equals_0_$_x10$util$Vec_T_$((Vec) Types.asStruct(new ParameterizedType(Vec.$RTT, T), other));
+        if (T == Types.SHORT || T == Types.USHORT) {
+            return java.util.Arrays.equals((short[]) thisValue, (short[]) otherValue);
+        }
+        if (T == Types.INT || T == Types.UINT) {
+            return java.util.Arrays.equals((int[]) thisValue, (int[]) otherValue);
+        }
+        if (T == Types.LONG || T == Types.ULONG) {
+            return java.util.Arrays.equals((long[]) thisValue, (long[]) otherValue);
+        }
+        if (T == Types.FLOAT) {
+            return java.util.Arrays.equals((float[]) thisValue, (float[]) otherValue);
+        }
+        if (T == Types.DOUBLE) {
+            return java.util.Arrays.equals((double[]) thisValue, (double[]) otherValue);
+        }
+        if (T == Types.CHAR) {
+            return java.util.Arrays.equals((char[]) thisValue, (char[]) otherValue);
+        }
+        if (T == Types.BOOLEAN) {
+            return java.util.Arrays.equals((boolean[]) thisValue, (boolean[]) otherValue);
+        }
+        return java.util.Arrays.equals((Object[]) thisValue, (Object[]) otherValue);
     }
 
-    final public boolean equals_0_$_x10$util$Vec_T_$(Vec other) {
-        if (this.size != other.size) return false;
-        for (int i = 0; i < this.size; ++i) {
-            if (this.backing.$apply$G(i) != other.backing.$apply$G(i)) return false;
-        }
-        return true;
-    }
-
-    final public boolean _struct_equals$O(java.lang.Object other) {
-        if (!Vec.$RTT.instanceof$(other, T)) return false;
-        return this._struct_equals_0_$_x10$util$Vec_T_$((Vec) Types.asStruct(new ParameterizedType(Vec.$RTT, T), other));
-    }
-
-    final public boolean _struct_equals_0_$_x10$util$Vec_T_$(Vec other) {
-        if (this.size != other.size) return false;
-        for (int i = 0; i < this.size; ++i) {
-            if (this.backing.$apply$G(i) != other.backing.$apply$G(i)) return false;
-        }
-        return true;
-    }
+    // not needed
+//    final public boolean _struct_equals_0$1x10$util$Vec$$T$2(Vec other) {
+//        if (this.size != other.size) return false;
+//        for (int i = 0; i < this.size; ++i) {
+//            if (!this.backing.$apply$G(i).equals(other.backing.$apply$G(i))) return false;
+//        }
+//        return true;
+//    }
 
     final public Vec<T> x10$util$Vec$$x10$util$Vec$this() {
         return this;
+    }
+
+    public void $_serialize(X10JavaSerializer serializer) throws IOException {
+        serializer.write(T);
+        serializer.write(size);
+        serializer.write(backing);
+    }
+
+    public short $_get_serialization_id() {
+        return _serialization_id;
+    }
+
+    public static X10JavaSerializable $_deserializer(X10JavaDeserializer deserializer) throws IOException {
+        Vec vec = new Vec(null);
+        deserializer.record_reference(vec);
+		return $_deserialize_body(vec, deserializer);
+	}
+
+    public static X10JavaSerializable $_deserialize_body(Vec vec, X10JavaDeserializer deserializer) throws IOException {
+        Type T = (Type) deserializer.readRef();
+        int size = deserializer.readInt();
+        x10.array.Array backing = (Array) deserializer.readRef();
+        vec.T = T;
+        vec.size = size;
+        vec.backing = backing;
+        return vec;
     }
 }

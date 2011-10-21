@@ -3,6 +3,8 @@
 	<name>x10.runtime</name>
 	<comment></comment>
 	<projects>
+		<project>x10.common</project>
+		<project>x10.constraints</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

@@ -11,12 +11,16 @@
 
 package x10.runtime.impl.java;
 
+import x10.io.SerialData;
 import x10.lang.Place;
 import x10.rtt.NamedType;
 import x10.rtt.RuntimeType;
 import x10.rtt.Type;
 import x10.rtt.Types;
+import x10.x10rt.X10JavaSerializer;
 import x10.x10rt.X10RT;
+
+import java.io.IOException;
 
 /**
  * @author Christian Grothoff
@@ -25,30 +29,34 @@ import x10.x10rt.X10RT;
  * @author tardieu
  */
 public class Thread extends java.lang.Thread implements x10.core.RefI {
-	private static final long serialVersionUID = 1L;
-	public static final RuntimeType<Thread> $RTT = new NamedType<Thread>("x10.lang.Thread", Thread.class, new Type<?>[] { Types.OBJECT });
+    private static final long serialVersionUID = 1L;
+    public static final RuntimeType<Thread> $RTT = new NamedType<Thread>("x10.lang.Thread", Thread.class, new Type<?>[] { Types.OBJECT });
     public RuntimeType<?> $getRTT() { return $RTT; }
     public Type<?> $getParam(int i) { return null; }
 
-	public static Thread currentThread() {
-		return (Thread) java.lang.Thread.currentThread();
-	}
+    public static Thread currentThread() {
+        return (Thread) java.lang.Thread.currentThread();
+    }
 
-	private Place home;    // the current place
+    private Place home;    // the current place
 	
-	public x10.core.fun.VoidFun_0_0 body;
+    public x10.core.fun.VoidFun_0_0 body;
 
-	public Thread(java.lang.System[] $dummy) {}
+    // constructor just for allocation
+    public Thread(java.lang.System[] $dummy) {}
+    public Thread(SerialData $dummy) {
+        throw new UnsupportedOperationException("Cannot deserialize Thread");
+    }
 
-	public Thread $init(String name) {
-	    setName(name);
+    public Thread $init(String name) {
+        setName(name);
         if (!(java.lang.Thread.currentThread() instanceof Thread)) {
             home = Place.place(X10RT.here());
         } else {
             home = currentThread().home();
         }
         return this;
-	}
+    }
 	
     public Thread(String name) {
         super(name);
@@ -70,11 +78,11 @@ public class Thread extends java.lang.Thread implements x10.core.RefI {
     public void $apply() {}
 
     /**
-	 * Return current place
-	 */
-	public Place home() {
-		return home;
-	}
+     * Return current place
+     */
+    public Place home() {
+        return home;
+    }
 
     public String name() {
         return getName();
@@ -117,4 +125,13 @@ public class Thread extends java.lang.Thread implements x10.core.RefI {
             throw e1;
         }
     }
+
+    public void $_serialize(X10JavaSerializer serializer) throws IOException {
+        throw new UnsupportedOperationException("Cannot serialize " + getClass());
+    }
+
+        public short $_get_serialization_id() {
+            throw new UnsupportedOperationException("Cannot serialize " + getClass());
+        }
+
 }

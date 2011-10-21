@@ -89,17 +89,18 @@ public class Random {
             return nextLong() & (n-1);
         }
 
-        // Get the next power of 2 greater than n
-        var pow2: long = 1;
-        while (pow2 < n)
-            pow2 <<= 1;
+        var mask: long = 1L;
+        while ((n & ~mask) != 0L) {
+            mask <<= 1;
+            mask |= 1L;
+        }
 
         // Keep generating numbers of the right size until we get
         // one in range.  The expected number of iterations is 2.
         var x: long;
 
         do {
-            x = nextLong() & (pow2-1);
+            x = nextLong() & mask;
         } while (x >= n);
 
         return x;
@@ -120,6 +121,8 @@ public class Random {
  * Based on the public domain implementation by Michael Brundage at:
  *
  * http://www.qbrundage.com/michaelb/pubs/essays/random_number_generation.html
+ * (Note: this implementation does not include tempering, which is critical if
+ * initializing the buffer with a LCG.)
  *
  * and the implementation described in the original paper:
  *
@@ -160,7 +163,12 @@ public class Random {
             index = 0;
             twist(MT);
         }
-        return MT(index++);
+        var y:Int = MT(index++);
+        y ^= (y >>> 11);
+        y ^= (y <<  7) & 0x9D2C5680;
+        y ^= (y << 15) & 0xEFC60000;
+        y ^= (y >>> 18);
+        return y;
     }
 
     private static def twist(MT:Rail[int]): void {
@@ -168,14 +176,14 @@ public class Random {
         var s: int;
         for (; i < N - M; i++) {
             s = (MT(i) & 0x80000000) | (MT(i+1) & 0x7FFFFFFF);
-            MT(i) = MT(i+M) ^ (s >> 1) ^ ((s & 1) * 0x9908B0DF);
+            MT(i) = MT(i+M) ^ (s >>> 1) ^ ((s & 1) * 0x9908B0DF);
         }
         for (; i < N-1; i++) {
             s = (MT(i) & 0x80000000) | (MT(i+1) & 0x7FFFFFFF);
-            MT(i) = MT(i-(N-M)) ^ (s >> 1) ^ ((s & 1) * 0x9908B0DF);
+            MT(i) = MT(i-(N-M)) ^ (s >>> 1) ^ ((s & 1) * 0x9908B0DF);
         }
     
         s = (MT(N-1) & 0x80000000) | (MT(0) & 0x7FFFFFFF);
-        MT(N-1) = MT(M-1) ^ (s >> 1) ^ ((s & 1) * 0x9908B0DF);
+        MT(N-1) = MT(M-1) ^ (s >>> 1) ^ ((s & 1) * 0x9908B0DF);
     }
 }

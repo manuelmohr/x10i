@@ -8,7 +8,7 @@
  *
  *  (C) Copyright IBM Corporation 2010.
  */
-package x10.optimizations.inlining;
+package x10.visit;
 
 import java.util.Map;
 import java.util.Set;
@@ -22,18 +22,24 @@ import polyglot.types.Name;
 import polyglot.visit.AlphaRenamer;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.NodeVisitor;
+import x10.ast.Closure;
 import x10.util.CollectionFactory;
 
-class X10AlphaRenamer extends AlphaRenamer {
+public class X10AlphaRenamer extends AlphaRenamer {
 
     protected Map<Name, LocalDef> localDefMap = CollectionFactory.newHashMap();
     protected TypeRewriter rewriter = new TypeRewriter(renamingMap, localDefMap);
     private ContextVisitor cv;
     
-    X10AlphaRenamer(ContextVisitor visitor) {
+    public X10AlphaRenamer(ContextVisitor visitor) {
+        this(visitor, true);
+    }
+    
+    public X10AlphaRenamer(ContextVisitor visitor, boolean clearOutOfScopeMaps) {
+        super(clearOutOfScopeMaps);
         cv = visitor;
     }
-
+    
     @Override
     public NodeVisitor enter(Node n) {
         if (n instanceof LocalDecl) {
@@ -44,18 +50,28 @@ class X10AlphaRenamer extends AlphaRenamer {
             Formal f = (Formal) n;
             localDefMap.put(f.name().id(), f.localDef());
         }
-        return super.enter(n);
+        X10AlphaRenamer res = (X10AlphaRenamer) super.enter(n);
+        if (n instanceof Closure) {
+            // [IP] Closures may have formals that shadow outer locals
+            Closure c = (Closure) n;
+            res = (X10AlphaRenamer) res.shallowCopy();
+            res.renamingMap = CollectionFactory.newHashMap(this.renamingMap);
+            for (Formal f : c.formals()) {
+                res.renamingMap.remove(f.name());
+            }
+        }
+        return res;
     }
 
     @Override
     public Node leave(Node old, Node n, NodeVisitor v) {
         Set<Name> s = null;
-        if (n instanceof Block) {
+        if (isNewScope(n)) {
             s = setStack.peek();
         }
         Node res = rewriter.transform(n, old, cv);
         res = super.leave(old, res, v);
-        if (res instanceof Block) {
+        if (clearMaps && isNewScope(res)) {
             localDefMap.keySet().removeAll(s);
         }
         return res;
