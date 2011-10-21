@@ -129,7 +129,6 @@
     </target>
 
     <target name="clean-x10doc">
-        <ant antfile="${x10.doc.location}/build.xml" target="clean" inheritAll="false" dir="${x10.doc.location}"/>
     </target>
 
     <target name="squeakyclean" depends="clean-java,clean-cpp,clean-bridge,clean-x10doc"/>
@@ -172,7 +171,6 @@
     </target>
     <target name="dist-bridge" depends="dist-java,bridge-jar"/>
     <target name="dist-x10doc" depends="init,compiler-jar">
-        <ant antfile="${x10.doc.location}/build.xml" target="dist" inheritAll="false" dir="${x10.doc.location}"/>
     </target>
     <target name="check-jar-cache" depends="init">
         <available property="lpg.jar.present" file="${lib}/${lpg.jar}"/>
