@@ -1529,7 +1529,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		// check if we have a constant condition
 		if(n.cond().isConstant()) {
 			@SuppressWarnings("boxing")
-			boolean cond = (Boolean)n.cond().constantValue();
+			boolean cond = (Boolean)n.cond().constantValue().toJavaObject();
 			if(cond) {
 				visitExpression(n.consequent());
 				// return node is automatically set.

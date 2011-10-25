@@ -69,7 +69,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(BooleanLit_c literal) {
 		Node jmp = con.newJmp();
-		if (literal.booleanValue()) {
+		if (literal.value()) {
 			trueBlock.addPred(jmp);
 		} else {
 			falseBlock.addPred(jmp);
