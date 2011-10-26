@@ -137,6 +137,7 @@ import x10firm.types.ParameterTypeMapping;
 import x10firm.visit.FirmCodeTemplate.FirmCodeCondTemplate;
 import x10firm.visit.FirmCodeTemplate.FirmCodeExprTemplate;
 import x10firm.visit.FirmCodeTemplate.FirmCodeStmtTemplate;
+import x10firm.visit.x10lib.X10NativeGenericSupport;
 
 import com.sun.jna.Platform;
 
@@ -177,6 +178,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private static final String X10_THROW_STUB     = "x10_throw_stub";
 	private static final String X10_ASSERT         = "x10_assert";
 	private static final String X10_STATIC_INITIALIZER = "x10_static_initializer";
+	
+	private static final X10NativeGenericSupport gen_support = new X10NativeGenericSupport();
 	
 	/** The current firm construction object */
 	OOConstruction con;
@@ -234,6 +237,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	
 	/** Do all post compile tasks */
 	public void genPostCompile() {
+		genGenericCode();
 		genStaticInitializationSupportCode();
 	}
 
@@ -266,6 +270,32 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			visitAppropriate(n.body());
 		
 		finishConstruction(method_entity, savedConstruction);
+	}
+	
+	// This queue holds a list of nodes (either MethodDecls or ClassDecls)
+	// and their corresponding mapping of parameter types.
+	private static Queue<GenericNodeInstance> workList = new LinkedList<GenericNodeInstance>();
+
+	private void addToWorklist(GenericNodeInstance other) {
+		// Check for duplicates.
+		for (GenericNodeInstance gi : workList)
+			if (gi.equals(other))
+				return;
+
+		workList.add(other);
+	}
+	
+	private void genGenericCode() {
+		
+		while (!workList.isEmpty()) {
+			final GenericNodeInstance head = workList.poll();
+			final ParameterTypeMapping ptm = head.getMapping();
+
+			firmTypeSystem.pushTypeMapping(ptm);
+			visitAppropriate(head.getNode());
+			firmTypeSystem.popTypeMapping(ptm);
+		}
+		
 	}
 	
 	/**
@@ -318,7 +348,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final firm.Type frameType = con.getGraph().getFrameType();
 		for (LocalInstance loc : locals) {
 			if (needEntityForLocalInstance(loc) && !map.containsKey(loc)) {
-				Entity ent = new Entity(frameType, loc.name().toString(), firmTypeSystem.asFirmCoreType(loc.type()));
+				final Entity ent = new Entity(frameType, loc.name().toString(), firmTypeSystem.asFirmCoreType(loc.type()));
 				map.put(loc, ent);
 			}
 		}
@@ -421,19 +451,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 	}
 
-	// This queue holds a list of nodes (either MethodDecls or ClassDecls)
-	// and their corresponding mapping of parameter types.
-	private Queue<GenericNodeInstance> workList = new LinkedList<GenericNodeInstance>();
-
-	private void addToWorklist(GenericNodeInstance other) {
-		// Check for duplicates.
-		for (GenericNodeInstance gi : workList)
-			if (gi.equals(other))
-				return;
-
-		workList.add(other);
-	}
-
 	private void visit(X10SourceFile_c sourceFile) {
 		for (TopLevelDecl topLevelDeclaration : sourceFile.decls()) {
 			if (topLevelDeclaration instanceof X10ClassDecl) {
@@ -441,15 +458,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				if (decl.typeParameters().isEmpty())
 					visit(decl);
 			}
-		}
-
-		while (!workList.isEmpty()) {
-			final GenericNodeInstance head = workList.poll();
-			final ParameterTypeMapping ptm = head.getMapping();
-
-			firmTypeSystem.pushTypeMapping(ptm);
-			visitAppropriate(head.getNode());
-			firmTypeSystem.popTypeMapping(ptm);
 		}
 	}
 
@@ -473,8 +481,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		firmContext = firmContext.popFirmContext();
 	}
 
-	private void createStructTypeNameMethodBody(final X10ClassDecl clazz, final MethodDecl_c meth) {
-		X10MethodDef def              = (X10MethodDef)meth.methodDef();
+	private void createStructTypeNameMethodBody(final X10ClassDecl clazz, final X10MethodDecl meth) {
+		X10MethodDef def = meth.methodDef();
 		final MethodInstance methInstance = def.asInstance();
 		final Position pos = Position.COMPILER_GENERATED;
 
@@ -512,23 +520,30 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 			for(ClassMember member : body.members()) {
 				if(member instanceof MethodDecl_c) {
-					final MethodDecl_c meth = (MethodDecl_c)member;
-					final X10MethodDef def              = (X10MethodDef)meth.methodDef();
+					final X10MethodDecl md = (X10MethodDecl)member;
+					final X10MethodDef def = md.methodDef();
 					final MethodInstance methodInstance = def.asInstance();
 					final String name = methodInstance.name().toString();
 
+					// Special case for typeName method -> must be created manually
 					if(name.equals("typeName") && def.formalNames().size() == 0) {
-						createStructTypeNameMethodBody(n, meth);
+						createStructTypeNameMethodBody(n, md);
 						continue;
 					}
+					
+					// don`t visit generic method declarations yet, because we don`t know the concrete type parameters. 
+					// See X10Call_c
+					if(md.typeParameters().isEmpty()) {
+						visitAppropriate(member);
+					}
+				} else {
+					visitAppropriate(member);
 				}
-				visitAppropriate(member);
 			}
 		}
 	}
 
 	private void visitClass(X10ClassDecl n) {
-
 		final ClassBody body = n.body();
 		final List<ClassMember> members = body.members();
 		if(!members.isEmpty()) {
@@ -578,15 +593,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	/**
 	 * Initializes a new construction
-	 * @param entity The method entities for which the a new construction should be inited.
+	 * @param entity The method entities for which the a new construction should be initialized
 	 * @param formals The formals of the given method entity
 	 * @param locals The locals of the given method entity
-	 * @param isStatic True if the method is static
-	 * @param proc The procedure instance
-	 * @param The owner of the procedure
+	 * 
+	 * @param owner The owner of the procedure
 	 * @return A reference to the current (saved) construction
 	 */
-	private OOConstruction initConstruction(final Entity entity, final List<LocalInstance> formals,
+	public OOConstruction initConstruction(final Entity entity, final List<LocalInstance> formals,
 			final List<LocalInstance> locals, final Flags flags, final Type retType, final X10ClassType owner) {
 		
 		final boolean isStatic = flags.isStatic();
@@ -617,8 +631,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		int idx = isStatic ? 0 : 1;
 
 		// init and map all parameters.
-		for (LocalInstance loc : formals) {
-			final Type type = loc.type();
+		for (final LocalInstance loc : formals) {
+			final Type type = x10TypeSystem.getContextType(loc.type());
 
 			if (firmTypeSystem.isFirmStructType(type)) {
 				final MethodType methodType = (MethodType)entity.getType();
@@ -637,7 +651,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 
 		// map all local variables.
-		for (LocalInstance loc : locals) {
+		for (final LocalInstance loc : locals) {
 			// map the local instance with the appropriate idx.
 			final Entity ent = map.get(loc);
 			if(ent != null) {
@@ -658,7 +672,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param entity The method entity for which the construction should be finished
 	 * @param savedConstruction A reference to the previous construction
 	 */
-	private void finishConstruction(Entity entity, OOConstruction savedConstruction) {
+	public void finishConstruction(Entity entity, OOConstruction savedConstruction) {
 		// create Return node if there was no explicit return statement yet
 		if (!con.getCurrentBlock().isBad()) {
 			final MethodType meth = (MethodType)entity.getType();
@@ -679,7 +693,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private void constructGraph(final Entity entity, final CodeBlock code, final List<LocalInstance> formals,
 			final List<LocalInstance> locals, final Flags flags, final Type retType, final X10ClassType owner) {
 
-		OOConstruction savedConstruction = initConstruction(entity, formals, locals, flags, retType, owner);
+		final OOConstruction savedConstruction = initConstruction(entity, formals, locals, flags, retType, owner);
 
 		// Walk body and construct graph
 		visitAppropriate(code.body());
@@ -700,8 +714,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final X10MethodDef def = (X10MethodDef) dec.methodDef();
 		final MethodInstance defInstance = def.asInstance();
 
+		boolean hasTypeParameters = !def.typeParameters().isEmpty();
 		MethodInstance methodInstance;
-		if (def.typeParameters().isEmpty())
+		if (!hasTypeParameters)
 			methodInstance = defInstance;
 		else {
 			// If we compile a generic method, asInstance() will give
@@ -718,16 +733,19 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			methodInstance = (MethodInstance) methodInstance.typeParameters(typeArguments);
 		}
 
-		final Entity         entity         = firmTypeSystem.getMethodEntity(methodInstance);
-		final Flags          flags          = methodInstance.flags();
+		final Flags flags = methodInstance.flags();
+		final List<LocalInstance> formals = defInstance.formalNames();
+		final Entity entity = firmTypeSystem.getMethodEntity(methodInstance);
+		final X10ClassType owner = (X10ClassType) methodInstance.container();
 
 		if (flags.isNative() || flags.isAbstract()) {
+			if(flags.isNative() && hasTypeParameters) {
+				boolean dispatch_ok = gen_support.dispatch(this, methodInstance, formals);
+				assert(dispatch_ok);
+			}
 			// native code is defined elsewhere, so nothing left to do
 			return;
 		}
-
-		final List<LocalInstance> formals = defInstance.formalNames();
-		final X10ClassType owner = (X10ClassType) methodInstance.container();
 
 		// extract all formals and locals from the method.
 		final List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(dec);
@@ -1254,14 +1272,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			ret = visitExpression(expr);
 		}
 
-		Node retNode = null;
-		if (ret != null) {
-			final Node mem = con.getCurrentMem();
-			retNode = con.newReturn(mem, new Node[]{ret});
-		} else {
-			final Node mem = con.getCurrentMem();
-			retNode = con.newReturn(mem, new Node[]{});
-		}
+		final Node mem = con.getCurrentMem();
+		final Node retNode = ret != null ? con.newReturn(mem, new Node[]{ret}) : con.newReturn(mem, new Node[]{});
 		assert(retNode != null);
 
 		/* for error detection */
@@ -1730,7 +1742,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param entity The entity for which the sel node from the current frame should be returned
 	 * @return The sel node for the given entity
 	 */
-	private Node getEntityFromCurrentFrame(final Entity entity) {
+	public Node getEntityFromCurrentFrame(final Entity entity) {
 		final Node frame = con.getGraph().getFrame();
 		final Node sel = con.newSel(frame, entity);
 		return sel;
@@ -1760,7 +1772,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 *
 	 * @return A proj node to the allocated memory.
 	 */
-	private Node genNewAlloc(final Type x10Type) {
+	private Node genHeapAlloc(final Type x10Type) {
 		final firm.Type refType  = firmTypeSystem.asFirmType(x10Type);
 		final firm.Type coreType = firmTypeSystem.asFirmCoreType(x10Type);
 		return genAlloc(refType, coreType, ir_where_alloc.heap_alloc);
@@ -1887,7 +1899,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			if (x10TypeSystem.isStructType(n.type()))
 				objectThisNode = genStackAlloc(type);
 			else
-				objectThisNode = genNewAlloc(type);
+				objectThisNode = genHeapAlloc(type);
 
 			assert (objectThisNode != null);
 
@@ -2247,7 +2259,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		assert(boxedField != null);
 
 		final Position pos = Position.COMPILER_GENERATED;
-		for(MethodInstance m : boxType.methods()) {
+		for(final MethodInstance m : boxType.methods()) {
 			final Flags flags = m.flags();
 			final Entity entity = firmTypeSystem.getMethodEntity(m);
 
@@ -2309,7 +2321,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/**
 	 * Set which holds initialized boxing types -> boxing types will be inited only once.
 	 */
-	private Set<Type> initedBoxingTypes = new HashSet<Type>();
+	private static Set<Type> initedBoxingTypes = new HashSet<Type>();
 
 	/**
 	 * Creates the appropriate firm graph for an autoboxing
@@ -2327,7 +2339,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 
 		// Generate the box
-		final Node box = genNewAlloc(boxType);
+		final Node box = genHeapAlloc(boxType);
 
 		// save the boxed value in the box
 		final FieldInstance boxValue = boxType.fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE));
@@ -2759,14 +2771,26 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/**
 	 * return current construction object
 	 */
-	OOConstruction getFirmConstruction() {
+	public OOConstruction getFirmConstruction() {
 		return con;
+	}
+	
+	public X10FirmContext getFirmContext() {
+		return firmContext;
+	}
+	
+	public GenericTypeSystem getX10TypeSystem() {
+		return x10TypeSystem;
+	}
+	
+	public X10NodeFactory_c getNodeFactory() {
+		return xnf;
 	}
 
 	/**
 	 * return FIRM type system
 	 */
-	FirmTypeSystem getFirmTypeSystem() {
+	public FirmTypeSystem getFirmTypeSystem() {
 		return firmTypeSystem;
 	}
 }

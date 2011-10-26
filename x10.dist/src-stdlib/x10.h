@@ -36,7 +36,7 @@ typedef struct {
 
 #define X10_OBJECT_HEADER x10_object_header head;
 
-typedef void         x10_any;
+typedef void        x10_any;
 
 typedef int64_t     x10_long;
 typedef uint64_t    x10_ulong;

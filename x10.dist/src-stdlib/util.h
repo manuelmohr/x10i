@@ -47,27 +47,34 @@ static inline void *x10_sysalloc(size_t size)
 	return malloc(size); 
 }
 
-static inline void x10_sysfree(void *data)
+static inline void x10_sysfree(void *ptr)
 {
-	free(data); 
+	free(ptr); 
 }
+
+static inline void *x10_sysrealloc(void *ptr, size_t size)
+{
+	return realloc(ptr, size);
+}
+
 
 static inline void* x10_malloc(size_t size)
 {
+	// TODO: Garbage collection, Out of memory exception
 	void *data = malloc(size);
-	// TODO Out of memory exception?
 	return data;
 }
 
-static inline void* x10_realloc(x10_object *obj, size_t size)
+static inline void* x10_realloc(void *ptr, size_t size)
 {
-	void *data = realloc(obj, size);
+	void *data = realloc(ptr, size);
 	// TODO Out of memory exception?
 	return data;
 }
 
 static inline void x10_free(void *obj)
 {
+	// TODO: Garbage collection
 	X10_UNUSED(obj);
 	// Do nothing
 }

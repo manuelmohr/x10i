@@ -152,7 +152,7 @@ public class MethodDeclFetcher {
 			return null;
 		}
 
-		if (null == decl[0].body()) {
+		if (!decl[0].flags().flags().isNative() && null == decl[0].body()) {
 			System.err.println("no declaration body for " + decl[0] + " (" + candidate + ")");
 			return null;
 		}

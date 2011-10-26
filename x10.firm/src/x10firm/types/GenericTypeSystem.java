@@ -9,6 +9,7 @@ import polyglot.types.Context;
 import polyglot.types.Type;
 import polyglot.types.Types;
 import x10.types.ParameterType;
+import x10.types.X10ClassType;
 import x10c.types.X10CTypeSystem_c;
 
 /**
@@ -54,15 +55,25 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	 * @param paramType		the key type, which is mapped to a value type
 	 * @return				the corresponding value type
 	 */
-	public polyglot.types.Type getConcreteType(ParameterType paramType) {
+	public Type getConcreteType(ParameterType paramType) {
 		polyglot.types.Type p = paramType;
 
 		while ((p = Types.baseType(p)) != null && super.isParameterType(p)) {
+			if(!typeParameters.containsKey(p)) {
+				System.out.println("");
+			}
 			assert (typeParameters.containsKey(p));
 			p = typeParameters.get(p);
 		}
 
 		return p;
+	}
+	
+	// TODO: Need other solution
+	public Type getContextType(final Type type) {
+		if(type instanceof ParameterType) 
+			return getConcreteType((ParameterType)type);
+		return type;
 	}
 
 	@Override
@@ -133,4 +144,13 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	public boolean isRefType(final Type type) {
 		return (type == Null() || isClass(type) || isInterfaceType(type)) && !isStructType(type);
 	}
+	
+	// Own additions for the native pointer type 
+    protected X10ClassType FirmPointer_;
+	
+    public X10ClassType FirmPointer() {
+        if (FirmPointer_ == null)
+            FirmPointer_ = load("x10.lang.FirmPointer");
+        return FirmPointer_;
+    }
 }

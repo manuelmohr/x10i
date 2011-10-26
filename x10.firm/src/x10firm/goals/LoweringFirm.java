@@ -42,6 +42,8 @@ public class LoweringFirm extends AllBarrierGoal {
 		final X10NodeFactory_c nodeFactory 			= (X10NodeFactory_c)info.nodeFactory();
 		final GenericTypeSystem x10TypeSystem 		= (GenericTypeSystem)info.typeSystem();
 		
+		firmTypeSystem.finishTypeSystem(); 
+		
 		// do post compile 
 		X10FirmCodeGenerator firmGen = new X10FirmCodeGenerator(compiler, firmTypeSystem, x10TypeSystem, nodeFactory, options);
 		firmGen.genPostCompile();
@@ -61,8 +63,6 @@ public class LoweringFirm extends AllBarrierGoal {
 				Dump.dumpGraph(g, "--fresh");
 			}
 		}
-		
-		firmTypeSystem.finishTypeSystem(); 
 		
 		OO.lowerProgram();
 		Util.lowerSels();
