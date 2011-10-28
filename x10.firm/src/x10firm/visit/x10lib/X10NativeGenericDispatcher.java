@@ -8,6 +8,9 @@ import polyglot.types.LocalInstance;
 import x10.types.MethodInstance;
 import x10firm.visit.X10FirmCodeGenerator;
 
+/**
+ * Dispatcher for native generic methods. 
+ */
 public abstract class X10NativeGenericDispatcher {
 	
 	private Map<String, X10NativeGenericMethodFirmGenerator> map = new HashMap<String, X10NativeGenericMethodFirmGenerator>();
@@ -22,10 +25,10 @@ public abstract class X10NativeGenericDispatcher {
 	}
 
 	/**
-	 * @param codeGenerator
-	 * @param meth
-	 * @param formals
-	 * @return
+	 * @param codeGenerator The firm code generator
+	 * @param meth The method instance
+	 * @param formals The formals of the method
+	 * @return True if the method could be dispatched
 	 */
 	public boolean dispatch(final X10FirmCodeGenerator codeGenerator, final MethodInstance meth, 
 							final List<LocalInstance> formals) {

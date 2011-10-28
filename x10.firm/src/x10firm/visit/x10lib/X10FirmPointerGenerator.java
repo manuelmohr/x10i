@@ -26,7 +26,7 @@ import x10firm.visit.X10VarEntry;
  */
 public class X10FirmPointerGenerator extends X10NativeGenericDispatcher {
 	/**
-	 *  Support code for the read method in x10.lang.FirmPointer
+	 *  Firm generator for the "read" method in x10.lang.FirmPointer
 	 */
 	static class GenRead implements X10NativeGenericMethodFirmGenerator {
 		@Override
@@ -89,7 +89,7 @@ public class X10FirmPointerGenerator extends X10NativeGenericDispatcher {
 	}
 	
 	/**
-	 *  Support code for the write method in x10.lang.NPointer
+	 *  Firm generator for the "write" method in x10.lang.FirmPointer
 	 */
 	static class GenWrite implements X10NativeGenericMethodFirmGenerator {
 		@Override

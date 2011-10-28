@@ -59,9 +59,6 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		polyglot.types.Type p = paramType;
 
 		while ((p = Types.baseType(p)) != null && super.isParameterType(p)) {
-			if(!typeParameters.containsKey(p)) {
-				System.out.println("");
-			}
 			assert (typeParameters.containsKey(p));
 			p = typeParameters.get(p);
 		}

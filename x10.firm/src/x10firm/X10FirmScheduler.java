@@ -75,11 +75,13 @@ class X10FirmScheduler extends X10Scheduler {
         final Goal cg = codegenPrereq(job);
         for (Goal g : superGoals) {
             if (g == cg) {
+                goals.add(StaticNestedClassRemover(job));
                 goals.add(StaticInitializer(job));
                 goals.add(ClosureRemover(job));
             }
             goals.add(g);
         }
+        
         return goals;
     }
     
@@ -125,7 +127,7 @@ class X10FirmScheduler extends X10Scheduler {
     private Goal ClosureRemover(Job job) {
         TypeSystem ts = extInfo.typeSystem();
         NodeFactory nf = extInfo.nodeFactory();
-		return new ValidatingVisitorGoal("ClosureRemoved", job, new ClosureRemover(job, ts, nf)).intern(this);
+		return new ValidatingVisitorGoal("ClosureRemover", job, new ClosureRemover(job, ts, nf)).intern(this);
 	}
     
     private Goal StaticInitializer(Job job) {

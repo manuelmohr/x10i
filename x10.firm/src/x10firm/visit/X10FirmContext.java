@@ -118,7 +118,7 @@ public class X10FirmContext {
 	public X10VarEntry getVarEntry(VarInstance<?> var) {
 		return varEntryMapper.get(var);
 	}
-
+	
 	/** Pushes a new firm scope
 	 * @param scope The firm scope which should be pushed
 	 * @return The new firm scope

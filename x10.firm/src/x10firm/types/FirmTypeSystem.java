@@ -696,8 +696,10 @@ public class FirmTypeSystem {
 		else if (t.typeArguments() != null && !t.typeArguments().isEmpty()) {
 			List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
 			for (polyglot.types.Type typeArg : t.typeArguments())
-				if (typeArg.getClass() == ParameterType.class)  // No constrained types here.
+				if (typeArg instanceof ParameterType)  // No constrained types here.
 					typeArguments.add(x10TypeSystem.getConcreteType((ParameterType) typeArg));
+				else
+					typeArguments.add(typeArg);
 
 			if (!typeArguments.isEmpty())
 				return t.typeArguments(typeArguments);

@@ -288,12 +288,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private void genGenericCode() {
 		
 		while (!workList.isEmpty()) {
-			final GenericNodeInstance head = workList.poll();
+			final GenericNodeInstance head = workList.peek();
 			final ParameterTypeMapping ptm = head.getMapping();
 
 			firmTypeSystem.pushTypeMapping(ptm);
 			visitAppropriate(head.getNode());
 			firmTypeSystem.popTypeMapping(ptm);
+			
+			workList.poll();
 		}
 		
 	}
@@ -1658,16 +1660,16 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			ParameterTypeMapping ptm = new ParameterTypeMapping();
 			addToMapping(ptm, paramTypes, actualTypes);
 
+			X10ClassType ct = (X10ClassType) Types.stripConstraints(n.target().type());
+			X10ClassDef def = ct.def();
+			
 			// If this is a generic method defined inside a generic class,
 			// also save the type mapping for the generic class.
 			// We do not have to remember to instantiate this class
 			// with the given type argument here, because this must have already
 			// happened before when someone created the object that we call the
 			// method on.
-			if (n.target() != null && x10TypeSystem.isClass(n.target().type())) {
-				X10ClassType ct = (X10ClassType) Types.stripConstraints(n.target().type());
-				X10ClassDef def = ct.def();
-
+			if (!def.typeParameters().isEmpty()) {
 				final List<ParameterType> cParamTypes = def.typeParameters();
 				final List<Type> cActualTypes = ct.typeArguments();
 
@@ -1676,8 +1678,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 			// Remember the parameter type configuration to generate code later.
 			addToWorklist(new GenericNodeInstance(decl, ptm));
-		}
-
+		} 
 		final Node ret = genX10Call(methodInstance, n.arguments(), n.target());
 		setReturnNode(ret);
 	}
@@ -1753,7 +1754,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final LocalInstance loc = n.localInstance();
 
 		final X10VarEntry var = firmContext.getVarEntry(loc);
-
+		
 		assert(var != null);
 
 		if(var.getType() == X10VarEntry.STRUCT) {

@@ -1,11 +1,9 @@
 package x10firm.types;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import polyglot.types.ContainerType;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
 import polyglot.types.LocalInstance;
@@ -17,7 +15,6 @@ import x10.types.MethodInstance;
 import x10.types.ParameterType;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
-import x10.types.X10ParsedClassType;
 
 /**
  * Name mangler which mangles X10 type objects to unique names
@@ -141,7 +138,7 @@ public class X10NameMangler {
 	/**
 	 * Initializes mapping between primitive types and the appropriate name mangles.
 	 */
-	private static void setupPrimitiveTypeNameMangling() {
+	private static void setupPrimitiveTypesNameMangling() {
 		primMangleTable.put(x10TypeSystem.Long(),    "x");
 		primMangleTable.put(x10TypeSystem.ULong(),   "y");
 		primMangleTable.put(x10TypeSystem.Int(),     "i");
@@ -165,7 +162,7 @@ public class X10NameMangler {
 		x10TypeSystem = x10TypeSystem_;
 		setupUnOpSubstitutions();
 		setupNameSubstitutions();
-		setupPrimitiveTypeNameMangling();
+		setupPrimitiveTypesNameMangling();
 	}
 
 	/**
