@@ -117,6 +117,7 @@ import x10.ast.X10NodeFactory_c;
 import x10.ast.X10SourceFile_c;
 import x10.ast.X10Special_c;
 import x10.ast.X10Unary_c;
+import x10.types.ConstrainedType;
 import x10.types.MethodInstance;
 import x10.types.ParameterType;
 import x10.types.TypeParamSubst;
@@ -739,7 +740,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final List<LocalInstance> formals = defInstance.formalNames();
 		final Entity entity = firmTypeSystem.getMethodEntity(methodInstance);
 		final X10ClassType owner = (X10ClassType) methodInstance.container();
-
+		
 		if (flags.isNative() || flags.isAbstract()) {
 			if(flags.isNative() && hasTypeParameters) {
 				boolean dispatch_ok = gen_support.dispatch(this, methodInstance, formals);
@@ -1303,7 +1304,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 					// Optimization: initExpr is a constructor call
 					// Do a direct constructor call without copying the return value of the constructor call */
 					final New_c new_c = (New_c)initExpr;
-					genConstructorCall(sel, new_c.constructorInstance(), new_c.arguments());
+					genNew(sel, new_c);
 				} else {
 					// Hmm not a "new" call -> we must copy the return node of the initExpr.
 					final Node initNode = visitExpression(initExpr);
@@ -1713,7 +1714,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	/**
-	 * @param expr	an X10 Expr node
+	 * @param expr	an X10 expression node
 	 * @return a Firm node containing the result value of the expression
 	 */
 	public Node visitExpression(Expr expr) {
@@ -1800,14 +1801,16 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		con.setCurrentMem(newMem);
 		return res;
 	}
-
+	
 	/**
 	 * Generate the appropriate nodes for a constructor call
 	 * @param objectThisNode The this pointer for the constructor call (implicit first parameter)
 	 * @param instance The constructor instance
 	 * @param args The arguments of the constructor call (without the implicit this pointer)
 	 */
-	private void genConstructorCall(final Node objectThisNode, final X10ConstructorInstance instance, final List<Expr> args) {
+	private void genConstructorCall(final Node objectThisNode, 
+			final X10ConstructorInstance instance, 
+			final List<Expr> args) {
 		assert (instance != null);
 		
 		/* invoke class constructor */
@@ -1835,7 +1838,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		con.setCurrentMem(newMem);
 	}
 
-	private Node genNativeConstructorCall(final X10ConstructorInstance instance, final List<Expr> args) {
+	private Node genNativeConstructorCall(final X10ConstructorInstance instance, 
+			final List<Expr> args) {
 		assert (instance != null);
 
 		final Entity entity = firmTypeSystem.getConstructorEntity(instance);
@@ -1868,13 +1872,32 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		return ret;
 	}
+	
+	/** Returns the base type of a given type
+	 * 
+	 * @param type The type for which the base type should be returned
+	 * @return The base type of the given type
+	 */
+	private Type getBaseType(final Type type) {
+		if(type instanceof ConstrainedType) 
+			return ((ConstrainedType)type).baseType().get();
+		return type;
+	}
+	
+	/**
+	 * Generate firm graph for a new call 
+	 * @param objectThisNode The firm node of the "this" pointer. "null" if the "this" pointer was not allocated yet.
+	 * 		  1.) var x: MyStruct = new MyStruct(); -> "x" will be used as the "this" pointer. 
+	 * 		  2.) new MyStruct(); -> no preallocated "this" pointer -> create a new one.  
+	 * @param n The "new" node
+	 */
+	private void genNew(final Node objectThisNode, final New_c n) {
+		final Type base_type = getBaseType(n.objectType().type());
+		final X10ClassType type = (X10ClassType)base_type;
 
-	@Override
-	public void visit(New_c n) {
-		final Type type = n.objectType().type();
-		Node objectThisNode = null;
-
-		if (!n.typeArguments().isEmpty()) {
+		final boolean hasTypeArguments = type.typeArguments() != null && !type.typeArguments().isEmpty();
+		
+		if (hasTypeArguments) {
 			final ConstructorInstance ci = n.constructorInstance();
 
 			// Find the class declaration.
@@ -1892,21 +1915,29 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			// Remember the parameter type configuration to generate code later.
 			addToWorklist(new GenericNodeInstance(decl, ptm));
 		}
-
+		
 		if (n.constructorInstance().container() == x10TypeSystem.String()) {
+			assert(objectThisNode == null);
 			final Node obj = genNativeConstructorCall(n.constructorInstance(), n.arguments());
 			setReturnNode(obj);
 		} else {
-			if (x10TypeSystem.isStructType(n.type()))
-				objectThisNode = genStackAlloc(type);
-			else
-				objectThisNode = genHeapAlloc(type);
+			Node objectNode = objectThisNode;
+			if (objectNode == null) {
+				if (x10TypeSystem.isStructType(n.type()))
+					objectNode = genStackAlloc(type);
+				else
+					objectNode = genHeapAlloc(type);
+			}
+			assert (objectNode != null);
 
-			assert (objectThisNode != null);
-
-			genConstructorCall(objectThisNode, n.constructorInstance(), n.arguments());
-			setReturnNode(objectThisNode);
+			genConstructorCall(objectNode, n.constructorInstance(), n.arguments());
+			setReturnNode(objectNode);
 		}
+	}
+
+	@Override
+	public void visit(New_c n) {
+		genNew(null, n);
 	}
 
 	private TargetValue getFloatLitTargetValue(FloatLit_c literal) {
