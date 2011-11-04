@@ -2,7 +2,6 @@ package x10firm.types;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -122,8 +121,18 @@ public class FirmTypeSystem {
 		this.x10Context    = new Context(this.x10TypeSystem);
 	}
 
-	private String getUniqueBoxingName(final String structName) {
-		return structName + "__FirmBox__";
+	private String getUniqueBoxingName(final X10ClassType clazz) {
+		final StringBuffer buf = new StringBuffer();
+		buf.append(clazz.name().toString());
+		// handle type arguments
+		if(clazz.typeArguments() != null && !clazz.typeArguments().isEmpty()) {
+			buf.append("_");
+			for(final polyglot.types.Type type_arg : clazz.typeArguments())
+				buf.append(type_arg.name().toString());
+			buf.append("_");
+		}
+		buf.append("_FirmBox_");
+		return buf.toString();
 	}
 	
 	private boolean inited = false; 
@@ -203,10 +212,12 @@ public class FirmTypeSystem {
 
 	/**
 	 * Returns the boxing type for a given struct type
-	 * @param type The type for which the boxing type should be returned
+	 * @param type_ The type for which the boxing type should be returned
 	 * @return The boxing type for the given struct type
 	 */
-	public X10ClassType getBoxingType(final X10ClassType type) {
+	public X10ClassType getBoxingType(X10ClassType type_) {
+		final X10ClassType type = (X10ClassType)x10TypeSystem.getConcreteType(type_);
+		
 		assert x10TypeSystem.isStructType(type);
 
 		final X10ClassType ret = structBoxingTypes.get(type);
@@ -217,7 +228,7 @@ public class FirmTypeSystem {
         X10ClassDef cd = new X10ClassDef_c(x10TypeSystem, null);
 
         // use a unique name for the boxing class
-        final String name = getUniqueBoxingName(type.name().toString());
+        final String name = getUniqueBoxingName(type);
 
         // Get the "Object" class and set it as the super class
         final X10ClassType objectType = getObjectType();
@@ -236,10 +247,10 @@ public class FirmTypeSystem {
         for(final polyglot.types.Type t : type.interfaces()) { // "interfaces" method returns duplicates ???
         	if(intSet.contains(t)) continue;
         	intSet.add(t);
-
+        	
         	final X10ParsedClassType intervace = (X10ParsedClassType)t;
         	final X10ClassDef  intervaceDef = intervace.x10Def();
-
+        	
         	cd.addInterface(Types.ref(intervace));
         	
         	// get the substitution mapping
@@ -351,16 +362,16 @@ public class FirmTypeSystem {
 			parameterTypes[p++] = thisType;
 		}
 
-		for (polyglot.types.Type type : formalTypes) {
-			final polyglot.types.Type simpType = simplifyType(type);
+		for (final polyglot.types.Type type : formalTypes) {
+			final polyglot.types.Type simpType = x10TypeSystem.getConcreteType(type);
 			parameterTypes[p++] = getFirmType(simpType);
 		}
 		assert (p == nParameters);
 
 		if (nResults > 0) {
 			assert nResults == 1;
-			final polyglot.types.Type type = x10TypeSystem.getContextType(methodInstance.returnType());
-			final polyglot.types.Type simpType = simplifyType(type);
+			final polyglot.types.Type type = methodInstance.returnType();
+			final polyglot.types.Type simpType = x10TypeSystem.getConcreteType(type);
 			resultTypes[0] = getFirmType(simpType);
 		}
 
@@ -404,19 +415,8 @@ public class FirmTypeSystem {
 	 * @return True if we need the core type for the given type
 	 */
 	public boolean isFirmStructType(final polyglot.types.Type type) {
-		final polyglot.types.Type baseType = simplifyType(type);
+		final polyglot.types.Type baseType = x10TypeSystem.getConcreteType(type);
 		return Types.isX10Struct(baseType) && !isFirmPrimitiveType(baseType);
-	}
-
-	/**
-	 * Simplifies a given polyglot type -> Returns the base type of a given type. -> Removes constrained types, annotations etc.
-	 * TODO  Put this into a separate Util (or similar) class.
-	 * @param type The type which should be simplified
-	 * @return The simplified version of the given type
-	 */
-	public static polyglot.types.Type simplifyType(final polyglot.types.Type type) {
-		final polyglot.types.Type t =  Types.baseType(type);
-		return Types.stripConstraints(t);
 	}
 
 	/**
@@ -435,7 +435,7 @@ public class FirmTypeSystem {
 	 * @return True if the given type is handled as a primitive type.
 	 */
 	public boolean isFirmPrimitiveType(final polyglot.types.Type type_) {
-		final polyglot.types.Type type = simplifyType(type_);
+		final polyglot.types.Type type = x10TypeSystem.getConcreteType(type_);
 		return equalTypes(type, x10TypeSystem.Int())     || equalTypes(type, x10TypeSystem.UInt())   ||
 		   	   equalTypes(type, x10TypeSystem.Long())    || equalTypes(type, x10TypeSystem.ULong())  ||
 		   	   equalTypes(type, x10TypeSystem.Short())   || equalTypes(type, x10TypeSystem.UShort()) ||
@@ -467,8 +467,8 @@ public class FirmTypeSystem {
 		final Type thisType = asFirmType(owner);
 		resultTypes[0] = thisType;
 
-		for (polyglot.types.Type type : formalTypes) {
-			final polyglot.types.Type simpType = simplifyType(type);
+		for (final polyglot.types.Type type : formalTypes) {
+			final polyglot.types.Type simpType = x10TypeSystem.getConcreteType(type);
 			parameterTypes[p++] = getFirmType(simpType);
 		}
 		assert (p == nParameters);
@@ -495,7 +495,7 @@ public class FirmTypeSystem {
 		parameterTypes[p++] = thisType;
 
 		for (final polyglot.types.Type type : formalTypes) {
-			final polyglot.types.Type simpType = simplifyType(type);
+			final polyglot.types.Type simpType = x10TypeSystem.getConcreteType(type);
 			parameterTypes[p++] = getFirmType(simpType);
 		}
 		assert (p == nParameters);
@@ -511,7 +511,7 @@ public class FirmTypeSystem {
 	 */
 	public firm.Type asFirmType(polyglot.types.Type type) {
 		/* strip type-constraints */
-		final polyglot.types.Type baseType = simplifyType(type);
+		final polyglot.types.Type baseType = x10TypeSystem.getConcreteType(type);
 
 		firm.Type result = getType(baseType); 
 		if (result != null)
@@ -685,55 +685,23 @@ public class FirmTypeSystem {
 		return ent;
 	}
 
-	private X10ParsedClassType fixParsedClassType(X10ParsedClassType t) {
-		if (t.isMissingTypeArguments()) {
-			List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
-			for (ParameterType pt : t.def().typeParameters())
-				typeArguments.add(x10TypeSystem.getConcreteType(pt));
-
-			return t.typeArguments(typeArguments);
-		}
-		else if (t.typeArguments() != null && !t.typeArguments().isEmpty()) {
-			List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
-			for (polyglot.types.Type typeArg : t.typeArguments())
-				if (typeArg instanceof ParameterType)  // No constrained types here.
-					typeArguments.add(x10TypeSystem.getConcreteType((ParameterType) typeArg));
-				else
-					typeArguments.add(typeArg);
-			if (!typeArguments.isEmpty())
-				return t.typeArguments(typeArguments);
-		}
-
-		return t;
-	}
-
 	/**
 	 * return the firm type for a given ast-type.
 	 * This variant does not return the "native"-type even if there is one.
 	 */
-	public firm.Type asFirmCoreType(polyglot.types.Type origType) {
-		polyglot.types.Type type = origType;
+	public firm.Type asFirmCoreType(final polyglot.types.Type origType) {
+		final polyglot.types.Type type = x10TypeSystem.getConcreteType(origType);
 
-		// FIXME:  Workaround.
-		if (origType instanceof X10ParsedClassType)
-			type = fixParsedClassType((X10ParsedClassType) origType);
-
-		// isParsedClassType => !isMissingTypeArguments
-		assert (!(type instanceof X10ParsedClassType) || !((X10ParsedClassType) type).isMissingTypeArguments());
-
-		/* strip type-constraints */
-		final polyglot.types.Type baseType = simplifyType(type);
-
-		Type result = getFirmCoreType(baseType);
+		Type result = getFirmCoreType(type);
 		if (result != null)
 			return result;
 
-		if (baseType instanceof X10ClassType) {
-			result = createClassType((X10ClassType) baseType);
+		if (type instanceof X10ClassType) {
+			result = createClassType((X10ClassType) type);
 		} else {
 			/* remember to put new types into coreTypeCache */
-			saveFirmCoreType(baseType, result);
-			throw new java.lang.RuntimeException("No implement to get firm type for: " + baseType);
+			saveFirmCoreType(type, result);
+			throw new java.lang.RuntimeException("No implement to get firm type for: " + type);
 		}
 		return result;
 	}
@@ -914,8 +882,8 @@ public class FirmTypeSystem {
 		return null;
 	}
 
-	private <T extends Def> GenericClassContext getDefiningContext(final MemberInstance<T> method) {
-		final X10ClassType clazz = (X10ClassType) method.container();
+	private <T extends Def> GenericClassContext getDefiningContext(final MemberInstance<T> member) {
+		final X10ClassType clazz = (X10ClassType) member.container();
 		if (clazz == null)
 			return rootContext;
 		/* no type parameters, not a generic class */
@@ -925,15 +893,28 @@ public class FirmTypeSystem {
 
 		final GenericClassInstance classInstance;
 		// This should always be the case but unfortunately it is not.
-		if (clazz.typeArguments() != null && typeParameters.size() == clazz.typeArguments().size())
-			classInstance = new GenericClassInstance(clazz);
-		else {
+		if (clazz.typeArguments() != null && typeParameters.size() == clazz.typeArguments().size()) {
+			ParameterTypeMapping map = new ParameterTypeMapping();
+			for(polyglot.types.Type type : clazz.typeArguments()) {
+				if(type instanceof ParameterType) {
+					final ParameterType tmp = (ParameterType)type;
+					map.add(tmp, x10TypeSystem.getConcreteType(tmp));
+				}
+			}
+			
+			if(map.getKeySet().size() > 0) {
+				classInstance = new GenericClassInstance(clazz.x10Def(), map);
+			} else {
+				classInstance = new GenericClassInstance(clazz);
+			}
+		} else {
 			// FIXME:  This is a hack to workaround a problem in X10.
 			ParameterTypeMapping map = new ParameterTypeMapping();
 			for (ParameterType pt : typeParameters)
 				map.add(pt, x10TypeSystem.getConcreteType(pt));
 			classInstance = new GenericClassInstance(clazz.x10Def(), map);
 		}
+		assert(classInstance != null);
 
 		GenericClassContext context = genericContexts.get(classInstance);
 		if (context == null) {

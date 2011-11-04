@@ -117,7 +117,6 @@ import x10.ast.X10NodeFactory_c;
 import x10.ast.X10SourceFile_c;
 import x10.ast.X10Special_c;
 import x10.ast.X10Unary_c;
-import x10.types.ConstrainedType;
 import x10.types.MethodInstance;
 import x10.types.ParameterType;
 import x10.types.TypeParamSubst;
@@ -192,7 +191,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private Context x10Context = null;
 
 	/** Our firm type system */
-	private final FirmTypeSystem firmTypeSystem;
+	final FirmTypeSystem firmTypeSystem;
 
 	/** The X10 type system */
 	final GenericTypeSystem x10TypeSystem;
@@ -635,7 +634,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		// init and map all parameters.
 		for (final LocalInstance loc : formals) {
-			final Type type = x10TypeSystem.getContextType(loc.type());
+			final Type type = loc.type();
 
 			if (firmTypeSystem.isFirmStructType(type)) {
 				final MethodType methodType = (MethodType)entity.getType();
@@ -940,8 +939,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final FieldInstance def = instance.def().asInstance();
 		final Flags flags = def.flags();
 		/* make sure enclosing class-type has been created */
-		firmTypeSystem.asFirmType(def.container());
-		final Entity entity = firmTypeSystem.getEntityForField(def);
+		firmTypeSystem.asFirmType(instance.container());
+		final Entity entity = firmTypeSystem.getEntityForField(instance);
 		Node address = null;
 		if (flags.isStatic()) {
 			address = con.newSymConst(entity);
@@ -1636,7 +1635,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		for (int i = 0; i < paramTypes.size(); ++i) {
 			Type t = actualTypes.get(i);
 			if (x10TypeSystem.isParameterType(t))
-				t = x10TypeSystem.getConcreteType((ParameterType) Types.baseType(t));
+				t = x10TypeSystem.getConcreteType(Types.baseType(t));
 
 			ptm.add(paramTypes.get(i), Types.stripConstraints(t));
 		}
@@ -1873,17 +1872,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return ret;
 	}
 	
-	/** Returns the base type of a given type
-	 * 
-	 * @param type The type for which the base type should be returned
-	 * @return The base type of the given type
-	 */
-	private Type getBaseType(final Type type) {
-		if(type instanceof ConstrainedType) 
-			return ((ConstrainedType)type).baseType().get();
-		return type;
-	}
-	
 	/**
 	 * Generate firm graph for a new call 
 	 * @param objectThisNode The firm node of the "this" pointer. "null" if the "this" pointer was not allocated yet.
@@ -1892,7 +1880,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param n The "new" node
 	 */
 	private void genNew(final Node objectThisNode, final New_c n) {
-		final Type base_type = getBaseType(n.objectType().type());
+		final Type base_type = Types.baseType(n.objectType().type());
 		final X10ClassType type = (X10ClassType)base_type;
 
 		final boolean hasTypeArguments = type.typeArguments() != null && !type.typeArguments().isEmpty();
@@ -2375,9 +2363,27 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		// save the boxed value in the box
 		final FieldInstance boxValue = boxType.fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE));
+		assert(boxValue != null);
 		genFieldAssign(box, boxValue, node);
 
 		return box;
+	}
+	
+	private Node genUnboxing(final Node node, final X10ClassType fromType, final X10ClassType toType) {
+		final X10ClassType boxType = firmTypeSystem.getBoxingType(toType);
+		
+		if(!initedBoxingTypes.contains(boxType)) {
+			// init the boxing type only once
+			initBoxingType(toType, boxType);
+			initedBoxingTypes.add(boxType);
+		}
+		
+        genCastNullCheck(node, fromType);
+		final FieldInstance boxValue = boxType.fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE));
+		assert(boxValue != null);
+		genSubtypeCheck(node, fromType, toType);
+		final Node boxedValue = genFieldLoad(node, boxValue);
+		return boxedValue;
 	}
 	
 	/**
@@ -2408,7 +2414,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final FirmCodeCondTemplate condTemplate = new FirmCodeCondTemplate() {
 			@Override
 			public void genCode(final Block trueBlock, final Block falseBlock) {
-				final Node ret = ConditionEvaluationCodeGenerator.genInstanceOf(node, fromType, compType, X10FirmCodeGenerator.this, x10TypeSystem, con);
+				final Node ret = ConditionEvaluationCodeGenerator.genInstanceOf(node, fromType, compType, X10FirmCodeGenerator.this, x10TypeSystem, firmTypeSystem, con);
 				ConditionEvaluationCodeGenerator.makeJumps(ret, falseBlock, trueBlock, con);
 			}
 		};
@@ -2447,16 +2453,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		};
 		
 		fct.genIfStatement(con, condTemplate, ifStmt, null);
-	}
-	
-	private Node genUnboxing(final Node node, final Type fromType, final Type toType) {
-        genCastNullCheck(node, toType);
-		final X10ClassType boxType = firmTypeSystem.getBoxingType((X10ClassType)toType);
-		final FieldInstance boxField = boxType.fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE));
-		assert(boxField != null);
-		genSubtypeCheck(node, fromType, toType);
-		final Node boxedValue = genFieldLoad(node, boxField);
-		return boxedValue;
 	}
 	
 	private Node genRefToRefCast(final Node node, final Type fromType, final Type tooType, final boolean checked) {
@@ -2540,7 +2536,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				// Unboxing -> must be a checked cast !!!
 				assert(c.conversionType() == ConversionType.CHECKED);
 				final Node box = visitExpression(c.expr());
-				final Node ret = genUnboxing(box, c.expr().type(), to);
+				final Node ret = genUnboxing(box, (X10ClassType)x10TypeSystem.toClass(from), (X10ClassType)x10TypeSystem.toClass(to));
 				setReturnNode(ret);
 				break;
 			}

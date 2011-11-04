@@ -1,6 +1,8 @@
 package x10firm.types;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import polyglot.frontend.ExtensionInfo;
@@ -10,6 +12,7 @@ import polyglot.types.Type;
 import polyglot.types.Types;
 import x10.types.ParameterType;
 import x10.types.X10ClassType;
+import x10.types.X10ParsedClassType;
 import x10c.types.X10CTypeSystem_c;
 
 /**
@@ -47,6 +50,10 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		typeParameters.remove(paramType);
 	}
 
+	/**
+	 * Returns the type mapping 
+	 * @return The type mapping
+	 */
 	public Map<ParameterType, Type> getMapping() {
 		return typeParameters;
 	}
@@ -55,7 +62,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	 * @param paramType		the key type, which is mapped to a value type
 	 * @return				the corresponding value type
 	 */
-	public Type getConcreteType(ParameterType paramType) {
+	public Type getTypeParamSub(ParameterType paramType) {
 		polyglot.types.Type p = paramType;
 
 		while ((p = Types.baseType(p)) != null && super.isParameterType(p)) {
@@ -65,59 +72,86 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 
 		return p;
 	}
-	
-	// TODO: Need other solution
-	public Type getContextType(final Type type) {
-		if(type instanceof ParameterType) 
-			return getConcreteType((ParameterType)type);
-		return type;
-	}
 
 	@Override
 	public boolean isStructType(Type type) {
-		if (type.getClass() == ParameterType.class && typeParameters.containsKey(type))
-			return super.isStructType(typeParameters.get(type));
-
-		return super.isStructType(type);
+		final Type ret = getConcreteType(type);
+		return super.isStructType(ret);
 	}
 
 	@Override
 	public boolean isSubtype(Type t1, Type t2) {
-		Type t1_ = t1, t2_ = t2;
-
-		if (super.isParameterType(t1) && typeParameters.containsKey(t1))
-			t1_ = typeParameters.get(t1);
-
-		if (super.isParameterType(t2) && typeParameters.containsKey(t2))
-			t2_ = typeParameters.get(t2);
+		final Type t1_ = getConcreteType(t1), 
+				   t2_ = getConcreteType(t2);
 
 		return super.isSubtype(t1_, t2_);
 	}
 
 	@Override
 	public boolean typeEquals(Type t1, Type t2, Context context) {
-		Type t1_ = t1, t2_ = t2;
-
-		if (super.isParameterType(t1) && typeParameters.containsKey(t1))
-			t1_ = typeParameters.get(t1);
-
-		if (super.isParameterType(t2) && typeParameters.containsKey(t2))
-			t2_ = typeParameters.get(t2);
+		final Type t1_ = getConcreteType(t1), 
+				   t2_ = getConcreteType(t2);
 
 		return super.typeEquals(t1_, t2_, context);
 	}
 
 	@Override
 	public boolean typeDeepBaseEquals(Type t1, Type t2, Context context) {
-		Type t1_ = t1, t2_ = t2;
-
-		if (super.isParameterType(t1) && typeParameters.containsKey(t1))
-			t1_ = typeParameters.get(t1);
-
-		if (super.isParameterType(t2) && typeParameters.containsKey(t2))
-			t2_ = typeParameters.get(t2);
+		final Type t1_ = getConcreteType(t1), 
+				   t2_ = getConcreteType(t2);
 
 		return super.typeDeepBaseEquals(t1_, t2_, context);
+	}
+	
+	private X10ParsedClassType fixParsedClassType(final X10ParsedClassType t) {
+		if (t.isMissingTypeArguments()) {
+			List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
+			for (ParameterType pt : t.def().typeParameters())
+				typeArguments.add(getConcreteType(pt));
+
+			return t.typeArguments(typeArguments);
+		}
+		else if (t.typeArguments() != null && !t.typeArguments().isEmpty()) {
+			List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
+			for (polyglot.types.Type typeArg : t.typeArguments())
+				if (typeArg instanceof ParameterType)  // No constrained types here.
+					typeArguments.add(getConcreteType(typeArg));
+				else
+					typeArguments.add(typeArg);
+			if (!typeArguments.isEmpty())
+				return t.typeArguments(typeArguments);
+		}
+
+		return t;
+	}
+	
+	/**
+	 * Returns the concrete type for a given type (after substitution of type parameters etc.)
+	 * @param type The given type
+	 * @return The concrete type
+	 */
+	public Type getConcreteType(final Type type) {
+		Type ret = simplifyType(type);
+		
+		if(ret instanceof X10ParsedClassType)
+			ret = fixParsedClassType((X10ParsedClassType)ret);
+		else if(super.isParameterType(ret) && typeParameters.containsKey(ret))
+			ret = getTypeParamSub((ParameterType)ret);
+		
+		// isParsedClassType => !isMissingTypeArguments
+		assert (!(ret instanceof X10ParsedClassType) || !((X10ParsedClassType) ret).isMissingTypeArguments());
+		
+		return ret;
+	}
+	
+	/**
+	 * Simplifies a given polyglot type -> Returns the base type of a given type. -> Removes constrained types, annotations etc.
+	 * TODO  Put this into a separate Util (or similar) class.
+	 * @param type The type which should be simplified
+	 * @return The simplified version of the given type
+	 */
+	public polyglot.types.Type simplifyType(final polyglot.types.Type type) {
+		return Types.stripConstraints(Types.baseType(type));
 	}
 
 	/**
@@ -125,21 +159,18 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	 * @return		is it a key mapped to a class type?
 	 */
 	public boolean isClass(Type t) {
-		if (typeParameters.containsKey(t))
-			return isClass(typeParameters.get(t));
-
-		return t.isClass();
+		final Type ret = getConcreteType(t);
+		return ret.isClass();
 	}
 
 	public ClassType toClass(Type t) {
-		if (typeParameters.containsKey(t))
-			return toClass(typeParameters.get(t));
-
-		return t.toClass();
+		final Type ret = getConcreteType(t);
+		return ret.toClass();
 	}
 	
 	public boolean isRefType(final Type type) {
-		return (type == Null() || isClass(type) || isInterfaceType(type)) && !isStructType(type);
+		final Type ret = getConcreteType(type);
+		return (ret == Null() || isClass(ret) || isInterfaceType(ret)) && !isStructType(ret);
 	}
 	
 	// Own additions for the native pointer type 

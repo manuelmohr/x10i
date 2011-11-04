@@ -12,7 +12,6 @@ import polyglot.types.Type;
 import polyglot.types.TypeObject;
 import polyglot.util.UniqueID;
 import x10.types.MethodInstance;
-import x10.types.ParameterType;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 
@@ -260,9 +259,9 @@ public class X10NameMangler {
 	 */
 	private static String mangleParameter(final Type type) {
 		if (x10TypeSystem.isParameterType(type))
-			return mangleParameter(x10TypeSystem.getConcreteType((ParameterType) FirmTypeSystem.simplifyType(type)));
+			return mangleParameter(x10TypeSystem.getConcreteType(type));
 
-		final Type ret = FirmTypeSystem.simplifyType(type);
+		final Type ret = x10TypeSystem.simplifyType(type);
 
 		String tmp = tryPrimitiveType(ret);
 		if (tmp != null)
@@ -471,11 +470,11 @@ public class X10NameMangler {
 	 */
 	private static String mangleType(final Type type, final boolean embed) {
 		if (x10TypeSystem.isParameterType(type))
-			return mangleType(x10TypeSystem.getConcreteType((ParameterType) FirmTypeSystem.simplifyType(type)), embed);
+			return mangleType(x10TypeSystem.getConcreteType(type), embed);
 
 		String tmp = null;
 
-		final Type ret = FirmTypeSystem.simplifyType(type);
+		final Type ret = x10TypeSystem.simplifyType(type);
 		if (!embed) {
 			tmp = tryPrimitiveType(ret);
 			if (tmp != null)
