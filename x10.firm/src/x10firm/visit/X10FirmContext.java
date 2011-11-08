@@ -116,7 +116,8 @@ public class X10FirmContext {
 	 * null if the instance variable could not be found.
 	 */
 	public X10VarEntry getVarEntry(VarInstance<?> var) {
-		return varEntryMapper.get(var);
+		final X10VarEntry ret = varEntryMapper.get(var);
+		return ret;
 	}
 	
 	/** Pushes a new firm scope

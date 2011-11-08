@@ -11,7 +11,7 @@ public class FirmCodeTemplate {
 	/**
 	 *  Code template for conditions
 	 */
-	interface FirmCodeCondTemplate {
+	interface CondTemplate {
 		/**
 		 * Generate condition code
 		 * @param trueBlock True block 
@@ -24,7 +24,7 @@ public class FirmCodeTemplate {
 	 * Code template for statements
 	 *
 	 */
-	interface FirmCodeStmtTemplate {
+	interface StmtTemplate {
 		/**
 		 * Generate body code
 		 */
@@ -34,7 +34,7 @@ public class FirmCodeTemplate {
 	/**
 	 * Code template for expressions
 	 */
-	interface FirmCodeExprTemplate {
+	interface ExprTemplate {
 		/**
 		 * Generate expression code
 		 */
@@ -49,8 +49,8 @@ public class FirmCodeTemplate {
 	 * @param falseExpr The false expression template
 	 * @return Phi node
 	 */
-	public Node genConditional(final OOConstruction con, final FirmCodeCondTemplate cond,
-			final FirmCodeExprTemplate trueExpr, final FirmCodeExprTemplate falseExpr) {
+	public Node genConditional(final OOConstruction con, final CondTemplate cond,
+			final ExprTemplate trueExpr, final ExprTemplate falseExpr) {
 		
 		final Block bTrue    = con.newBlock();
 		final Block bFalse   = con.newBlock();
@@ -92,7 +92,7 @@ public class FirmCodeTemplate {
 	 * @param elseStmt The else statement template
 	 */
 	public void genIfStatement(final OOConstruction con, 
-			final FirmCodeCondTemplate cond, final FirmCodeStmtTemplate ifStmt, final FirmCodeStmtTemplate elseStmt) {
+			final CondTemplate cond, final StmtTemplate ifStmt, final StmtTemplate elseStmt) {
 		final Block bTrue  = con.newBlock();
 		final Block bAfter = con.newBlock();
 

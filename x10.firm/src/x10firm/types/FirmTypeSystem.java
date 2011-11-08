@@ -62,7 +62,7 @@ import firm.bindings.binding_typerep.ir_visibility;
  */
 public class FirmTypeSystem {
 	/** Maps polyglot types to firm types. 
-	 * TODO: Use the polyglot.types.Type for the hashing n
+	 * TODO: Use the polyglot.types.Type for hashing
 	 * */
 	private final Map<polyglot.types.Type, Type> firmCoreTypes = new HashMap<polyglot.types.Type, Type>();
 
@@ -681,7 +681,7 @@ public class FirmTypeSystem {
 	 */
 	public Entity getEntityForField(FieldInstance instance) {
 		final GenericClassContext context = getDefiningContext(instance);
-		Entity ent = context.getFieldEntity(instance.def());
+		final Entity ent = context.getFieldEntity(instance.def());
 		return ent;
 	}
 

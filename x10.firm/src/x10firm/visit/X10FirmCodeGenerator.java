@@ -134,9 +134,9 @@ import x10firm.CompilerOptions;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
 import x10firm.types.ParameterTypeMapping;
-import x10firm.visit.FirmCodeTemplate.FirmCodeCondTemplate;
-import x10firm.visit.FirmCodeTemplate.FirmCodeExprTemplate;
-import x10firm.visit.FirmCodeTemplate.FirmCodeStmtTemplate;
+import x10firm.visit.FirmCodeTemplate.CondTemplate;
+import x10firm.visit.FirmCodeTemplate.ExprTemplate;
+import x10firm.visit.FirmCodeTemplate.StmtTemplate;
 import x10firm.visit.x10lib.X10NativeGenericSupport;
 
 import com.sun.jna.Platform;
@@ -1555,21 +1555,21 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		}
 		
 		final Conditional_c c = n;
-		final FirmCodeCondTemplate cond = new FirmCodeCondTemplate() {
+		final CondTemplate cond = new CondTemplate() {
 			@Override
 			public void genCode(Block trueBlock, Block falseBlock) {
 				evaluateCondition(c.cond(), trueBlock, falseBlock);
 			}
 		};
 		
-		final FirmCodeExprTemplate trueExpr = new FirmCodeExprTemplate() {
+		final ExprTemplate trueExpr = new ExprTemplate() {
 			@Override
 			public Node genCode() {
 				return visitExpression(c.consequent());
 			}
 		};
 		
-		final FirmCodeExprTemplate falseExpr = new FirmCodeExprTemplate() {
+		final ExprTemplate falseExpr = new ExprTemplate() {
 			@Override
 			public Node genCode() {
 				return visitExpression(c.alternative());
@@ -1584,21 +1584,21 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(If_c n) {
 		
 		final If_c ifAst = n;
-		final FirmCodeCondTemplate cond = new FirmCodeCondTemplate() {
+		final CondTemplate cond = new CondTemplate() {
 			@Override
 			public void genCode(Block trueBlock, Block falseBlock) {
 				evaluateCondition(ifAst.cond(), trueBlock, falseBlock);
 			}
 		};
 
-		final FirmCodeStmtTemplate ifStmt = new FirmCodeStmtTemplate() {
+		final StmtTemplate ifStmt = new StmtTemplate() {
 			@Override
 			public void genCode() {
 				visitAppropriate(ifAst.consequent());
 			}
 		};
 		
-		FirmCodeStmtTemplate elseStmt = null;
+		StmtTemplate elseStmt = null;
 		if(n.alternative() != null) {
 			Stmt alternative = n.alternative();
 			if (alternative instanceof Block_c) {
@@ -1607,7 +1607,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 					alternative = block.statements().get(0);
 			}
 			final Stmt elseBlock = alternative;
-			elseStmt = new FirmCodeStmtTemplate() {
+			elseStmt = new StmtTemplate() {
 				@Override
 				public void genCode() {
 					visitAppropriate(elseBlock);
@@ -2411,7 +2411,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		assert(toType instanceof X10ClassType);
 		final Type compType = x10TypeSystem.isStructType(toType) ? firmTypeSystem.getBoxingType((X10ClassType)toType) : toType;
 
-		final FirmCodeCondTemplate condTemplate = new FirmCodeCondTemplate() {
+		final CondTemplate condTemplate = new CondTemplate() {
 			@Override
 			public void genCode(final Block trueBlock, final Block falseBlock) {
 				final Node ret = ConditionEvaluationCodeGenerator.genInstanceOf(node, fromType, compType, X10FirmCodeGenerator.this, x10TypeSystem, firmTypeSystem, con);
@@ -2419,11 +2419,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			}
 		};
 
-		final FirmCodeStmtTemplate ifStmt = new FirmCodeStmtTemplate() {
+		final StmtTemplate ifStmt = new StmtTemplate() {
 			@Override
 			public void genCode() {
 				final Stmt throwStmt = getThrowNewExceptionStmt(x10TypeSystem.ClassCastException(), 
-						"Cannot cast " + fromType + " to " + toType.toString());
+						"Cannot cast " + fromType + " to " + toType);
 				visitAppropriate(throwStmt);
 			}
 		};
@@ -2433,7 +2433,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	private void genCastNullCheck(final Node node, final Type type) {
 	
-		final FirmCodeCondTemplate condTemplate = new FirmCodeCondTemplate() {
+		final CondTemplate condTemplate = new CondTemplate() {
 			@Override
 			public void genCode(final Block trueBlock, final Block falseBlock) {
 				final Position pos = Position.COMPILER_GENERATED;
@@ -2443,7 +2443,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			}
 		};
 		
-		final FirmCodeStmtTemplate ifStmt = new FirmCodeStmtTemplate() {
+		final StmtTemplate ifStmt = new StmtTemplate() {
 			@Override
 			public void genCode() {
 				final Stmt throwStmt = getThrowNewExceptionStmt(x10TypeSystem.ClassCastException(), 
@@ -2456,7 +2456,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 	
 	private Node genRefToRefCast(final Node node, final Type fromType, final Type tooType, final boolean checked) {
-		final FirmCodeCondTemplate cond = new FirmCodeCondTemplate() {
+		final CondTemplate cond = new CondTemplate() {
 			@Override
 			public void genCode(final Block trueBlock, final Block falseBlock) {
 				final Position pos = Position.COMPILER_GENERATED;
@@ -2466,7 +2466,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			}
 		};
 		
-		final FirmCodeExprTemplate trueExpr = new FirmCodeExprTemplate() {
+		final ExprTemplate trueExpr = new ExprTemplate() {
 			@Override
 			public Node genCode() {
 				final Position pos = Position.COMPILER_GENERATED;
@@ -2474,7 +2474,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			}
 		};
 		
-		final FirmCodeExprTemplate falseExpr = new FirmCodeExprTemplate() {
+		final ExprTemplate falseExpr = new ExprTemplate() {
 			@Override
 			public Node genCode() {
 				// can have checked and unchecked casts 
@@ -2500,7 +2500,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		case SUBTYPE:
 		case UNCHECKED:
 			final X10CanonicalTypeNode xtn = (X10CanonicalTypeNode) tn;
-
+			
 			final Type toType 	= Types.baseType(xtn.type());
 			final Type fromType = Types.baseType(c.expr().type());
 			
