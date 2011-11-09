@@ -113,12 +113,17 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		}
 		else if (t.typeArguments() != null && !t.typeArguments().isEmpty()) {
 			List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
-			for (polyglot.types.Type typeArg : t.typeArguments())
-				if (typeArg instanceof ParameterType)  // No constrained types here.
+			boolean hasUnknownTypeParams = false;
+			for (polyglot.types.Type typeArg : t.typeArguments()) {
+				if (typeArg instanceof ParameterType) {  // No constrained types here.
 					typeArguments.add(getConcreteType(typeArg));
-				else
+					hasUnknownTypeParams = true;
+				} else {
 					typeArguments.add(typeArg);
-			if (!typeArguments.isEmpty())
+				}
+			}
+			
+			if(hasUnknownTypeParams)
 				return t.typeArguments(typeArguments);
 		}
 
@@ -146,7 +151,6 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	
 	/**
 	 * Simplifies a given polyglot type -> Returns the base type of a given type. -> Removes constrained types, annotations etc.
-	 * TODO  Put this into a separate Util (or similar) class.
 	 * @param type The type which should be simplified
 	 * @return The simplified version of the given type
 	 */

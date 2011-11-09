@@ -1882,9 +1882,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private void genNew(final Node objectThisNode, final New_c n) {
 		final Type base_type = Types.baseType(n.objectType().type());
 		final X10ClassType type = (X10ClassType)base_type;
-
-		final boolean hasTypeArguments = type.typeArguments() != null && !type.typeArguments().isEmpty();
 		
+		final boolean hasTypeArguments = type.typeArguments() != null && !type.typeArguments().isEmpty();
+			
 		if (hasTypeArguments) {
 			final ConstructorInstance ci = n.constructorInstance();
 
@@ -2342,6 +2342,18 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * Set which holds initialized boxing types -> boxing types will be inited only once.
 	 */
 	private static Set<Type> initedBoxingTypes = new HashSet<Type>();
+	
+	private X10ClassType getBoxingType(final X10ClassType type) {
+		final X10ClassType boxType = firmTypeSystem.getBoxingType(type);
+
+		if(!initedBoxingTypes.contains(boxType)) {
+			// init the boxing type only once
+			initBoxingType(type, boxType);
+			initedBoxingTypes.add(boxType);
+		}
+		
+		return boxType;
+	}
 
 	/**
 	 * Creates the appropriate firm graph for an autoboxing
@@ -2350,13 +2362,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @return A
 	 */
 	public Node genBoxing(final X10ClassType fromType, final Node node) {
-		final X10ClassType boxType = firmTypeSystem.getBoxingType(fromType);
-
-		if(!initedBoxingTypes.contains(boxType)) {
-			// init the boxing type only once
-			initBoxingType(fromType, boxType);
-			initedBoxingTypes.add(boxType);
-		}
+		final X10ClassType boxType = getBoxingType(fromType);
 
 		// Generate the box
 		final Node box = genHeapAlloc(boxType);
@@ -2370,13 +2376,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 	
 	private Node genUnboxing(final Node node, final X10ClassType fromType, final X10ClassType toType) {
-		final X10ClassType boxType = firmTypeSystem.getBoxingType(toType);
-		
-		if(!initedBoxingTypes.contains(boxType)) {
-			// init the boxing type only once
-			initBoxingType(toType, boxType);
-			initedBoxingTypes.add(boxType);
-		}
+		final X10ClassType boxType = getBoxingType(toType);
 		
         genCastNullCheck(node, fromType);
 		final FieldInstance boxValue = boxType.fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE));
@@ -2432,7 +2432,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	private void genCastNullCheck(final Node node, final Type type) {
-	
+		
 		final CondTemplate condTemplate = new CondTemplate() {
 			@Override
 			public void genCode(final Block trueBlock, final Block falseBlock) {

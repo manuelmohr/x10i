@@ -283,7 +283,7 @@ public class FirmTypeSystem {
         			if(x instanceof ParameterType) {
         				fType = Types.ref(getConcreteTypeFromSubst(x, paramTypes, argTypes));
         				fName = x10TypeSystem.localDef(Position.COMPILER_GENERATED, fName.flags(), fType, fName.name());
-        			} 
+        			}
         			
         			formalNames.add(fName); 
         			formalTypes.add(fType);

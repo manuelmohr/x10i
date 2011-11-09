@@ -7,6 +7,7 @@ import polyglot.ast.Binary_c;
 import polyglot.ast.BooleanLit_c;
 import polyglot.ast.Expr;
 import polyglot.ast.Expr_c;
+import polyglot.types.Context;
 import polyglot.types.Name;
 import polyglot.types.Type;
 import polyglot.types.Types;
@@ -109,8 +110,9 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		final X10ClassType ct = (X10ClassType) Types.baseType(left.type());
 		final List<MethodInstance> instances = ct.methodsNamed(Name.make(SharedVarsMethods.STRUCT_EQUALS_METHOD));
 		MethodInstance instance = null;
-		for (MethodInstance mi : instances)
-			if (mi.formalTypes().get(0) == Types.baseType(left.type()))
+		final Context ctx = new Context(typeSystem);
+		for (final MethodInstance mi : instances)
+			if (typeSystem.typeEquals(mi.formalTypes().get(0), ct, ctx))
 				instance = mi;
 		assert (instance != null);
 
