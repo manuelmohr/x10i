@@ -49,7 +49,7 @@ public class FirmCodeTemplate {
 	 * @param falseExpr The false expression template
 	 * @return Phi node
 	 */
-	public Node genConditional(final OOConstruction con, final CondTemplate cond,
+	public static Node genConditional(final OOConstruction con, final CondTemplate cond,
 			final ExprTemplate trueExpr, final ExprTemplate falseExpr) {
 		
 		final Block bTrue    = con.newBlock();
@@ -91,7 +91,7 @@ public class FirmCodeTemplate {
 	 * @param ifStmt The if statement template
 	 * @param elseStmt The else statement template
 	 */
-	public void genIfStatement(final OOConstruction con, 
+	public static void genIfStatement(final OOConstruction con, 
 			final CondTemplate cond, final StmtTemplate ifStmt, final StmtTemplate elseStmt) {
 		final Block bTrue  = con.newBlock();
 		final Block bAfter = con.newBlock();

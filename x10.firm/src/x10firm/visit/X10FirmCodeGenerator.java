@@ -208,9 +208,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	/** Command-line options */
 	private CompilerOptions options;
 	
-	/** firm code templates */
-	private FirmCodeTemplate fct = new FirmCodeTemplate();
-	
 	/** holds all static initializer blocks */
 	private static List<polyglot.ast.Initializer> static_init_blocks = new LinkedList<polyglot.ast.Initializer>();
 
@@ -348,7 +345,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	private Map<LocalInstance, Entity> calculateEntityMappingForLocals(final List<LocalInstance> locals) {
 		Map<LocalInstance, Entity> map = new HashMap<LocalInstance, Entity>();
 		final firm.Type frameType = con.getGraph().getFrameType();
-		for (LocalInstance loc : locals) {
+		for (final LocalInstance loc : locals) {
 			if (needEntityForLocalInstance(loc) && !map.containsKey(loc)) {
 				final Entity ent = new Entity(frameType, loc.name().toString(), firmTypeSystem.asFirmCoreType(loc.type()));
 				map.put(loc, ent);
@@ -552,7 +549,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			final List<ClassMember> inits = query.extractInits(members);
 			firmContext.setInitClassMembers(inits);
 
-			for (ClassMember member : body.members()) {
+			for (final ClassMember member : body.members()) {
 				if (member instanceof X10MethodDecl) {
 					final X10MethodDecl md = (X10MethodDecl) member;
 					if (md.typeParameters().isEmpty()) {
@@ -1576,7 +1573,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			}
 		};
 		
-		final Node ret = fct.genConditional(con, cond, trueExpr, falseExpr);
+		final Node ret = FirmCodeTemplate.genConditional(con, cond, trueExpr, falseExpr);
 		setReturnNode(ret);
 	}
 
@@ -1615,7 +1612,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			};
 		}
 		
-		fct.genIfStatement(con, cond, ifStmt, elseStmt);
+		FirmCodeTemplate.genIfStatement(con, cond, ifStmt, elseStmt);
 	}
 	
 	@Override
@@ -2428,7 +2425,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			}
 		};
 		
-		fct.genIfStatement(con, condTemplate, ifStmt, null);
+		FirmCodeTemplate.genIfStatement(con, condTemplate, ifStmt, null);
 	}
 
 	private void genCastNullCheck(final Node node, final Type type) {
@@ -2452,7 +2449,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			}
 		};
 		
-		fct.genIfStatement(con, condTemplate, ifStmt, null);
+		FirmCodeTemplate.genIfStatement(con, condTemplate, ifStmt, null);
 	}
 	
 	private Node genRefToRefCast(final Node node, final Type fromType, final Type tooType, final boolean checked) {
@@ -2485,7 +2482,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			}
 		};
 		
-		return fct.genConditional(con, cond, trueExpr, falseExpr);
+		return FirmCodeTemplate.genConditional(con, cond, trueExpr, falseExpr);
 	}
 	
 	@Override

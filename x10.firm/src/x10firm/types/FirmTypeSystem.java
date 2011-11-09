@@ -446,6 +446,11 @@ public class FirmTypeSystem {
 		       equalTypes(type, x10TypeSystem.FirmPointer());
 	}
 	
+	/**
+	 * Returns the firm type for a given polygot type
+	 * @param type The polyglot type
+	 * @return The appropriate firm type for the given polyglot type
+	 */
 	public Type getFirmType(final polyglot.types.Type type) {
 		final Type ret = isFirmStructType(type) ? asFirmCoreType(type) : asFirmType(type);
 		
