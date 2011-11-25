@@ -112,7 +112,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		MethodInstance instance = null;
 		final Context ctx = new Context(typeSystem);
 		for (final MethodInstance mi : instances)
-			if (typeSystem.typeEquals(mi.formalTypes().get(0), ct, ctx))
+			if (typeSystem.typeEquals0(mi.formalTypes().get(0), ct, ctx))
 				instance = mi;
 		assert (instance != null);
 
@@ -181,17 +181,17 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		firm.Type firmType = null;
 		
 		/* obj instanceof 'X' -> box(obj) instanceof 'X' */
-		if (typeSystem.isStructType(exprType)) {
+		if (typeSystem.isStructType0(exprType)) {
 			final X10ClassType ct = (X10ClassType) Types.stripConstraints(exprType);
 		    objPtr = codeGenerator.genBoxing(ct, objPtr);
 		}
 		
 		/* If the compare type is a struct type we must compare against the boxing type of the struct type */
-		if (typeSystem.isStructType(compType)) {
-			final Type tmp = firmTypeSystem.getBoxingType((X10ClassType)compType);
-			firmType = codeGenerator.getFirmTypeSystem().asFirmCoreType(tmp);
+		if (typeSystem.isStructType0(compType)) {
+			final Type tmp = codeGenerator.getBoxingType((X10ClassType)compType);
+			firmType = firmTypeSystem.asFirmCoreType(tmp);
 		} else {
-			firmType = codeGenerator.getFirmTypeSystem().asFirmCoreType(compType);
+			firmType = firmTypeSystem.asFirmCoreType(compType);
 		}
 		assert(firmType != null);
 

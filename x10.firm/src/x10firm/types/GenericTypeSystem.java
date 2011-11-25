@@ -11,6 +11,7 @@ import polyglot.types.Context;
 import polyglot.types.Type;
 import polyglot.types.Types;
 import x10.types.ParameterType;
+import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
 import x10.types.X10ParsedClassType;
 import x10c.types.X10CTypeSystem_c;
@@ -73,48 +74,67 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		return p;
 	}
 
-	@Override
-	public boolean isStructType(Type type) {
+	public boolean isStructType0(Type type) {
 		final Type ret = getConcreteType(type);
 		return super.isStructType(ret);
 	}
 
-	@Override
-	public boolean isSubtype(Type t1, Type t2) {
+	public boolean isSubtype0(Type t1, Type t2) {
 		final Type t1_ = getConcreteType(t1), 
 				   t2_ = getConcreteType(t2);
 
 		return super.isSubtype(t1_, t2_);
 	}
 
-	@Override
-	public boolean typeEquals(Type t1, Type t2, Context context) {
+	public boolean typeEquals0(Type t1, Type t2, Context context) {
 		final Type t1_ = getConcreteType(t1), 
 				   t2_ = getConcreteType(t2);
 
 		return super.typeEquals(t1_, t2_, context);
 	}
 
-	@Override
-	public boolean typeDeepBaseEquals(Type t1, Type t2, Context context) {
+	public boolean typeDeepBaseEquals0(Type t1, Type t2, Context context) {
 		final Type t1_ = getConcreteType(t1), 
 				   t2_ = getConcreteType(t2);
 
 		return super.typeDeepBaseEquals(t1_, t2_, context);
 	}
 	
-	private X10ParsedClassType fixParsedClassType(final X10ParsedClassType t) {
-		if (t.isMissingTypeArguments()) {
+	private Map<String, X10ParsedClassType> remapped_classes = new HashMap<String, X10ParsedClassType>();
+	
+	private String getGenericClassName(final X10ParsedClassType klass, final List<polyglot.types.Type> typeArguments) {
+		StringBuffer buf = new StringBuffer();
+		buf.append(klass.name().toString());
+		buf.append("[");
+		for(final polyglot.types.Type arg: typeArguments)
+			buf.append(arg);
+		buf.append("]");
+		return buf.toString();
+	}
+	
+	private X10ParsedClassType getFixedClassTypeFromCache(final X10ParsedClassType klass, final List<polyglot.types.Type> typeArguments) {
+		final String klassName = getGenericClassName(klass, typeArguments);
+		X10ParsedClassType ret = remapped_classes.get(klassName);
+		if(ret != null)
+			return ret;
+		ret = klass.typeArguments(typeArguments);
+		remapped_classes.put(klassName, ret);
+		return ret;
+	}
+	
+	private X10ParsedClassType fixParsedClassType(final X10ParsedClassType klass) {
+		if (klass.isMissingTypeArguments()) {
+			final X10ClassDef def = klass.def();
 			List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
-			for (ParameterType pt : t.def().typeParameters())
+			for (ParameterType pt : def.typeParameters())
 				typeArguments.add(getConcreteType(pt));
 
-			return t.typeArguments(typeArguments);
+			return getFixedClassTypeFromCache(klass, typeArguments);
 		}
-		else if (t.typeArguments() != null && !t.typeArguments().isEmpty()) {
+		else if (klass.typeArguments() != null && !klass.typeArguments().isEmpty()) {
 			List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
 			boolean hasUnknownTypeParams = false;
-			for (polyglot.types.Type typeArg : t.typeArguments()) {
+			for (polyglot.types.Type typeArg : klass.typeArguments()) {
 				if (typeArg instanceof ParameterType) {  // No constrained types here.
 					typeArguments.add(getConcreteType(typeArg));
 					hasUnknownTypeParams = true;
@@ -124,10 +144,10 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 			}
 			
 			if(hasUnknownTypeParams)
-				return t.typeArguments(typeArguments);
+				return getFixedClassTypeFromCache(klass, typeArguments);
 		}
 
-		return t;
+		return klass;
 	}
 	
 	/**
@@ -140,8 +160,10 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		
 		if(ret instanceof X10ParsedClassType)
 			ret = fixParsedClassType((X10ParsedClassType)ret);
-		else if(super.isParameterType(ret) && typeParameters.containsKey(ret))
+		else if(super.isParameterType(ret) && typeParameters.containsKey(ret)) {
+			assert(typeParameters.containsKey(ret));
 			ret = getTypeParamSub((ParameterType)ret);
+		}
 		
 		// isParsedClassType => !isMissingTypeArguments
 		assert (!(ret instanceof X10ParsedClassType) || !((X10ParsedClassType) ret).isMissingTypeArguments());
@@ -174,7 +196,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	
 	public boolean isRefType(final Type type) {
 		final Type ret = getConcreteType(type);
-		return (ret == Null() || isClass(ret) || isInterfaceType(ret)) && !isStructType(ret);
+		return !isStructType0(ret) && (ret == Null() || isClass(ret) || isInterfaceType(ret));
 	}
 	
 	// Own additions for the native pointer type 

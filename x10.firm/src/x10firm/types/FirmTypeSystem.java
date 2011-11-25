@@ -218,7 +218,7 @@ public class FirmTypeSystem {
 	public X10ClassType getBoxingType(X10ClassType type_) {
 		final X10ClassType type = (X10ClassType)x10TypeSystem.getConcreteType(type_);
 		
-		assert x10TypeSystem.isStructType(type);
+		assert x10TypeSystem.isStructType0(type);
 
 		final X10ClassType ret = structBoxingTypes.get(type);
 		if(ret != null) return ret;
@@ -953,7 +953,7 @@ public class FirmTypeSystem {
 				OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 			} else if (owner.flags().isInterface()) {
 				OO.setEntityBinding(entity, ddispatch_binding.bind_interface);
-			} else if(x10TypeSystem.isStructType(owner)) {
+			} else if(x10TypeSystem.isStructType0(owner)) {
 				// struct methods needn`t be dynamic
 				OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 			} else {

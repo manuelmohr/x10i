@@ -1908,7 +1908,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		} else {
 			Node objectNode = objectThisNode;
 			if (objectNode == null) {
-				if (x10TypeSystem.isStructType(n.type()))
+				if (x10TypeSystem.isStructType0(n.type()))
 					objectNode = genStackAlloc(type);
 				else
 					objectNode = genHeapAlloc(type);
@@ -2124,7 +2124,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 */
 	private Expr x10Cast(final Expr expr, final Type fType) {
 		Expr ret = expr;
-		if(!x10TypeSystem.typeDeepBaseEquals(fType, expr.type(), x10Context)) {
+		if(!x10TypeSystem.typeDeepBaseEquals0(fType, expr.type(), x10Context)) {
 			final Position pos = expr.position();
 			Converter.ConversionType convType = Converter.ConversionType.UNCHECKED;
 
@@ -2139,7 +2139,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	private Expr wrapArgument(final Type fType, final Expr arg) {
 		Expr ret = arg;
-		if (!x10TypeSystem.typeEquals(fType, arg.type(), x10Context))
+		if (!x10TypeSystem.typeEquals0(fType, arg.type(), x10Context))
 			ret = x10Cast(arg, fType);
 		return ret;
 	}
@@ -2180,7 +2180,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final Flags flags = mi.flags();
 		final boolean isStatic = flags.isStatic();
 		final boolean isFinal  = flags.isFinal();
-		final boolean isStruct = x10TypeSystem.isStructType(mi.container());
+		final boolean isStruct = x10TypeSystem.isStructType0(mi.container());
 		final boolean isStaticBinding = (isStatic || isFinal || isStruct);
 		final Entity entity = firmTypeSystem.getMethodEntity(mi);
 
@@ -2340,7 +2340,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 */
 	private static Set<Type> initedBoxingTypes = new HashSet<Type>();
 	
-	private X10ClassType getBoxingType(final X10ClassType type) {
+	public X10ClassType getBoxingType(final X10ClassType type) {
 		final X10ClassType boxType = firmTypeSystem.getBoxingType(type);
 
 		if(!initedBoxingTypes.contains(boxType)) {
@@ -2406,7 +2406,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 */
 	void genSubtypeCheck(final Node node, final Type fromType, final Type toType) {
 		assert(toType instanceof X10ClassType);
-		final Type compType = x10TypeSystem.isStructType(toType) ? firmTypeSystem.getBoxingType((X10ClassType)toType) : toType;
+		final Type compType = x10TypeSystem.isStructType0(toType) ? firmTypeSystem.getBoxingType((X10ClassType)toType) : toType;
 
 		final CondTemplate condTemplate = new CondTemplate() {
 			@Override
@@ -2504,7 +2504,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			final Type to   = Types.stripConstraints(toType);
 			final Type from = Types.stripConstraints(fromType);
 			
-			if (x10TypeSystem.typeEquals(from, to, x10Context)) {
+			if (x10TypeSystem.typeEquals0(from, to, x10Context)) {
 				// types are statically equal no type conversion needed.
 				visitAppropriate(c.expr());
 				break;
@@ -2514,11 +2514,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				final Node ret = genRefToRefCast(node, c.expr().type(), to, c.conversionType() == Converter.ConversionType.CHECKED);
 				setReturnNode(ret);
 				break;
-			} else if(x10TypeSystem.isStructType(from) && x10TypeSystem.isRefType(to)) {
+			} else if(x10TypeSystem.isStructType0(from) && x10TypeSystem.isRefType(to)) {
 				// struct -> ref
 				// Check for boxing
 				if (c.conversionType() == Converter.ConversionType.SUBTYPE && x10TypeSystem.isSubtype(from, to, x10Context)) {
-					if (x10TypeSystem.isInterfaceType(to) && x10TypeSystem.isStructType(from)) {
+					if (x10TypeSystem.isInterfaceType(to) && x10TypeSystem.isStructType0(from)) {
 						// An upcast of a struct to an implemented interface -> Need boxing
 						final Node node = visitExpression(c.expr());
 						final Node ret = genBoxing((X10ClassType) x10TypeSystem.toClass(from), node);
@@ -2528,7 +2528,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				}
 				assert(false);
 				break;
-			} else if(x10TypeSystem.isRefType(from) && x10TypeSystem.isStructType(to)) {
+			} else if(x10TypeSystem.isRefType(from) && x10TypeSystem.isStructType0(to)) {
 				// ref -> struct
 				// Unboxing -> must be a checked cast !!!
 				assert(c.conversionType() == ConversionType.CHECKED);
