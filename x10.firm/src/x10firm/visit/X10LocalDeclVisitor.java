@@ -28,6 +28,10 @@ public class X10LocalDeclVisitor extends X10DummyDelegatingVisitor {
 	public void visit(LocalDecl_c n) {
 		assert !localDecls.contains(n);
 		localDecls.add(n);
+		// Watch out a local declaration can declare other local declarations in their initialization expression (stmt expressions) !!!
+		if(n.init() != null) {
+			visitAppropriate(n.init());
+		}
 	}
 
 	@Override

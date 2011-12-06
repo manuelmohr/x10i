@@ -90,7 +90,6 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		
 		allowedClassNames.add("x10/lang/Iterable.x10");
 		allowedClassNames.add("x10/lang/Iterator.x10");
-		
 		allowedClassNames.add("x10/lang/Thread.x10");
 		
 		allowedClassNames.add("x10/util/concurrent/AtomicFloat.x10");
@@ -100,13 +99,11 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedClassNames.add("x10/util/concurrent/AtomicBoolean.x10");
 		allowedClassNames.add("x10/util/concurrent/Fences.x10");
 		allowedClassNames.add("x10/util/concurrent/Lock.x10");
-		
 		allowedClassNames.add("x10/util/Container.x10");
 		allowedClassNames.add("x10/util/Option.x10");
-		
 		allowedClassNames.add("x10/util/Ordered.x10");
-		
 		allowedClassNames.add("x10/util/IndexedMemoryChunk.x10");
+//		allowedClassNames.add("x10/util/GrowableIndexedMemoryChunk.x10");
 		
 		allowedClassNames.add("x10/compiler/InitDispatcher.x10");
 	}

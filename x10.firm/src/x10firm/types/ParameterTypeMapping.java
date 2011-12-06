@@ -56,18 +56,32 @@ public class ParameterTypeMapping {
 		if (!(o instanceof ParameterTypeMapping))
 			return false;
 
-		ParameterTypeMapping other = (ParameterTypeMapping) o;
+		final ParameterTypeMapping other = (ParameterTypeMapping) o;
 		if (mapping.size() != other.mapping.size())
 			return false;
 
-		for (ParameterType pt : mapping.keySet()) {
-			if (!other.mapping.containsKey(pt))
+		for (final ParameterType pt : mapping.keySet()) {
+			ParameterType qt = null;
+			/* A simple "other.mapping.containsKey" is not enough because we can have same types with different hash 
+			 * codes (different instances).
+			 * We also can`t compare the parameter types with equalsImpl because the 2 parameter type mappings can 
+			 * have different contexts (for example: 1. parameter type mapping for a method "a", 2. parameter type mapping
+			 * for a method "b". -> The contexts are different but the parameter type mappings can be the same) 
+			 * Solution: We have to do a simple name comparison for the parameter types and a context dependent 
+			 * comparison with "equalsImpl" for the concrete types of the parameter types. 
+			 */
+			for(final ParameterType et: other.mapping.keySet()) {
+				if(pt.name().toString().equals(et.name().toString())) { 
+					qt = et; 
+					break; 
+				}
+			}
+			if(qt == null)
 				return false;
-
+			
 			final Type myT = mapping.get(pt);
-			final Type otherT = other.mapping.get(pt);
+			final Type otherT = other.mapping.get(qt);
 
-			// TODO:  Check the exact meaning of equalsImpl.  Maybe pointer equality works, too?
 			if (!myT.equalsImpl((TypeObject) otherT))
 				return false;
 		}
