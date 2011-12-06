@@ -42,7 +42,7 @@ static inline bool x10_instance_of(const x10_object* o,
 	return x10_object_head(o)->vptr[0] == (uintptr_t) c;
 }
 
-static inline void *x10_sysalloc(size_t size)
+static inline void *x10_sysalloc(x10_long size)
 {
 	return malloc(size); 
 }
@@ -52,20 +52,20 @@ static inline void x10_sysfree(void *ptr)
 	free(ptr); 
 }
 
-static inline void *x10_sysrealloc(void *ptr, size_t size)
+static inline void *x10_sysrealloc(void *ptr, x10_long size)
 {
 	return realloc(ptr, size);
 }
 
 
-static inline void* x10_malloc(size_t size)
+static inline void* x10_malloc(x10_long size)
 {
 	// TODO: Garbage collection, Out of memory exception
 	void *data = malloc(size);
 	return data;
 }
 
-static inline void* x10_realloc(void *ptr, size_t size)
+static inline void* x10_realloc(void *ptr, x10_long size)
 {
 	void *data = realloc(ptr, size);
 	// TODO Out of memory exception?

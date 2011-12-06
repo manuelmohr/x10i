@@ -122,6 +122,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		return ret;
 	}
 	
+	
 	private X10ParsedClassType fixParsedClassType(final X10ParsedClassType klass) {
 		if (klass.isMissingTypeArguments()) {
 			final X10ClassDef def = klass.def();
@@ -163,6 +164,9 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		else if(super.isParameterType(ret) && typeParameters.containsKey(ret)) {
 			assert(typeParameters.containsKey(ret));
 			ret = getTypeParamSub((ParameterType)ret);
+		} else {
+			// TODO: Need a better solution !!!
+			ret = Object();
 		}
 		
 		// isParsedClassType => !isMissingTypeArguments

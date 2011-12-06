@@ -337,7 +337,8 @@ public class X10NameMangler {
 
         final List<? extends Type> typeArgs = clazz.typeArguments() != null ? clazz.typeArguments() :
         									  								  clazz.x10Def().typeParameters();
-        if(!typeArgs.isEmpty()) {
+        if(!typeArgs.isEmpty() && !mangleGenericStaticMethodInstance) { 
+        	// don`t mangle type arguments if we are currently mangling a method instance. 
     		buf.append(TYPEARG_START);
     		for(Type type : typeArgs)
     			buf.append(mangleTypeParameter(type));
@@ -363,6 +364,9 @@ public class X10NameMangler {
 	private static String fixClassName(String string) {
 		return string.replace(' ', '$');
 	}
+	
+	// Flag to mark if we are currently mangling a static method instance
+	private static boolean mangleGenericStaticMethodInstance = false;
 
 	/**
 	 * Mangles a given method instance
@@ -373,18 +377,25 @@ public class X10NameMangler {
 	private static String mangleMethodInstance(final MethodInstance method, final boolean mangleDefiningClass) {
 		StringBuilder buf = new StringBuilder();
 		buf.append(QUAL_START);
+		
+		final List<? extends Type> typeArgs = method.typeParameters() != null ? method.typeParameters() :
+			method.x10Def().typeParameters();
 
 		if (mangleDefiningClass) {
 			if (method.container() != null) {
+				if(method.flags().isStatic()) {
+					mangleGenericStaticMethodInstance = true;
+				}
 				buf.append(mangleType(method.container(), true));
+				if(mangleGenericStaticMethodInstance) {
+					mangleGenericStaticMethodInstance = false;
+				}
 				buf.append(mangleMethodName(method));
 			}
 		} else {
 			buf.append(mangleMethodName(method));
 		}
 
-		final List<? extends Type> typeArgs = method.typeParameters() != null ? method.typeParameters() :
-																				method.x10Def().typeParameters();
 		if (!typeArgs.isEmpty()) {
 			buf.append(TYPEARG_START);
 			for(Type type : method.typeParameters())

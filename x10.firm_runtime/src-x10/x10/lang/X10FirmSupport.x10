@@ -15,5 +15,20 @@ import x10.compiler.Native;
 
 public class X10FirmSupport {
 	/** equals sizeof(x) in C */
-   public native static def getSize[T]():int;
+   public static native def getSize[T]():int;
+
+   /** memory compare */
+   public static native def memcmp(ptr1: FirmPointer, ptr2: FirmPointer, bytes: long) : Boolean;
+   
+   /** memory copy */
+   public static native def memcpy(dest: FirmPointer, src: FirmPointer, bytes: long, overlap: Boolean) : void;
+   
+   /** memset */
+   public static native def memset(dest: FirmPointer, c: int, bytes: long) : void;
+   
+   /** allocation of memory; the returned memory pointer is not aligned !!! (Use align_ptr for alignment of pointers) */
+   public static native def alloc(numBytes: long, alignment: int, congruent: Boolean, zeroed: Boolean) : FirmPointer;
+   
+   /** deallocation of memory; The given memory pointer must be the real memory pointer returned by "alloc"; (not the aligned) */
+   public static native def dealloc(memPtr: FirmPointer) : void;
 }

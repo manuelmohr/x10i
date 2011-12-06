@@ -1668,8 +1668,19 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			// method on.
 			if (!def.typeParameters().isEmpty()) {
 				final List<ParameterType> cParamTypes = def.typeParameters();
-				final List<Type> cActualTypes = ct.typeArguments();
-
+				List<Type> cActualTypes = ct.typeArguments();
+				
+				/*
+				    static generic method calls of static generic classes will be handled as following:
+					GeneriClass[T_i].genericMethod[U_j](...) -> 
+					GeneriClass[[T_i / Object]].genericMethod[[U_j/"actualType"]](...)
+				*/
+				if(methodInstance.flags().isStatic()) {
+					cActualTypes = new ArrayList<Type>(cParamTypes.size());
+					for(int i = 0; i < cParamTypes.size(); i++)
+						cActualTypes.add(x10TypeSystem.Object());
+				}
+				
 				addToMapping(ptm, cParamTypes, cActualTypes);
 			}
 

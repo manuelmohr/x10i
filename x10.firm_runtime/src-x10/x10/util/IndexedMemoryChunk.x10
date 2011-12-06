@@ -16,7 +16,6 @@ import x10.compiler.Inline;
 import x10.compiler.Native;
 import x10.compiler.NativeRep;
 
-
 /**
  * A low-level abstraction of a chunk of memory that
  * contains a dense, indexed from 0 collection of 
@@ -32,6 +31,37 @@ import x10.compiler.NativeRep;
 @NativeRep("java", "x10.core.IndexedMemoryChunk<#T$box>", null, "new x10.rtt.ParameterizedType(x10.core.IndexedMemoryChunk.$RTT, #T$rtt)")
 @NativeRep("c++", "x10::util::IndexedMemoryChunk<#T >", "x10::util::IndexedMemoryChunk<#T >", null)
 public struct IndexedMemoryChunk[T] {
+    // Pointer to the allocated memory
+    private val alloc_ptr: FirmPointer;
+    // Pointer to the allocated aligned memory 
+    private val ptr : FirmPointer;
+    // len of the memory chunk
+    private val len: long;
+    
+    private native static def alloc_internal(numElements: long, sizeElement: int, alignment: int, congruent: Boolean, zeroed: Boolean) : FirmPointer;
+    private native static def dealloc_internal(ptr: FirmPointer) : void;
+    
+    private static def checkBounds(index: long, len: long) :void {
+        if(index >= len) {
+            throw new ArrayIndexOutOfBoundsException(index + " out of bound");
+        }
+    }
+
+    private static def alloc[T](numElements: long, sizeElements: int, alignment: int, congruent: Boolean, zeroed: Boolean) : IndexedMemoryChunk[T] {
+        if(numElements <= 0) {
+            return IndexedMemoryChunk[T](FirmPointer.NULL, FirmPointer.NULL, 0L);
+        }
+    
+        val alloc_ptr : FirmPointer = alloc_internal(numElements, sizeElements, alignment, congruent, zeroed);
+        val align_ptr : FirmPointer = FirmPointer.align(alloc_ptr, alignment);
+        return IndexedMemoryChunk[T](alloc_ptr, align_ptr, numElements); 
+    }
+    
+    private def this(alloc_p: FirmPointer, align_p : FirmPointer, l: long) {
+        alloc_ptr = alloc_p;
+        ptr = align_p;
+        len = l;
+    }
 
     @Native("java", "null")
     @Native("c++", "null")
@@ -39,35 +69,51 @@ public struct IndexedMemoryChunk[T] {
 
     @Native("java", "x10.core.IndexedMemoryChunk.<#T$box>allocate(#T$rtt, #numElements, false)")
     @Native("c++", "x10::util::IndexedMemoryChunk<void>::allocate<#T >(#numElements, 8, false, false)")
-    public static native def allocateUninitialized[T](numElements:int):IndexedMemoryChunk[T];
+    public static def allocateUninitialized[T](numElements:int):IndexedMemoryChunk[T] {
+        return alloc[T](numElements, X10FirmSupport.getSize[T](), 8, false, false);
+    }
 
     @Native("java", "x10.core.IndexedMemoryChunk.<#T$box>allocate(#T$rtt, #numElements, true)")
     @Native("c++", "x10::util::IndexedMemoryChunk<void>::allocate<#T >(#numElements, 8, false, true)")
-    public static native def allocateZeroed[T](numElements:int):IndexedMemoryChunk[T]{T haszero};
+    public static def allocateZeroed[T](numElements:int):IndexedMemoryChunk[T]{T haszero} {
+        return alloc[T](numElements, X10FirmSupport.getSize[T](), 8, false, true);
+    }
 
     @Native("java", "x10.core.IndexedMemoryChunk.<#T$box>allocate(#T$rtt, #numElements, false)")
     @Native("c++", "x10::util::IndexedMemoryChunk<void>::allocate<#T >(#numElements, #alignment, #congruent, false)")
-    public static native def allocateUninitialized[T](numElements:int, alignment:int, congruent:boolean):IndexedMemoryChunk[T];
+    public static def allocateUninitialized[T](numElements:int, alignment:int, congruent:boolean):IndexedMemoryChunk[T] {
+        return alloc[T](numElements, X10FirmSupport.getSize[T](), alignment, congruent, false);
+    }
 
     @Native("java", "x10.core.IndexedMemoryChunk.<#T$box>allocate(#T$rtt, #numElements, true)")
     @Native("c++", "x10::util::IndexedMemoryChunk<void>::allocate<#T >(#numElements, #alignment, #congruent, true)")
-    public static native def allocateZeroed[T](numElements:int, alignment:int, congruent:boolean):IndexedMemoryChunk[T]{T haszero};
+    public static def allocateZeroed[T](numElements:int, alignment:int, congruent:boolean):IndexedMemoryChunk[T]{T haszero} {
+        return alloc[T](numElements, X10FirmSupport.getSize[T](), alignment, congruent, true);
+    }
 
     @Native("java", "x10.core.IndexedMemoryChunk.<#T$box>allocate(#T$rtt, #numElements, false)")
     @Native("c++", "x10::util::IndexedMemoryChunk<void>::allocate<#T >(#numElements, 8, false, false)")
-    public static native def allocateUninitialized[T](numElements:long):IndexedMemoryChunk[T];
+    public static def allocateUninitialized[T](numElements:long):IndexedMemoryChunk[T] {
+        return alloc[T](numElements, X10FirmSupport.getSize[T](), 8, false, false);
+    }
 
     @Native("java", "x10.core.IndexedMemoryChunk.<#T$box>allocate(#T$rtt, #numElements, true)")
     @Native("c++", "x10::util::IndexedMemoryChunk<void>::allocate<#T >(#numElements, 8, false, true)")
-    public static native def allocateZeroed[T](numElements:long):IndexedMemoryChunk[T]{T haszero};
+    public static def allocateZeroed[T](numElements:long):IndexedMemoryChunk[T]{T haszero} {
+        return alloc[T](numElements, X10FirmSupport.getSize[T](), 8, false, true);
+    }
 
     @Native("java", "x10.core.IndexedMemoryChunk.<#T$box>allocate(#T$rtt, #numElements, false)")
     @Native("c++", "x10::util::IndexedMemoryChunk<void>::allocate<#T >(#numElements, #alignment, #congruent, false)")
-    public static native def allocateUninitialized[T](numElements:long, alignment:int, congruent:boolean):IndexedMemoryChunk[T];
+    public static def allocateUninitialized[T](numElements:long, alignment:int, congruent:boolean):IndexedMemoryChunk[T] {
+        return alloc[T](numElements, X10FirmSupport.getSize[T](), alignment, congruent, false);
+    }
 
     @Native("java", "x10.core.IndexedMemoryChunk.<#T$box>allocate(#T$rtt, #numElements, true)")
     @Native("c++", "x10::util::IndexedMemoryChunk<void>::allocate<#T >(#numElements, #alignment, #congruent, true)")
-    public static native def allocateZeroed[T](numElements:long, alignment:int, congruent:boolean):IndexedMemoryChunk[T]{T haszero};
+    public static def allocateZeroed[T](numElements:long, alignment:int, congruent:boolean):IndexedMemoryChunk[T]{T haszero} {
+        return alloc[T](numElements, X10FirmSupport.getSize[T](), alignment, congruent, true);
+    }
 
     /**
      * Deallocate the backing storage for the IndexedMemoryChunk and
@@ -79,7 +125,11 @@ public struct IndexedMemoryChunk[T] {
      */
     @Native("java", "(#this).deallocate()")
     @Native("c++", "(#this)->deallocate()")
-    public native def deallocate():void;
+    public def deallocate():void { 
+        if(length() > 0) {
+            dealloc_internal(alloc_ptr);
+        }
+    }
 
     /**
      * Operator that allows access of IndexedMemoryChunk elements by index.
@@ -89,8 +139,10 @@ public struct IndexedMemoryChunk[T] {
      */
     @Native("java", "(#this).$apply$G(#index)")
     @Native("c++", "(#this)->__apply(#index)")
-    public native operator this(index:int):T;
-
+    public operator this(index:int):T {
+        checkBounds(index, length());
+        return FirmPointer.read[T](ptr + index * X10FirmSupport.getSize[T]());
+    }
 
     /**
      * Operator that allows access of IndexedMemoryChunk elements by index.
@@ -100,7 +152,10 @@ public struct IndexedMemoryChunk[T] {
      */
     @Native("java", "(#this).$apply$G((int)(#index))")
     @Native("c++", "(#this)->__apply(#index)")
-    public native operator this(index:long):T;
+    public operator this(index:long):T {
+        checkBounds(index, length());
+        return FirmPointer.read[T](ptr + index * X10FirmSupport.getSize[T]());
+    }
 
 
     /**
@@ -112,7 +167,10 @@ public struct IndexedMemoryChunk[T] {
      */
     @Native("java", "(#this).$set(#index, #value)")
     @Native("c++", "(#this)->__set(#index, #value)")
-    public native operator this(index:int)=(value:T):void;
+    public operator this(index:int)=(value:T):void {
+        checkBounds(index, length());
+        FirmPointer.write[T](ptr + index * X10FirmSupport.getSize[T](), value);
+    }
 
 
     /**
@@ -124,7 +182,10 @@ public struct IndexedMemoryChunk[T] {
      */
     @Native("java", "(#this).$set((int)(#index), #value)")
     @Native("c++", "(#this)->__set(#index, #value)")
-    public native operator this(index:long)=(value:T):void;
+    public operator this(index:long)=(value:T):void {
+        checkBounds(index, length());
+        FirmPointer.write[T](ptr + index * X10FirmSupport.getSize[T](), value);
+    }
 
 
     /**
@@ -134,7 +195,13 @@ public struct IndexedMemoryChunk[T] {
      */
     @Native("java", "(#this).clear(#index, #numElems)")
     @Native("c++", "(#this)->clear(#index, #numElems)")
-    public native def clear(index:int, numElems:int):void;
+    public def clear(index:int, numElems:int):void { 
+        if(numElems > 0) {
+            checkBounds(index, length());
+            checkBounds(index + numElems, length() + 1);
+            X10FirmSupport.memset(ptr + index, 0, numElems * X10FirmSupport.getSize[T]());
+        }
+    }
 
 
     /**
@@ -144,7 +211,13 @@ public struct IndexedMemoryChunk[T] {
      */
     @Native("java", "(#this).clear((int)(#index), (int)(#numElems))")
     @Native("c++", "(#this)->clear(#index, #numElems)")
-    public native def clear(index:long, numElems:long):void;
+    public def clear(index:long, numElems:long):void {
+        if(numElems > 0) {
+            checkBounds(index, length());
+            checkBounds(index + numElems, length() + 1);
+            X10FirmSupport.memset(ptr + index, 0, numElems * X10FirmSupport.getSize[T]());
+        }
+    }
 
 
     /**
@@ -155,7 +228,9 @@ public struct IndexedMemoryChunk[T] {
      */
     @Native("java", "(#this).$apply$G(#index)")
     @Native("c++", "(#this)->apply_unsafe(#index)")
-    public native def apply_unsafe(index:int):T;
+    public def apply_unsafe(index:int):T {
+        return FirmPointer.read[T](ptr + index * X10FirmSupport.getSize[T]());
+    }
 
 
     /**
@@ -166,7 +241,9 @@ public struct IndexedMemoryChunk[T] {
      */
     @Native("java", "(#this).$apply$G((int)(#index))")
     @Native("c++", "(#this)->apply_unsafe(#index)")
-    public native def apply_unsafe(index:long):T;
+    public def apply_unsafe(index:long):T {
+        return FirmPointer.read[T](ptr + index * X10FirmSupport.getSize[T]());
+    }
 
 
     /**
@@ -178,7 +255,9 @@ public struct IndexedMemoryChunk[T] {
      */
     @Native("java", "(#this).set_unsafe(#value, #index)")
     @Native("c++", "(#this)->set_unsafe(#value, #index)")
-    public native def set_unsafe(value:T, index:int):void;
+    public def set_unsafe(value:T, index:int):void {
+        FirmPointer.write[T](ptr + index * X10FirmSupport.getSize[T](), value);
+    }
 
 
     /**
@@ -190,7 +269,9 @@ public struct IndexedMemoryChunk[T] {
      */
     @Native("java", "(#this).set_unsafe(#value, (int)(#index))")
     @Native("c++", "(#this)->set_unsafe(#value, #index)")
-    public native def set_unsafe(value:T, index:long):void;
+    public def set_unsafe(value:T, index:long):void {
+        FirmPointer.write[T](ptr + index * X10FirmSupport.getSize[T](), value);
+    }
 
 
     /**
@@ -200,7 +281,9 @@ public struct IndexedMemoryChunk[T] {
      */
     @Native("java", "((#this).length)")
     @Native("c++", "(#this)->length()")
-    public native def length():int; /* TODO: We need to convert this to returning a long */
+    public def length():int { /* TODO: We need to convert this to returning a long */
+        return len as int;
+    }
 
 
     /**
@@ -210,7 +293,7 @@ public struct IndexedMemoryChunk[T] {
      * If the destination place is not the same as the current place, then
      * the copy happens asynchronously and the created remote activity will be 
      * registered with the dynamically enclosing finish of the activity that invoked 
-     * asyncCopy.</p>
+     * asyncCopyTo.</p>
      *
      * Note: This copy is a "raw" copy of the bytes from one indexed memory chunk
      *       to another. If elements of type T contain references to class instances,
@@ -243,7 +326,7 @@ public struct IndexedMemoryChunk[T] {
      * If the source place is not the same as the current place, then
      * the copy happens asynchronously and the created remote activity will be 
      * registered with the dynamically enclosing finish of the activity that invoked 
-     * asyncCopy.<p>
+     * asyncCopyFrom.<p>
      *
      * Note: This copy is a "raw" copy of the bytes from one indexed memory chunk
      *       to another. If elements of type T contain references to class instances,
@@ -281,9 +364,16 @@ public struct IndexedMemoryChunk[T] {
      */
     @Native("java", "x10.core.IndexedMemoryChunk.<#T$box>copy(#src,#srcIndex,#dst,#dstIndex,#numElems)")
     @Native("c++", "x10::util::IndexedMemoryChunk<void>::copy<#T >(#src,#srcIndex,#dst,#dstIndex,#numElems)")
-    public static native def copy[T](src:IndexedMemoryChunk[T], srcIndex:int, 
+    public static def copy[T](src:IndexedMemoryChunk[T], srcIndex:int, 
                                      dst:IndexedMemoryChunk[T], dstIndex:int, 
-                                     numElems:int):void;
+                                     numElems:int):void {
+        if(numElems <= 0) return;
+        checkBounds(srcIndex, src.length());
+        checkBounds(srcIndex + numElems, src.length() + 1);
+        checkBounds(dstIndex, dst.length());
+        checkBounds(dstIndex + numElems, dst.length() + 1);
+        X10FirmSupport.memcpy(dst.ptr + dstIndex * X10FirmSupport.getSize[T](), src.ptr + srcIndex * X10FirmSupport.getSize[T](), numElems * X10FirmSupport.getSize[T](), src.ptr.compareTo(dst.ptr) == 0);
+    }
 
 
    /*
@@ -293,19 +383,26 @@ public struct IndexedMemoryChunk[T] {
 
     @Native("java", "(#this).toString()")
     @Native("c++", "(#this)->toString()")
-    public native def  toString():String;
+    // TODO: FIRM IMPLEMENT ME
+    public def  toString():String { return "Implement me"; }
 
     @Native("java", "(#this).equals(#that)")
     @Native("c++", "(#this)->equals(#that)")
-    public native def equals(that:Any):Boolean;
+    public def equals(that:Any):Boolean {
+        if(!(that instanceof IndexedMemoryChunk[T])) return false;
+        val other = that as IndexedMemoryChunk[T];
+        return length() == other.length() && X10FirmSupport.memcmp(ptr, other.ptr, length() * X10FirmSupport.getSize[T]());
+    }
 
     @Native("java", "(#this).hashCode()")
     @Native("c++", "(#this)->hashCode()")
-    public native def  hashCode():Int;
+    public def hashCode():Int = ptr.native_ptr() as Int;
 
-    @Native("java", "(#this).getCongruentSibling(#p)")
-    @Native("c++", "(#this)->getCongruentSibling(#p)")
-    public native def getCongruentSibling(p:Place):RemoteIndexedMemoryChunk[T];
+    // TODO: FIRM IMPLEMENT IT although it is nowhere used :) (Need support for RemoteIndexedMemoryChunk)
+    //@Native("java", "(#this).getCongruentSibling(#p)")
+    //@Native("c++", "(#this)->getCongruentSibling(#p)")
+    //public native def getCongruentSibling(p:Place):RemoteIndexedMemoryChunk[T];
+    
 }
 
 // vim:shiftwidth=4:tabstop=4:expandtab
