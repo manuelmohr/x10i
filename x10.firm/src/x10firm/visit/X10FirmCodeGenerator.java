@@ -2,6 +2,7 @@ package x10firm.visit;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -271,7 +272,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	
 	// This queue holds a list of nodes (either MethodDecls or ClassDecls)
 	// and their corresponding mapping of parameter types.
-	private static Queue<GenericNodeInstance> workList = new LinkedList<GenericNodeInstance>();
+	private static List<GenericNodeInstance> workList = new LinkedList<GenericNodeInstance>();
 
 	private void addToWorklist(GenericNodeInstance other) {
 		// Check for duplicates.
@@ -284,17 +285,16 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	
 	private void genGenericCode() {
 		
-		while (!workList.isEmpty()) {
-			final GenericNodeInstance head = workList.peek();
-			final ParameterTypeMapping ptm = head.getMapping();
+		// The list can increase while we are iterating over it !!! (When we have new generic method in another generic method)
+		for(int i = 0; i < workList.size(); i++) {
+			final GenericNodeInstance gi = workList.get(i);
+			final ParameterTypeMapping ptm = gi.getMapping();
 
 			firmTypeSystem.pushTypeMapping(ptm);
-			visitAppropriate(head.getNode());
+			visitAppropriate(gi.getNode());
 			firmTypeSystem.popTypeMapping(ptm);
-			
-			workList.poll();
 		}
-		
+		workList.clear();
 	}
 	
 	/**

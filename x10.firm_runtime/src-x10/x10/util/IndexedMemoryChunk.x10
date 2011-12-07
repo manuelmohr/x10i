@@ -383,8 +383,20 @@ public struct IndexedMemoryChunk[T] {
 
     @Native("java", "(#this).toString()")
     @Native("c++", "(#this)->toString()")
-    // TODO: FIRM IMPLEMENT ME
-    public def  toString():String { return "Implement me"; }
+    // TODO: Use String Builder (Need support for StringBuilder);
+    public def  toString():String { 
+        var s : String = "IndexedMemoryChunk(";
+        var sz: Int = length() > 10 ? 10 : length();
+        for(var i : Int = 0; i < sz; i++) {
+            if(i > 0) 
+                s = s + ",";
+            s = s + this(i).toString();
+        }
+        if(sz < length()) 
+            s = s + "...(omitted " + (length() - sz) + " elements";
+        s = s + ")";
+        return s;
+    }
 
     @Native("java", "(#this).equals(#that)")
     @Native("c++", "(#this)->equals(#that)")

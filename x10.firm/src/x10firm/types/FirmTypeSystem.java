@@ -986,7 +986,7 @@ public class FirmTypeSystem {
 	public void pushTypeMapping(ParameterTypeMapping ptm) {
 		for (ParameterType param : ptm.getKeySet()) {
 			final polyglot.types.Type mappedType = ptm.getMappedType(param);
-
+			
 			assert (hasFirmCoreType(mappedType) || hasFirmType(mappedType));
 
 			x10TypeSystem.addTypeMapping(param, mappedType);
