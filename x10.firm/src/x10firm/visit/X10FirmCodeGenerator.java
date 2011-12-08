@@ -2,13 +2,11 @@ package x10firm.visit;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
 
 import polyglot.ast.ArrayAccess_c;
@@ -285,7 +283,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	
 	private void genGenericCode() {
 		
-		// The list can increase while we are iterating over it !!! (When we have new generic method in another generic method)
+		// The list can increase while we are iterating over it !!! (When we have a new generic method in another generic method)
 		for(int i = 0; i < workList.size(); i++) {
 			final GenericNodeInstance gi = workList.get(i);
 			final ParameterTypeMapping ptm = gi.getMapping();
