@@ -271,13 +271,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	// This queue holds a list of nodes (either MethodDecls or ClassDecls)
 	// and their corresponding mapping of parameter types.
 	private static List<GenericNodeInstance> workList = new LinkedList<GenericNodeInstance>();
+	// Set of generic nodes instances in the worklist for faster checking of duplicates. 
+	private static Set<GenericNodeInstance> workListSet = new HashSet<GenericNodeInstance>();
 
 	private void addToWorklist(GenericNodeInstance other) {
 		// Check for duplicates.
-		for (GenericNodeInstance gi : workList)
-			if (gi.equals(other))
-				return;
+		if(workListSet.contains(other)) return;
 
+		workListSet.add(other);
 		workList.add(other);
 	}
 	
@@ -292,7 +293,6 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			visitAppropriate(gi.getNode());
 			firmTypeSystem.popTypeMapping(ptm);
 		}
-		workList.clear();
 	}
 	
 	/**
@@ -403,6 +403,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		private final ParameterTypeMapping mapping;
 
 		public GenericNodeInstance(final polyglot.ast.Node node, final ParameterTypeMapping mapping) {
+			assert(node != null && mapping != null);
 			this.node = node;
 			this.mapping = mapping;
 		}
@@ -425,12 +426,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			return null;
 		}
 
-		// TODO:  Obviously, this will create collisions for different
-		//        instances of the same generic method/class.
-		//        Think of a better hashing approach.
 		@Override
 		public int hashCode() {
-			return node.hashCode();
+			int hash = node.toString().hashCode();
+
+			for (ParameterType paramType : mapping.getKeySet())
+				hash ^= mapping.getMappedType(paramType).hashCode();
+
+			return hash;
 		}
 
 		@Override
