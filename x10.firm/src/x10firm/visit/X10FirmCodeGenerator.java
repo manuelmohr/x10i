@@ -1763,7 +1763,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final LocalInstance loc = n.localInstance();
 
 		final X10VarEntry var = firmContext.getVarEntry(loc);
-		assert(var != null);
+		assert var != null : "local instance '"+loc+"' not found in firm context";
 
 		if(var.getType() == X10VarEntry.STRUCT) {
 			final Node ret = getEntityFromCurrentFrame(var.getEntity());
