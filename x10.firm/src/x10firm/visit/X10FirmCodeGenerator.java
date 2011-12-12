@@ -2416,13 +2416,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param toType The to type
 	 */
 	void genSubtypeCheck(final Node node, final Type fromType, final Type toType) {
-		assert(toType instanceof X10ClassType);
-		final Type compType = x10TypeSystem.isStructType0(toType) ? firmTypeSystem.getBoxingType((X10ClassType)toType) : toType;
+		
+		final Type from = x10TypeSystem.getConcreteType(fromType);
+		final Type to   = x10TypeSystem.getConcreteType(toType);
+		
+		assert(to instanceof X10ClassType);
+		final Type compType = x10TypeSystem.isStructType0(to) ? firmTypeSystem.getBoxingType((X10ClassType)to) : to;
 
 		final CondTemplate condTemplate = new CondTemplate() {
 			@Override
 			public void genCode(final Block trueBlock, final Block falseBlock) {
-				final Node ret = ConditionEvaluationCodeGenerator.genInstanceOf(node, fromType, compType, X10FirmCodeGenerator.this, x10TypeSystem, firmTypeSystem, con);
+				final Node ret = ConditionEvaluationCodeGenerator.genInstanceOf(node, from, compType, X10FirmCodeGenerator.this, x10TypeSystem, firmTypeSystem, con);
 				ConditionEvaluationCodeGenerator.makeJumps(ret, falseBlock, trueBlock, con);
 			}
 		};
@@ -2431,7 +2435,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			@Override
 			public void genCode() {
 				final Stmt throwStmt = getThrowNewExceptionStmt(x10TypeSystem.ClassCastException(), 
-						"Cannot cast " + fromType + " to " + toType);
+						"Cannot cast " + from + " to " + to);
 				visitAppropriate(throwStmt);
 			}
 		};
@@ -2439,7 +2443,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		FirmCodeTemplate.genIfStatement(con, condTemplate, ifStmt, null);
 	}
 
-	private void genCastNullCheck(final Node node, final Type type) {
+	private void genCastNullCheck(final Node node, final Type t) {
+		
+		final Type type = x10TypeSystem.getConcreteType(t);
 		
 		final CondTemplate condTemplate = new CondTemplate() {
 			@Override
@@ -2463,7 +2469,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		FirmCodeTemplate.genIfStatement(con, condTemplate, ifStmt, null);
 	}
 	
-	private Node genRefToRefCast(final Node node, final Type fromType, final Type tooType, final boolean checked) {
+	private Node genRefToRefCast(final Node node, final Type fromType, final Type toType, final boolean checked) {
+		
+		final Type from = x10TypeSystem.getConcreteType(fromType);
+		final Type to   = x10TypeSystem.getConcreteType(toType);
+		
 		final CondTemplate cond = new CondTemplate() {
 			@Override
 			public void genCode(final Block trueBlock, final Block falseBlock) {
@@ -2487,7 +2497,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			public Node genCode() {
 				// can have checked and unchecked casts 
 				if(checked)
-					genSubtypeCheck(node, fromType, tooType);
+					genSubtypeCheck(node, from, to);
 				
 				return node;
 			}
@@ -2509,11 +2519,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		case UNCHECKED:
 			final X10CanonicalTypeNode xtn = (X10CanonicalTypeNode) tn;
 			
-			final Type toType 	= Types.baseType(xtn.type());
-			final Type fromType = Types.baseType(c.expr().type());
-			
-			final Type to   = Types.stripConstraints(toType);
-			final Type from = Types.stripConstraints(fromType);
+			final Type to 	= x10TypeSystem.getConcreteType(xtn.type());
+			final Type from = x10TypeSystem.getConcreteType(c.expr().type());
 			
 			if (x10TypeSystem.typeEquals0(from, to, x10Context)) {
 				// types are statically equal no type conversion needed.
@@ -2522,7 +2529,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			} else if(x10TypeSystem.isRefType(from) && x10TypeSystem.isRefType(to)) {
 				// ref -> ref
 				final Node node = visitExpression(c.expr());
-				final Node ret = genRefToRefCast(node, c.expr().type(), to, c.conversionType() == Converter.ConversionType.CHECKED);
+				final Node ret = genRefToRefCast(node, from, to, c.conversionType() == Converter.ConversionType.CHECKED);
 				setReturnNode(ret);
 				break;
 			} else if(x10TypeSystem.isStructType0(from) && x10TypeSystem.isRefType(to)) {
@@ -2544,7 +2551,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 				// Unboxing -> must be a checked cast !!!
 				assert(c.conversionType() == ConversionType.CHECKED);
 				final Node box = visitExpression(c.expr());
-				final Node ret = genUnboxing(box, (X10ClassType)x10TypeSystem.toClass(from), (X10ClassType)x10TypeSystem.toClass(to));
+				final Node ret = genUnboxing(box, x10TypeSystem.toClass(from), x10TypeSystem.toClass(to));
 				setReturnNode(ret);
 				break;
 			}

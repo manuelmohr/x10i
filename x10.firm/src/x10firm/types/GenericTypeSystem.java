@@ -193,7 +193,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		return ret.isClass();
 	}
 
-	public ClassType toClass(final Type t) {
+	public X10ClassType toClass(final Type t) {
 		final Type ret = getConcreteType(t);
 		return ret.toClass();
 	}

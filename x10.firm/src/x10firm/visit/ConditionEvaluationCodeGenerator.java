@@ -173,10 +173,12 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		}
 	}
 	
-	public static Node genInstanceOf(final Node node, final Type exprType, final Type compType, 
+	public static Node genInstanceOf(final Node node, final Type eType, final Type cmpType, 
 			final X10FirmCodeGenerator codeGenerator, final GenericTypeSystem typeSystem, 
 			final FirmTypeSystem firmTypeSystem, final OOConstruction con) {
 		
+		final Type exprType = typeSystem.getConcreteType(eType);
+		final Type compType = typeSystem.getConcreteType(cmpType);
 		Node objPtr = node;
 		firm.Type firmType = null;
 		

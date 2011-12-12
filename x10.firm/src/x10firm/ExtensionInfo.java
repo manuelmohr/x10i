@@ -103,6 +103,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedClassNames.add("x10/util/Option.x10");
 		allowedClassNames.add("x10/util/Ordered.x10");
 		allowedClassNames.add("x10/util/Timer.x10");
+		allowedClassNames.add("x10/util/Box.x10");
 		allowedClassNames.add("x10/util/IndexedMemoryChunk.x10");
 //		allowedClassNames.add("x10/util/GrowableIndexedMemoryChunk.x10");
 		
