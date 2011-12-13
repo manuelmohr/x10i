@@ -37,8 +37,8 @@ public class CompilerOptions extends X10CompilerOptions {
 	 * @return The full filename of the firm native types configuration file 
 	 */
 	public String getFirmNativeTypesFilename() {
-		assert(firmNativeTypesFilename != null);
-		return firmNativeTypesFilename; 
+		assert firmNativeTypesFilename != null : "firmNativeTypesFilename not initialized";
+		return firmNativeTypesFilename;
 	}
 
 	@Override
