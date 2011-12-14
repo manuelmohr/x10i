@@ -4,11 +4,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import polyglot.ast.ClassMember;
 import polyglot.ast.Stmt;
+import polyglot.types.LocalDef;
+import polyglot.types.LocalInstance;
 import polyglot.types.Type;
-import polyglot.types.VarInstance;
 
 /**
  * Class that holds attributes (scopes, mapping of local instance variables etc.) for a new method.
@@ -18,8 +20,8 @@ public class X10FirmContext {
 	/** Holds the topmost firmScope. -> Push a dummy frame in the current FirmContext */
 	private X10FirmScope topFirmScope = new X10FirmScope();
 
-	/** Maps VarInstances to the appropriate "VarEntry" entries */
-	private Map<VarInstance<?>, X10VarEntry> varEntryMapper = new HashMap<VarInstance<?>, X10VarEntry>();
+	/** Maps local var defs to the appropriate var entries */
+	private Map<LocalDef, X10VarEntry> varEntryMapper = new HashMap<LocalDef, X10VarEntry>();
 
 	/**
 	 * Reference to the current procedure return type
@@ -106,17 +108,17 @@ public class X10FirmContext {
 	/** Sets the "VarEntry" for a given variable (local variable or field instance)
 	 * @param entry The "VarEntry" for the given variable
 	 */
-	public void setVarEntry(X10VarEntry entry) {
-		assert !varEntryMapper.containsKey(entry.getVarInstance());
-		varEntryMapper.put(entry.getVarInstance(), entry);
+	public void setVarEntry(final X10VarEntry entry) {
+		assert !varEntryMapper.containsKey(entry.getVarDef());
+		varEntryMapper.put(entry.getVarDef(), entry);
 	}
 
 	/** Returns the "VarEntry" for a given instance variable in the current scope
 	 * @return The "VarEntry" of the given instance variable in the current scope or
 	 * null if the instance variable could not be found.
 	 */
-	public X10VarEntry getVarEntry(VarInstance<?> var) {
-		return varEntryMapper.get(var);
+	public X10VarEntry getVarEntry(final LocalInstance var) {
+		return varEntryMapper.get(var.def());
 	}
 	
 	/** Pushes a new firm scope

@@ -79,6 +79,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedClassNames.add("x10/lang/Math.x10");
 		allowedClassNames.add("x10/lang/Complex.x10");
 		allowedClassNames.add("x10/lang/Cell.x10");
+		allowedClassNames.add("x10/lang/LongRange.x10");
 		
 		allowedClassNames.add("x10/lang/Acc.x10");
 		allowedClassNames.add("x10/lang/Reducible.x10");

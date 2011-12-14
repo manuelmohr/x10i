@@ -1,33 +1,33 @@
 package x10firm.visit;
 
+import polyglot.types.LocalDef;
 import polyglot.types.LocalInstance;
-import polyglot.types.VarInstance;
 import firm.Entity;
 
 /**
- * Class for saving variable instances (locals and fields) and the appropriate "firm" indices.
+ * Class for saving local var declarations and the appropriate firm indices, types.
  */
 public class X10VarEntry {
 	/**
-	 * Type of a normal variable -> can be set and accessed with setVariable and getVariable and has a unique index
+	 * Type of a normal variable -> Has a unique index
 	 */
 	public static final int VARIABLE = 0x1;
 
 	/**
-	 * A normal (local) struct variable
+	 * A normal (local) struct variable -> Has a unique entity
 	 */
-	public static final int STRUCT   = 0x3;
+	public static final int STRUCT   = 0x2;
 
 	private Entity entity;
 	private int type;
 	private int idx;
-	private VarInstance<?> var;
+	private LocalDef def;
 
-	private X10VarEntry(final VarInstance<?> var, final int idx, final int type, final Entity entity) {
-		assert(var != null);
+	private X10VarEntry(final LocalDef def, final int idx, final int type, final Entity entity) {
+		assert(def != null);
 		assert(type == VARIABLE || type == STRUCT);
 
-		this.var = var;
+		this.def = def;
 		this.idx = idx;
 		this.type = type;
 		this.entity = entity;
@@ -41,22 +41,22 @@ public class X10VarEntry {
 	}
 
 	/**
-	 * Creates a new var entry for a local instance
-	 * @param loc The local instance
-	 * @param idx The "local" index (firm) for the local variable
+	 * Creates a new var entry for a local variable
+	 * @param loc The local def
+	 * @param idx The "local" index (firm) for the local def
 	 * @return The created var entry.
 	 */
 	public static X10VarEntry newVarEntryForLocalVariable(final LocalInstance loc, final int idx) {
-		return new X10VarEntry(loc, idx, VARIABLE, null);
+		return new X10VarEntry(loc.def(), idx, VARIABLE, null);
 	}
 
 	/**
-	 * Creates a new var entry for a local struct instance
-	 * @param loc The local struct instance
+	 * Creates a new var entry for a local struct def
+	 * @param loc The local struct def
 	 * @return The created var entry.
 	 */
 	public static X10VarEntry newVarEntryForStructVariable(final LocalInstance loc, final Entity entity) {
-		return new X10VarEntry(loc, -1, STRUCT, entity);
+		return new X10VarEntry(loc.def(), -1, STRUCT, entity);
 	}
 
 	/**
@@ -76,10 +76,10 @@ public class X10VarEntry {
 	}
 
 	/**
-	 * Returns the var instance of the var key
-	 * @return The var instance
+	 * Returns the var def of the var key
+	 * @return The var def
 	 */
-	public VarInstance<?> getVarInstance() {
-		return var;
+	public LocalDef getVarDef() {
+		return def;
 	}
 }
