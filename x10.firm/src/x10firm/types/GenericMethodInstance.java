@@ -8,18 +8,13 @@ public class GenericMethodInstance {
 	private X10MethodDef def;
 	private ParameterTypeMapping mapping;
 
-	GenericMethodInstance(X10MethodDef def) {
-		assert (def != null && def.typeParameters().isEmpty());
-		this.def = def;
-	}
-
-	GenericMethodInstance(X10MethodDef def, ParameterTypeMapping mapping) {
+	GenericMethodInstance(final X10MethodDef def, final ParameterTypeMapping mapping) {
 		assert (def != null && !def.typeParameters().isEmpty() && mapping != null);
 		this.def = def;
 		this.mapping = mapping;
 	}
 
-	GenericMethodInstance(MethodInstance mi) {
+	GenericMethodInstance(final MethodInstance mi, final GenericTypeSystem x10TypeSystem) {
 		this.def = mi.x10Def();
 
 		if (def.typeParameters().isEmpty())
@@ -27,7 +22,7 @@ public class GenericMethodInstance {
 		else {
 			this.mapping = new ParameterTypeMapping();
 			for (int i = 0; i < def.typeParameters().size(); ++i)
-				this.mapping.add(def.typeParameters().get(i), mi.typeParameters().get(i));
+				this.mapping.add(def.typeParameters().get(i), x10TypeSystem.getConcreteType(mi.typeParameters().get(i)));
 		}
 	}
 

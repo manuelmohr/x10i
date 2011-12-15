@@ -46,7 +46,7 @@ public class FirmGenerated extends SourceGoal_c {
 
 	@Override
 	public boolean runTask() {
-		Node ast = job().ast();
+		final Node ast = job().ast();
 		System.out.println("FirmGenerated: " + ast);
 		assert (ast != null);
 		if (!((X10Ext) ast.ext()).subtreeValid())
@@ -55,7 +55,7 @@ public class FirmGenerated extends SourceGoal_c {
 		final CompilerOptions options = (CompilerOptions) scheduler.extensionInfo().getOptions();
 		firmTypeSystem.init(options);
 
-		Compiler compiler = job().compiler();
+		final Compiler compiler = job().compiler();
 		final X10FirmCodeGenerator v = new X10FirmCodeGenerator(compiler, firmTypeSystem, x10TypeSystem, nodeFactory, options);
 		v.visitAppropriate(ast);
 

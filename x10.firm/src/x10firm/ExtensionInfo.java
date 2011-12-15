@@ -76,13 +76,13 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedClassNames.add("x10/lang/Char.x10");
 		allowedClassNames.add("x10/lang/FirmPointer.x10");
 		
-		allowedClassNames.add("x10/lang/Math.x10");
-		allowedClassNames.add("x10/lang/Complex.x10");
-		allowedClassNames.add("x10/lang/Cell.x10");
+//		allowedClassNames.add("x10/lang/Math.x10");
+//		allowedClassNames.add("x10/lang/Complex.x10");
+//		allowedClassNames.add("x10/lang/Cell.x10");
 		allowedClassNames.add("x10/lang/LongRange.x10");
 		
-		allowedClassNames.add("x10/lang/Acc.x10");
-		allowedClassNames.add("x10/lang/Reducible.x10");
+//		allowedClassNames.add("x10/lang/Acc.x10");
+//		allowedClassNames.add("x10/lang/Reducible.x10");
 		allowedClassNames.add("x10/lang/Indexable.x10");
 		allowedClassNames.add("x10/lang/Comparable.x10");
 		allowedClassNames.add("x10/lang/Bitwise.x10");
@@ -101,16 +101,15 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedClassNames.add("x10/util/concurrent/Fences.x10");
 		allowedClassNames.add("x10/util/concurrent/Lock.x10");
 		allowedClassNames.add("x10/util/Container.x10");
-		allowedClassNames.add("x10/util/Option.x10");
-		allowedClassNames.add("x10/util/Ordered.x10");
-		allowedClassNames.add("x10/util/Timer.x10");
-		allowedClassNames.add("x10/util/Box.x10");
+//		allowedClassNames.add("x10/util/Option.x10");
+//		allowedClassNames.add("x10/util/Ordered.x10");
+//		allowedClassNames.add("x10/util/Timer.x10");
+//		allowedClassNames.add("x10/util/Box.x10");
 		allowedClassNames.add("x10/util/IndexedMemoryChunk.x10");
 //		allowedClassNames.add("x10/util/GrowableIndexedMemoryChunk.x10");
 		
-
-		allowedClassNames.add("x10/io/SerialData.x10");
-		allowedClassNames.add("x10/io/CustomSerialization.x10");
+//		allowedClassNames.add("x10/io/SerialData.x10");
+//		allowedClassNames.add("x10/io/CustomSerialization.x10");
 		
 		allowedClassNames.add("x10/compiler/InitDispatcher.x10");
 	}

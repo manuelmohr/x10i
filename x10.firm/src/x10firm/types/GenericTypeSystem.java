@@ -164,7 +164,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		else if(super.isParameterType(ret) && typeParameters.containsKey(ret)) {
 			assert(typeParameters.containsKey(ret));
 			ret = getTypeParamSub((ParameterType)ret);
-		} else {
+		} else if(super.isParameterType(ret)) {
 			// TODO: Need a better solution !!!
 			ret = Object();
 		}

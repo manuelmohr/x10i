@@ -933,8 +933,9 @@ public class FirmTypeSystem {
 	 * Return entity for an X10 method
 	 */
 	public Entity getMethodEntity(final MethodInstance instance) {
+		
 		final GenericClassContext context = getDefiningContext(instance);
-		final GenericMethodInstance gMethodInstance = new GenericMethodInstance(instance);
+		final GenericMethodInstance gMethodInstance = new GenericMethodInstance(instance, x10TypeSystem);
 		Entity entity = context.getMethodEntity(gMethodInstance);
 
 		if (entity == null) {

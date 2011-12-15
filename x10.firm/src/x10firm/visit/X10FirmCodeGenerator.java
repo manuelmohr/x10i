@@ -80,6 +80,7 @@ import polyglot.types.Type;
 import polyglot.types.Types;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
+import sun.security.provider.MD2;
 import x10.ast.AssignPropertyCall_c;
 import x10.ast.Async_c;
 import x10.ast.AtEach_c;
@@ -110,6 +111,7 @@ import x10.ast.X10Cast_c;
 import x10.ast.X10ClassDecl;
 import x10.ast.X10ClassDecl_c;
 import x10.ast.X10ConstructorCall_c;
+import x10.ast.X10FieldDecl;
 import x10.ast.X10Instanceof_c;
 import x10.ast.X10MethodDecl;
 import x10.ast.X10NodeFactory_c;
@@ -124,6 +126,7 @@ import x10.types.X10ClassType;
 import x10.types.X10ConstructorDef;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10Def;
+import x10.types.X10FieldDef;
 import x10.types.X10FieldInstance;
 import x10.types.X10MethodDef;
 import x10.types.checker.Converter;
@@ -509,6 +512,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
         finishConstruction(entity, savedConstruction);
 	}
+	
+	/* Static Non generic members in generic classes can be only visited once. */
+	private Set<ClassMember> static_non_generic_members = new HashSet<ClassMember>();
 
 	private void visitStruct(X10ClassDecl n) {
 
@@ -530,16 +536,45 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 						createStructTypeNameMethodBody(n, md);
 						continue;
 					}
-					
-					// don`t visit generic method declarations yet, because we don`t know the concrete type parameters. 
-					// See X10Call_c
-					if(md.typeParameters().isEmpty()) {
+				}
+				
+				visitMember(member);
+			}
+		}
+	}
+	
+	private void visitMember(final ClassMember member) {
+		
+		if(member instanceof MethodDecl_c) {
+			final X10MethodDecl md = (X10MethodDecl)member;
+			final X10MethodDef def = md.methodDef();
+			// don`t visit generic method declarations yet, because we don`t know the concrete type parameters. 
+			// See X10Call_c
+			if(def.typeParameters().isEmpty()) {
+				if(def.flags().isStatic()) {
+					// visit static non generic methods in generic classes only once
+					if(!static_non_generic_members.contains(member)) {
+						static_non_generic_members.add(member);
 						visitAppropriate(member);
+						return;
 					}
 				} else {
 					visitAppropriate(member);
 				}
 			}
+		} else if(member instanceof FieldDecl_c) {
+			final X10FieldDecl fd = (X10FieldDecl)member;
+			final X10FieldDef def = fd.fieldDef();
+			if(def.flags().isStatic()) {
+				if(!static_non_generic_members.contains(member)) {
+					static_non_generic_members.add(member);
+					visitAppropriate(member);
+				}
+			} else {
+				visitAppropriate(member);
+			}
+		} else {
+			visitAppropriate(member);
 		}
 	}
 
@@ -550,16 +585,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			final List<ClassMember> inits = query.extractInits(members);
 			firmContext.setInitClassMembers(inits);
 
-			for (final ClassMember member : body.members()) {
-				if (member instanceof X10MethodDecl) {
-					final X10MethodDecl md = (X10MethodDecl) member;
-					if (md.typeParameters().isEmpty()) {
-						visitAppropriate(member);
-					}
-				} else {
-					visitAppropriate(member);
-				}
-			}
+			for(final ClassMember member : body.members()) 
+				visitMember(member);
 		}
 	}
 
@@ -2539,7 +2566,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 					if (x10TypeSystem.isInterfaceType(to) && x10TypeSystem.isStructType0(from)) {
 						// An upcast of a struct to an implemented interface -> Need boxing
 						final Node node = visitExpression(c.expr());
-						final Node ret = genBoxing((X10ClassType) x10TypeSystem.toClass(from), node);
+						final Node ret = genBoxing(x10TypeSystem.toClass(from), node);
 						setReturnNode(ret);
 						break;
 					}
