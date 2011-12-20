@@ -1685,8 +1685,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			ParameterTypeMapping ptm = new ParameterTypeMapping();
 			addToMapping(ptm, paramTypes, actualTypes);
 
-			X10ClassType ct = (X10ClassType) Types.stripConstraints(n.target().type());
-			X10ClassDef def = ct.def();
+			final X10ClassType ct = (X10ClassType) Types.stripConstraints(n.target().type());
+			final X10ClassDef def = ct.def();
 			
 			// If this is a generic method defined inside a generic class,
 			// also save the type mapping for the generic class.
@@ -1695,21 +1695,27 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			// happened before when someone created the object that we call the
 			// method on.
 			if (!def.typeParameters().isEmpty()) {
-				final List<ParameterType> cParamTypes = def.typeParameters();
-				List<Type> cActualTypes = ct.typeArguments();
-				
 				/*
 				    static generic method calls of static generic classes will be handled as following:
 					GeneriClass[T_i].genericMethod[U_j](...) -> 
-					GeneriClass[[T_i / Object]].genericMethod[[U_j/"actualType"]](...)
+					GeneriClass.genericMethod[[U_j/"actualType"]](...)
+					-> The T_i generic parameters of the generic class will not be mapped because the 
+					static generic method can`t use the T_i`s of the generic class. We would also get 
+					a serious problem, if one of the T_i`s will be equal to one of the U_j`s.
 				*/
-				if(methodInstance.flags().isStatic()) {
-					cActualTypes = new ArrayList<Type>(cParamTypes.size());
-					for(int i = 0; i < cParamTypes.size(); i++)
-						cActualTypes.add(x10TypeSystem.Object());
-				}
 				
-				addToMapping(ptm, cParamTypes, cActualTypes);
+				/* 
+				   non static generic method calls of generic classes will be handled as following:
+				   GenericClass[T_i].genericMethod[U_j](...) ->
+				   GenericClass[T_i/"actualType"].genericMethod[[U_i/"actualType"]](...)
+				   -> The T_i generic parameters of the generic class will be mapped with the actual types. 
+				*/
+				
+				if(!methodInstance.flags().isStatic()) {
+					final List<ParameterType> cParamTypes = def.typeParameters();
+					final List<Type> cActualTypes = ct.typeArguments();
+					addToMapping(ptm, cParamTypes, cActualTypes);
+				}
 			}
 
 			// Remember the parameter type configuration to generate code later.
