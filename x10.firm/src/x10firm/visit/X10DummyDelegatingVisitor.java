@@ -1,5 +1,6 @@
 package x10firm.visit;
 
+import polyglot.ast.Allocation_c;
 import polyglot.ast.ArrayAccess_c;
 import polyglot.ast.ArrayInit_c;
 import polyglot.ast.Assert_c;
@@ -548,5 +549,10 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 	public void visit(AtExpr_c n) {
 		if(n.place() != null)
 			visitAppropriate(n.place());
+	}
+
+	@Override
+	public void visit(Allocation_c n) {
+		visitAppropriate(n.objectType());
 	}
 }

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import polyglot.ast.Allocation_c;
 import polyglot.ast.ArrayAccess_c;
 import polyglot.ast.ArrayInit_c;
 import polyglot.ast.Assert_c;
@@ -2782,6 +2783,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Tuple_c c) {
+		throw new RuntimeException("Not implemented yet");
+	}
+
+	@Override
+	public void visit(Allocation_c n) {
 		throw new RuntimeException("Not implemented yet");
 	}
 
