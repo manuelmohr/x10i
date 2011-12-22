@@ -92,7 +92,7 @@ public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Node n) {
-		visitAppropriate(n);
+		assert false : "Stop at the beginning of an infinite loop for class "+n.getClass();
 	}
 
 	@Override

@@ -600,7 +600,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			return ret;
 
 		final X10LocalDeclVisitor xLocalsVisitor = new X10LocalDeclVisitor();
-		xLocalsVisitor.visit(code.body());
+		xLocalsVisitor.visitAppropriate(code.body());
 
 		final List<LocalDecl_c> matchesList = xLocalsVisitor.getLocals();
 
