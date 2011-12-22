@@ -13,6 +13,7 @@ import polyglot.types.TypeSystem;
 import polyglot.visit.NodeVisitor;
 import x10.ExtensionInfo;
 import x10.ExtensionInfo.X10Scheduler;
+import x10.X10CompilerOptions;
 import x10.ast.X10NodeFactory_c;
 import x10c.visit.ClosureRemover;
 import x10firm.goals.AsmEmitted;
@@ -20,6 +21,7 @@ import x10firm.goals.FirmGenerated;
 import x10firm.goals.GoalSequence;
 import x10firm.goals.Linked;
 import x10firm.goals.LoweringFirm;
+import x10firm.goals.OptimizeFirm;
 import x10firm.goals.SourceGoalSequence;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
@@ -50,19 +52,25 @@ class X10FirmScheduler extends X10Scheduler {
 		 * javac/gcc on the generated source code.  In the Firm context this
 		 * corresponds to emitting assembler and linking with the stdlib.
 		 */
-		
+		final GoalSequence seq = new GoalSequence("FirmOutputSequence");
+
 		final Goal loweringFirm = new LoweringFirm(this, firmTypeSystem);
 		loweringFirm.intern(this);
+		seq.append(loweringFirm);
+
+		final X10CompilerOptions options = (X10CompilerOptions) this.extInfo.getOptions();
+		if (options.x10_config.OPTIMIZE) {
+			final Goal optimized = new OptimizeFirm(this);
+			optimized.intern(this);
+			seq.append(optimized);
+		}
 
 		final Goal asmEmitted = new AsmEmitted(this);
 		asmEmitted.intern(this);
+		seq.append(asmEmitted);
 
 		final Goal linked = new Linked(extInfo);
 		linked.intern(this);
-
-		final GoalSequence seq = new GoalSequence("FirmOutputSequence");
-		seq.append(loweringFirm);
-		seq.append(asmEmitted);
 		seq.append(linked);
 
 		return seq.intern(this);
