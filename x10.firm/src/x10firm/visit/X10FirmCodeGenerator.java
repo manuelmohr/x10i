@@ -80,7 +80,6 @@ import polyglot.types.Type;
 import polyglot.types.Types;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
-import sun.security.provider.MD2;
 import x10.ast.AssignPropertyCall_c;
 import x10.ast.Async_c;
 import x10.ast.AtEach_c;
@@ -1318,6 +1317,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			final LocalInstance loc = n.localDef().asInstance();
 
 			final X10VarEntry var = firmContext.getVarEntry(loc);
+			assert var != null : "Instance '"+loc+"' not found in FirmContext";
 
 			if(var.getType() == X10VarEntry.STRUCT) {
 
