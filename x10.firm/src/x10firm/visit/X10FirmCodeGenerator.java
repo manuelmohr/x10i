@@ -1680,9 +1680,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 			// Construct type mapping.
 			final List<ParameterType> paramTypes = ((X10MethodDef) methodInstance.def()).typeParameters();
-			final List<Type> actualTypes = methodInstance.typeParameters();
-			assert (actualTypes.size() == decl.typeParameters().size());
-
+			
+            List<Type> actualTypes = methodInstance.typeParameters();
+            assert (actualTypes.size() == decl.typeParameters().size());
+            
+            // Watch out for recursive generic types. 
+            for(int i = 0; i < actualTypes.size(); i++)
+               actualTypes.set(i, x10TypeSystem.getConcreteType(actualTypes.get(i)));
+            
 			ParameterTypeMapping ptm = new ParameterTypeMapping();
 			addToMapping(ptm, paramTypes, actualTypes);
 
