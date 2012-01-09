@@ -199,7 +199,7 @@ public struct IndexedMemoryChunk[T] {
         if(numElems > 0) {
             checkBounds(index, length());
             checkBounds(index + numElems, length() + 1);
-            X10FirmSupport.memset(ptr + index, 0, numElems * X10FirmSupport.getSize[T]());
+            X10FirmSupport.memset(ptr + index * X10FirmSupport.getSize[T](), 0, numElems * X10FirmSupport.getSize[T]());
         }
     }
 
@@ -215,7 +215,7 @@ public struct IndexedMemoryChunk[T] {
         if(numElems > 0) {
             checkBounds(index, length());
             checkBounds(index + numElems, length() + 1);
-            X10FirmSupport.memset(ptr + index, 0, numElems * X10FirmSupport.getSize[T]());
+            X10FirmSupport.memset(ptr + index * X10FirmSupport.getSize[T](), 0, numElems * X10FirmSupport.getSize[T]());
         }
     }
 
