@@ -118,7 +118,26 @@ public class X10FirmContext {
 	 * null if the instance variable could not be found.
 	 */
 	public X10VarEntry getVarEntry(final LocalInstance var) {
-		return varEntryMapper.get(var.def());
+		/* 
+		 * The TypeAlphaRenamer and ClassRemover visitors create and use copies of X10LocalDefs. 
+		 * This copies will not work with our X10LocalDef hashing mechanism. To handle this copies with will not
+		 * adjust the visitors instead we will search for the appropriate X10LocalDef copy in our varEntryMapper. 
+		 */
+		final LocalDef def = var.def();
+		X10VarEntry ret = varEntryMapper.get(var.def());
+		if(ret != null) return ret; // The def is equal; return the appropriate var entry
+		// Search for the copy. 
+		for(final Entry<LocalDef, X10VarEntry> entry : varEntryMapper.entrySet()) {
+			final LocalDef d = entry.getKey();
+			// Copy search: Name, position and flags must be equal. 
+			if(def.name().equals(d.name()) && def.position().equals(d.position()) &&
+			   def.flags().equals(d.flags())) {
+				ret = entry.getValue();
+				break;
+			}
+		}
+		return ret;
+
 	}
 	
 	/** Pushes a new firm scope
