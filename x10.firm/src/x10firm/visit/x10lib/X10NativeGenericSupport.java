@@ -25,6 +25,7 @@ public class X10NativeGenericSupport {
 	public X10NativeGenericSupport() {
 		addGenericGenerator(new X10FirmSupportGenerator());
 		addGenericGenerator(new X10FirmPointerGenerator());
+		addGenericGenerator(new X10FirmZeroGenerator());
 	}
 	
 	/** 

@@ -630,7 +630,7 @@ public class FirmTypeSystem {
 
 		/* create interfaces */
 		Set<polyglot.types.Type> interfaces = new LinkedHashSet<polyglot.types.Type>(classType.interfaces());
-		for(final polyglot.types.Type t : interfaces) {
+		for (final polyglot.types.Type t : interfaces) {
 			final polyglot.types.Type iface = x10TypeSystem.simplifyType(t);
 			assert ((polyglot.types.ClassType)iface).flags().isInterface() : "Not an interface: "+iface;
 			final Type firmIface = asFirmCoreType(iface);

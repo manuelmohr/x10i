@@ -971,6 +971,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			address = con.newSymConst(entity);
 		} else {
 			assert(objectPointer != null);
+			assert(entity != null);
 			address = con.newSel(objectPointer, entity);
 		}
 
@@ -1816,11 +1817,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	/**
 	 * Create the appropriate firm nodes for a heap allocation.
-	 * @param x10ResType The x10 type of the object
+	 * @param x10Type The x10 type of the object
 	 *
 	 * @return A proj node to the allocated memory.
 	 */
-	private Node genHeapAlloc(final Type x10Type) {
+	public Node genHeapAlloc(final Type x10Type) {
 		final firm.Type refType  = firmTypeSystem.asFirmType(x10Type);
 		final firm.Type coreType = firmTypeSystem.asFirmCoreType(x10Type);
 		return genAlloc(refType, coreType, ir_where_alloc.heap_alloc);
@@ -1828,11 +1829,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	/**
 	 * Create the appropriate firm nodes for a stack allocation.
-	 * @param x10ResType The x10 type of the object
+	 * @param x10Type The x10 type of the object
 	 *
 	 * @return A proj node to the allocated memory.
 	 */
-	private Node genStackAlloc(final Type x10Type) {
+	public Node genStackAlloc(final Type x10Type) {
 		final firm.Type refType  = firmTypeSystem.asFirmType(x10Type);
 		final firm.Type coreType = firmTypeSystem.asFirmCoreType(x10Type);
 		return genAlloc(refType, coreType, ir_where_alloc.stack_alloc);

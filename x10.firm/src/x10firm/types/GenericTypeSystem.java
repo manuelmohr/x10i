@@ -211,4 +211,9 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
             FirmPointer_ = load("x10.lang.FirmPointer");
         return FirmPointer_;
     }
+    
+    public boolean isFirmPointer(final Type type) {
+    	return isSubtype(type, FirmPointer());
+    }
+
 }
