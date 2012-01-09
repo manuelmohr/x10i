@@ -2794,7 +2794,17 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Allocation_c n) {
-		throw new RuntimeException("Not implemented yet");
+		/* the frontend seems to only build this node type with -OPTIMIZE */
+		final Type base_type = Types.baseType(n.objectType().type());
+		final X10ClassType type = (X10ClassType)base_type;
+
+		Node objectNode;
+		if (x10TypeSystem.isStructType0(n.type()))
+			objectNode = genStackAlloc(type);
+		else
+			objectNode = genHeapAlloc(type);
+
+		setReturnNode(objectNode);
 	}
 
 	//
