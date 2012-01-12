@@ -7,7 +7,6 @@ X10_MAKE_HASHCODE(_ZN3x104lang5Float8hashCodeEv, x10_float)
 X10_MAKE_EQUALS(_ZN3x104lang5Float6equalsEf, x10_float)
 
 /* Just call the toString() function for double */
-X10_EXTERN x10_string *_ZN3x104lang6Double8toStringEv(x10_double);
 x10_string *_ZN3x104lang5Float8toStringEv(x10_float v)
 {
 	return _ZN3x104lang6Double8toStringEv((x10_double) v);
@@ -23,21 +22,21 @@ x10_float _ZN3x104lang5FloatrmEf(x10_float a, x10_float b)
 MAKE_CONFS(_ZN3x104lang5Float, x10_float)
 
 /* Use to move bits between x10_float/x10_int without confusing the compiler */
-typedef union TypePunner {
+typedef union FloatFloatTypePunner {
     x10_int i;
     x10_float f;
-} TypePunner;
+} FloatTypePunner;
 
 x10_int _ZN3x104lang5Float12toRawIntBitsEv(x10_float self) 
 {
-    TypePunner tmp;
+    FloatTypePunner tmp;
     tmp.f = self;
     return tmp.i;
 }
 
 x10_float _ZN3x104lang5Float11fromIntBitsEi(x10_int digits)
 {
-	TypePunner tmp;
+	FloatTypePunner tmp;
 	tmp.i = digits;
 	return tmp.f;
 }

@@ -1,3 +1,6 @@
+#ifndef X10_FIRMSUPPORT_H
+#define X10_FIRMSUPPORT_H
+
 #include "x10.h"
 #include "x10_primitive_types.h"
 #include "util.h"
@@ -16,3 +19,5 @@ x10_any *_ZN3x104lang14X10FirmSupport5allocExibb(x10_long numBytes, x10_int alig
 
 /** deallocation of memory; The given memory pointer must be the real memory pointer returned by "alloc"; (not the aligned) */
 void _ZN3x104lang14X10FirmSupport7deallocEN3x104lang11FirmPointerE(x10_any *ptr);
+
+#endif // X10_FIRMSUPPORT_H
