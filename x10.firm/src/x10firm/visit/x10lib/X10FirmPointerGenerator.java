@@ -3,15 +3,6 @@ package x10firm.visit.x10lib;
 import java.util.Collections;
 import java.util.List;
 
-import firm.Entity;
-import firm.MethodType;
-import firm.Mode;
-import firm.nodes.CopyB;
-import firm.nodes.Load;
-import firm.nodes.Node;
-import firm.nodes.OOConstruction;
-import firm.nodes.Store;
-
 import polyglot.types.LocalInstance;
 import polyglot.types.Type;
 import x10.types.MethodInstance;
@@ -20,6 +11,14 @@ import x10firm.types.FirmTypeSystem;
 import x10firm.visit.X10FirmCodeGenerator;
 import x10firm.visit.X10FirmContext;
 import x10firm.visit.X10VarEntry;
+import firm.Entity;
+import firm.MethodType;
+import firm.Mode;
+import firm.nodes.CopyB;
+import firm.nodes.Load;
+import firm.nodes.Node;
+import firm.nodes.OOConstruction;
+import firm.nodes.Store;
 
 /**
  * Firm Generator for x10.lang.FirmPointer
@@ -53,8 +52,9 @@ public class X10FirmPointerGenerator extends X10NativeGenericDispatcher {
 			final Mode parMode = firmTypeSystem.getFirmMode(param.type());
 			Node par = null;
 			if(firmTypeSystem.isFirmStructType(typeParameter)) {
+				final firm.Type firm_type = firmTypeSystem.asFirmType(typeParameter);
 				final MethodType methodType = (MethodType)entity.getType();
-				final Entity paramEntity = methodType.getValueParamEnt(var.getIdx());
+				final Entity paramEntity = Entity.createParameterEntity(methodType, var.getIdx(), firm_type);
 				par = codeGenerator.getEntityFromCurrentFrame(paramEntity);
 			} else {
 				par = con.getVariable(var.getIdx(), parMode);
@@ -120,8 +120,9 @@ public class X10FirmPointerGenerator extends X10NativeGenericDispatcher {
 			final Node address = con.getVariable(var_ptr.getIdx(), ptrMode);
 			
 			if(firmTypeSystem.isFirmStructType(typeParameter)) {
+				final firm.Type firm_type = firmTypeSystem.asFirmType(typeParameter);
 				final MethodType methodType = (MethodType)entity.getType();
-				final Entity paramEntity = methodType.getValueParamEnt(var_val.getIdx());
+				final Entity paramEntity = Entity.createParameterEntity(methodType, var_val.getIdx(), firm_type);
 				final Node asgn = codeGenerator.getEntityFromCurrentFrame(paramEntity);
 				final Node mem = con.getCurrentMem();
 				final Node copyB = con.newCopyB(mem, address, asgn, paramEntity.getType());

@@ -84,10 +84,7 @@ class X10FirmScope {
 	private Block breakBlock;
 
 	/** Reference to the current switch cond node -> null if we are not in a switch statement */
-	private Node curSwitchCond;
-
-	/** Proj number for the 'default' statement in a switch statement */
-	private long curSwitchDefaultProjNr;
+	private Node curSwitch;
 
 	/** constructor */
 	public X10FirmScope() {
@@ -143,33 +140,18 @@ class X10FirmScope {
 	}
 
 	/** Sets the current switch condition node.
-	 * @param cond The condition to set
+	 * @param swtch The condition to set
 	 */
-	public void setCurSwitchCond(Node cond) {
-		curSwitchCond = cond;
+	public void setCurSwitch(Node swtch) {
+		curSwitch = swtch;
 	}
 
 	/** Returns the current switch condition node
 	 * @return The current switch condition node
 	 */
-	public Node getCurSwitchCond() {
-		assert curSwitchCond != null;
-		return curSwitchCond;
-	}
-
-	/** Sets the projection number for the 'default' statement in the current switch statement
-	 * @param projNr The projection number for the 'default' statement.
-	 */
-	public void setCurSwitchDefaultProjNr(long projNr) {
-		curSwitchDefaultProjNr = projNr;
-	}
-
-	/**
-	 * Returns the projection number of the 'default' label in the current switch statement
-	 * @return The projection number of the 'default' statement
-	 */
-	public long getCurSwitchDefaultProjNr() {
-		return curSwitchDefaultProjNr;
+	public Node getCurSwitch() {
+		assert curSwitch != null;
+		return curSwitch;
 	}
 
 	/**

@@ -155,6 +155,7 @@ import firm.Mode;
 import firm.PointerType;
 import firm.Program;
 import firm.Relation;
+import firm.SwitchTable;
 import firm.TargetValue;
 import firm.bindings.binding_ircons.ir_linkage;
 import firm.bindings.binding_ircons.ir_where_alloc;
@@ -164,12 +165,12 @@ import firm.bindings.binding_typerep.ir_visibility;
 import firm.nodes.Alloc;
 import firm.nodes.Block;
 import firm.nodes.Call;
-import firm.nodes.Cond;
 import firm.nodes.CopyB;
 import firm.nodes.Load;
 import firm.nodes.Node;
 import firm.nodes.OOConstruction;
 import firm.nodes.Store;
+import firm.nodes.Switch;
 
 /**
  * creates a firm-program (a collection of firm-graphs) from an X10-AST.
@@ -662,8 +663,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			final Type type = loc.type();
 
 			if (firmTypeSystem.isFirmStructType(type)) {
+				final firm.Type firm_type = firmTypeSystem.asFirmType(type);
 				final MethodType methodType = (MethodType)entity.getType();
-				final Entity paramEntity = methodType.getValueParamEnt(idx);
+				final Entity paramEntity = Entity.createParameterEntity(methodType, idx, firm_type);
 				final Node node = getEntityFromCurrentFrame(paramEntity);
 				con.setVariable(idx, node);
 			} else {
@@ -1059,10 +1061,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		boolean hasExplicitDefaultCase = false;
 		final Block curBlock           = con.getCurrentBlock();
 		final Node expr                = visitExpression(n.expr());
-		final Node switchCond          = con.newCond(expr);
 
-		long defNr    = 0;
-		long numCases = 0;
+		int numCases = 0;
 		for(SwitchElement elem : n.elements()) {
 			if(elem instanceof Case) {
 				Case c = (Case)elem;
@@ -1070,40 +1070,11 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 					hasExplicitDefaultCase = true;
 					continue;
 				}
-
-				if(c.value() > defNr)
-					defNr = c.value();
-
 				numCases++;
 			}
 		}
 
-		if(defNr == Integer.MAX_VALUE) { // TODO: Adjust it to Long.MAX_VALUE -> Firm only supports Int (32 Bit) as projection numbers.
-			Set<Long> vals = new HashSet<Long>();
-			for(SwitchElement elem : n.elements()) {
-				if(elem instanceof Case) {
-					Case c = (Case)elem;
-					if(c.isDefault())
-						continue;
-
-					vals.add(Long.valueOf(c.value()));
-				}
-			}
-
-			int i;
-			for(i = 0; i < Integer.MAX_VALUE; i++)
-				if(!vals.contains(Long.valueOf(i)))
-					break;
-
-			defNr = i;
-		} else {
-			defNr++;
-		}
-		/* if Cond is not a Bad node yet, set defaultProj number */
-		if (switchCond instanceof Cond) {
-			Cond cond = (Cond) switchCond;
-			cond.setDefaultProj((int)defNr); // TODO: Adjust the defNr (Long)
-		}
+		SwitchTable tbl = new SwitchTable(con.getGraph(), numCases);
 
 		con.setCurrentBlockBad();
 
@@ -1111,14 +1082,14 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		X10FirmScope newScope = (X10FirmScope)topScope.clone();
 
 		Block bBreak = null;
+		final Node switchNode = con.newSwitch(expr, numCases, tbl.ptr);
 
 		firmContext.pushFirmScope(newScope);
 		{
 			// Reset the break block -> Break block will be automatically created in the evaluation of the
 			// switch statement if we need one. (getBreakBlock())
 			newScope.setBreakBlock(null);
-			newScope.setCurSwitchCond(switchCond);
-			newScope.setCurSwitchDefaultProjNr(defNr);
+			newScope.setCurSwitch(switchNode);
 
 			for(SwitchElement elem : n.elements())
 				visitAppropriate(elem);
@@ -1140,7 +1111,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		if(!hasExplicitDefaultCase && !curBlock.isBad()) {
 			con.setCurrentBlock(curBlock);
-			final Node proj = con.newProj(switchCond, Mode.getX(), (int)defNr);	// TODO: Adjust the defNr (Long)
+			final Node proj = con.newProj(switchNode, Mode.getX(), Switch.pnDefault);
 
 			if(bBreak == null)
 				bBreak = con.newBlock();
@@ -1169,7 +1140,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final Block block 		= con.newBlock();
 
 		final X10FirmScope topScope = firmContext.getTopScope();
-		final Node switchCond       = topScope.getCurSwitchCond();
+		final Node switchCond       = topScope.getCurSwitch();
 		final Block switchCondBlock = (Block)switchCond.getBlock();
 
 		con.setCurrentBlock(switchCondBlock);
@@ -1180,8 +1151,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			block.addPred(proj);
 		} else {
 			// default label
-			final long projNr = topScope.getCurSwitchDefaultProjNr();
-			final Node proj = con.newProj(switchCond, Mode.getX(), (int)projNr); // TODO: Adjust the projNr (Long)
+			final Node proj = con.newProj(switchCond, Mode.getX(), Switch.pnDefault); // TODO: Adjust the projNr (Long)
 			block.addPred(proj);
 		}
 
