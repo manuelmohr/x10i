@@ -5,7 +5,7 @@
 # This shouldn't do anything special and you should be easily able to live
 # without it...
 
-# Check consistency of the java installation
+# Check consistency of the java installation and set JAVA_HOME
 [ -z "$JAVA_HOME" ] && export JAVA_HOME="$(readlink -f $(dirname $(readlink -f /usr/bin/java))/../..)"
 JAVA_HOME_STUFF="bin/java bin/javac bin/jar lib/tools.jar"
 JAVA_INSTALL_OK=1
@@ -58,7 +58,5 @@ fi
 
 # Run "ant dist" once so we have all the required stuff
 pushd x10.dist > /dev/null
-# ant dist requires JAVA_HOME to be set, so do this now if it isn't already
-[ -z "$JAVA_HOME" ] && export JAVA_HOME="$(readlink -f $(dirname $(readlink -f /usr/bin/java))/../..)"
 ant dist
 popd
