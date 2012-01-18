@@ -20,6 +20,7 @@
 /x10.dist/stdlib
 /x10.dist/x10firm-testsuite
 /x10.dist/a.out
+/x10.dist/firm-stdlib/*.jar
 !x10.dist/lib/libfirm.so
 
 /x10.compiler/classes
@@ -74,5 +75,8 @@
 /x10.runtime/x10rt/bin
 /x10.runtime/x10rt/etc
 /x10.runtime/x10rt/sockets/X10Launcher
+
+/x10.firm_runtime/gen
+/x10.firm_runtime/classes
 
 /x10.wala/bin/
