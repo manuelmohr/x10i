@@ -36,12 +36,18 @@
     <property name="config" value="standard.cfg"/>
     <property name="x10.runtime.location" location="${x10.home}/x10.runtime"/>
     <property name="x10.firm_runtime.location" location="${x10.home}/x10.firm_runtime" />
+		<property name="make.exe" value="make"/>
     <property name="xrx.src.dir" location="${x10.home}/x10.runtime/src-x10" />
     <property name="runtime.jar" value="x10.jar"/>
     <property name="x10.tests.location" location="${x10.home}/x10.tests"/>
     <property name="x10.doc.location" location="${x10.home}/x10.doc"/>
     <property name="bash.exe" value="bash"/>
     <property name="CROSS_COMPILE_BGP" value="false" />
+		<property name="jfirm.location" location="${x10.home}/jFirm"/>
+		<property name="liboo.location" location="${x10.home}/liboo"/>
+		<property name="x10.firm.location" location="${x10.home}/x10.firm"/>
+		<property name="libx10std.location" location="${basedir}/src-stdlib"/>
+
     <path id="project.classpath"/>
     <!-- get the environment variables -->
     <property environment="env"/>
@@ -109,6 +115,12 @@
         <ant antfile="${x10.runtime.location}/build.xml" target="clean-java" inheritAll="false" dir="${x10.runtime.location}"/>
         <ant antfile="${x10.firm_runtime.location}/build.xml" target="clean-firm" inheritAll="false" dir="${x10.firm_runtime.location}"/>
         <ant antfile="${x10.compiler.location}/build.xml" target="clean" inheritAll="false" dir="${x10.compiler.location}"/>
+				<ant antfile="${jfirm.location}/build.xml" target="clean" inheritAll="false" dir="${jfirm.location}"/>
+				<ant antfile="${liboo.location}/build.xml" target="clean" inheritAll="false" dir="${liboo.location}"/>
+				<ant antfile="${x10.firm.location}/build.xml" target="clean" inheritAll="false" dir="${x10.firm.location}"/>
+				<exec executable="${make.exe}" failonerror="false" dir="${libx10std.location}">
+					<arg value="clean"/>
+				</exec>
     </target>
 
     <target name="clean-cpp" depends="clean-java">
@@ -158,7 +170,7 @@
     <target name="dist-java" depends="init,build,common-jar,constraints-jar,compiler-jar,runtime-java"/>
     <target name="dist-cpp" depends="dist-java,runtime-cpp"/>
     <target name="dist-x10rt" depends="runtime-x10rt"/>
-    <target name="dist-firm" depends="dist-java,runtime-firm"/>
+    <target name="dist-firm" depends="init,build,common-jar,constraints-jar,compiler-jar,jfirm-jar,liboo-jar,x10firm-jar,runtime-firm,libx10std"/>
     <target name="dist" depends="dist-java,dist-cpp,dist-firm,dist-bridge,dist-x10doc"/>
     <target name="dist-java-cpp" depends="init,build,common-jar,constraints-jar,compiler-jar">
         <ant antfile="${x10.runtime.location}/build.xml" target="dist-par" inheritAll="false" dir="${x10.runtime.location}"/>
@@ -333,8 +345,8 @@
         <ant antfile="${x10.runtime.location}/build.xml" target="dist-java" inheritAll="false" dir="${x10.runtime.location}"/>
     </target>
     
-    <target name="runtime-firm" depends="init,common-jar,constraints-jar">
-        <ant antfile="${x10.firm_runtime.location}/build.xml" target="dist-firm" inheritAll="false" dir="${x10.firm_runtime.location}"/>
+    <target name="runtime-firm" depends="init">
+        <ant antfile="${x10.firm_runtime.location}/build.xml" target="dist" inheritAll="false" dir="${x10.firm_runtime.location}"/>
     </target>
 
     <target name="runtime-cpp" depends="init">
@@ -382,6 +394,22 @@
             <fileset dir="${x10.compiler.location}/${builddir}" includes="${compiler.jar}"/>
         </copy>
     </target>
+
+		<target name="jfirm-jar" depends="init">
+			<ant antfile="${jfirm.location}/build.xml" target="jar" inheritAll="false" dir="${jfirm.location}"/>
+		</target>
+
+		<target name="liboo-jar" depends="init,jfirm-jar">
+			<ant antfile="${liboo.location}/build.xml" target="dist" inheritAll="false" dir="${liboo.location}"/>
+		</target>
+
+		<target name="x10firm-jar" depends="init,jfirm-jar,liboo-jar">
+			<ant antfile="${x10.firm.location}/build.xml" target="jar" inheritAll="false" dir="${x10.firm.location}"/>
+		</target>
+
+		<target name="libx10std">
+			<exec executable="${make.exe}" failonerror="true" dir="${libx10std.location}"/>
+		</target>
 
     <target name="bin"
             description="configure bin directory"
