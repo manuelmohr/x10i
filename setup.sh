@@ -5,6 +5,23 @@
 # This shouldn't do anything special and you should be easily able to live
 # without it...
 
+# Check consistency of the java installation
+[ -z "$JAVA_HOME" ] && export JAVA_HOME="$(readlink -f $(dirname $(readlink -f /usr/bin/java))/../..)"
+JAVA_HOME_STUFF="bin/java bin/javac bin/jar lib/tools.jar"
+JAVA_INSTALL_OK=1
+for file in $JAVA_HOME_STUFF; do
+	if ! [ -e "$JAVA_HOME/$file" ]; then
+		echo "JAVA_HOME/$file does not exist ($JAVA_HOME/$file)"
+		JAVA_INSTALL_OK=0
+	fi
+done
+# Abort here now, the X10 build will fail anyway if this stuff isn't there
+if [ "$JAVA_INSTALL_OK" == "0" ]; then
+	echo "JAVA_HOME: $JAVA_HOME (might be autodetected)"
+	echo "Error: Your Java installation is not consistent"
+	exit 1
+fi
+
 # Fetch submodules
 git submodule update --init
 
