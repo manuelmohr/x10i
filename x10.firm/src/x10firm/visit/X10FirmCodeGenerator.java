@@ -664,8 +664,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 			if (firmTypeSystem.isFirmStructType(type)) {
 				final firm.Type firm_type = firmTypeSystem.asFirmType(type);
-				final MethodType methodType = (MethodType)entity.getType();
-				final Entity paramEntity = Entity.createParameterEntity(methodType, idx, firm_type);
+				final firm.Type frameType = graph.getFrameType();
+				final Entity paramEntity = Entity.createParameterEntity(frameType, idx, firm_type);
 				final Node node = getEntityFromCurrentFrame(paramEntity);
 				con.setVariable(idx, node);
 			} else {

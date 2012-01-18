@@ -12,7 +12,6 @@ import x10firm.visit.X10FirmCodeGenerator;
 import x10firm.visit.X10FirmContext;
 import x10firm.visit.X10VarEntry;
 import firm.Entity;
-import firm.MethodType;
 import firm.Mode;
 import firm.nodes.CopyB;
 import firm.nodes.Load;
@@ -53,8 +52,8 @@ public class X10FirmPointerGenerator extends X10NativeGenericDispatcher {
 			Node par = null;
 			if(firmTypeSystem.isFirmStructType(typeParameter)) {
 				final firm.Type firm_type = firmTypeSystem.asFirmType(typeParameter);
-				final MethodType methodType = (MethodType)entity.getType();
-				final Entity paramEntity = Entity.createParameterEntity(methodType, var.getIdx(), firm_type);
+				final firm.Type frameType = entity.getGraph().getFrameType();
+				final Entity paramEntity = Entity.createParameterEntity(frameType, var.getIdx(), firm_type);
 				par = codeGenerator.getEntityFromCurrentFrame(paramEntity);
 			} else {
 				par = con.getVariable(var.getIdx(), parMode);
@@ -121,8 +120,8 @@ public class X10FirmPointerGenerator extends X10NativeGenericDispatcher {
 			
 			if(firmTypeSystem.isFirmStructType(typeParameter)) {
 				final firm.Type firm_type = firmTypeSystem.asFirmType(typeParameter);
-				final MethodType methodType = (MethodType)entity.getType();
-				final Entity paramEntity = Entity.createParameterEntity(methodType, var_val.getIdx(), firm_type);
+				final firm.Type frameType = entity.getGraph().getFrameType();
+				final Entity paramEntity = Entity.createParameterEntity(frameType, var_val.getIdx(), firm_type);
 				final Node asgn = codeGenerator.getEntityFromCurrentFrame(paramEntity);
 				final Node mem = con.getCurrentMem();
 				final Node copyB = con.newCopyB(mem, address, asgn, paramEntity.getType());
