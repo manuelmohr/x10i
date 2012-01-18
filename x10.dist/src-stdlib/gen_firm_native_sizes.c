@@ -4,21 +4,10 @@
 #include "x10_thread.h"
 #include "x10_lock.h"
 
-int main(int argc, char *argv[])
+int main(void)
 {
-	FILE *file = fopen("firmNativeTypes.conf", "w"); 
-	if(!file) {
-		fprintf(stderr, "File firmNativeTypes.conf could not be opened for writing"); 
-		return -1; 
-	}
-
-#define DEF_FIRM_NATIVE_TYPE(pack, name, type)	\
-	fprintf(file, "%s %s %i\n", pack, name, sizeof(type))
-	
-	DEF_FIRM_NATIVE_TYPE("x10.lang", "Thread", x10_thread);
-	DEF_FIRM_NATIVE_TYPE("x10.util.concurrent", "Lock", x10_lock);
-	
-	fclose(file); 
+	printf("x10.lang Thread %zu\n", sizeof(x10_thread));
+	printf("x10.util.concurrent Lock %zu\n", sizeof(x10_lock));
 	return 0; 
 }
 

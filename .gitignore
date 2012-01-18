@@ -16,6 +16,7 @@
 /x10.dist/*.s
 /x10.dist/src-stdlib/libx10std.a
 /x10.dist/src-stdlib/libx10std.so.*
+/x10.dist/src-stdlib/firmNativeTypes.conf
 /x10.dist/stdlib
 /x10.dist/x10firm-testsuite
 /x10.dist/a.out
