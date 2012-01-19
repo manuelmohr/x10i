@@ -113,7 +113,7 @@
         <ant antfile="${x10.constraints.location}/build.xml" target="clean" inheritAll="false" dir="${x10.constraints.location}"/>
         <ant antfile="${x10.common.location}/build.xml" target="clean" inheritAll="false" dir="${x10.common.location}"/>
         <ant antfile="${x10.runtime.location}/build.xml" target="clean-java" inheritAll="false" dir="${x10.runtime.location}"/>
-        <ant antfile="${x10.firm_runtime.location}/build.xml" target="clean-firm" inheritAll="false" dir="${x10.firm_runtime.location}"/>
+        <ant antfile="${x10.firm_runtime.location}/build.xml" target="clean" inheritAll="false" dir="${x10.firm_runtime.location}"/>
         <ant antfile="${x10.compiler.location}/build.xml" target="clean" inheritAll="false" dir="${x10.compiler.location}"/>
 				<ant antfile="${jfirm.location}/build.xml" target="clean" inheritAll="false" dir="${jfirm.location}"/>
 				<ant antfile="${liboo.location}/build.xml" target="clean" inheritAll="false" dir="${liboo.location}"/>
