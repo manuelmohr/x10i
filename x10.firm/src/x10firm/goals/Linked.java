@@ -31,9 +31,6 @@ public class Linked extends PostCompiled {
 		final String asmFilename = AsmEmitted.ASM_FILENAME;
 
 		final String x10DistPath = System.getProperty("x10.dist");
-		final String stdlibPath = x10DistPath != null
-		                          ? x10DistPath + "/src-stdlib"
-		                          : "src-stdlib";
 		final String libooPath  = x10DistPath != null
 		                          ? x10DistPath + "/../liboo/build"
 		                          : "../liboo/build";
@@ -42,7 +39,6 @@ public class Linked extends PostCompiled {
 		cmd.add("gcc");
 		cmd.add("-std=c99");
 		cmd.add(asmFilename);
-		cmd.add(stdlibPath + "/libx10std.a");
 		if (opts.x10_config.DEBUG)
 			cmd.add("-g");
 		cmd.add("-lm");
