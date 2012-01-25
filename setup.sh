@@ -6,7 +6,13 @@
 # without it...
 
 # Check consistency of the java installation and set JAVA_HOME
-[ -z "$JAVA_HOME" ] && export JAVA_HOME="$(readlink -f $(dirname $(readlink -f /usr/bin/java))/../..)"
+if [ -z "$JAVA_HOME" ] ; then
+	export JAVA_HOME="$(readlink -f $(dirname $(readlink -f /usr/bin/java))/../..)"
+	echo "** WARNING: JAVA_HOME not set, using the ant files manually will not work"
+	echo "Setting JAVA_HOME='$JAVA_HOME'"
+	echo ""
+	echo ""
+fi
 JAVA_HOME_STUFF="bin/java bin/javac bin/jar lib/tools.jar include/linux/ include/jni.h"
 JAVA_INSTALL_OK=1
 for file in $JAVA_HOME_STUFF; do
