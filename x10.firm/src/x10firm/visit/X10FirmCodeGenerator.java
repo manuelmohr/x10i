@@ -2066,7 +2066,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final firm.Type elem_type = firmTypeSystem.asFirmType(x10TypeSystem.Char());
 		final ArrayType type = new ArrayType(1, elem_type);
 
-		final Ident id = Ident.createUnique("str.%u");
+		final Ident id = Ident.createUnique("x10_str.%u");
 		final Entity ent = new Entity(global_type, id, type);
 		ent.setLdIdent(id);
 
