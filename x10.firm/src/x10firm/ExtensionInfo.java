@@ -8,8 +8,13 @@ import polyglot.frontend.Scheduler;
 import x10.X10CompilerOptions;
 import x10c.ast.X10CNodeFactory_c;
 import x10firm.types.GenericTypeSystem;
+
+import com.sun.jna.Pointer;
+
 import firm.Firm;
+import firm.Mode.ir_mode_arithmetic;
 import firm.OO;
+import firm.bindings.binding_irmode;
 
 /**
  * Defines our extension (Firm backend in X10 compiler) within the Polyglot framework
@@ -23,6 +28,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 	 */
 	public ExtensionInfo() {
 		Firm.init();
+		setPointerSize(32);
 		OO.init();
 	}
 
@@ -55,7 +61,18 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 	protected X10CompilerOptions createOptions() {
 		return new CompilerOptions(this);
 	}
-	
+
+	/**
+	 *
+	 */
+	private static void setPointerSize(final int pointer_size) {
+		final int arithmetic = ir_mode_arithmetic.irma_twos_complement.ordinal();
+		/** we use a modulo_shift of 0, because cparser does so. */
+		final Pointer p = binding_irmode.new_reference_mode("p"+pointer_size, arithmetic, pointer_size, 0);
+		binding_irmode.set_modeP_code(p);
+		binding_irmode.set_modeP_data(p);
+	}
+
 	// TODO: DELETE ME: Need library support
 	private static Set<String> allowedClassNames = new HashSet<String>();
 	static {
