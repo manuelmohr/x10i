@@ -42,6 +42,7 @@ public class Linked extends PostCompiled {
 		if (opts.x10_config.DEBUG)
 			cmd.add("-g");
 		cmd.add("-lm");
+		cmd.add("-lrt");
 		cmd.add("-lpthread");
 		cmd.add("-L" + libooPath);
 		cmd.add("-Wl,-R" + libooPath);
