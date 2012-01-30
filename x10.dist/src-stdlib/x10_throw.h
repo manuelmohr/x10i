@@ -3,6 +3,6 @@
 
 #include "x10.h"
 
-X10_EXTERN void x10_throw_stub();
+X10_EXTERN void x10_throw_stub(void);
 
 #endif // X10_THROW_H_

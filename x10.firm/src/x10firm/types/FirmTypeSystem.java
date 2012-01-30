@@ -49,6 +49,7 @@ import firm.PointerType;
 import firm.PrimitiveType;
 import firm.Program;
 import firm.Type;
+import firm.bindings.binding_irio;
 import firm.bindings.binding_oo.ddispatch_binding;
 import firm.bindings.binding_typerep.ir_type_state;
 import firm.bindings.binding_typerep.ir_visibility;
@@ -67,7 +68,12 @@ public class FirmTypeSystem {
 
 	/** Maps some polyglot types to "native"/primitive firm types. */
 	private final Map<polyglot.types.Type, Type> firmTypes = new HashMap<polyglot.types.Type, Type>();
-	
+
+	/** We import C functions at the beginning. When we encounter the corresponding X10 native methods,
+	 * we have to get the C function entity by the mangled name.
+	 */
+	private final Map<String, Entity> cStdlibEntities = new HashMap<String, Entity>();
+
 	/** Maps struct types to the appropriate boxing types */
 	private final Map<X10ClassType, X10ClassType> structBoxingTypes = new HashMap<X10ClassType, X10ClassType>();
 
@@ -118,6 +124,20 @@ public class FirmTypeSystem {
 	public FirmTypeSystem(final GenericTypeSystem x10TypeSystem) {
 		this.x10TypeSystem = x10TypeSystem;
 		this.x10Context    = new Context(this.x10TypeSystem);
+		loadCStandardLibrary();
+	}
+
+	/**
+	 */
+	private void loadCStandardLibrary() {
+		final String stdlibPath = System.getProperty("x10.dist") + "/src-stdlib/stdlib.ir";
+		binding_irio.ir_import(stdlibPath);
+
+		final ClassType glob = Program.getGlobalType();
+		for (Entity ent : glob.getMembers()) {
+			if (ent.getVisibility() != ir_visibility.ir_visibility_external) continue;
+			this.cStdlibEntities.put(ent.getName(), ent);
+		}
 	}
 
 	private String getUniqueBoxingName(final X10ClassType clazz) {
@@ -931,8 +951,16 @@ public class FirmTypeSystem {
 			X10ClassType owner = (X10ClassType) instance.container();
 			final String nameWithDefiningClass = X10NameMangler.mangleTypeObjectWithDefClass(instance);
 			final String nameWithoutDefiningClass = X10NameMangler.mangleTypeObjectWithoutDefClass(instance);
-
 			final Flags flags = instance.flags();
+
+			if (flags.isNative() && flags.isStatic()) { /* try to get it from stdlib */
+				final Entity cEntity = this.cStdlibEntities.get(nameWithDefiningClass);
+				if (cEntity != null) {
+					context.putMethodEntity(gMethodInstance, cEntity);
+					return cEntity;
+				}
+			}
+
 			final firm.Type owningClass = asFirmCoreType(owner);
 			final firm.Type ownerFirm = flags.isStatic() ? Program.getGlobalType() : owningClass;
 			final firm.Type type = asFirmType(instance);

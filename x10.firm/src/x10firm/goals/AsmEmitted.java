@@ -44,6 +44,7 @@ public class AsmEmitted extends AllBarrierGoal {
 		for (Graph g : Program.getGraphs()) {
 			binding_irgopt.optimize_graph_df(g.ptr);
 			binding_iroptimize.optimize_cf(g.ptr);
+			binding_irgopt.remove_bads(g.ptr); // Without this line, the spiller faces situations it cannot cope with. Spiller should be fixed.
 			if (options.isDumpFirmGraphs()) {
 				Dump.dumpGraph(g, "--before-backend");
 			}

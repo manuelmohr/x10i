@@ -18,9 +18,9 @@
 
 #if (defined(_ARCH_PPC) || defined(_ARCH_450) || defined(_ARCH_450d)) && defined(__xlC__)
 /* inline ppc asms for xlc; must be defined in global scope.  Ugh. */
-void x10_atomic_ops_ppc_sync();
-void x10_atomic_ops_ppc_isync();
-void x10_atomic_ops_ppc_lwsync();
+void x10_atomic_ops_ppc_sync(void);
+void x10_atomic_ops_ppc_isync(void);
+void x10_atomic_ops_ppc_lwsync(void);
 #pragma mc_func ppc_sync  {"7c0004ac"}
 #pragma mc_func ppc_isync {"4c00012c"}
 #pragma mc_func ppc_lwsync {"7c2004ac"}
@@ -54,15 +54,15 @@ x10_long x10_atomic_ops_ppc_compareAndSet64(x10_long oldValue, volatile x10_long
 #endif
 
 #if !defined(_LP64)
-X10_EXTERN void x10_atomic_ops_lock();
-X10_EXTERN void x10_atomic_ops_unlock();
+X10_EXTERN void x10_atomic_ops_lock(void);
+X10_EXTERN void x10_atomic_ops_unlock(void);
 #endif
 
 #if (defined(_ARCH_PPC) || defined(_ARCH_450) || defined(_ARCH_450d)) && !defined(__xlC__)
 /* inline ppc asms for gcc; can be nicely defined as private class member functions  */
-static inline void x10_atomic_ops_ppc_isync() { asm("isync"); }
-static inline void x10_atomic_ops_ppc_lwsync(){ asm("lwsync"); }
-static inline void x10_atomic_ops_ppc_sync()  { asm("sync"); }
+static inline void x10_atomic_ops_ppc_isync(void) { asm("isync"); }
+static inline void x10_atomic_ops_ppc_lwsync(void){ asm("lwsync"); }
+static inline void x10_atomic_ops_ppc_sync(void)  { asm("sync"); }
 
 static inline x10_int x10_atomic_ops_ppc_compareAndSet32(x10_int oldValue, volatile x10_int *address, x10_int newValue) {
    x10_int result;
@@ -89,28 +89,28 @@ static inline x10_int x10_atomic_ops_ppc_compareAndSet32(x10_int oldValue, volat
 * Ensure that all loads before the barrier have loaded their
 * data before any load after the data accesses its data.
 */
-X10_EXTERN void _ZN3x104util10concurrent6Fences15loadLoadBarrierEv();
+X10_EXTERN void _ZN3x104util10concurrent6Fences15loadLoadBarrierEv(void);
 
 /**
 * Ensure that all loads before the barrier have loaded
 * their data before any data stored by a store after
 * the barrier has been flushed.
 */
-X10_EXTERN void _ZN3x104util10concurrent6Fences16loadStoreBarrierEv();
+X10_EXTERN void _ZN3x104util10concurrent6Fences16loadStoreBarrierEv(void);
 
 /**
 * Ensure that all data from stores before the barrier
 * has been flushed before any data for loads after the
 * barrier is accessed.
 */
-X10_EXTERN void _ZN3x104util10concurrent6Fences16storeLoadBarrierEv();
+X10_EXTERN void _ZN3x104util10concurrent6Fences16storeLoadBarrierEv(void);
 
 /**
 * Ensure that all data from stores before the barrier
 * has been flushed before any data for stores after
 * the barrier is flushed.
 */
-X10_EXTERN void _ZN3x104util10concurrent6Fences17storeStoreBarrierEv();
+X10_EXTERN void _ZN3x104util10concurrent6Fences17storeStoreBarrierEv(void);
 
 #if defined(_LP64)
 static inline x10_long x10_atomic_ops_ppc_compareAndSet64(x10_long oldValue, volatile x10_long *address, x10_long newValue) {

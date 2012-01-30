@@ -344,7 +344,7 @@ void _ZN3x104lang6Thread5sleepExi(x10_thread *self, x10_long millis, x10_int nan
 }
 
 
-void _ZN3x104lang6Thread4parkEv()
+void _ZN3x104lang6Thread4parkEv(void)
 {
 	x10_thread *self = _ZN3x104lang6Thread13currentThreadEv();
 	permit_t *perm = &(self->__thread_permit);

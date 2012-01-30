@@ -25,10 +25,23 @@ static inline x10_int x10_string_len(const x10_string *s) {
 X10_EXTERN x10_string *x10_string_from_wide_chars(const x10_char *);
 X10_EXTERN x10_string *x10_string_literal(size_t, x10_char *);
 
-X10_EXTERN x10_string *_ZN3x104lang6StringC1Ev();
+X10_EXTERN x10_string *_ZN3x104lang6StringC1Ev(void);
 X10_EXTERN x10_string *_ZN3x104lang6StringC1EPN3x104lang6StringE(
 		x10_string *str);
 
+/* We currently do not have header files for these */
+X10_EXTERN x10_string *_ZN3x104lang4Long8toStringEv   (x10_long);
+X10_EXTERN x10_string *_ZN3x104lang5ULong8toStringEv  (x10_ulong);
+X10_EXTERN x10_string *_ZN3x104lang3Int8toStringEv    (x10_int);
+X10_EXTERN x10_string *_ZN3x104lang4UInt8toStringEv   (x10_uint);
+X10_EXTERN x10_string *_ZN3x104lang5Short8toStringEv  (x10_short);
+X10_EXTERN x10_string *_ZN3x104lang6UShort8toStringEv (x10_ushort);
+X10_EXTERN x10_string *_ZN3x104lang4Byte8toStringEv   (x10_byte);
+X10_EXTERN x10_string *_ZN3x104lang5UByte8toStringEv  (x10_ubyte);
+X10_EXTERN x10_string *_ZN3x104lang4Char8toStringEv   (x10_char);
+X10_EXTERN x10_string *_ZN3x104lang5Float8toStringEv  (x10_float);
+X10_EXTERN x10_string *_ZN3x104lang6Double8toStringEv (x10_double);
+X10_EXTERN x10_string *_ZN3x104lang7Boolean8toStringEv(x10_boolean);
 
 // String methods
 X10_EXTERN x10_boolean _ZN3x104lang6String6equalsEPN3x104lang3AnyE(x10_string *, x10_any *);
