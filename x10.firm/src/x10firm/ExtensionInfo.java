@@ -28,6 +28,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 	 */
 	public ExtensionInfo() {
 		Firm.init();
+		Firm.enableOptimisations();
 		setPointerSize(32);
 		OO.init();
 	}
