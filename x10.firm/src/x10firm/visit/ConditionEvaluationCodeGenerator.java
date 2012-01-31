@@ -220,7 +220,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		/* normal expressions produce a 0 or 1 value if we want to jump
 		 * based on that we have to compare the value */
 		final Node node = codeGenerator.visitExpression(expr);
-		final Mode mode = codeGenerator.getFirmTypeSystem().getFirmMode(expr.type());
+		final Mode mode = node.getMode();
 		final Node one = con.newConst(mode.getOne());
 		final Node cmp = con.newCmp(node, one, Relation.Equal);
 		makeJumps(cmp, trueBlock, falseBlock, con);
