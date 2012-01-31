@@ -135,8 +135,8 @@ public class FirmTypeSystem {
 
 		final ClassType glob = Program.getGlobalType();
 		for (Entity ent : glob.getMembers()) {
-			if (ent.getVisibility() != ir_visibility.ir_visibility_external) continue;
-			this.cStdlibEntities.put(ent.getName(), ent);
+			if (ent.getVisibility() != ir_visibility.ir_visibility_default)	continue;
+			this.cStdlibEntities.put(ent.getLdName(), ent);
 		}
 	}
 
