@@ -953,7 +953,7 @@ public class FirmTypeSystem {
 			final String nameWithoutDefiningClass = X10NameMangler.mangleTypeObjectWithoutDefClass(instance);
 			final Flags flags = instance.flags();
 
-			if (flags.isNative() && flags.isStatic()) { /* try to get it from stdlib */
+			if (flags.isNative()) { /* try to get it from stdlib */
 				final Entity cEntity = this.cStdlibEntities.get(nameWithDefiningClass);
 				if (cEntity != null) {
 					context.putMethodEntity(gMethodInstance, cEntity);
