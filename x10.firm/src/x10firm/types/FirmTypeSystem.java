@@ -958,9 +958,19 @@ public class FirmTypeSystem {
 			final firm.Type owningClass = asFirmCoreType(owner);
 
 			if (flags.isNative()) { /* try to get it from stdlib */
+				assert !flags.isInterface() : "We do not import interfaces.";
+				assert !flags.isAbstract() : "We do not import abstract methods.";
+
 				final Entity cEntity = this.cStdlibEntities.get(nameWithDefiningClass);
 				if (cEntity != null) {
-					cEntity.setOwner(owningClass); /* fix up owner, was impossible to set on import */
+					/* fix up stuff, which was impossible to do during the import */
+					cEntity.setOwner(owningClass);
+					if (flags.isStatic()) {
+						OO.setEntityBinding(cEntity, ddispatch_binding.bind_static);
+					} else {
+						OO.setEntityBinding(cEntity, ddispatch_binding.bind_dynamic);
+					}
+
 					context.putMethodEntity(gMethodInstance, cEntity);
 					return cEntity;
 				}
