@@ -785,7 +785,7 @@ public class FirmTypeSystem {
 		Type typeUByte = new PrimitiveType(modeUByte);
 		saveType(x10TypeSystem.UByte(), typeUByte);
 
-		Mode modeChar = Mode.createIntMode("Char", ir_mode_arithmetic.irma_twos_complement, 32, false, 0);
+		Mode modeChar = modeInt; /* reuse mode to match stdlib (we use wchar!) */
 		Type typeChar = new PrimitiveType(modeChar);
 		saveType(x10TypeSystem.Char(), typeChar);
 
