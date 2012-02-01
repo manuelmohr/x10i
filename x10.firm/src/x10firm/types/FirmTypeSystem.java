@@ -137,6 +137,9 @@ public class FirmTypeSystem {
 		for (Entity ent : glob.getMembers()) {
 			if (ent.getVisibility() != ir_visibility.ir_visibility_default)	continue;
 			this.cStdlibEntities.put(ent.getLdName(), ent);
+			/* We must put methods into their respective classes.
+			 * However, this type does not even exist yet, so this
+			 * is delayed until the entity is retrieved from cStdlibEntities. */
 		}
 	}
 
@@ -952,16 +955,17 @@ public class FirmTypeSystem {
 			final String nameWithDefiningClass = X10NameMangler.mangleTypeObjectWithDefClass(instance);
 			final String nameWithoutDefiningClass = X10NameMangler.mangleTypeObjectWithoutDefClass(instance);
 			final Flags flags = instance.flags();
+			final firm.Type owningClass = asFirmCoreType(owner);
 
 			if (flags.isNative()) { /* try to get it from stdlib */
 				final Entity cEntity = this.cStdlibEntities.get(nameWithDefiningClass);
 				if (cEntity != null) {
+					cEntity.setOwner(owningClass); /* fix up owner, was impossible to set on import */
 					context.putMethodEntity(gMethodInstance, cEntity);
 					return cEntity;
 				}
 			}
 
-			final firm.Type owningClass = asFirmCoreType(owner);
 			final firm.Type ownerFirm = flags.isStatic() ? Program.getGlobalType() : owningClass;
 			final firm.Type type = asFirmType(instance);
 			entity = new Entity(ownerFirm, nameWithoutDefiningClass, type);
