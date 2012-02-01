@@ -1041,7 +1041,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		/* make sure enclosing class type has been created */
 		final FieldInstance instance = dec.fieldDef().asInstance();
-		firmTypeSystem.asFirmType(instance.container());
+		firmTypeSystem.asFirmCoreType(instance.container());
 
 		/* static fields may have initializers */
 		if (flags.isStatic()) {
@@ -1049,7 +1049,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			// Check for in place initializer
 			if (init != null && query.isGlobalInit(dec)) {
 				final Initializer initializer = expr2Initializer(init);
-				final Entity entity = firmTypeSystem.getEntityForField(dec.fieldDef().asInstance());
+				final Entity entity = firmTypeSystem.getEntityForField(instance);
 				entity.setInitializer(initializer);
 			}
 		}
