@@ -1,7 +1,7 @@
 package x10firm.goals;
 
+import java.io.File;
 import java.io.IOException;
-import java.util.UUID;
 
 import polyglot.frontend.AllBarrierGoal;
 import polyglot.frontend.Goal;
@@ -21,7 +21,12 @@ import firm.bindings.binding_iroptimize;
  */
 public class AsmEmitted extends AllBarrierGoal {
 	/** name of the intermediate asm file */
-	public static final String ASM_FILENAME = UUID.randomUUID().toString() + ".s";
+	public static String ASM_FILENAME = "unknown.s";
+
+	private static final String ASM_PREFIX = "x10firm_";
+	private static final String ASM_SUFFIX = ".s";
+
+	private static final String COMPILATION_UNIT_NAME = "x10program";
 
 	private Goal prereq_redirection = null;
 
@@ -32,10 +37,6 @@ public class AsmEmitted extends AllBarrierGoal {
 
 	@Override
 	public boolean runTask() {
-
-		/* try to generate some assembly */
-		String compilationUnit = "x10program";
-
 		final CompilerOptions options =
 			(CompilerOptions) scheduler.extensionInfo().getOptions();
 
@@ -50,13 +51,25 @@ public class AsmEmitted extends AllBarrierGoal {
 			}
 		}
 
+		/* emit asm */
+		File f;
+		try {
+			f = File.createTempFile(ASM_PREFIX, ASM_SUFFIX);
+		} catch (IOException e) {
+			System.out.println("Could not create temporary asm file");
+			e.printStackTrace();
+			return false;
+		}
 		try {
 			Backend.option("omitfp"); // makes the assembler a bit more readable
-			Backend.createAssembler(ASM_FILENAME, compilationUnit);
+			Backend.createAssembler(f.getAbsolutePath(), COMPILATION_UNIT_NAME);
 		} catch (IOException e) {
+			System.out.println("Could not create temporary asm file");
 			e.printStackTrace();
+			return false;
 		}
 
+		ASM_FILENAME = f.getAbsolutePath();
 		return true;
 	}
 

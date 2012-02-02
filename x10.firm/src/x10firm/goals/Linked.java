@@ -1,5 +1,6 @@
 package x10firm.goals;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,7 +29,7 @@ public class Linked extends PostCompiled {
 		final String exeFilename = opts.executable_path == null
 		                           ? "a.out"
 		                           : opts.executable_path;
-		final String asmFilename = AsmEmitted.ASM_FILENAME;
+		final File asm = new File(AsmEmitted.ASM_FILENAME);
 
 		final CompilerOptions.TargetTriple target = opts.getTargetTriple();
 		final String x10DistPath = System.getProperty("x10.dist");
@@ -40,7 +41,7 @@ public class Linked extends PostCompiled {
 		final List<String> cmd = new ArrayList<String>();
 		cmd.add(gcc);
 		cmd.add("-std=c99");
-		cmd.add(asmFilename);
+		cmd.add(asm.getAbsolutePath());
 		if (opts.x10_config.DEBUG)
 			cmd.add("-g");
 		// Always link statically when cross-compiling to SPARC
@@ -60,7 +61,7 @@ public class Linked extends PostCompiled {
 		// C++ backend decides according to options, whether to delete the
 		// output files.
 		final ArrayList<String> outputFiles = new ArrayList<String>();
-		outputFiles.add(asmFilename);
+		outputFiles.add(asm.getAbsolutePath());
 
 		// Reuse the C++ backend.
 		if (!X10CPPTranslator.doPostCompile(options, eq, outputFiles, cmd.toArray(new String[0]))) {
@@ -68,6 +69,6 @@ public class Linked extends PostCompiled {
 			return false;
 		}
 
-		return true;
+		return asm.delete();
 	}
 }
