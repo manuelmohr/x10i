@@ -169,7 +169,7 @@ public class FirmTypeSystem {
 		initFirmTypes();
 		NameMangler.setup(x10TypeSystem);
 		// Always generate the vtable for x10.lang.String.
-		asFirmCoreType(x10TypeSystem.String());
+		asClass(x10TypeSystem.String());
 	}
 
 	private void readFirmNativeTypesConfig(final String firmNativeTypesFilename) {
@@ -331,8 +331,8 @@ public class FirmTypeSystem {
         cd.addField(boxValue);
 
         // preinit the type
-        asFirmType(ct);
-        final Type ft  = asFirmCoreType(ct);
+        asType(ct);
+        final Type ft  = asClass(ct);
 
         final FieldInstance fieldInstance = boxValue.asInstance();
         addField(fieldInstance, ft);
@@ -380,7 +380,7 @@ public class FirmTypeSystem {
 
 		int p = 0;
 		if (!isStatic) {
-			final Type thisType = asFirmType(owner);
+			final Type thisType = asType(owner);
 			parameterTypes[p++] = thisType;
 		}
 
@@ -474,7 +474,7 @@ public class FirmTypeSystem {
 	 * @return The appropriate firm type for the given polyglot type
 	 */
 	public Type getFirmType(final polyglot.types.Type type) {
-		final Type ret = isFirmStructType(type) ? asFirmCoreType(type) : asFirmType(type);
+		final Type ret = isFirmStructType(type) ? asClass(type) : asType(type);
 
 		assert(ret != null);
 		return ret;
@@ -491,7 +491,7 @@ public class FirmTypeSystem {
 		final Type[] resultTypes = new firm.Type[nResults];
 
 		int p = 0;
-		final Type thisType = asFirmType(owner);
+		final Type thisType = asType(owner);
 		resultTypes[0] = thisType;
 
 		for (final polyglot.types.Type type : formalTypes) {
@@ -506,7 +506,7 @@ public class FirmTypeSystem {
 	/**
 	 * create a method type for an X10 constructor
 	 */
-	public MethodType asFirmType(X10ConstructorInstance instance) {
+	public MethodType getConstructorType(X10ConstructorInstance instance) {
 		if (instance.container() == x10TypeSystem.String())
 			return getNativeConstructorType(instance);
 
@@ -518,7 +518,7 @@ public class FirmTypeSystem {
 		final Type[] resultTypes = new firm.Type[nResults];
 
 		int p = 0;
-		final Type thisType = asFirmType(owner);
+		final Type thisType = asType(owner);
 		parameterTypes[p++] = thisType;
 
 		for (final polyglot.types.Type type : formalTypes) {
@@ -533,10 +533,13 @@ public class FirmTypeSystem {
 	/**
 	 * Returns the corresponding Firm type for the given polyglot type
 	 *
+	 * For primitive types (x10.lang.Int, etc) returns "native" Firm types (Is, etc).
+	 * If you need class Firm types use the {@code asClass} method.
+	 *
 	 * @param type The given polyglot type
 	 * @return corresponding Firm method type
 	 */
-	public firm.Type asFirmType(polyglot.types.Type type) {
+	public firm.Type asType(polyglot.types.Type type) {
 		/* strip type-constraints */
 		final polyglot.types.Type baseType = x10TypeSystem.getConcreteType(type);
 
@@ -544,7 +547,7 @@ public class FirmTypeSystem {
 		if (result != null)
 			return result;
 
-		result = asFirmCoreType(baseType);
+		result = asClass(baseType);
 		if (result instanceof ClassType) {
 			/* we really have references to classes */
 			result = new PointerType(result);
@@ -636,7 +639,7 @@ public class FirmTypeSystem {
 		/* create supertypes */
 		polyglot.types.Type superType = classType.superClass();
 		if (superType != null) {
-			final Type firmSuperType = asFirmCoreType(superType);
+			final Type firmSuperType = asClass(superType);
 			result.addSuperType(firmSuperType);
 			new Entity(result, "$super", firmSuperType);
 		} else if (flags.isStruct() || classType.isAnonymous()) {
@@ -655,14 +658,14 @@ public class FirmTypeSystem {
 		for (final polyglot.types.Type t : interfaces) {
 			final polyglot.types.Type iface = x10TypeSystem.simplifyType(t);
 			assert ((polyglot.types.ClassType)iface).flags().isInterface() : "Not an interface: "+iface;
-			final Type firmIface = asFirmCoreType(iface);
+			final Type firmIface = asClass(iface);
 			result.addSuperType(firmIface);
 		}
 
 		final X10ClassType ast_any = x10TypeSystem.Any();
 		if (noSuperType(result) && classType != ast_any) {
 			/* Every X10 type implements Any */
-			final Type firm_any = asFirmCoreType(ast_any);
+			final Type firm_any = asClass(ast_any);
 			result.addSuperType(firm_any);
 		}
 
@@ -714,10 +717,13 @@ public class FirmTypeSystem {
 	}
 
 	/**
-	 * return the firm type for a given ast-type.
-	 * This variant does not return the "native"-type even if there is one.
+	 * For primitive types (x10.lang.Int, etc) returns class (compound) Firm types (Is, etc).
+	 * If you need native Firm types (Is, etc) use the {@code asType} method.
+	 *
+	 * @param origType	The given polyglot ast-type
+	 * @return the firm	type for a given ast-type.
 	 */
-	public firm.Type asFirmCoreType(final polyglot.types.Type origType) {
+	public firm.Type asClass(final polyglot.types.Type origType) {
 		final polyglot.types.Type type = x10TypeSystem.getConcreteType(origType);
 
 		Type result = getFirmCoreType(type);
@@ -738,7 +744,7 @@ public class FirmTypeSystem {
 	 * Returns the mode for a given ast-type.
 	 */
 	public Mode getFirmMode(polyglot.types.Type type) {
-		return asFirmType(type).getMode();
+		return asType(type).getMode();
 	}
 
 	/**
@@ -852,7 +858,7 @@ public class FirmTypeSystem {
 		if (entity == null) {
 			final String name = NameMangler.mangleTypeObjectWithDefClass(instance);
 			final Flags flags = instance.flags();
-			final firm.Type type = asFirmType(instance);
+			final firm.Type type = getConstructorType(instance);
 
 			entity = new Entity(Program.getGlobalType(), name, type);
 			entity.setLdIdent(name);
@@ -955,7 +961,7 @@ public class FirmTypeSystem {
 			final String nameWithDefiningClass = NameMangler.mangleTypeObjectWithDefClass(instance);
 			final String nameWithoutDefiningClass = NameMangler.mangleTypeObjectWithoutDefClass(instance);
 			final Flags flags = instance.flags();
-			final firm.Type owningClass = asFirmCoreType(owner);
+			final firm.Type owningClass = asClass(owner);
 
 			if (flags.isNative()) { /* try to get it from stdlib */
 				assert !flags.isInterface() : "We do not import interfaces.";

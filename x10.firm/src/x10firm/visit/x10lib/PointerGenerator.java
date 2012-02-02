@@ -51,7 +51,7 @@ public class PointerGenerator extends NativeGenericDispatcher {
 			final Mode parMode = firmTypeSystem.getFirmMode(param.type());
 			Node par = null;
 			if(firmTypeSystem.isFirmStructType(typeParameter)) {
-				final firm.Type firm_type = firmTypeSystem.asFirmType(typeParameter);
+				final firm.Type firm_type = firmTypeSystem.asType(typeParameter);
 				final firm.Type frameType = entity.getGraph().getFrameType();
 				final Entity paramEntity = Entity.createParameterEntity(frameType, var.getIdx(), firm_type);
 				par = codeGenerator.getEntityFromCurrentFrame(paramEntity);
@@ -60,7 +60,7 @@ public class PointerGenerator extends NativeGenericDispatcher {
 			}
 			assert(par != null);
 
-			final firm.Type type = firmTypeSystem.asFirmType(typeParameter);
+			final firm.Type type = firmTypeSystem.asType(typeParameter);
 			final Node mem = con.getCurrentMem();
 			final Mode loadMode = type.getMode();
 			final Node load = con.newLoad(mem, par, loadMode);
@@ -119,7 +119,7 @@ public class PointerGenerator extends NativeGenericDispatcher {
 			final Node address = con.getVariable(var_ptr.getIdx(), ptrMode);
 
 			if(firmTypeSystem.isFirmStructType(typeParameter)) {
-				final firm.Type firm_type = firmTypeSystem.asFirmType(typeParameter);
+				final firm.Type firm_type = firmTypeSystem.asType(typeParameter);
 				final firm.Type frameType = entity.getGraph().getFrameType();
 				final Entity paramEntity = Entity.createParameterEntity(frameType, var_val.getIdx(), firm_type);
 				final Node asgn = codeGenerator.getEntityFromCurrentFrame(paramEntity);

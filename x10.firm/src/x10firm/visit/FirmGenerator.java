@@ -349,7 +349,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final firm.Type frameType = con.getGraph().getFrameType();
 		for (final LocalInstance loc : locals) {
 			if (needEntityForLocalInstance(loc) && !map.containsKey(loc)) {
-				final Entity ent = new Entity(frameType, loc.name().toString(), firmTypeSystem.asFirmCoreType(loc.type()));
+				final Entity ent = new Entity(frameType, loc.name().toString(), firmTypeSystem.asClass(loc.type()));
 				map.put(loc, ent);
 			}
 		}
@@ -649,7 +649,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final Node args = graph.getArgs();
 		if(!isStatic) {
 			assert(owner != null);
-			final firm.Type ownerFirm = firmTypeSystem.asFirmType(owner);
+			final firm.Type ownerFirm = firmTypeSystem.asType(owner);
 
 			/* map 'this' */
 			final Node projThis = con.newProj(args, ownerFirm.getMode(), 0);
@@ -663,7 +663,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final Type type = loc.type();
 
 			if (firmTypeSystem.isFirmStructType(type)) {
-				final firm.Type firm_type = firmTypeSystem.asFirmType(type);
+				final firm.Type firm_type = firmTypeSystem.asType(type);
 				final firm.Type frameType = graph.getFrameType();
 				final Entity paramEntity = Entity.createParameterEntity(frameType, idx, firm_type);
 				final Node node = getEntityFromCurrentFrame(paramEntity);
@@ -789,7 +789,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		/* let's create a simple "main" function which just calls the other main */
 		final firm.Type global = Program.getGlobalType();
 		/* let's hope the X10 int type is compatible to the C int-type */
-		final firm.Type intType = firmTypeSystem.asFirmType(x10TypeSystem.Int());
+		final firm.Type intType = firmTypeSystem.asType(x10TypeSystem.Int());
 		final firm.Type[] returnTypes = new firm.Type[] { intType };
 		final firm.Type[] parameterTypes = new firm.Type[] {};
 		final MethodType mainType = new MethodType(parameterTypes, returnTypes);
@@ -966,7 +966,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final FieldInstance def = instance.def().asInstance();
 		final Flags flags = def.flags();
 		/* make sure enclosing class-type has been created */
-		firmTypeSystem.asFirmType(instance.container());
+		firmTypeSystem.asType(instance.container());
 		final Entity entity = firmTypeSystem.getEntityForField(instance);
 		Node address = null;
 		if (flags.isStatic()) {
@@ -989,7 +989,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		if (firmTypeSystem.isFirmStructType(fInst.type())) // structs
 			return fieldPointer;
 
-		final firm.Type type = firmTypeSystem.asFirmType(fInst.type());
+		final firm.Type type = firmTypeSystem.asType(fInst.type());
 		final Node mem = con.getCurrentMem();
 		final Mode loadMode = type.getMode();
 		final Node load = con.newLoad(mem, fieldPointer, loadMode);
@@ -1024,7 +1024,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final Node curMem = con.newProj(copyB, Mode.getM(), CopyB.pnM);
 			con.setCurrentMem(curMem);
 		} else {
-			final firm.Type type = firmTypeSystem.asFirmType(fInst.type());
+			final firm.Type type = firmTypeSystem.asType(fInst.type());
 			assert rightRet.getMode().equals(type.getMode());
 			final Node mem = con.getCurrentMem();
 			final Node store = con.newStore(mem, address, rightRet);
@@ -1041,7 +1041,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		/* make sure enclosing class type has been created */
 		final FieldInstance instance = dec.fieldDef().asInstance();
-		firmTypeSystem.asFirmCoreType(instance.container());
+		firmTypeSystem.asClass(instance.container());
 
 		/* static fields may have initializers */
 		if (flags.isStatic()) {
@@ -1792,8 +1792,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	 * @return A proj node to the allocated memory.
 	 */
 	public Node genHeapAlloc(final Type x10Type) {
-		final firm.Type refType  = firmTypeSystem.asFirmType(x10Type);
-		final firm.Type coreType = firmTypeSystem.asFirmCoreType(x10Type);
+		final firm.Type refType  = firmTypeSystem.asType(x10Type);
+		final firm.Type coreType = firmTypeSystem.asClass(x10Type);
 		return genAlloc(refType, coreType, ir_where_alloc.heap_alloc);
 	}
 
@@ -1804,8 +1804,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	 * @return A proj node to the allocated memory.
 	 */
 	public Node genStackAlloc(final Type x10Type) {
-		final firm.Type refType  = firmTypeSystem.asFirmType(x10Type);
-		final firm.Type coreType = firmTypeSystem.asFirmCoreType(x10Type);
+		final firm.Type refType  = firmTypeSystem.asType(x10Type);
+		final firm.Type coreType = firmTypeSystem.asClass(x10Type);
 		return genAlloc(refType, coreType, ir_where_alloc.stack_alloc);
 	}
 
@@ -2011,7 +2011,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		// Create a new local construction and use it to create a new null const node
 		final Graph graph = Program.getConstCodeGraph();
 		final Construction c = new OOConstruction(graph);
-		final firm.Type type = firmTypeSystem.asFirmType(n.type());
+		final firm.Type type = firmTypeSystem.asType(n.type());
 		final Mode mode = type.getMode();
 		Node result = c.newConst(mode.getNull());
 
@@ -2020,7 +2020,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(NullLit_c n) {
-		final firm.Type type = firmTypeSystem.asFirmType(n.type());
+		final firm.Type type = firmTypeSystem.asType(n.type());
 		final Mode mode = type.getMode();
 		final Node result = con.newConst(mode.getNull());
 		setReturnNode(result);
@@ -2031,10 +2031,10 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final Node string_const = createStringSymConst(value);
 
 		final firm.Type[] parameterTypes = new firm.Type[2];
-		parameterTypes[0] = firmTypeSystem.asFirmType(x10TypeSystem.UInt());
+		parameterTypes[0] = firmTypeSystem.asType(x10TypeSystem.UInt());
 		parameterTypes[1] = new PointerType(parameterTypes[0]); /* XXX Pointer to uint is not quite correct */
 		final firm.Type[] resultTypes = new firm.Type[1];
-		resultTypes[0] = firmTypeSystem.asFirmType(x10TypeSystem.String());
+		resultTypes[0] = firmTypeSystem.asType(x10TypeSystem.String());
 		final MethodType type = new firm.MethodType(parameterTypes, resultTypes);
 
 		final Entity func_ent = new Entity(Program.getGlobalType(), X10_STRING_LITERAL, type);
@@ -2063,7 +2063,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	private Node createStringSymConst(String value) {
 		final ClassType global_type = Program.getGlobalType();
-		final firm.Type elem_type = firmTypeSystem.asFirmType(x10TypeSystem.Char());
+		final firm.Type elem_type = firmTypeSystem.asType(x10TypeSystem.Char());
 		final ArrayType type = new ArrayType(1, elem_type);
 
 		final Ident id = Ident.createUnique("x10_str.%u");
@@ -2641,9 +2641,9 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			position = con.newConst(0, firmTypeSystem.getFirmMode(x10TypeSystem.String()));
 
 		final firm.Type[] parameterTypes = new firm.Type[3];
-		parameterTypes[0] = firmTypeSystem.asFirmType(x10TypeSystem.Boolean());
-		parameterTypes[1] = firmTypeSystem.asFirmType(x10TypeSystem.String());
-		parameterTypes[2] = firmTypeSystem.asFirmType(x10TypeSystem.String());
+		parameterTypes[0] = firmTypeSystem.asType(x10TypeSystem.Boolean());
+		parameterTypes[1] = firmTypeSystem.asType(x10TypeSystem.String());
+		parameterTypes[2] = firmTypeSystem.asType(x10TypeSystem.String());
 		final firm.Type[] resultTypes = new firm.Type[0];
 		final MethodType type = new firm.MethodType(parameterTypes, resultTypes);
 		final Entity funcEnt = new Entity(Program.getGlobalType(), X10_ASSERT, type);

@@ -191,9 +191,9 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		/* If the compare type is a struct type we must compare against the boxing type of the struct type */
 		if (typeSystem.isStructType0(compType)) {
 			final Type tmp = codeGenerator.getBoxingType((X10ClassType)compType);
-			firmType = firmTypeSystem.asFirmCoreType(tmp);
+			firmType = firmTypeSystem.asClass(tmp);
 		} else {
-			firmType = firmTypeSystem.asFirmCoreType(compType);
+			firmType = firmTypeSystem.asClass(compType);
 		}
 		assert(firmType != null);
 
