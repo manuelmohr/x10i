@@ -53,12 +53,12 @@ x10_int name(type self) \
 	BINOP3(prefix ## dvE ## postfix, type, /)
 
 #define MAKE_CMPOPS(prefix, postfix, type) \
-	BINOP3(prefix ## eqE ## postfix, type, ==) \
-	BINOP3(prefix ## neE ## postfix, type, !=) \
-	BINOP3(prefix ## ltE ## postfix, type,  <) \
-	BINOP3(prefix ## gtE ## postfix, type,  >) \
-	BINOP3(prefix ## leE ## postfix, type, <=) \
-	BINOP3(prefix ## geE ## postfix, type, >=)
+	BINOP2(prefix ## eqE ## postfix, x10_boolean, type, ==) \
+	BINOP2(prefix ## neE ## postfix, x10_boolean, type, !=) \
+	BINOP2(prefix ## ltE ## postfix, x10_boolean, type,  <) \
+	BINOP2(prefix ## gtE ## postfix, x10_boolean, type,  >) \
+	BINOP2(prefix ## leE ## postfix, x10_boolean, type, <=) \
+	BINOP2(prefix ## geE ## postfix, x10_boolean, type, >=)
 
 #define MAKE_INT_BINOPS(prefix, postfix, type) \
 	MAKE_BINOPS(prefix, postfix, type) \

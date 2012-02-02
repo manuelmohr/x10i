@@ -3,7 +3,7 @@
 #include "x10_string.h"
 
 X10_MAKE_COMPARETO(_ZN3x104lang3Int9compareToEi, x10_int)
-X10_MAKE_HASHCODE(_ZN3x104lang3Int8hashCodeEv, x10_float)
+X10_MAKE_HASHCODE(_ZN3x104lang3Int8hashCodeEv, x10_int)
 X10_MAKE_EQUALS(_ZN3x104lang3Int6equalsEi, x10_int)
 X10_MAKE_TOSTRING(_ZN3x104lang3Int8toStringEv, x10_int, "%d")
 

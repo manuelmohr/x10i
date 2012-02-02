@@ -135,8 +135,11 @@ public class FirmTypeSystem {
 
 		final ClassType glob = Program.getGlobalType();
 		for (Entity ent : glob.getMembers()) {
-			if (ent.getVisibility() != ir_visibility.ir_visibility_external) continue;
-			this.cStdlibEntities.put(ent.getName(), ent);
+			if (ent.getVisibility() != ir_visibility.ir_visibility_default)	continue;
+			this.cStdlibEntities.put(ent.getLdName(), ent);
+			/* We must put methods into their respective classes.
+			 * However, this type does not even exist yet, so this
+			 * is delayed until the entity is retrieved from cStdlibEntities. */
 		}
 	}
 
@@ -785,7 +788,7 @@ public class FirmTypeSystem {
 		Type typeUByte = new PrimitiveType(modeUByte);
 		saveType(x10TypeSystem.UByte(), typeUByte);
 
-		Mode modeChar = Mode.createIntMode("Char", ir_mode_arithmetic.irma_twos_complement, 32, false, 0);
+		Mode modeChar = modeInt; /* reuse mode to match stdlib (we use wchar!) */
 		Type typeChar = new PrimitiveType(modeChar);
 		saveType(x10TypeSystem.Char(), typeChar);
 
@@ -952,16 +955,27 @@ public class FirmTypeSystem {
 			final String nameWithDefiningClass = X10NameMangler.mangleTypeObjectWithDefClass(instance);
 			final String nameWithoutDefiningClass = X10NameMangler.mangleTypeObjectWithoutDefClass(instance);
 			final Flags flags = instance.flags();
+			final firm.Type owningClass = asFirmCoreType(owner);
 
-			if (flags.isNative() && flags.isStatic()) { /* try to get it from stdlib */
+			if (flags.isNative()) { /* try to get it from stdlib */
+				assert !flags.isInterface() : "We do not import interfaces.";
+				assert !flags.isAbstract() : "We do not import abstract methods.";
+
 				final Entity cEntity = this.cStdlibEntities.get(nameWithDefiningClass);
 				if (cEntity != null) {
+					/* fix up stuff, which was impossible to do during the import */
+					cEntity.setOwner(owningClass);
+					if (flags.isStatic()) {
+						OO.setEntityBinding(cEntity, ddispatch_binding.bind_static);
+					} else {
+						OO.setEntityBinding(cEntity, ddispatch_binding.bind_dynamic);
+					}
+
 					context.putMethodEntity(gMethodInstance, cEntity);
 					return cEntity;
 				}
 			}
 
-			final firm.Type owningClass = asFirmCoreType(owner);
 			final firm.Type ownerFirm = flags.isStatic() ? Program.getGlobalType() : owningClass;
 			final firm.Type type = asFirmType(instance);
 			entity = new Entity(ownerFirm, nameWithoutDefiningClass, type);
