@@ -23,7 +23,7 @@ public class GenericClassContext {
 	private final Map<FieldDef, Entity> fieldEntities = new HashMap<FieldDef, Entity>();
 
 	public GenericClassContext() {
-		
+
 	}
 
 	public Entity getMethodEntity(GenericMethodInstance inst) {

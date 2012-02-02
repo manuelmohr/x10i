@@ -5,7 +5,7 @@ import firm.nodes.Node;
 import firm.nodes.OOConstruction;
 
 /**
- * Firm code templates 
+ * Firm code templates
  */
 public class FirmCodeTemplate {
 	/**
@@ -14,10 +14,10 @@ public class FirmCodeTemplate {
 	interface CondTemplate {
 		/**
 		 * Generate condition code
-		 * @param trueBlock True block 
+		 * @param trueBlock True block
 		 * @param falseBlock False block
 		 */
-		public void genCode(final Block trueBlock, final Block falseBlock); 
+		public void genCode(final Block trueBlock, final Block falseBlock);
 	}
 
 	/**
@@ -40,9 +40,9 @@ public class FirmCodeTemplate {
 		 */
 		public Node genCode();
 	}
-	
-	/** 
-	 * Generate firm nodes for a conditional expression 
+
+	/**
+	 * Generate firm nodes for a conditional expression
 	 * @param con The construction object
 	 * @param cond The condition template
 	 * @param trueExpr The true expression template
@@ -51,7 +51,7 @@ public class FirmCodeTemplate {
 	 */
 	public static Node genConditional(final OOConstruction con, final CondTemplate cond,
 			final ExprTemplate trueExpr, final ExprTemplate falseExpr) {
-		
+
 		final Block bTrue    = con.newBlock();
 		final Block bFalse   = con.newBlock();
 		final Block curBlock = con.getCurrentBlock();
@@ -83,7 +83,7 @@ public class FirmCodeTemplate {
 
 		return con.newPhi(new Node[]{trueNode, falseNode}, falseNode.getMode());
 	}
-	
+
 	/**
 	 * Generate for an if statement
 	 * @param con The construction object
@@ -91,7 +91,7 @@ public class FirmCodeTemplate {
 	 * @param ifStmt The if statement template
 	 * @param elseStmt The else statement template
 	 */
-	public static void genIfStatement(final OOConstruction con, 
+	public static void genIfStatement(final OOConstruction con,
 			final CondTemplate cond, final StmtTemplate ifStmt, final StmtTemplate elseStmt) {
 		final Block bTrue  = con.newBlock();
 		final Block bAfter = con.newBlock();
@@ -102,13 +102,13 @@ public class FirmCodeTemplate {
 		} else {
 			bFalse = bAfter;
 		}
-		
+
 		cond.genCode(bTrue, bFalse);
-		
+
 		con.setCurrentBlock(bTrue);
-		
+
 		ifStmt.genCode();
-		
+
 		Node endIf = null;
 		if(con.getCurrentBlock().isBad())
 			con.setCurrentBlock(bTrue);

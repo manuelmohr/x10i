@@ -70,12 +70,12 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(BooleanLit_c literal) {
 		final Node jmp = con.newJmp();
-		
+
 		if (literal.value())
 			trueBlock.addPred(jmp);
 		else
 			falseBlock.addPred(jmp);
-		
+
 		con.setCurrentBlockBad();
 	}
 
@@ -172,22 +172,22 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 			makeJumps(cmp, trueBlock, falseBlock, con);
 		}
 	}
-	
-	public static Node genInstanceOf(final Node node, final Type eType, final Type cmpType, 
-			final X10FirmCodeGenerator codeGenerator, final GenericTypeSystem typeSystem, 
+
+	public static Node genInstanceOf(final Node node, final Type eType, final Type cmpType,
+			final X10FirmCodeGenerator codeGenerator, final GenericTypeSystem typeSystem,
 			final FirmTypeSystem firmTypeSystem, final OOConstruction con) {
-		
+
 		final Type exprType = typeSystem.getConcreteType(eType);
 		final Type compType = typeSystem.getConcreteType(cmpType);
 		Node objPtr = node;
 		firm.Type firmType = null;
-		
+
 		/* obj instanceof 'X' -> box(obj) instanceof 'X' */
 		if (typeSystem.isStructType0(exprType)) {
 			final X10ClassType ct = (X10ClassType) Types.stripConstraints(exprType);
 		    objPtr = codeGenerator.genBoxing(ct, objPtr);
 		}
-		
+
 		/* If the compare type is a struct type we must compare against the boxing type of the struct type */
 		if (typeSystem.isStructType0(compType)) {
 			final Type tmp = codeGenerator.getBoxingType((X10ClassType)compType);
@@ -209,8 +209,8 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	public void visit(X10Instanceof_c n) {
 		final Type exprType = n.expr().type();
 		Node objPtr = codeGenerator.visitExpression(n.expr());
-		
-		final Node node = genInstanceOf(objPtr, exprType, n.compareType().typeRef().get(), 
+
+		final Node node = genInstanceOf(objPtr, exprType, n.compareType().typeRef().get(),
 									   codeGenerator, typeSystem, firmTypeSystem, con);
 		makeJumps(node, trueBlock, falseBlock, con);
 	}

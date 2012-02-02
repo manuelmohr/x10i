@@ -52,7 +52,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	}
 
 	/**
-	 * Returns the type mapping 
+	 * Returns the type mapping
 	 * @return The type mapping
 	 */
 	public Map<ParameterType, Type> getMapping() {
@@ -80,28 +80,28 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	}
 
 	public boolean isSubtype0(Type t1, Type t2) {
-		final Type t1_ = getConcreteType(t1), 
+		final Type t1_ = getConcreteType(t1),
 				   t2_ = getConcreteType(t2);
 
 		return super.isSubtype(t1_, t2_);
 	}
 
 	public boolean typeEquals0(Type t1, Type t2, Context context) {
-		final Type t1_ = getConcreteType(t1), 
+		final Type t1_ = getConcreteType(t1),
 				   t2_ = getConcreteType(t2);
 
 		return super.typeEquals(t1_, t2_, context);
 	}
 
 	public boolean typeDeepBaseEquals0(Type t1, Type t2, Context context) {
-		final Type t1_ = getConcreteType(t1), 
+		final Type t1_ = getConcreteType(t1),
 				   t2_ = getConcreteType(t2);
 
 		return super.typeDeepBaseEquals(t1_, t2_, context);
 	}
-	
+
 	private Map<String, X10ParsedClassType> remapped_classes = new HashMap<String, X10ParsedClassType>();
-	
+
 	private String getGenericClassName(final X10ParsedClassType klass, final List<polyglot.types.Type> typeArguments) {
 		StringBuffer buf = new StringBuffer();
 		buf.append(klass.name().toString());
@@ -111,7 +111,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		buf.append("]");
 		return buf.toString();
 	}
-	
+
 	private X10ParsedClassType getFixedClassTypeFromCache(final X10ParsedClassType klass, final List<polyglot.types.Type> typeArguments) {
 		final String klassName = getGenericClassName(klass, typeArguments);
 		X10ParsedClassType ret = remapped_classes.get(klassName);
@@ -121,8 +121,8 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		remapped_classes.put(klassName, ret);
 		return ret;
 	}
-	
-	
+
+
 	private X10ParsedClassType fixParsedClassType(final X10ParsedClassType klass) {
 		if (klass.isMissingTypeArguments()) {
 			final X10ClassDef def = klass.def();
@@ -143,14 +143,14 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 					typeArguments.add(typeArg);
 				}
 			}
-			
+
 			if(hasUnknownTypeParams)
 				return getFixedClassTypeFromCache(klass, typeArguments);
 		}
 
 		return klass;
 	}
-	
+
 	/**
 	 * Returns the concrete type for a given type (after substitution of type parameters etc.)
 	 * @param type The given type
@@ -158,7 +158,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	 */
 	public Type getConcreteType(final Type type) {
 		Type ret = simplifyType(type);
-		
+
 		if(ret instanceof X10ParsedClassType)
 			ret = fixParsedClassType((X10ParsedClassType)ret);
 		else if(super.isParameterType(ret) && typeParameters.containsKey(ret)) {
@@ -168,13 +168,13 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 			// TODO: Need a better solution !!!
 			ret = Object();
 		}
-		
+
 		// isParsedClassType => !isMissingTypeArguments
 		assert (!(ret instanceof X10ParsedClassType) || !((X10ParsedClassType) ret).isMissingTypeArguments());
-		
+
 		return ret;
 	}
-	
+
 	/**
 	 * Simplifies a given polyglot type -> Returns the base type of a given type. -> Removes constrained types, annotations etc.
 	 * @param type The type which should be simplified
@@ -197,21 +197,21 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		final Type ret = getConcreteType(t);
 		return ret.toClass();
 	}
-	
+
 	public boolean isRefType(final Type type) {
 		final Type ret = getConcreteType(type);
 		return !isStructType0(ret) && (ret == Null() || isClass(ret) || isInterfaceType(ret));
 	}
-	
-	// Own additions for the native pointer type 
+
+	// Own additions for the native pointer type
     protected X10ClassType FirmPointer_;
-	
+
     public X10ClassType FirmPointer() {
         if (FirmPointer_ == null)
             FirmPointer_ = load("x10.lang.FirmPointer");
         return FirmPointer_;
     }
-    
+
     public boolean isFirmPointer(final Type type) {
     	return isSubtype(type, FirmPointer());
     }

@@ -52,7 +52,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 	protected polyglot.types.TypeSystem createTypeSystem() {
 		return new GenericTypeSystem(this);
 	}
-	
+
 	@Override
     protected NodeFactory createNodeFactory() {
     	return new X10CNodeFactory_c(this);
@@ -79,7 +79,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 	static {
 		allowedClassNames.add("x10/lang/Any.x10");
 		allowedClassNames.add("x10/lang/Object.x10");
-		
+
 		allowedClassNames.add("x10/lang/UInt.x10");
 		allowedClassNames.add("x10/lang/UByte.x10");
 		allowedClassNames.add("x10/lang/UShort.x10");
@@ -93,14 +93,14 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedClassNames.add("x10/lang/Double.x10");
 		allowedClassNames.add("x10/lang/Char.x10");
 		allowedClassNames.add("x10/lang/FirmPointer.x10");
-		
+
 //		allowedClassNames.add("x10/lang/Math.x10");
 //		allowedClassNames.add("x10/lang/Complex.x10");
 //		allowedClassNames.add("x10/lang/Cell.x10");
 		allowedClassNames.add("x10/lang/LongRange.x10");
-		
+
 		allowedClassNames.add("x10/lang/Zero.x10");
-		
+
 //		allowedClassNames.add("x10/lang/Acc.x10");
 //		allowedClassNames.add("x10/lang/Reducible.x10");
 		allowedClassNames.add("x10/lang/Indexable.x10");
@@ -108,7 +108,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedClassNames.add("x10/lang/Bitwise.x10");
 		allowedClassNames.add("x10/lang/Arithmetic.x10");
 		allowedClassNames.add("x10/lang/Iterable.x10");
-		
+
 		allowedClassNames.add("x10/lang/Iterable.x10");
 		allowedClassNames.add("x10/lang/Iterator.x10");
 		allowedClassNames.add("x10/lang/Thread.x10");
@@ -127,16 +127,16 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 //		allowedClassNames.add("x10/util/Box.x10");
 		allowedClassNames.add("x10/util/IndexedMemoryChunk.x10");
 //		allowedClassNames.add("x10/util/GrowableIndexedMemoryChunk.x10");
-		
+
 //		allowedClassNames.add("x10/io/SerialData.x10");
 //		allowedClassNames.add("x10/io/CustomSerialization.x10");
-		
+
 		allowedClassNames.add("x10/compiler/InitDispatcher.x10");
 	}
-	
-	// TODO DELETE ME: Delete this method when library support is implemented. 
+
+	// TODO DELETE ME: Delete this method when library support is implemented.
 	public static boolean isAllowedClassName(final String className) {
-		for(final String str: allowedClassNames) 
+		for(final String str: allowedClassNames)
 			if(className.endsWith(str))
 				return true;
 		return false;

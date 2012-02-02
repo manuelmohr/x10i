@@ -21,7 +21,7 @@ public class GenericMethodInstance {
 
 	GenericMethodInstance(final MethodInstance mi, final GenericTypeSystem x10TypeSystem) {
 		def = mi.x10Def();
-		
+
 		if(mi instanceof ReinstantiatedMethodInstance) {
 			// Handling of ReininstiatedMethodInstances with "pseudo" parameter types. (Closures for example)
 			final ReinstantiatedMethodInstance rmi = (ReinstantiatedMethodInstance)mi;
@@ -34,10 +34,10 @@ public class GenericMethodInstance {
 			// Handling of type subst
 			for(int i = 0; i < typeArgs.size(); i++) {
 			Type typeArg = typeArgs.get(i);
-				if(typeArg.isParameterType()) // Watch out for recursive type mappings. 
+				if(typeArg.isParameterType()) // Watch out for recursive type mappings.
 					typeArg = x10TypeSystem.getConcreteType(typeArg);
 				final ParameterType typeParam = typeParams.get(i);
-				
+
 				mapping.add(typeParam, typeArg);
 			}
 			// Handling of normal type parameters

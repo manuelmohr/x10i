@@ -46,7 +46,7 @@ class X10FirmScheduler extends X10Scheduler {
 
 	@Override
 	protected Goal PostCompiled() {
-		
+
 		/*
 		 * The other X10 backends and Polyglot use this goal to invoke
 		 * javac/gcc on the generated source code.  In the Firm context this
@@ -75,7 +75,7 @@ class X10FirmScheduler extends X10Scheduler {
 
 		return seq.intern(this);
 	}
-	
+
     @Override
     public List<Goal> goals(Job job) {
         List<Goal> superGoals = super.goals(job);
@@ -89,10 +89,10 @@ class X10FirmScheduler extends X10Scheduler {
             }
             goals.add(g);
         }
-        
+
         return goals;
     }
-    
+
     @Override
     public Goal CodeGenBarrier() {
         String name = "CodeGenBarrier";
@@ -104,30 +104,30 @@ class X10FirmScheduler extends X10Scheduler {
                     return codegenPrereq(job);
                 }
             }.intern(this);
-        } 
-        
+        }
+
         return new AllBarrierGoal(name, this) {
             private static final long serialVersionUID = 4089824072381830523L;
             @Override
             public Goal prereqForJob(Job job) {
             	if(super.scheduler.shouldCompile(job)) {
             		return codegenPrereq(job);
-            	} else if(x10firm.ExtensionInfo.isAllowedClassName(job.toString())) // DELETE ME (whole else if): Need library support 
+            	} else if(x10firm.ExtensionInfo.isAllowedClassName(job.toString())) // DELETE ME (whole else if): Need library support
             		return codegenPrereq(job);
-            	
+
                 return null;
             }
         }.intern(this);
     }
-    
-    
-    // Visitor that does nothing 
+
+
+    // Visitor that does nothing
     private static class NoVisitor extends NodeVisitor {
        public NoVisitor() { }
     }
-    
+
     @Override
-    // Get out of the native class visitor in firm 
+    // Get out of the native class visitor in firm
     public Goal NativeClassVisitor(Job job) {
        return new VisitorGoal("NoVisitor", job, new NoVisitor()).intern(this);
     }
@@ -137,7 +137,7 @@ class X10FirmScheduler extends X10Scheduler {
         NodeFactory nf = extInfo.nodeFactory();
 		return new ValidatingVisitorGoal("ClosureRemover", job, new ClosureRemover(job, ts, nf)).intern(this);
 	}
-    
+
     private Goal StaticInitializer(Job job) {
         TypeSystem ts = extInfo.typeSystem();
         NodeFactory nf = extInfo.nodeFactory();

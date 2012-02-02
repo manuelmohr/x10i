@@ -37,7 +37,7 @@ public class FirmGenerated extends SourceGoal_c {
 	public FirmGenerated(final Job job, final TypeSystem x10TypeSystem,
 			final FirmTypeSystem firmTypeSystem,
 			final X10NodeFactory_c nodeFactory) {
-		
+
 		super("FirmGenerated", job);
 		this.firmTypeSystem = firmTypeSystem;
 		this.x10TypeSystem = (GenericTypeSystem) x10TypeSystem;
@@ -51,7 +51,7 @@ public class FirmGenerated extends SourceGoal_c {
 		assert (ast != null);
 		if (!((X10Ext) ast.ext()).subtreeValid())
 			return false;
-		
+
 		final CompilerOptions options = (CompilerOptions) scheduler.extensionInfo().getOptions();
 		firmTypeSystem.init(options);
 

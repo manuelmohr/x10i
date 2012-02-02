@@ -41,7 +41,7 @@ public class MethodDeclFetcher {
 
 	/**
 	 * Get the definition of the X10 Class that implements a given method.
-	 * 
+	 *
 	 * @param candidate the method definition whose container is desired
 	 * @return the definition of the X10 Class containing md
 	 */
@@ -57,11 +57,11 @@ public class MethodDeclFetcher {
 	/**
 	 * Obtain the job for containing the declaration for a given method. Run the
 	 * preliminary compilation phases on the job's AST.
-	 * 
+	 *
 	 * Note Errors during speculative compilation should not be fatal. The
 	 * mechanism implementing this behavior consists of a pair of hacks that
 	 * should be fixed.
-	 * 
+	 *
 	 * @param candidate
 	 * @param container
 	 * @return
@@ -108,7 +108,7 @@ public class MethodDeclFetcher {
 
 	/**
 	 * Walk an AST looking for the declaration of a given method.
-	 * 
+	 *
 	 * @param candidate
 	 *            the method whose declaration is desired
 	 * @param ast
@@ -165,7 +165,7 @@ public class MethodDeclFetcher {
 	 * TODO
 	 * TODO: Add caching.
 	 * TODO
-	 * 
+	 *
 	 * @param call
 	 *            The call to the method we need the declaration for.
 	 * @return The declaration of the method invoked by call, or null if the

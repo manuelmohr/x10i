@@ -24,7 +24,7 @@ public class AsmEmitted extends AllBarrierGoal {
 	public static final String ASM_FILENAME = UUID.randomUUID().toString() + ".s";
 
 	private Goal prereq_redirection = null;
-	
+
 	/** Constructor */
 	public AsmEmitted(Scheduler scheduler) {
 		super("AsmEmitted", scheduler);
@@ -32,10 +32,10 @@ public class AsmEmitted extends AllBarrierGoal {
 
 	@Override
 	public boolean runTask() {
-		
+
 		/* try to generate some assembly */
 		String compilationUnit = "x10program";
-		
+
 		final CompilerOptions options =
 			(CompilerOptions) scheduler.extensionInfo().getOptions();
 
@@ -68,14 +68,14 @@ public class AsmEmitted extends AllBarrierGoal {
 			prereq_redirection.addPrereq(goal);
 		}
 	}
-	
+
 	@Override
 	public Goal prereqForJob(Job job) {
 		// TODO DELETE ME: Delete the second condition when library support is implemented
 		if (!scheduler.shouldCompile(job) && !ExtensionInfo.isAllowedClassName(job.toString())) {
 			return null;
 		}
-		
+
 		return scheduler.End(job);
 	}
 }

@@ -151,7 +151,7 @@ public class X10ASTQuery {
 
 	    return ret;
 	}
-	
+
     public boolean isPerProcess(X10Def def) {
         try {
             Type t = x10TypeSystem.systemResolver().findOne(QName.make("x10.compiler.PerProcess"));

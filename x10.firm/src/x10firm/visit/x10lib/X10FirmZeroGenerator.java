@@ -3,23 +3,21 @@ package x10firm.visit.x10lib;
 import java.util.Collections;
 import java.util.List;
 
-import firm.Entity;
-import firm.nodes.Node;
-import firm.nodes.OOConstruction;
-
 import polyglot.ast.FloatLit.Kind;
 import polyglot.ast.IntLit;
 import polyglot.ast.Return;
 import polyglot.types.LocalInstance;
 import polyglot.types.Type;
 import polyglot.util.Position;
-
 import x10.ast.X10NodeFactory_c;
 import x10.types.MethodInstance;
 import x10.types.X10ClassType;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
 import x10firm.visit.X10FirmCodeGenerator;
+import firm.Entity;
+import firm.nodes.Node;
+import firm.nodes.OOConstruction;
 
 public class X10FirmZeroGenerator extends X10NativeGenericDispatcher {
 
@@ -27,17 +25,17 @@ public class X10FirmZeroGenerator extends X10NativeGenericDispatcher {
 	 *  Support code for the getSize method in X10FirmSupport.x10
 	 */
 	static class GenGet implements X10NativeGenericMethodFirmGenerator {
-		
+
 		@Override
-		public boolean gen(final X10FirmCodeGenerator codeGenerator, final MethodInstance meth, 
+		public boolean gen(final X10FirmCodeGenerator codeGenerator, final MethodInstance meth,
 						   final List<LocalInstance> formals) {
-			/** Generation: 
+			/** Generation:
 			 * switch(T) {
 			 *    case isRef(T): return NULL;
 			 *    case isBoolean(T): return false;
 			 *    case isChar(T): return '0';
 			 *    case isOtherPrimitiveType(T): return (T)0;
-			 *    default: // must be a struct 
+			 *    default: // must be a struct
 			 *       T tmp; memset(T); return tmp;
 			 * }
 			 */
@@ -46,15 +44,15 @@ public class X10FirmZeroGenerator extends X10NativeGenericDispatcher {
 			final X10NodeFactory_c xnf = codeGenerator.getNodeFactory();
 			final X10ClassType owner = (X10ClassType)meth.container();
 			final Entity entity = firmTypeSystem.getMethodEntity(meth);
-			
+
 			assert(meth.typeParameters().size() == 1);
 			final Type typeParameter = meth.typeParameters().get(0);
-			
-			final OOConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(), 
+
+			final OOConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
 					meth.flags(), meth.returnType(), owner);
-			
+
 			final Position pos = Position.COMPILER_GENERATED;
-			
+
 			Return ret = null;
 			boolean isStruct = false;
 			if(x10TypeSystem.isRefType(typeParameter)) {
@@ -91,8 +89,8 @@ public class X10FirmZeroGenerator extends X10NativeGenericDispatcher {
 				}
 			} else {
 				// must be a struct
-				// allocate a new struct type and return it. 
-				// TODO: Add memset call 
+				// allocate a new struct type and return it.
+				// TODO: Add memset call
 				isStruct = true;
 				final Node tmp = codeGenerator.genStackAlloc(typeParameter);
 				OOConstruction con = codeGenerator.getFirmConstruction();
@@ -103,17 +101,17 @@ public class X10FirmZeroGenerator extends X10NativeGenericDispatcher {
 				con.getGraph().getEndBlock().addPred(retNode);
 				con.setCurrentBlockBad();
 			}
-			
+
 			if(!isStruct) {
 				assert(ret != null);
 				codeGenerator.visitAppropriate(ret);
 			}
-			
+
 			codeGenerator.finishConstruction(entity, savedConstruction);
-			
+
 			return true;
 		}
-		
+
 		/**
 		 * Returns the name of the method
 		 */
@@ -122,16 +120,16 @@ public class X10FirmZeroGenerator extends X10NativeGenericDispatcher {
 			return "get";
 		}
 	}
-	
-	/** 
+
+	/**
 	 * Constructor
 	 */
 	public X10FirmZeroGenerator() {
 		addMethodGenerator(new GenGet());
 	}
-	
+
 	/**
-	 * Returns the dispatch name 
+	 * Returns the dispatch name
 	 */
 	@Override
 	public String getDispatchName() {

@@ -117,7 +117,7 @@ public class X10NameMangler {
 		Map<String, String> invNameSubs = new HashMap<String, String>();
 		for(String key : nameSubst.keySet())
 			invNameSubs.put("inverse_" + key, "v3i" + nameSubst.get(key));
-		
+
 		/* this are our own additions */
 		nameSubst.put("operator>>>", "v3rbs");
 		nameSubst.put("operator()=", "v3aps");
@@ -337,8 +337,8 @@ public class X10NameMangler {
 
         final List<? extends Type> typeArgs = clazz.typeArguments() != null ? clazz.typeArguments() :
         									  								  clazz.x10Def().typeParameters();
-        if(!typeArgs.isEmpty() && !mangleGenericStaticMethodInstance) { 
-        	// don`t mangle type arguments if we are currently mangling a method instance. 
+        if(!typeArgs.isEmpty() && !mangleGenericStaticMethodInstance) {
+        	// don`t mangle type arguments if we are currently mangling a method instance.
     		buf.append(TYPEARG_START);
     		for(Type type : typeArgs)
     			buf.append(mangleTypeParameter(type));
@@ -364,7 +364,7 @@ public class X10NameMangler {
 	private static String fixClassName(String string) {
 		return string.replace(' ', '$');
 	}
-	
+
 	// Flag to mark if we are currently mangling a static method instance
 	private static boolean mangleGenericStaticMethodInstance = false;
 
@@ -377,7 +377,7 @@ public class X10NameMangler {
 	private static String mangleMethodInstance(final MethodInstance method, final boolean mangleDefiningClass) {
 		StringBuilder buf = new StringBuilder();
 		buf.append(QUAL_START);
-		
+
 		final List<? extends Type> typeArgs = method.typeParameters() != null ? method.typeParameters() :
 			method.x10Def().typeParameters();
 

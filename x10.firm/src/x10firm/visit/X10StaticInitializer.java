@@ -82,20 +82,20 @@ import x10.types.MethodInstance;
 import x10c.ast.X10CNodeFactory_c;
 import x10c.types.X10CTypeSystem_c;
 
-/** 
- * Lowering of all non const static initializer 
+/**
+ * Lowering of all non const static initializer
  */
 public class X10StaticInitializer extends ContextVisitor {
 
     private final X10CTypeSystem_c xts;
     final X10CNodeFactory_c xnf;
     final X10ASTQuery query;
-    
+
     private final WeakHashMap<X10ProcedureDef,ProcedureDecl> procDeclCache = new WeakHashMap<X10ProcedureDef,ProcedureDecl>();
     private final WeakHashMap<Block,Boolean> procBodyCache = new WeakHashMap<Block,Boolean>();
-    // caching of shadow classes 
+    // caching of shadow classes
     private static Map<X10ClassDef, X10ClassDef> shadow_class_map = new HashMap<X10ClassDef, X10ClassDef>();
-    
+
     private X10CompilerOptions opts = (X10CompilerOptions) job.extensionInfo().getOptions();
 
     private static final String initializerPrefix = "getInitialized$";
@@ -147,7 +147,7 @@ public class X10StaticInitializer extends ContextVisitor {
             List<ClassMember> newMembers = createNewMembers(classDef);
             currMembers.addAll(newMembers);
         } else {
-        	
+
             // create a nested shadow class
             X10ClassDecl shadowDecl = createNestedShadowClass(ct);
 
@@ -172,7 +172,7 @@ public class X10StaticInitializer extends ContextVisitor {
         Position CG = Position.compilerGenerated(null);
         List<ClassMember> members = new ArrayList<ClassMember>();
         List<Stmt> initStmts = new ArrayList<Stmt>();
-        
+
         // we must collect all needed static field infos, because we
         // can`t modify the staticFinalFields field while iterating over it (ConcurrentModificationException)
         List<StaticFieldInfo> initFields = new LinkedList<StaticFieldInfo>();
@@ -184,7 +184,7 @@ public class X10StaticInitializer extends ContextVisitor {
             if (fieldInfo.right == null && fieldInfo.fieldDef == null)
                 continue;
 
-            MethodDecl md = null; 
+            MethodDecl md = null;
             if (fieldInfo.right != null) {
 
                 // gen new field var
@@ -203,7 +203,7 @@ public class X10StaticInitializer extends ContextVisitor {
 
                 // gen new initialize method
                 md = makeInitMethod(CG, fName, fieldInfo, fdCond.fieldDef(), classDef);
-                
+
                 initFields.add(fieldInfo);
             } else {
                 // gen a fake initialization method
@@ -213,12 +213,12 @@ public class X10StaticInitializer extends ContextVisitor {
             // add in the bottom
             members.add(md);
         }
-        
+
         for(final StaticFieldInfo sfi: initFields) {
             // register in the table for x10-level static initialization later
             initStmts.add(makeAddInitializer(CG, sfi, classDef));
         }
-        
+
         if (!initStmts.isEmpty()) {
             // gen initializer block
             Block initBlockBody = xnf.Block(CG, initStmts);
@@ -243,15 +243,15 @@ public class X10StaticInitializer extends ContextVisitor {
         List<ClassMember> cmembers = new ArrayList<ClassMember>();
         ClassBody body = xnf.ClassBody(CG, cmembers);
         List<TypeNode> interfaceTN = Collections.<TypeNode>emptyList();
-        X10ClassDecl cDecl = xnf.ClassDecl(CG, fNode, id, superTN, interfaceTN, 
+        X10ClassDecl cDecl = xnf.ClassDecl(CG, fNode, id, superTN, interfaceTN,
                                                           body).classDef(cDef);
         return cDecl;
     }
-    
+
     X10ClassDef getShadowClassDef(X10ClassDef interfaceClassDef) {
     	X10ClassDef cDef = shadow_class_map.get(interfaceClassDef);
     	if(cDef != null) return cDef;
-    	
+
         cDef = xts.createClassDef(interfaceClassDef.sourceFile());
         cDef.superType(Types.ref(xts.Any()));
         List<Ref<? extends Type>> interfacesRef = Collections.<Ref<? extends Type>>emptyList();
@@ -260,9 +260,9 @@ public class X10StaticInitializer extends ContextVisitor {
         cDef.setFlags(Flags.PUBLIC.Abstract());
         cDef.kind(ClassDef.MEMBER);
         cDef.outer(Types.ref(interfaceClassDef));
-        
+
         shadow_class_map.put(interfaceClassDef, cDef);
-        
+
         return cDef;
     }
 
@@ -343,7 +343,7 @@ public class X10StaticInitializer extends ContextVisitor {
                 if (found.get())
                     // already found
                     return n;
-                
+
                 if (n instanceof Expr) {
                     if (query.isGlobalInit(fd)) {
                         // initialization can be done in all places -- do not visit subtree further
@@ -404,7 +404,7 @@ public class X10StaticInitializer extends ContextVisitor {
         // register original rhs
         X10ClassType receiver = cd.asType();
         StaticFieldInfo fieldInfo = getFieldEntry(receiver, leftName.id());
-        
+
         fieldInfo.right = query.isGlobalInit(fd) ? null : fd.init();
         fieldInfo.fieldDef = fd.fieldDef();
 
@@ -434,7 +434,7 @@ public class X10StaticInitializer extends ContextVisitor {
     private MethodDef makeMethodDef(X10ClassType receiver, Name name, Type returnType) {
         Position CG = Position.compilerGenerated(null);
         List<Ref<? extends Type>> argTypes = Collections.<Ref<? extends Type>>emptyList();
-        MethodDef md = xts.methodDef(CG, Types.ref(receiver), 
+        MethodDef md = xts.methodDef(CG, Types.ref(receiver),
                                      Flags.STATIC, Types.ref(returnType), name, argTypes);
         return md;
     }
@@ -445,7 +445,7 @@ public class X10StaticInitializer extends ContextVisitor {
         Flags flags = Flags.PRIVATE.Static();
 
         Name name = Name.make(initStatusPrefix+fName);
-        FieldDef fd = xts.fieldDef(pos, Types.ref(classDef.asType()), flags, Types.ref(type), name); 
+        FieldDef fd = xts.fieldDef(pos, Types.ref(classDef.asType()), flags, Types.ref(type), name);
 
         // create right hand side: InitDispatcher.UNINITIALIZED
         TypeNode tn = xnf.X10CanonicalTypeNode(pos, type);
@@ -474,7 +474,7 @@ public class X10StaticInitializer extends ContextVisitor {
             return xnf.NullLit(pos).type(type);
         else if (xts.isSubtype(type, xts.UByte()) || xts.isSubtype(type, xts.UShort()) ||
                  xts.isSubtype(type, xts.UInt()) || xts.isSubtype(type, xts.ULong())) {
-            ConstructorDef cd = xts.defaultConstructor(pos, Types.ref((ClassType)type)); 
+            ConstructorDef cd = xts.defaultConstructor(pos, Types.ref((ClassType)type));
             ConstructorInstance ci = xts.createConstructorInstance(pos, Types.ref(cd));
             List<Expr> args = new ArrayList<Expr>();
             args.add(xnf.IntLit(pos, IntLit.INT, 0).type(type));
@@ -483,7 +483,7 @@ public class X10StaticInitializer extends ContextVisitor {
         else
             return null;
     }
-    
+
     boolean checkProcedureBody(final Block body, final int count) {
         Boolean r = procBodyCache.get(body);
         if (r != null)
@@ -505,7 +505,7 @@ public class X10StaticInitializer extends ContextVisitor {
                 if (n instanceof X10Call) {
                     X10Call call = (X10Call)n;
                     MethodInstance mi = call.methodInstance();
-                    if (!mi.container().isClass() || call.target().type().isNumeric()) { 
+                    if (!mi.container().isClass() || call.target().type().isNumeric()) {
                         // allow method calls on non-objects or numerics
                     } else if (mi.flags().isStatic()) {
                         // found reference to special initializer method
@@ -550,7 +550,7 @@ public class X10StaticInitializer extends ContextVisitor {
         procBodyCache.put(body, found.get() ? Boolean.TRUE : Boolean.FALSE);
         return found.get();
     }
-    
+
     private Node getAST(X10ClassDef container) {
         // obtain the job for containing the constructor declaration
         Job job = container.job();
@@ -574,7 +574,7 @@ public class X10StaticInitializer extends ContextVisitor {
         ast = ast.visit(new Desugarer(job, ts, nf).begin());
         return ast;
     }
-    
+
     private ProcedureDecl getProcedureDeclaration(final X10ProcedureDef candidate, X10ClassDef container) {
         ProcedureDecl r = procDeclCache.get(candidate);
         if (r != null) return r;
@@ -619,7 +619,7 @@ public class X10StaticInitializer extends ContextVisitor {
         procDeclCache.put(candidate, decl[0]);
         return decl[0];
     }
-    
+
     X10ConstructorDecl getConstructorDeclaration(X10ConstructorInstance ci) {
         X10ConstructorDef cd = ci.x10Def();
         X10ClassType containerBase = (X10ClassType) Types.get(cd.container());
@@ -639,7 +639,7 @@ public class X10StaticInitializer extends ContextVisitor {
         return (X10MethodDecl)getProcedureDeclaration(md, container);
     }
 
-    private MethodDecl makeInitMethod(Position pos, Name fName, StaticFieldInfo fieldInfo, 
+    private MethodDecl makeInitMethod(Position pos, Name fName, StaticFieldInfo fieldInfo,
                                       FieldDef fdCond, X10ClassDef classDef) {
         // get MethodDef
         Name name = Name.make(initializerPrefix+fName);
@@ -654,14 +654,14 @@ public class X10StaticInitializer extends ContextVisitor {
 
         TypeNode returnType = xnf.X10CanonicalTypeNode(pos, type);
         Block body = makeInitMethodBody(pos, fieldInfo, fdCond, classDef);
-        MethodDecl result = xnf.X10MethodDecl(pos, xnf.FlagsNode(pos, Flags.STATIC), returnType, xnf.Id(pos, name), 
+        MethodDecl result = xnf.X10MethodDecl(pos, xnf.FlagsNode(pos, Flags.STATIC), returnType, xnf.Id(pos, name),
                                               typeParamNodes, formals, null, null, body);
         // associate methodDef with methodDecl
         result = result.methodDef(md);
         return result;
     }
 
-    private Block makeInitMethodBody(Position pos, StaticFieldInfo initInfo, FieldDef fdCond, 
+    private Block makeInitMethodBody(Position pos, StaticFieldInfo initInfo, FieldDef fdCond,
                                      X10ClassDef classDef) {
 
         TypeNode receiver = xnf.X10CanonicalTypeNode(pos, classDef.asType());
@@ -674,9 +674,9 @@ public class X10StaticInitializer extends ContextVisitor {
 
         // make statement block of initialization
         List<Stmt> stmts = new ArrayList<Stmt>();
-        stmts.add(xnf.Eval(pos, xnf.FieldAssign(pos, receiver, xnf.Id(pos, name), Assign.ASSIGN, 
+        stmts.add(xnf.Eval(pos, xnf.FieldAssign(pos, receiver, xnf.Id(pos, name), Assign.ASSIGN,
                                                 right).fieldInstance(fi).type(right.type())));
-        
+
         stmts.add(xnf.Eval(pos, genStatusSet(pos, receiver, fdCond)));
         Block initBody = xnf.Block(pos, stmts);
 
@@ -736,7 +736,7 @@ public class X10StaticInitializer extends ContextVisitor {
 
         // create method declaration
         TypeNode returnType = xnf.X10CanonicalTypeNode(pos, fi.type());
-        MethodDecl result = xnf.X10MethodDecl(pos, xnf.FlagsNode(pos, Flags.STATIC), returnType, xnf.Id(pos, name), 
+        MethodDecl result = xnf.X10MethodDecl(pos, xnf.FlagsNode(pos, Flags.STATIC), returnType, xnf.Id(pos, name),
                                               typeParamNodes, formals, null, null, body);
         // associate methodDef with methodDecl
         result = result.methodDef(md);
@@ -770,14 +770,14 @@ public class X10StaticInitializer extends ContextVisitor {
         }
         return fieldInfo;
     }
-    
+
     boolean checkFieldRefReplacementRequired(X10Field_c f) {
         Pair<Type,Name> key = new Pair<Type,Name>(f.target().type(), f.name().id());
         StaticFieldInfo fieldInfo = staticFinalFields.get(key);
         // not yet registered, or registered as replacement required
         return fieldInfo == null || fieldInfo.right != null || fieldInfo.methodDef != null;
     }
-    
+
     private ClassType InitDispatcher_;
     private ClassType InitDispatcher() {
         if (InitDispatcher_ == null)
