@@ -99,7 +99,8 @@ class FirmScheduler extends X10Scheduler {
         if (extInfo.getOptions().compile_command_line_only) {
             return new BarrierGoal(name, commandLineJobs()) {
                 private static final long serialVersionUID = 2258041064037983928L;
-                @Override
+                @SuppressWarnings("synthetic-access")
+				@Override
                 public Goal prereqForJob(Job job) {
                     return codegenPrereq(job);
                 }
@@ -108,7 +109,8 @@ class FirmScheduler extends X10Scheduler {
 
         return new AllBarrierGoal(name, this) {
             private static final long serialVersionUID = 4089824072381830523L;
-            @Override
+            @SuppressWarnings("synthetic-access")
+			@Override
             public Goal prereqForJob(Job job) {
             	if(super.scheduler.shouldCompile(job)) {
             		return codegenPrereq(job);

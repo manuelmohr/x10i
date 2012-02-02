@@ -2334,10 +2334,13 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	        		break;
 	        	}
 	        }
+
 	        assert(im != null);
+			@SuppressWarnings("null")
+			final Name im_name = im.name();
 
 	        // create the call
-	        final Expr call = xnf.X10Call(pos, bxdField, xnf.Id(pos, im.name()), Collections.<TypeNode>emptyList(), args)
+			final Expr call = xnf.X10Call(pos, bxdField, xnf.Id(pos, im_name), Collections.<TypeNode>emptyList(), args)
 	        					.methodInstance(im).type(m.returnType());
 
 	        // append an optional return

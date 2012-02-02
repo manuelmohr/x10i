@@ -8,18 +8,13 @@ public class GenericClassInstance {
 	private X10ClassDef def;
 	private ParameterTypeMapping mapping;
 
-	GenericClassInstance(X10ClassDef def) {
-		assert (def != null && def.typeParameters().isEmpty());
-		this.def = def;
-	}
-
-	GenericClassInstance(X10ClassDef def, ParameterTypeMapping mapping) {
+	protected GenericClassInstance(final X10ClassDef def, final ParameterTypeMapping mapping) {
 		assert (def != null && !def.typeParameters().isEmpty() && mapping != null);
 		this.def = def;
 		this.mapping = mapping;
 	}
 
-	GenericClassInstance(X10ClassType classType) {
+	protected GenericClassInstance(final X10ClassType classType) {
 		this.def = classType.x10Def();
 
 		if (def.typeParameters().isEmpty())

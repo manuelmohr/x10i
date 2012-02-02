@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 
 import polyglot.frontend.ExtensionInfo;
-import polyglot.types.ClassType;
 import polyglot.types.Context;
 import polyglot.types.Type;
 import polyglot.types.Types;
@@ -203,8 +202,8 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		return !isStructType0(ret) && (ret == Null() || isClass(ret) || isInterfaceType(ret));
 	}
 
-	// Own additions for the native pointer type
-    protected X10ClassType FirmPointer_;
+	/** Own additions for the native pointer type */
+    private X10ClassType FirmPointer_;
 
     public X10ClassType FirmPointer() {
         if (FirmPointer_ == null)

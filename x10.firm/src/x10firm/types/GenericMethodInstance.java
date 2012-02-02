@@ -13,13 +13,7 @@ public class GenericMethodInstance {
 	private X10MethodDef def;
 	private ParameterTypeMapping mapping;
 
-	GenericMethodInstance(final X10MethodDef def, final ParameterTypeMapping mapping) {
-		assert (def != null && !def.typeParameters().isEmpty() && mapping != null);
-		this.def = def;
-		this.mapping = mapping;
-	}
-
-	GenericMethodInstance(final MethodInstance mi, final GenericTypeSystem x10TypeSystem) {
+	protected GenericMethodInstance(final MethodInstance mi, final GenericTypeSystem x10TypeSystem) {
 		def = mi.x10Def();
 
 		if(mi instanceof ReinstantiatedMethodInstance) {

@@ -42,7 +42,6 @@ import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
 import polyglot.types.InitializerDef;
 import polyglot.types.MethodDef;
-
 import polyglot.types.Name;
 import polyglot.types.ParsedClassType;
 import polyglot.types.Ref;
@@ -52,12 +51,9 @@ import polyglot.types.TypeSystem;
 import polyglot.types.Types;
 import polyglot.util.Pair;
 import polyglot.util.Position;
-import x10.X10CompilerOptions;
-import x10.util.CollectionFactory;
-import x10.visit.Desugarer;
-import x10.visit.X10TypeChecker;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.NodeVisitor;
+import x10.X10CompilerOptions;
 import x10.ast.TypeParamNode;
 import x10.ast.X10Call;
 import x10.ast.X10Call_c;
@@ -71,14 +67,16 @@ import x10.ast.X10New_c;
 import x10.ast.X10SourceFile_c;
 import x10.extension.X10Ext;
 import x10.types.ConstrainedType;
+import x10.types.MethodInstance;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorDef;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10MethodDef;
 import x10.types.X10ProcedureDef;
-
-import x10.types.MethodInstance;
+import x10.util.CollectionFactory;
+import x10.visit.Desugarer;
+import x10.visit.X10TypeChecker;
 import x10c.ast.X10CNodeFactory_c;
 import x10c.types.X10CTypeSystem_c;
 
@@ -88,8 +86,8 @@ import x10c.types.X10CTypeSystem_c;
 public class StaticInitializer extends ContextVisitor {
 
     private final X10CTypeSystem_c xts;
-    final X10CNodeFactory_c xnf;
-    final ASTQuery query;
+    protected final X10CNodeFactory_c xnf;
+    protected final ASTQuery query;
 
     private final WeakHashMap<X10ProcedureDef,ProcedureDecl> procDeclCache = new WeakHashMap<X10ProcedureDef,ProcedureDecl>();
     private final WeakHashMap<Block,Boolean> procBodyCache = new WeakHashMap<Block,Boolean>();
@@ -127,13 +125,13 @@ public class StaticInitializer extends ContextVisitor {
         X10ClassDef classDef = ct.classDef();
         assert(classDef != null);
 
-        Context context = ct.enterChildScope(classBody, ((ContextVisitor) v).context());
+        Context cntxt = ct.enterChildScope(classBody, ((ContextVisitor) v).context());
 
         // collect static fields to deal with
         staticFinalFields.clear();
         // classBody.dump(System.err);
         // System.out.println("StaticInitilizer for "+classDef);
-        classBody = checkStaticFields(classBody, context);
+        classBody = checkStaticFields(classBody, cntxt);
 
         if (staticFinalFields.isEmpty())
             // nothing to do
@@ -248,7 +246,7 @@ public class StaticInitializer extends ContextVisitor {
         return cDecl;
     }
 
-    X10ClassDef getShadowClassDef(X10ClassDef interfaceClassDef) {
+    protected X10ClassDef getShadowClassDef(final X10ClassDef interfaceClassDef) {
     	X10ClassDef cDef = shadow_class_map.get(interfaceClassDef);
     	if(cDef != null) return cDef;
 
@@ -266,8 +264,8 @@ public class StaticInitializer extends ContextVisitor {
         return cDef;
     }
 
-    private ClassBody checkStaticFields(ClassBody body, Context context) {
-        final X10ClassDef cd = context.currentClassDef();
+    private ClassBody checkStaticFields(ClassBody body, Context cntxt) {
+        final X10ClassDef cd = cntxt.currentClassDef();
         // one pass scan of class body and collect vars for static initialization
         ClassBody c = (ClassBody)body.visit(new NodeVisitor() {
             @Override
@@ -325,19 +323,19 @@ public class StaticInitializer extends ContextVisitor {
                     }
                 }
                 return n;
-            };
+            }
         });
         return c;
     }
 
-    StaticFieldInfo checkFieldDeclRHS(final X10FieldDecl fd, final X10ClassDef cd) {
+    protected StaticFieldInfo checkFieldDeclRHS(final X10FieldDecl fd, final X10ClassDef cd) {
         // traverse nodes in RHS
         Id leftName = fd.name();
 
         // true means "found something not suitable for per-place initialization"
         final AtomicBoolean found = new AtomicBoolean(false);
         final boolean deep_analysis = opts.x10_config.STATICS_PER_PLACE_ANALYSIS;
-        Expr newRhs = (Expr)fd.init().visit(new NodeVisitor() {
+        fd.init().visit(new NodeVisitor() {
             @Override
             public Node override(Node parent, Node n) {
                 if (found.get())
@@ -411,7 +409,7 @@ public class StaticInitializer extends ContextVisitor {
         return fieldInfo;
     }
 
-    Call makeStaticCall(Position pos, X10ClassType receiver, Id id, Type returnType) {
+    protected Call makeStaticCall(Position pos, X10ClassType receiver, Id id, Type returnType) {
         // create MethodDef
         Name name = Name.make(initializerPrefix+id);
         StaticFieldInfo fieldInfo = getFieldEntry(receiver, id.id());
@@ -457,7 +455,7 @@ public class StaticInitializer extends ContextVisitor {
         return result;
     }
 
-    Expr getDefaultValue(Position pos, Type type) {
+    protected Expr getDefaultValue(Position pos, Type type) {
         if (type.isBoolean())
             return xnf.BooleanLit(pos, false).type(type);
         else if (type.isChar())
@@ -484,7 +482,7 @@ public class StaticInitializer extends ContextVisitor {
             return null;
     }
 
-    boolean checkProcedureBody(final Block body, final int count) {
+    protected boolean checkProcedureBody(final Block body, final int count) {
         Boolean r = procBodyCache.get(body);
         if (r != null)
             return (r == Boolean.TRUE);
@@ -553,25 +551,25 @@ public class StaticInitializer extends ContextVisitor {
 
     private Node getAST(X10ClassDef container) {
         // obtain the job for containing the constructor declaration
-        Job job = container.job();
-        if (job == null || job.ast() == null)
+        Job cjob = container.job();
+        if (cjob == null || cjob.ast() == null)
             return null;
 
-        if (job == this.job())
+        if (cjob == this.job())
             // current class
-            return job.ast();
+            return cjob.ast();
 
         // run the preliminary compilation phases on the job's AST
-        Node ast = job.ast();
+        Node ast = cjob.ast();
         assert (ast instanceof X10SourceFile_c);
         if (!((X10SourceFile_c) ast).hasBeenTypeChecked())
-            ast = ast.visit(new X10TypeChecker(job, ts, nf, job.nodeMemo()).begin());
+            ast = ast.visit(new X10TypeChecker(cjob, ts, nf, cjob.nodeMemo()).begin());
         if (ast == null)
             return null;
         if (!((X10Ext)ast.ext()).subtreeValid())
             return null;
 
-        ast = ast.visit(new Desugarer(job, ts, nf).begin());
+        ast = ast.visit(new Desugarer(cjob, ts, nf).begin());
         return ast;
     }
 
@@ -620,7 +618,7 @@ public class StaticInitializer extends ContextVisitor {
         return decl[0];
     }
 
-    X10ConstructorDecl getConstructorDeclaration(X10ConstructorInstance ci) {
+    protected X10ConstructorDecl getConstructorDeclaration(X10ConstructorInstance ci) {
         X10ConstructorDef cd = ci.x10Def();
         X10ClassType containerBase = (X10ClassType) Types.get(cd.container());
         X10ClassDef container = containerBase.x10Def();
@@ -629,7 +627,7 @@ public class StaticInitializer extends ContextVisitor {
         return (X10ConstructorDecl)getProcedureDeclaration(cd, container);
     }
 
-    X10MethodDecl getMethodDeclaration(MethodInstance mi) {
+    protected X10MethodDecl getMethodDeclaration(MethodInstance mi) {
         X10MethodDef md = mi.x10Def();
         // get container and declaration for method
         X10ClassType containerBase = (X10ClassType) Types.get(md.container());
@@ -771,7 +769,7 @@ public class StaticInitializer extends ContextVisitor {
         return fieldInfo;
     }
 
-    boolean checkFieldRefReplacementRequired(X10Field_c f) {
+    protected boolean checkFieldRefReplacementRequired(X10Field_c f) {
         Pair<Type,Name> key = new Pair<Type,Name>(f.target().type(), f.name().id());
         StaticFieldInfo fieldInfo = staticFinalFields.get(key);
         // not yet registered, or registered as replacement required
@@ -785,10 +783,10 @@ public class StaticInitializer extends ContextVisitor {
         return InitDispatcher_;
     }
 
-    static class StaticFieldInfo {
-        Expr right;             // RHS expression, if replaced with initialization method
-        MethodDef methodDef;    // getInitialized methodDef to be replaced
-        FieldDef fieldDef;
-        FieldDecl left;         // field declaration to be moved from interface to a shadow class
+    protected static class StaticFieldInfo {
+        protected Expr right;             // RHS expression, if replaced with initialization method
+        protected MethodDef methodDef;    // getInitialized methodDef to be replaced
+        protected FieldDef fieldDef;
+        protected FieldDecl left;         // field declaration to be moved from interface to a shadow class
     }
 }
