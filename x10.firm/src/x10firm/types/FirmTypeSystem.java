@@ -124,13 +124,12 @@ public class FirmTypeSystem {
 	public FirmTypeSystem(final GenericTypeSystem x10TypeSystem) {
 		this.x10TypeSystem = x10TypeSystem;
 		this.x10Context    = new Context(this.x10TypeSystem);
-		loadCStandardLibrary();
 	}
 
 	/**
 	 */
-	private void loadCStandardLibrary() {
-		final String stdlibPath = System.getProperty("x10.dist") + "/src-stdlib/stdlib.ir";
+	private void loadCStandardLibrary(final CompilerOptions options) {
+		final String stdlibPath = System.getProperty("x10.dist") + "/src-stdlib/build/" + options.getTargetTriple() + "/stdlib.ir";
 		binding_irio.ir_import(stdlibPath);
 
 		final ClassType glob = Program.getGlobalType();
@@ -163,9 +162,11 @@ public class FirmTypeSystem {
 	 * Initializes the firm type system
 	 */
 	public void init(final CompilerOptions options) {
-		if(inited) return;
+		if (inited)
+			return;
 		inited = true;
-		readFirmNativeTypesConfig(options.getFirmNativeTypesFilename());
+		loadCStandardLibrary(options);
+		readFirmNativeTypesConfig(options.getFirmNativeTypesFilename()); 
 		initFirmTypes();
 		NameMangler.setup(x10TypeSystem);
 		// Always generate the vtable for x10.lang.String.

@@ -26,21 +26,28 @@ public class Linked extends PostCompiled {
 			ErrorQueue eq) {
 		final CompilerOptions opts = (CompilerOptions) options;
 		final String exeFilename = opts.executable_path == null
-		                     ? "a.out"
-		                     : opts.executable_path;
+		                           ? "a.out"
+		                           : opts.executable_path;
 		final String asmFilename = AsmEmitted.ASM_FILENAME;
 
+		final CompilerOptions.TargetTriple target = opts.getTargetTriple();
 		final String x10DistPath = System.getProperty("x10.dist");
 		final String libooPath  = x10DistPath != null
-		                          ? x10DistPath + "/../liboo/build"
-		                          : "../liboo/build";
+		                          ? x10DistPath + "/../liboo/build/" + target
+		                          : "../liboo/build/" + target;
+		final String gcc = target + "-gcc";
 
 		final List<String> cmd = new ArrayList<String>();
-		cmd.add("gcc");
+		cmd.add(gcc);
 		cmd.add("-std=c99");
 		cmd.add(asmFilename);
 		if (opts.x10_config.DEBUG)
 			cmd.add("-g");
+		// Always link statically when cross-compiling to SPARC
+		if (opts.getTargetTriple().toString().startsWith("sparc"))
+			cmd.add("-static");
+		if (opts.useSoftFloat())
+			cmd.add("-msoft-float");
 		cmd.add("-lm");
 		cmd.add("-lrt");
 		cmd.add("-lpthread");

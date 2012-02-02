@@ -12,6 +12,7 @@ import x10firm.types.GenericTypeSystem;
 import com.sun.jna.Pointer;
 
 import firm.Firm;
+import firm.Mode;
 import firm.Mode.ir_mode_arithmetic;
 import firm.OO;
 import firm.bindings.binding_irmode;
@@ -66,12 +67,23 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 	/**
 	 *
 	 */
-	private static void setPointerSize(final int pointer_size) {
-		final int arithmetic = ir_mode_arithmetic.irma_twos_complement.ordinal();
-		/** we use a modulo_shift of 0, because cparser does so. */
-		final Pointer p = binding_irmode.new_reference_mode("p"+pointer_size, arithmetic, pointer_size, 0);
-		binding_irmode.set_modeP_code(p);
-		binding_irmode.set_modeP_data(p);
+	private static void setPointerSize(final int pointerSize) {
+		final Mode eqSignedInt;
+		final Mode eqUnsignedInt;
+
+		if (pointerSize == 32) {
+			eqSignedInt = Mode.getIs();
+			eqUnsignedInt = Mode.getIu();
+		} else if (pointerSize == 64) {
+			eqSignedInt = Mode.getLs();
+			eqUnsignedInt = Mode.getLu();
+		} else {
+			throw new RuntimeException("Unsupported pointer size: " + pointerSize);
+		}
+
+		final ir_mode_arithmetic arithmetic = ir_mode_arithmetic.irma_twos_complement;
+		final Mode mode = Mode.createReferenceMode("p" + pointerSize, arithmetic, pointerSize, eqSignedInt, eqUnsignedInt);
+		Mode.setDefaultModeP(mode);
 	}
 
 	// TODO: DELETE ME: Need library support

@@ -160,13 +160,21 @@ static inline x10_int x10_atomic_ops_compareAndSet_32(volatile x10_int* address,
 #elif (defined(_ARCH_PPC) || defined(_ARCH_450) || defined(_ARCH_450d))
    return ppc_compareAndSet32(oldValue, address, newValue);
 #elif defined(__sparc__)
-   /* FIXME: is the memory barrier needed? */
-   __asm__ __volatile__("cas [%2], %3, %0\n\t"
-                        "membar #StoreLoad | #StoreStore"
-                        : "=&r" (newValue)
-                        : "0" (newValue), "r" (address), "r" (oldValue)
-                        : "memory");
-   return newValue;
+#	if defined(__sparc_v9__)
+		/* FIXME: is the memory barrier needed? */
+		__asm__ __volatile__("cas [%2], %3, %0\n\t"
+		                     "membar #StoreLoad | #StoreStore"
+		                     : "=&r" (newValue)
+		                     : "0" (newValue), "r" (address), "r" (oldValue)
+		                     : "memory");
+		return newValue;
+#	else
+		(void) address;
+		(void) oldValue;
+		(void) newValue;
+		return 0;
+#		warning "No SPARCV8 implementation of CAS yet!"
+#	endif
 #else
 #  error "Unknown architecture"
 #endif
@@ -208,13 +216,20 @@ static inline x10_long x10_atomic_ops_compareAndSet_64(volatile x10_long* addres
 #elif (defined(_ARCH_PPC) || defined(_ARCH_450) || defined(_ARCH_450d))
    return ppc_compareAndSet64(oldValue, address, newValue);
 #elif defined(__sparc__)
-   /* FIXME: is the memory barrier needed? */
-   __asm__ __volatile__("casx [%2], %3, %0\n\t"
-                        "membar #StoreLoad | #StoreStore"
-                        : "=&r" (newValue)
-                        : "0" (newValue), "r" (address), "r" (oldValue)
-                        : "memory");
-   return newValue;
+#	if defined(__sparc_v9__)
+		/* FIXME: is the memory barrier needed? */
+		__asm__ __volatile__("casx [%2], %3, %0\n\t"
+		                     "membar #StoreLoad | #StoreStore"                  		                     : "=&r" (newValue)
+		                     : "0" (newValue), "r" (address), "r" (oldValue)
+		                     : "memory");
+		return newValue;
+#	else
+		(void) address;
+		(void) oldValue;
+		(void) newValue;
+		return 0;
+#		warning "No SPARCV8 implementation of CAS yet!"
+#	endif
 #else
 #  error "Unknown architecture"
 #endif
