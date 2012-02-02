@@ -85,11 +85,11 @@ import x10c.types.X10CTypeSystem_c;
 /**
  * Lowering of all non const static initializer
  */
-public class X10StaticInitializer extends ContextVisitor {
+public class StaticInitializer extends ContextVisitor {
 
     private final X10CTypeSystem_c xts;
     final X10CNodeFactory_c xnf;
-    final X10ASTQuery query;
+    final ASTQuery query;
 
     private final WeakHashMap<X10ProcedureDef,ProcedureDecl> procDeclCache = new WeakHashMap<X10ProcedureDef,ProcedureDecl>();
     private final WeakHashMap<Block,Boolean> procBodyCache = new WeakHashMap<Block,Boolean>();
@@ -107,11 +107,11 @@ public class X10StaticInitializer extends ContextVisitor {
     // mapping static field and corresponding initializer method
     private Map<Pair<Type,Name>, StaticFieldInfo> staticFinalFields = CollectionFactory.newHashMap();
 
-    public X10StaticInitializer(Job job, TypeSystem ts, NodeFactory nf) {
+    public StaticInitializer(Job job, TypeSystem ts, NodeFactory nf) {
         super(job, ts, nf);
         xts = (X10CTypeSystem_c) ts;
         xnf = (X10CNodeFactory_c) nf;
-        query = new X10ASTQuery(ts);
+        query = new ASTQuery(ts);
     }
 
     @Override

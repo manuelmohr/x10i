@@ -13,21 +13,21 @@ import x10.types.MethodInstance;
 import x10.types.X10ClassType;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
-import x10firm.visit.X10FirmCodeGenerator;
+import x10firm.visit.FirmGenerator;
 import firm.Entity;
 import firm.nodes.OOConstruction;
 
 /**
  *  FirmGenerator for x10.lang.X10FirmSupport.x10
  */
-public class X10FirmSupportGenerator extends X10NativeGenericDispatcher {
+public class SupportGenerator extends NativeGenericDispatcher {
 
 	/**
 	 *  Support code for the getSize method in X10FirmSupport.x10
 	 */
-	static class GenGetSize implements X10NativeGenericMethodFirmGenerator {
+	static class GenGetSize implements NativeGenericMethodGenerator {
 		@Override
-		public boolean gen(final X10FirmCodeGenerator codeGenerator, final MethodInstance meth,
+		public boolean gen(final FirmGenerator codeGenerator, final MethodInstance meth,
 						   final List<LocalInstance> formals) {
 			final FirmTypeSystem firmTypeSystem = codeGenerator.getFirmTypeSystem();
 			final GenericTypeSystem x10TypeSystem = codeGenerator.getX10TypeSystem();
@@ -64,7 +64,7 @@ public class X10FirmSupportGenerator extends X10NativeGenericDispatcher {
 	/**
 	 * Constructor
 	 */
-	public X10FirmSupportGenerator() {
+	public SupportGenerator() {
 		addMethodGenerator(new GenGetSize());
 	}
 

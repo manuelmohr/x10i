@@ -167,7 +167,7 @@ public class FirmTypeSystem {
 		inited = true;
 		readFirmNativeTypesConfig(options.getFirmNativeTypesFilename());
 		initFirmTypes();
-		X10NameMangler.setup(x10TypeSystem);
+		NameMangler.setup(x10TypeSystem);
 		// Always generate the vtable for x10.lang.String.
 		asFirmCoreType(x10TypeSystem.String());
 	}
@@ -573,7 +573,7 @@ public class FirmTypeSystem {
 	 */
 	private Entity addField(final FieldInstance field, final firm.Type klass) {
 		final Flags fieldFlags = field.flags();
-		final String name = X10NameMangler.mangleTypeObjectWithDefClass(field);
+		final String name = NameMangler.mangleTypeObjectWithDefClass(field);
 
 		final Type type = getFirmType(field.type());
 		final firm.Type owner = fieldFlags.isStatic() ? Program.getGlobalType() : klass;
@@ -621,7 +621,7 @@ public class FirmTypeSystem {
 	private firm.Type createClassType(final X10ClassType classType) {
 		expandClassType(classType);
 
-		final String className = X10NameMangler.mangleTypeObjectWithDefClass(classType);
+		final String className = NameMangler.mangleTypeObjectWithDefClass(classType);
 		final Flags flags = classType.flags();
 		ClassType result = new ClassType(className);
 		final NativeClassInfo classInfo = x10NativeTypes.get(classType);
@@ -685,7 +685,7 @@ public class FirmTypeSystem {
 		OO.setClassVPtrEntity(result, getVptrEntity());
 
 		if (!(flags.isInterface() || flags.isStruct())) {
-			Entity vtable = new Entity(Program.getGlobalType(), X10NameMangler.mangleVTable(classType), Mode.getP().getType());
+			Entity vtable = new Entity(Program.getGlobalType(), NameMangler.mangleVTable(classType), Mode.getP().getType());
 			OO.setClassVTableEntity(result, vtable);
 		}
 
@@ -850,7 +850,7 @@ public class FirmTypeSystem {
 		Entity entity = context.getConstructorEntity(instance.x10Def());
 
 		if (entity == null) {
-			final String name = X10NameMangler.mangleTypeObjectWithDefClass(instance);
+			final String name = NameMangler.mangleTypeObjectWithDefClass(instance);
 			final Flags flags = instance.flags();
 			final firm.Type type = asFirmType(instance);
 
@@ -952,8 +952,8 @@ public class FirmTypeSystem {
 
 		if (entity == null) {
 			X10ClassType owner = (X10ClassType) instance.container();
-			final String nameWithDefiningClass = X10NameMangler.mangleTypeObjectWithDefClass(instance);
-			final String nameWithoutDefiningClass = X10NameMangler.mangleTypeObjectWithoutDefClass(instance);
+			final String nameWithDefiningClass = NameMangler.mangleTypeObjectWithDefClass(instance);
+			final String nameWithoutDefiningClass = NameMangler.mangleTypeObjectWithoutDefClass(instance);
 			final Flags flags = instance.flags();
 			final firm.Type owningClass = asFirmCoreType(owner);
 

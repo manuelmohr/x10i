@@ -16,12 +16,12 @@ import polyglot.types.Type;
  * Class that holds attributes (scopes, mapping of local instance variables etc.) for a new method.
  * For every new method entry we will create a new firm context.
  */
-public class X10FirmContext {
+public class FirmContext {
 	/** Holds the topmost firmScope. -> Push a dummy frame in the current FirmContext */
-	private X10FirmScope topFirmScope = new X10FirmScope();
+	private FirmScope topFirmScope = new FirmScope();
 
 	/** Maps local var defs to the appropriate var entries */
-	private Map<LocalDef, X10VarEntry> varEntryMapper = new HashMap<LocalDef, X10VarEntry>();
+	private Map<LocalDef, VarEntry> varEntryMapper = new HashMap<LocalDef, VarEntry>();
 
 	/**
 	 * Reference to the current procedure return type
@@ -41,7 +41,7 @@ public class X10FirmContext {
 	/**
 	 * Reference to the upper firm context
 	 */
-	private X10FirmContext outer;
+	private FirmContext outer;
 
 	/**
 	 * List with the class members which must be initialised explicitly in a constructor etc.
@@ -51,7 +51,7 @@ public class X10FirmContext {
 	/**
 	 * Create a new Firm context
 	 */
-	public X10FirmContext() {
+	public FirmContext() {
 
 	}
 
@@ -90,7 +90,7 @@ public class X10FirmContext {
 	 * @param newContext The new firm context which should be pushed
 	 * @return The new firm context which was pushed.
 	 */
-	public X10FirmContext pushFirmContext(X10FirmContext newContext) {
+	public FirmContext pushFirmContext(FirmContext newContext) {
 		assert newContext != null;
 		newContext.outer = this;
 		return newContext;
@@ -100,7 +100,7 @@ public class X10FirmContext {
 	 * Pops the topmost firm context
 	 * @return The upper firm context
 	 */
-	public X10FirmContext popFirmContext() {
+	public FirmContext popFirmContext() {
 		assert outer != null;
 		return outer;
 	}
@@ -108,7 +108,7 @@ public class X10FirmContext {
 	/** Sets the "VarEntry" for a given variable (local variable or field instance)
 	 * @param entry The "VarEntry" for the given variable
 	 */
-	public void setVarEntry(final X10VarEntry entry) {
+	public void setVarEntry(final VarEntry entry) {
 		assert !varEntryMapper.containsKey(entry.getVarDef());
 		varEntryMapper.put(entry.getVarDef(), entry);
 	}
@@ -117,17 +117,17 @@ public class X10FirmContext {
 	 * @return The "VarEntry" of the given instance variable in the current scope or
 	 * null if the instance variable could not be found.
 	 */
-	public X10VarEntry getVarEntry(final LocalInstance var) {
+	public VarEntry getVarEntry(final LocalInstance var) {
 		/*
 		 * The TypeAlphaRenamer and ClassRemover visitors create and use copies of X10LocalDefs.
 		 * This copies will not work with our X10LocalDef hashing mechanism. To handle this copies with will not
 		 * adjust the visitors instead we will search for the appropriate X10LocalDef copy in our varEntryMapper.
 		 */
 		final LocalDef def = var.def();
-		X10VarEntry ret = varEntryMapper.get(var.def());
+		VarEntry ret = varEntryMapper.get(var.def());
 		if(ret != null) return ret; // The def is equal; return the appropriate var entry
 		// Search for the copy.
-		for(final Entry<LocalDef, X10VarEntry> entry : varEntryMapper.entrySet()) {
+		for(final Entry<LocalDef, VarEntry> entry : varEntryMapper.entrySet()) {
 			final LocalDef d = entry.getKey();
 			// Copy search: Name, position and flags must be equal.
 			if(def.name().equals(d.name()) && def.position().equals(d.position()) &&
@@ -144,7 +144,7 @@ public class X10FirmContext {
 	 * @param scope The firm scope which should be pushed
 	 * @return The new firm scope
 	 */
-	public X10FirmScope pushFirmScope(X10FirmScope scope) {
+	public FirmScope pushFirmScope(FirmScope scope) {
 		scope.setPrev(topFirmScope);
 		topFirmScope = scope;
 		return scope;
@@ -153,7 +153,7 @@ public class X10FirmContext {
 	/** Pops the topmost firm scope
 	 * @return The upper firm scope of the topmost firm scope
 	 */
-	public X10FirmScope popFirmScope() {
+	public FirmScope popFirmScope() {
 		assert topFirmScope != null;
 		topFirmScope = topFirmScope.getPrev();
 		return topFirmScope;
@@ -162,7 +162,7 @@ public class X10FirmContext {
 	/** Returns the topmost firm scope
 	 * @return Topmost firm scope
 	 */
-	public X10FirmScope getTopScope() {
+	public FirmScope getTopScope() {
 		assert topFirmScope != null;
 		return topFirmScope;
 	}

@@ -139,7 +139,7 @@ import x10firm.types.ParameterTypeMapping;
 import x10firm.visit.FirmCodeTemplate.CondTemplate;
 import x10firm.visit.FirmCodeTemplate.ExprTemplate;
 import x10firm.visit.FirmCodeTemplate.StmtTemplate;
-import x10firm.visit.x10lib.X10NativeGenericSupport;
+import x10firm.visit.x10lib.NativeGenericSupport;
 
 import com.sun.jna.Platform;
 
@@ -175,14 +175,14 @@ import firm.nodes.Switch;
 /**
  * creates a firm-program (a collection of firm-graphs) from an X10-AST.
  */
-public class X10FirmCodeGenerator extends X10DelegatingVisitor {
+public class FirmGenerator extends X10DelegatingVisitor {
 	/** names of builtin functions */
 	private static final String X10_STRING_LITERAL = "x10_string_literal";
 	private static final String X10_THROW_STUB     = "x10_throw_stub";
 	private static final String X10_ASSERT         = "x10_assert";
 	private static final String X10_STATIC_INITIALIZER = "x10_static_initializer";
 
-	private static final X10NativeGenericSupport gen_support = new X10NativeGenericSupport();
+	private static final NativeGenericSupport gen_support = new NativeGenericSupport();
 
 	/** The current firm construction object */
 	OOConstruction con;
@@ -203,10 +203,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	final X10NodeFactory_c xnf;
 
 	/** Our own AST query */
-	private final X10ASTQuery query;
+	private final ASTQuery query;
 
 	/** current firm context */
-	private X10FirmContext firmContext = new X10FirmContext();
+	private FirmContext firmContext = new FirmContext();
 
 	/** Command-line options */
 	private CompilerOptions options;
@@ -221,7 +221,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	 * @param firmTypeSystem The FIRM type system
 	 * @param x10TypeSystem The X10 type system
 	 */
-	public X10FirmCodeGenerator(final Compiler compiler,
+	public FirmGenerator(final Compiler compiler,
 			final FirmTypeSystem firmTypeSystem,
 			final GenericTypeSystem x10TypeSystem,
 			final X10NodeFactory_c nodeFactory,
@@ -230,7 +230,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		this.firmTypeSystem = firmTypeSystem;
 		this.x10TypeSystem  = x10TypeSystem;
 		this.xnf            = nodeFactory;
-		this.query          = new X10ASTQuery(x10TypeSystem);
+		this.query          = new ASTQuery(x10TypeSystem);
 		this.x10Context     = new Context(x10TypeSystem);
 		this.options        = options;
 	}
@@ -471,7 +471,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		final X10ClassType classType = def.asType();
 
-		final X10FirmContext newFirmContext = new X10FirmContext();
+		final FirmContext newFirmContext = new FirmContext();
 		firmContext = firmContext.pushFirmContext(newFirmContext);
 
 		if(classType.isX10Struct()) {
@@ -601,7 +601,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		if (code.body() == null)
 			return ret;
 
-		final X10LocalDeclVisitor xLocalsVisitor = new X10LocalDeclVisitor();
+		final LocalDeclVisitor xLocalsVisitor = new LocalDeclVisitor();
 		xLocalsVisitor.visitAppropriate(code.body());
 
 		final List<LocalDecl_c> matchesList = xLocalsVisitor.getLocals();
@@ -638,7 +638,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final OOConstruction savedConstruction = con;
 		con = new OOConstruction(graph);
 
-		X10FirmContext newFirmContext = new X10FirmContext();
+		FirmContext newFirmContext = new FirmContext();
 
 		final Map<LocalInstance, Entity> map = calculateEntityMappingForLocals(locals);
 
@@ -675,7 +675,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			}
 
 			// map the local instance with the appropriate idx.
-			firmContext.setVarEntry(X10VarEntry.newVarEntryForLocalVariable(loc, idx));
+			firmContext.setVarEntry(VarEntry.newVarEntryForLocalVariable(loc, idx));
 			idx++;
 		}
 
@@ -685,10 +685,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			final Entity ent = map.get(loc);
 			if(ent != null) {
 				// a local struct
-				firmContext.setVarEntry(X10VarEntry.newVarEntryForStructVariable(loc, ent));
+				firmContext.setVarEntry(VarEntry.newVarEntryForStructVariable(loc, ent));
 			} else {
 				// a normal local variable
-				firmContext.setVarEntry(X10VarEntry.newVarEntryForLocalVariable(loc, idx));
+				firmContext.setVarEntry(VarEntry.newVarEntryForLocalVariable(loc, idx));
 				idx++;
 			}
 		}
@@ -1078,8 +1078,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		con.setCurrentBlockBad();
 
-		final X10FirmScope topScope = firmContext.getTopScope();
-		X10FirmScope newScope = (X10FirmScope)topScope.clone();
+		final FirmScope topScope = firmContext.getTopScope();
+		FirmScope newScope = (FirmScope)topScope.clone();
 
 		Block bBreak = null;
 		final Node switchNode = con.newSwitch(expr, numCases, tbl.ptr);
@@ -1139,7 +1139,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final Node fallthrough 	= con.getCurrentBlock().isBad() ? null : con.newJmp();
 		final Block block 		= con.newBlock();
 
-		final X10FirmScope topScope = firmContext.getTopScope();
+		final FirmScope topScope = firmContext.getTopScope();
 		final Node switchCond       = topScope.getCurSwitch();
 		final Block switchCondBlock = (Block)switchCond.getBlock();
 
@@ -1168,7 +1168,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		if(con.getCurrentBlock().isBad())
 			return;
 
-		final X10FirmScope topScope = firmContext.getTopScope();
+		final FirmScope topScope = firmContext.getTopScope();
 		Block target = null;
 		if (br.labelNode() != null) {
 			// labeled continue or break
@@ -1207,8 +1207,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		firmContext.setLabeledStmt(lab, stmt);
 
 		// Declare the label in the current firm scope
-		final X10FirmScope topScope = firmContext.getTopScope();
-		X10FirmScope newScope = (X10FirmScope)topScope.clone();
+		final FirmScope topScope = firmContext.getTopScope();
+		FirmScope newScope = (FirmScope)topScope.clone();
 
 		firmContext.pushFirmScope(newScope);
 		{
@@ -1232,9 +1232,9 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			final Local_c lhsLocal = (Local_c)lhs;
 			final LocalInstance loc = lhsLocal.localInstance();
 
-			final X10VarEntry var = firmContext.getVarEntry(loc);
+			final VarEntry var = firmContext.getVarEntry(loc);
 
-			if(var.getType() == X10VarEntry.STRUCT) {
+			if(var.getType() == VarEntry.STRUCT) {
 				// local struct variable
 				final Entity entity = var.getEntity();
 				final Node mem = con.getCurrentMem();
@@ -1288,10 +1288,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 			final Expr initExpr = x10Cast(expr, n.type().type());
 			final LocalInstance loc = n.localDef().asInstance();
 
-			final X10VarEntry var = firmContext.getVarEntry(loc);
+			final VarEntry var = firmContext.getVarEntry(loc);
 			assert var != null : "Instance '"+loc+"' not found in FirmContext";
 
-			if(var.getType() == X10VarEntry.STRUCT) {
+			if(var.getType() == VarEntry.STRUCT) {
 
 				final Entity entity = var.getEntity();
 				final Node sel = getEntityFromCurrentFrame(entity);
@@ -1357,8 +1357,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		bTrue.addPred(con.newJmp());
 		con.setCurrentBlock(bTrue);
 
-		final X10FirmScope topScope  = firmContext.getTopScope();
-		X10FirmScope newScope  = (X10FirmScope)topScope.clone();
+		final FirmScope topScope  = firmContext.getTopScope();
+		FirmScope newScope  = (FirmScope)topScope.clone();
 
 		firmContext.pushFirmScope(newScope);
 		{
@@ -1395,8 +1395,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		con.setCurrentBlock(bCond);
 
-		final X10FirmScope topScope2  = firmContext.getTopScope();
-		newScope  = (X10FirmScope)topScope2.clone();
+		final FirmScope topScope2  = firmContext.getTopScope();
+		newScope  = (FirmScope)topScope2.clone();
 
 		evaluateCondition(n.cond(), bTrue, bFalse);
 
@@ -1427,16 +1427,16 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		bCond.addPred(con.newJmp());
 		con.setCurrentBlock(bCond);
 
-		final X10FirmScope topScope = firmContext.getTopScope();
-		X10FirmScope newScope = (X10FirmScope)topScope.clone();
+		final FirmScope topScope = firmContext.getTopScope();
+		FirmScope newScope = (FirmScope)topScope.clone();
 
 		evaluateCondition(n.cond(), bTrue, bFalse);
 		bTrue.mature();
 
 		con.setCurrentBlock(bTrue);
 
-		final X10FirmScope topScope2 = firmContext.getTopScope();
-		newScope = (X10FirmScope)topScope2.clone();
+		final FirmScope topScope2 = firmContext.getTopScope();
+		newScope = (FirmScope)topScope2.clone();
 
 		firmContext.pushFirmScope(newScope);
 		{
@@ -1488,8 +1488,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		bCond.addPred(con.newJmp());
 		con.setCurrentBlock(bCond);
 
-		final X10FirmScope topScope = firmContext.getTopScope();
-		X10FirmScope newScope = (X10FirmScope)topScope.clone();
+		final FirmScope topScope = firmContext.getTopScope();
+		FirmScope newScope = (FirmScope)topScope.clone();
 
 		Expr cond = n.cond();
 		if(cond == null) {
@@ -1500,8 +1500,8 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 
 		con.setCurrentBlock(bTrue);
 
-		final X10FirmScope topScope2 = firmContext.getTopScope();
-		newScope = (X10FirmScope)topScope2.clone();
+		final FirmScope topScope2 = firmContext.getTopScope();
+		newScope = (FirmScope)topScope2.clone();
 
 		firmContext.pushFirmScope(newScope);
 		{
@@ -1772,10 +1772,10 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 	public void visit(Local_c n) {
 		final LocalInstance loc = n.localInstance();
 
-		final X10VarEntry var = firmContext.getVarEntry(loc);
+		final VarEntry var = firmContext.getVarEntry(loc);
 		assert var != null : "local instance '"+loc+"' not found in firm context";
 
-		if(var.getType() == X10VarEntry.STRUCT) {
+		if(var.getType() == VarEntry.STRUCT) {
 			final Node ret = getEntityFromCurrentFrame(var.getEntity());
 			setReturnNode(ret);
 		} else {
@@ -2436,7 +2436,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		final CondTemplate condTemplate = new CondTemplate() {
 			@Override
 			public void genCode(final Block trueBlock, final Block falseBlock) {
-				final Node ret = ConditionEvaluationCodeGenerator.genInstanceOf(node, from, compType, X10FirmCodeGenerator.this, x10TypeSystem, firmTypeSystem, con);
+				final Node ret = ConditionEvaluationCodeGenerator.genInstanceOf(node, from, compType, FirmGenerator.this, x10TypeSystem, firmTypeSystem, con);
 				ConditionEvaluationCodeGenerator.makeJumps(ret, falseBlock, trueBlock, con);
 			}
 		};
@@ -2843,7 +2843,7 @@ public class X10FirmCodeGenerator extends X10DelegatingVisitor {
 		return con;
 	}
 
-	public X10FirmContext getFirmContext() {
+	public FirmContext getFirmContext() {
 		return firmContext;
 	}
 

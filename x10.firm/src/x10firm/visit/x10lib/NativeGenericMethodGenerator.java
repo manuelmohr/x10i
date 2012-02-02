@@ -4,12 +4,12 @@ import java.util.List;
 
 import polyglot.types.LocalInstance;
 import x10.types.MethodInstance;
-import x10firm.visit.X10FirmCodeGenerator;
+import x10firm.visit.FirmGenerator;
 
 /**
  * Generator for native generic methods
  */
-public interface X10NativeGenericMethodFirmGenerator {
+public interface NativeGenericMethodGenerator {
 	/**
 	 * Generates the firm code for a native generic method
 	 * @param codeGenerator The firm code generator
@@ -17,7 +17,7 @@ public interface X10NativeGenericMethodFirmGenerator {
 	 * @param formals The formals of the method
 	 * @return True if the firm code could be generated for the given method
 	 */
-	public boolean gen(final X10FirmCodeGenerator codeGenerator, final MethodInstance methodInstance,
+	public boolean gen(final FirmGenerator codeGenerator, final MethodInstance methodInstance,
 					   final List<LocalInstance> formals);
 
 	/** Returns the name of the native generic method -> Used for dispatching

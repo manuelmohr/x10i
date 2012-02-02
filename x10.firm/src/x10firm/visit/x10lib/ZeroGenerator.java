@@ -14,20 +14,20 @@ import x10.types.MethodInstance;
 import x10.types.X10ClassType;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
-import x10firm.visit.X10FirmCodeGenerator;
+import x10firm.visit.FirmGenerator;
 import firm.Entity;
 import firm.nodes.Node;
 import firm.nodes.OOConstruction;
 
-public class X10FirmZeroGenerator extends X10NativeGenericDispatcher {
+public class ZeroGenerator extends NativeGenericDispatcher {
 
 	/**
 	 *  Support code for the getSize method in X10FirmSupport.x10
 	 */
-	static class GenGet implements X10NativeGenericMethodFirmGenerator {
+	static class GenGet implements NativeGenericMethodGenerator {
 
 		@Override
-		public boolean gen(final X10FirmCodeGenerator codeGenerator, final MethodInstance meth,
+		public boolean gen(final FirmGenerator codeGenerator, final MethodInstance meth,
 						   final List<LocalInstance> formals) {
 			/** Generation:
 			 * switch(T) {
@@ -124,7 +124,7 @@ public class X10FirmZeroGenerator extends X10NativeGenericDispatcher {
 	/**
 	 * Constructor
 	 */
-	public X10FirmZeroGenerator() {
+	public ZeroGenerator() {
 		addMethodGenerator(new GenGet());
 	}
 

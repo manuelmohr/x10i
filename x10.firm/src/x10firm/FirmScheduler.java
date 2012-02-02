@@ -25,13 +25,13 @@ import x10firm.goals.OptimizeFirm;
 import x10firm.goals.SourceGoalSequence;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
-import x10firm.visit.X10StaticInitializer;
+import x10firm.visit.StaticInitializer;
 
 /**
  * Setting the goals for the Firm backend and depend on the X10 scheduler for
  * the rest.
  */
-class X10FirmScheduler extends X10Scheduler {
+class FirmScheduler extends X10Scheduler {
 	private final FirmTypeSystem firmTypeSystem;
 
 	/**
@@ -39,7 +39,7 @@ class X10FirmScheduler extends X10Scheduler {
 	 * @param info	"==ExtensionInfo.this", because this inner class is static
 	 * (strange design by X10)
 	 */
-	public X10FirmScheduler(ExtensionInfo info) {
+	public FirmScheduler(ExtensionInfo info) {
 		super(info);
 		this.firmTypeSystem = new FirmTypeSystem((GenericTypeSystem) info.typeSystem());
 	}
@@ -141,7 +141,7 @@ class X10FirmScheduler extends X10Scheduler {
     private Goal StaticInitializer(Job job) {
         TypeSystem ts = extInfo.typeSystem();
         NodeFactory nf = extInfo.nodeFactory();
-        return new ValidatingVisitorGoal("StaticInitialized", job, new X10StaticInitializer(job, ts, nf)).intern(this);
+        return new ValidatingVisitorGoal("StaticInitialized", job, new StaticInitializer(job, ts, nf)).intern(this);
     }
 
 	@Override

@@ -8,9 +8,9 @@ import polyglot.types.Type;
 import x10.types.MethodInstance;
 import x10.types.X10ClassType;
 import x10firm.types.FirmTypeSystem;
-import x10firm.visit.X10FirmCodeGenerator;
-import x10firm.visit.X10FirmContext;
-import x10firm.visit.X10VarEntry;
+import x10firm.visit.FirmGenerator;
+import x10firm.visit.FirmContext;
+import x10firm.visit.VarEntry;
 import firm.Entity;
 import firm.Mode;
 import firm.nodes.CopyB;
@@ -22,13 +22,13 @@ import firm.nodes.Store;
 /**
  * Firm Generator for x10.lang.FirmPointer
  */
-public class X10FirmPointerGenerator extends X10NativeGenericDispatcher {
+public class PointerGenerator extends NativeGenericDispatcher {
 	/**
 	 *  Firm generator for the "read" method in x10.lang.FirmPointer
 	 */
-	static class GenRead implements X10NativeGenericMethodFirmGenerator {
+	static class GenRead implements NativeGenericMethodGenerator {
 		@Override
-		public boolean gen(final X10FirmCodeGenerator codeGenerator, final MethodInstance meth,
+		public boolean gen(final FirmGenerator codeGenerator, final MethodInstance meth,
 						   final List<LocalInstance> formals) {
 			final FirmTypeSystem firmTypeSystem = codeGenerator.getFirmTypeSystem();
 			final X10ClassType owner = (X10ClassType)meth.container();
@@ -43,10 +43,10 @@ public class X10FirmPointerGenerator extends X10NativeGenericDispatcher {
 			final OOConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
 					meth.flags(), meth.returnType(), owner);
 
-			final X10FirmContext context = codeGenerator.getFirmContext();
+			final FirmContext context = codeGenerator.getFirmContext();
 			OOConstruction con = codeGenerator.getFirmConstruction();
-			final X10VarEntry var = context.getVarEntry(param);
-			assert(var != null && var.getType() == X10VarEntry.VARIABLE);
+			final VarEntry var = context.getVarEntry(param);
+			assert(var != null && var.getType() == VarEntry.VARIABLE);
 
 			final Mode parMode = firmTypeSystem.getFirmMode(param.type());
 			Node par = null;
@@ -90,9 +90,9 @@ public class X10FirmPointerGenerator extends X10NativeGenericDispatcher {
 	/**
 	 *  Firm generator for the "write" method in x10.lang.FirmPointer
 	 */
-	static class GenWrite implements X10NativeGenericMethodFirmGenerator {
+	static class GenWrite implements NativeGenericMethodGenerator {
 		@Override
-		public boolean gen(final X10FirmCodeGenerator codeGenerator, final MethodInstance meth,
+		public boolean gen(final FirmGenerator codeGenerator, final MethodInstance meth,
 						   final List<LocalInstance> formals) {
 			final FirmTypeSystem firmTypeSystem = codeGenerator.getFirmTypeSystem();
 			final X10ClassType owner = (X10ClassType)meth.container();
@@ -108,11 +108,11 @@ public class X10FirmPointerGenerator extends X10NativeGenericDispatcher {
 			final OOConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
 					meth.flags(), meth.returnType(), owner);
 
-			final X10FirmContext context = codeGenerator.getFirmContext();
+			final FirmContext context = codeGenerator.getFirmContext();
 			OOConstruction con = codeGenerator.getFirmConstruction();
-			final X10VarEntry var_ptr = context.getVarEntry(ptr);
-			assert(var_ptr != null && var_ptr.getType() == X10VarEntry.VARIABLE);
-			final X10VarEntry var_val = context.getVarEntry(val);
+			final VarEntry var_ptr = context.getVarEntry(ptr);
+			assert(var_ptr != null && var_ptr.getType() == VarEntry.VARIABLE);
+			final VarEntry var_val = context.getVarEntry(val);
 			assert(var_val != null);
 
 			final Mode ptrMode = firmTypeSystem.getFirmMode(ptr.type());
@@ -159,7 +159,7 @@ public class X10FirmPointerGenerator extends X10NativeGenericDispatcher {
 	/**
 	 * Constructor
 	 */
-	public X10FirmPointerGenerator() {
+	public PointerGenerator() {
 		addMethodGenerator(new GenRead());
 		addMethodGenerator(new GenWrite());
 	}

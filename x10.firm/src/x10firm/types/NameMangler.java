@@ -18,7 +18,7 @@ import x10.types.X10ConstructorInstance;
 /**
  * Name mangler which mangles X10 type objects to unique names
  */
-public class X10NameMangler {
+public class NameMangler {
 
 	/**
 	 * Reference to the X10 type system

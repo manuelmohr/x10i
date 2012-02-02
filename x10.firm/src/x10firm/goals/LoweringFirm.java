@@ -11,7 +11,7 @@ import x10.ast.X10NodeFactory_c;
 import x10firm.CompilerOptions;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
-import x10firm.visit.X10FirmCodeGenerator;
+import x10firm.visit.FirmGenerator;
 import firm.Backend;
 import firm.Dump;
 import firm.Graph;
@@ -45,7 +45,7 @@ public class LoweringFirm extends AllBarrierGoal {
 		firmTypeSystem.finishTypeSystem();
 
 		// do post compile
-		X10FirmCodeGenerator firmGen = new X10FirmCodeGenerator(compiler, firmTypeSystem, x10TypeSystem, nodeFactory, options);
+		FirmGenerator firmGen = new FirmGenerator(compiler, firmTypeSystem, x10TypeSystem, nodeFactory, options);
 		firmGen.genPostCompile();
 
 		firmTypeSystem.finishTypeSystem();

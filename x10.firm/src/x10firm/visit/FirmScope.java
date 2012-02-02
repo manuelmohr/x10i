@@ -10,7 +10,7 @@ import firm.nodes.Node;
  * Class that holds attributes (true and false blocks, continue blocks, break blocks etc.) for a new scope.
  * For every new scope we will clone the current (top) scope and set the adequate attributes for the new scope.
  */
-class X10FirmScope {
+class FirmScope {
 
 	/**
 	 * Holds the corresponding target blocks for labeled continue and break statements.
@@ -70,7 +70,7 @@ class X10FirmScope {
 	/**
 	 * Holds a reference to the upper FirmScope.
 	 */
-	private X10FirmScope prev;
+	private FirmScope prev;
 
 	/**
 	 * Mapping between Labels (String) and the corresponding FirmLabels.
@@ -87,7 +87,7 @@ class X10FirmScope {
 	private Node curSwitch;
 
 	/** constructor */
-	public X10FirmScope() {
+	public FirmScope() {
 
 	}
 
@@ -95,14 +95,14 @@ class X10FirmScope {
 	 * Sets the upper scope
 	 * @param scope the upper scope
 	 */
-	public void setPrev(X10FirmScope scope) {
+	public void setPrev(FirmScope scope) {
 		prev = scope;
 	}
 
 	/**
 	 * Returns the upper scope
 	 */
-	public X10FirmScope getPrev() {
+	public FirmScope getPrev() {
 		return prev;
 	}
 
@@ -234,7 +234,7 @@ class X10FirmScope {
 
 	@Override
 	public Object clone() {
-		X10FirmScope clonedScope  	= new X10FirmScope();
+		FirmScope clonedScope  	= new FirmScope();
 		clonedScope.continueBlock   = this.continueBlock;
 		clonedScope.breakBlock      = this.breakBlock;
 		// The local mapper needn`t be cloned

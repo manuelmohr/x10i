@@ -89,7 +89,7 @@ import x10.visit.X10DelegatingVisitor;
 /**
  * A "dummy" visitor which visits all "AST" nodes.
  */
-public class X10DummyDelegatingVisitor extends X10DelegatingVisitor {
+public class DummyDelegatingVisitor extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Node n) {

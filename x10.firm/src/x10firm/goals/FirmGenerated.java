@@ -10,7 +10,7 @@ import x10.extension.X10Ext;
 import x10firm.CompilerOptions;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
-import x10firm.visit.X10FirmCodeGenerator;
+import x10firm.visit.FirmGenerator;
 
 /**
  * This defines the FirmGeneration goal (other people would say "phase")
@@ -56,7 +56,7 @@ public class FirmGenerated extends SourceGoal_c {
 		firmTypeSystem.init(options);
 
 		final Compiler compiler = job().compiler();
-		final X10FirmCodeGenerator v = new X10FirmCodeGenerator(compiler, firmTypeSystem, x10TypeSystem, nodeFactory, options);
+		final FirmGenerator v = new FirmGenerator(compiler, firmTypeSystem, x10TypeSystem, nodeFactory, options);
 		v.visitAppropriate(ast);
 
 		return true;

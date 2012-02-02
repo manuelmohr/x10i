@@ -39,14 +39,14 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	private Block trueBlock;
 	private Block falseBlock;
 	private OOConstruction con;
-	private X10FirmCodeGenerator codeGenerator;
+	private FirmGenerator codeGenerator;
 	private final GenericTypeSystem typeSystem;
 	private final FirmTypeSystem firmTypeSystem;
 
 	/**
 	 * Creates a new code generator
 	 */
-	public ConditionEvaluationCodeGenerator(Block trueBlock, Block falseBlock, X10FirmCodeGenerator codeGenerator, GenericTypeSystem typeSystem, FirmTypeSystem firmTypeSystem) {
+	public ConditionEvaluationCodeGenerator(Block trueBlock, Block falseBlock, FirmGenerator codeGenerator, GenericTypeSystem typeSystem, FirmTypeSystem firmTypeSystem) {
 		this.trueBlock = trueBlock;
 		this.falseBlock = falseBlock;
 		this.codeGenerator = codeGenerator;
@@ -174,7 +174,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	public static Node genInstanceOf(final Node node, final Type eType, final Type cmpType,
-			final X10FirmCodeGenerator codeGenerator, final GenericTypeSystem typeSystem,
+			final FirmGenerator codeGenerator, final GenericTypeSystem typeSystem,
 			final FirmTypeSystem firmTypeSystem, final OOConstruction con) {
 
 		final Type exprType = typeSystem.getConcreteType(eType);

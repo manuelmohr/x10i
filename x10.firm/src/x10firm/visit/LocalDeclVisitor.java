@@ -9,7 +9,7 @@ import x10.ast.Closure_c;
 /**
  * Visitor which extracts all local declarations from an ast
  */
-public class X10LocalDeclVisitor extends X10DummyDelegatingVisitor {
+public class LocalDeclVisitor extends DummyDelegatingVisitor {
 
 	/** Will hold all local declarations.
 	 *

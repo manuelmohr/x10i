@@ -7,15 +7,15 @@ import java.util.Map;
 import polyglot.types.LocalInstance;
 import x10.types.MethodInstance;
 import x10.types.X10ClassType;
-import x10firm.visit.X10FirmCodeGenerator;
+import x10firm.visit.FirmGenerator;
 
 /**
  * Support class for generics. -> Manages a collection of generic code generators.
  */
-public class X10NativeGenericSupport {
-	private Map<String, X10NativeGenericDispatcher> map = new HashMap<String, X10NativeGenericDispatcher>();
+public class NativeGenericSupport {
+	private Map<String, NativeGenericDispatcher> map = new HashMap<String, NativeGenericDispatcher>();
 
-	private void addGenericGenerator(final X10NativeGenericDispatcher dispatcher) {
+	private void addGenericGenerator(final NativeGenericDispatcher dispatcher) {
 		assert(!map.containsKey(dispatcher.getDispatchName()));
 		map.put(dispatcher.getDispatchName(), dispatcher);
 	}
@@ -23,10 +23,10 @@ public class X10NativeGenericSupport {
 	/**
 	 * Constructor
 	 */
-	public X10NativeGenericSupport() {
-		addGenericGenerator(new X10FirmSupportGenerator());
-		addGenericGenerator(new X10FirmPointerGenerator());
-		addGenericGenerator(new X10FirmZeroGenerator());
+	public NativeGenericSupport() {
+		addGenericGenerator(new SupportGenerator());
+		addGenericGenerator(new PointerGenerator());
+		addGenericGenerator(new ZeroGenerator());
 	}
 
 	/**
@@ -36,10 +36,10 @@ public class X10NativeGenericSupport {
 	 * @param formals The formals of the methods
 	 * @return True if the given method could be dispatched.
 	 */
-	public boolean dispatch(final X10FirmCodeGenerator codeGenerator, final MethodInstance meth,
+	public boolean dispatch(final FirmGenerator codeGenerator, final MethodInstance meth,
 								   final List<LocalInstance> formals) {
 		final X10ClassType owner = (X10ClassType)meth.container();
-		final X10NativeGenericDispatcher dispatcher = map.get(owner.name().toString());
+		final NativeGenericDispatcher dispatcher = map.get(owner.name().toString());
 		if(dispatcher == null) return false;
 		return dispatcher.dispatch(codeGenerator, meth, formals);
 	}

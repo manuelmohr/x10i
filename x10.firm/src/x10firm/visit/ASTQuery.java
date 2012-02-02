@@ -33,7 +33,7 @@ import x10.util.HierarchyUtils;
 /**
  * Our main class for AST queries.
  */
-public class X10ASTQuery {
+public class ASTQuery {
 
 	private final TypeSystem x10TypeSystem;
 
@@ -41,7 +41,7 @@ public class X10ASTQuery {
 	 * X10ASTQuery Constructor
 	 * @param x10TypeSystem The x10 type system
 	 */
-	public X10ASTQuery(final TypeSystem x10TypeSystem) {
+	public ASTQuery(final TypeSystem x10TypeSystem) {
 		this.x10TypeSystem = x10TypeSystem;
 	}
 

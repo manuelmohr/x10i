@@ -7,7 +7,7 @@ import firm.Entity;
 /**
  * Class for saving local var declarations and the appropriate firm indices, types.
  */
-public class X10VarEntry {
+public class VarEntry {
 	/**
 	 * Type of a normal variable -> Has a unique index
 	 */
@@ -23,7 +23,7 @@ public class X10VarEntry {
 	private int idx;
 	private LocalDef def;
 
-	private X10VarEntry(final LocalDef def, final int idx, final int type, final Entity entity) {
+	private VarEntry(final LocalDef def, final int idx, final int type, final Entity entity) {
 		assert(def != null);
 		assert(type == VARIABLE || type == STRUCT);
 
@@ -46,8 +46,8 @@ public class X10VarEntry {
 	 * @param idx The "local" index (firm) for the local def
 	 * @return The created var entry.
 	 */
-	public static X10VarEntry newVarEntryForLocalVariable(final LocalInstance loc, final int idx) {
-		return new X10VarEntry(loc.def(), idx, VARIABLE, null);
+	public static VarEntry newVarEntryForLocalVariable(final LocalInstance loc, final int idx) {
+		return new VarEntry(loc.def(), idx, VARIABLE, null);
 	}
 
 	/**
@@ -55,8 +55,8 @@ public class X10VarEntry {
 	 * @param loc The local struct def
 	 * @return The created var entry.
 	 */
-	public static X10VarEntry newVarEntryForStructVariable(final LocalInstance loc, final Entity entity) {
-		return new X10VarEntry(loc.def(), -1, STRUCT, entity);
+	public static VarEntry newVarEntryForStructVariable(final LocalInstance loc, final Entity entity) {
+		return new VarEntry(loc.def(), -1, STRUCT, entity);
 	}
 
 	/**

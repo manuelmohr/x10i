@@ -45,7 +45,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 
 	@Override
 	protected Scheduler createScheduler() {
-		return new X10FirmScheduler(this);
+		return new FirmScheduler(this);
 	}
 
 	@Override
