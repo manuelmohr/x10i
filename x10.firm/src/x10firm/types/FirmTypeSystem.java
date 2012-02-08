@@ -466,7 +466,7 @@ public class FirmTypeSystem {
 		       equalTypes(type, x10TypeSystem.Float())   || equalTypes(type, x10TypeSystem.Double()) ||
 		       equalTypes(type, x10TypeSystem.Boolean()) ||
 		       equalTypes(type, x10TypeSystem.Char())    ||
-		       equalTypes(type, x10TypeSystem.FirmPointer());
+		       equalTypes(type, x10TypeSystem.Pointer());
 	}
 
 	/**
@@ -759,7 +759,7 @@ public class FirmTypeSystem {
 		/* we "lower" some well-known types directly to firm modes */
 		Mode modePointer = Mode.getP();
 		Type typePointer = new PrimitiveType(modePointer);
-		saveType(x10TypeSystem.FirmPointer(), typePointer);
+		saveType(x10TypeSystem.Pointer(), typePointer);
 
 		Mode modeLong = Mode.createIntMode("Long", ir_mode_arithmetic.irma_twos_complement, 64, true, 64);
 		Type typeLong = new PrimitiveType(modeLong);

@@ -20,11 +20,11 @@ import firm.nodes.OOConstruction;
 import firm.nodes.Store;
 
 /**
- * Firm Generator for x10.lang.FirmPointer
+ * Firm Generator for x10.lang.Pointer
  */
 public class PointerGenerator extends NativeGenericDispatcher {
 	/**
-	 *  Firm generator for the "read" method in x10.lang.FirmPointer
+	 *  Firm generator for the "read" method in x10.lang.Pointer
 	 */
 	static class GenRead implements NativeGenericMethodGenerator {
 		@Override
@@ -88,7 +88,7 @@ public class PointerGenerator extends NativeGenericDispatcher {
 	}
 
 	/**
-	 *  Firm generator for the "write" method in x10.lang.FirmPointer
+	 *  Firm generator for the "write" method in x10.lang.Pointer
 	 */
 	static class GenWrite implements NativeGenericMethodGenerator {
 		@Override
@@ -169,6 +169,6 @@ public class PointerGenerator extends NativeGenericDispatcher {
 	 */
 	@Override
 	public String getDispatchName() {
-		return "FirmPointer";
+		return "Pointer";
 	}
 }

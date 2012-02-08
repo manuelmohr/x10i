@@ -223,23 +223,22 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	}
 
 	/** Own additions for the native pointer type */
-    private X10ClassType FirmPointer_;
+	private X10ClassType Pointer_;
 
     /**
      * @return The FirmPointer class type.
      */
-    public X10ClassType FirmPointer() {
-        if (FirmPointer_ == null)
-            FirmPointer_ = load("x10.lang.FirmPointer");
-        return FirmPointer_;
+    public X10ClassType Pointer() {
+        if (Pointer_ == null)
+            Pointer_ = load("x10.lang.Pointer");
+        return Pointer_;
     }
 
     /**
      * @param type Type to check.
-     * @return True iff {@code type} is FirmPointer or a subtype of FirmPointer.
+     * @return True iff {@code type} is Pointer or a subtype of Pointer.
      */
-    public boolean isFirmPointer(final Type type) {
-    	return isSubtype(type, FirmPointer());
-    }
-
+	public boolean isPointer(final Type type) {
+		return isSubtype(type, Pointer());
+	}
 }

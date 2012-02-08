@@ -71,13 +71,14 @@ static void x10_thread_thread_permit_init(permit_t *perm)
 	perm->permit = false;
 }
 
-
+#if 0
 // permit finalization
 static void x10_thread_thread_permit_destroy(permit_t *perm)
 {
 	pthread_mutex_destroy(&(perm->mutex));
 	pthread_cond_destroy(&(perm->cond));
 }
+#endif
 
 // TODO: Must be called in the thread class destructor.
 // permit cleanup
@@ -302,7 +303,6 @@ void _ZN3x104lang6Thread5sleepExi(x10_thread *self, x10_long millis, x10_int nan
 	x10_boolean done = false;
 	struct timeval tval;
 	struct timespec tout;
-	long sleep_usec;
 	int rc;
 
 	__xrxDPrStart();
@@ -315,7 +315,6 @@ void _ZN3x104lang6Thread5sleepExi(x10_thread *self, x10_long millis, x10_int nan
 	gettimeofday(&tval, NULL);
 	tout.tv_sec = tval.tv_sec + (millis/1000);
 	tout.tv_nsec = ((tval.tv_usec + ((millis%1000) * 1000)) * 1000) + nanos;
-	sleep_usec = (tout.tv_sec * 1000 * 1000) + (tout.tv_nsec / 1000);
 
 	while (!done) {
 		rc = pthread_cond_timedwait(&(cmp->cond), &(cmp->mutex), &tout);
@@ -327,6 +326,7 @@ void _ZN3x104lang6Thread5sleepExi(x10_thread *self, x10_long millis, x10_int nan
 			x10_throw_exception(T_("InterruptedException"), T_(""));
 			break;
 			/*
+			long sleep_usec = (tout.tv_sec * 1000 * 1000) + (tout.tv_nsec / 1000);
 			struct timeval cval;
 			long cur_usec;
 			gettimeofday(&cval, NULL);

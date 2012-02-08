@@ -50,6 +50,7 @@ typedef bool        x10_boolean;
 typedef wchar_t     x10_char;
 typedef float       x10_float;
 typedef double      x10_double;
+typedef char       *x10_pointer;
 
 #define X10_EXTERN extern
 

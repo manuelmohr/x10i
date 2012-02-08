@@ -18,12 +18,12 @@ import firm.Entity;
 import firm.nodes.OOConstruction;
 
 /**
- *  FirmGenerator for x10.lang.X10FirmSupport.x10
+ *  FirmGenerator for x10.lang.NativeSupport.x10
  */
 public class SupportGenerator extends NativeGenericDispatcher {
 
 	/**
-	 *  Support code for the getSize method in X10FirmSupport.x10
+	 *  Support code for the getSize method in NativeSupport.x10
 	 */
 	static class GenGetSize implements NativeGenericMethodGenerator {
 		@Override
@@ -73,6 +73,6 @@ public class SupportGenerator extends NativeGenericDispatcher {
 	 */
 	@Override
 	public String getDispatchName() {
-		return "X10FirmSupport";
+		return "NativeSupport";
 	}
 }

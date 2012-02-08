@@ -82,7 +82,7 @@ public class ZeroGenerator extends NativeGenericDispatcher {
 					ret = xnf.Return(pos, xnf.FloatLit(pos, Kind.FLOAT, 0.0).type(x10TypeSystem.Float()));
 				} else if(x10TypeSystem.isDouble(typeParameter)) {
 					ret = xnf.Return(pos, xnf.FloatLit(pos, Kind.DOUBLE, 0.0).type(x10TypeSystem.Double()));
-				} else if(x10TypeSystem.isFirmPointer(typeParameter)) {
+				} else if(x10TypeSystem.isPointer(typeParameter)) {
 					ret = xnf.Return(pos, xnf.NullLit(pos).type(x10TypeSystem.Null()));
 				} else {
 					assert false : "Missing type check";
