@@ -8,4 +8,4 @@
 X10_EXTERN x10_printer *_ZN3x102io7Console3OUTE;
 X10_EXTERN x10_printer *_ZN3x102io7Console3ERRE;
 
-#endif // X10_CONSOLE_H_
+#endif

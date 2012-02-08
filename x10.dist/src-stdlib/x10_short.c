@@ -27,8 +27,8 @@ x10_short _ZN3x104lang5Short7reverseEv(x10_short self)
 
 x10_short _ZN3x104lang5Short10parseShortEPN3x104lang6StringEi(x10_string *s, x10_int radix)
 {
-    x10_null_check(s); 
-    const x10_char *start = x10_string_buf(s); 
+    x10_null_check(s);
+    const x10_char *start = x10_string_buf(s);
     x10_char *end;
     errno = 0;
     x10_int ans = wcstol(start, &end, radix);
@@ -40,10 +40,10 @@ x10_short _ZN3x104lang5Short10parseShortEPN3x104lang6StringEi(x10_string *s, x10
 
 x10_short _ZN3x104lang5Short10parseShortEPN3x104lang6StringE(x10_string *s)
 {
-	return _ZN3x104lang5Short10parseShortEPN3x104lang6StringEi(s, 10); 
+	return _ZN3x104lang5Short10parseShortEPN3x104lang6StringEi(s, 10);
 }
 
-x10_short _ZN3x104lang5Short12reverseBytesEv(x10_short self) 
+x10_short _ZN3x104lang5Short12reverseBytesEv(x10_short self)
 {
     x10_ushort ux = (x10_ushort)self;
     x10_ushort b0 = ux & 0x0F;
@@ -58,13 +58,13 @@ x10_int _ZN3x104lang5Short6signumEv(x10_short self)
 	return _ZN3x104lang3Int6signumEv(self);
 }
 
-static x10_string *x10_short_to_string(x10_short value, x10_int radix) 
+static x10_string *x10_short_to_string(x10_short value, x10_int radix)
 {
     if (0 == value) return x10_string_from_wide_chars(T_("0"));
     assert(radix>=2);
     assert(radix<=16);
-    static x10_char numerals[] = { '0', '1', '2', '3', '4', '5', '6', '7',  
-                               	  '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+    static x10_char numerals[] = { '0', '1', '2', '3', '4', '5', '6', '7',
+	                               '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
     // worst case is binary of Short.MIN_VALUE -- - plus 16 digits and a '\0'
     x10_char buf[18] = T_(""); //zeroes entire buffer (S6.7.8.21)
     x10_int value2;
@@ -84,7 +84,7 @@ static x10_string *x10_short_to_string(x10_short value, x10_int radix)
     return x10_string_from_wide_chars(b);
 }
 
-x10_string *_ZN3x104lang5Short8toStringEi(x10_short self, x10_int radix) 
+x10_string *_ZN3x104lang5Short8toStringEi(x10_short self, x10_int radix)
 {
 	return x10_short_to_string(self, radix);
 }
@@ -103,4 +103,3 @@ x10_string *_ZN3x104lang5Short14toBinaryStringEv(x10_short self)
 {
 	return x10_short_to_string(self, 2);
 }
-

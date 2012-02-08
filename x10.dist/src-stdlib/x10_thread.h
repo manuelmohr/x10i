@@ -71,4 +71,4 @@ X10_EXTERN x10_string *_ZN3x104lang6Thread4nameEv(x10_thread *);
 // TODO: Add home struct as return type
 X10_EXTERN x10_any *_ZN3x104lang6Thread4homeEv(x10_thread *);
 
-#endif // X10_THREAD_H_
+#endif

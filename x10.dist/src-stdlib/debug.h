@@ -48,4 +48,4 @@ do { \
 
 #endif /* XRX_DEBUG */
 
-#endif // DEBUG_H
+#endif

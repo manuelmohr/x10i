@@ -84,32 +84,32 @@ static inline x10_int x10_atomic_ops_ppc_compareAndSet32(x10_int oldValue, volat
 #endif
    return result;
 }
-        
+
 /**
-* Ensure that all loads before the barrier have loaded their
-* data before any load after the data accesses its data.
-*/
+ * Ensure that all loads before the barrier have loaded their
+ * data before any load after the data accesses its data.
+ */
 X10_EXTERN void _ZN3x104util10concurrent6Fences15loadLoadBarrierEv(void);
 
 /**
-* Ensure that all loads before the barrier have loaded
-* their data before any data stored by a store after
-* the barrier has been flushed.
-*/
+ * Ensure that all loads before the barrier have loaded
+ * their data before any data stored by a store after
+ * the barrier has been flushed.
+ */
 X10_EXTERN void _ZN3x104util10concurrent6Fences16loadStoreBarrierEv(void);
 
 /**
-* Ensure that all data from stores before the barrier
-* has been flushed before any data for loads after the
-* barrier is accessed.
-*/
+ * Ensure that all data from stores before the barrier
+ * has been flushed before any data for loads after the
+ * barrier is accessed.
+ */
 X10_EXTERN void _ZN3x104util10concurrent6Fences16storeLoadBarrierEv(void);
 
 /**
-* Ensure that all data from stores before the barrier
-* has been flushed before any data for stores after
-* the barrier is flushed.
-*/
+ * Ensure that all data from stores before the barrier
+ * has been flushed before any data for stores after
+ * the barrier is flushed.
+ */
 X10_EXTERN void _ZN3x104util10concurrent6Fences17storeStoreBarrierEv(void);
 
 #if defined(_LP64)
@@ -137,19 +137,19 @@ static inline x10_long x10_atomic_ops_ppc_compareAndSet64(x10_long oldValue, vol
 #endif
 
 /**
-* Atomic compare and swap of a 32 bit value.
-* The semantics of this operation are:
-* <pre>
-*
-* x10_int tmp;
-* Atomic {
-*    tmp = *address;
-*    if (tmp == oldValue) *address = newValue;
-* }
-* return tmp;
-*
-* </pre>
-*/
+ * Atomic compare and swap of a 32 bit value.
+ * The semantics of this operation are:
+ * <pre>
+ *
+ * x10_int tmp;
+ * Atomic {
+ *    tmp = *address;
+ *    if (tmp == oldValue) *address = newValue;
+ * }
+ * return tmp;
+ *
+ * </pre>
+ */
 static inline x10_int x10_atomic_ops_compareAndSet_32(volatile x10_int* address, x10_int oldValue, x10_int newValue) {
 #if defined(__i386__) || defined(__x86_64__)
    __asm ("lock cmpxchgl %2, %3"
@@ -160,7 +160,7 @@ static inline x10_int x10_atomic_ops_compareAndSet_32(volatile x10_int* address,
 #elif (defined(_ARCH_PPC) || defined(_ARCH_450) || defined(_ARCH_450d))
    return ppc_compareAndSet32(oldValue, address, newValue);
 #elif defined(__sparc__)
-#	if defined(__sparc_v9__)
+	#if defined(__sparc_v9__)
 		/* FIXME: is the memory barrier needed? */
 		__asm__ __volatile__("cas [%2], %3, %0\n\t"
 		                     "membar #StoreLoad | #StoreStore"
@@ -168,32 +168,31 @@ static inline x10_int x10_atomic_ops_compareAndSet_32(volatile x10_int* address,
 		                     : "0" (newValue), "r" (address), "r" (oldValue)
 		                     : "memory");
 		return newValue;
-#	else
+	#else
 		(void) address;
 		(void) oldValue;
 		(void) newValue;
-		return 0;
-#		warning "No SPARCV8 implementation of CAS yet!"
-#	endif
+		X10_UNIMPLEMENTED();
+	#endif
 #else
-#  error "Unknown architecture"
+	#error "Unknown architecture"
 #endif
 }
 
 /**
-* Atomic compare and swap of a 64 bit value.
-* The semantics of this operation are:
-* <pre>
-*
-* x10_int tmp;
-* Atomic {
-*    tmp = *address;
-*    if (tmp == oldValue) *address = newValue;
-* }
-* return tmp;
-*
-* </pre>
-*/
+ * Atomic compare and swap of a 64 bit value.
+ * The semantics of this operation are:
+ * <pre>
+ *
+ * x10_int tmp;
+ * Atomic {
+ *    tmp = *address;
+ *    if (tmp == oldValue) *address = newValue;
+ * }
+ * return tmp;
+ *
+ * </pre>
+ */
 static inline x10_long x10_atomic_ops_compareAndSet_64(volatile x10_long* address, x10_long oldValue, x10_long newValue) {
 #if !defined(_LP64)
    /* TODO: in theory on i586 hardware we could do this with inline asm and cmpxchg8b instead of a mutex,
@@ -216,40 +215,40 @@ static inline x10_long x10_atomic_ops_compareAndSet_64(volatile x10_long* addres
 #elif (defined(_ARCH_PPC) || defined(_ARCH_450) || defined(_ARCH_450d))
    return ppc_compareAndSet64(oldValue, address, newValue);
 #elif defined(__sparc__)
-#	if defined(__sparc_v9__)
+	#if defined(__sparc_v9__)
 		/* FIXME: is the memory barrier needed? */
 		__asm__ __volatile__("casx [%2], %3, %0\n\t"
-		                     "membar #StoreLoad | #StoreStore"                  		                     : "=&r" (newValue)
+		                     "membar #StoreLoad | #StoreStore"
+		                     : "=&r" (newValue)
 		                     : "0" (newValue), "r" (address), "r" (oldValue)
 		                     : "memory");
 		return newValue;
-#	else
+	#else
 		(void) address;
 		(void) oldValue;
 		(void) newValue;
-		return 0;
-#		warning "No SPARCV8 implementation of CAS yet!"
-#	endif
+		X10_UNIMPLEMENTED();
+	#endif
 #else
-#  error "Unknown architecture"
+	#error "Unknown architecture"
 #endif
 #endif
 }
 
 /**
-* Atomic compare and swap of a pointer value.
-* The semantics of this operation are:
-* <pre>
-*
-* x10_int tmp;
-* Atomic {
-*    tmp = *address;
-*    if (tmp == oldValue) *address = newValue;
-* }
-* return tmp;
-*
-* </pre>
-*/
+ * Atomic compare and swap of a pointer value.
+ * The semantics of this operation are:
+ * <pre>
+ *
+ * x10_int tmp;
+ * Atomic {
+ *    tmp = *address;
+ *    if (tmp == oldValue) *address = newValue;
+ * }
+ * return tmp;
+ *
+ * </pre>
+ */
 static inline void* x10_atomic_ops_compareAndSet_ptr(volatile void** address, void* oldValue, void* newValue) {
 #if defined(_LP64)
    return (void*)(x10_atomic_ops_compareAndSet_64((volatile x10_long*)address, (x10_long)oldValue, (x10_long)newValue));
@@ -258,4 +257,4 @@ static inline void* x10_atomic_ops_compareAndSet_ptr(volatile void** address, vo
 #endif
 }
 
-#endif // X10_ATOMIC_OPS_H_
+#endif

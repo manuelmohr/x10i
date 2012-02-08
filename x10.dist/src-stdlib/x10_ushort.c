@@ -18,26 +18,26 @@ MAKE_CONFS(_ZN3x104lang6UShort, x10_ushort)
 
 x10_short _ZN3x104lang6UShort11parseUShortEPN3x104lang6StringEi(x10_string *s, x10_int radix)
 {
-    x10_null_check(s); 
+    x10_null_check(s);
     const x10_char *start = x10_string_buf(s);
     x10_char *end;
     errno = 0;
     x10_uint ans = wcstoul(start, &end, radix);
     if (errno == ERANGE || (errno != 0 && ans == 0) || (ans != (x10_ushort)ans) || ((end-start) != x10_string_len(s))) {
-        x10_throw_exception(X10_NUMBER_FORMAT_EXCEPTION, x10_string_buf(s)); 
+        x10_throw_exception(X10_NUMBER_FORMAT_EXCEPTION, x10_string_buf(s));
     }
     return (x10_ushort)ans;
 }
 
 x10_ushort _ZN3x104lang6UShort11parseUShortEPN3x104lang6StringE(x10_string *s)
 {
-    return _ZN3x104lang6UShort11parseUShortEPN3x104lang6StringEi(s, 10); 
+    return _ZN3x104lang6UShort11parseUShortEPN3x104lang6StringEi(s, 10);
 }
 
 x10_string *_ZN3x104lang6UShort8toStringEi(x10_ushort self, x10_int radix)
 {
 	extern x10_string *_ZN3x104lang3Int8toStringEi(x10_int, x10_int);
-	return _ZN3x104lang3Int8toStringEi(self, radix); 
+	return _ZN3x104lang3Int8toStringEi(self, radix);
 }
 
 x10_string *_ZN3x104lang6UShort13toOctalStringEv(x10_ushort self)

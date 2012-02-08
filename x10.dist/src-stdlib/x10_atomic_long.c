@@ -17,7 +17,7 @@ x10_long _ZN3x104util10concurrent10AtomicLong9getAndAddEx(x10_atomic_long *self,
     while (x10_atomic_ops_compareAndSet_64(&self->value, oldValue, oldValue+delta) != oldValue) {
         oldValue = self->value;
     }
-    
+
     return oldValue;
 }
 

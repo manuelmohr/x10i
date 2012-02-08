@@ -17,5 +17,4 @@ X10_EXTERN x10_boolean _ZN3x104lang6Object6equalsEPN3x104lang3AnyE(x10_object *,
 X10_EXTERN x10_int _ZN3x104lang6Object8hashCodeEv(x10_object *);
 X10_EXTERN x10_string *_ZN3x104lang6Object8toStringEv(x10_object *);
 
-
-#endif // X10_OBJECT_H_
+#endif

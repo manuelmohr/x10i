@@ -24,7 +24,7 @@ BINOP3(_ZN3x104lang7BooleananEb, x10_boolean, &)
 BINOP3(_ZN3x104lang7BooleanorEb, x10_boolean, |)
 BINOP3(_ZN3x104lang7BooleaneoEb, x10_boolean, ^)
 
-x10_boolean _ZN3x104lang7Boolean12parseBooleanEPN3x104lang6StringE(x10_string *s) 
+x10_boolean _ZN3x104lang7Boolean12parseBooleanEPN3x104lang6StringE(x10_string *s)
 {
-	return s != X10_NULL && !wcscmp(x10_string_buf(s), T_("true")); 
+	return s != X10_NULL && !wcscmp(x10_string_buf(s), T_("true"));
 }

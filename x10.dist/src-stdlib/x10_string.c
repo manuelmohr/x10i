@@ -309,24 +309,26 @@ x10_string *_ZN3x104lang6String4trimEv(x10_string *self)
 x10_string *_ZN3x104lang6String11toLowerCaseEv(x10_string *self)
 {
 	x10_int len = x10_string_len(self);
-	x10_char *self_buf = x10_string_buf(self); 
+	x10_char *self_buf = x10_string_buf(self);
 	x10_string *ret = x10_allocate_string(len);
 	x10_char *ret_buf = x10_string_buf(ret);
 	x10_int i;
-	for(i = 0; i < len; i++) 
+	for(i = 0; i < len; i++) {
 		ret_buf[i] = towlower(self_buf[i]);
+	}
 	return ret;
 }
 
 x10_string *_ZN3x104lang6String11toUpperCaseEv(x10_string *self)
 {
 	x10_int len = x10_string_len(self);
-	x10_char *self_buf = x10_string_buf(self); 
+	x10_char *self_buf = x10_string_buf(self);
 	x10_string *ret = x10_allocate_string(len);
 	x10_char *ret_buf = x10_string_buf(ret);
 	x10_int i;
-	for(i = 0; i < len; i++) 
+	for(i = 0; i < len; i++) {
 		ret_buf[i] = towupper(self_buf[i]);
+	}
 	return ret;
 }
 
@@ -334,7 +336,7 @@ x10_int _ZN3x104lang6String9compareToEPN3x104lang6StringE(x10_string *self, x10_
 {
 	x10_null_check(other);
 	const x10_int self_len = x10_string_len(self), other_len = x10_string_len(other);
-	
+
 	const x10_int len_diff = self_len - other_len;
 	const size_t min_len = MIN(self_len, other_len);
 	const x10_int cmp = wcsncmp(x10_string_buf(self), x10_string_buf(other), min_len);
@@ -348,7 +350,7 @@ x10_int _ZN3x104lang6String19compareToIgnoreCaseEPN3x104lang6StringE(x10_string 
 {
 	x10_null_check(other);
 	const x10_int self_len = x10_string_len(self), other_len = x10_string_len(other);
-	
+
 	const x10_int len_diff = self_len - other_len;
 	const size_t min_len = MIN(self_len, other_len);
 	const x10_int cmp = wcsncasecmp(x10_string_buf(self), x10_string_buf(other), min_len);

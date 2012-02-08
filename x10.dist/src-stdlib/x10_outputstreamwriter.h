@@ -3,5 +3,4 @@
 
 #include "x10.h"
 
-#endif // X10_OUTPUTSTREAMWRITER_H_
-
+#endif

@@ -13,12 +13,12 @@
 x10_any *_ZN3x104util18IndexedMemoryChunk14alloc_internalExiibb(x10_long numElements, x10_int sizeElement, x10_int alignment, x10_boolean congruent, x10_boolean zeroed)
 {
 	assert(numElements > 0 && sizeElement > 0);
-   assert((alignment & (alignment-1)) == 0);
-   // check for min alignment 
-   if(alignment < X10_MIN_INDEXEDMEMORYCHUNK_ALIGNMENT)
-      alignment = X10_MIN_INDEXEDMEMORYCHUNK_ALIGNMENT;
-   
-   return _ZN3x104lang14X10FirmSupport5allocExibb(numElements * sizeElement, alignment, congruent, zeroed);
+	assert((alignment & (alignment-1)) == 0);
+	// check for min alignment
+	if(alignment < X10_MIN_INDEXEDMEMORYCHUNK_ALIGNMENT)
+		alignment = X10_MIN_INDEXEDMEMORYCHUNK_ALIGNMENT;
+
+	return _ZN3x104lang14X10FirmSupport5allocExibb(numElements * sizeElement, alignment, congruent, zeroed);
 }
 
 void _ZN3x104util18IndexedMemoryChunk16dealloc_internalEN3x104lang11FirmPointerE(x10_any *ptr)

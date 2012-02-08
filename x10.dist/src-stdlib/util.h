@@ -44,12 +44,12 @@ static inline bool x10_instance_of(const x10_object* o,
 
 static inline void *x10_sysalloc(x10_long size)
 {
-	return malloc(size); 
+	return malloc(size);
 }
 
 static inline void x10_sysfree(void *ptr)
 {
-	free(ptr); 
+	free(ptr);
 }
 
 static inline void *x10_sysrealloc(void *ptr, x10_long size)
@@ -81,8 +81,8 @@ static inline void x10_free(void *obj)
 
 static inline x10_object *x10_new_exception_object(const x10_char *name, const x10_char *msg)
 {
-	X10_UNUSED(name); 
-	X10_UNUSED(msg); 
+	X10_UNUSED(name);
+	X10_UNUSED(msg);
 	// TODO this is just a dummy!
 	return X10_NULL;
 }
@@ -104,4 +104,4 @@ static inline void x10_null_check(void *obj)
 		x10_throw_exception(X10_NULL_POINTER_EXCEPTION, T_("null check"));
 }
 
-#endif // UTIL_H
+#endif

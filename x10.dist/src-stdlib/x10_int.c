@@ -18,30 +18,30 @@ MAKE_CONFS(_ZN3x104lang3Int, x10_int)
 
 x10_int _ZN3x104lang3Int8parseIntEPN3x104lang6StringEi(x10_string *s, x10_int radix)
 {
-    x10_null_check(s); 
-    const x10_char *start = x10_string_buf(s); 
+    x10_null_check(s);
+    const x10_char *start = x10_string_buf(s);
     x10_char *end;
     errno = 0;
     x10_int ans = wcstol(start, &end, radix);
     if (errno == ERANGE || (errno != 0 && ans == 0) || ((end-start) != x10_string_len(s))) {
-	    x10_throw_exception(X10_NUMBER_FORMAT_EXCEPTION, x10_string_buf(s)); 
+	    x10_throw_exception(X10_NUMBER_FORMAT_EXCEPTION, x10_string_buf(s));
     }
     return ans;
 }
 
 x10_int _ZN3x104lang3Int8parseIntEPN3x104lang6StringE(x10_string *s)
 {
-	return _ZN3x104lang3Int8parseIntEPN3x104lang6StringEi(s, 10); 
+	return _ZN3x104lang3Int8parseIntEPN3x104lang6StringEi(s, 10);
 }
 
 x10_int _ZN3x104lang3Int5parseEPN3x104lang6StringE(x10_string *s)
 {
-	return _ZN3x104lang3Int8parseIntEPN3x104lang6StringEi(s, 10); 
+	return _ZN3x104lang3Int8parseIntEPN3x104lang6StringEi(s, 10);
 }
 
 x10_int _ZN3x104lang3Int5parseEPN3x104lang6StringEi(x10_string *s, x10_int radix)
 {
-	return _ZN3x104lang3Int8parseIntEPN3x104lang6StringEi(s, radix); 
+	return _ZN3x104lang3Int8parseIntEPN3x104lang6StringEi(s, radix);
 }
 
 x10_int _ZN3x104lang3Int6signumEv(x10_int self)
@@ -49,7 +49,7 @@ x10_int _ZN3x104lang3Int6signumEv(x10_int self)
 	return (self >> 31) | (((x10_uint)(-self)) >> 31);
 }
 
-x10_int _ZN3x104lang3Int12reverseBytesEv(x10_int self) 
+x10_int _ZN3x104lang3Int12reverseBytesEv(x10_int self)
 {
     x10_long value = 0;
     if (self<0) {
@@ -66,7 +66,7 @@ x10_int _ZN3x104lang3Int12reverseBytesEv(x10_int self)
     return b0 | b1 | b2 | b3;
 }
 
-x10_int _ZN3x104lang3Int7reverseEv(x10_int self) 
+x10_int _ZN3x104lang3Int7reverseEv(x10_int self)
 {
     x10_uint ux = (x10_uint)self;
     ux = ((ux & 0x55555555) << 1) | ((ux >> 1) & 0x55555555);
@@ -76,7 +76,7 @@ x10_int _ZN3x104lang3Int7reverseEv(x10_int self)
     return (x10_int)ux;
 }
 
-x10_int _ZN3x104lang3Int11rotateRightEi(x10_int self, x10_int distance) 
+x10_int _ZN3x104lang3Int11rotateRightEi(x10_int self, x10_int distance)
 {
    return (((x10_uint)self) >> distance) | (self << (32 - distance));
 }
@@ -127,15 +127,15 @@ x10_int _ZN3x104lang3Int13highestOneBitEv(x10_int self)
     return self & ~(((x10_uint)self) >> 1);
 }
 
-static x10_string *x10_int_to_string(x10_int value, x10_int radix) 
+static x10_string *x10_int_to_string(x10_int value, x10_int radix)
 {
     if (0 == value) return x10_string_from_wide_chars(T_("0"));
     assert(radix>=2);
     assert(radix<=36);
     static x10_char numerals[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a',
-                               	  'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
-                               	  'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w',
-                               	  'x', 'y', 'z' };
+	                               'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
+	                               'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w',
+	                               'x', 'y', 'z' };
     // worst case is binary of Int.MIN_VALUE -- - plus 32 digits and a '\0'
     x10_char buf[34] = T_(""); //zeroes entire buffer (S6.7.8.21)
     x10_long value2 = 0;
@@ -152,7 +152,7 @@ static x10_string *x10_int_to_string(x10_int value, x10_int radix)
     return x10_string_from_wide_chars(b);
 }
 
-x10_string *_ZN3x104lang3Int8toStringEi(x10_int self, x10_int radix) 
+x10_string *_ZN3x104lang3Int8toStringEi(x10_int self, x10_int radix)
 {
 	return x10_int_to_string(self, radix);
 }
@@ -171,4 +171,3 @@ x10_string *_ZN3x104lang3Int14toBinaryStringEv(x10_int self)
 {
 	return x10_int_to_string(self, 2);
 }
-

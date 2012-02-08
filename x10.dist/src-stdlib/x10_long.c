@@ -18,30 +18,30 @@ MAKE_CONFS(_ZN3x104lang4Long, x10_long)
 
 x10_long _ZN3x104lang4Long9parseLongEPN3x104lang6StringEi(x10_string *s, x10_int radix)
 {
-    x10_null_check(s); 
-    const x10_char *start = x10_string_buf(s); 
+    x10_null_check(s);
+    const x10_char *start = x10_string_buf(s);
     x10_char *end;
     errno = 0;
     x10_long ans = wcstol(start, &end, radix);
     if (errno == ERANGE || (errno != 0 && ans == 0) || ((end-start) != x10_string_len(s))) {
-	x10_throw_exception(X10_NUMBER_FORMAT_EXCEPTION, x10_string_buf(s)); 
+		x10_throw_exception(X10_NUMBER_FORMAT_EXCEPTION, x10_string_buf(s));
     }
     return ans;
 }
 
 x10_long _ZN3x104lang4Long9parseLongEPN3x104lang6StringE(x10_string *s)
 {
-    return _ZN3x104lang4Long9parseLongEPN3x104lang6StringEi(s, 10); 
+    return _ZN3x104lang4Long9parseLongEPN3x104lang6StringEi(s, 10);
 }
 
 x10_long _ZN3x104lang4Long5parseEPN3x104lang6StringEi(x10_string *s, x10_int radix)
 {
-    return _ZN3x104lang4Long9parseLongEPN3x104lang6StringEi(s, radix); 
+    return _ZN3x104lang4Long9parseLongEPN3x104lang6StringEi(s, radix);
 }
 
 x10_long _ZN3x104lang4Long5parseEPN3x104lang6StringE(x10_string *s)
 {
-    return _ZN3x104lang4Long9parseLongEPN3x104lang6StringEi(s, 10); 
+    return _ZN3x104lang4Long9parseLongEPN3x104lang6StringEi(s, 10);
 }
 
 x10_long _ZN3x104lang4Long13highestOneBitEv(x10_long self)
@@ -101,7 +101,7 @@ x10_long _ZN3x104lang4Long11rotateRightEi(x10_long self, x10_int distance)
 x10_long _ZN3x104lang4Long12reverseBytesEv(x10_long self)
 {
     x10_ulong ux = self;
-    x10_ulong ans = ux << 56; 
+    x10_ulong ans = ux << 56;
     ans |= (ux & 0xFF00L) << 40;
     ans |= (ux & 0xFF0000L) << 24;
     ans |= (ux & 0xFF000000L) << 8;
@@ -127,9 +127,9 @@ x10_string *_ZN3x104lang4Long8toStringEi(x10_long value, x10_int radix)
     assert(radix>=2);
     assert(radix<=36);
     static x10_char numerals[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a',
-                               	  'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
-                               	  'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w',
-                               	  'x', 'y', 'z' };
+	                               'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
+	                               'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w',
+	                               'x', 'y', 'z' };
     // worst case is binary of Long.MIN_VALUE -- - plus 32 digits and a '\0'
     x10_char buf[66] = T_(""); //zeroes entire buffer (S6.7.8.21)
     x10_long value2 = 0;
@@ -165,4 +165,3 @@ x10_int _ZN3x104lang4Long6signumEv(x10_long self)
 {
 	return (self >> 63) | (((x10_ulong)(-self)) >> 63);
 }
-

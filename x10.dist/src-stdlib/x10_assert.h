@@ -5,6 +5,6 @@
 #include "x10_string.h"
 
 X10_EXTERN void x10_assert(x10_boolean cond, x10_string* message,
-		x10_string* position);
+                           x10_string* position);
 
-#endif // X10_ASSERT_H_
+#endif

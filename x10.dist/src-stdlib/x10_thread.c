@@ -247,7 +247,7 @@ x10_thread * _ZN3x104lang6ThreadC1EPN3x104lang6StringE(x10_thread *self, x10_str
 
 	/*
 	 * NOTE: Setting the stacksize to small breaks BDWGC.
-	 *		 Just use the default stacksize to avoid confusing the GC!
+	 *       Just use the default stacksize to avoid confusing the GC!
 	 */
 	//stacksize
 	//size_t stacksize = PTHREAD_STACK_MIN;

@@ -1,4 +1,3 @@
-
 #include <errno.h>
 
 #include "x10_lock.h"
@@ -28,7 +27,7 @@ x10_lock *_ZN3x104util10concurrent4LockC1Ev(x10_lock *self)
     // create lock object
     // ??check the return code for ENOMEM and throw OutOfMemoryError??
     (void)pthread_mutex_init(&(self->__lock), &(self->__lock_attr));
-    
+
     return self;
 }
 
@@ -51,7 +50,7 @@ void _ZN3x104util10concurrent4Lock6unlockEv(x10_lock *self)
 {
     // calling thread doesn't own the lock
     if (pthread_mutex_unlock(&(self->__lock)) == EPERM) {
-        x10_throw_exception(X10_ILLEGAL_MONITOR_STATE_EXCEPTION, T_("")); 
+        x10_throw_exception(X10_ILLEGAL_MONITOR_STATE_EXCEPTION, T_(""));
     }
 }
 
@@ -85,7 +84,7 @@ x10_int _ZN3x104util10concurrent4Lock12getHoldCountEv(x10_lock *self)
         return 0;
     #endif /* __64BIT__ */
     #else /* !_AIX */
-    X10_UNUSED(self); 
+    X10_UNUSED(self);
         return -1;
     #endif /* _AIX */
 }

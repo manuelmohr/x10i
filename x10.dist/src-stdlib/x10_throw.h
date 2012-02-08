@@ -5,4 +5,4 @@
 
 X10_EXTERN void x10_throw_stub(void);
 
-#endif // X10_THROW_H_
+#endif

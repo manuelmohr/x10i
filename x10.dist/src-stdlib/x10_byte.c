@@ -19,13 +19,13 @@ x10_byte _ZN3x104lang4Bytev3rbsEi(x10_byte a, x10_int b)
 }
 MAKE_CONFS(_ZN3x104lang4Byte, x10_byte)
 
-static x10_string *x10_byte_to_string(x10_byte value, x10_int radix) 
+static x10_string *x10_byte_to_string(x10_byte value, x10_int radix)
 {
     if (0 == value) return x10_string_from_wide_chars(T_("0"));
     assert(radix>=2);
     assert(radix<=16);
-    static x10_char numerals[] = { '0', '1', '2', '3', '4', '5', '6', '7',  
-                               '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+    static x10_char numerals[] = { '0', '1', '2', '3', '4', '5', '6', '7',
+                                   '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
     // worst case is binary -128: needs -, 8 digits, and a '\0'
     x10_char buf[10] = T_(""); //zeroes entire buffer (S6.7.8.21)
     x10_int value2;
@@ -45,7 +45,7 @@ static x10_string *x10_byte_to_string(x10_byte value, x10_int radix)
     return x10_string_from_wide_chars(b);
 }
 
-x10_string *_ZN3x104lang4Byte8toStringEi(x10_byte self, x10_int radix) 
+x10_string *_ZN3x104lang4Byte8toStringEi(x10_byte self, x10_int radix)
 {
 	return x10_byte_to_string(self, radix);
 }
@@ -76,4 +76,3 @@ x10_int _ZN3x104lang4Byte6signumEv(x10_byte self)
 	extern x10_int _ZN3x104lang3Int6signumEv(x10_int);
 	return _ZN3x104lang3Int6signumEv(self);
 }
-

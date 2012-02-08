@@ -1,7 +1,7 @@
 #include "x10.h"
 #include "x10_primitive_types.h"
 
-x10_long _ZN3x104lang11FirmPointer10native_ptrEv(x10_any *self) 
+x10_long _ZN3x104lang11FirmPointer10native_ptrEv(x10_any *self)
 {
 	return (x10_long)self;
 }

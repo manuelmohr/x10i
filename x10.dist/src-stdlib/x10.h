@@ -61,4 +61,4 @@ typedef double      x10_double;
 
 #define X10_UNIMPLEMENTED() fprintf(stderr, "%s not implemented yet", __FUNCTION__); abort();
 
-#endif // X10_H
+#endif

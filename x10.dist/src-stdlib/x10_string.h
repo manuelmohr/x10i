@@ -83,4 +83,4 @@ X10_EXTERN x10_string *_ZN3x104lang6StringplEPN3x104lang6StringE(x10_string *, x
 // static operator+(String, String)
 X10_EXTERN x10_string *_ZN3x104lang6StringplEPN3x104lang6StringEPN3x104lang6StringE(x10_string *, x10_string *);
 
-#endif // X10_STRING_H_
+#endif

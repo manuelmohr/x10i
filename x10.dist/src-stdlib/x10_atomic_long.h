@@ -14,4 +14,4 @@ X10_EXTERN x10_boolean _ZN3x104util10concurrent10AtomicLong17weakCompareAndSetEx
 X10_EXTERN x10_long _ZN3x104util10concurrent10AtomicLong9getAndAddEx(x10_atomic_long *, x10_long);
 X10_EXTERN x10_long _ZN3x104util10concurrent10AtomicLong9addAndGetEx(x10_atomic_long *, x10_long);
 
-#endif // X10_ATOMIC_LONG_H_
+#endif

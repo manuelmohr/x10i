@@ -7,10 +7,13 @@ x10_boolean _ZN3x104lang14X10FirmSupport6memcmpEN3x104lang11FirmPointerEN3x104la
 }
 
 /* memcpy */
-void _ZN3x104lang14X10FirmSupport6memcpyEN3x104lang11FirmPointerEN3x104lang11FirmPointerExb(x10_any *dst, x10_any *src, x10_long bytes, x10_boolean overlap) 
+void _ZN3x104lang14X10FirmSupport6memcpyEN3x104lang11FirmPointerEN3x104lang11FirmPointerExb(x10_any *dst, x10_any *src, x10_long bytes, x10_boolean overlap)
 {
-	if(overlap) memmove((void *)dst, (const void *)src, bytes);
-	else 			memcpy((void *)dst, (const void *)src, bytes);
+	if(overlap) {
+		memmove((void *)dst, (const void *)src, bytes);
+	} else {
+		memcpy((void *)dst, (const void *)src, bytes);
+	}
 }
 
 /* memset */
@@ -24,16 +27,14 @@ x10_any *_ZN3x104lang14X10FirmSupport5allocExibb(x10_long numBytes, x10_int alig
 {
 	x10_any *ret = X10_NULL;
 	if(congruent) {
-		assert(X10_FALSE && "No support for congruent memory allocation yet");
-		
+		assert(false && "No support for congruent memory allocation yet");
 	} else {
 		const x10_long size = numBytes + alignment;
-      ret = x10_malloc(size);
-      if(zeroed)
-      	memset(ret, 0, size);
+		ret = x10_malloc(size);
+		if(zeroed)
+		memset(ret, 0, size);
 	}
 	assert(ret != X10_NULL);
-	
 	return ret;
 }
 

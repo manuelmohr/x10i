@@ -27,7 +27,7 @@ typedef union FloatFloatTypePunner {
     x10_float f;
 } FloatTypePunner;
 
-x10_int _ZN3x104lang5Float12toRawIntBitsEv(x10_float self) 
+x10_int _ZN3x104lang5Float12toRawIntBitsEv(x10_float self)
 {
     FloatTypePunner tmp;
     tmp.f = self;
