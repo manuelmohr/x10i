@@ -55,7 +55,6 @@ echo "LIBFIRM_LFLAGS   = -L\$(FIRM_HOME)/build/debug -lfirm" >> liboo/config.mak
 # Use ccache if you have it installed...
 if which ccache > /dev/null; then
 	echo "CC = ccache gcc" >> libfirm/config.mak
-	echo "CC = ccache gcc" >> liboo/config.mak
 fi
 if [ "`uname -s`" = "Darwin" ]; then
 	echo "DLLEXT = .dylib" >> libfirm/config.mak
