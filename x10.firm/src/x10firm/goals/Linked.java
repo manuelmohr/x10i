@@ -55,7 +55,6 @@ public class Linked extends PostCompiled {
 		if (opts.useSoftFloat())
 			cmd.add("-msoft-float");
 		cmd.add("-lm");
-		cmd.add("-lrt");
 		cmd.add("-lpthread");
 		cmd.add("-L" + libooPath);
 		cmd.add("-Wl,-R" + libooPath);
