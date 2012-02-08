@@ -45,10 +45,7 @@ public class Linked extends PostCompiled {
 
 		final List<String> cmd = new ArrayList<String>();
 		cmd.add(gcc);
-		cmd.add("-std=c99");
 		cmd.add(asm.getAbsolutePath());
-		if (opts.x10_config.DEBUG)
-			cmd.add("-g");
 		// Always link statically when cross-compiling to SPARC
 		if (opts.getTargetTriple().toString().startsWith("sparc"))
 			cmd.add("-static");
