@@ -4,6 +4,7 @@ target         ?= $(guessed_target)
 BUILDDIR=build
 STDLIB_BUILDDIR=$(BUILDDIR)/$(target)
 
+SIMULATOR?=
 LIBNAME=x10std
 VERSION=2.2.0
 A_FILE=$(STDLIB_BUILDDIR)/lib$(LIBNAME).a
@@ -29,7 +30,7 @@ $(SO_FILE): $(O_FILE)
 
 $(FIRM_NATIVE_TYPES_CONF): $(GEN_FIRM_NATIVE_SIZES) $(H_FILES)
 	$(CC) -static -o gen_firm_native_sizes $<
-	./gen_firm_native_sizes > $@
+	$(SIMULATOR) ./gen_firm_native_sizes > $@
 	rm -f gen_firm_native_sizes
 
 $(MASTER): $(C_FILES) $(H_FILES) Makefile
