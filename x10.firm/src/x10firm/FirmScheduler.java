@@ -13,7 +13,6 @@ import polyglot.types.TypeSystem;
 import polyglot.visit.NodeVisitor;
 import x10.ExtensionInfo;
 import x10.ExtensionInfo.X10Scheduler;
-import x10.X10CompilerOptions;
 import x10.ast.X10NodeFactory_c;
 import x10c.visit.ClosureRemover;
 import x10firm.goals.AsmEmitted;
@@ -34,8 +33,9 @@ import x10firm.visit.StaticInitializer;
 class FirmScheduler extends X10Scheduler {
 	private final FirmTypeSystem firmTypeSystem;
 
+
 	/**
-	 * Initialize the scheduler, duh.
+	 * Initialize the scheduler.
 	 * @param info "==ExtensionInfo.this", because this inner class is static
 	 * (strange design by X10)
 	 */
@@ -58,7 +58,7 @@ class FirmScheduler extends X10Scheduler {
 		loweringFirm.intern(this);
 		seq.append(loweringFirm);
 
-		final X10CompilerOptions options = (X10CompilerOptions) this.extInfo.getOptions();
+		final CompilerOptions options = (CompilerOptions) this.extInfo.getOptions();
 		if (options.x10_config.OPTIMIZE) {
 			final Goal optimized = new OptimizeFirm(this);
 			optimized.intern(this);
@@ -69,9 +69,11 @@ class FirmScheduler extends X10Scheduler {
 		asmEmitted.intern(this);
 		seq.append(asmEmitted);
 
-		final Goal linked = new Linked(extInfo);
-		linked.intern(this);
-		seq.append(linked);
+		if (options.assembleAndLink()) {
+			final Goal linked = new Linked(extInfo);
+			linked.intern(this);
+			seq.append(linked);
+		}
 
 		return seq.intern(this);
 	}

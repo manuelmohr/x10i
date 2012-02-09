@@ -24,38 +24,42 @@ public class Linked extends PostCompiled {
 	}
 
 	@Override
-	protected boolean invokePostCompiler(Options options, Compiler compiler,
+	protected boolean invokePostCompiler(Options opts, Compiler compiler,
 			ErrorQueue eq) {
 
-		final CompilerOptions opts = (CompilerOptions) options;
-		if (!opts.assembleAndLink())
-			return true;
-
-		final String exeFilename = opts.executable_path == null
+		final CompilerOptions options = (CompilerOptions) opts;
+		final String exeFilename = options.executable_path == null
 		                           ? "a.out"
-		                           : opts.executable_path;
+		                           : options.executable_path;
 		final File asm = new File(AsmEmitted.ASM_FILENAME);
 
-		final CompilerOptions.TargetTriple target = opts.getTargetTriple();
-		final String x10DistPath = System.getProperty("x10.dist");
-		final String libooPath  = x10DistPath != null
-		                          ? x10DistPath + "/../liboo/build/" + target
-		                          : "../liboo/build/" + target;
+		final CompilerOptions.TargetTriple target = options.getTargetTriple();
+		final String x10DistPath = System.getProperty("x10.dist", ".");
+		final String libooPath = x10DistPath + "/../liboo/build/" + target;
 		final String gcc = target + "-gcc";
 
 		final List<String> cmd = new ArrayList<String>();
 		cmd.add(gcc);
-		cmd.add(asm.getAbsolutePath());
-		// Always link statically when cross-compiling to SPARC
-		if (opts.getTargetTriple().toString().startsWith("sparc"))
+		if (options.linkStatically()) {
 			cmd.add("-static");
-		if (opts.useSoftFloat())
+		}
+
+		cmd.add(asm.getAbsolutePath());
+		if (options.useSoftFloat())
 			cmd.add("-msoft-float");
+		if (options.linkStatically()) {
+			cmd.add("-L" + libooPath);
+			cmd.add("-Wl,-R" + libooPath);
+			cmd.add("-loo_rt");
+		} else {
+			cmd.add(libooPath + "/liboo_rt.a");
+		}
+		if (!options.useFirmLibraries()) {
+			String stdlibPath = x10DistPath + "/src-stdlib/build/" + target;
+			cmd.add(stdlibPath + "/libx10std.a");
+		}
 		cmd.add("-lm");
 		cmd.add("-lpthread");
-		cmd.add("-L" + libooPath);
-		cmd.add("-Wl,-R" + libooPath);
-		cmd.add("-loo_rt");
 		cmd.add("-o");
 		cmd.add(exeFilename);
 

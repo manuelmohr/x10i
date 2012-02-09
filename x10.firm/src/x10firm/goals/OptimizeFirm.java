@@ -53,9 +53,6 @@ public class OptimizeFirm extends AllBarrierGoal {
 		firm.bindings.binding_iroptimize.garbage_collect_entities();
 	}
 
-	/**
-	 *
-	 */
 	private static void intraproceduralOptimizations() {
 		for (final Graph graph : Program.getGraphs()) {
 			final Pointer irg = graph.ptr;
@@ -85,9 +82,6 @@ public class OptimizeFirm extends AllBarrierGoal {
 		}
 	}
 
-	/**
-	 *
-	 */
 	private static void interproceduralOptimizations() {
 		firm.bindings.binding_iroptimize.garbage_collect_entities();
 		firm.bindings.binding_iroptimize.opt_tail_recursion();

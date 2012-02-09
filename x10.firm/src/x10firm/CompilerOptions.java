@@ -80,6 +80,8 @@ public class CompilerOptions extends X10CompilerOptions {
 	private TargetTriple target = null;
 	private boolean useSoftFloat = false;
 	private boolean assembleAndLink = true;
+	private boolean useFirmLibraries = true;
+	private boolean linkStatically = false;
 
 	/** constructor */
 	public CompilerOptions(ExtensionInfo extension) {
@@ -137,6 +139,19 @@ public class CompilerOptions extends X10CompilerOptions {
 		return assembleAndLink;
 	}
 
+	/**
+	 * returns whether we should use libraries in firm (.ir) format if available
+	 * (This allows inlining of library functions)
+	 */
+	public boolean useFirmLibraries() {
+		return useFirmLibraries;
+	}
+
+	/** returns true if result should be linked statically */
+	public boolean linkStatically() {
+		return linkStatically;
+	}
+
 	private static void backendOption(String option) {
 		FirmGenerated.initializeFirm();
 		Backend.option(option);
@@ -176,6 +191,12 @@ public class CompilerOptions extends X10CompilerOptions {
 		} else if (args[i].equals("-S")) {
 			assembleAndLink = false;
 			return index + 1;
+		} else if (args[i].equals("-static")) {
+			linkStatically = true;
+			return index + 1;
+		} else if (args[i].equals("-noUseFirmLibraries")) {
+			useFirmLibraries = false;
+			return index + 1;
 		}
 
 		return index;
@@ -199,5 +220,9 @@ public class CompilerOptions extends X10CompilerOptions {
 				"Path to the firm native types configuration files");
 		usageForFlag(out, "-S",
 				"Do not assemble and link; keep .s files");
+		usageForFlag(out, "-noUseFirmLibraries",
+				"Do not load libraries as firm-ir files");
+		usageForFlag(out, "-static",
+				"link external libraries statically");
 	}
 }

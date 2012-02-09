@@ -37,7 +37,6 @@ import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10MethodDef;
 import x10.types.X10ParsedClassType;
-import x10firm.CompilerOptions;
 import firm.ClassType;
 import firm.Entity;
 import firm.Ident;
@@ -49,7 +48,6 @@ import firm.PointerType;
 import firm.PrimitiveType;
 import firm.Program;
 import firm.Type;
-import firm.bindings.binding_irio;
 import firm.bindings.binding_oo.ddispatch_binding;
 import firm.bindings.binding_typerep.ir_type_state;
 import firm.bindings.binding_typerep.ir_visibility;
@@ -126,12 +124,7 @@ public class FirmTypeSystem {
 		this.x10Context    = new Context(this.x10TypeSystem);
 	}
 
-	private void loadCStandardLibrary(final CompilerOptions options) {
-		final String stdlibPath = System.getProperty("x10.dist")
-				+ "/src-stdlib/build/" + options.getTargetTriple()
-				+ "/stdlib.ir";
-		binding_irio.ir_import(stdlibPath);
-
+	private void findExistingEntities() {
 		final ClassType glob = Program.getGlobalType();
 		for (Entity ent : glob.getMembers()) {
 			if (ent.getVisibility() != ir_visibility.ir_visibility_default)
@@ -164,12 +157,12 @@ public class FirmTypeSystem {
 	/**
 	 * Initializes the firm type system
 	 */
-	public void init(final CompilerOptions options) {
+	public void init(String nativeTypesConfig) {
 		if (inited)
 			return;
 		inited = true;
-		loadCStandardLibrary(options);
-		readFirmNativeTypesConfig(options.getFirmNativeTypesFilename());
+		findExistingEntities();
+		readFirmNativeTypesConfig(nativeTypesConfig);
 		initFirmTypes();
 		NameMangler.setup(x10TypeSystem);
 		// Always generate the vtable for x10.lang.String.

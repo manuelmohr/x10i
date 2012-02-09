@@ -15,6 +15,7 @@ import firm.Firm;
 import firm.Mode;
 import firm.Mode.Arithmetic;
 import firm.OO;
+import firm.bindings.binding_irio;
 
 /**
  * This defines the FirmGeneration goal (other people would say "phase")
@@ -48,6 +49,13 @@ public class FirmGenerated extends SourceGoal_c {
 		this.nodeFactory = nodeFactory;
 	}
 
+	private static void loadStdLibGraphs(CompilerOptions options) {
+		final String stdlibPath = System.getProperty("x10.dist")
+				+ "/src-stdlib/build/" + options.getTargetTriple()
+				+ "/stdlib.ir";
+		binding_irio.ir_import(stdlibPath);
+	}
+
 	@Override
 	public boolean runTask() {
 		initializeCodeGen();
@@ -59,7 +67,10 @@ public class FirmGenerated extends SourceGoal_c {
 			return false;
 
 		final CompilerOptions options = (CompilerOptions) scheduler.extensionInfo().getOptions();
-		firmTypeSystem.init(options);
+		if (options.useFirmLibraries())
+			loadStdLibGraphs(options);
+
+		firmTypeSystem.init(options.getFirmNativeTypesFilename());
 
 		final Compiler compiler = job().compiler();
 		final FirmGenerator v = new FirmGenerator(compiler, firmTypeSystem, x10TypeSystem, nodeFactory, options);
