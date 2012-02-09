@@ -129,6 +129,9 @@ public class CompilerOptions extends X10CompilerOptions {
 		return useSoftFloat;
 	}
 
+	/**
+	 * @return Returns whether generated assembly file should be assembled and linked.
+	 */
 	public boolean assembleAndLink() {
 		return assembleAndLink;
 	}

@@ -9,13 +9,10 @@ import x10.X10CompilerOptions;
 import x10c.ast.X10CNodeFactory_c;
 import x10firm.types.GenericTypeSystem;
 
-import com.sun.jna.Pointer;
-
 import firm.Firm;
 import firm.Mode;
 import firm.Mode.ir_mode_arithmetic;
 import firm.OO;
-import firm.bindings.binding_irmode;
 
 /**
  * Defines our extension (Firm backend in X10 compiler) within the Polyglot framework
