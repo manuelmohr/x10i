@@ -2,6 +2,7 @@ package x10firm.goals;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import polyglot.frontend.Compiler;
@@ -25,7 +26,11 @@ public class Linked extends PostCompiled {
 	@Override
 	protected boolean invokePostCompiler(Options options, Compiler compiler,
 			ErrorQueue eq) {
+
 		final CompilerOptions opts = (CompilerOptions) options;
+		if (!opts.assembleAndLink())
+			return true;
+
 		final String exeFilename = opts.executable_path == null
 		                           ? "a.out"
 		                           : opts.executable_path;
@@ -58,14 +63,9 @@ public class Linked extends PostCompiled {
 		cmd.add("-o");
 		cmd.add(exeFilename);
 
-		// C++ backend decides according to options, whether to delete the
-		// output files.
-		final ArrayList<String> outputFiles = new ArrayList<String>();
-		outputFiles.add(asm.getAbsolutePath());
-
 		// Reuse the C++ backend.
-		if (!X10CPPTranslator.doPostCompile(options, eq, outputFiles, cmd.toArray(new String[0]))) {
-			eq.enqueue(ErrorInfo.POST_COMPILER_ERROR, "linking failed");
+		if (!X10CPPTranslator.doPostCompile(options, eq, Collections.<String>emptyList(), cmd.toArray(new String[0]))) {
+			eq.enqueue(ErrorInfo.POST_COMPILER_ERROR, "assembling and linking failed");
 			return false;
 		}
 

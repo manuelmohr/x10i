@@ -52,11 +52,21 @@ public class AsmEmitted extends AllBarrierGoal {
 		}
 
 		/* emit asm */
-		File f;
+		final File f;
 		try {
-			f = File.createTempFile(ASM_PREFIX, ASM_SUFFIX);
+			if (options.assembleAndLink()) {
+				f = File.createTempFile(ASM_PREFIX, ASM_SUFFIX);
+			} else {
+				if (options.executable_path == null) {
+					final String defaultFile = "asm_output.s";
+					System.err.println("Warning: -o not specified, defaulting to " + defaultFile);
+					f = new File(defaultFile);
+				} else {
+					f = new File(options.executable_path);
+				}
+			}
 		} catch (IOException e) {
-			System.out.println("Could not create temporary asm file");
+			System.out.println("Could not create asm file");
 			e.printStackTrace();
 			return false;
 		}
@@ -64,7 +74,7 @@ public class AsmEmitted extends AllBarrierGoal {
 			Backend.option("omitfp"); // makes the assembler a bit more readable
 			Backend.createAssembler(f.getAbsolutePath(), COMPILATION_UNIT_NAME);
 		} catch (IOException e) {
-			System.out.println("Could not create temporary asm file");
+			System.out.println("Could not create asm file");
 			e.printStackTrace();
 			return false;
 		}

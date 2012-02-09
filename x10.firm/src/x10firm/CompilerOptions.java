@@ -78,6 +78,7 @@ public class CompilerOptions extends X10CompilerOptions {
 	private String nativeTypesConfigPath = null;
 	private TargetTriple target = null;
 	private boolean useSoftFloat = false;
+	private boolean assembleAndLink = true;
 
 	/** constructor */
 	public CompilerOptions(ExtensionInfo extension) {
@@ -128,6 +129,10 @@ public class CompilerOptions extends X10CompilerOptions {
 		return useSoftFloat;
 	}
 
+	public boolean assembleAndLink() {
+		return assembleAndLink;
+	}
+
 	@Override
 	protected int parseCommand(String args[], int index, Set<String> source)
 			throws UsageError, Main.TerminationException {
@@ -159,6 +164,9 @@ public class CompilerOptions extends X10CompilerOptions {
 		} else if (args[i].equals("-nativeTypesConfigPath")) {
 			nativeTypesConfigPath = args[i+1];
 			return index + 2;
+		} else if (args[i].equals("-S")) {
+			assembleAndLink = false;
+			return index + 1;
 		}
 
 		return index;
@@ -180,5 +188,7 @@ public class CompilerOptions extends X10CompilerOptions {
 				"Dump FIRM graphs");
 		usageForFlag(out, "-nativeTypesConfigPath <pathname>", 
 				"Path to the firm native types configuration files");
+		usageForFlag(out, "-S",
+				"Do not assemble and link; keep .s files");
 	}
 }
