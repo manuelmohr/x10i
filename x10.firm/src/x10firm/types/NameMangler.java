@@ -261,7 +261,7 @@ public class NameMangler {
 		if (x10TypeSystem.isParameterType(type))
 			return mangleParameter(x10TypeSystem.getConcreteType(type));
 
-		final Type ret = x10TypeSystem.simplifyType(type);
+		final Type ret = GenericTypeSystem.simplifyType(type);
 
 		String tmp = tryPrimitiveType(ret);
 		if (tmp != null)
@@ -485,7 +485,7 @@ public class NameMangler {
 
 		String tmp = null;
 
-		final Type ret = x10TypeSystem.simplifyType(type);
+		final Type ret = GenericTypeSystem.simplifyType(type);
 		if (!embed) {
 			tmp = tryPrimitiveType(ret);
 			if (tmp != null)

@@ -19,6 +19,9 @@ import firm.Entity;
 import firm.nodes.Node;
 import firm.nodes.OOConstruction;
 
+/**
+ * Lowers usages of compiler-builtin x10.lang.Zero
+ */
 public class ZeroGenerator extends NativeGenericDispatcher {
 
 	/**

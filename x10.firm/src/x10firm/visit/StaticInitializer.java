@@ -86,12 +86,12 @@ import x10c.types.X10CTypeSystem_c;
 public class StaticInitializer extends ContextVisitor {
 
     private final X10CTypeSystem_c xts;
-    protected final X10CNodeFactory_c xnf;
-    protected final ASTQuery query;
+    private final X10CNodeFactory_c xnf;
+    private final ASTQuery query;
 
     private final WeakHashMap<X10ProcedureDef,ProcedureDecl> procDeclCache = new WeakHashMap<X10ProcedureDef,ProcedureDecl>();
     private final WeakHashMap<Block,Boolean> procBodyCache = new WeakHashMap<Block,Boolean>();
-    // caching of shadow classes
+    /** caching of shadow classes */
     private static Map<X10ClassDef, X10ClassDef> shadow_class_map = new HashMap<X10ClassDef, X10ClassDef>();
 
     private X10CompilerOptions opts = (X10CompilerOptions) job.extensionInfo().getOptions();
@@ -102,9 +102,10 @@ public class StaticInitializer extends ContextVisitor {
     private static final String INIT_DIPSPATCHER_UNINITIALIZED = "UNINITIALIZED";
     private static final String INIT_DISPATCHER_INITIALIZED = "INITIALIZED";
 
-    // mapping static field and corresponding initializer method
+    /** mapping static field and corresponding initializer method */
     private Map<Pair<Type,Name>, StaticFieldInfo> staticFinalFields = CollectionFactory.newHashMap();
 
+    /** Constructor */
     public StaticInitializer(Job job, TypeSystem ts, NodeFactory nf) {
         super(job, ts, nf);
         xts = (X10CTypeSystem_c) ts;
@@ -246,7 +247,7 @@ public class StaticInitializer extends ContextVisitor {
         return cDecl;
     }
 
-    protected X10ClassDef getShadowClassDef(final X10ClassDef interfaceClassDef) {
+    private X10ClassDef getShadowClassDef(final X10ClassDef interfaceClassDef) {
     	X10ClassDef cDef = shadow_class_map.get(interfaceClassDef);
     	if(cDef != null) return cDef;
 
@@ -328,7 +329,7 @@ public class StaticInitializer extends ContextVisitor {
         return c;
     }
 
-    protected StaticFieldInfo checkFieldDeclRHS(final X10FieldDecl fd, final X10ClassDef cd) {
+    private StaticFieldInfo checkFieldDeclRHS(final X10FieldDecl fd, final X10ClassDef cd) {
         // traverse nodes in RHS
         Id leftName = fd.name();
 
@@ -409,7 +410,7 @@ public class StaticInitializer extends ContextVisitor {
         return fieldInfo;
     }
 
-    protected Call makeStaticCall(Position pos, X10ClassType receiver, Id id, Type returnType) {
+    private Call makeStaticCall(Position pos, X10ClassType receiver, Id id, Type returnType) {
         // create MethodDef
         Name name = Name.make(initializerPrefix+id);
         StaticFieldInfo fieldInfo = getFieldEntry(receiver, id.id());
@@ -455,7 +456,7 @@ public class StaticInitializer extends ContextVisitor {
         return result;
     }
 
-    protected Expr getDefaultValue(Position pos, Type type) {
+    private Expr getDefaultValue(Position pos, Type type) {
         if (type.isBoolean())
             return xnf.BooleanLit(pos, false).type(type);
         else if (type.isChar())
@@ -482,7 +483,7 @@ public class StaticInitializer extends ContextVisitor {
             return null;
     }
 
-    protected boolean checkProcedureBody(final Block body, final int count) {
+    private boolean checkProcedureBody(final Block body, final int count) {
         Boolean r = procBodyCache.get(body);
         if (r != null)
             return (r == Boolean.TRUE);
@@ -618,7 +619,7 @@ public class StaticInitializer extends ContextVisitor {
         return decl[0];
     }
 
-    protected X10ConstructorDecl getConstructorDeclaration(X10ConstructorInstance ci) {
+    private X10ConstructorDecl getConstructorDeclaration(X10ConstructorInstance ci) {
         X10ConstructorDef cd = ci.x10Def();
         X10ClassType containerBase = (X10ClassType) Types.get(cd.container());
         X10ClassDef container = containerBase.x10Def();
@@ -627,7 +628,7 @@ public class StaticInitializer extends ContextVisitor {
         return (X10ConstructorDecl)getProcedureDeclaration(cd, container);
     }
 
-    protected X10MethodDecl getMethodDeclaration(MethodInstance mi) {
+    private X10MethodDecl getMethodDeclaration(MethodInstance mi) {
         X10MethodDef md = mi.x10Def();
         // get container and declaration for method
         X10ClassType containerBase = (X10ClassType) Types.get(md.container());
@@ -710,17 +711,18 @@ public class StaticInitializer extends ContextVisitor {
         return xnf.Field(pos, receiver, id).fieldInstance(fi);
     }
 
-    private MethodDecl makeFakeInitMethod(Position pos, Name fName, StaticFieldInfo fieldInfo, X10ClassDef classDef) {
+    private MethodDecl makeFakeInitMethod(Position pos, Name fName, StaticFieldInfo fieldInfo, X10ClassDef classDefParam) {
         // get MethodDef
         Name name = Name.make(initializerPrefix+fName);
         FieldInstance fi = fieldInfo.fieldDef.asInstance();
-        MethodDef md = makeMethodDef(classDef.asType(), name, fi.type());
+        MethodDef md = makeMethodDef(classDefParam.asType(), name, fi.type());
 
         // create a method declaration node
         List<TypeParamNode> typeParamNodes = Collections.<TypeParamNode>emptyList();
         List<Formal> formals = Collections.<Formal>emptyList();
 
         // get field reference
+        X10ClassDef classDef = classDefParam;
         if (classDef.isMember() && classDef.outer().get().flags().isInterface())
             // should refer to fields in the outer interface
             classDef = classDef.outer().get();
@@ -769,7 +771,7 @@ public class StaticInitializer extends ContextVisitor {
         return fieldInfo;
     }
 
-    protected boolean checkFieldRefReplacementRequired(X10Field_c f) {
+    private boolean checkFieldRefReplacementRequired(X10Field_c f) {
         Pair<Type,Name> key = new Pair<Type,Name>(f.target().type(), f.name().id());
         StaticFieldInfo fieldInfo = staticFinalFields.get(key);
         // not yet registered, or registered as replacement required
@@ -783,7 +785,7 @@ public class StaticInitializer extends ContextVisitor {
         return InitDispatcher_;
     }
 
-    protected static class StaticFieldInfo {
+    private static class StaticFieldInfo {
         protected Expr right;             // RHS expression, if replaced with initialization method
         protected MethodDef methodDef;    // getInitialized methodDef to be replaced
         protected FieldDef fieldDef;

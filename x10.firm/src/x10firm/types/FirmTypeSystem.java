@@ -142,7 +142,7 @@ public class FirmTypeSystem {
 		}
 	}
 
-	private String getUniqueBoxingName(final X10ClassType clazz) {
+	private static String getUniqueBoxingName(final X10ClassType clazz) {
 		final StringBuffer buf = new StringBuffer();
 		buf.append(clazz.name().toString());
 		// handle type arguments
@@ -166,7 +166,7 @@ public class FirmTypeSystem {
 			return;
 		inited = true;
 		loadCStandardLibrary(options);
-		readFirmNativeTypesConfig(options.getFirmNativeTypesFilename()); 
+		readFirmNativeTypesConfig(options.getFirmNativeTypesFilename());
 		initFirmTypes();
 		NameMangler.setup(x10TypeSystem);
 		// Always generate the vtable for x10.lang.String.
@@ -350,7 +350,7 @@ public class FirmTypeSystem {
 	 * @param argTypes A list with concrete types
 	 * @return The concrete type for the given generic type
 	 */
-	private polyglot.types.Type getConcreteTypeFromSubst(final polyglot.types.Type genType, final List<ParameterType> paramTypes,
+	private static polyglot.types.Type getConcreteTypeFromSubst(final polyglot.types.Type genType, final List<ParameterType> paramTypes,
 			final List<polyglot.types.Type> argTypes) {
 		int j = 0;
 		for(; j < paramTypes.size(); j++)
@@ -657,7 +657,7 @@ public class FirmTypeSystem {
 		/* create interfaces */
 		Set<polyglot.types.Type> interfaces = new LinkedHashSet<polyglot.types.Type>(classType.interfaces());
 		for (final polyglot.types.Type t : interfaces) {
-			final polyglot.types.Type iface = x10TypeSystem.simplifyType(t);
+			final polyglot.types.Type iface = GenericTypeSystem.simplifyType(t);
 			assert ((polyglot.types.ClassType)iface).flags().isInterface() : "Not an interface: "+iface;
 			final Type firmIface = asClass(iface);
 			result.addSuperType(firmIface);
@@ -702,7 +702,7 @@ public class FirmTypeSystem {
 		return result;
 	}
 
-	private boolean noSuperType(ClassType result) {
+	private static boolean noSuperType(ClassType result) {
 		return result.getNSuperTypes() == 0;
 	}
 

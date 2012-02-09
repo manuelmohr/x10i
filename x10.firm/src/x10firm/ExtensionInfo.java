@@ -143,7 +143,10 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedClassNames.add("x10/compiler/InitDispatcher.x10");
 	}
 
-	// TODO DELETE ME: Delete this method when library support is implemented.
+	/** returns true if it is expected, that the given class compiles cleanly
+	 * with the current compiler.
+	 * TODO DELETE ME: Delete this method when library support is implemented.
+	 */
 	public static boolean isAllowedClassName(final String className) {
 		for(final String str: allowedClassNames)
 			if(className.endsWith(str))

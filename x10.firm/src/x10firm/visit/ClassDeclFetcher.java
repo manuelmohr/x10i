@@ -46,7 +46,7 @@ public class ClassDeclFetcher {
 	 * @param candidate the constructor definition whose container is desired
 	 * @return the definition of the X10 Class containing the constructor
 	 */
-	private X10ClassDef getContainer(X10ConstructorDef candidate) {
+	private static X10ClassDef getContainer(X10ConstructorDef candidate) {
 		Ref<? extends ContainerType> containerRef = candidate.container();
 		ContainerType containerType = Types.get(containerRef);
 		Type containerBase = Types.baseType(containerType);

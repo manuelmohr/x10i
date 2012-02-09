@@ -98,7 +98,7 @@ public class ASTQuery {
 	 * @param name The field name which should be checked
 	 * @return True if the given field name is actually a synthetic field
 	 */
-    private boolean isSyntheticField(String name) {
+    private static boolean isSyntheticField(String name) {
 		if (name.startsWith("jlc$")) return true;
 		return false;
 	}
@@ -152,6 +152,7 @@ public class ASTQuery {
 	    return ret;
 	}
 
+	/** returns true if definition has @PerProcess annotation */
     public boolean isPerProcess(X10Def def) {
         try {
             Type t = x10TypeSystem.systemResolver().findOne(QName.make("x10.compiler.PerProcess"));

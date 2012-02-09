@@ -46,7 +46,7 @@ public class MethodDeclFetcher {
 	 * @param candidate the method definition whose container is desired
 	 * @return the definition of the X10 Class containing md
 	 */
-	private X10ClassDef getContainer(X10MethodDef candidate) {
+	private static X10ClassDef getContainer(X10MethodDef candidate) {
 		Ref<? extends ContainerType> containerRef = candidate.container();
 		ContainerType containerType = Types.get(containerRef);
 		Type containerBase = Types.baseType(containerType);

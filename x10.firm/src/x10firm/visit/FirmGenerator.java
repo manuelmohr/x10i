@@ -278,7 +278,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	// Set of generic nodes instances in the worklist for faster checking of duplicates.
 	private static Set<GenericNodeInstance> workListSet = new HashSet<GenericNodeInstance>();
 
-	private void addToWorklist(GenericNodeInstance other) {
+	private static void addToWorklist(GenericNodeInstance other) {
 		// Check for duplicates.
 		if(workListSet.contains(other)) return;
 
@@ -595,7 +595,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	 *  @param code    method/constructor code
 	 *  @param locals  Will hold all found locals.
 	 */
-	private List<LocalInstance> getAllLocalInstancesInCodeBlock(CodeBlock code) {
+	private static List<LocalInstance> getAllLocalInstancesInCodeBlock(CodeBlock code) {
 		List<LocalInstance> ret = new LinkedList<LocalInstance>();
 
 		if (code.body() == null)
@@ -2364,6 +2364,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	 */
 	private static Set<Type> initedBoxingTypes = new HashSet<Type>();
 
+	/** Returns the type used when boxing values of type @p type */
 	public X10ClassType getBoxingType(final X10ClassType type) {
 		final X10ClassType boxType = firmTypeSystem.getBoxingType(type);
 
@@ -2846,14 +2847,17 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		return con;
 	}
 
+	/** returns current firm context */
 	public FirmContext getFirmContext() {
 		return firmContext;
 	}
 
+	/** returns current X10 Type System */
 	public GenericTypeSystem getX10TypeSystem() {
 		return x10TypeSystem;
 	}
 
+	/** Returns current node factory */
 	public X10NodeFactory_c getNodeFactory() {
 		return xnf;
 	}

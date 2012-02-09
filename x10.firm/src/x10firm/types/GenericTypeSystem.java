@@ -115,7 +115,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 
 	private Map<String, X10ParsedClassType> remapped_classes = new HashMap<String, X10ParsedClassType>();
 
-	private String getGenericClassName(final X10ParsedClassType klass, final List<polyglot.types.Type> typeArguments) {
+	private static String getGenericClassName(final X10ParsedClassType klass, final List<polyglot.types.Type> typeArguments) {
 		StringBuffer buf = new StringBuffer();
 		buf.append(klass.name().toString());
 		buf.append("[");
@@ -193,7 +193,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	 * @param type The type which should be simplified
 	 * @return The simplified version of the given type
 	 */
-	public polyglot.types.Type simplifyType(final polyglot.types.Type type) {
+	public static polyglot.types.Type simplifyType(final polyglot.types.Type type) {
 		return Types.stripConstraints(Types.baseType(type));
 	}
 

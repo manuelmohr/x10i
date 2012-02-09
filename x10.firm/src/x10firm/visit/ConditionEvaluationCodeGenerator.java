@@ -173,6 +173,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		}
 	}
 
+	/** create code for instanceof check */
 	public static Node genInstanceOf(final Node node, final Type eType, final Type cmpType,
 			final FirmGenerator codeGenerator, final GenericTypeSystem typeSystem,
 			final FirmTypeSystem firmTypeSystem, final OOConstruction con) {
