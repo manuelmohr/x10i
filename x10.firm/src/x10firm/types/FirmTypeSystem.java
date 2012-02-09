@@ -43,7 +43,7 @@ import firm.Entity;
 import firm.Ident;
 import firm.MethodType;
 import firm.Mode;
-import firm.Mode.ir_mode_arithmetic;
+import firm.Mode.Arithmetic;
 import firm.OO;
 import firm.PointerType;
 import firm.PrimitiveType;
@@ -773,37 +773,37 @@ public class FirmTypeSystem {
 		Type typePointer = new PrimitiveType(modePointer);
 		saveType(x10TypeSystem.Pointer(), typePointer);
 
-		Mode modeLong = Mode.createIntMode("Long", ir_mode_arithmetic.irma_twos_complement, 64, true, 64);
+		Mode modeLong = Mode.createIntMode("Long", Arithmetic.TwosComplement, 64, true, 64);
 		Type typeLong = new PrimitiveType(modeLong);
 		typeLong.setAlignmentBytes(4);
 		saveType(x10TypeSystem.Long(), typeLong);
 
-		Mode modeULong = Mode.createIntMode("ULong", ir_mode_arithmetic.irma_twos_complement, 64, false, 64);
+		Mode modeULong = Mode.createIntMode("ULong", Arithmetic.TwosComplement, 64, false, 64);
 		Type typeULong = new PrimitiveType(modeULong);
 		typeULong.setAlignmentBytes(4);
 		saveType(x10TypeSystem.ULong(), typeULong);
 
-		Mode modeInt = Mode.createIntMode("Int", ir_mode_arithmetic.irma_twos_complement, 32, true, 32);
+		Mode modeInt = Mode.createIntMode("Int", Arithmetic.TwosComplement, 32, true, 32);
 		Type typeInt = new PrimitiveType(modeInt);
 		saveType(x10TypeSystem.Int(), typeInt);
 
-		Mode modeUInt = Mode.createIntMode("UInt", ir_mode_arithmetic.irma_twos_complement, 32, false, 32);
+		Mode modeUInt = Mode.createIntMode("UInt", Arithmetic.TwosComplement, 32, false, 32);
 		Type typeUInt = new PrimitiveType(modeUInt);
 		saveType(x10TypeSystem.UInt(), typeUInt);
 
-		Mode modeShort = Mode.createIntMode("Short", ir_mode_arithmetic.irma_twos_complement, 16, true, 32);
+		Mode modeShort = Mode.createIntMode("Short", Arithmetic.TwosComplement, 16, true, 32);
 		Type typeShort = new PrimitiveType(modeShort);
 		saveType(x10TypeSystem.Short(), typeShort);
 
-		Mode modeUShort = Mode.createIntMode("UShort", ir_mode_arithmetic.irma_twos_complement, 16, false, 32);
+		Mode modeUShort = Mode.createIntMode("UShort", Arithmetic.TwosComplement, 16, false, 32);
 		Type typeUShort = new PrimitiveType(modeUShort);
 		saveType(x10TypeSystem.UShort(), typeUShort);
 
-		Mode modeByte = Mode.createIntMode("Byte", ir_mode_arithmetic.irma_twos_complement, 8, true, 32);
+		Mode modeByte = Mode.createIntMode("Byte", Arithmetic.TwosComplement, 8, true, 32);
 		Type typeByte = new PrimitiveType(modeByte);
 		saveType(x10TypeSystem.Byte(), typeByte);
 
-		Mode modeUByte = Mode.createIntMode("UByte", ir_mode_arithmetic.irma_twos_complement, 8, false, 32);
+		Mode modeUByte = Mode.createIntMode("UByte", Arithmetic.TwosComplement, 8, false, 32);
 		Type typeUByte = new PrimitiveType(modeUByte);
 		saveType(x10TypeSystem.UByte(), typeUByte);
 
@@ -811,11 +811,11 @@ public class FirmTypeSystem {
 		Type typeChar = new PrimitiveType(modeChar);
 		saveType(x10TypeSystem.Char(), typeChar);
 
-		Mode modeFloat = Mode.createFloatMode("Float", ir_mode_arithmetic.irma_ieee754, 8, 23);
+		Mode modeFloat = Mode.createFloatMode("Float", Arithmetic.IEE754, 8, 23);
 		Type typeFloat = new PrimitiveType(modeFloat);
 		saveType(x10TypeSystem.Float(), typeFloat);
 
-		Mode modeDouble = Mode.createFloatMode("Double", ir_mode_arithmetic.irma_ieee754, 11, 52);
+		Mode modeDouble = Mode.createFloatMode("Double", Arithmetic.IEE754, 11, 52);
 		Type typeDouble = new PrimitiveType(modeDouble);
 		typeLong.setAlignmentBytes(4);
 		saveType(x10TypeSystem.Double(), typeDouble);

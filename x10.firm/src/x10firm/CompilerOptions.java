@@ -12,6 +12,7 @@ import polyglot.frontend.ExtensionInfo;
 import polyglot.main.Main;
 import polyglot.main.UsageError;
 import x10.X10CompilerOptions;
+import x10firm.goals.FirmGenerated;
 import firm.Backend;
 
 /**
@@ -136,6 +137,11 @@ public class CompilerOptions extends X10CompilerOptions {
 		return assembleAndLink;
 	}
 
+	private static void backendOption(String option) {
+		FirmGenerated.initializeFirm();
+		Backend.option(option);
+	}
+
 	@Override
 	protected int parseCommand(String args[], int index, Set<String> source)
 			throws UsageError, Main.TerminationException {
@@ -145,7 +151,7 @@ public class CompilerOptions extends X10CompilerOptions {
 
 		if (args[i].startsWith("-b")) {
 			try {
-				Backend.option(args[i].substring(2));
+				backendOption(args[i].substring(2));
 			} catch (IllegalArgumentException e) {
 				throw new UsageError(String.format(
 						"Invalid backend argument '%s'", args[i]));
@@ -153,13 +159,13 @@ public class CompilerOptions extends X10CompilerOptions {
 			return index + 1;
 		} else if (args[i].startsWith("-target=") || args[i].startsWith("-mtarget=")) {
 			target = new TargetTriple(args[i].substring(args[i].indexOf('=') + 1));
-			Backend.option("isa=" + target.getIsa());
+			backendOption("isa=" + target.getIsa());
 			if (target.getIsa().equals("ia32"))
-				Backend.option("ia32-arch=" + target.getCpu());
+				backendOption("ia32-arch=" + target.getCpu());
 			return index + 1;
 		} else if (args[i].equals("-soft-float") || args[i].equals("-msoft-float")) {
 			useSoftFloat = true;
-			Backend.option(target.getIsa() + "-fpunit=softfloat");
+			backendOption(target.getIsa() + "-fpunit=softfloat");
 			return index + 1;
 		} else if (args[i].equals("-dumpgraphs")) {
 			dumpFirmGraphs = true;

@@ -8,10 +8,6 @@ import polyglot.frontend.Scheduler;
 import x10.X10CompilerOptions;
 import x10c.ast.X10CNodeFactory_c;
 import x10firm.types.GenericTypeSystem;
-import firm.Firm;
-import firm.Mode;
-import firm.Mode.ir_mode_arithmetic;
-import firm.OO;
 
 /**
  * Defines our extension (Firm backend in X10 compiler) within the Polyglot framework
@@ -24,10 +20,6 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 	 * E.g. loads the native libFirm via JNA.
 	 */
 	public ExtensionInfo() {
-		Firm.init();
-		Firm.enableOptimisations();
-		setPointerSize(32);
-		OO.init();
 	}
 
 	@Override
@@ -58,28 +50,6 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 	@Override
 	protected X10CompilerOptions createOptions() {
 		return new CompilerOptions(this);
-	}
-
-	/**
-	 *
-	 */
-	private static void setPointerSize(final int pointerSize) {
-		final Mode eqSignedInt;
-		final Mode eqUnsignedInt;
-
-		if (pointerSize == 32) {
-			eqSignedInt = Mode.getIs();
-			eqUnsignedInt = Mode.getIu();
-		} else if (pointerSize == 64) {
-			eqSignedInt = Mode.getLs();
-			eqUnsignedInt = Mode.getLu();
-		} else {
-			throw new RuntimeException("Unsupported pointer size: " + pointerSize);
-		}
-
-		final ir_mode_arithmetic arithmetic = ir_mode_arithmetic.irma_twos_complement;
-		final Mode mode = Mode.createReferenceMode("p" + pointerSize, arithmetic, pointerSize, eqSignedInt, eqUnsignedInt);
-		Mode.setDefaultModeP(mode);
 	}
 
 	// TODO: DELETE ME: Need library support
