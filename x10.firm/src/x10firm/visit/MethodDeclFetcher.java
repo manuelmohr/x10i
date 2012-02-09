@@ -23,6 +23,7 @@ import x10.visit.Desugarer;
 import x10.visit.X10TypeChecker;
 
 /**
+ * Finds the declaration, i.e. the MethodDecl node, for a given method.
  * Stolen from Inliner.java. Let's hope the X10 guys refactor this and put it
  * into a separate class soon.
  */

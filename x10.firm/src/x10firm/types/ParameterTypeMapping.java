@@ -9,29 +9,30 @@ import x10.types.ParameterType;
 
 /**
  * Container for parameter type mappings
- *
  */
 public class ParameterTypeMapping {
 	private final Map<ParameterType, Type> mapping;
 
+	/** Construct an empty parameter type mapping. */
 	public ParameterTypeMapping() {
 		this.mapping = new HashMap<ParameterType, Type>();
 	}
 
+	/** Construct a parameter type mapping using the supplied map. */
 	public ParameterTypeMapping(Map<ParameterType, Type> map) {
 		this.mapping = map;
 	}
 	/**
-	 * Add new mapping
+	 * Maps {@code param} to {@code concreteType}.
 	 * @param param			type parameter
-	 * @param concreteType	concrete type it is currently mapped to
+	 * @param concreteType	concrete type the parameter will be mapped to
 	 */
 	public void add(final ParameterType param, final Type concreteType) {
 		mapping.put(param, concreteType);
 	}
 
 	/**
-	 * @return	a key of all type parameters
+	 * @return a key of all type parameters
 	 */
 	public Set<ParameterType> getKeySet() {
 		return mapping.keySet();
@@ -39,7 +40,7 @@ public class ParameterTypeMapping {
 
 	/**
 	 * @param type		a type parameter
-	 * @return			the concrete type, it is currently mapped to
+	 * @return			the concrete type which the type parameter is currently mapped to
 	 */
 	public Type getMappedType(final ParameterType type) {
 		assert (mapping.containsKey(type));
@@ -87,5 +88,10 @@ public class ParameterTypeMapping {
 		}
 
 		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		return mapping.hashCode();
 	}
 }

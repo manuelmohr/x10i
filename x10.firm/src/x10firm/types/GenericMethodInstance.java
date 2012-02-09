@@ -9,10 +9,20 @@ import x10.types.ReinstantiatedMethodInstance;
 import x10.types.TypeParamSubst;
 import x10.types.X10MethodDef;
 
+/**
+ * Represents an instantiation of a generic method.
+ * Consists of a method definition and a mapping of its type parameters to arguments.
+ *
+ * @author mohr
+ */
 public class GenericMethodInstance {
 	private X10MethodDef def;
 	private ParameterTypeMapping mapping;
 
+	/** Construct a GenericMethodInstance.
+	 * @param mi             A MethodInstance that carries the type arguments for the instantiation.
+	 * @param x10TypeSystem  Reference to the generic type system object.
+	 */
 	protected GenericMethodInstance(final MethodInstance mi, final GenericTypeSystem x10TypeSystem) {
 		def = mi.x10Def();
 

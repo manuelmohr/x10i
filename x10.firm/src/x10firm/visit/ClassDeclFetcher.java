@@ -22,6 +22,11 @@ import x10.types.X10ConstructorDef;
 import x10.visit.Desugarer;
 import x10.visit.X10TypeChecker;
 
+/**
+ * Finds the declaration, i.e. the ClassDecl node, for a given class.
+ * Stolen from Inliner.java and further adapted. Let's hope the X10 guys
+ * refactor this and put it into a separate class soon.
+ */
 public class ClassDeclFetcher {
 	private final TypeSystem x10TypeSystem;
 	private final X10NodeFactory_c xnf;

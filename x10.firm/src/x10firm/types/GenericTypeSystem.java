@@ -8,6 +8,7 @@ import java.util.Map;
 import polyglot.frontend.ExtensionInfo;
 import polyglot.types.Context;
 import polyglot.types.Type;
+import polyglot.types.TypeSystem;
 import polyglot.types.Types;
 import x10.types.ParameterType;
 import x10.types.X10ClassDef;
@@ -16,8 +17,9 @@ import x10.types.X10ParsedClassType;
 import x10c.types.X10CTypeSystem_c;
 
 /**
- * Type system stuff to handle type parameters
- *
+ * Implements generic-aware versions of the methods provided by {@link TypeSystem}.
+ * This means that passing ParameterTypes like T are handled correctly by all
+ * methods by looking up the type that T is currently mapped to.
  */
 public class GenericTypeSystem extends X10CTypeSystem_c {
 	/** Remember type parameter mappings, used for example in name mangling. */
@@ -73,11 +75,17 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		return p;
 	}
 
+	/**
+	 * @return True iff {@code param} is a struct type.
+	 */
 	public boolean isStructType0(Type type) {
 		final Type ret = getConcreteType(type);
 		return super.isStructType(ret);
 	}
 
+	/**
+	 * @return True iff {@code t1} is a subtype of {@code t2}.
+	 */
 	public boolean isSubtype0(Type t1, Type t2) {
 		final Type t1_ = getConcreteType(t1),
 				   t2_ = getConcreteType(t2);
@@ -85,6 +93,9 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		return super.isSubtype(t1_, t2_);
 	}
 
+	/**
+	 * @return True iff {@code t1} is equal to {@code t2} in {@code context}.
+	 */
 	public boolean typeEquals0(Type t1, Type t2, Context context) {
 		final Type t1_ = getConcreteType(t1),
 				   t2_ = getConcreteType(t2);
@@ -92,6 +103,9 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		return super.typeEquals(t1_, t2_, context);
 	}
 
+	/**
+	 * @return True iff {@code t1} is equal to {@code t2} in {@code context}, ignoring their dep clauses and the dep clauses of their type arguments recursively.
+	 */
 	public boolean typeDeepBaseEquals0(Type t1, Type t2, Context context) {
 		final Type t1_ = getConcreteType(t1),
 				   t2_ = getConcreteType(t2);
@@ -192,11 +206,17 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		return ret.isClass();
 	}
 
+	/**
+	 * @return The type {@code t} casted to a class type or null
+	 */
 	public X10ClassType toClass(final Type t) {
 		final Type ret = getConcreteType(t);
 		return ret.toClass();
 	}
 
+	/**
+	 * @return True iff {@code type} is a reference type.
+	 */
 	public boolean isRefType(final Type type) {
 		final Type ret = getConcreteType(type);
 		return !isStructType0(ret) && (ret == Null() || isClass(ret) || isInterfaceType(ret));
@@ -205,12 +225,19 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	/** Own additions for the native pointer type */
     private X10ClassType FirmPointer_;
 
+    /**
+     * @return The FirmPointer class type.
+     */
     public X10ClassType FirmPointer() {
         if (FirmPointer_ == null)
             FirmPointer_ = load("x10.lang.FirmPointer");
         return FirmPointer_;
     }
 
+    /**
+     * @param type Type to check.
+     * @return True iff {@code type} is FirmPointer or a subtype of FirmPointer.
+     */
     public boolean isFirmPointer(final Type type) {
     	return isSubtype(type, FirmPointer());
     }

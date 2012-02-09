@@ -8,8 +8,20 @@ import polyglot.types.FieldDef;
 import x10.types.X10ConstructorDef;
 import firm.Entity;
 
+/**
+ * Represents a generic class context.
+ * As we employ a form of template instantiation instead of type erasure,
+ * each instantiation of a generic class is a separate context.  This means
+ * that there is a new copy of all methods, constructors and fields inside the
+ * generic class for each type the generic class is instantiated with.
+ *
+ * @author mohr
+ */
 public class GenericClassContext {
-   /** Mapping between MethodDefs and firm entities. */
+   /**
+    * Mapping between GenericMethodInstances and firm entities.
+    * Non-generic methods are adding with an empty {@link ParameterTypeMapping}.
+    */
    private final Map<GenericMethodInstance, Entity> methodEntities = new HashMap<GenericMethodInstance, Entity>();
 
 	/**
@@ -22,30 +34,42 @@ public class GenericClassContext {
 	/** Mapping between FieldDefs and firm entities. */
 	private final Map<FieldDef, Entity> fieldEntities = new HashMap<FieldDef, Entity>();
 
+	/** Create new empty {@link GenericClassContext}. */
 	public GenericClassContext() {
-
 	}
 
+	/**
+	 * @return The FIRM entity for the method instance {@code inst}.
+	 */
 	public Entity getMethodEntity(GenericMethodInstance inst) {
 		return methodEntities.get(inst);
 	}
 
+	/** Map {@code inst} to {@code entity}. */
 	public void putMethodEntity(GenericMethodInstance inst, Entity entity) {
 		methodEntities.put(inst, entity);
 	}
 
+	/**
+	 * @return The FIRM entity for constructor {@code def}.
+	 */
 	public Entity getConstructorEntity(X10ConstructorDef def) {
 		return constructorEntities.get(def);
 	}
 
+	/** Map {@code def} to {@code entity}. */
 	public void putConstructorEntity(X10ConstructorDef def, Entity entity) {
 		constructorEntities.put(def, entity);
 	}
 
+	/**
+	 * @return The FIRM entity for field {@code def}.
+	 */
 	public Entity getFieldEntity(FieldDef def) {
 		return fieldEntities.get(def);
 	}
 
+	/** Map {@code def} to {@code entity}. */
 	public void putFieldEntity(FieldDef def, Entity entity) {
 		fieldEntities.put(def, entity);
 	}
