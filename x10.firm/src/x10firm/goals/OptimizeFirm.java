@@ -28,8 +28,8 @@ public class OptimizeFirm extends AllBarrierGoal {
 
 	@Override
 	public boolean runTask() {
-		final ExtensionInfo info 					= scheduler.extensionInfo();
-		final CompilerOptions options 				= (CompilerOptions)info.getOptions();
+		final ExtensionInfo info = scheduler.extensionInfo();
+		final CompilerOptions options = (CompilerOptions)info.getOptions();
 
 		performAllFirmOptimizations();
 

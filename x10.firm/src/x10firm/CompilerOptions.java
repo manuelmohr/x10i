@@ -189,7 +189,7 @@ public class CompilerOptions extends X10CompilerOptions {
 				"Set firm backend options (use -bhelp for additional help)");
 		usageForFlag(out, "-dumpgraphs",
 				"Dump FIRM graphs");
-		usageForFlag(out, "-nativeTypesConfigPath <pathname>", 
+		usageForFlag(out, "-nativeTypesConfigPath <pathname>",
 				"Path to the firm native types configuration files");
 		usageForFlag(out, "-S",
 				"Do not assemble and link; keep .s files");

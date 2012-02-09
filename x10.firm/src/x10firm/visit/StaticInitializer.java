@@ -247,23 +247,25 @@ public class StaticInitializer extends ContextVisitor {
         return cDecl;
     }
 
-    private X10ClassDef getShadowClassDef(final X10ClassDef interfaceClassDef) {
-    	X10ClassDef cDef = shadow_class_map.get(interfaceClassDef);
-    	if(cDef != null) return cDef;
+	private X10ClassDef getShadowClassDef(final X10ClassDef interfaceClassDef) {
+		X10ClassDef cDef = shadow_class_map.get(interfaceClassDef);
+		if (cDef != null)
+			return cDef;
 
-        cDef = xts.createClassDef(interfaceClassDef.sourceFile());
-        cDef.superType(Types.ref(xts.Any()));
-        List<Ref<? extends Type>> interfacesRef = Collections.<Ref<? extends Type>>emptyList();
-        cDef.setInterfaces(interfacesRef);
-        cDef.name(Name.make(nestedShadowClass4Interface));
-        cDef.setFlags(Flags.PUBLIC.Abstract());
-        cDef.kind(ClassDef.MEMBER);
-        cDef.outer(Types.ref(interfaceClassDef));
+		cDef = xts.createClassDef(interfaceClassDef.sourceFile());
+		cDef.superType(Types.ref(xts.Any()));
+		List<Ref<? extends Type>> interfacesRef
+			= Collections.<Ref<? extends Type>> emptyList();
+		cDef.setInterfaces(interfacesRef);
+		cDef.name(Name.make(nestedShadowClass4Interface));
+		cDef.setFlags(Flags.PUBLIC.Abstract());
+		cDef.kind(ClassDef.MEMBER);
+		cDef.outer(Types.ref(interfaceClassDef));
 
-        shadow_class_map.put(interfaceClassDef, cDef);
+		shadow_class_map.put(interfaceClassDef, cDef);
 
-        return cDef;
-    }
+		return cDef;
+	}
 
     private ClassBody checkStaticFields(ClassBody body, Context cntxt) {
         final X10ClassDef cd = cntxt.currentClassDef();
@@ -704,12 +706,12 @@ public class StaticInitializer extends ContextVisitor {
                 Assign.ASSIGN, ar).fieldInstance(fdCond.asInstance()).type(xts.Int());
     }
 
-    private Expr getInitDispatcherConstant(Position pos, String name) {
-    	FieldInstance fi = InitDispatcher().fieldNamed(Name.make(name));
-        Id id = xnf.Id(pos, Name.make(name));
-        Receiver receiver = xnf.CanonicalTypeNode(pos, InitDispatcher());
-        return xnf.Field(pos, receiver, id).fieldInstance(fi);
-    }
+	private Expr getInitDispatcherConstant(Position pos, String name) {
+		FieldInstance fi = InitDispatcher().fieldNamed(Name.make(name));
+		Id id = xnf.Id(pos, Name.make(name));
+		Receiver receiver = xnf.CanonicalTypeNode(pos, InitDispatcher());
+		return xnf.Field(pos, receiver, id).fieldInstance(fi);
+	}
 
     private MethodDecl makeFakeInitMethod(Position pos, Name fName, StaticFieldInfo fieldInfo, X10ClassDef classDefParam) {
         // get MethodDef
@@ -743,23 +745,23 @@ public class StaticInitializer extends ContextVisitor {
         return result;
     }
 
-    private Stmt makeAddInitializer(Position pos, StaticFieldInfo fieldInfo, X10ClassDef classDef) {
-    	FieldDef def = fieldInfo.fieldDef;
-        Id id = xnf.Id(pos, def.name());
-        // replace with a static method call
-    	Type targetType = classDef.asType();
-        if (targetType instanceof ParsedClassType) {
-            X10ClassDef targetClassDef = ((ParsedClassType)targetType).def();
-            if (targetClassDef.flags().isInterface())
-                // target nested shadow class within interface
-                targetType = getShadowClassDef(targetClassDef).asType();
-        } else if (targetType instanceof ConstrainedType)
-            targetType = ((ConstrainedType)targetType).baseType().get();
+	private Stmt makeAddInitializer(Position pos, StaticFieldInfo fieldInfo, X10ClassDef classDef) {
+		FieldDef def = fieldInfo.fieldDef;
+		Id id = xnf.Id(pos, def.name());
+		// replace with a static method call
+		Type targetType = classDef.asType();
+		if (targetType instanceof ParsedClassType) {
+			X10ClassDef targetClassDef = ((ParsedClassType) targetType).def();
+			if (targetClassDef.flags().isInterface())
+				// target nested shadow class within interface
+				targetType = getShadowClassDef(targetClassDef).asType();
+		} else if (targetType instanceof ConstrainedType)
+			targetType = ((ConstrainedType) targetType).baseType().get();
 
-        X10ClassType receiver = (X10ClassType)targetType;
-        Type retType = def.type().get();
-        return xnf.Eval(pos, makeStaticCall(pos, receiver, id, retType));
-    }
+		X10ClassType receiver = (X10ClassType) targetType;
+		Type retType = def.type().get();
+		return xnf.Eval(pos, makeStaticCall(pos, receiver, id, retType));
+	}
 
     private StaticFieldInfo getFieldEntry(Type target, Name name) {
         Pair<Type,Name> key = new Pair<Type,Name>(target, name);

@@ -249,9 +249,9 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final firm.Type[] parameterTypes = new firm.Type[0];
 		final firm.Type[] resultTypes = new firm.Type[0];
 
-		firm.Type method_type  		= new MethodType(parameterTypes, resultTypes);
-		Entity method_entity 		= new Entity(Program.getGlobalType(), X10_STATIC_INITIALIZER, method_type);
-		firm.Type ptr_method_type 	= new PointerType(method_type);
+		firm.Type method_type = new MethodType(parameterTypes, resultTypes);
+		Entity method_entity = new Entity(Program.getGlobalType(), X10_STATIC_INITIALIZER, method_type);
+		firm.Type ptr_method_type = new PointerType(method_type);
 
 		Entity con_entity = new Entity(con_segment, "$ctor", ptr_method_type);
 		final Graph graph = Program.getConstCodeGraph();
@@ -371,14 +371,14 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	}
 
 	/**
-	 * @param retNode	remember this node as holding the returned value of the current expression
+	 * @param retNode remember this node as holding the returned value of the current expression
 	 */
 	private void setReturnNode(Node retNode) {
 		returnNode = retNode;
 	}
 
 	/**
-	 * @return	the Firm node holding the returned value of the current expression
+	 * @return the Firm node holding the returned value of the current expression
 	 */
 	private Node getReturnNode() {
 		assert returnNode != null;
@@ -485,7 +485,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		firmContext = firmContext.popFirmContext();
 	}
 
-	private void createStructTypeNameMethodBody(final X10ClassDecl clazz, final X10MethodDecl meth) {
+	private void createStructTypeNameMethodBody(final X10ClassDecl clazz,
+			final X10MethodDecl meth) {
 		X10MethodDef def = meth.methodDef();
 		final MethodInstance methInstance = def.asInstance();
 		final Position pos = Position.COMPILER_GENERATED;
@@ -493,25 +494,28 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		// remove the native flag
 		def.setFlags(def.flags().clearNative());
 
-        List<Stmt> statements = new ArrayList<Stmt>();
+		List<Stmt> statements = new ArrayList<Stmt>();
 
-        // generate -> return "[packageName].ClassName";
-        final Expr str = xnf.StringLit(pos, clazz.classDef().fullName().toString()).type(x10TypeSystem.String());
-        final Return ret = xnf.X10Return(pos, str, false);
-        statements.add(ret);
+		// generate -> return "[packageName].ClassName";
+		final Expr str = xnf.StringLit(pos,
+				clazz.classDef().fullName().toString()).type(
+				x10TypeSystem.String());
+		final Return ret = xnf.X10Return(pos, str, false);
+		statements.add(ret);
 
-        final polyglot.ast.Block block = xnf.Block(pos, statements);
+		final polyglot.ast.Block block = xnf.Block(pos, statements);
 
-        final Entity entity = firmTypeSystem.getMethodEntity(methInstance);
+		final Entity entity = firmTypeSystem.getMethodEntity(methInstance);
 
-        final OOConstruction savedConstruction = initConstruction(entity, methInstance.formalNames(),
-        		new LinkedList<LocalInstance>(),
-				def.flags(), methInstance.returnType(), clazz.classDef().asType());
+		final OOConstruction savedConstruction = initConstruction(entity,
+				methInstance.formalNames(), new LinkedList<LocalInstance>(),
+				def.flags(), methInstance.returnType(), clazz.classDef()
+						.asType());
 
-        // Now generate the firm graph
-        visitAppropriate(block);
+		// Now generate the firm graph
+		visitAppropriate(block);
 
-        finishConstruction(entity, savedConstruction);
+		finishConstruction(entity, savedConstruction);
 	}
 
 	/* Static Non generic members in generic classes can be only visited once. */
@@ -1136,11 +1140,11 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Case_c n) {
-		final Node fallthrough 	= con.getCurrentBlock().isBad() ? null : con.newJmp();
-		final Block block 		= con.newBlock();
+		final Node fallthrough = con.getCurrentBlock().isBad() ? null : con.newJmp();
+		final Block block = con.newBlock();
 
 		final FirmScope topScope = firmContext.getTopScope();
-		final Node switchCond       = topScope.getCurSwitch();
+		final Node switchCond = topScope.getCurSwitch();
 		final Block switchCondBlock = (Block)switchCond.getBlock();
 
 		con.setCurrentBlock(switchCondBlock);
@@ -1199,9 +1203,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Labeled_c label) {
-
-		final Stmt stmt 	= label.statement();
-		final String lab 	= label.labelNode().id().toString();
+		final Stmt stmt = label.statement();
+		final String lab = label.labelNode().id().toString();
 
 		// Mark the corresponding statement with the appropriate label
 		firmContext.setLabeledStmt(lab, stmt);
@@ -1377,16 +1380,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		if(con.getCurrentBlock().isBad()) {
 			return;
-			/* The stmt:
-			 * do {
-			 * 		'STMT`s'
-			 *      return 'EXPR';
-			 * } while(booleanExpr);
-			 * // "no return stmt"
-			without an explicit return at the end of the do ... while stmt seems to be a valid
-			stmt in a method with an explicit return value. -> So we will stop the firm generation
-			if we are currently in a bad block.
-			*/
 		}
 
 		bCond.addPred(con.newJmp());
@@ -1408,12 +1401,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(While_c n) {
-
-		// condition evaluates to false -> nothing to do
-		// TODO: Something is wrong with the method condIsConstantTrue
-		//		if(!n.condIsConstantTrue())
-		//			return;
-
 		String label = null;
 		if(firmContext.getLabeledStmt() == n) {
 			label = firmContext.getLabel();
@@ -1465,11 +1452,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(For_c n) {
-		// condition evaluates to false -> nothing to do
-		// TODO: Something is wrong with the method condIsConstantTrue
-//		if(!n.condIsConstantTrue())
-//			return;
-
 		String label = null;
 		if(firmContext.getLabeledStmt() == n) {
 			label = firmContext.getLabel();
@@ -1732,7 +1714,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	}
 
 	/**
-	 * @param expr	an X10 expression node
+	 * @param expr an X10 expression node
 	 * @return a Firm node containing the result value of the expression
 	 */
 	public Node visitExpression(Expr expr) {
@@ -1788,7 +1770,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	/**
 	 * Create the appropriate firm nodes for a heap allocation.
 	 * @param x10Type The x10 type of the object
-	 *
 	 * @return A proj node to the allocated memory.
 	 */
 	public Node genHeapAlloc(final Type x10Type) {
@@ -1893,8 +1874,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	/**
 	 * Generate firm graph for a new call
 	 * @param objectThisNode The firm node of the "this" pointer. "null" if the "this" pointer was not allocated yet.
-	 * 		  1.) var x: MyStruct = new MyStruct(); -> "x" will be used as the "this" pointer.
-	 * 		  2.) new MyStruct(); -> no preallocated "this" pointer -> create a new one.
+	 *    1.) var x: MyStruct = new MyStruct(); -> "x" will be used as the "this" pointer.
+	 *    2.) new MyStruct(); -> no preallocated "this" pointer -> create a new one.
 	 * @param n The "new" node
 	 */
 	private void genNew(final Node objectThisNode, final New_c n) {
@@ -2312,44 +2293,44 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	         * To avoid unnecessary dynamic delegation calls we can and will do a static method call on the boxed field.
 	         */
 
-	        final OOConstruction savedConstruction = initConstruction(entity, m.formalNames(), new LinkedList<LocalInstance>(),
-	        														  flags, m.returnType(), boxType);
+			final OOConstruction savedConstruction = initConstruction(entity,
+					m.formalNames(), new LinkedList<LocalInstance>(), flags,
+					m.returnType(), boxType);
 
 	        // The receiver of the delegated method call -> the boxed value
 	        final Expr bxdField = xnf.Field(pos, xnf.This(pos).type(boxType), xnf.Id(pos, boxedField.name())).fieldInstance(boxedField).type(boxedType);
 
 	        // the arguments.
 	        List<Expr> args = new LinkedList<Expr>();
-	        for(LocalInstance loc : m.formalNames()) {
-	        	final Expr rval = xnf.Local(pos, xnf.Id(pos, loc.name())).localInstance(loc).type(loc.type());
-	        	args.add(rval);
-	        }
+			for (LocalInstance loc : m.formalNames()) {
+				final Expr rval = xnf.Local(pos, xnf.Id(pos, loc.name())).localInstance(loc).type(loc.type());
+				args.add(rval);
+			}
+			// find the appropriate method instance (concrete method) -> to
+			// avoid unnecessary dynamic delegation calls.
+			MethodInstance im = null;
+			for (final MethodInstance meth : boxedType.methods(m.name(), m.formalTypes(), x10Context)) {
+				if (meth.isSameMethod(m, x10Context)) {
+					im = meth;
+					break;
+				}
+			}
 
-
-	        // find the appropriate method instance (concrete method) -> to avoid unnecessary dynamic delegation calls.
-	        MethodInstance im = null;
-	        for(final MethodInstance meth : boxedType.methods(m.name(), m.formalTypes(), x10Context)) {
-	        	if(meth.isSameMethod(m, x10Context)) {
-	        		im = meth;
-	        		break;
-	        	}
-	        }
-
-	        assert(im != null);
+	        assert im != null;
 			@SuppressWarnings("null")
 			final Name im_name = im.name();
 
 	        // create the call
-			final Expr call = xnf.X10Call(pos, bxdField, xnf.Id(pos, im_name), Collections.<TypeNode>emptyList(), args)
-	        					.methodInstance(im).type(m.returnType());
+			final Expr call = xnf.X10Call(pos, bxdField, xnf.Id(pos, im_name), Collections.<TypeNode> emptyList(), args)
+					.methodInstance(im).type(m.returnType());
 
-	        // append an optional return
-	        if(im.returnType() != x10TypeSystem.Void()) {
-	        	final Return ret = xnf.X10Return(pos, call, false);
-	        	statements.add(ret);
-	        } else {
-	        	statements.add(xnf.Eval(pos, call));
-	        }
+			// append an optional return
+			if (im.returnType() != x10TypeSystem.Void()) {
+				final Return ret = xnf.X10Return(pos, call, false);
+				statements.add(ret);
+			} else {
+				statements.add(xnf.Eval(pos, call));
+			}
 
 	        final polyglot.ast.Block block = xnf.Block(pos, statements);
 	        // Now generate the firm graph
@@ -2533,7 +2514,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		case UNCHECKED:
 			final X10CanonicalTypeNode xtn = (X10CanonicalTypeNode) tn;
 
-			final Type to 	= x10TypeSystem.getConcreteType(xtn.type());
+			final Type to = x10TypeSystem.getConcreteType(xtn.type());
 			final Type from = x10TypeSystem.getConcreteType(c.expr().type());
 
 			if (x10TypeSystem.typeEquals0(from, to, x10Context)) {
@@ -2661,18 +2642,17 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Initializer_c n) {
-	    if (n.flags().flags().isStatic()) {
-	    	static_init_blocks.add(n);
-	    } else {
-	    	throw new RuntimeException("Not implemented yet");
-	    }
+		if (n.flags().flags().isStatic()) {
+			static_init_blocks.add(n);
+		} else {
+			throw new RuntimeException("Not implemented yet");
+		}
 	}
 
-	//
-	//  TODO:  Implement.
-	//
-
-	// Just a stub implementation for now.
+	/**
+	 * TODO:  Implement.
+	 * Just a stub implementation for now.
+	 */
 	@Override
 	public void visit(Throw_c n) {
 		final firm.Type[] parameterTypes = new firm.Type[0];

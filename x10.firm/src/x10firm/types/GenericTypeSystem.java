@@ -27,7 +27,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 
 
 	/**
-	 * @param extInfo	extension info
+	 * @param extInfo extension info
 	 */
 	public GenericTypeSystem(ExtensionInfo extInfo) {
 		super(extInfo);
@@ -35,8 +35,8 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 
 	/**
 	 * Insert a new (key->value) parameter type mapping
-	 * @param paramType		key type
-	 * @param type			value type
+	 * @param paramType key type
+	 * @param type      value type
 	 */
 	public void addTypeMapping(ParameterType paramType, Type type) {
 		assert (!typeParameters.containsKey(paramType));
@@ -45,7 +45,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 
 	/**
 	 * Remove an existing type mapping
-	 * @param paramType		key type to remove
+	 * @param paramType key type to remove
 	 */
 	public void removeTypeMapping(ParameterType paramType) {
 		assert (typeParameters.containsKey(paramType));
@@ -61,8 +61,8 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	}
 
 	/**
-	 * @param paramType		the key type, which is mapped to a value type
-	 * @return				the corresponding value type
+	 * @param paramType  the key type, which is mapped to a value type
+	 * @return           the corresponding value type
 	 */
 	public Type getTypeParamSub(ParameterType paramType) {
 		polyglot.types.Type p = paramType;
@@ -198,8 +198,8 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	}
 
 	/**
-	 * @param t		some type
-	 * @return		is it a key mapped to a class type?
+	 * @param t some type
+	 * @return  is it a key mapped to a class type?
 	 */
 	public boolean isClass(Type t) {
 		final Type ret = getConcreteType(t);

@@ -120,7 +120,7 @@ public class ASTQuery {
 	/**
 	 * Extracts all class members from a given class members list which must be manually initialized (val instanced fields)
 	 * @param members A list with class members
- 	 * @return The class members from the given list which must be manually initialized
+	 * @return The class members from the given list which must be manually initialized
 	 */
 	public List<ClassMember> extractInits(List<ClassMember> members)
 	{

@@ -36,11 +36,11 @@ public class LoweringFirm extends AllBarrierGoal {
 
 	@Override
 	public boolean runTask() {
-		final ExtensionInfo info 					= scheduler.extensionInfo();
-		final polyglot.frontend.Compiler compiler 	= info.compiler();
-		final CompilerOptions options 				= (CompilerOptions)info.getOptions();
-		final X10NodeFactory_c nodeFactory 			= (X10NodeFactory_c)info.nodeFactory();
-		final GenericTypeSystem x10TypeSystem 		= (GenericTypeSystem)info.typeSystem();
+		final ExtensionInfo info = scheduler.extensionInfo();
+		final polyglot.frontend.Compiler compiler = info.compiler();
+		final CompilerOptions options = (CompilerOptions)info.getOptions();
+		final X10NodeFactory_c nodeFactory = (X10NodeFactory_c)info.nodeFactory();
+		final GenericTypeSystem x10TypeSystem = (GenericTypeSystem)info.typeSystem();
 
 		firmTypeSystem.finishTypeSystem();
 

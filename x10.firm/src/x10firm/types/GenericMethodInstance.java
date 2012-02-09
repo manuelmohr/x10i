@@ -32,7 +32,7 @@ public class GenericMethodInstance {
 			assert(rmi.typeParamSubst() != null);
 			final TypeParamSubst typeSub = rmi.typeParamSubst();
 			mapping = new ParameterTypeMapping();
-			final List<Type> typeArgs  			 = typeSub.copyTypeArguments();
+			final List<Type> typeArgs = typeSub.copyTypeArguments();
 			final List<ParameterType> typeParams = typeSub.copyTypeParameters();
 			assert(typeArgs.size() == typeParams.size());
 			// Handling of type subst

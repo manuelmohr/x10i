@@ -36,7 +36,7 @@ class FirmScheduler extends X10Scheduler {
 
 	/**
 	 * Initialize the scheduler, duh.
-	 * @param info	"==ExtensionInfo.this", because this inner class is static
+	 * @param info "==ExtensionInfo.this", because this inner class is static
 	 * (strange design by X10)
 	 */
 	public FirmScheduler(ExtensionInfo info) {
@@ -99,7 +99,6 @@ class FirmScheduler extends X10Scheduler {
         if (extInfo.getOptions().compile_command_line_only) {
             return new BarrierGoal(name, commandLineJobs()) {
                 private static final long serialVersionUID = 2258041064037983928L;
-                @SuppressWarnings("synthetic-access")
 				@Override
                 public Goal prereqForJob(Job job) {
                     return codegenPrereq(job);
@@ -107,19 +106,22 @@ class FirmScheduler extends X10Scheduler {
             }.intern(this);
         }
 
-        return new AllBarrierGoal(name, this) {
-            private static final long serialVersionUID = 4089824072381830523L;
-            @SuppressWarnings("synthetic-access")
-			@Override
-            public Goal prereqForJob(Job job) {
-            	if(super.scheduler.shouldCompile(job)) {
-            		return codegenPrereq(job);
-            	} else if(x10firm.ExtensionInfo.isAllowedClassName(job.toString())) // DELETE ME (whole else if): Need library support
-            		return codegenPrereq(job);
+		return new AllBarrierGoal(name, this) {
+			private static final long serialVersionUID = 4089824072381830523L;
 
-                return null;
-            }
-        }.intern(this);
+			@Override
+			public Goal prereqForJob(Job job) {
+				if (super.scheduler.shouldCompile(job)) {
+					return codegenPrereq(job);
+				} else if (x10firm.ExtensionInfo.isAllowedClassName(job
+						.toString())) {
+					// DELETE ME (whole else if): Need library support
+					return codegenPrereq(job);
+				}
+
+				return null;
+			}
+		}.intern(this);
     }
 
 

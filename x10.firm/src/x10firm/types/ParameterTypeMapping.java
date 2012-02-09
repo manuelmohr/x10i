@@ -3,6 +3,7 @@ package x10firm.types;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+
 import polyglot.types.Type;
 import polyglot.types.TypeObject;
 import x10.types.ParameterType;
@@ -24,8 +25,8 @@ public class ParameterTypeMapping {
 	}
 	/**
 	 * Maps {@code param} to {@code concreteType}.
-	 * @param param			type parameter
-	 * @param concreteType	concrete type the parameter will be mapped to
+	 * @param param type parameter
+	 * @param concreteType concrete type the parameter will be mapped to
 	 */
 	public void add(final ParameterType param, final Type concreteType) {
 		mapping.put(param, concreteType);
@@ -39,8 +40,8 @@ public class ParameterTypeMapping {
 	}
 
 	/**
-	 * @param type		a type parameter
-	 * @return			the concrete type which the type parameter is currently mapped to
+	 * @param type a type parameter
+	 * @return the concrete type which the type parameter is currently mapped to
 	 */
 	public Type getMappedType(final ParameterType type) {
 		assert (mapping.containsKey(type));

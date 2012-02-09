@@ -87,7 +87,8 @@ import x10.ast.X10Unary_c;
 import x10.visit.X10DelegatingVisitor;
 
 /**
- * A "dummy" visitor which visits all "AST" nodes.
+ * A "dummy" visitor which contains code for traversing all nodes of an "AST".
+ * It does not contain any behaviour.
  */
 public class DummyDelegatingVisitor extends X10DelegatingVisitor {
 

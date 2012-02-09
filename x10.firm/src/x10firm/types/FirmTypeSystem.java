@@ -126,19 +126,22 @@ public class FirmTypeSystem {
 		this.x10Context    = new Context(this.x10TypeSystem);
 	}
 
-	/**
-	 */
 	private void loadCStandardLibrary(final CompilerOptions options) {
-		final String stdlibPath = System.getProperty("x10.dist") + "/src-stdlib/build/" + options.getTargetTriple() + "/stdlib.ir";
+		final String stdlibPath = System.getProperty("x10.dist")
+				+ "/src-stdlib/build/" + options.getTargetTriple()
+				+ "/stdlib.ir";
 		binding_irio.ir_import(stdlibPath);
 
 		final ClassType glob = Program.getGlobalType();
 		for (Entity ent : glob.getMembers()) {
-			if (ent.getVisibility() != ir_visibility.ir_visibility_default)	continue;
+			if (ent.getVisibility() != ir_visibility.ir_visibility_default)
+				continue;
 			this.cStdlibEntities.put(ent.getLdName(), ent);
-			/* We must put methods into their respective classes.
-			 * However, this type does not even exist yet, so this
-			 * is delayed until the entity is retrieved from cStdlibEntities. */
+			/*
+			 * We must put methods into their respective classes. However, this
+			 * type does not even exist yet, so this is delayed until the entity
+			 * is retrieved from cStdlibEntities.
+			 */
 		}
 	}
 
@@ -267,65 +270,75 @@ public class FirmTypeSystem {
 
         final Set<polyglot.types.Type> intSet = new HashSet<polyglot.types.Type>();
 
-        for(final polyglot.types.Type t : type.interfaces()) { // "interfaces" method returns duplicates ???
-        	if(intSet.contains(t)) continue;
-        	intSet.add(t);
+        // "interfaces" method returns duplicates???
+		for (final polyglot.types.Type t : type.interfaces()) {
+			if (intSet.contains(t))
+				continue;
+			intSet.add(t);
 
-        	final X10ParsedClassType intervace = (X10ParsedClassType)t;
-        	final X10ClassDef  intervaceDef = intervace.x10Def();
+			final X10ParsedClassType intervace = (X10ParsedClassType) t;
+			final X10ClassDef intervaceDef = intervace.x10Def();
 
-        	cd.addInterface(Types.ref(intervace));
+			cd.addInterface(Types.ref(intervace));
 
-        	// get the substitution mapping
-        	final TypeParamSubst subst = intervace.subst();
-        	final List<ParameterType> paramTypes = subst.copyTypeParameters();
-        	final List<polyglot.types.Type> argTypes = subst.copyTypeArguments();
+			// get the substitution mapping
+			final TypeParamSubst subst = intervace.subst();
+			final List<ParameterType> paramTypes = subst.copyTypeParameters();
+			final List<polyglot.types.Type> argTypes = subst
+					.copyTypeArguments();
 
-    		final ThisDef thisDef = x10TypeSystem.thisDef(pos, Types.ref(ct));
-        	for(final MethodDef mDef : intervaceDef.methods())  {
-        		final X10MethodDef md = x10TypeSystem.methodDef(pos, Types.ref(ct), Flags.PUBLIC, mDef.returnType(), mDef.name(),
-        										                mDef.formalTypes());
-        		md.setTypeParameters(mDef.typeParameters());
-        		md.setThisDef(thisDef);
-        		md.setGuard(mDef.guard());
-        		md.setTypeGuard(mDef.typeGuard());
+			final ThisDef thisDef = x10TypeSystem.thisDef(pos, Types.ref(ct));
+			for (final MethodDef mDef : intervaceDef.methods()) {
+				final X10MethodDef md = x10TypeSystem.methodDef(pos,
+						Types.ref(ct), Flags.PUBLIC, mDef.returnType(),
+						mDef.name(), mDef.formalTypes());
+				md.setTypeParameters(mDef.typeParameters());
+				md.setThisDef(thisDef);
+				md.setGuard(mDef.guard());
+				md.setTypeGuard(mDef.typeGuard());
 
-        		final List<Ref<? extends polyglot.types.Type>> formalTypes = new LinkedList<Ref<? extends polyglot.types.Type>>();
-        		final List<LocalDef> formalNames = new LinkedList<LocalDef>();
+				final List<Ref<? extends polyglot.types.Type>> formalTypes = new LinkedList<Ref<? extends polyglot.types.Type>>();
+				final List<LocalDef> formalNames = new LinkedList<LocalDef>();
 
-        		final List<Ref<? extends polyglot.types.Type>> fTypes = mDef.formalTypes();
-        		final List<LocalDef> fNames = mDef.formalNames();
+				final List<Ref<? extends polyglot.types.Type>> fTypes = mDef
+						.formalTypes();
+				final List<LocalDef> fNames = mDef.formalNames();
 
-        		assert(fTypes.size() == fNames.size());
-        		for(int i = 0; i < fTypes.size(); i++) {
-        			final polyglot.types.Type x = fTypes.get(i).get();
-        			Ref<? extends polyglot.types.Type> fType = fTypes.get(i);
-        			LocalDef fName = fNames.get(i);
+				assert (fTypes.size() == fNames.size());
+				for (int i = 0; i < fTypes.size(); i++) {
+					final polyglot.types.Type x = fTypes.get(i).get();
+					Ref<? extends polyglot.types.Type> fType = fTypes.get(i);
+					LocalDef fName = fNames.get(i);
 
-        			// formal type generic substitution
-        			if(x instanceof ParameterType) {
-        				fType = Types.ref(getConcreteTypeFromSubst(x, paramTypes, argTypes));
-        				fName = x10TypeSystem.localDef(Position.COMPILER_GENERATED, fName.flags(), fType, fName.name());
-        			}
+					// formal type generic substitution
+					if (x instanceof ParameterType) {
+						fType = Types.ref(getConcreteTypeFromSubst(x,
+								paramTypes, argTypes));
+						fName = x10TypeSystem.localDef(
+								Position.COMPILER_GENERATED, fName.flags(),
+								fType, fName.name());
+					}
 
-        			formalNames.add(fName);
-        			formalTypes.add(fType);
-        		}
+					formalNames.add(fName);
+					formalTypes.add(fType);
+				}
 
-        		// Watch out for generic return types -> Do a substitution
-        		Ref<? extends polyglot.types.Type> returnType = mDef.returnType();
-        		final polyglot.types.Type retType = returnType.get();
-        		if(retType instanceof ParameterType) {
-    				returnType = Types.ref(getConcreteTypeFromSubst(retType, paramTypes, argTypes));
-        		}
+				// Watch out for generic return types -> Do a substitution
+				Ref<? extends polyglot.types.Type> returnType = mDef
+						.returnType();
+				final polyglot.types.Type retType = returnType.get();
+				if (retType instanceof ParameterType) {
+					returnType = Types.ref(getConcreteTypeFromSubst(retType,
+							paramTypes, argTypes));
+				}
 
-        		md.setFormalNames(formalNames);
-        		md.setFormalTypes(formalTypes);
-        		md.setReturnType(returnType);
+				md.setFormalNames(formalNames);
+				md.setFormalTypes(formalTypes);
+				md.setReturnType(returnType);
 
-                cd.addMethod(md);
-        	}
-        }
+				cd.addMethod(md);
+			}
+		}
 
         // add the boxed value to the class.
         final FieldDef boxValue = x10TypeSystem.fieldDef(pos, Types.ref(ct), Flags.PUBLIC, Types.ref(type), Name.make(BOXED_VALUE));
@@ -365,8 +378,8 @@ public class FirmTypeSystem {
 	 * Creates a method type (= a member function). So we in addition to the
 	 * type we need the flags to determine if it is static and the owner class
 	 * to determine the type of the "this" parameter.
-	 * @param methodInstance	an X10 method instance, for which a Firm type is needed
-	 * @return	corresponding Firm type
+	 * @param methodInstance an X10 method instance, for which a Firm type is needed
+	 * @return corresponding Firm type
 	 */
 	public MethodType asFirmType(final MethodInstance methodInstance) {
 		final List<polyglot.types.Type> formalTypes
@@ -460,12 +473,11 @@ public class FirmTypeSystem {
 	public boolean isFirmPrimitiveType(final polyglot.types.Type type_) {
 		final polyglot.types.Type type = x10TypeSystem.getConcreteType(type_);
 		return equalTypes(type, x10TypeSystem.Int())     || equalTypes(type, x10TypeSystem.UInt())   ||
-		   	   equalTypes(type, x10TypeSystem.Long())    || equalTypes(type, x10TypeSystem.ULong())  ||
-		   	   equalTypes(type, x10TypeSystem.Short())   || equalTypes(type, x10TypeSystem.UShort()) ||
-		   	   equalTypes(type, x10TypeSystem.Byte())    || equalTypes(type, x10TypeSystem.UByte())  ||
+		       equalTypes(type, x10TypeSystem.Long())    || equalTypes(type, x10TypeSystem.ULong())  ||
+		       equalTypes(type, x10TypeSystem.Short())   || equalTypes(type, x10TypeSystem.UShort()) ||
+		       equalTypes(type, x10TypeSystem.Byte())    || equalTypes(type, x10TypeSystem.UByte())  ||
 		       equalTypes(type, x10TypeSystem.Float())   || equalTypes(type, x10TypeSystem.Double()) ||
-		       equalTypes(type, x10TypeSystem.Boolean()) ||
-		       equalTypes(type, x10TypeSystem.Char())    ||
+		       equalTypes(type, x10TypeSystem.Boolean()) || equalTypes(type, x10TypeSystem.Char())   ||
 		       equalTypes(type, x10TypeSystem.Pointer());
 	}
 
@@ -721,8 +733,8 @@ public class FirmTypeSystem {
 	 * For primitive types (x10.lang.Int, etc) returns class (compound) Firm types (Is, etc).
 	 * If you need native Firm types (Is, etc) use the {@code asType} method.
 	 *
-	 * @param origType	The given polyglot ast-type
-	 * @return the firm	type for a given ast-type.
+	 * @param origType  The given polyglot ast-type
+	 * @return the firm type for a given ast-type.
 	 */
 	public firm.Type asClass(final polyglot.types.Type origType) {
 		final polyglot.types.Type type = x10TypeSystem.getConcreteType(origType);
@@ -823,7 +835,7 @@ public class FirmTypeSystem {
 	}
 
 	/**
-	 * @return	a class type for x10.lang.Object
+	 * @return a class type for x10.lang.Object
 	 */
 	public X10ClassType getObjectType() {
 		final QName fullName = QName.make("x10.lang", "Object");
@@ -840,7 +852,7 @@ public class FirmTypeSystem {
 	 * @param packageName Package name of the x10 type
 	 * @param className Class name of the x10 type
 	 *
-	 * @return	a class type for the given full class name
+	 * @return a class type for the given full class name
 	 */
 	public X10ClassType getNamedX10Type(final String packageName, final String className) {
 		final QName fullName = QName.make(packageName, className);
@@ -849,8 +861,8 @@ public class FirmTypeSystem {
 	}
 
 	/**
-	 * @param instance	a constructor method instance
-	 * @return	a Firm entity corresponding to the constructor
+	 * @param instance a constructor method instance
+	 * @return a Firm entity corresponding to the constructor
 	 */
 	public Entity getConstructorEntity(X10ConstructorInstance instance) {
 		final GenericClassContext context = getDefiningContext(instance);
@@ -1020,7 +1032,7 @@ public class FirmTypeSystem {
 
 	/**
 	 * Inserts parameter type mapping into global mappings
-	 * @param ptm	a set of type mappings
+	 * @param ptm a set of type mappings
 	 */
 	public void pushTypeMapping(ParameterTypeMapping ptm) {
 		for (ParameterType param : ptm.getKeySet()) {
@@ -1040,7 +1052,7 @@ public class FirmTypeSystem {
 
 	/**
 	 * Remove parameter type mapping from global mappings
-	 * @param ptm	a set of type mappings
+	 * @param ptm a set of type mappings
 	 */
 	public void popTypeMapping(ParameterTypeMapping ptm) {
 		for (ParameterType param : ptm.getKeySet()) {

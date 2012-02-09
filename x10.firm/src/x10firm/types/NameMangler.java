@@ -309,44 +309,47 @@ public class NameMangler {
 	 * @param embed True if the given class type is embedded.
 	 * @return The mangled name of the given class type
 	 */
-	private static String mangleClassType(final X10ClassType clazz, final boolean embed) {
+	private static String mangleClassType(final X10ClassType clazz,
+			final boolean embed) {
 		StringBuilder buf = new StringBuilder();
 		boolean needQualiEnd = false;
-        if (clazz.isTopLevel()) {
-            if (clazz.package_() != null) {
-            	if(!embed) {
-            		needQualiEnd = true;
-            		buf.append(QUAL_START);
-            	}
-                buf.append(manglePackage(clazz.package_()));
-            }
-        } else if (clazz.isMember()) {
-        	if(!embed) {
-        		needQualiEnd = true;
-        		buf.append(QUAL_START);
-        	}
-        	buf.append(mangleType(clazz.outer(), true));
-        } else if (clazz.isAnonymous()) {
-        	// DO NOTHING
-        } else {
-        	assert(false): "Unknown class type" + clazz;
-        }
+		if (clazz.isTopLevel()) {
+			if (clazz.package_() != null) {
+				if (!embed) {
+					needQualiEnd = true;
+					buf.append(QUAL_START);
+				}
+				buf.append(manglePackage(clazz.package_()));
+			}
+		} else if (clazz.isMember()) {
+			if (!embed) {
+				needQualiEnd = true;
+				buf.append(QUAL_START);
+			}
+			buf.append(mangleType(clazz.outer(), true));
+		} else if (clazz.isAnonymous()) {
+			// DO NOTHING
+		} else {
+			assert (false) : "Unknown class type" + clazz;
+		}
 
-        final String clazzName = clazz.isAnonymous() ? getAnonymousClassName(clazz) : clazz.name().toString();
-        buf.append(mangleName(fixClassName(clazzName)));
+		final String clazzName = clazz.isAnonymous() ? getAnonymousClassName(clazz)
+				: clazz.name().toString();
+		buf.append(mangleName(fixClassName(clazzName)));
 
-        final List<? extends Type> typeArgs = clazz.typeArguments() != null ? clazz.typeArguments() :
-        									  								  clazz.x10Def().typeParameters();
-        if(!typeArgs.isEmpty() && !mangleGenericStaticMethodInstance) {
-        	// don`t mangle type arguments if we are currently mangling a method instance.
-    		buf.append(TYPEARG_START);
-    		for(Type type : typeArgs)
-    			buf.append(mangleTypeParameter(type));
-    		buf.append(TYPEARG_END);
-        }
+		final List<? extends Type> typeArgs = clazz.typeArguments() != null ? clazz
+				.typeArguments() : clazz.x10Def().typeParameters();
+		if (!typeArgs.isEmpty() && !mangleGenericStaticMethodInstance) {
+			// don`t mangle type arguments if we are currently mangling a method
+			// instance.
+			buf.append(TYPEARG_START);
+			for (Type type : typeArgs)
+				buf.append(mangleTypeParameter(type));
+			buf.append(TYPEARG_END);
+		}
 
-        if(needQualiEnd)
-        	buf.append(QUAL_END);
+		if (needQualiEnd)
+			buf.append(QUAL_END);
 
 		return buf.toString();
 	}
@@ -358,8 +361,8 @@ public class NameMangler {
 	 * As a quick fix, we translate this into a dollar sign. However, there should be
 	 * a better solution in x10.compiler! FIXME
 	 *
-	 * @param string	a class name, potentially with spaces
-	 * @return			a class name without spaces
+	 * @param string  a class name, potentially with spaces
+	 * @return        a class name without spaces
 	 */
 	private static String fixClassName(String string) {
 		return string.replace(' ', '$');

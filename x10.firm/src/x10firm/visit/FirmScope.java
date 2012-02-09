@@ -234,9 +234,9 @@ class FirmScope {
 
 	@Override
 	public Object clone() {
-		FirmScope clonedScope  	= new FirmScope();
-		clonedScope.continueBlock   = this.continueBlock;
-		clonedScope.breakBlock      = this.breakBlock;
+		FirmScope clonedScope = new FirmScope();
+		clonedScope.continueBlock = this.continueBlock;
+		clonedScope.breakBlock = this.breakBlock;
 		// The local mapper needn`t be cloned
 
 		return clonedScope;

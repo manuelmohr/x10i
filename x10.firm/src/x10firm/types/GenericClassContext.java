@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import polyglot.types.FieldDef;
-
 import x10.types.X10ConstructorDef;
 import firm.Entity;
 
