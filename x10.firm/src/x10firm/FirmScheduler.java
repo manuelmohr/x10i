@@ -30,9 +30,8 @@ import x10firm.visit.StaticInitializer;
  * Setting the goals for the Firm backend and depend on the X10 scheduler for
  * the rest.
  */
-class FirmScheduler extends X10Scheduler {
+public class FirmScheduler extends X10Scheduler {
 	private final FirmTypeSystem firmTypeSystem;
-
 
 	/**
 	 * Initialize the scheduler.

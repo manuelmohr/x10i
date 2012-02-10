@@ -12,7 +12,6 @@ import polyglot.frontend.ExtensionInfo;
 import polyglot.main.Main;
 import polyglot.main.UsageError;
 import x10.X10CompilerOptions;
-import x10firm.goals.FirmGenerated;
 import firm.Backend;
 
 /**
@@ -153,7 +152,7 @@ public class CompilerOptions extends X10CompilerOptions {
 	}
 
 	private static void backendOption(String option) {
-		FirmGenerated.initializeFirm();
+		FirmState.initializeFirm();
 		Backend.option(option);
 	}
 

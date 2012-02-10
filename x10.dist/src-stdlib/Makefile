@@ -5,7 +5,7 @@ BUILDDIR=build
 STDLIB_BUILDDIR=$(BUILDDIR)/$(target)
 
 SIMULATOR?=
-LIBNAME=x10std
+LIBNAME=x10
 VERSION=2.2.0
 A_FILE=$(STDLIB_BUILDDIR)/lib$(LIBNAME).a
 SO_FILE=$(STDLIB_BUILDDIR)/lib$(LIBNAME).so.$(VERSION)
@@ -18,7 +18,7 @@ H_FILES=$(shell ls *.h) # too conservative!
 CFLAGS=-O3 -Wall -W -pedantic -std=c99 -fdollars-in-identifiers -D_GNU_SOURCE
 MASTER=$(STDLIB_BUILDDIR)/master.c
 O_FILE=$(MASTER:%.c=%.o)
-IR_FILE=$(STDLIB_BUILDDIR)/stdlib.ir
+IR_FILE=$(STDLIB_BUILDDIR)/$(LIBNAME).ir
 
 all: $(A_FILE) $(SO_FILE) $(FIRM_NATIVE_TYPES_CONF) $(IR_FILE)
 
