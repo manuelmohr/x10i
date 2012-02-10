@@ -1,3 +1,5 @@
+/TODO
+
 /.metadata/
 
 /x10.dist/bin/java_x10rt
@@ -15,14 +17,15 @@
 /x10.dist/include
 /x10.dist/lib
 /x10.dist/*.s
-/x10.dist/src-stdlib/libx10std.a
-/x10.dist/src-stdlib/libx10std.so.*
-/x10.dist/src-stdlib/firmNativeTypes.conf
+/x10.dist/src-stdlib/build/
 /x10.dist/stdlib
 /x10.dist/x10firm-testsuite
 /x10.dist/a.out
 /x10.dist/firm-stdlib/*.jar
 !x10.dist/lib/libfirm.so
+/x10.dist/*.cc
+/x10.dist/*.h
+/x10.dist/*.x10
 
 /x10.compiler/classes
 
@@ -76,6 +79,8 @@
 /x10.runtime/x10rt/bin
 /x10.runtime/x10rt/etc
 /x10.runtime/x10rt/sockets/X10Launcher
+/x10.runtime/x10rt/test
+/x10.runtime/src-cpp/sharedlib.properties
 
 /x10.firm_runtime/gen
 /x10.firm_runtime/classes
