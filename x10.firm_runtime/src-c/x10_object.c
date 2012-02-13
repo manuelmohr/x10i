@@ -1,5 +1,6 @@
-#include "x10_object.h"
+#include <stdint.h>
 
+#include "x10_object.h"
 #include "x10_string.h"
 #include "util.h"
 
@@ -25,7 +26,7 @@ x10_boolean _ZN3x104lang6Object6equalsEPN3x104lang3AnyE(x10_object *self, x10_an
 // TODO: Implement me
 x10_int _ZN3x104lang6Object8hashCodeEv(x10_object *self)
 {
-	return (x10_int)self;
+	return (x10_int)(intptr_t)self;
 }
 
 // TODO: Implement me
