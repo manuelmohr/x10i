@@ -3,18 +3,19 @@ target         ?= $(guessed_target)
 
 BUILDDIR=build
 STDLIB_BUILDDIR=$(BUILDDIR)/$(target)
+SRCDIR=src-c
 
 SIMULATOR?=
 LIBNAME=x10
 VERSION=2.2.0
 A_FILE=$(STDLIB_BUILDDIR)/lib$(LIBNAME).a
 SO_FILE=$(STDLIB_BUILDDIR)/lib$(LIBNAME).so.$(VERSION)
-ALL_C_FILES=$(shell ls *.c)
-GEN_FIRM_NATIVE_SIZES=gen_firm_native_sizes.c
+ALL_C_FILES=$(wildcard $(SRCDIR)/*.c)
+GEN_FIRM_NATIVE_SIZES=$(SRCDIR)/gen_firm_native_sizes.c
 FIRM_NATIVE_TYPES_CONF=$(STDLIB_BUILDDIR)/firmNativeTypes.conf
 C_FILES=$(filter-out $(GEN_FIRM_NATIVE_SIZES), $(ALL_C_FILES))
-O_FILES=$(C_FILES:%.c=%.o)
-H_FILES=$(shell ls *.h) # too conservative!
+O_FILES=$(addprefix $(BUILDDIR), $(basename $(C_FILES:%.c=%.o)))
+H_FILES=$(wildcard $(SRCDIR)/*.h)
 CFLAGS=-O3 -Wall -W -pedantic -std=c99 -fdollars-in-identifiers -D_GNU_SOURCE
 MASTER=$(STDLIB_BUILDDIR)/master.c
 O_FILE=$(MASTER:%.c=%.o)

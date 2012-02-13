@@ -17,7 +17,6 @@
 /x10.dist/include
 /x10.dist/lib
 /x10.dist/*.s
-/x10.dist/src-stdlib/build/
 /x10.dist/stdlib
 /x10.dist/x10firm-testsuite
 /x10.dist/a.out
@@ -84,5 +83,6 @@
 
 /x10.firm_runtime/gen
 /x10.firm_runtime/classes
+/x10.firm_runtime/build/
 
 /x10.wala/bin/

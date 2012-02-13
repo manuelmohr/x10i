@@ -1,45 +1,52 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE project>
 <project name="x10.firm_stdlib" default="dist" basedir=".">
-    <property name="x10.home" value="${basedir}/.."/>
-    <property name="x10.dist.location" value="${x10.home}/x10.dist"/>
-    <property name="build" location="${basedir}/classes"/>
-    <property name="gen" location="${basedir}/gen"/>
-    <property name="stdlib" location="${x10.dist.location}/firm-stdlib"/>
-    <property name="jar" value="x10_firm.jar"/>
+	<property name="x10.home" value="${basedir}/.."/>
+	<property name="x10.dist.location" value="${x10.home}/x10.dist"/>
+	<property name="build" location="${basedir}/classes"/>
+	<property name="gen" location="${basedir}/gen"/>
+	<property name="stdlib" location="${x10.dist.location}/firm-stdlib"/>
+	<property name="src-c.location" location="${basedir}/src-c"/>
+	<property name="src-x10.location" location="${basedir}/src-x10"/>
+	<property name="jar" value="x10_firm.jar"/>
+	<property name="make.exe" value="make"/>
 
-    <target name="init">
-        <mkdir dir="${build}"/>
-        <mkdir dir="${gen}"/>
-    </target>
+	<target name="init">
+		<mkdir dir="${build}"/>
+		<mkdir dir="${gen}"/>
+	</target>
     
-    <target name="distclean" depends="clean"/>
-    <target name="clean">
-        <delete dir="${build}" failonerror="false"/>
-        <delete failonerror="false"> <!-- keep the gen directory itself because Eclipse needs it -->
-            <fileset dir="${gen}">
-                <include name="**"/>
-            </fileset>
-        </delete>
-    </target>
+	<target name="distclean" depends="clean"/>
+	<target name="clean">
+		<delete dir="${build}" failonerror="false"/>
+		<delete failonerror="false"> <!-- keep the gen directory itself because Eclipse needs it -->
+			<fileset dir="${gen}">
+				<include name="**"/>
+			</fileset>
+		</delete>
+		<exec executable="${make.exe}" failonerror="false">
+			<arg value="clean"/>
+		</exec>
+	</target>
 
-    <target name="dist" depends="jar" description="generate part of the distribution">
-        <mkdir dir="${stdlib}"/>
-        <copy todir="${stdlib}">
-            <fileset dir="${gen}" includes="${jar}"/>
-        </copy>
-    </target>
-    
-    <target name="jar">
-        <jar jarfile="${gen}/${jar}">
-            <fileset dir="${basedir}/src-x10" includes="x10/**" excludes="${jar}"/>
-        </jar>
-        <copy todir="${build}"><!-- copy x10.jar into classes to let scripts find it there too -->
-            <fileset dir="${gen}" includes="${jar}"/>
-        </copy>
-    </target>
-   
-    <target name="build" depends="init">
-    </target>
+	<target name="dist" depends="build,jar" description="generate part of the distribution">
+		<mkdir dir="${stdlib}"/>
+		<copy todir="${stdlib}">
+			<fileset dir="${gen}" includes="${jar}"/>
+		</copy>
+	</target>
+
+	<target name="jar">
+		<jar jarfile="${gen}/${jar}">
+			<fileset dir="${src-x10.location}" includes="x10/**" excludes="${jar}"/>
+		</jar>
+		<copy todir="${build}"><!-- copy x10.jar into classes to let scripts find it there too -->
+			<fileset dir="${gen}" includes="${jar}"/>
+		</copy>
+	</target>
+
+	<target name="build" depends="init">
+		<exec executable="${make.exe}" failonerror="true"/>
+	</target>
 
 </project>

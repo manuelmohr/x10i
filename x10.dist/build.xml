@@ -46,7 +46,6 @@
 		<property name="jfirm.location" location="${x10.home}/jFirm"/>
 		<property name="liboo.location" location="${x10.home}/liboo"/>
 		<property name="x10.firm.location" location="${x10.home}/x10.firm"/>
-		<property name="libx10std.location" location="${basedir}/src-stdlib"/>
 
     <path id="project.classpath"/>
     <!-- get the environment variables -->
@@ -118,9 +117,6 @@
 				<ant antfile="${jfirm.location}/build.xml" target="clean" inheritAll="false" dir="${jfirm.location}"/>
 				<ant antfile="${liboo.location}/build.xml" target="clean" inheritAll="false" dir="${liboo.location}"/>
 				<ant antfile="${x10.firm.location}/build.xml" target="clean" inheritAll="false" dir="${x10.firm.location}"/>
-				<exec executable="${make.exe}" failonerror="false" dir="${libx10std.location}">
-					<arg value="clean"/>
-				</exec>
     </target>
 
     <target name="clean-cpp" depends="clean-java">
@@ -170,7 +166,7 @@
     <target name="dist-java" depends="init,build,common-jar,constraints-jar,compiler-jar,runtime-java"/>
     <target name="dist-cpp" depends="dist-java,runtime-cpp"/>
     <target name="dist-x10rt" depends="runtime-x10rt"/>
-    <target name="dist-firm" depends="init,build,common-jar,constraints-jar,compiler-jar,jfirm-jar,liboo-jar,x10firm-jar,runtime-firm,libx10std"/>
+    <target name="dist-firm" depends="init,build,common-jar,constraints-jar,compiler-jar,jfirm-jar,liboo-jar,x10firm-jar,runtime-firm"/>
     <target name="dist" depends="dist-java,dist-cpp,dist-firm,dist-bridge,dist-x10doc"/>
     <target name="dist-java-cpp" depends="init,build,common-jar,constraints-jar,compiler-jar">
         <ant antfile="${x10.runtime.location}/build.xml" target="dist-par" inheritAll="false" dir="${x10.runtime.location}"/>
@@ -405,10 +401,6 @@
 
 		<target name="x10firm-jar" depends="init,jfirm-jar,liboo-jar">
 			<ant antfile="${x10.firm.location}/build.xml" target="jar" inheritAll="false" dir="${x10.firm.location}"/>
-		</target>
-
-		<target name="libx10std">
-			<exec executable="${make.exe}" failonerror="true" dir="${libx10std.location}"/>
 		</target>
 
     <target name="bin"

@@ -55,7 +55,7 @@ public class Linked extends PostCompiled {
 			cmd.add(libooPath + "/liboo_rt.a");
 		}
 		if (!options.useFirmLibraries()) {
-			String stdlibPath = x10DistPath + "/src-stdlib/build/" + target;
+			String stdlibPath = x10DistPath + "/../x10.firm_runtime/build/" + target;
 			cmd.add(stdlibPath + "/libx10std.a");
 		}
 		cmd.add("-lm");
