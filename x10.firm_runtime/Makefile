@@ -1,5 +1,13 @@
 guessed_target := $(shell $(CC) -dumpmachine)
 target         ?= $(guessed_target)
+ifeq ($(findstring x86_64, $(target)), x86_64)
+	M32=-m32
+	# Never ask Firm to use its amd64 backend
+	CPARSER_TARGET=
+else
+	M32=
+	CPARSER_TARGET=-mtarget=$(target)
+endif
 
 BUILDDIR=build
 STDLIB_BUILDDIR=$(BUILDDIR)/$(target)
@@ -16,7 +24,7 @@ FIRM_NATIVE_TYPES_CONF=$(STDLIB_BUILDDIR)/firmNativeTypes.conf
 C_FILES=$(filter-out $(GEN_FIRM_NATIVE_SIZES), $(ALL_C_FILES))
 O_FILES=$(addprefix $(BUILDDIR), $(basename $(C_FILES:%.c=%.o)))
 H_FILES=$(wildcard $(SRCDIR)/*.h)
-CFLAGS=-O3 -Wall -W -pedantic -std=c99 -fdollars-in-identifiers -D_GNU_SOURCE
+CFLAGS=$(M32) -O3 -Wall -W -pedantic -std=c99 -fdollars-in-identifiers -D_GNU_SOURCE
 MASTER=$(STDLIB_BUILDDIR)/master.c
 O_FILE=$(MASTER:%.c=%.o)
 IR_FILE=$(STDLIB_BUILDDIR)/$(LIBNAME).ir
@@ -30,7 +38,7 @@ $(SO_FILE): $(O_FILE)
 	$(CC) $(CFLAGS) -shared -Wl,-soname,lib$(LIBNAME).so -o $@ $?
 
 $(FIRM_NATIVE_TYPES_CONF): $(GEN_FIRM_NATIVE_SIZES) $(H_FILES)
-	$(CC) -static -o gen_firm_native_sizes $<
+	$(CC) $(M32) -static -o gen_firm_native_sizes $<
 	$(SIMULATOR) ./gen_firm_native_sizes > $@
 	rm -f gen_firm_native_sizes
 
@@ -43,7 +51,7 @@ $(O_FILE): $(MASTER)
 	$(CC) $(CFLAGS) $< -c -o $@
 
 $(IR_FILE): $(MASTER)
-	cparser $(CFLAGS) -mtarget=$(target) -w $< --export-ir -o $@
+	cparser $(CFLAGS) $(CPARSER_TARGET) -w $< --export-ir -o $@
 
 .PHONY: clean
 clean:

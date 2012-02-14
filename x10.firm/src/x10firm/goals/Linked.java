@@ -41,9 +41,11 @@ public class Linked extends PostCompiled {
 
 		final List<String> cmd = new ArrayList<String>();
 		cmd.add(gcc);
-		if (options.linkStatically()) {
+		// Produce a 32-bit binary when running on a 64-bit x86 host
+		if (options.getTargetTriple().toString().startsWith("x86_64"))
+			cmd.add("-m32");
+		if (options.linkStatically())
 			cmd.add("-static");
-		}
 
 		cmd.add(asm.getAbsolutePath());
 		if (options.useSoftFloat())
