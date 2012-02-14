@@ -1,12 +1,24 @@
+-include config.mak
+
 guessed_target := $(shell $(CC) -dumpmachine)
 target         ?= $(guessed_target)
+
+CPARSER_TARGET ?= -mtarget=$(target)
+CFLAGS         ?=
+
+SIMULATOR  ?=
+APP_CFLAGS ?=
+
+# The ugly part... Collection of hacks for certain architectures
 ifeq ($(findstring x86_64, $(target)), x86_64)
-	M32=-m32
-	# Never ask Firm to use its amd64 backend
+	CFLAGS += -m32
 	CPARSER_TARGET=
-else
-	M32=
-	CPARSER_TARGET=-mtarget=$(target)
+endif
+ifeq ($(findstring sparc, $(target)), sparc)
+	APP_CFLAGS += -static
+endif
+ifeq ($(findstring darwin, $(target)), darwin)
+	CPARSER_TARGET=
 endif
 
 PLATFORM=posix
@@ -19,32 +31,26 @@ STDLIB_BUILDDIR=$(BUILDDIR)/$(target)
 SRCDIR=src-c
 PLATFORMDIR=$(SRCDIR)/$(PLATFORM)
 
-SIMULATOR?=
 LIBNAME=x10
-VERSION=2.2.0
 A_FILE=$(STDLIB_BUILDDIR)/lib$(LIBNAME).a
-SO_FILE=$(STDLIB_BUILDDIR)/lib$(LIBNAME).so.$(VERSION)
 ALL_C_FILES=$(wildcard $(SRCDIR)/*.c) $(wildcard $(PLATFORMDIR)/*.c)
 GEN_FIRM_NATIVE_SIZES=$(PLATFORMDIR)/gen_firm_native_sizes.c
 FIRM_NATIVE_TYPES_CONF=$(STDLIB_BUILDDIR)/firmNativeTypes.conf
 C_FILES=$(filter-out $(GEN_FIRM_NATIVE_SIZES), $(ALL_C_FILES))
 O_FILES=$(addprefix $(BUILDDIR), $(basename $(C_FILES:%.c=%.o)))
 H_FILES=$(wildcard $(SRCDIR)/*.h)
-CFLAGS=$(M32) -O3 -Wall -W -pedantic -std=c99 -fdollars-in-identifiers -D_GNU_SOURCE
+CFLAGS += -Wall -W -pedantic -std=c99 -fdollars-in-identifiers
 MASTER=$(STDLIB_BUILDDIR)/master.c
 O_FILE=$(MASTER:%.c=%.o)
 IR_FILE=$(STDLIB_BUILDDIR)/$(LIBNAME).ir
 
-all: $(A_FILE) $(SO_FILE) $(FIRM_NATIVE_TYPES_CONF) $(IR_FILE)
+all: $(A_FILE) $(FIRM_NATIVE_TYPES_CONF) $(IR_FILE)
 
 $(A_FILE): $(O_FILE)
 	ar rucs $@ $?
 
-$(SO_FILE): $(O_FILE)
-	$(CC) $(CFLAGS) -shared -Wl,-soname,lib$(LIBNAME).so -o $@ $?
-
 $(FIRM_NATIVE_TYPES_CONF): $(GEN_FIRM_NATIVE_SIZES) $(wildcard $(PLATFORMDIR)/*.h)
-	$(CC) $(M32) -static -o gen_firm_native_sizes $<
+	$(CC) $(APP_CFLAGS) -o gen_firm_native_sizes $<
 	$(SIMULATOR) ./gen_firm_native_sizes > $@
 	rm -f gen_firm_native_sizes
 
