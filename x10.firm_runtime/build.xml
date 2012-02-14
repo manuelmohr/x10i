@@ -38,7 +38,7 @@
 
 	<target name="jar">
 		<jar jarfile="${gen}/${jar}">
-			<fileset dir="${src-x10.location}" includes="x10/**" excludes="${jar}"/>
+			<fileset dir="${src-x10.location}" includes="**" excludes="${jar}"/>
 		</jar>
 		<copy todir="${build}"><!-- copy x10.jar into classes to let scripts find it there too -->
 			<fileset dir="${gen}" includes="${jar}"/>

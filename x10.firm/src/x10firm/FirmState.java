@@ -25,8 +25,8 @@ public class FirmState {
 			return;
 
 		/* construct searchpath, for now only the builddir in x10.dist */
-		String x10dist = System.getProperty("x10.dist");
-		String libPath = x10dist + "/src-stdlib/build/" + options.getTargetTriple();
+		String x10dist = System.getProperty("x10.dist", ".");
+		String libPath = x10dist + "/../x10.firm_runtime/build/" + options.getTargetTriple();
 		File file = new File(libPath + "/" + name + ".ir");
 		if (file.exists()) {
 			binding_irio.ir_import(file.toString());

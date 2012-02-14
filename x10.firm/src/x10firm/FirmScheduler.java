@@ -40,7 +40,7 @@ public class FirmScheduler extends X10Scheduler {
 	 */
 	public FirmScheduler(ExtensionInfo info) {
 		super(info);
-		this.firmTypeSystem = new FirmTypeSystem((GenericTypeSystem) info.typeSystem());
+		firmTypeSystem = new FirmTypeSystem((GenericTypeSystem) info.typeSystem());
 	}
 
 	@Override

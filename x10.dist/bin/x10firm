@@ -53,8 +53,7 @@ export DYLD_LIBRARY_PATH="$JNA_LIBRARY_PATH"
 # Collect arguments for the x10firm compiler
 args="-extclass x10firm.ExtensionInfo"
 args="${args} -x10lib ${X10_TOP}/x10.dist/firm-stdlib/libx10.properties"
-args="${args} -sourcepath ${X10_TOP}/x10.dist/src-stdlib"
-args="${args} -nativeTypesConfigPath ${X10_TOP}/x10.dist/src-stdlib/build"
+args="${args} -nativeTypesConfigPath ${X10_TOP}/x10.firm_runtime/build"
 
 # Arguments for the JavaVM
 java_args="-Xmx512m"
