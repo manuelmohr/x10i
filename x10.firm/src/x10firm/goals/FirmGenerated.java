@@ -5,6 +5,8 @@ import polyglot.frontend.Compiler;
 import polyglot.frontend.Job;
 import polyglot.frontend.SourceGoal_c;
 import polyglot.types.TypeSystem;
+import polyglot.util.ErrorInfo;
+import polyglot.util.ErrorQueue;
 import x10.ast.X10NodeFactory_c;
 import x10.extension.X10Ext;
 import x10firm.CompilerOptions;
@@ -56,8 +58,15 @@ public class FirmGenerated extends SourceGoal_c {
 			return false;
 
 		final CompilerOptions options = (CompilerOptions) scheduler.extensionInfo().getOptions();
-		if (options.useFirmLibraries())
-			FirmState.loadFirmLibrary(options, "x10");
+		if (options.useFirmLibraries()) {
+			String libName = "x10";
+			boolean loaded = FirmState.loadFirmLibrary(options, libName);
+			if (!loaded) {
+				ErrorQueue errorQueue = job.compiler().errorQueue();
+				errorQueue.enqueue(ErrorInfo.WARNING,
+				                   String.format("Unable to load compilergraphs for '%s'", libName));
+			}
+		}
 		firmTypeSystem.init(options.getFirmNativeTypesFilename());
 
 		final Compiler compiler = job().compiler();

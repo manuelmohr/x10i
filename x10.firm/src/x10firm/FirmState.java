@@ -20,18 +20,24 @@ public class FirmState {
 	 * (Search the libraryPath for NAME.ir files and loads them
 	 *  if found).
 	 */
-	public static void loadFirmLibrary(final CompilerOptions options, final String name) {
+	public static boolean loadFirmLibrary(final CompilerOptions options, final String name) {
 		if (firmLibraries.contains(name))
-			return;
+			return true;
 
 		/* construct searchpath, for now only the builddir in x10.dist */
 		String x10dist = System.getProperty("x10.dist", ".");
 		String libPath = x10dist + "/../x10.firm_runtime/build/" + options.getTargetTriple();
 		File file = new File(libPath + "/" + name + ".ir");
-		if (file.exists()) {
-			binding_irio.ir_import(file.toString());
-			firmLibraries.add(name);
-		}
+		if (!file.exists())
+			return false;
+
+		binding_irio.ir_import(file.toString());
+		firmLibraries.add(name);
+		return true;
+	}
+
+	public static boolean libraryLoaded(final String name) {
+		return firmLibraries.contains(name);
 	}
 
 	private static boolean firmInitialized = false;

@@ -13,6 +13,7 @@ import polyglot.util.ErrorQueue;
 import polyglot.visit.PostCompiled;
 import x10cpp.visit.X10CPPTranslator;
 import x10firm.CompilerOptions;
+import x10firm.FirmState;
 
 /**
  * Final Goal, which links the generated asm with the stdlib
@@ -54,9 +55,9 @@ public class Linked extends PostCompiled {
 		} else {
 			cmd.add(libooPath + "/liboo_rt.a");
 		}
-		if (!options.useFirmLibraries()) {
+		if (!FirmState.libraryLoaded("x10")) {
 			String stdlibPath = x10DistPath + "/../x10.firm_runtime/build/" + target;
-			cmd.add(stdlibPath + "/libx10std.a");
+			cmd.add(stdlibPath + "/libx10.a");
 		}
 		cmd.add("-lm");
 		cmd.add("-lpthread");
