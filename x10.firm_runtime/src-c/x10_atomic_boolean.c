@@ -1,4 +1,5 @@
 #include "x10_atomic_boolean.h"
+#include "x10_atomic_ops.h"
 
 x10_boolean _ZN3x104util10concurrent13AtomicBoolean13compareAndSetEbb(x10_atomic_boolean *self, x10_boolean expect, x10_boolean update)
 {

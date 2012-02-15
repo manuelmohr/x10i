@@ -1,4 +1,5 @@
 #include "x10_atomic_integer.h"
+#include "x10_atomic_ops.h"
 
 x10_boolean _ZN3x104util10concurrent13AtomicInteger13compareAndSetEii(x10_atomic_integer *self, x10_int expect, x10_int update)
 {

@@ -1,8 +1,5 @@
+#include "posix_types.h"
 #include <stdio.h>
-
-#include "x10.h"
-#include "x10_thread.h"
-#include "x10_lock.h"
 
 int main(void)
 {

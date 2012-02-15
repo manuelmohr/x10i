@@ -1,4 +1,5 @@
 #include "x10_atomic_long.h"
+#include "x10_atomic_ops.h"
 
 x10_boolean _ZN3x104util10concurrent10AtomicLong13compareAndSetExx(x10_atomic_long *self, x10_long expect, x10_long update)
 {

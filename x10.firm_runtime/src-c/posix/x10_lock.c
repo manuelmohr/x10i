@@ -1,7 +1,9 @@
-#include <errno.h>
+#include "../x10_lock.h"
+#include "../util.h"
+#include "posix_types.h"
 
-#include "x10_lock.h"
-#include "util.h"
+#include <pthread.h>
+#include <errno.h>
 
 x10_lock *_ZN3x104util10concurrent4LockC1Ev(x10_lock *self)
 {

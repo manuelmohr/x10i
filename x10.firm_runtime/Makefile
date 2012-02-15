@@ -9,17 +9,23 @@ else
 	CPARSER_TARGET=-mtarget=$(target)
 endif
 
+PLATFORM=posix
+ifeq ($(findstring octopos, $(target)), octopos)
+	PLATFORM=octopos
+endif
+
 BUILDDIR=build
 STDLIB_BUILDDIR=$(BUILDDIR)/$(target)
 SRCDIR=src-c
+PLATFORMDIR=$(SRCDIR)/$(PLATFORM)
 
 SIMULATOR?=
 LIBNAME=x10
 VERSION=2.2.0
 A_FILE=$(STDLIB_BUILDDIR)/lib$(LIBNAME).a
 SO_FILE=$(STDLIB_BUILDDIR)/lib$(LIBNAME).so.$(VERSION)
-ALL_C_FILES=$(wildcard $(SRCDIR)/*.c)
-GEN_FIRM_NATIVE_SIZES=$(SRCDIR)/gen_firm_native_sizes.c
+ALL_C_FILES=$(wildcard $(SRCDIR)/*.c) $(wildcard $(PLATFORMDIR)/*.c)
+GEN_FIRM_NATIVE_SIZES=$(PLATFORMDIR)/gen_firm_native_sizes.c
 FIRM_NATIVE_TYPES_CONF=$(STDLIB_BUILDDIR)/firmNativeTypes.conf
 C_FILES=$(filter-out $(GEN_FIRM_NATIVE_SIZES), $(ALL_C_FILES))
 O_FILES=$(addprefix $(BUILDDIR), $(basename $(C_FILES:%.c=%.o)))
@@ -37,7 +43,7 @@ $(A_FILE): $(O_FILE)
 $(SO_FILE): $(O_FILE)
 	$(CC) $(CFLAGS) -shared -Wl,-soname,lib$(LIBNAME).so -o $@ $?
 
-$(FIRM_NATIVE_TYPES_CONF): $(GEN_FIRM_NATIVE_SIZES) $(H_FILES)
+$(FIRM_NATIVE_TYPES_CONF): $(GEN_FIRM_NATIVE_SIZES) $(wildcard $(PLATFORMDIR)/*.h)
 	$(CC) $(M32) -static -o gen_firm_native_sizes $<
 	$(SIMULATOR) ./gen_firm_native_sizes > $@
 	rm -f gen_firm_native_sizes
@@ -56,6 +62,3 @@ $(IR_FILE): $(MASTER)
 .PHONY: clean
 clean:
 	rm -rf $(BUILDDIR)
-	rm -f $(O_FILES)
-	rm -f $(FIRM_NATIVE_TYPES_CONF)
-	rm -f $(A_FILE) $(SO_FILE) $(IR_FILE)

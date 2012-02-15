@@ -1,5 +1,11 @@
-#include "x10_thread.h"
-#include "util.h"
+#include "../x10_thread.h"
+#include "../util.h"
+#include "posix_types.h"
+
+#include <unistd.h>
+#include <signal.h>
+#include <sys/time.h>
+#include <sys/types.h>
 
 // internal thread id counter (monotonically increasing only)
 static long __thread_cnt;
