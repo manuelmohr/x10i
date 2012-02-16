@@ -15,6 +15,8 @@ import x10.types.MethodInstance;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 
+import com.sun.jna.Platform;
+
 /**
  * Name mangler which mangles X10 type objects to unique names
  */
@@ -45,6 +47,7 @@ public class NameMangler {
 	 */
 	private static Map<X10ClassType, String> anonymousClassNames = new HashMap<X10ClassType, String>();
 
+	private static final String PLATFORM_PREFIX;
 	private static final String MANGLE_PREFIX = "_Z";
 	private static final String MANGLE_SUFFIX = "";
 	private static final String QUAL_START = "N";
@@ -59,6 +62,14 @@ public class NameMangler {
 	private static final String MANGLED_TYPEINFO = "TI";
 
 	private static final String MANGLED_ANONYMOUS_CLASS_PREFIX = "$ANONYMOUS";
+
+	static {
+		if (Platform.isMac() || Platform.isWindows()) {
+			PLATFORM_PREFIX = "_";
+		} else {
+			PLATFORM_PREFIX = "";
+		}
+	}
 
 	/**
 	 * Initializes name substitutions for unary operators
@@ -199,7 +210,8 @@ public class NameMangler {
 	private static String mangleName(final String name) {
 		StringBuilder buf = new StringBuilder();
 		buf.append(name.length());
-		for(char c : name.toCharArray()) {
+		for (int i = 0; i < name.length(); ++i) {
+			char c = name.charAt(i);
 			if(c == '$') buf.append("_");
 			else buf.append(c);
 		}
@@ -538,6 +550,7 @@ public class NameMangler {
 	private static String mangleTypeObject(final TypeObject type, final boolean mangleDefiningClass) {
 		StringBuilder buf = new StringBuilder();
 
+		buf.append(PLATFORM_PREFIX);
 		buf.append(MANGLE_PREFIX);
 		buf.append(mangleTypeObject(type, false, mangleDefiningClass));
 		buf.append(MANGLE_SUFFIX);
@@ -571,6 +584,7 @@ public class NameMangler {
 	public static String mangleVTable(final X10ClassType clazz) {
 		StringBuilder buf = new StringBuilder();
 
+		buf.append(PLATFORM_PREFIX);
 		buf.append(MANGLE_PREFIX);
 		buf.append(MANGLED_VTABLE);
 		buf.append(mangleClassType(clazz, false));
@@ -587,11 +601,23 @@ public class NameMangler {
 	public static String mangleTypeinfo(final X10ClassType clazz) {
 		StringBuilder buf = new StringBuilder();
 
+		buf.append(PLATFORM_PREFIX);
 		buf.append(MANGLE_PREFIX);
 		buf.append(MANGLED_TYPEINFO);
 		buf.append(mangleClassType(clazz, false));
 		buf.append(MANGLE_SUFFIX);
 
+		return buf.toString();
+	}
+
+	/**
+	 * Returns platform specific mangling for a given string.
+	 * (i.e. adds an underscore prefix on mac/windows)
+	 */
+	public static String mangleKnownName(final String name) {
+		StringBuilder buf = new StringBuilder();
+		buf.append(PLATFORM_PREFIX);
+		buf.append(name);
 		return buf.toString();
 	}
 }

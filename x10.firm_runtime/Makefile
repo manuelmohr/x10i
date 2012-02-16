@@ -20,6 +20,10 @@ endif
 ifeq ($(findstring darwin, $(target)), darwin)
 	CPARSER_TARGET=
 endif
+ifeq ($(findstring darwin11, $(target)), darwin11)
+	CFLAGS += -m32
+	LFLAGS += -m32
+endif
 
 PLATFORM=posix
 ifeq ($(findstring octopos, $(target)), octopos)

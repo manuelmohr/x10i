@@ -135,6 +135,7 @@ import x10.visit.X10DelegatingVisitor;
 import x10firm.CompilerOptions;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
+import x10firm.types.NameMangler;
 import x10firm.types.ParameterTypeMapping;
 import x10firm.visit.FirmCodeTemplate.CondTemplate;
 import x10firm.visit.FirmCodeTemplate.ExprTemplate;
@@ -244,26 +245,27 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	/** Generate the static initialization constructor */
 	private void genStaticInitializationSupportCode() {
 		// get the "constructor" segment and then put the static initialization code in the "constructor" segment.
-		ClassType con_segment = Program.getSegmentType(ir_segment_t.IR_SEGMENT_CONSTRUCTORS.val);
+		final ClassType con_segment = Program.getSegmentType(ir_segment_t.IR_SEGMENT_CONSTRUCTORS.val);
 
 		final firm.Type[] parameterTypes = new firm.Type[0];
 		final firm.Type[] resultTypes = new firm.Type[0];
 
-		firm.Type method_type = new MethodType(parameterTypes, resultTypes);
-		Entity method_entity = new Entity(Program.getGlobalType(), X10_STATIC_INITIALIZER, method_type);
-		firm.Type ptr_method_type = new PointerType(method_type);
+		final firm.Type method_type = new MethodType(parameterTypes, resultTypes);
+		final String name = NameMangler.mangleKnownName(X10_STATIC_INITIALIZER);
+		final Entity method_entity = new Entity(Program.getGlobalType(), name, method_type);
+		final firm.Type ptr_method_type = new PointerType(method_type);
 
-		Entity con_entity = new Entity(con_segment, "$ctor", ptr_method_type);
+		final Entity con_entity = new Entity(con_segment, "$ctor", ptr_method_type);
 		final Graph graph = Program.getConstCodeGraph();
 		final Node val = graph.newSymConst(method_entity);
 
-		con_entity.setLdIdent(X10_STATIC_INITIALIZER);
+		con_entity.setLdIdent(name);
 		con_entity.setCompilerGenerated(true);
 		con_entity.setVisibility(ir_visibility.ir_visibility_private);
 		con_entity.setLinkage(ir_linkage.IR_LINKAGE_HIDDEN_USER.val | ir_linkage.IR_LINKAGE_CONSTANT.val);
 		con_entity.setAtomicValue(val);
 
-		OOConstruction savedConstruction = initConstruction(method_entity,  Collections.<LocalInstance>emptyList(),
+		final OOConstruction savedConstruction = initConstruction(method_entity,  Collections.<LocalInstance>emptyList(),
 				Collections.<LocalInstance>emptyList(), Flags.STATIC, x10TypeSystem.Void(), null);
 
 		for(polyglot.ast.Initializer n : static_init_blocks)
@@ -2018,7 +2020,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		resultTypes[0] = firmTypeSystem.asType(x10TypeSystem.String());
 		final MethodType type = new firm.MethodType(parameterTypes, resultTypes);
 
-		final Entity func_ent = new Entity(Program.getGlobalType(), X10_STRING_LITERAL, type);
+		final String name = NameMangler.mangleKnownName(X10_STRING_LITERAL);
+		final Entity func_ent = new Entity(Program.getGlobalType(), name, type);
 		final Node address = con.newSymConst(func_ent);
 
 		Node[] parameters = new Node[2];
@@ -2628,7 +2631,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		parameterTypes[2] = firmTypeSystem.asType(x10TypeSystem.String());
 		final firm.Type[] resultTypes = new firm.Type[0];
 		final MethodType type = new firm.MethodType(parameterTypes, resultTypes);
-		final Entity funcEnt = new Entity(Program.getGlobalType(), X10_ASSERT, type);
+		final String name = NameMangler.mangleKnownName(X10_ASSERT);
+		final Entity funcEnt = new Entity(Program.getGlobalType(), name, type);
 		final Node address = con.newSymConst(funcEnt);
 
 		Node[] parameters = new Node[] { cond, errMsg, position };
@@ -2658,7 +2662,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final firm.Type[] parameterTypes = new firm.Type[0];
 		final firm.Type[] resultTypes = new firm.Type[0];
 		final MethodType type = new firm.MethodType(parameterTypes, resultTypes);
-		final Entity funcEnt = new Entity(Program.getGlobalType(), X10_THROW_STUB, type);
+		final String name = NameMangler.mangleKnownName(X10_THROW_STUB);
+		final Entity funcEnt = new Entity(Program.getGlobalType(), name, type);
 		final Node address = con.newSymConst(funcEnt);
 
 		Node[] parameters = new Node[0];

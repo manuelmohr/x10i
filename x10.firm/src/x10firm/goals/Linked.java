@@ -25,6 +25,18 @@ public class Linked extends PostCompiled {
 		super(extInfo);
 	}
 
+	private static String getGCC(CompilerOptions options) {
+		final MachineTriple target = options.getTargetTriple();
+		/* darwin11 doesn't have a proper target-gcc installed, just used
+		 * "gcc" */
+		if (target.getOS().equals("darwin11")) {
+			return "gcc";
+		}
+
+		final String gcc = target + "-gcc";
+		return gcc;
+	}
+
 	@Override
 	protected boolean invokePostCompiler(Options opts, Compiler compiler,
 			ErrorQueue eq) {
@@ -38,12 +50,13 @@ public class Linked extends PostCompiled {
 		final MachineTriple target = options.getTargetTriple();
 		final String x10DistPath = System.getProperty("x10.dist", ".");
 		final String libooPath = x10DistPath + "/../liboo/build/" + target;
-		final String gcc = target + "-gcc";
+		final String gcc = getGCC(options);
 
 		final List<String> cmd = new ArrayList<String>();
 		cmd.add(gcc);
 		// Produce a 32-bit binary when running on a 64-bit x86 host
-		if (options.getTargetTriple().toString().startsWith("x86_64"))
+		if (target.getCpu().equals("x86_64")
+		    || target.getOS().equals("darwin11"))
 			cmd.add("-m32");
 		if (options.linkStatically())
 			cmd.add("-static");

@@ -36,6 +36,9 @@ public class FirmState {
 		return true;
 	}
 
+	/**
+	 * Returns true if a library has been loaded as firm compilergraphs.
+	 */
 	public static boolean libraryLoaded(final String name) {
 		return firmLibraries.contains(name);
 	}
