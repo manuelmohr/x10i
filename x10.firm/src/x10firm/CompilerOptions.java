@@ -5,8 +5,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import polyglot.frontend.ExtensionInfo;
 import polyglot.main.Main;
@@ -19,64 +17,11 @@ import firm.Backend;
  * @author matze
  */
 public class CompilerOptions extends X10CompilerOptions {
-	/** Represents a target triple. */
-	public static final class TargetTriple {
-		private final String cpu;
-		private final String manufacturer;
-		private final String operatingSystem;
-
-		/** Constructs a target triple from a triple string.
-		 *
-		 * @param triple A triple string such as "i686-linux-gnu" or a quadruple like "sparc-unknown-linux-gnu"
-		 */
-		public TargetTriple(final String triple) throws UsageError {
-			final Pattern quad = Pattern.compile("(\\w+)-(\\w+)-(\\w+)-(\\w+)");
-			final Pattern trip = Pattern.compile("(\\w+)-(\\w+)-(\\w+)");
-			Matcher matcher = quad.matcher(triple);
-
-			if (matcher.matches()) {
-				cpu = matcher.group(1);
-				manufacturer = matcher.group(2);
-				operatingSystem = matcher.group(3) + "-" + matcher.group(4);
-				return;
-			}
-
-			matcher = trip.matcher(triple);
-			if (matcher.matches()) {
-				cpu = matcher.group(1);
-				manufacturer = "unknown";
-				operatingSystem = matcher.group(2) + "-" + matcher.group(3);
-				return;
-			}
-
-			throw new UsageError("Invalid target triple: \"" + triple + "\"");
-		}
-
-		/** Get CPU string. */
-		public String getCpu() {
-			return cpu;
-		}
-
-		/** Get instruction set architecture. */
-		public String getIsa() {
-			if (cpu.equals("i386") || cpu.equals("i486") || cpu.equals("i586") || cpu.equals("i686"))
-				return "ia32";
-			return cpu;
-		}
-
-		@Override
-		public String toString() {
-			if (manufacturer.equals("unknown"))
-				return cpu + "-" + operatingSystem;
-			return cpu + "-" + manufacturer + "-" + operatingSystem;
-		}
-	}
-
 	/** Decides whether compiler outputs FIRM graphs. */
 	private boolean dumpFirmGraphs = false;
 	private static final String firmNativeTypesFilename = "firmNativeTypes.conf";
 	private String nativeTypesConfigPath = null;
-	private TargetTriple target = null;
+	private MachineTriple target = null;
 	private boolean useSoftFloat = false;
 	private boolean assembleAndLink = true;
 	private boolean useFirmLibraries = true;
@@ -98,7 +43,7 @@ public class CompilerOptions extends X10CompilerOptions {
 		String output = stdOut.readLine();
 		if (output == null)
 			throw new RuntimeException("Failed to determine host architecture");
-		target = new TargetTriple(output);
+		target = new MachineTriple(output);
 		stdOut.close();
 	}
 
@@ -120,7 +65,7 @@ public class CompilerOptions extends X10CompilerOptions {
 	/**
 	 * @return The target triple.
 	 */
-	public TargetTriple getTargetTriple() {
+	public MachineTriple getTargetTriple() {
 		return target;
 	}
 
@@ -172,7 +117,7 @@ public class CompilerOptions extends X10CompilerOptions {
 			}
 			return index + 1;
 		} else if (args[i].startsWith("-target=") || args[i].startsWith("-mtarget=")) {
-			target = new TargetTriple(args[i].substring(args[i].indexOf('=') + 1));
+			target = new MachineTriple(args[i].substring(args[i].indexOf('=') + 1));
 			backendOption("isa=" + target.getIsa());
 			if (target.getIsa().equals("ia32"))
 				backendOption("ia32-arch=" + target.getCpu());

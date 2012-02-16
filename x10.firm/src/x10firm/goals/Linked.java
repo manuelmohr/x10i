@@ -14,6 +14,7 @@ import polyglot.visit.PostCompiled;
 import x10cpp.visit.X10CPPTranslator;
 import x10firm.CompilerOptions;
 import x10firm.FirmState;
+import x10firm.MachineTriple;
 
 /**
  * Final Goal, which links the generated asm with the stdlib
@@ -34,7 +35,7 @@ public class Linked extends PostCompiled {
 		                           : options.executable_path;
 		final File asm = new File(AsmEmitted.ASM_FILENAME);
 
-		final CompilerOptions.TargetTriple target = options.getTargetTriple();
+		final MachineTriple target = options.getTargetTriple();
 		final String x10DistPath = System.getProperty("x10.dist", ".");
 		final String libooPath = x10DistPath + "/../liboo/build/" + target;
 		final String gcc = target + "-gcc";
