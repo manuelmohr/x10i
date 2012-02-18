@@ -125,7 +125,7 @@ x10_long x10_thread_get_id(x10_thread *self)
 // Returns the system thread id.
 x10_long x10_thread_get_tid()
 {
-	return (x10_long)pthread_self();
+	return (x10_long)(intptr_t)pthread_self();
 }
 
 // Waits forever for this thread to die.
