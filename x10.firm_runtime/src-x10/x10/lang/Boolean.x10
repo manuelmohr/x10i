@@ -86,16 +86,14 @@ public struct Boolean implements Comparable[Boolean] {
      * Returns a String representation of this Boolean.
      * @return a string representation of this Boolean.
      */
-    @Native("java", "java.lang.Boolean.toString(#this)")
-    @Native("c++", "x10aux::to_string(#0)")
-    public native def toString(): String;
+    public def toString(): String {
+      return self ? "true" : "false";
+    }
 
     /**
      * @deprecated use {@link #parse(String)} instead
      */
-    @Native("java", "java.lang.Boolean.parseBoolean(#s)")
-    @Native("c++", "x10aux::boolean_utils::parseBoolean(#1)")
-    public native static def parseBoolean(s:String): Boolean;
+    public static def parseBoolean(s:String): Boolean = parse;
 
     /**
      * Parses the String argument as a Boolean.
@@ -104,10 +102,9 @@ public struct Boolean implements Comparable[Boolean] {
      * @param s the String containing the Boolean representation to be parsed
      * @return the Boolean represented by the String argument.
      */
-    @Native("java", "java.lang.Boolean.parseBoolean(#s)")
-    @Native("c++", "x10aux::boolean_utils::parseBoolean(#1)")
-    public native static def parse(s:String): Boolean;
-
+    public static def parse(s:String): Boolean {
+      return s.equalsIgnoreCase("true");
+    }
 
     /**
      * Return true if the given entity is a Boolean, and this Boolean is equal
@@ -115,9 +112,6 @@ public struct Boolean implements Comparable[Boolean] {
      * @param x the given entity
      * @return true if this Boolean is equal to the given entity.
      */
-    //FIXME Java: use equalsequals()?
-    @Native("java", "((((#x) instanceof boolean) && #this == ((boolean)#x)) || (((#x) instanceof Boolean) && #this == ((Boolean) #x).booleanValue()))")
-    @Native("c++", "x10aux::equals(#0,#1)")
     public def equals(x:Any):Boolean {
     	if(x instanceof Boolean)
     		return equals(x as Boolean);
@@ -129,9 +123,14 @@ public struct Boolean implements Comparable[Boolean] {
      * @param x the given Boolean
      * @return true if this Boolean is equal to the given Boolean.
      */
-    @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
-    @Native("c++", "x10aux::equals(#0,#1)")
     public native def equals(x:Boolean):Boolean;
+
+    /**
+     * Returns a hashCode for the boolean
+     */
+    public def hashCode():Int {
+      return self ? 1 : 0;
+    }
 
     /**
     * Returns a negative Int, zero, or a positive Int if this Boolean is less than, equal
@@ -140,9 +139,9 @@ public struct Boolean implements Comparable[Boolean] {
     * @return a negative Int, zero, or a positive Int if this Boolean is less than, equal
     * to, or greater than the given Boolean.
     */
-    @Native("java", "x10.rtt.Equality.compareTo(#this, #x)")
-    @Native("c++", "x10aux::boolean_utils::compareTo(#0, #1)")
-    public native def compareTo(x:Boolean):Int;
+    public def compareTo(x:Boolean):Int {
+      return (self == other) ? 0 : self ? 1 : -1;
+    }
 
     // These operations are built-in.  Declaring them will prevent the
     // short-circuiting behavior.
