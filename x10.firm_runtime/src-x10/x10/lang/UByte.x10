@@ -407,62 +407,41 @@ public struct UByte implements Comparable[UByte] /*TODO implements Arithmetic[UB
      * @param radix the radix to use in the String representation
      * @return a String representation of this UByte in the specified radix.
      */
-    // @Native("java", "java.lang.Integer.toString((#this) & 0xff, #radix)")
-    @Native("c++", "x10aux::int_utils::toString((#0) & 0xff, #1)")
-     /* [FIRM_CHANGE] */
     public native def toString(radix:Int): String;
 
     /**
      * Returns a String representation of this UByte as a hexadecimal number.
      * @return a String representation of this UByte as a hexadecimal number.
      */
-    // @Native("java", "java.lang.Integer.toHexString((#this) & 0xff)")
-    @Native("c++", "x10aux::int_utils::toHexString((#0) & 0xff)")
-     /* [FIRM_CHANGE] */
-    public native def toHexString(): String;
+    public def toHexString(): String = toString(16);
 
     /**
      * Returns a String representation of this UByte as an octal number.
      * @return a String representation of this UByte as an octal number.
      */
-    // @Native("java", "java.lang.Integer.toOctalString((#this) & 0xff)")
-    @Native("c++", "x10aux::int_utils::toOctalString((#0) & 0xff)")
-     /* [FIRM_CHANGE] */
-    public native def toOctalString(): String;
+    public def toOctalString(): String = toString(8);
 
     /**
      * Returns a String representation of this UByte as a binary number.
      * @return a String representation of this UByte as a binary number.
      */
-    // @Native("java", "java.lang.Integer.toBinaryString((#this) & 0xff)")
-    @Native("c++", "x10aux::int_utils::toBinaryString((#0) & 0xff)")
-     /* [FIRM_CHANGE] */
-    public native def toBinaryString(): String;
+    public def toBinaryString(): String = toString(2);
 
     /**
      * Returns a String representation of this UByte as a decimal number.
      * @return a String representation of this UByte as a decimal number.
      */
-    // @Native("java", "java.lang.Integer.toString((#this) & 0xff)")
-    @Native("c++", "x10aux::to_string(#0)")
-     /* [FIRM_CHANGE] */
-    public native def toString(): String;
+    public def toString(): String = toString(10);
 
     /**
      * @deprecated use {@link #parse(String,Int)} instead
      */
-    // @Native("java", "((byte) (java.lang.Integer.parseInt(#s, #radix) & 0xff))")
-    @Native("c++", "(x10aux::byte_utils::parseUByte(#1, #2))")
-     /* [FIRM_CHANGE] */
-    public native static def parseUByte(s:String, radix:Int): UByte; //throws NumberFormatException 
+    public static def parseUByte(s:String, radix:Int): UByte = parse(s, radix);
 
     /**
      * @deprecated use {@link #parse(String)} instead
      */
-    // @Native("java", "java.lang.Integer.parseInt(#s)")
-    @Native("c++", "(x10aux::byte_utils::parseUByte(#1))")
-     /* [FIRM_CHANGE] */
-    public native static def parseUByte(s:String): UByte; //throws NumberFormatException 
+    public static def parseUByte(s:String): UByte = parse(s);
 
     /**
      * Parses the String argument as a UByte in the radix specified by the second argument.
@@ -482,11 +461,7 @@ public struct UByte implements Comparable[UByte] /*TODO implements Arithmetic[UB
      * @return the UByte represented by the String argument.
      * @throws NumberFormatException if the String does not contain a parsable UByte.
      */
-    // @Native("java", "java.lang.Integer.parseInt(#s)")
-    @Native("c++", "(x10aux::byte_utils::parseUByte(#1))")
-     /* [FIRM_CHANGE] */
-    public native static def parse(s:String): UByte; //throws NumberFormatException 
-
+    public static def parse(s:String): UByte = parse(s, 10);
 
     /**
      * Returns the value obtained by reversing the order of the bits in the

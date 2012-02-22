@@ -61,11 +61,13 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param x the given entity
      * @return true if this String is equal to the given entity.
      */
-    @Native("java", "(#this).equals(#that)")
-    @Native("c++", "x10aux::equals(#this,#that)")
-    public native def equals(that:Any): boolean;
+    public def equals(that:Any): boolean
+    {
+      if (that instanceof String)
+        return equals(that as String);
+      return false;
+    }
 
-    // FIXME: Locale sensitivity
     /**
      * Returns true if this String is equal to the given String, ignoring case considerations.
      * @param x the given String
@@ -97,8 +99,10 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      */
     @Native("java", "(#this).toString()")
     @Native("c++", "x10aux::to_string(#this)")
-    public native def toString(): String;
-
+    public def toString(): String
+    {
+      return this;
+    }
 
     /**
      * Returns the length of this String.
@@ -371,9 +375,6 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param v the given entity
      * @return a String representation of the given entity.
      */
-    @Native("java", "java.lang.String.valueOf(#v)")
-    @Native("c++", "x10aux::safe_to_string(#v)")
-    /* [FIRM_CHANGE] */
     public static def valueOf[T](v: T): String = v.toString();
 
 
@@ -474,9 +475,9 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param x the other String
      * @return true if this String is strictly before the other String.
      */
-    @Native("java", "((#this).compareTo(#x) < 0)")
-    @Native("c++",  "((#this)->compareTo(#x) < 0)")
-    public native operator this < (x:String): Boolean;
+    public operator this < (x:String): Boolean {
+      return compareTo(x) < 0;
+    }
 
     // FIXME: Locale sensitivity
     /**
@@ -486,9 +487,9 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param x the other String
      * @return true if this String is strictly after the other String.
      */
-    @Native("java", "((#this).compareTo(#x) > 0)")
-    @Native("c++",  "((#this)->compareTo(#x) > 0)")
-    public native operator this > (x:String): Boolean;
+    public operator this > (x:String): Boolean {
+        return compareTo(x) > 0;
+    }
 
     // FIXME: Locale sensitivity
     /**
@@ -498,9 +499,9 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param x the other String
      * @return true if this String is before or equal to the other String.
      */
-    @Native("java", "((#this).compareTo(#x) <= 0)")
-    @Native("c++",  "((#this)->compareTo(#x) <= 0)")
-    public native operator this <= (x:String): Boolean;
+    public operator this <= (x:String): Boolean {
+      return compareTo(x) <= 0;
+    }
 
     // FIXME: Locale sensitivity
     /**
@@ -510,9 +511,9 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param x the other String
      * @return true if this String is after or equal to the other String.
      */
-    @Native("java", "((#this).compareTo(#x) >= 0)")
-    @Native("c++",  "((#this)->compareTo(#x) >= 0)")
-    public native operator this >= (x:String): Boolean;
+    public operator this >= (x:String): Boolean {
+      return compareTo(x) >= 0;
+    }
 
     /**
      * A string concatenation operator.

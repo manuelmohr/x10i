@@ -8,10 +8,9 @@
  *
  *  (C) Copyright IBM Corporation 2006-2010.
  */
-
-#include "../x10_atomic_ops.h"
-
-#include <pthread.h>
+#include "x10_atomic_ops.h"
+#include "platform.h"
+#include "platform_atomic_ops.h"
 
 /**
  * Atomic compare and swap of a 32 bit value.
@@ -54,32 +53,6 @@ x10_int x10_atomic_ops_compareAndSet_32(volatile x10_int* address, x10_int oldVa
 #else
 	#error "Unknown architecture"
 #endif
-}
-
-static pthread_mutexattr_t attr;
-static pthread_mutex_t     opLock;
-
-static void x10_atomic_ops_lock()
-{
-	pthread_mutex_lock(&opLock);
-}
-
-static void x10_atomic_ops_unlock()
-{
-    pthread_mutex_unlock(&opLock);
-}
-
-static void __attribute__((constructor)) init_locks(void)
-{
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&opLock, &attr);
-}
-
-static void __attribute__((destructor)) destroy_locks(void)
-{
-	pthread_mutex_destroy(&opLock);
-	pthread_mutexattr_destroy(&attr);
 }
 
 /**

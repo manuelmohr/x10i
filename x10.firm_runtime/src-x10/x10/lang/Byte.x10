@@ -304,49 +304,35 @@ public struct Byte implements Comparable[Byte], Arithmetic[Byte], Bitwise[Byte],
      * Returns a String representation of this Byte as a hexadecimal number.
      * @return a String representation of this Byte as a hexadecimal number.
      */
-    @Native("java", "x10.core.Signed.toString((byte)#this, 16)")
-    @Native("c++", "x10aux::byte_utils::toHexString(#0)")
-    public native def toHexString(): String;
+    public def toHexString(): String = toString(16);
 
     /**
      * Returns a String representation of this Byte as an octal number.
      * @return a String representation of this Byte as an octal number.
      */
-    @Native("java", "x10.core.Signed.toString((byte)#this, 8)")
-    @Native("c++", "x10aux::byte_utils::toOctalString(#0)")
-    public native def toOctalString(): String;
+    public def toOctalString(): String = toString(8);
 
     /**
      * Returns a String representation of this Byte as a binary number.
      * @return a String representation of this Byte as a binary number.
      */
-    @Native("java", "x10.core.Signed.toString((byte)#this, 2)")
-    @Native("c++", "x10aux::byte_utils::toBinaryString(#0)")
-    public native def toBinaryString(): String;
+    public def toBinaryString(): String = toString(2);
 
     /**
      * Returns a String representation of this Byte as a decimal number.
      * @return a String representation of this Byte as a decimal number.
      */
-    @Native("java", "java.lang.Byte.toString((byte)#this)")
-    @Native("c++", "x10aux::to_string(#0)")
-    public native def toString(): String;
+    public def toString(): String = toString(10);
 
     /**
      * @deprecated use {@link #parse(String,Int)} instead
      */
-    // @Native("java", "x10.core.Signed.parseByte(#s, #radix)")
-    @Native("java", "java.lang.Byte.parseByte(#s, #radix)")
-    @Native("c++", "x10aux::byte_utils::parseByte(#1, #2)")
-    public native static def parseByte(s:String, radix:Int): Byte; //throwsNumberFormatException;
+    public static def parseByte(s:String, radix:Int): Byte = parse(s, radix);
 
     /**
      * @deprecated use {@link #parse(String)} instead
      */
-    // @Native("java", "x10.core.Signed.parseByte(#s)")
-    @Native("java", "java.lang.Byte.parseByte(#s)")
-    @Native("c++", "x10aux::byte_utils::parseByte(#1)")
-    public native static def parseByte(s:String): Byte ; //throwsNumberFormatException;
+    public static def parseByte(s:String): Byte = parse(s);
 
     /**
      * Parses the String argument as a Byte in the radix specified by the second argument.
@@ -355,10 +341,9 @@ public struct Byte implements Comparable[Byte], Arithmetic[Byte], Bitwise[Byte],
      * @return the Byte represented by the String argument in the specified radix.
      * @; //throwsNumberFormatException if the String does not contain a parsable Byte.
      */
-    // @Native("java", "x10.core.Signed.parseByte(#s, #radix)")
     @Native("java", "java.lang.Byte.parseByte(#s, #radix)")
     @Native("c++", "x10aux::byte_utils::parseByte(#1, #2)")
-    public native static def parse(s:String, radix:Int): Byte ; //throwsNumberFormatException;
+    public native static def parse(s:String, radix:Int): Byte;
 
     /**
      * Parses the String argument as a decimal Byte.
@@ -366,10 +351,7 @@ public struct Byte implements Comparable[Byte], Arithmetic[Byte], Bitwise[Byte],
      * @return the Byte represented by the String argument.
      * @throws NumberFormatException if the String does not contain a parsable Byte.
      */
-    // @Native("java", "x10.core.Signed.parseByte(#s)")
-    @Native("java", "java.lang.Byte.parseByte(#s)")
-    @Native("c++", "x10aux::byte_utils::parseByte(#1)")
-    public native static def parse(s:String): Byte ; //throwsNumberFormatException;
+    public static def parse(s:String): Byte = parse(s, 10);
 
 
     /**
@@ -398,9 +380,6 @@ public struct Byte implements Comparable[Byte], Arithmetic[Byte], Bitwise[Byte],
      * @param x the given entity
      * @return true if this Byte is equal to the given entity.
      */
-    @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
-    @Native("c++", "x10aux::equals(#0,#1)")
-    /* [FIRM_CHANGE] */
     public def equals(x:Any):Boolean {
     	if(x instanceof Byte)
     		return equals(x as Byte);

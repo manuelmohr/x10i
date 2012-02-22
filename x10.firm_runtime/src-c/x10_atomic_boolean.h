@@ -13,7 +13,7 @@ typedef struct {
 	volatile x10_int value;
 } x10_atomic_boolean;
 
-X10_EXTERN x10_boolean _ZN3x104util10concurrent13AtomicBoolean13compareAndSetEbb(x10_atomic_boolean *, x10_boolean, x10_boolean);
-X10_EXTERN x10_boolean _ZN3x104util10concurrent13AtomicBoolean17weakCompareAndSetEbb(x10_atomic_boolean *, x10_boolean, x10_boolean);
+x10_boolean _ZN3x104util10concurrent13AtomicBoolean13compareAndSetEbb(x10_atomic_boolean *, x10_boolean, x10_boolean);
+x10_boolean _ZN3x104util10concurrent13AtomicBoolean17weakCompareAndSetEbb(x10_atomic_boolean *, x10_boolean, x10_boolean);
 
 #endif

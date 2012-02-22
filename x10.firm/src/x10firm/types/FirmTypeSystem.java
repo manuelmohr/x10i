@@ -800,7 +800,9 @@ public class FirmTypeSystem {
 		Type typeUByte = new PrimitiveType(modeUByte);
 		saveType(x10TypeSystem.UByte(), typeUByte);
 
-		Mode modeChar = modeInt; /* reuse mode to match stdlib (we use wchar!) */
+		/* since octopos has no real support for unicode yet, and we have a somewhat hardware-centric
+		 * project we go for 8bit-chars for now. (You can still use UTF-8 strings after all) */
+		Mode modeChar = modeByte;
 		Type typeChar = new PrimitiveType(modeChar);
 		saveType(x10TypeSystem.Char(), typeChar);
 

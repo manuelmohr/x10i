@@ -7,7 +7,6 @@
 #include <string.h>
 #include <inttypes.h>
 #include <math.h>
-#include <wchar.h>
 #include <assert.h>
 #include <stdio.h>
 #include <errno.h>
@@ -47,19 +46,29 @@ typedef uint16_t    x10_ushort;
 typedef int8_t      x10_byte;
 typedef uint8_t     x10_ubyte;
 typedef bool        x10_boolean;
-typedef wchar_t     x10_char;
+typedef char        x10_char;
 typedef float       x10_float;
 typedef double      x10_double;
 typedef char       *x10_pointer;
 
-#define X10_EXTERN extern
+#define PRIx10_long   PRIi64
+#define PRIx10_ulong  PRIu64
+#define PRIx10_int    PRIi32
+#define PRIx10_uint   PRIu32
+#define PRIx10_short  PRIi16
+#define PRIx10_ushort PRIu16
+#define PRIx10_byte   PRId8
+#define PRIx10_ubyte  PRIu8
+#define PRIx10_char   "c"
+#define PRIx10_float  "f"
+#define PRIx10_double "f"
 
 #define X10_OBJECT_CAST(to, what) ((to *)(what))
 #define X10_ALLOC_OBJECT(o) (o *)X10_MALLOC(sizeof(o))
 
 #define X10_UNUSED(s) (void)(s)
-#define T_(x) L##x
+#define T_(x) x
 
-#define X10_UNIMPLEMENTED() fprintf(stderr, "%s not implemented yet", __FUNCTION__); abort();
+#define X10_UNIMPLEMENTED() printf("%s not implemented yet", __FUNCTION__); abort();
 
 #endif

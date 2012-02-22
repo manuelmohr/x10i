@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include "x10.h"
 #include "x10_primitive_types.h"
 #include "x10_string.h"
@@ -13,51 +14,55 @@ X10_MAKE_EQUALS(_ZN3x104lang6Double6equalsEd, x10_double)
  */
 
 /* precondition: buf contains decimal point */
-static void kill_excess_zeroes(wchar_t *buf, size_t sz)
+static void kill_excess_zeroes(char *buf, size_t sz)
 {
-	for (int i=sz-1 ; i>0 && (buf[i]==L'0' || buf[i]==T_('\0')) ; --i) {
-		if (buf[i-1] == T_('.'))
+	if (buf[sz-1] != '0')
+		return;
+	size_t i;
+	for (i = sz; i-- > 0; ) {
+		if (buf[i] != '0') {
+			buf[i+1] = '\0';
 			break;
-		buf[i] = T_('\0');
+		}
 	}
 }
 
 x10_string *_ZN3x104lang6Double8toStringEv(x10_double v)
 {
-#define STRBUF_SIZE 120
-	wchar_t buf[STRBUF_SIZE] = T_("");
+	x10_char buf[120];
 	if (isnan(v)) {
-		swprintf(buf, STRBUF_SIZE, T_("NaN"));
-	} else if (isinf(v) && v > 0.0) {
-		swprintf(buf, STRBUF_SIZE, T_("Infinity"));
-	} else if (isinf(v) && v < 0.0) {
-		swprintf(buf, STRBUF_SIZE, T_("-Infinity"));
+		return x10_string_from_cstring("NaN");
+	} else if (isinf(v)) {
+		return x10_string_from_cstring(v > 0.0 ? "Infinity" : "-Infinity");
 	} else if (fabs(v) >= 1E-3 && fabs(v) < 1E7) {
-		swprintf(buf, STRBUF_SIZE, T_("%.15f"), v);
-		kill_excess_zeroes(buf, STRBUF_SIZE);
+		snprintf(buf, sizeof(buf), "%.15f", v);
+		kill_excess_zeroes(buf, sizeof(buf));
 	} else if (v == 0.0) {
-		swprintf(buf, STRBUF_SIZE, T_("%.1f"), v);
+		snprintf(buf, sizeof(buf), "%.1f", v);
 	} else {
+#ifdef __OCTOPOS__
+		abort();
+#else
 		/* scientific notation */
 		int e = (int)floor(log(fabs(v))/log(10.0)); /* exponent */
 		/* volatile because reordering could change computed floating point value */
-		volatile double m = v / pow(10.0, e); /* mantissa */
+		double m = v / pow(10.0, e); /* mantissa */
 		if (e < -10) {
 			/* avoid touching -Infinity */
 			m = v * 1E10;
 			m /= pow(10.0, e+10);
 		}
 		if (e < 0) {
-			swprintf(buf, STRBUF_SIZE, T_("%.1f"), m);
+			snprintf(buf, sizeof(buf), "%.1f", m);
 		} else {
-			swprintf(buf, STRBUF_SIZE, T_("%.16f"), m);
+			snprintf(buf, sizeof(buf), T_("%.16f"), m);
 		}
-		kill_excess_zeroes(buf, STRBUF_SIZE);
-		wchar_t *rest = buf + wcslen(buf);
-		swprintf(rest, STRBUF_SIZE + buf - rest, T_("E%d"), e);
+		kill_excess_zeroes(buf, sizeof(buf));
+		char *rest = buf + strlen(buf);
+		snprintf(rest, sizeof(buf)+buf-rest, "E%d", e);
+#endif
 	}
-	return x10_string_from_wide_chars(buf);
-#undef STRBUF_SIZE
+	return x10_string_from_cstring(buf);
 }
 
 MAKE_BINOPS(_ZN3x104lang6Double, d, x10_double)

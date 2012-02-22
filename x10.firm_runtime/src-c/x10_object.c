@@ -10,29 +10,26 @@ void _ZN3x104lang6ObjectC1Ev(x10_object *self)
 	X10_UNUSED(self);
 }
 
-// TODO: Implement me
+// Object.typeName()
 x10_string *_ZN3x104lang6Object8typeNameEv(x10_object *self)
 {
 	X10_UNUSED(self);
-	return x10_string_from_wide_chars(T_("Object"));
+	return x10_string_from_cstring("Object");
 }
 
-// TODO: Implement me
 x10_boolean _ZN3x104lang6Object6equalsEPN3x104lang3AnyE(x10_object *self, x10_any *other)
 {
 	return self == (x10_object *)other;
 }
 
-// TODO: Implement me
 x10_int _ZN3x104lang6Object8hashCodeEv(x10_object *self)
 {
 	return (x10_int)(intptr_t)self;
 }
 
-// TODO: Implement me
 x10_string *_ZN3x104lang6Object8toStringEv(x10_object *self)
 {
-	x10_char tmp[30];
-	swprintf(tmp, 30, T_("Object %p"), self);
-	return x10_string_from_wide_chars(tmp);
+	char buf[30];
+	snprintf(buf, sizeof(buf), "Object %p", (void*)self);
+	return x10_string_from_cstring(buf);
 }

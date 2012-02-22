@@ -1,8 +1,6 @@
 #include "x10_printer.h"
 #include "x10_string.h"
 
-#include <wchar.h>
-
 // TODO:  Implement me
 void _ZN3x102io7Printer7printlnEPN3x104lang3AnyE(
 	x10_printer *printer, x10_any *any)

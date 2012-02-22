@@ -309,52 +309,35 @@ public struct Int implements Comparable[Int] /*TODO implements Arithmetic[Int], 
      * Returns a String representation of this Int as a hexadecimal number.
      * @return a String representation of this Int as a hexadecimal number.
      */
-    // N.B. "java.lang.Integer.to{Binary,Octal,Hex}String(int)" handles the argument as unsigned but "java.lang.Integer.toString(int,int)" does not.
-    @Native("java", "java.lang.Integer.toString(#this, 16)")
-    @Native("c++", "x10aux::int_utils::toHexString(#0)")
-    public native def toHexString(): String;
+    public def toHexString(): String = toString(16);
 
     /**
      * Returns a String representation of this Int as an octal number.
      * @return a String representation of this Int as an octal number.
      */
-    // N.B. "java.lang.Integer.to{Binary,Octal,Hex}String(int)" handles the argument as unsigned but "java.lang.Integer.toString(int,int)" does not.
-    @Native("java", "java.lang.Integer.toString(#this, 8)")
-    @Native("c++", "x10aux::int_utils::toOctalString(#0)")
-    public native def toOctalString(): String;
+    public def toOctalString(): String = toString(8);
 
     /**
      * Returns a String representation of this Int as a binary number.
      * @return a String representation of this Int as a binary number.
      */
-    // N.B. "java.lang.Integer.to{Binary,Octal,Hex}String(int)" handles the argument as unsigned but "java.lang.Integer.toString(int,int)" does not.
-    @Native("java", "java.lang.Integer.toString(#this, 2)")
-    @Native("c++", "x10aux::int_utils::toBinaryString(#0)")
-    public native def toBinaryString(): String;
+    public def toBinaryString(): String = toString(2);
 
     /**
      * Returns a String representation of this Int as a decimal number.
      * @return a String representation of this Int as a decimal number.
      */
-    @Native("java", "java.lang.Integer.toString(#this)")
-    @Native("c++", "x10aux::to_string(#0)")
-    public native def toString(): String;
+    public def toString(): String = toString(10);
 
     /**
      * @deprecated use {@link #parse(String,Int)} instead
      */
-    // @Native("java", "x10.core.Signed.parseInt(#s, #radix)")
-    @Native("java", "java.lang.Integer.parseInt(#s, #radix)")
-    @Native("c++", "x10aux::int_utils::parseInt(#1, #2)")
-    public native static def parseInt(s:String, radix:Int): Int; //throwsNumberFormatException;
+    public static def parseInt(s:String, radix:Int): Int = parse(s, radix);
 
     /**
      * @deprecated use {@link #parse(String)} instead
      */
-    // @Native("java", "x10.core.Signed.parseInt(#s)")
-    @Native("java", "java.lang.Integer.parseInt(#s)")
-    @Native("c++", "x10aux::int_utils::parseInt(#1)")
-    public native static def parseInt(s:String): Int; //throwsNumberFormatException;
+    public static def parseInt(s:String): Int = parse(s);
 
     /**
      * Parses the String argument as an Int in the radix specified by the second argument.
@@ -374,11 +357,7 @@ public struct Int implements Comparable[Int] /*TODO implements Arithmetic[Int], 
      * @return the Int represented by the String argument.
      * @throws NumberFormatException if the String does not contain a parsable Int.
      */
-    // @Native("java", "x10.core.Signed.parseInt(#s)")
-    @Native("java", "java.lang.Integer.parseInt(#s)")
-    @Native("c++", "x10aux::int_utils::parseInt(#1)")
-    public native static def parse(s:String): Int; //throwsNumberFormatException;
-
+    public static def parse(s:String): Int = parse(s, 10);
 
     /**
      * Returns an Int value with at most a single one-bit, in the position

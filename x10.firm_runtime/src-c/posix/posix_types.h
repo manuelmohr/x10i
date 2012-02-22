@@ -1,9 +1,9 @@
 #ifndef POSIX_TYPES_H
 #define POSIX_TYPES_H
 
-#include "../x10.h"
-#include "../x10_string.h"
 #include <pthread.h>
+#include "x10.h"
+#include "x10_string.h"
 
 // execution thread condition & associated lock pair
 typedef struct cond_mutex_t {

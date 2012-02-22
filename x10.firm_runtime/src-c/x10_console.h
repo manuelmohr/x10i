@@ -5,7 +5,7 @@
 #include "x10_printer.h"
 
 // static "OUT" and "ERR" fields of the printer
-X10_EXTERN x10_printer *_ZN3x102io7Console3OUTE;
-X10_EXTERN x10_printer *_ZN3x102io7Console3ERRE;
+x10_printer *_ZN3x102io7Console3OUTE;
+x10_printer *_ZN3x102io7Console3ERRE;
 
 #endif

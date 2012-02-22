@@ -304,49 +304,35 @@ public struct Short implements Comparable[Short], Arithmetic[Short], Bitwise[Sho
      * Returns a String representation of this Short as a hexadecimal number.
      * @return a String representation of this Short as a hexadecimal number.
      */
-    @Native("java", "x10.core.Signed.toString((short)#this, 16)")
-    @Native("c++", "x10aux::short_utils::toHexString(#0)")
-    public native def toHexString(): String;
+    public def toHexString(): String = toString(16);
 
     /**
      * Returns a String representation of this Short as an octal number.
      * @return a String representation of this Short as an octal number.
      */
-    @Native("java", "x10.core.Signed.toString((short)#this, 8)")
-    @Native("c++", "x10aux::short_utils::toOctalString(#0)")
-    public native def toOctalString(): String;
+    public def toOctalString(): String = toString(8);
 
     /**
      * Returns a String representation of this Short as a binary number.
      * @return a String representation of this Short as a binary number.
      */
-    @Native("java", "x10.core.Signed.toString((short)#this, 2)")
-    @Native("c++", "x10aux::short_utils::toBinaryString(#0)")
-    public native def toBinaryString(): String;
+    public def toBinaryString(): String = toString(2);
 
     /**
      * Returns a String representation of this Short as a decimal number.
      * @return a String representation of this Short as a decimal number.
      */
-    @Native("java", "java.lang.Short.toString((short)#this)")
-    @Native("c++", "x10aux::to_string(#0)")
-    public native def toString(): String;
+    public def toString(): String = toString(10);
 
     /**
      * @deprecated use {@link #parse(String,Int)} instead
      */
-    // @Native("java", "x10.core.Signed.parseShort(#s, #radix)")
-    @Native("java", "java.lang.Short.parseShort(#s, #radix)")
-    @Native("c++", "x10aux::short_utils::parseShort(#1, #2)")
-    public native static def parseShort(s:String, radix:Int): Short; //throwsNumberFormatException;
+    public static def parseShort(s:String, radix:Int): Short = parse(s, radix);
 
     /**
      * @deprecated use {@link #parse(String)} instead
      */
-    // @Native("java", "x10.core.Signed.parseShort(#s)")
-    @Native("java", "java.lang.Short.parseShort(#s)")
-    @Native("c++", "x10aux::short_utils::parseShort(#1)")
-    public native static def parseShort(s:String): Short; //throwsNumberFormatException;
+    public static def parseShort(s:String): Short = parseShort(s, 10);
 
     /**
      * Parses the String argument as a Short in the radix specified by the second argument.
@@ -366,10 +352,7 @@ public struct Short implements Comparable[Short], Arithmetic[Short], Bitwise[Sho
      * @return the Short represented by the String argument.
      * @throws NumberFormatException if the String does not contain a parsable Short.
      */
-    // @Native("java", "x10.core.Signed.parseShort(#s)")
-    @Native("java", "java.lang.Short.parseShort(#s)")
-    @Native("c++", "x10aux::short_utils::parseShort(#1)")
-    public native static def parse(s:String): Short; //throwsNumberFormatException;
+    public static def parse(s:String): Short = parse(s, 10);
 
 
     /**

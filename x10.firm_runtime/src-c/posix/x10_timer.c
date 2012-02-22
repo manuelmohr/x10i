@@ -1,4 +1,4 @@
-#include "../x10.h"
+#include "x10.h"
 
 #include <sys/time.h>
 

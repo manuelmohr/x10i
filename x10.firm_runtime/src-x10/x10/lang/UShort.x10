@@ -403,7 +403,6 @@ public struct UShort implements Comparable[UShort] /*TODO implements Arithmetic[
     @Native("c++", "((x10_ushort)0xffffU)")
     public static MAX_VALUE: UShort{self==0xffffUS} = 0xffffUS;
 
-
     /**
      * Returns a String representation of this UShort in the specified radix.
      * @param radix the radix to use in the String representation
@@ -418,53 +417,35 @@ public struct UShort implements Comparable[UShort] /*TODO implements Arithmetic[
      * Returns a String representation of this UShort as a hexadecimal number.
      * @return a String representation of this UShort as a hexadecimal number.
      */
-    // @Native("java", "java.lang.Integer.toHexString((#this) & 0xffff)")
-    @Native("c++", "x10aux::int_utils::toHexString((#0) & 0xffff)")
-    /* [FIRM_CHANGE] */
-    public native def toHexString(): String;
+    public def toHexString(): String = toString(16);
 
     /**
      * Returns a String representation of this UShort as an octal number.
      * @return a String representation of this UShort as an octal number.
      */
-    // @Native("java", "java.lang.Integer.toOctalString((#this) & 0xffff)")
-    @Native("c++", "x10aux::int_utils::toOctalString((#0) & 0xffff)")
-    /* [FIRM_CHANGE] */
-    public native def toOctalString(): String;
+    public def toOctalString(): String = toString(8);
 
     /**
      * Returns a String representation of this UShort as a binary number.
      * @return a String representation of this UShort as a binary number.
      */
-    // @Native("java", "java.lang.Integer.toBinaryString((#this) & 0xffff)")
-    @Native("c++", "x10aux::int_utils::toBinaryString((#0) & 0xffff)")
-    /* [FIRM_CHANGE] */
-    public native def toBinaryString(): String;
+    public def toBinaryString(): String = toString(2);
 
     /**
      * Returns a String representation of this UShort as a decimal number.
      * @return a String representation of this UShort as a decimal number.
      */
-    // @Native("java", "java.lang.Integer.toString((#this) & 0xffff)")
-    @Native("c++", "x10aux::to_string(#0)")
-    /* [FIRM_CHANGE] */
-    public native def toString(): String;
+    public def toString(): String = toString(10);
 
     /**
      * @deprecated use {@link #parse(String,Int)} instead
      */
-    // @Native("java", "((short) (java.lang.Integer.parseInt(#s, #radix) & 0xffff))")
-    @Native("c++", "x10aux::short_utils::parseUShort(#1, #2)")
-    /* [FIRM_CHANGE] */
-    public native static def parseUShort(s:String, radix:Int): UShort; //throwsNumberFormatException 
+    public static def parseUShort(s:String, radix:Int): UShort = parse(s, radix);
 
     /**
      * @deprecated use {@link #parse(String)} instead
      */
-    // @Native("java", "java.lang.Integer.parseInt(#s)")
-    @Native("c++", "x10aux::short_utils::parseUShort(#1)")
-    /* [FIRM_CHANGE] */
-    public native static def parseUShort(s:String): UShort; //throwsNumberFormatException 
+    public static def parseUShort(s:String): UShort = parse(s);
 
     /**
      * Parses the String argument as a UShort in the radix specified by the second argument.
@@ -484,10 +465,7 @@ public struct UShort implements Comparable[UShort] /*TODO implements Arithmetic[
      * @return the UShort represented by the String argument.
      * @throws NumberFormatException if the String does not contain a parsable UShort.
      */
-    // @Native("java", "((short) (java.lang.Integer.parseInt(#s) & 0xffff)")
-    @Native("c++", "x10aux::short_utils::parseUShort(#1)")
-    /* [FIRM_CHANGE] */
-    public native static def parse(s:String): UShort; //throwsNumberFormatException 
+    public static def parse(s:String): UShort = parse(s, 10);
 
 
     /**

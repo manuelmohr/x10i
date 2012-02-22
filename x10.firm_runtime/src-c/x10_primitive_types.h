@@ -17,14 +17,6 @@ x10_string *name(type self) \
 #define X10_MAKE_EQUALS(name, type) \
 	x10_boolean name(type self, type other) { return (self == other); }
 
-#define X10_MAKE_TOSTRING(name, type, fmt) \
-x10_string *name(type self) \
-{ \
-	wchar_t buf[64]; \
-	swprintf(buf, sizeof(buf) / sizeof(wchar_t), L##fmt, self); \
-	return x10_string_from_wide_chars(buf); \
-}
-
 #define X10_MAKE_HASHCODE(name, type) \
 x10_int name(type self) \
 { \
@@ -35,6 +27,71 @@ x10_int name(type self) \
 	} else { \
 		return x10_hashCode((const unsigned char *)&self, sizeof(type)); \
 	} \
+}
+
+static x10_char numerals[] = {
+	T_('0'), T_('1'), T_('2'), T_('3'), T_('4'),
+	T_('5'), T_('6'), T_('7'), T_('8'), T_('9'),
+	T_('a'), T_('b'), T_('c'), T_('d'), T_('e'), T_('f') };
+
+#define X10_MAKE_TOSTRING(name, type)                                     \
+x10_string *name(type self, x10_int radix)                                \
+{                                                                         \
+	assert(radix >= 2);                                                   \
+	assert(radix <= (x10_int)ARRAY_SIZE(numerals));                       \
+	x10_char buf[21];                                                     \
+	type normalised = self;                                               \
+	if (self < 0) {                                                       \
+		normalised = -self;                                               \
+	}                                                                     \
+	x10_char *b;                                                          \
+	for (b = &buf[ARRAY_SIZE(buf)]; normalised!=0; normalised /= radix) { \
+		*(--b) = numerals[normalised % radix];                            \
+	}                                                                     \
+	if (self < 0) {                                                       \
+		*(--b) = '-';                                                     \
+	}                                                                     \
+	return x10_string_literal((buf+sizeof(buf)-b)/sizeof(buf[0]), b);     \
+}
+
+#define X10_MAKE_PARSE(name, type)                                        \
+type name(x10_string *string, x10_int radix)                              \
+{                                                                         \
+	assert(radix >= 2);                                                   \
+	assert(radix <= 36);                                                  \
+	type result = 0;                                                      \
+	type dradix = (type)radix;                                            \
+	for (x10_int i = 0; i < string->len; ++i) {                           \
+		x10_char c = string->chars[i];                                    \
+		type digit_value;                                                 \
+		if (c >= T_('0') && c <= T_('9')) {                               \
+			digit_value = (type)(c - T_('0'));                            \
+		} else if (c >= T_('a') && c <= T_('z')) {                        \
+			digit_value = (type)(c - T_('a'));                            \
+		} else if (c >= T_('A') && c <= T_('Z')) {                        \
+			digit_value = (type)(c - T_('A'));                            \
+		} else {                                                          \
+			x10_throw_exception_object(0);                                \
+		}                                                                 \
+		if (digit_value > dradix)                                         \
+			x10_throw_exception_object(0);                                \
+		result = result*dradix + digit_value;                             \
+	}                                                                     \
+	return result;                                                        \
+}
+
+#define X10_MAKE_TOSTRING_UNSIGNED(name, type)                            \
+x10_string *name(type self, x10_int radix)                                \
+{                                                                         \
+	assert(radix >= 2);                                                   \
+	assert(radix <= (x10_int)ARRAY_SIZE(numerals));                       \
+	x10_char buf[21];                                                     \
+	type normalised = self;                                               \
+	x10_char *b;                                                          \
+	for (b = &buf[ARRAY_SIZE(buf)]; normalised!=0; normalised /= radix) { \
+		*(--b) = numerals[normalised % radix];                            \
+	}                                                                     \
+	return x10_string_literal((buf+sizeof(buf)-b)/sizeof(buf[0]), b);     \
 }
 
 #define BINOP(name, type_ret, type1, type2, op)  \

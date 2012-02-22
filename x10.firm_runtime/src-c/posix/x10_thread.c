@@ -1,11 +1,11 @@
-#include "../x10_thread.h"
-#include "../util.h"
-#include "posix_types.h"
-
 #include <unistd.h>
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/types.h>
+
+#include "x10_thread.h"
+#include "util.h"
+#include "posix_types.h"
 
 // internal thread id counter (monotonically increasing only)
 static long __thread_cnt;
@@ -99,7 +99,6 @@ static void x10_thread_thread_permit_cleanup(void *arg)
 static void x10_thread_intr_hndlr(int signo)
 {
 	X10_UNUSED(signo);
-	__xrxDPr();
 }
 
 // Clean-up routine for sleep method call.
@@ -107,13 +106,11 @@ static void x10_thread_thread_sleep_cleanup(void *arg)
 {
 	cond_mutex_t *cmp = (cond_mutex_t *)arg;
 
-	__xrxDPrStart();
 	pthread_mutex_unlock(&(cmp->mutex));
 	pthread_mutex_destroy(&(cmp->mutex));
 	pthread_cond_destroy(&(cmp->cond));
 	x10_sysfree(cmp);
 	signal(SIGINT, SIG_DFL);
-	__xrxDPrEnd();
 }
 
 // Returns the identifier of this thread.
@@ -131,37 +128,30 @@ x10_long x10_thread_get_tid()
 // Waits forever for this thread to die.
 void x10_thread_join(x10_thread *self)
 {
-	__xrxDPrStart();
 	pthread_join(self->__xthread, NULL);
-	__xrxDPrEnd();
 }
 // Tests if this thread is alive.
 x10_boolean x10_thread_is_alive(x10_thread *self)
 {
-	__xrxDPrStart();
 	if (self->__thread_already_started && self->__thread_running) {
 		return true;
 	}
 	return false;
-	__xrxDPrEnd();
 }
 
 // Interrupts this thread.
 void x10_thread_interrupt(x10_thread *self)
 {
-	__xrxDPrStart();
 	if (x10_thread_is_alive(self)) {
 		pthread_kill(self->__xthread, SIGINT);
 	}
-	__xrxDPrEnd();
 }
 
-X10_EXTERN void _ZN3x104lang6Thread18threadStartHook___Ev(x10_thread *);
+void _ZN3x104lang6Thread18threadStartHook___Ev(x10_thread *);
 
 // Thread start routine.
 static void *thread_start_routine(void *arg)
 {
-	__xrxDPrStart();
 	// simply call the run method of the invoking thread object
 	x10_thread *tp = (x10_thread *)arg;
 
@@ -189,14 +179,13 @@ static void *thread_start_routine(void *arg)
 	// finished running
 	tp->__thread_running = false;
 
-	__xrxDPrEnd();
 	pthread_exit(NULL);
 	return NULL; // quell compiler warning
 }
 
+// this(String)
 x10_thread * _ZN3x104lang6ThreadC1EPN3x104lang6StringE(x10_thread *self, x10_string *name)
 {
-	__xrxDPrStart();
 	// increment the overall thread count
 	__thread_cnt += 1;
 
@@ -232,12 +221,7 @@ x10_thread * _ZN3x104lang6ThreadC1EPN3x104lang6StringE(x10_thread *self, x10_str
 
 	// set this thread's attributes
 	// guardsize
-#ifdef _AIX
-	size_t guardsize = PAGESIZE;
-#else
-	size_t guardsize = getpagesize();
-#endif
-	pthread_attr_setguardsize(&self->__xthread_attr, guardsize);
+	pthread_attr_setguardsize(&self->__xthread_attr, 1024);
 	// inheritsched
 	int inheritsched = PTHREAD_INHERIT_SCHED;
 	pthread_attr_setinheritsched(&self->__xthread_attr, inheritsched);
@@ -273,8 +257,6 @@ x10_thread * _ZN3x104lang6ThreadC1EPN3x104lang6StringE(x10_thread *self, x10_str
 	// create this thread's permit object
 	x10_thread_thread_permit_init(&self->__thread_permit);
 
-	__xrxDPrEnd();
-
 	return self;
 }
 
@@ -285,7 +267,6 @@ x10_thread *_ZN3x104lang6Thread13currentThreadEv()
 
 void _ZN3x104lang6Thread5startEv(x10_thread *self)
 {
-	__xrxDPrStart();
 	if(self->__thread_already_started) {
 		x10_throw_exception(T_("IllegalThreadStateException"), T_(""));
 	}
@@ -294,7 +275,6 @@ void _ZN3x104lang6Thread5startEv(x10_thread *self)
 	self->__thread_already_started = true;
 	pthread_cond_signal(&self->__thread_start_cond);
 	pthread_mutex_unlock(&self->__thread_start_lock);
-	__xrxDPrEnd();
 }
 
 void _ZN3x104lang6Thread5sleepEx(x10_thread *self, x10_long millis)
@@ -311,7 +291,6 @@ void _ZN3x104lang6Thread5sleepExi(x10_thread *self, x10_long millis, x10_int nan
 	struct timespec tout;
 	int rc;
 
-	__xrxDPrStart();
 	signal(SIGINT, x10_thread_intr_hndlr);
 	cmp = x10_sysalloc(sizeof(cond_mutex_t));
 	pthread_mutex_init(&(cmp->mutex), NULL);
@@ -346,7 +325,6 @@ void _ZN3x104lang6Thread5sleepExi(x10_thread *self, x10_long millis, x10_int nan
 		}
 	}
 	pthread_cleanup_pop(1);
-	__xrxDPrEnd();
 }
 
 

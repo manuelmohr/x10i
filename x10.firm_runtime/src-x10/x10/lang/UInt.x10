@@ -410,65 +410,42 @@ public struct UInt implements Comparable[UInt] /*TODO implements Arithmetic[UInt
      * @param radix the radix to use in the String representation
      * @return a String representation of this UInt in the specified radix.
      */
-    // @Native("java", "java.lang.Long.toString((#this) & 0xffffffffL, #radix)")
     @Native("c++", "x10aux::int_utils::toString(#0, #1)")
-    /* [FIRM_CHANGE] */
     public native def toString(radix:Int): String;
 
     /**
      * Returns a String representation of this UInt as a hexadecimal number.
      * @return a String representation of this UInt as a hexadecimal number.
      */
-    // N.B. "java.lang.Integer.to{Binary,Octal,Hex}String(int)" handles the argument as unsigned but "java.lang.Integer.toString(int,int)" does not.
-    @Native("java", "java.lang.Integer.toHexString((#this).intVal)")
-    @Native("c++", "x10aux::int_utils::toHexString(#0)")
-    /* [FIRM_CHANGE] */
-    public native def toHexString(): String;
+    public def toHexString(): String = toString(16);
 
     /**
      * Returns a String representation of this UInt as an octal number.
      * @return a String representation of this UInt as an octal number.
      */
-    // N.B. "java.lang.Integer.to{Binary,Octal,Hex}String(int)" handles the argument as unsigned but "java.lang.Integer.toString(int,int)" does not.
-    @Native("java", "java.lang.Integer.toOctalString((#this).intVal)")
-    @Native("c++", "x10aux::int_utils::toOctalString(#0)")
-    /* [FIRM_CHANGE] */
-    public native def toOctalString(): String;
+    public def toOctalString(): String = toString(8);
 
     /**
      * Returns a String representation of this UInt as a binary number.
      * @return a String representation of this UInt as a binary number.
      */
-    // N.B. "java.lang.Integer.to{Binary,Octal,Hex}String(int)" handles the argument as unsigned but "java.lang.Integer.toString(int,int)" does not.
-    @Native("java", "java.lang.Integer.toBinaryString((#this).intVal)")
-    @Native("c++", "x10aux::int_utils::toBinaryString(#0)")
-    /* [FIRM_CHANGE] */
-    public native def toBinaryString(): String;
+    public def toBinaryString(): String = toString(2);
 
     /**
      * Returns a String representation of this UInt as a decimal number.
      * @return a String representation of this UInt as a decimal number.
      */
-    // @Native("java", "java.lang.Long.toString((#this) & 0xffffffffL)")
-    @Native("c++", "x10aux::to_string(#0)")
-    /* [FIRM_CHANGE] */
-    public native def toString(): String;
+    public def toString(): String = toString(10);
 
     /**
      * @deprecated use {@link #parse(String,Int)} instead
      */
-    // @Native("java", "java.lang.Integer.parseInt(#s, #radix)")
-    @Native("c++", "(x10aux::int_utils::parseUInt(#1, #2))")
-    /* [FIRM_CHANGE] */
-    public native static def parseUInt(s:String, radix:Int): UInt; //throwsNumberFormatException 
+    public static def parseUInt(s:String, radix:Int): UInt = parse(s, radix);
 
     /**
      * @deprecated use {@link #parse(String)} instead
      */
-    // @Native("java", "java.lang.Integer.parseInt(#s)")
-    @Native("c++", "(x10aux::int_utils::parseUInt(#1))")
-    /* [FIRM_CHANGE] */
-    public native static def parseUInt(s:String): UInt; //throwsNumberFormatException 
+    public static def parseUInt(s:String): UInt = parse(s);
 
     /**
      * Parses the String argument as a UInt in the radix specified by the second argument.
@@ -488,10 +465,7 @@ public struct UInt implements Comparable[UInt] /*TODO implements Arithmetic[UInt
      * @return the UInt represented by the String argument.
      * @throws NumberFormatException if the String does not contain a parsable UInt.
      */
-    // @Native("java", "java.lang.Integer.parseInt(#s)")
-    @Native("c++", "(x10aux::int_utils::parseUInt(#1))")
-    /* [FIRM_CHANGE] */
-    public native static def parse(s:String): UInt; //throwsNumberFormatException 
+    public static def parse(s:String): UInt = parse(s, 10);
 
 
     /**

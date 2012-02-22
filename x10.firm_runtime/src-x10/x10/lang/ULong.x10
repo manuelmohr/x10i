@@ -418,52 +418,34 @@ public struct ULong implements Comparable[ULong] /*TODO implements Arithmetic[UL
      * Returns a String representation of this ULong as a hexadecimal number.
      * @return a String representation of this ULong as a hexadecimal number.
      */
-    // N.B. "java.lang.Long.to{Binary,Octal,Hex}String(long)" handles the argument as unsigned but "java.lang.Long.toString(long,int)" does not.
-    @Native("java", "java.lang.Long.toHexString((#this).longVal)")
-    @Native("c++", "x10aux::long_utils::toHexString(#0)")
-    /* [FIRM_CHANGE] */
-    public native def toHexString(): String;
+    public def toHexString(): String = toString(16);
 
     /**
      * Returns a String representation of this ULong as an octal number.
      * @return a String representation of this ULong as an octal number.
      */
-    // N.B. "java.lang.Long.to{Binary,Octal,Hex}String(long)" handles the argument as unsigned but "java.lang.Long.toString(long,int)" does not.
-    @Native("java", "java.lang.Long.toOctalString((#this).longVal)")
-    @Native("c++", "x10aux::long_utils::toOctalString(#0)")
-    /* [FIRM_CHANGE] */
-    public native def toOctalString(): String;
+    public def toOctalString(): String = toString(8);
 
     /**
      * Returns a String representation of this ULong as a binary number.
      * @return a String representation of this ULong as a binary number.
      */
-    // N.B. "java.lang.Long.to{Binary,Octal,Hex}String(long)" handles the argument as unsigned but "java.lang.Long.toString(long,int)" does not.
-    @Native("java", "java.lang.Long.toBinaryString((#this).longVal)")
-    @Native("c++", "x10aux::long_utils::toBinaryString(#0)")
-    /* [FIRM_CHANGE] */
-    public native def toBinaryString(): String;
+    public def toBinaryString(): String = toString(2);
 
     /**
      * Returns a String representation of this ULong as a decimal number.
      * @return a String representation of this ULong as a decimal number.
      */
-    @Native("c++", "x10aux::to_string(#0)")
-    /* [FIRM_CHANGE] */
-    public native def toString(): String;
+    public def toString(): String = toString(10);
 
     /**
      * @deprecated use {@link #parse(String,Int)} instead
      */
-    @Native("c++", "x10aux::long_utils::parseULong(#1, #2)")
-    /* [FIRM_CHANGE] */
-    public native static def parseULong(s:String, radix:Int): ULong; //throws NumberFormatException 
+    public static def parseULong(s:String, radix:Int): ULong = parse(s, radix);
     /**
      * @deprecated use {@link #parse(String)} instead
      */
-    @Native("c++", "x10aux::long_utils::parseULong(#1)")
-    /* [FIRM_CHANGE] */
-    public native static def parseULong(s:String): ULong; //throws NumberFormatException 
+    public static def parseULong(s:String): ULong = parse(s);
 
     /**
      * Parses the String argument as a ULong in the radix specified by the second argument.
@@ -483,9 +465,7 @@ public struct ULong implements Comparable[ULong] /*TODO implements Arithmetic[UL
      * @return the ULong represented by the String argument.
      * @throws NumberFormatException if the String does not contain a parsable ULong.
      */
-    @Native("c++", "x10aux::long_utils::parseULong(#1)")
-    /* [FIRM_CHANGE] */
-    public native static def parse(s:String): ULong; //throws NumberFormatException 
+    public static def parse(s:String): ULong = parse(s, 10);
 
 
     /**

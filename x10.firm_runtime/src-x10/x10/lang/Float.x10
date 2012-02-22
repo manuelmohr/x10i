@@ -391,9 +391,6 @@ public struct Float implements Comparable[Float], Arithmetic[Float], Ordered[Flo
      * @param x the given entity
      * @return true if this Float is equal to the given entity.
      */
-    @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
-    @Native("c++", "x10aux::equals(#0,#1)")
-    /* [FIRM_CHANGE] */
     public def equals(x:Any):Boolean {
     	if(x instanceof Float)
     		return equals(x as Float);

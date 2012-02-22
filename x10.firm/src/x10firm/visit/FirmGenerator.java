@@ -1,5 +1,6 @@
 package x10firm.visit;
 
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -178,10 +179,14 @@ import firm.nodes.Switch;
  */
 public class FirmGenerator extends X10DelegatingVisitor {
 	/** names of builtin functions */
-	private static final String X10_STRING_LITERAL = "x10_string_literal";
-	private static final String X10_THROW_STUB     = "x10_throw_stub";
-	private static final String X10_ASSERT         = "x10_assert";
+	private static final String X10_STRING_LITERAL     = "x10_string_literal";
+	private static final String X10_THROW_STUB         = "x10_throw_stub";
+	private static final String X10_ASSERT             = "x10_assert";
 	private static final String X10_STATIC_INITIALIZER = "x10_static_initializer";
+
+	private static final Charset UTF8 = Charset.forName("UTF8");
+
+	private Entity x10_string_literal_entity;
 
 	private static final NativeGenericSupport gen_support = new NativeGenericSupport();
 
@@ -2009,42 +2014,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		setReturnNode(result);
 	}
 
-	private Node createStringLiteral(String value) {
-		/* Construct call to builtin function, which creates an X10 string struct. */
-		final Node string_const = createStringSymConst(value);
-
-		final firm.Type[] parameterTypes = new firm.Type[2];
-		parameterTypes[0] = firmTypeSystem.asType(x10TypeSystem.UInt());
-		parameterTypes[1] = new PointerType(parameterTypes[0]); /* XXX Pointer to uint is not quite correct */
-		final firm.Type[] resultTypes = new firm.Type[1];
-		resultTypes[0] = firmTypeSystem.asType(x10TypeSystem.String());
-		final MethodType type = new firm.MethodType(parameterTypes, resultTypes);
-
-		final String name = NameMangler.mangleKnownName(X10_STRING_LITERAL);
-		final Entity func_ent = new Entity(Program.getGlobalType(), name, type);
-		final Node address = con.newSymConst(func_ent);
-
-		Node[] parameters = new Node[2];
-		parameters[0] = con.newConst(value.length(), Mode.getIu());
-		parameters[1] = string_const;
-		final Node mem = con.getCurrentMem();
-		final Node call = con.newCall(mem, address, parameters, type);
-		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
-		con.setCurrentMem(newMem);
-
-		assert (type.getNRess() == 1);
-		final firm.Type ret_type = type.getResType(0);
-		final Node all_results = con.newProj(call, Mode.getT(), Call.pnTResult);
-		final Mode mode = ret_type.getMode();
-		assert (mode != null);
-		return con.newProj(all_results, mode, 0);
-	}
-
-	@Override
-	public void visit(StringLit_c n) {
-		setReturnNode(createStringLiteral(n.value()));
-	}
-
 	private Node createStringSymConst(String value) {
 		final ClassType global_type = Program.getGlobalType();
 		final firm.Type elem_type = firmTypeSystem.asType(x10TypeSystem.Char());
@@ -2062,15 +2031,62 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		type.setTypeState(ir_type_state.layout_fixed);
 
 		final Initializer init = new Initializer(value.length());
-		final char[] chars = value.toCharArray();
-		for (int i = 0; i < chars.length; ++i) {
-			final TargetValue tv = new TargetValue(chars[i], elem_type.getMode());
+		final byte[] bytes = value.getBytes(UTF8);
+		final Mode mode = elem_type.getMode();
+		for (int i = 0; i < bytes.length; ++i) {
+			final TargetValue tv = new TargetValue(bytes[i], mode);
 			final Initializer val = new Initializer(tv);
 			init.setCompoundValue(i, val);
 		}
 		ent.setInitializer(init);
 
 		return con.newSymConst(ent);
+	}
+
+	private Entity getX10StringLiteralEntity() {
+		if (x10_string_literal_entity == null) {
+			final firm.Type[] parameterTypes = new firm.Type[2];
+			parameterTypes[0] = firmTypeSystem.asType(x10TypeSystem.UInt());
+
+			final firm.Type charType = firmTypeSystem.asType(x10TypeSystem.Char());
+			parameterTypes[1] = new PointerType(charType);
+
+			final firm.Type[] resultTypes = new firm.Type[1];
+			resultTypes[0] = firmTypeSystem.asType(x10TypeSystem.String());
+			final MethodType type = new firm.MethodType(parameterTypes, resultTypes);
+
+			final String name = NameMangler.mangleKnownName(X10_STRING_LITERAL);
+			x10_string_literal_entity = new Entity(Program.getGlobalType(), name, type);
+		}
+		return x10_string_literal_entity;
+	}
+
+	private Node createStringLiteral(String value) {
+		/* Construct call to builtin function, which creates an X10 string struct. */
+		final Node string_const = createStringSymConst(value);
+		final Entity constructorEntity = getX10StringLiteralEntity();
+		final Node callee = con.newSymConst(constructorEntity);
+
+		Node[] parameters = new Node[2];
+		parameters[0] = con.newConst(value.length(), Mode.getIu());
+		parameters[1] = string_const;
+		final Node mem = con.getCurrentMem();
+		final MethodType type = (MethodType) constructorEntity.getType();
+		final Node call = con.newCall(mem, callee, parameters, type);
+		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
+		con.setCurrentMem(newMem);
+
+		assert type.getNRess() == 1;
+		final firm.Type ret_type = type.getResType(0);
+		final Node all_results = con.newProj(call, Mode.getT(), Call.pnTResult);
+		final Mode mode = ret_type.getMode();
+		assert mode != null;
+		return con.newProj(all_results, mode, 0);
+	}
+
+	@Override
+	public void visit(StringLit_c n) {
+		setReturnNode(createStringLiteral(n.value()));
 	}
 
 	private TargetValue getCharLitTargetValue(CharLit_c literal) {

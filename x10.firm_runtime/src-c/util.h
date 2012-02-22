@@ -6,12 +6,13 @@
 
 #include "x10.h"
 #include "x10_object.h"
-#include "debug.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 #define X10_NULL NULL
+
+#define ARRAY_SIZE(array)  (sizeof(array)/sizeof(array[0]))
 
 static const bool X10_TRUE = true;
 static const bool X10_FALSE = false;
@@ -33,14 +34,6 @@ static inline void x10_init_object(x10_object *o, const x10_vtable_t *vptr)
 }
 
 #define X10_INIT_OBJECT(o, v) x10_init_object((x10_object *) o, v)
-
-// liboo does allow for different vtable layouts where the classinfo does not
-// reside in the first vtable entry.  We ignore these cases here.
-static inline bool x10_instance_of(const x10_object* o,
-		const x10_classinfo_t *c)
-{
-	return x10_object_head(o)->vptr[0] == (uintptr_t) c;
-}
 
 static inline void *x10_sysalloc(x10_long size)
 {
@@ -98,7 +91,7 @@ static inline void x10_throw_exception(const x10_char *name, const x10_char *msg
 	x10_throw_exception_object(x10_new_exception_object(name, msg));
 }
 
-static inline void x10_null_check(void *obj)
+static inline void x10_null_check(const void *obj)
 {
 	if (obj == X10_NULL)
 		x10_throw_exception(X10_NULL_POINTER_EXCEPTION, T_("null check"));

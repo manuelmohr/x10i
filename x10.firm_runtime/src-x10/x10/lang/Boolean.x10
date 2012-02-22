@@ -87,13 +87,13 @@ public struct Boolean implements Comparable[Boolean] {
      * @return a string representation of this Boolean.
      */
     public def toString(): String {
-      return self ? "true" : "false";
+      return this ? "true" : "false";
     }
 
     /**
      * @deprecated use {@link #parse(String)} instead
      */
-    public static def parseBoolean(s:String): Boolean = parse;
+    public static def parseBoolean(s:String): Boolean = parse(s);
 
     /**
      * Parses the String argument as a Boolean.
@@ -129,7 +129,7 @@ public struct Boolean implements Comparable[Boolean] {
      * Returns a hashCode for the boolean
      */
     public def hashCode():Int {
-      return self ? 1 : 0;
+      return this ? 1 : 0;
     }
 
     /**
@@ -140,7 +140,7 @@ public struct Boolean implements Comparable[Boolean] {
     * to, or greater than the given Boolean.
     */
     public def compareTo(x:Boolean):Int {
-      return (self == other) ? 0 : self ? 1 : -1;
+      return (this == x) ? 0 : this ? 1 : -1;
     }
 
     // These operations are built-in.  Declaring them will prevent the

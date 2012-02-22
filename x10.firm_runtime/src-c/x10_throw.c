@@ -2,8 +2,7 @@
 
 #include <assert.h>
 
-X10_EXTERN void x10_throw_stub(void)
+void x10_throw_stub(void)
 {
-	exit(EXIT_SUCCESS);
-	// assert(false && "throw is not implemented yet.");
+	abort();
 }
