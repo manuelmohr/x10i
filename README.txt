@@ -49,3 +49,6 @@ handle SIGILL nostop noprint pass
 handle SIGQUIT nostop noprint pass
 end
 
+== AST Dumping ==
+You can use -dump PASSNAME to dump the x10 ast after a specific pass (for
+example "Desugarer"). Passnames can be in all the goals in the ExtensionInfo.
