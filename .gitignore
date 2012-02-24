@@ -87,3 +87,5 @@
 /x10.firm_runtime/build/
 
 /x10.wala/bin/
+
+/octopos-app
