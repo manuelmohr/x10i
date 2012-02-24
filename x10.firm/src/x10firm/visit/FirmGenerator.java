@@ -80,7 +80,6 @@ import polyglot.types.LocalInstance;
 import polyglot.types.Name;
 import polyglot.types.Type;
 import polyglot.types.Types;
-import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import x10.ast.AssignPropertyCall_c;
 import x10.ast.Async_c;
@@ -406,7 +405,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			return;
 		}
 
-		throw new RuntimeException("Unhandled node type: " + n.getClass());
+		throw new CodeGenError("Unhandled node type" + n.getClass(), n);
 	}
 
 	private static final class GenericNodeInstance {
@@ -433,8 +432,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			else if (node instanceof X10MethodDecl)
 				return ((X10MethodDecl) node).methodDef();
 
-			assert (false);
-			return null;
+			throw new CodeGenError("getDef called on unexpected thing", node);
 		}
 
 		@Override
@@ -486,7 +484,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		} else if (classType.isClass() || classType.flags().isInterface()) {
 			visitClass(n);
 		} else {
-			assert(false) : "Unknown class declaration";
+			throw new CodeGenError("Unexpected class declaration", n);
 		}
 
 		firmContext = firmContext.popFirmContext();
@@ -871,7 +869,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 				final Node expr = visitExpression(fieldDecl.init());
 				genFieldAssign(objectPointer, fieldInst, expr);
 			} else {
-				assert(false): "Illegal class member";
+				throw new CodeGenError("Illegal class member", dec);
 			}
 		}
 
@@ -968,7 +966,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			if(result != null)
 				return result;
 
-			throw new RuntimeException("unimplemented initializer expression");
+			throw new CodeGenError("unimplemented initializer expression", expr);
 		}
 		return result;
 	}
@@ -1263,7 +1261,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final Node ret = genFieldAssign(field, rhs);
 			setReturnNode(ret);
 		} else {
-			throw new RuntimeException("Unexpected assignment target");
+			throw new CodeGenError("Unexpected assignment target", asgn);
 		}
 	}
 
@@ -1943,7 +1941,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		else if (kind == FloatLit.DOUBLE)
 			mode = firmTypeSystem.getFirmMode(x10TypeSystem.Double());
 		else
-			throw new InternalCompilerError("Unrecognized FloatLit kind " + kind);
+			throw new CodeGenError("Unrecognized FloatLit kind " + kind, literal);
 
 		final double value = literal.value();
 
@@ -1979,7 +1977,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		} else if (kind == IntLit.UBYTE) {
 			mode = firmTypeSystem.getFirmMode(x10TypeSystem.UByte());
 		} else {
-			throw new InternalCompilerError("Unrecognized IntLit kind " + kind);
+			throw new CodeGenError("Unrecognized IntLit kind " + kind, literal);
 		}
 
 		final long value = literal.value();
@@ -2125,7 +2123,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final Node thisPointer = getThis(mode);
 			setReturnNode(thisPointer);
 		} else {
-			throw new RuntimeException("Not implemented yet");
+			throw new CodeGenError("Special not implemented yet", n);
 		}
 	}
 
@@ -2577,10 +2575,10 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		case UNKNOWN_IMPLICIT_CONVERSION:
 		case UNKNOWN_CONVERSION:
 		case DESUGAR_LATER:
-			throw new InternalCompilerError("Unknown conversion type after type-checking.", c.position());
+			throw new CodeGenError("Unknown conversion type after type-checking.", c);
 
 		case BOXING:
-			throw new InternalCompilerError("Boxing conversion should have been rewritten.", c.position());
+			throw new CodeGenError("Boxing conversion should have been rewritten.", c);
 		}
 	}
 
@@ -2665,7 +2663,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		if (n.flags().flags().isStatic()) {
 			static_init_blocks.add(n);
 		} else {
-			throw new RuntimeException("Not implemented yet");
+			throw new CodeGenError("Non-static initializer not implemented yet", n);
 		}
 	}
 
@@ -2694,22 +2692,22 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(PropertyDecl_c n) {
-		throw new RuntimeException("Not implemented yet");
+		throw new CodeGenError("Not implemented yet", n);
 	}
 
 	@Override
 	public void visit(Formal_c n) {
-		throw new RuntimeException("Not implemented yet");
+		throw new CodeGenError("Not implemented yet", n);
 	}
 
 	@Override
 	public void visit(X10CanonicalTypeNode_c n) {
-		throw new RuntimeException("Not implemented yet");
+		throw new CodeGenError("Not implemented yet", n);
 	}
 
 	@Override
 	public void visit(Id_c n) {
-		throw new RuntimeException("Not implemented yet");
+		throw new CodeGenError("Not implemented yet", n);
 	}
 
 	@Override
@@ -2730,47 +2728,47 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Atomic_c a) {
-		throw new RuntimeException("Not implemented yet");
+		throw new CodeGenError("Not implemented yet", a);
 	}
 
 	@Override
 	public void visit(Next_c n) {
-		throw new RuntimeException("Not implemented yet");
+		throw new CodeGenError("Not implemented yet", n);
 	}
 
 	@Override
 	public void visit(ForLoop_c n) {
-		throw new RuntimeException("Not implemented yet");
+		throw new CodeGenError("Not implemented yet", n);
 	}
 
 	@Override
 	public void visit(AtEach_c n) {
-		throw new RuntimeException("Not implemented yet");
+		throw new CodeGenError("Not implemented yet", n);
 	}
 
 	@Override
 	public void visit(Finish_c n) {
-		throw new RuntimeException("Not implemented yet");
+		throw new CodeGenError("Not implemented yet", n);
 	}
 
 	@Override
 	public void visit(ArrayAccess_c n) {
-		throw new RuntimeException("Not implemented yet");
+		throw new CodeGenError("Not implemented yet", n);
 	}
 
 	@Override
 	public void visit(Here_c n) {
-		throw new RuntimeException("Not implemented yet");
+		throw new CodeGenError("Not implemented yet", n);
 	}
 
 	@Override
 	public void visit(Async_c n) {
-		throw new RuntimeException("Not implemented yet");
+		throw new CodeGenError("Not implemented yet", n);
 	}
 
 	@Override
 	public void visit(Tuple_c c) {
-		throw new RuntimeException("Not implemented yet");
+		throw new CodeGenError("Not implemented yet", c);
 	}
 
 	@Override
@@ -2794,57 +2792,57 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Closure_c n) {
-		throw new RuntimeException("Closures should have been desugared earlier");
+		throw new CodeGenError("Closures should have been desugared earlier", n);
 	}
 
 	@Override
 	public void visit(LocalClassDecl_c n) {
-		throw new RuntimeException("Local classes should have been removed by a separate pass");
+		throw new CodeGenError("Local classes should have been removed by a separate pass", n);
 	}
 
 	@Override
 	public void visit(X10Unary_c n) {
-		throw new RuntimeException("Unary expressions should have been desugared earlier");
+		throw new CodeGenError("Unary expressions should have been desugared earlier", n);
 	}
 
 	@Override
 	public void visit(Unary_c n) {
-		throw new RuntimeException("Unary expressions should have been desugared earlier");
+		throw new CodeGenError("Unary expressions should have been desugared earlier", n);
 	}
 
 	@Override
 	public void visit(ArrayInit_c n) {
-		throw new InternalCompilerError("Should not be invoked");
+		throw new CodeGenError("Should not be invoked", n);
 	}
 
 	@Override
 	public void visit(SettableAssign_c n) {
-		throw new RuntimeException("Function assign should have been desugared earlier");
+		throw new CodeGenError("Function assign should have been desugared earlier", n);
 	}
 
 	@Override
 	public void visit(When_c n) {
-		throw new RuntimeException("When should have been desugared earlier");
+		throw new CodeGenError("When should have been desugared earlier", n);
 	}
 
 	@Override
 	public void visit(AtStmt_c n) {
-		throw new RuntimeException("At statements are deprecated");
+		throw new CodeGenError("At statements are deprecated", n);
 	}
 
 	@Override
 	public void visit(AtExpr_c n) {
-		throw new RuntimeException("At expression should have been desugared earlier");
+		throw new CodeGenError("At expression should have been desugared earlier", n);
 	}
 
 	@Override
 	public void visit(PackageNode_c n) {
-		throw new RuntimeException("Package nodes should have been handled by an earlier pass");
+		throw new CodeGenError("Package nodes should have been handled by an earlier pass", n);
 	}
 
 	@Override
 	public void visit(Import_c n) {
-		throw new RuntimeException("Imports should have been handled by an earlier pass");
+		throw new CodeGenError("Imports should have been handled by an earlier pass", n);
 	}
 
 	/**
