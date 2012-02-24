@@ -5,6 +5,8 @@
 # This shouldn't do anything special and you should be easily able to live
 # without it...
 
+set -e
+
 # Check consistency of the java installation and set JAVA_HOME
 if [ -z "$JAVA_HOME" ] ; then
 	export JAVA_HOME="$(readlink -f $(dirname $(readlink -f /usr/bin/java))/../..)"
