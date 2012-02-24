@@ -863,8 +863,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 				final FieldInstance fieldInst = fieldDecl.fieldDef().asInstance();
 				final Node objectPointer = getThis(Mode.getP());
-				final Node expr = visitExpression(fieldDecl.init());
-				genFieldAssign(objectPointer, fieldInst, expr);
+				final Expr expr = fieldDecl.init();
+				genFieldInstanceAssign(objectPointer, fieldInst, expr);
 			} else {
 				throw new CodeGenError("Illegal class member", dec);
 			}
@@ -1010,35 +1010,36 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		return genFieldLoad(null, instance);
 	}
 
-	private Node genFieldAssign(final Field_c field, final Expr expr) {
-		final FieldInstance instance = field.fieldInstance().def().asInstance();
-		Node objectNode = null;
-		if(field.target() instanceof Expr)
-			objectNode = visitExpression((Expr)field.target());
-		final Node rightRet = visitExpression(expr);
-		final Node ret = genFieldAssign(objectNode, instance, rightRet);
-		return ret;
-	}
+	private Node assignToAddress(final Node address, final Type type, final Expr expr) {
+		final Node value = visitExpression(expr);
 
-	private Node genFieldAssign(final Node objectPointer, final FieldInstance fInst, final Node rightRet) {
-		final Node address = getFieldAddress(objectPointer, fInst);
-
-		if (firmTypeSystem.isFirmStructType(fInst.type())) {
-			final Entity ent = firmTypeSystem.getEntityForField(fInst);
+		if (firmTypeSystem.isFirmStructType(type)) {
+			final firm.Type firmType = firmTypeSystem.asType(type);
 			final Node mem = con.getCurrentMem();
-			final Node copyB = con.newCopyB(mem, address, rightRet, ent.getType());
+			final Node copyB = con.newCopyB(mem, address, value, firmType);
 			final Node curMem = con.newProj(copyB, Mode.getM(), CopyB.pnM);
 			con.setCurrentMem(curMem);
 		} else {
-			final firm.Type type = firmTypeSystem.asType(fInst.type());
-			assert rightRet.getMode().equals(type.getMode());
 			final Node mem = con.getCurrentMem();
-			final Node store = con.newStore(mem, address, rightRet);
+			final Node store = con.newStore(mem, address, value);
 			final Node newMem = con.newProj(store, Mode.getM(), Store.pnM);
 			con.setCurrentMem(newMem);
 		}
+		return value;
+	}
 
-		return rightRet;
+	private Node genFieldAssign(final Field_c field, final Expr expr) {
+		final FieldInstance instance = field.fieldInstance().def().asInstance();
+		Node objectAddress = null;
+		if (!field.flags().isStatic())
+			objectAddress = visitExpression((Expr)field.target());
+		return genFieldInstanceAssign(objectAddress, instance, expr);
+	}
+
+	private Node genFieldInstanceAssign(final Node objectAddress, final FieldInstance instance, final Expr expr) {
+		final Node address = getFieldAddress(objectAddress, instance);
+		final Type type = instance.type();
+		return assignToAddress(address, type, expr);
 	}
 
 	@Override
@@ -2276,8 +2277,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final Node thisPointer = getThis(Mode.getP());
 		for(int i = 0; i < properties.size(); i++) {
 			final FieldInstance field = properties.get(i);
-			final Node node = visitExpression(args.get(i));
-			genFieldAssign(thisPointer, field, node);
+			final Expr expr = args.get(i);
+			genFieldInstanceAssign(thisPointer, field, expr);
 		}
 	}
 
@@ -2374,11 +2375,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	/**
 	 * Creates the appropriate firm graph for an autoboxing
-	 * @param fromType The type which should be boxed
-	 * @param node The expression which should be boxed
-	 * @return A
 	 */
-	public Node genBoxing(final X10ClassType fromType, final Node node) {
+	public Node genBoxing(final X10ClassType fromType, final Expr expr) {
 		final X10ClassType boxType = getBoxingType(fromType);
 
 		// Generate the box
@@ -2387,13 +2385,14 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		// save the boxed value in the box
 		final FieldInstance boxValue = boxType.fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE));
 		assert(boxValue != null);
-		genFieldAssign(box, boxValue, node);
+		genFieldInstanceAssign(box, boxValue, expr);
 
 		return box;
 	}
 
-	private Node genUnboxing(final Node node, final X10ClassType fromType, final X10ClassType toType) {
+	private Node genUnboxing(final Expr expr, final X10ClassType fromType, final X10ClassType toType) {
 		final X10ClassType boxType = getBoxingType(toType);
+		final Node node = visitExpression(expr);
 
         genCastNullCheck(node, fromType);
 		final FieldInstance boxValue = boxType.fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE));
@@ -2547,8 +2546,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 				if (c.conversionType() == Converter.ConversionType.SUBTYPE && x10TypeSystem.isSubtype(from, to, x10Context)) {
 					if (x10TypeSystem.isInterfaceType(to) && x10TypeSystem.isStructType0(from)) {
 						// An upcast of a struct to an implemented interface -> Need boxing
-						final Node node = visitExpression(c.expr());
-						final Node ret = genBoxing(x10TypeSystem.toClass(from), node);
+						final Expr expr = c.expr();
+						final Node ret = genBoxing(x10TypeSystem.toClass(from), expr);
 						setReturnNode(ret);
 						break;
 					}
@@ -2559,8 +2558,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 				// ref -> struct
 				// Unboxing -> must be a checked cast !!!
 				assert(c.conversionType() == ConversionType.CHECKED);
-				final Node box = visitExpression(c.expr());
-				final Node ret = genUnboxing(box, x10TypeSystem.toClass(from), x10TypeSystem.toClass(to));
+				final Expr expr = c.expr();
+				final Node ret = genUnboxing(expr, x10TypeSystem.toClass(from), x10TypeSystem.toClass(to));
 				setReturnNode(ret);
 				break;
 			}

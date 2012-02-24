@@ -174,19 +174,19 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	/** create code for instanceof check */
-	public static Node genInstanceOf(final Node node, final Type eType, final Type cmpType,
+	public static Node genInstanceOf(final Node objPtr, final Type eType, final Type cmpType,
 			final FirmGenerator codeGenerator, final GenericTypeSystem typeSystem,
 			final FirmTypeSystem firmTypeSystem, final OOConstruction con) {
 
 		final Type exprType = typeSystem.getConcreteType(eType);
 		final Type compType = typeSystem.getConcreteType(cmpType);
-		Node objPtr = node;
 		firm.Type firmType = null;
 
-		/* obj instanceof 'X' -> box(obj) instanceof 'X' */
+		/* struct-types can be evaluated statically */
 		if (typeSystem.isStructType0(exprType)) {
-			final X10ClassType ct = (X10ClassType) Types.stripConstraints(exprType);
-		    objPtr = codeGenerator.genBoxing(ct, objPtr);
+			boolean subtype = typeSystem.isSubtype(exprType, compType);
+			final Mode modeB = Mode.getb();
+			return con.newConst(subtype ? modeB.getOne() : modeB.getNull());
 		}
 
 		/* If the compare type is a struct type we must compare against the boxing type of the struct type */
@@ -209,10 +209,11 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(X10Instanceof_c n) {
 		final Type exprType = n.expr().type();
-		Node objPtr = codeGenerator.visitExpression(n.expr());
+		final Expr objExpr = n.expr();
+		final Node objPtr = codeGenerator.visitExpression(objExpr);
 
 		final Node node = genInstanceOf(objPtr, exprType, n.compareType().typeRef().get(),
-									   codeGenerator, typeSystem, firmTypeSystem, con);
+		                                codeGenerator, typeSystem, firmTypeSystem, con);
 		makeJumps(node, trueBlock, falseBlock, con);
 	}
 
