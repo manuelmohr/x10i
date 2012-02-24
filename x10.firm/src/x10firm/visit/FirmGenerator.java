@@ -2714,12 +2714,18 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Try_c n) {
-		throw new RuntimeException("Not implemented yet");
+		/* no exception handling yet, just build contents of try block,
+		 * ignore later catch blocks */
+		polyglot.ast.Block block = n.tryBlock();
+		visitAppropriate(block);
+		polyglot.ast.Block finallyBlock = n.finallyBlock();
+		if (finallyBlock != null)
+			visitAppropriate(finallyBlock);
 	}
 
 	@Override
 	public void visit(Catch_c n) {
-		throw new RuntimeException("Not implemented yet");
+		/* ignore catch blocks for now */
 	}
 
 	@Override
