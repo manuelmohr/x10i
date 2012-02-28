@@ -235,6 +235,14 @@ public final class Array[T] (
         raw = backingStore;
     }
 
+    /**
+     * Construct Array given a memory pointer and a length
+     * (This is mostly intended for internal use to implement Tuples)
+     */
+    public def this(ptr : Pointer, len : Int)
+    {
+        this(IndexedMemoryChunk[T](ptr, ptr, len));
+    }
     
     /**
      * Construct Array over the region 0..(size-1) whose elements are zero-initialized.

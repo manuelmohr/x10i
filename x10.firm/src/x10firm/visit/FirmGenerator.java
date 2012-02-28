@@ -1713,15 +1713,24 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		}
 	}
 
+	private Node genAlloc(final firm.Type type, final ir_where_alloc where) {
+		final Node mem = con.getCurrentMem();
+		final Node count = con.newConst(1, Mode.getIu());
+		final Node alloc = con.newAlloc(mem, count, type, where);
+		final Node newMem = con.newProj(alloc, Mode.getM(), Alloc.pnM);
+		final Node res = con.newProj(alloc, Mode.getP(), Alloc.pnRes);
+		con.setCurrentMem(newMem);
+		return res;
+	}
+
 	/**
 	 * Create the appropriate firm nodes for a heap allocation.
 	 * @param x10Type The x10 type of the object
 	 * @return A proj node to the allocated memory.
 	 */
 	public Node genHeapAlloc(final Type x10Type) {
-		final firm.Type refType  = firmTypeSystem.asType(x10Type);
-		final firm.Type coreType = firmTypeSystem.asClass(x10Type);
-		return genAlloc(refType, coreType, ir_where_alloc.heap_alloc);
+		final firm.Type firmType = firmTypeSystem.asClass(x10Type);
+		return genAlloc(firmType, ir_where_alloc.heap_alloc);
 	}
 
 	/**
@@ -1731,19 +1740,20 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	 * @return A proj node to the allocated memory.
 	 */
 	public Node genStackAlloc(final Type x10Type) {
-		final firm.Type refType  = firmTypeSystem.asType(x10Type);
-		final firm.Type coreType = firmTypeSystem.asClass(x10Type);
-		return genAlloc(refType, coreType, ir_where_alloc.stack_alloc);
+		final firm.Type firmType = firmTypeSystem.asClass(x10Type);
+		return genAlloc(firmType, ir_where_alloc.stack_alloc);
 	}
 
-	private Node genAlloc(final firm.Type refType, final firm.Type coreType, final ir_where_alloc where) {
+	private void genConstructorCall(final X10ConstructorInstance instance,
+			final Node[] arguments) {
+		final Entity entity = firmTypeSystem.getConstructorEntity(instance);
+		final firm.MethodType entityType = (MethodType) entity.getType();
+		final Node address = con.newSymConst(entity);
 		final Node mem = con.getCurrentMem();
-		final Node count = con.newConst(1, Mode.getIu());
-		final Node alloc = con.newAlloc(mem, count, coreType, where);
-		final Node newMem = con.newProj(alloc, Mode.getM(), Alloc.pnM);
-		final Node res = con.newProj(alloc, refType.getMode(), Alloc.pnRes);
+		final Node call = con.newCall(mem, address, arguments, entityType);
+		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
+
 		con.setCurrentMem(newMem);
-		return res;
 	}
 
 	/**
@@ -1756,30 +1766,18 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final X10ConstructorInstance instance,
 			final List<Expr> args) {
 		assert (instance != null);
-
-		/* invoke class constructor */
-		final Entity entity = firmTypeSystem.getConstructorEntity(instance);
-		final firm.MethodType entityType = (MethodType) entity.getType();
-		final Node address = con.newSymConst(entity);
-
-		final int paramCount = entityType.getNParams();
-		final Node[] parameters = new Node[paramCount];
+		final int paramCount = args.size();
+		final Node[] argumentNodes = new Node[paramCount+1];
 
 		final List<Expr> arguments = wrapArguments(instance.formalTypes(), args);
 
 		int p = 0;
-		parameters[p++] = objectThisNode; /* this argument */
+		argumentNodes[p++] = objectThisNode; /* this argument */
 
 		for (Expr arg : arguments)
-			parameters[p++] = visitExpression(arg);
+			argumentNodes[p++] = visitExpression(arg);
 
-		assert args.size() + 1 == paramCount;
-
-		final Node mem = con.getCurrentMem();
-		final Node call = con.newCall(mem, address, parameters, entityType);
-		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
-
-		con.setCurrentMem(newMem);
+		genConstructorCall(instance, argumentNodes);
 	}
 
 	/**
@@ -2662,8 +2660,63 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	}
 
 	@Override
-	public void visit(Tuple_c c) {
-		throw new CodeGenError("Not implemented yet", c);
+	public void visit(Tuple_c n) {
+		Type concreteType = x10TypeSystem.getConcreteType(n.type());
+		if (!concreteType.fullName().toString().equals("x10.array.Array"))
+			throw new CodeGenError("Tuple does not have Array-Type", n);
+		if (! (concreteType instanceof X10ClassType))
+			throw new CodeGenError("Tuple type is not a class type", n);
+		X10ClassType classType = (X10ClassType) concreteType;
+		Type elementType = classType.typeArguments().get(0);
+		firm.Type firmType = firmTypeSystem.asType(elementType);
+
+		List<Expr> arguments = n.arguments();
+		int size = arguments.size();
+		Node mem = con.getCurrentMem();
+		Node count = con.newConst(size, Mode.getIu());
+		Node alloc = con.newAlloc(mem, count, firmType, ir_where_alloc.heap_alloc);
+		Node newMem = con.newProj(alloc, Mode.getM(), Alloc.pnM);
+		Node baseAddr = con.newProj(alloc, Mode.getP(), Alloc.pnRes);
+		con.setCurrentMem(newMem);
+
+		/* construct elements */
+		int elementSize = firmType.getSizeBytes();
+		for (int i = 0; i < size; ++i) {
+			Expr expr = arguments.get(i);
+			Node addr = baseAddr;
+			if (i > 0) {
+				int offset = elementSize*i;
+				Node offsetC = con.newConst(offset, Mode.getIu());
+				addr = con.newAdd(baseAddr, offsetC, Mode.getP());
+			}
+			assignToAddress(addr, elementType, expr);
+		}
+
+		/* construct Array object */
+
+		/* search for this(Pointer,Int) */
+		X10ConstructorInstance arrayConstructor = null;
+		for (ConstructorInstance constructor : classType.constructors()) {
+			List<Type> paramTypes = constructor.formalTypes();
+			if (paramTypes.size() != 2)
+				continue;
+			if (!x10TypeSystem.isPointer(paramTypes.get(0)))
+				continue;
+			if (!x10TypeSystem.isInt(paramTypes.get(1)))
+				continue;
+			arrayConstructor = (X10ConstructorInstance)constructor;
+			break;
+		}
+		if (arrayConstructor == null) {
+			throw new CodeGenError("Couldn't find Array.this(Pointer,Int) constructor", n);
+		}
+		final Node arrayAddr = genHeapAlloc(concreteType);
+		final Mode sizeMode = firmTypeSystem.getFirmMode(x10TypeSystem.Int());
+		final Node sizeNode = con.newConst(size, sizeMode);
+		final Node[] constructorArguments = new Node[] { arrayAddr, baseAddr, sizeNode };
+		genConstructorCall(arrayConstructor, constructorArguments);
+
+		setReturnNode(arrayAddr);
 	}
 
 	@Override
