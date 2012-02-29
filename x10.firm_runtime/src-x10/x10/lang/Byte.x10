@@ -359,9 +359,13 @@ public struct Byte implements Comparable[Byte], Arithmetic[Byte], Bitwise[Byte],
      * two's complement binary representation of this Byte.
      * @return the value obtained by reversing order of the bits in this Byte.
      */
-    @Native("java", "((byte)(java.lang.Integer.reverse(#this)>>>24))")
-    @Native("c++", "((x10_byte)(x10aux::int_utils::reverse(#0)>>24))")
-    public native def reverse(): Byte;
+    public def reverse(): Byte {
+        var x : Byte = this;
+        x = (x & 0x55Y) << 1 | ((x>>>1) & 0x55Y);
+        x = (x & 0x33Y) << 2 | ((x>>>2) & 0x33Y);
+        x = (x & 0x0FY) << 4 | ((x>>>4) & 0x0FY);
+        return x;
+    }
 
     /**
      * Returns the signum function of this Byte.  The return value is -1 if

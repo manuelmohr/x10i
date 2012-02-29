@@ -74,12 +74,3 @@ x10_long _ZN3x104lang4Long12reverseBytesEv(x10_long self)
     ans |= (ux >> 56);
     return (x10_long)ans;
 }
-
-x10_long _ZN3x104lang4Long7reverseEv(x10_long self)
-{
-    x10_ulong ux = (x10_ulong)self;
-    ux = ((ux & 0x5555555555555555LL) << 1) | ((ux >> 1) & 0x5555555555555555LL);
-    ux = ((ux & 0x3333333333333333LL) << 2) | ((ux >> 2) & 0x3333333333333333LL);
-    ux = ((ux & 0x0F0F0F0F0F0F0F0FLL) << 4) | ((ux >> 4) & 0x0F0F0F0F0F0F0F0FLL);
-    return _ZN3x104lang4Long12reverseBytesEv((x10_long)ux);
-}

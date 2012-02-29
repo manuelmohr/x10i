@@ -448,9 +448,13 @@ public struct Long implements Comparable[Long], Arithmetic[Long], Bitwise[Long],
      * two's complement binary representation of this Long.
      * @return the value obtained by reversing order of the bits in this Long.
      */
-    @Native("java", "java.lang.Long.reverse(#this)")
-    @Native("c++", "x10aux::long_utils::reverse(#0)")
-    public native def reverse(): Long;
+    public def reverse(): Long {
+        var x : Long = this;
+        x = (x & 0x5555555555555555L) << 1 | ((x>>>1) & 0x5555555555555555L);
+        x = (x & 0x3333333333333333L) << 2 | ((x>>>2) & 0x3333333333333333L);
+        x = (x & 0x0F0F0F0F0F0F0F0FL) << 4 | ((x>>>4) & 0x0F0F0F0F0F0F0F0FL);
+        return x.reverseBytes();
+    }
 
     /**
      * Returns the signum function of this Long.  The return value is -1 if

@@ -468,10 +468,13 @@ public struct UByte implements Comparable[UByte] /*TODO implements Arithmetic[UB
      * binary representation of this UByte.
      * @return the value obtained by reversing order of the bits in this UByte.
      */
-    // @Native("java", "((byte)(java.lang.Integer.reverse(#this)>>>24))")
-    @Native("c++", "((x10_ubyte)(x10aux::int_utils::reverse(#0)>>24))")
-     /* [FIRM_CHANGE] */
-    public native def reverse(): UByte;
+    public def reverse(): UByte {
+        var x : UByte = this;
+        x = (x & 0x55UY) << 1 | ((x>>>1) & 0x55UY);
+        x = (x & 0x33UY) << 2 | ((x>>>2) & 0x33UY);
+        x = (x & 0x0FUY) << 4 | ((x>>>4) & 0x0FUY);
+        return x;
+    }
 
     /**
      * Returns the signum function of this UByte.  The return value is 0 if

@@ -34,16 +34,6 @@ x10_int _ZN3x104lang3Int12reverseBytesEv(x10_int self)
     return b0 | b1 | b2 | b3;
 }
 
-x10_int _ZN3x104lang3Int7reverseEv(x10_int self)
-{
-    x10_uint ux = (x10_uint)self;
-    ux = ((ux & 0x55555555) << 1) | ((ux >> 1) & 0x55555555);
-    ux = ((ux & 0x33333333) << 2) | ((ux >> 2) & 0x33333333);
-    ux = ((ux & 0x0F0F0F0F) << 4) | ((ux >> 4) & 0x0F0F0F0F);
-    ux = (ux << 24) | ((ux & 0xFF00) << 8) | ((ux >> 8) & 0xFF00) | (ux >> 24);
-    return (x10_int)ux;
-}
-
 x10_int _ZN3x104lang3Int8bitCountEv(x10_int self)
 {
     x10_uint ux = (x10_uint)self;

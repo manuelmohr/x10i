@@ -568,10 +568,13 @@ public struct UInt implements Comparable[UInt] /*TODO implements Arithmetic[UInt
      * binary representation of this UInt.
      * @return the value obtained by reversing order of the bits in this UInt.
      */
-    // @Native("java", "java.lang.Integer.reverse(#this)")
-    @Native("c++", "x10aux::int_utils::reverse(#0)")
-    /* [FIRM_CHANGE] */
-    public native def reverse(): UInt;
+    public def reverse(): UInt {
+        var x : UInt = this;
+        x = (x & 0x55555555 as UInt) << 1 | ((x>>>1) & 0x55555555 as UInt);
+        x = (x & 0x33333333 as UInt) << 2 | ((x>>>2) & 0x33333333 as UInt);
+        x = (x & 0x0F0F0F0F as UInt) << 4 | ((x>>>4) & 0x0F0F0F0F as UInt);
+        return x.reverseBytes();
+    }
 
     /**
      * Returns the signum function of this UInt.  The return value is 0 if

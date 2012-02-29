@@ -22,11 +22,3 @@ x10_ushort _ZN3x104lang6UShort12reverseBytesEv(x10_ushort self)
 	extern x10_int _ZN3x104lang3Int12reverseBytesEv(x10_int);
 	return (x10_ushort)_ZN3x104lang3Int12reverseBytesEv((x10_short)self);
 }
-
-x10_ushort _ZN3x104lang6UShort7reverseEv(x10_ushort self)
-{
-	extern x10_int _ZN3x104lang3Int7reverseEv(x10_int);
-	return (x10_ushort)(_ZN3x104lang3Int7reverseEv((x10_short)self) >> 16);
-}
-
-

@@ -454,9 +454,13 @@ public struct Int implements Comparable[Int] /*TODO implements Arithmetic[Int], 
      * two's complement binary representation of this Int.
      * @return the value obtained by reversing order of the bits in this Int.
      */
-    @Native("java", "java.lang.Integer.reverse(#this)")
-    @Native("c++", "x10aux::int_utils::reverse(#0)")
-    public native def reverse(): Int;
+    public def reverse(): Int {
+        var x : Int = this;
+        x = (x & 0x55555555 as Int) << 1 | ((x>>>1) & 0x55555555 as Int);
+        x = (x & 0x33333333 as Int) << 2 | ((x>>>2) & 0x33333333 as Int);
+        x = (x & 0x0F0F0F0F as Int) << 4 | ((x>>>4) & 0x0F0F0F0F as Int);
+        return x.reverseBytes();
+    }
 
     /**
      * Returns the signum function of this Int.  The return value is -1 if

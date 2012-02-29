@@ -568,10 +568,13 @@ public struct ULong implements Comparable[ULong] /*TODO implements Arithmetic[UL
      * binary representation of this ULong.
      * @return the value obtained by reversing order of the bits in this ULong.
      */
-    // @Native("java", "java.lang.Long.reverse(#this)")
-    @Native("c++", "x10aux::long_utils::reverse(#0)")
-    /* [FIRM_CHANGE] */
-    public native def reverse(): ULong;
+    public def reverse(): ULong {
+        var x : ULong = this;
+        x = (x & 0x5555555555555555UL) << 1 | ((x>>>1) & 0x5555555555555555UL);
+        x = (x & 0x3333333333333333UL) << 2 | ((x>>>2) & 0x3333333333333333UL);
+        x = (x & 0x0F0F0F0F0F0F0F0FUL) << 4 | ((x>>>4) & 0x0F0F0F0F0F0F0F0FUL);
+        return x.reverseBytes();
+    }
 
     /**
      * Returns the signum function of this ULong.  The return value is 0 if

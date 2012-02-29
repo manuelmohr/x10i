@@ -17,15 +17,6 @@ x10_short _ZN3x104lang5Shortv3rbsEi(x10_short a, x10_int b)
 }
 MAKE_CONFS(_ZN3x104lang5Short, x10_short)
 
-x10_short _ZN3x104lang5Short7reverseEv(x10_short self)
-{
-    x10_ushort ux = (x10_ushort)self;
-    x10_ushort b0 = ux & 0x0F;
-    x10_ushort b1 = (ux & 0xF0) >> 8;
-    ux = (b0 << 8) | b1;
-    return (x10_short)ux;
-}
-
 x10_short _ZN3x104lang5Short12reverseBytesEv(x10_short self)
 {
     x10_ushort ux = (x10_ushort)self;

@@ -473,10 +473,13 @@ public struct UShort implements Comparable[UShort] /*TODO implements Arithmetic[
      * binary representation of this UShort.
      * @return the value obtained by reversing order of the bits in this UShort.
      */
-    // @Native("java", "((short)(java.lang.Integer.reverse(#this)>>>16))")
-    @Native("c++", "((x10_ushort)(x10aux::int_utils::reverse(#0)>>16))")
-    /* [FIRM_CHANGE] */
-    public native def reverse(): UShort;
+    public def reverse(): UShort {
+        var x : UShort = this;
+        x = (x & 0x5555US) << 1 | ((x>>>1) & 0x5555US);
+        x = (x & 0x3333US) << 2 | ((x>>>2) & 0x3333US);
+        x = (x & 0x0F0FUS) << 4 | ((x>>>4) & 0x0F0FUS);
+        return x.reverseBytes();
+    }
 
     /**
      * Returns the signum function of this UShort.  The return value is 0 if

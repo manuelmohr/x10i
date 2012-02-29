@@ -360,9 +360,13 @@ public struct Short implements Comparable[Short], Arithmetic[Short], Bitwise[Sho
      * two's complement binary representation of this Int.
      * @return the value obtained by reversing order of the bits in this Int.
      */
-    @Native("java", "((short)(java.lang.Integer.reverse(#this)>>>16))")
-    @Native("c++", "((x10_short)(x10aux::int_utils::reverse(#0)>>16))")
-    public native def reverse(): Short;
+    public def reverse(): Short {
+        var x : Short = this;
+        x = (x & 0x5555S) << 1 | ((x>>>1) & 0x5555S);
+        x = (x & 0x3333S) << 2 | ((x>>>2) & 0x3333S);
+        x = (x & 0x0F0FS) << 4 | ((x>>>4) & 0x0F0FS);
+        return x.reverseBytes();
+    }
 
     /**
      * Returns the signum function of this Short.  The return value is -1 if
