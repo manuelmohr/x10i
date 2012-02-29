@@ -38,6 +38,7 @@
 
 *.o
 *.vcg
+hs_err_*.log
 /x10.runtime/classes
 /x10.runtime/src-cpp/gen
 /x10.runtime/src-java/gen
