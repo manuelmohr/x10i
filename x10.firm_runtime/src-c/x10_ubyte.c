@@ -7,9 +7,6 @@ X10_MAKE_HASHCODE(_ZN3x104lang5UByte8hashCodeEv, x10_ubyte)
 X10_MAKE_TOSTRING_UNSIGNED(_ZN3x104lang5UByte8toStringEi, x10_ubyte)
 X10_MAKE_PARSE(_ZN3x104lang5UByte5parseEPN3x104lang6StringEi, x10_ubyte)
 
-// compareTo from Comparable
-X10_MAKE_COMPARETO(_ZN3x104lang5UByte9compareToEh, x10_ubyte)
-
 MAKE_UNSIGNED_BINOPS(_ZN3x104lang5UByte, h, a, x10_ubyte)
 MAKE_CMPOPS(_ZN3x104lang5UByte, h, x10_ubyte)
 MAKE_INT_UNOPS(_ZN3x104lang5UByte, v, x10_ubyte)

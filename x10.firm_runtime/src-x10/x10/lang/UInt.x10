@@ -599,8 +599,5 @@ public struct UInt implements Comparable[UInt] /*TODO implements Arithmetic[UInt
     * @return a negative Int, zero, or a positive Int if this UInt is less than, equal
     * to, or greater than the given UInt.
     */
-    // @Native("java", "x10.rtt.Equality.compareTo(#this.intVal + java.lang.Integer.MIN_VALUE, #x.intVal + java.lang.Integer.MIN_VALUE)")
-    @Native("c++", "x10aux::int_utils::compareTo(#0, #1)")
-    /* [FIRM_CHANGE] */
-    public native def compareTo(x:UInt): Int;
+    public def compareTo(x:UInt): Int = this == x ? 0 : this < x ? -1 : 1;
 }

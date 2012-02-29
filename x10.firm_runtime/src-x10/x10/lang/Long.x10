@@ -507,9 +507,7 @@ public struct Long implements Comparable[Long], Arithmetic[Long], Bitwise[Long],
     * @return a negative Int, zero, or a positive Int if this Long is less than, equal
     * to, or greater than the given Long.
     */
-   @Native("java", "x10.rtt.Equality.compareTo(#this, #x)")
-   @Native("c++", "x10aux::long_utils::compareTo(#0, #1)")
-   public native def compareTo(x:Long):Int;
+   public def compareTo(x:Long):Int = this == x ? 0 : this < x ? -1 : 1;
    
    /**
     * Constructs a LongRange from

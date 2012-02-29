@@ -413,8 +413,6 @@ public struct Float implements Comparable[Float], Arithmetic[Float], Ordered[Flo
     * @return a negative Int, zero, or a positive Int if this Float is less than, equal
     * to, or greater than the given Float.
     */
-   @Native("java", "x10.rtt.Equality.compareTo(#this, #x)")
-   @Native("c++", "x10aux::float_utils::compareTo(#0, #1)")
-   public native def compareTo(x:Float):Int;
+   public def compareTo(x:Float):Int = this == x ? 0 : this < x ? -1 : 1;
 }
 public type Float(b:Float) = Float{self==b};

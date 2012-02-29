@@ -51,14 +51,6 @@ x10_boolean _ZN3x104lang7PointergeEN3x104lang7PointerE(x10_pointer self,
 	return self >= other;
 }
 
-x10_int _ZN3x104lang7Pointer9compareToEN3x104lang7PointerE(x10_pointer self,
-                                                           x10_pointer other)
-{
-	if(self < other) return -1;
-	else if(self > other) return 1;
-	return 0;
-}
-
 x10_pointer _ZN3x104lang7Pointer5alignEN3x104lang7PointerEi(x10_pointer ptr,
                                                             x10_int alignment)
 {

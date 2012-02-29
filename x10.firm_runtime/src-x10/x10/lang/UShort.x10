@@ -503,8 +503,5 @@ public struct UShort implements Comparable[UShort] /*TODO implements Arithmetic[
     * @return a negative Int, zero, or a positive Int if this UShort is less than, equal
     * to, or greater than the given UShort.
     */
-    // @Native("java", "x10.rtt.Equality.compareTo(#this.shortVal + java.lang.Short.MIN_VALUE, #x.shortVal + java.lang.Short.MIN_VALUE)")
-    @Native("c++", "x10aux::short_utils::compareTo(#0, #1)")
-    /* [FIRM_CHANGE] */
-    public native def compareTo(x:UShort): Int;
+    public def compareTo(x:UShort): Int = this == x ? 0 : this < x ? -1 : 1;
 }

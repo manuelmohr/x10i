@@ -2,8 +2,6 @@
 #include "x10_primitive_types.h"
 #include "x10_string.h"
 
-// compareTo from Comparable
-X10_MAKE_COMPARETO(_ZN3x104lang4Byte9compareToEa, x10_byte)
 X10_MAKE_HASHCODE(_ZN3x104lang4Byte8hashCodeEv, x10_byte)
 X10_MAKE_EQUALS(_ZN3x104lang4Byte6equalsEa, x10_byte)
 X10_MAKE_TOSTRING(_ZN3x104lang4Byte8toStringEi, x10_byte)

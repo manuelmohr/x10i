@@ -416,8 +416,6 @@ public struct Short implements Comparable[Short], Arithmetic[Short], Bitwise[Sho
     * @return a negative Int, zero, or a positive Int if this Short is less than, equal
     * to, or greater than the given Short.
     */
-   @Native("java", "x10.rtt.Equality.compareTo(#this, #x)")
-   @Native("c++", "x10aux::_utils::compareTo(#0, #1)")
-   public native def compareTo(x:Short):Int;
+   public def compareTo(x:Short):Int = this == x ? 0 : this < x ? -1 : 1;
 }
 public type Short(b:Short) = Short{self==b};

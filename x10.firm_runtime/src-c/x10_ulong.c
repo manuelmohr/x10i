@@ -2,7 +2,6 @@
 #include "x10_primitive_types.h"
 #include "x10_string.h"
 
-X10_MAKE_COMPARETO(_ZN3x104lang5ULong9compareToEy, x10_ulong)
 X10_MAKE_EQUALS(_ZN3x104lang5ULong6equalsEy, x10_ulong)
 X10_MAKE_HASHCODE(_ZN3x104lang5ULong8hashCodeEv, x10_ulong)
 X10_MAKE_TOSTRING_UNSIGNED(_ZN3x104lang5ULong8toStringEi, x10_ulong)

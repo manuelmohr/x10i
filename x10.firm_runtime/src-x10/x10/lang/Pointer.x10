@@ -21,7 +21,7 @@ public struct Pointer implements Comparable[Pointer] {
     public native operator this <=(x : Pointer) : Boolean;
     public native operator this >=(x : Pointer) : Boolean;
 
-    public native def compareTo(x:Pointer) : Int;
+    public def compareTo(x:Pointer) : Int = this == x ? 0 : this < x ? -1 : 1;
 
     private static native def getNullPointer() : Pointer;
 }

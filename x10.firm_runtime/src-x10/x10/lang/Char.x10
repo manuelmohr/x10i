@@ -330,8 +330,6 @@ public struct Char implements Comparable[Char], Ordered[Char] {
     * @return a negative Int, zero, or a positive Int if this Char is less than, equal
     * to, or greater than the given Char.
     */
-   @Native("java", "x10.rtt.Equality.compareTo(#this, #x)")
-   @Native("c++", "x10aux::char_utils::compareTo(#0, #1)")
-   public native def compareTo(x:Char):Int;
+   public def compareTo(x:Char):Int = this == x ? 0 : this < x ? -1 : 1;
 }
 public type Char(b:Char) = Char{self==b};

@@ -411,8 +411,6 @@ public struct Double implements Comparable[Double], Arithmetic[Double], Ordered[
     * @return a negative Int, zero, or a positive Int if this Double is less than, equal
     * to, or greater than the given Double.
     */
-   @Native("java", "x10.rtt.Equality.compareTo(#this, #x)")
-   @Native("c++", "x10aux::double_utils::compareTo(#0, #1)")
-   public native def compareTo(x:Double):Int;
+   public def compareTo(x:Double):Int = this == x ? 0 : this < x ? -1 : 1;
 }
 public type Double(b:Double) = Double{self==b};

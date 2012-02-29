@@ -404,8 +404,6 @@ public struct Byte implements Comparable[Byte], Arithmetic[Byte], Bitwise[Byte],
     * @return a negative Int, zero, or a positive Int if this Byte is less than, equal
     * to, or greater than the given Byte.
     */
-   @Native("java", "x10.rtt.Equality.compareTo(#this, #x)")
-   @Native("c++", "x10aux::byte_utils::compareTo(#0, #1)")
-   public native def compareTo(x:Byte):Int;
+   public def compareTo(x:Byte):Int = this == x ? 0 : this < x ? -1 : 1;
 }
 public type Byte(b:Byte) = Byte{self==b};

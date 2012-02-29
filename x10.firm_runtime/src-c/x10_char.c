@@ -3,7 +3,6 @@
 #include "x10_primitive_types.h"
 #include "x10_string.h"
 
-X10_MAKE_COMPARETO(_ZN3x104lang4Char9compareToEDi, x10_char)
 X10_MAKE_HASHCODE(_ZN3x104lang4Char8hashCodeEv, x10_char)
 X10_MAKE_EQUALS(_ZN3x104lang4Char6equalsEDi, x10_char)
 

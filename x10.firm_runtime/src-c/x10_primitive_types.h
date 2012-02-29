@@ -11,9 +11,6 @@ x10_string *name(type self) \
    return x10_string_from_wide_chars(L##str); \
 }
 
-#define X10_MAKE_COMPARETO(name, type) \
-	x10_int name(type self, type other) { return (self == other) ? 0 : (self < other) ? - 1 : 1; }
-
 #define X10_MAKE_EQUALS(name, type) \
 	x10_boolean name(type self, type other) { return (self == other); }
 
