@@ -468,9 +468,7 @@ public struct Int implements Comparable[Int] /*TODO implements Arithmetic[Int], 
      * positive.
      * @return the signum function of this Int.
      */
-    @Native("java", "java.lang.Integer.signum(#this)")
-    @Native("c++", "x10aux::int_utils::signum(#0)")
-    public native def signum(): Int;
+    public def signum(): Int = this < 0 ? -1 : this > 0 ? 1 : 0;
 
     /**
      * Returns the value obtained by reversing the order of the bytes in the

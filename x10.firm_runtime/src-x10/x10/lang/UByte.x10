@@ -478,10 +478,7 @@ public struct UByte implements Comparable[UByte] /*TODO implements Arithmetic[UB
      * this UByte is zero and 1 if this UByte is non-zero.
      * @return the signum function of this UByte.
      */
-    // @Native("java", "(((#this)==0) ? 0 : 1)")
-    @Native("c++",  "(((#0)==0U) ? 0 : 1)")
-     /* [FIRM_CHANGE] */
-    public native def signum(): Int;
+    public def signum(): Int = this > 0 as UByte ? 1 : 0;
 
 
     /**

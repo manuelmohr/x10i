@@ -17,11 +17,6 @@ x10_ushort _ZN3x104lang6UShortv3rbsEi(x10_ushort a, x10_int b)
 }
 MAKE_CONFS(_ZN3x104lang6UShort, x10_ushort)
 
-x10_int _ZN3x104lang6UShort6signumEv(x10_ushort self)
-{
-	return self == 0 ? 0 : 1;
-}
-
 x10_ushort _ZN3x104lang6UShort12reverseBytesEv(x10_ushort self)
 {
 	extern x10_int _ZN3x104lang3Int12reverseBytesEv(x10_int);

@@ -369,9 +369,7 @@ public struct Byte implements Comparable[Byte], Arithmetic[Byte], Bitwise[Byte],
      * positive.
      * @return the signum function of this Byte.
      */
-    @Native("java", "java.lang.Integer.signum(#this)")
-    @Native("c++", "x10aux::int_utils::signum((x10_int)#0)")
-    public native def signum(): Int;
+    public def signum(): Int = this < 0 ? -1 : this > 0 ? 1 : 0;
 
 
     /**

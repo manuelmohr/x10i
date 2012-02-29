@@ -483,10 +483,7 @@ public struct UShort implements Comparable[UShort] /*TODO implements Arithmetic[
      * this UShort is zero and 1 if this UShort is non-zero.
      * @return the signum function of this UShort.
      */
-    // @Native("java", "(((#this)==0) ? 0 : 1)")
-    @Native("c++",  "(((#0)==0U) ? 0 : 1)")
-    /* [FIRM_CHANGE] */
-    public native def signum(): Int;
+    public def signum(): Int = this > 0 as UShort ? 1 : 0;
 
     /**
      * Returns the value obtained by reversing the order of the bytes in the

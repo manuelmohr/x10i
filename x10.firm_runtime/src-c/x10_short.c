@@ -34,9 +34,3 @@ x10_short _ZN3x104lang5Short12reverseBytesEv(x10_short self)
     ux = (b0 << 8) | b1;
     return (x10_short)ux;
 }
-
-x10_int _ZN3x104lang5Short6signumEv(x10_short self)
-{
-	extern x10_int _ZN3x104lang3Int6signumEv(x10_int);
-	return _ZN3x104lang3Int6signumEv(self);
-}

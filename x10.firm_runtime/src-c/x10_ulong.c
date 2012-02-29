@@ -29,11 +29,6 @@ x10_ulong _ZN3x104lang5ULong7reverseEv(x10_ulong self)
 	return (x10_ulong)_ZN3x104lang4Long7reverseEv((x10_long)self);
 }
 
-x10_int _ZN3x104lang5ULong6signumEv(x10_ulong self)
-{
-	return self == 0 ? 0 : 1;
-}
-
 x10_ulong _ZN3x104lang5ULong11rotateRightEi(x10_ulong self, x10_int distance)
 {
 	extern x10_long _ZN3x104lang4Long11rotateRightEi(x10_long, x10_int);

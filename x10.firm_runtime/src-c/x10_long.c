@@ -93,8 +93,3 @@ x10_long _ZN3x104lang4Long7reverseEv(x10_long self)
     ux = ((ux & 0x0F0F0F0F0F0F0F0FLL) << 4) | ((ux >> 4) & 0x0F0F0F0F0F0F0F0FLL);
     return _ZN3x104lang4Long12reverseBytesEv((x10_long)ux);
 }
-
-x10_int _ZN3x104lang4Long6signumEv(x10_long self)
-{
-	return (self >> 63) | (((x10_ulong)(-self)) >> 63);
-}

@@ -17,11 +17,6 @@ x10_int _ZN3x104lang3Intv3rbsEi(x10_int a, x10_int b)
 }
 MAKE_CONFS(_ZN3x104lang3Int, x10_int)
 
-x10_int _ZN3x104lang3Int6signumEv(x10_int self)
-{
-	return (self >> 31) | (((x10_uint)(-self)) >> 31);
-}
-
 x10_int _ZN3x104lang3Int12reverseBytesEv(x10_int self)
 {
     x10_long value = 0;

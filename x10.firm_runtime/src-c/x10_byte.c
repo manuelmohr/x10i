@@ -25,9 +25,3 @@ x10_byte _ZN3x104lang4Byte7reverseEv(x10_byte self)
 	extern x10_int _ZN3x104lang3Int7reverseEv(x10_int);
 	return _ZN3x104lang3Int7reverseEv(self) >> 24;
 }
-
-x10_int _ZN3x104lang4Byte6signumEv(x10_byte self)
-{
-	extern x10_int _ZN3x104lang3Int6signumEv(x10_int);
-	return _ZN3x104lang3Int6signumEv(self);
-}

@@ -19,11 +19,6 @@ x10_ubyte _ZN3x104lang5UBytev3rbsEi(x10_byte a, x10_byte b)
 }
 MAKE_CONFS(_ZN3x104lang5UByte, x10_ubyte)
 
-x10_int _ZN3x104lang5UByte6signumEv(x10_ubyte self)
-{
-	return self == 0 ? 0 : 1;
-}
-
 x10_ubyte _ZN3x104lang5UByte7reverseEv(x10_ubyte self)
 {
 	extern x10_int _ZN3x104lang3Int7reverseEv(x10_int);

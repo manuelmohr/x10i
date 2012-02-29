@@ -370,9 +370,7 @@ public struct Short implements Comparable[Short], Arithmetic[Short], Bitwise[Sho
      * positive.
      * @return the signum function of this Short.
      */
-    @Native("java", "java.lang.Integer.signum(#this)")
-    @Native("c++", "x10aux::int_utils::signum((x10_int)#0)")
-    public native def signum(): Int;
+    public def signum(): Int = this < 0 ? -1 : this > 0 ? 1 : 0;
 
     /**
      * Returns the value obtained by reversing the order of the bytes in the
