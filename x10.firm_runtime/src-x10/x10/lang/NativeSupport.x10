@@ -14,21 +14,21 @@ package x10.lang;
 import x10.compiler.Native;
 
 public class NativeSupport {
-	/** equals sizeof(x) in C */
-    public static native def getSize[T]():int;
+    /** equals sizeof(x) in C */
+    public static native def getSize[T]():Int;
 
     /** memory compare */
-    public static native def memcmp(ptr1: Pointer, ptr2: Pointer, bytes: long) : Boolean;
+    public static native def memcmp(ptr1:Pointer, ptr2:Pointer, bytes:Int):Boolean;
    
     /** memory copy */
-    public static native def memcpy(dest: Pointer, src: Pointer, bytes: long, overlap: Boolean) : void;
+    public static native def memcpy(dest:Pointer, src:Pointer, bytes:Int, overlap:Boolean):void;
    
     /** memset */
-    public static native def memset(dest: Pointer, c: int, bytes: long) : void;
+    public static native def memset(dest:Pointer, c:int, bytes:Int):void;
    
     /** allocation of memory; the returned memory pointer is not aligned !!! (Use align_ptr for alignment of pointers) */
-    public static native def alloc(numBytes: long, alignment: int, congruent: Boolean, zeroed: Boolean) : Pointer;
+    public static native def alloc(numBytes:Int, alignment:Int, congruent:Boolean, zeroed:Boolean):Pointer;
 
     /** deallocation of memory; The given memory pointer must be the real memory pointer returned by "alloc"; (not the aligned) */
-    public static native def dealloc(memPtr: Pointer) : void;
+    public static native def dealloc(memPtr:Pointer):void;
 }

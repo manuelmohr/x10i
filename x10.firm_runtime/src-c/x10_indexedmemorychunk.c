@@ -10,7 +10,7 @@
 #define X10_MIN_INDEXEDMEMORYCHUNK_ALIGNMENT ((x10_int)sizeof(x10_double))
 #endif
 
-x10_pointer _ZN3x104util18IndexedMemoryChunk14alloc_internalExiibb(x10_long numElements, x10_int sizeElement, x10_int alignment, x10_boolean congruent, x10_boolean zeroed)
+x10_pointer _ZN3x104util18IndexedMemoryChunk14alloc_internalEiiibb(x10_int numElements, x10_int sizeElement, x10_int alignment, x10_boolean congruent, x10_boolean zeroed)
 {
 	assert(numElements > 0 && sizeElement > 0);
 	assert((alignment & (alignment-1)) == 0);
@@ -18,7 +18,7 @@ x10_pointer _ZN3x104util18IndexedMemoryChunk14alloc_internalExiibb(x10_long numE
 	if(alignment < X10_MIN_INDEXEDMEMORYCHUNK_ALIGNMENT)
 		alignment = X10_MIN_INDEXEDMEMORYCHUNK_ALIGNMENT;
 
-	return _ZN3x104lang13NativeSupport5allocExibb(numElements * sizeElement, alignment, congruent, zeroed);
+	return _ZN3x104lang13NativeSupport5allocEiibb(numElements * sizeElement, alignment, congruent, zeroed);
 }
 
 void _ZN3x104util18IndexedMemoryChunk16dealloc_internalEN3x104lang7PointerE(x10_pointer ptr)

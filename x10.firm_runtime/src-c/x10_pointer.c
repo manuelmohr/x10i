@@ -11,20 +11,20 @@ x10_pointer _ZN3x104lang7Pointer14getNullPointerEv()
 	return (x10_pointer)0;
 }
 
-x10_pointer _ZN3x104lang7PointerplEx(x10_pointer self, x10_long bytes_diff)
+x10_pointer _ZN3x104lang7PointerplEi(x10_pointer self, x10_int bytes_diff)
 {
 	return self + bytes_diff;
 }
 
-x10_pointer _ZN3x104lang7PointermiEx(x10_pointer self, x10_long bytes_diff)
+x10_pointer _ZN3x104lang7PointermiEi(x10_pointer self, x10_int bytes_diff)
 {
 	return self - bytes_diff;
 }
 
-x10_long _ZN3x104lang7PointermiEN3x104lang7PointerE(x10_pointer self,
-                                                    x10_pointer other)
+x10_int _ZN3x104lang7PointermiEN3x104lang7PointerE(x10_pointer self,
+                                                   x10_pointer other)
 {
-	return (x10_long)(self - other);
+	return (x10_int)(self - other);
 }
 
 x10_boolean _ZN3x104lang7PointerltEN3x104lang7PointerE(x10_pointer self,

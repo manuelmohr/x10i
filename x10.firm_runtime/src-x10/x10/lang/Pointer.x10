@@ -9,13 +9,13 @@ public struct Pointer implements Comparable[Pointer] {
     public static native def write[T](x: Pointer, val y: T) : void;
 
     /** alignment of memory; */
-    public static native def align(memPtr: Pointer, alignment: int) : Pointer;
+    public static native def align(memPtr: Pointer, alignment: Int) : Pointer;
 
     public native def hashCode() : Int;
 
-    public native operator this +(x : Long) : Pointer;
-    public native operator this -(x : Long) : Pointer;
-    public native operator this -(x : Pointer)  : Long;
+    public native operator this +(x : Int) : Pointer;
+    public native operator this -(x : Int) : Pointer;
+    public native operator this -(x : Pointer)  : Int;
     public native operator this <(x : Pointer)  : Boolean;
     public native operator this >(x : Pointer)  : Boolean;
     public native operator this <=(x : Pointer) : Boolean;

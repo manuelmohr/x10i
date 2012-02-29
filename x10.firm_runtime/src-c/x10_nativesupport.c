@@ -2,13 +2,13 @@
 #include <string.h>
 
 /* memcmp */
-x10_boolean _ZN3x104lang13NativeSupport6memcmpEN3x104lang7PointerEN3x104lang7PointerEx(x10_pointer ptr1, x10_pointer ptr2, x10_long bytes)
+x10_boolean _ZN3x104lang13NativeSupport6memcmpEN3x104lang7PointerEN3x104lang7PointerEi(x10_pointer ptr1, x10_pointer ptr2, x10_int bytes)
 {
 	return memcmp(ptr1, ptr2, bytes) == 0;
 }
 
 /* memcpy */
-void _ZN3x104lang13NativeSupport6memcpyEN3x104lang7PointerEN3x104lang7PointerExb(x10_pointer dst, x10_pointer src, x10_long bytes, x10_boolean overlap)
+void _ZN3x104lang13NativeSupport6memcpyEN3x104lang7PointerEN3x104lang7PointerEib(x10_pointer dst, x10_pointer src, x10_int bytes, x10_boolean overlap)
 {
 	if(overlap) {
 		memmove(dst, src, bytes);
@@ -18,19 +18,19 @@ void _ZN3x104lang13NativeSupport6memcpyEN3x104lang7PointerEN3x104lang7PointerExb
 }
 
 /* memset */
-void _ZN3x104lang13NativeSupport6memsetEN3x104lang7PointerEix(x10_pointer dest, x10_int c, x10_long bytes)
+void _ZN3x104lang13NativeSupport6memsetEN3x104lang7PointerEii(x10_pointer dest, x10_int c, x10_int bytes)
 {
 	memset(dest, c, bytes);
 }
 
 /** allocation of memory; the returned memory pointer is not aligned !!! (Use align_ptr for alignment of pointers) */
-x10_pointer _ZN3x104lang13NativeSupport5allocExibb(x10_long numBytes, x10_int alignment, x10_boolean congruent, x10_boolean zeroed)
+x10_pointer _ZN3x104lang13NativeSupport5allocEiibb(x10_int numBytes, x10_int alignment, x10_boolean congruent, x10_boolean zeroed)
 {
 	x10_pointer ret = X10_NULL;
 	if(congruent) {
 		assert(false && "No support for congruent memory allocation yet");
 	} else {
-		const x10_long size = numBytes + alignment;
+		const x10_int size = numBytes + alignment;
 		ret = x10_malloc(size);
 		if(zeroed)
 		memset(ret, 0, size);
