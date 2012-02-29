@@ -543,10 +543,7 @@ public struct UInt implements Comparable[UInt] /*TODO implements Arithmetic[UInt
      * @return the value obtained by rotating the binary representation of this UInt left by the specified number of bits.
      * @see #rotateRight(Int)
      */
-    // @Native("java", "java.lang.Integer.rotateLeft(#this, #distance)")
-    @Native("c++", "x10aux::int_utils::rotateLeft(#0, #1)")
-    /* [FIRM_CHANGE] */
-    public native def rotateLeft(distance:Int): UInt;
+    public def rotateLeft(distance:Int): UInt = (this << distance) | (this >>> -distance);
 
     /**
      * Returns the value obtained by rotating the binary representation
@@ -564,10 +561,7 @@ public struct UInt implements Comparable[UInt] /*TODO implements Arithmetic[UInt
      * @return the value obtained by rotating the binary representation of this UInt right by the specified number of bits.
      * @see #rotateLeft(Int)
      */
-    // @Native("java", "java.lang.Integer.rotateRight(#this, #distance)")
-    @Native("c++", "x10aux::int_utils::rotateRight(#0, #1)")
-    /* [FIRM_CHANGE] */
-    public native def rotateRight(distance:Int): UInt;
+    public def rotateRight(distance:Int): UInt = (this << -distance) | (this >>> distance);
 
     /**
      * Returns the value obtained by reversing the order of the bits in the

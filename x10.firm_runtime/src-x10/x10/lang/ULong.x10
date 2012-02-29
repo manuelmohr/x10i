@@ -543,10 +543,7 @@ public struct ULong implements Comparable[ULong] /*TODO implements Arithmetic[UL
      * @return the value obtained by rotating the binary representation of this ULong left by the specified number of bits.
      * @see #rotateRight(Int)
      */
-    // @Native("java", "java.lang.Long.rotateLeft(#this, #distance)")
-    @Native("c++", "x10aux::long_utils::rotateLeft(#0, #1)")
-    /* [FIRM_CHANGE] */
-    public native def rotateLeft(distance:Int): ULong;
+    public def rotateLeft(distance:Int): ULong = (this << distance) | (this >>> -distance);
 
     /**
      * Returns the value obtained by rotating the binary representation
@@ -564,10 +561,7 @@ public struct ULong implements Comparable[ULong] /*TODO implements Arithmetic[UL
      * @return the value obtained by rotating the binary representation of this ULong right by the specified number of bits.
      * @see #rotateLeft(Int)
      */
-    // @Native("java", "java.lang.Long.rotateRight(#this, #distance)")
-    @Native("c++", "x10aux::long_utils::rotateRight(#0, #1)")
-    /* [FIRM_CHANGE] */
-    public native def rotateRight(distance:Int): ULong;
+    public def rotateRight(distance:Int): ULong = (this << -distance) | (this >>> distance);
 
     /**
      * Returns the value obtained by reversing the order of the bits in the

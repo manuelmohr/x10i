@@ -429,9 +429,7 @@ public struct Int implements Comparable[Int] /*TODO implements Arithmetic[Int], 
      * @return the value obtained by rotating the two's complement binary representation of this Int left by the specified number of bits.
      * @see #rotateRight(Int)
      */
-    @Native("java", "java.lang.Integer.rotateLeft(#this, #distance)")
-    @Native("c++", "x10aux::int_utils::rotateLeft(#0, #1)")
-    public native def rotateLeft(distance:Int): Int;
+    public def rotateLeft(distance:Int): Int = (this << distance) | (this >>> -distance);
 
     /**
      * Returns the value obtained by rotating the two's complement binary
@@ -449,9 +447,7 @@ public struct Int implements Comparable[Int] /*TODO implements Arithmetic[Int], 
      * @return the value obtained by rotating the two's complement binary representation of this Int right by the specified number of bits.
      * @see #rotateLeft(Int)
      */
-    @Native("java", "java.lang.Integer.rotateRight(#this, #distance)")
-    @Native("c++", "x10aux::int_utils::rotateRight(#0, #1)")
-    public native def rotateRight(distance:Int): Int;
+    public def rotateRight(distance:Int): Int = (this << -distance) | (this >>> distance);
 
     /**
      * Returns the value obtained by reversing the order of the bits in the

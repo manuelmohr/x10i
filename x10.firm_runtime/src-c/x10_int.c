@@ -44,16 +44,6 @@ x10_int _ZN3x104lang3Int7reverseEv(x10_int self)
     return (x10_int)ux;
 }
 
-x10_int _ZN3x104lang3Int11rotateRightEi(x10_int self, x10_int distance)
-{
-   return (((x10_uint)self) >> distance) | (self << (32 - distance));
-}
-
-x10_int _ZN3x104lang3Int10rotateLeftEi(x10_int self, x10_int distance)
-{
-    return (self << distance) | (((x10_uint)self) >> (32 - distance));
-}
-
 x10_int _ZN3x104lang3Int8bitCountEv(x10_int self)
 {
     x10_uint ux = (x10_uint)self;

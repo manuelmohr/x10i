@@ -61,16 +61,6 @@ x10_int _ZN3x104lang4Long21numberOfTrailingZerosEv(x10_long self)
    return _ZN3x104lang4Long8bitCountEv(~self & (self-1));
 }
 
-x10_long _ZN3x104lang4Long10rotateLeftEi(x10_long self, x10_int distance)
-{
-   return (self << distance) | (((x10_ulong)self) >> (64 - distance));
-}
-
-x10_long _ZN3x104lang4Long11rotateRightEi(x10_long self, x10_int distance)
-{
-   return (((x10_ulong)self) >> distance) | (self << (64 - distance));
-}
-
 x10_long _ZN3x104lang4Long12reverseBytesEv(x10_long self)
 {
     x10_ulong ux = self;

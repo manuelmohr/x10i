@@ -423,9 +423,7 @@ public struct Long implements Comparable[Long], Arithmetic[Long], Bitwise[Long],
      * @return the value obtained by rotating the two's complement binary representation of this Long left by the specified number of bits.
      * @see #rotateRight(Int)
      */
-    @Native("java", "java.lang.Long.rotateLeft(#this, #distance)")
-    @Native("c++", "x10aux::long_utils::rotateLeft(#0, #1)")
-    public native def rotateLeft(distance:Int): Long;
+    public def rotateLeft(distance:Int): Long = (this << distance) | (this >>> -distance);
 
     /**
      * Returns the value obtained by rotating the two's complement binary
@@ -443,9 +441,7 @@ public struct Long implements Comparable[Long], Arithmetic[Long], Bitwise[Long],
      * @return the value obtained by rotating the two's complement binary representation of this Long right by the specified number of bits.
      * @see #rotateLeft(Int)
      */
-    @Native("java", "java.lang.Long.rotateRight(#this, #distance)")
-    @Native("c++", "x10aux::long_utils::rotateRight(#0, #1)")
-    public native def rotateRight(distance:Int): Long;
+    public def rotateRight(distance:Int): Long = (this << -distance) | (this >>> distance);
 
     /**
      * Returns the value obtained by reversing the order of the bits in the

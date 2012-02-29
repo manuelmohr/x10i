@@ -29,18 +29,6 @@ x10_uint _ZN3x104lang4UInt7reverseEv(x10_uint self)
 	return (x10_uint)_ZN3x104lang3Int7reverseEv((x10_int)self);
 }
 
-x10_uint _ZN3x104lang4UInt11rotateRightEi(x10_uint self, x10_int distance)
-{
-	extern x10_int _ZN3x104lang3Int11rotateRightEi(x10_int, x10_int);
-	return (x10_uint)_ZN3x104lang3Int11rotateRightEi((x10_int)self, distance);
-}
-
-x10_uint _ZN3x104lang4UInt10rotateLeftEi(x10_uint self, x10_int distance)
-{
-	extern x10_int _ZN3x104lang3Int10rotateLeftEi(x10_int, x10_int);
-	return (x10_uint)_ZN3x104lang3Int10rotateLeftEi((x10_int)self, distance);
-}
-
 x10_int _ZN3x104lang4UInt8bitCountEv(x10_uint self)
 {
 	extern x10_int _ZN3x104lang3Int8bitCountEv(x10_int);
