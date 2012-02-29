@@ -171,26 +171,17 @@ public struct UByte implements Comparable[UByte] /*TODO implements Arithmetic[UB
      * @param x the other UByte
      * @return the bitwise AND of this UByte and the other UByte.
      */
-    // @Native("java", "((byte) ((#this) & (#x)))")
-    @Native("c++",  "((x10_ubyte) ((#0) & (#1)))")
-     /* [FIRM_CHANGE] */
     public native operator this & (x:UByte): UByte;
     /**
      * A bitwise and operator (unsigned disambiguation).
      * @see #operator(UByte)&(UByte)
      */
-    // @Native("java", "((byte) ((#this) & (#x)))")
-    @Native("c++",  "((x10_ubyte) ((#0) & (#1)))")
-     /* [FIRM_CHANGE] */
-    public native operator (x:Byte) & this: UByte;
+    public operator (x:Byte) & this: UByte = this & x as UByte;
     /**
      * A bitwise and operator (unsigned disambiguation).
      * @see #operator(UByte)&(UByte)
      */
-    // @Native("java", "((byte) ((#this) & (#x)))")
-    @Native("c++",  "((x10_ubyte) ((#0) & (#1)))")
-     /* [FIRM_CHANGE] */
-    public native operator this & (x:Byte): UByte;
+    public operator this & (x:Byte): UByte = this & x as UByte;
 
     /**
      * A bitwise or operator.
@@ -198,26 +189,17 @@ public struct UByte implements Comparable[UByte] /*TODO implements Arithmetic[UB
      * @param x the other UByte
      * @return the bitwise OR of this UByte and the other UByte.
      */
-    // @Native("java", "((byte) ((#this) | (#x)))")
-    @Native("c++",  "((x10_ubyte) ((#0) | (#1)))")
-     /* [FIRM_CHANGE] */
     public native operator this | (x:UByte): UByte;
     /**
      * A bitwise or operator (unsigned disambiguation).
      * @see #operator(UByte)|(UByte)
      */
-    // @Native("java", "((byte) ((#this) | (#x)))")
-    @Native("c++",  "((x10_ubyte) ((#0) | (#1)))")
-     /* [FIRM_CHANGE] */
-    public native operator (x:Byte) | this: UByte;
+    public operator (x:Byte) | this: UByte = this | x as UByte;
     /**
      * A bitwise or operator (unsigned disambiguation).
      * @see #operator(UByte)|(UByte)
      */
-    // @Native("java", "((byte) ((#this) | (#x)))")
-    @Native("c++",  "((x10_ubyte) ((#0) | (#1)))")
-     /* [FIRM_CHANGE] */
-    public native operator this | (x:Byte): UByte;
+    public operator this | (x:Byte): UByte = this | x as UByte;
 
     /**
      * A bitwise xor operator.
@@ -225,26 +207,17 @@ public struct UByte implements Comparable[UByte] /*TODO implements Arithmetic[UB
      * @param x the other UByte
      * @return the bitwise XOR of this UByte and the other UByte.
      */
-    // @Native("java", "((byte) ((#this) ^ (#x)))")
-    @Native("c++",  "((x10_ubyte) ((#0) ^ (#1)))")
-     /* [FIRM_CHANGE] */
     public native operator this ^ (x:UByte): UByte;
     /**
      * A bitwise xor operator (unsigned disambiguation).
      * @see #operator(UByte)^(UByte)
      */
-    // @Native("java", "((byte) ((#this) ^ (#x)))")
-    @Native("c++",  "((x10_ubyte) ((#0) ^ (#1)))")
-     /* [FIRM_CHANGE] */
-    public native operator (x:Byte) ^ this: UByte;
+    public operator (x:Byte) ^ this: UByte = this ^ x as UByte;
     /**
      * A bitwise xor operator (unsigned disambiguation).
      * @see #operator(UByte)^(UByte)
      */
-    // @Native("java", "((byte) ((#this) ^ (#x)))")
-    @Native("c++",  "((x10_ubyte) ((#0) ^ (#1)))")
-     /* [FIRM_CHANGE] */
-    public native operator this ^ (x:Byte): UByte;
+    public operator this ^ (x:Byte): UByte = this ^ x as UByte;
 
     /**
      * A bitwise left shift operator.

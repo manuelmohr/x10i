@@ -171,26 +171,17 @@ public struct UShort implements Comparable[UShort] /*TODO implements Arithmetic[
      * @param x the other UShort
      * @return the bitwise AND of this UShort and the other UShort.
      */
-    // @Native("java", "((short) ((#this) & (#x)))")
-    @Native("c++",  "((x10_ushort) ((#0) & (#1)))")
-    /* [FIRM_CHANGE] */
     public native operator this & (x:UShort): UShort;
     /**
      * A bitwise and operator (unsigned disambiguation).
      * @see #operator(UShort)&(UShort)
      */
-    // @Native("java", "((short) ((#this) & (#x)))")
-    @Native("c++",  "((x10_ushort) ((#0) & (#1)))")
-    /* [FIRM_CHANGE] */
-    public native operator (x:Short) & this: UShort;
+    public operator (x:Short) & this: UShort = this & x as UShort;
     /**
      * A bitwise and operator (unsigned disambiguation).
      * @see #operator(UShort)&(UShort)
      */
-    // @Native("java", "((short) ((#this) & (#x)))")
-    @Native("c++",  "((x10_ushort) ((#0) & (#1)))")
-    /* [FIRM_CHANGE] */
-    public native operator this & (x:Short): UShort;
+    public operator this & (x:Short): UShort = this & x as UShort;
 
     /**
      * A bitwise or operator.
@@ -198,26 +189,17 @@ public struct UShort implements Comparable[UShort] /*TODO implements Arithmetic[
      * @param x the other UShort
      * @return the bitwise OR of this UShort and the other UShort.
      */
-    // @Native("java", "((short) ((#this) | (#x)))")
-    @Native("c++",  "((x10_ushort) ((#0) | (#1)))")
-    /* [FIRM_CHANGE] */
     public native operator this | (x:UShort): UShort;
     /**
      * A bitwise or operator (unsigned disambiguation).
      * @see #operator(UShort)|(UShort)
      */
-    // @Native("java", "((short) ((#this) | (#x)))")
-    @Native("c++",  "((x10_ushort) ((#0) | (#1)))")
-    /* [FIRM_CHANGE] */
-    public native operator (x:Short) | this: UShort;
+    public operator (x:Short) | this: UShort = this | x as UShort;
     /**
      * A bitwise or operator (unsigned disambiguation).
      * @see #operator(UShort)|(UShort)
      */
-    // @Native("java", "((short) ((#this) | (#x)))")
-    @Native("c++",  "((x10_ushort) ((#0) | (#1)))")
-    /* [FIRM_CHANGE] */
-    public native operator this | (x:Short): UShort;
+    public operator this | (x:Short): UShort = this | x as UShort;
 
     /**
      * A bitwise xor operator.
@@ -225,26 +207,17 @@ public struct UShort implements Comparable[UShort] /*TODO implements Arithmetic[
      * @param x the other UShort
      * @return the bitwise XOR of this UShort and the other UShort.
      */
-    // @Native("java", "((short) ((#this) ^ (#x)))")
-    @Native("c++",  "((x10_ushort) ((#0) ^ (#1)))")
-    /* [FIRM_CHANGE] */
     public native operator this ^ (x:UShort): UShort;
     /**
      * A bitwise xor operator (unsigned disambiguation).
      * @see #operator(UShort)^(UShort)
      */
-    // @Native("java", "((short) ((#this) ^ (#x)))")
-    @Native("c++",  "((x10_ushort) ((#0) ^ (#1)))")
-    /* [FIRM_CHANGE] */
-    public native operator (x:Short) ^ this: UShort;
+    public operator (x:Short) ^ this: UShort = this ^ x as UShort;
     /**
      * A bitwise xor operator (unsigned disambiguation).
      * @see #operator(UShort)^(UShort)
      */
-    // @Native("java", "((short) ((#this) ^ (#x)))")
-    @Native("c++",  "((x10_ushort) ((#0) ^ (#1)))")
-    /* [FIRM_CHANGE] */
-    public native operator this ^ (x:Short): UShort;
+    public operator this ^ (x:Short): UShort = this ^ x as UShort;
 
     /**
      * A bitwise left shift operator.

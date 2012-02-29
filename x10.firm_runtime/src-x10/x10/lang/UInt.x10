@@ -173,26 +173,17 @@ public struct UInt implements Comparable[UInt] /*TODO implements Arithmetic[UInt
      * @param x the other UInt
      * @return the bitwise AND of this UInt and the other UInt.
      */
-    // @Native("java", "((#this) & (#x))")
-    @Native("c++",  "((x10_uint) ((#0) & (#1)))")
-     /* [FIRM_CHANGE] */
     public native operator this & (x:UInt): UInt;
     /**
      * A bitwise and operator (unsigned disambiguation).
      * @see #operator(UInt)&(UInt)
      */
-    // @Native("java", "((#this) & (#x))")
-    @Native("c++",  "((x10_uint) ((#0) & (#1)))")
-     /* [FIRM_CHANGE] */
-    public native operator (x:Int) & this: UInt;
+    public operator (x:Int) & this: UInt = this & x as UInt;
     /**
      * A bitwise and operator (unsigned disambiguation).
      * @see #operator(UInt)&(UInt)
      */
-    // @Native("java", "((#this) & (#x))")
-    @Native("c++",  "((x10_uint) ((#0) & (#1)))")
-     /* [FIRM_CHANGE] */
-    public native operator this & (x:Int): UInt;
+    public operator this & (x:Int): UInt = this & x as UInt;
 
     /**
      * A bitwise or operator.
@@ -200,26 +191,17 @@ public struct UInt implements Comparable[UInt] /*TODO implements Arithmetic[UInt
      * @param x the other UInt
      * @return the bitwise OR of this UInt and the other UInt.
      */
-    // @Native("java", "((#this) | (#x))")
-    @Native("c++",  "((x10_uint) ((#0) | (#1)))")
-     /* [FIRM_CHANGE] */
     public native operator this | (x:UInt): UInt;
     /**
      * A bitwise or operator (unsigned disambiguation).
      * @see #operator(UInt)|(UInt)
      */
-    // @Native("java", "((#this) | (#x))")
-    @Native("c++",  "((x10_uint) ((#0) | (#1)))")
-     /* [FIRM_CHANGE] */
-    public native operator (x:Int) | this: UInt;
+    public operator (x:Int) | this: UInt = this | x as UInt;
     /**
      * A bitwise or operator (unsigned disambiguation).
      * @see #operator(UInt)|(UInt)
      */
-    // @Native("java", "((#this) | (#x))")
-    @Native("c++",  "((x10_uint) ((#0) | (#1)))")
-     /* [FIRM_CHANGE] */
-    public native operator this | (x:Int): UInt;
+    public operator this | (x:Int): UInt = this | x as UInt;
 
     /**
      * A bitwise xor operator.
@@ -227,26 +209,17 @@ public struct UInt implements Comparable[UInt] /*TODO implements Arithmetic[UInt
      * @param x the other UInt
      * @return the bitwise XOR of this UInt and the other UInt.
      */
-    // @Native("java", "((#this) ^ (#x))")
-    @Native("c++",  "((x10_uint) ((#0) ^ (#1)))")
-     /* [FIRM_CHANGE] */
     public native operator this ^ (x:UInt): UInt;
     /**
      * A bitwise xor operator (unsigned disambiguation).
      * @see #operator(UInt)^(UInt)
      */
-    // @Native("java", "((#this) ^ (#x))")
-    @Native("c++",  "((x10_uint) ((#0) ^ (#1)))")
-     /* [FIRM_CHANGE] */
-    public native operator (x:Int) ^ this: UInt;
+    public operator (x:Int) ^ this: UInt = this ^ x as UInt;
     /**
      * A bitwise xor operator (unsigned disambiguation).
      * @see #operator(UInt)^(UInt)
      */
-    // @Native("java", "((#this) ^ (#x))")
-    @Native("c++",  "((x10_uint) ((#0) ^ (#1)))")
-     /* [FIRM_CHANGE] */
-    public native operator this ^ (x:Int): UInt;
+    public operator this ^ (x:Int): UInt = this ^ x as UInt;
 
     /**
      * A bitwise left shift operator.

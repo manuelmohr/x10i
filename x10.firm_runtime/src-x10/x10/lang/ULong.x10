@@ -174,26 +174,17 @@ public struct ULong implements Comparable[ULong] /*TODO implements Arithmetic[UL
      * @param x the other ULong
      * @return the bitwise AND of this ULong and the other ULong.
      */
-    // @Native("java", "((#this) & (#x))")
-    @Native("c++",  "((x10_ulong) ((#0) & (#1)))")
-    /* [FIRM_CHANGE] */
     public native operator this & (x:ULong): ULong;
     /**
      * A bitwise and operator (unsigned disambiguation).
      * @see #operator(ULong)&(ULong)
      */
-    // @Native("java", "((#this) & (#x))")
-    @Native("c++",  "((x10_ulong) ((#0) & (#1)))")
-    /* [FIRM_CHANGE] */
-    public native operator (x:Long) & this: ULong;
+    public operator (x:Long) & this: ULong = this & x as ULong;
     /**
      * A bitwise and operator (unsigned disambiguation).
      * @see #operator(ULong)&(ULong)
      */
-    // @Native("java", "((#this) & (#x))")
-    @Native("c++",  "((x10_ulong) ((#0) & (#1)))")
-    /* [FIRM_CHANGE] */
-    public native operator this & (x:Long): ULong;
+    public operator this & (x:Long): ULong = this & x as ULong;
 
     /**
      * A bitwise or operator.
@@ -201,26 +192,17 @@ public struct ULong implements Comparable[ULong] /*TODO implements Arithmetic[UL
      * @param x the other ULong
      * @return the bitwise OR of this ULong and the other ULong.
      */
-    // @Native("java", "((#this) | (#x))")
-    @Native("c++",  "((x10_ulong) ((#0) | (#1)))")
-    /* [FIRM_CHANGE] */
     public native operator this | (x:ULong): ULong;
     /**
      * A bitwise or operator (unsigned disambiguation).
      * @see #operator(ULong)|(ULong)
      */
-    // @Native("java", "((#this) | (#x))")
-    @Native("c++",  "((x10_ulong) ((#0) | (#1)))")
-    /* [FIRM_CHANGE] */
-    public native operator (x:Long) | this: ULong;
+    public operator (x:Long) | this: ULong = this | x as ULong;
     /**
      * A bitwise or operator (unsigned disambiguation).
      * @see #operator(ULong)|(ULong)
      */
-    // @Native("java", "((#this) | (#x))")
-    @Native("c++",  "((x10_ulong) ((#0) | (#1)))")
-    /* [FIRM_CHANGE] */
-    public native operator this | (x:Long): ULong;
+    public operator this | (x:Long): ULong = this | x as ULong;
 
     /**
      * A bitwise xor operator.
@@ -228,26 +210,17 @@ public struct ULong implements Comparable[ULong] /*TODO implements Arithmetic[UL
      * @param x the other ULong
      * @return the bitwise XOR of this ULong and the other ULong.
      */
-    // @Native("java", "((#this) ^ (#x))")
-    @Native("c++",  "((x10_ulong) ((#0) ^ (#1)))")
-    /* [FIRM_CHANGE] */
     public native operator this ^ (x:ULong): ULong;
     /**
      * A bitwise xor operator (unsigned disambiguation).
      * @see #operator(ULong)^(ULong)
      */
-    // @Native("java", "((#this) ^ (#x))")
-    @Native("c++",  "((x10_ulong) ((#0) ^ (#1)))")
-    /* [FIRM_CHANGE] */
-    public native operator (x:Long) ^ this: ULong;
+    public operator (x:Long) ^ this: ULong = this ^ x as ULong;
     /**
      * A bitwise xor operator (unsigned disambiguation).
      * @see #operator(ULong)^(ULong)
      */
-    // @Native("java", "((#this) ^ (#x))")
-    @Native("c++",  "((x10_ulong) ((#0) ^ (#1)))")
-    /* [FIRM_CHANGE] */
-    public native operator this ^ (x:Long): ULong;
+    public operator this ^ (x:Long): ULong = this ^ x as ULong;
 
     /**
      * A bitwise left shift operator.
