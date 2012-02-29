@@ -373,7 +373,7 @@ public struct Byte implements Comparable[Byte], Arithmetic[Byte], Bitwise[Byte],
      * positive.
      * @return the signum function of this Byte.
      */
-    public def signum(): Int = this < 0 ? -1 : this > 0 ? 1 : 0;
+    public def signum(): Int = this < 0Y ? -1 : this > 0Y ? 1 : 0;
 
 
     /**

@@ -554,7 +554,7 @@ public struct ULong implements Comparable[ULong] /*TODO implements Arithmetic[UL
      * this ULong is zero and 1 if this ULong is non-zero.
      * @return the signum function of this ULong.
      */
-    public def signum(): Int = this > 0 as ULong ? 1 : 0;
+    public def signum(): Int = this > 0UL ? 1 : 0;
 
     /**
      * Returns the value obtained by reversing the order of the bytes in the

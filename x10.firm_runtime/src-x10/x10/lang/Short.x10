@@ -374,7 +374,7 @@ public struct Short implements Comparable[Short], Arithmetic[Short], Bitwise[Sho
      * positive.
      * @return the signum function of this Short.
      */
-    public def signum(): Int = this < 0 ? -1 : this > 0 ? 1 : 0;
+    public def signum(): Int = this < 0S ? -1 : this > 0S ? 1 : 0;
 
     /**
      * Returns the value obtained by reversing the order of the bytes in the

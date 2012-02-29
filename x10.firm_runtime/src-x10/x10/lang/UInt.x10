@@ -554,7 +554,7 @@ public struct UInt implements Comparable[UInt] /*TODO implements Arithmetic[UInt
      * this UInt is zero and 1 if this UInt is non-zero.
      * @return the signum function of this UInt.
      */
-    public def signum(): Int = this > 0 as UInt ? 1 : 0;
+    public def signum(): Int = this > 0U ? 1 : 0;
 
     /**
      * Returns the value obtained by reversing the order of the bytes in the

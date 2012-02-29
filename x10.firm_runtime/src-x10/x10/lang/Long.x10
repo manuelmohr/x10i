@@ -462,7 +462,7 @@ public struct Long implements Comparable[Long], Arithmetic[Long], Bitwise[Long],
      * positive.
      * @return the signum function of this Long.
      */
-    public def signum(): Int = this < 0 ? -1 : this > 0 ? 1 : 0;
+    public def signum(): Int = this < 0L ? -1 : this > 0L ? 1 : 0;
 
     /**
      * Returns the value obtained by reversing the order of the bytes in the
