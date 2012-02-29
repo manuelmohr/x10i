@@ -60,17 +60,3 @@ x10_int _ZN3x104lang4Long21numberOfTrailingZerosEv(x10_long self)
 {
    return _ZN3x104lang4Long8bitCountEv(~self & (self-1));
 }
-
-x10_long _ZN3x104lang4Long12reverseBytesEv(x10_long self)
-{
-    x10_ulong ux = self;
-    x10_ulong ans = ux << 56;
-    ans |= (ux & 0xFF00L) << 40;
-    ans |= (ux & 0xFF0000L) << 24;
-    ans |= (ux & 0xFF000000L) << 8;
-    ans |= (ux >> 8) & 0xFF000000L;
-    ans |= (ux >> 24) & 0xFF0000L;
-    ans |= (ux >> 40) & 0xFF00L;
-    ans |= (ux >> 56);
-    return (x10_long)ans;
-}

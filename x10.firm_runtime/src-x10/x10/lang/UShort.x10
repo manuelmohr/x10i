@@ -493,11 +493,9 @@ public struct UShort implements Comparable[UShort] /*TODO implements Arithmetic[
      * representation of this UShort.
      * @return the value obtained by reversing (or, equivalently, swapping) the bytes in this UShort.
      */
-    // @Native("java", "java.lang.Short.reverseBytes(#this)")
-    @Native("c++", "((x10_ushort) x10aux::short_utils::reverseBytes((x10_short) #0))")
-    /* [FIRM_CHANGE] */
-    public native def reverseBytes(): UShort;
-
+    public def reverseBytes(): UShort {
+        return (this << 8) | (this >> 8);
+    }
 
     /**
      * Return true if the given entity is a UShort, and this UShort is equal

@@ -588,11 +588,12 @@ public struct ULong implements Comparable[ULong] /*TODO implements Arithmetic[UL
      * representation of this ULong.
      * @return the value obtained by reversing the bytes in this ULong.
      */
-    // @Native("java", "java.lang.Long.reverseBytes(#this)")
-    @Native("c++", "((x10_ulong) x10aux::long_utils::reverseBytes((x10_long) #0))")
-    /* [FIRM_CHANGE] */
-    public native def reverseBytes(): ULong;
-
+    public def reverseBytes(): ULong {
+        var x : ULong = this << 32 | this >>> 32;
+        x = x << 16 & 0xFFFF0000FFFF0000UL | x >>> 16 & 0x0000FFFF0000FFFFUL;
+        x = x <<  8 & 0xFF00FF00FF00FF00UL | x >>>  8 & 0x00FF00FF00FF00FFUL;
+        return x;
+    }
 
     /**
      * Return true if the given entity is a ULong, and this ULong is equal

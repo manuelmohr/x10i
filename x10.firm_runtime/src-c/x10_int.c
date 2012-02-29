@@ -17,23 +17,6 @@ x10_int _ZN3x104lang3Intv3rbsEi(x10_int a, x10_int b)
 }
 MAKE_CONFS(_ZN3x104lang3Int, x10_int)
 
-x10_int _ZN3x104lang3Int12reverseBytesEv(x10_int self)
-{
-    x10_long value = 0;
-    if (self<0) {
-        value = 0x80000000;
-        self &= 0x7FFFFFFF;
-    }
-    value += self;
-    x10_long b0 = value & 0x000000FF;
-    x10_long b1 = value & 0x0000FF00;
-    x10_long b2 = value & 0x00FF0000;
-    x10_long b3 = value & 0xFF000000;
-    // reverse bytes
-    b0 <<= 24; b1 <<= 8; b2 >>= 8; b3 >>= 24;
-    return b0 | b1 | b2 | b3;
-}
-
 x10_int _ZN3x104lang3Int8bitCountEv(x10_int self)
 {
     x10_uint ux = (x10_uint)self;

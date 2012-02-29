@@ -469,10 +469,12 @@ public struct Long implements Comparable[Long], Arithmetic[Long], Bitwise[Long],
      * two's complement representation of this Long.
      * @return the value obtained by reversing the bytes in this Long.
      */
-    @Native("java", "java.lang.Long.reverseBytes(#this)")
-    @Native("c++", "x10aux::long_utils::reverseBytes(#0)")
-    public native def reverseBytes(): Long;
-
+    public def reverseBytes(): Long {
+        var x : Long = this << 32 | this >>> 32;
+        x = x << 16 & 0xFFFF0000FFFF0000L | x >>> 16 & 0x0000FFFF0000FFFFL;
+        x = x <<  8 & 0xFF00FF00FF00FF00L | x >>>  8 & 0x00FF00FF00FF00FFL;
+        return x;
+    }
 
     /**
      * Return true if the given entity is a Long, and this Long is equal

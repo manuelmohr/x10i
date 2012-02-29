@@ -381,10 +381,9 @@ public struct Short implements Comparable[Short], Arithmetic[Short], Bitwise[Sho
      * two's complement representation of this Short.
      * @return the value obtained by reversing (or, equivalently, swapping) the bytes in this Short.
      */
-    @Native("java", "java.lang.Short.reverseBytes(#this)")
-    @Native("c++", "x10aux::short_utils::reverseBytes(#0)")
-    public native def reverseBytes(): Short;
-
+    public def reverseBytes(): Short {
+        return (this << 8) | (this >>> 8);
+    }
 
     /**
      * Return true if the given entity is a Short, and this Short is equal

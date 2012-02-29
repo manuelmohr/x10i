@@ -588,11 +588,10 @@ public struct UInt implements Comparable[UInt] /*TODO implements Arithmetic[UInt
      * representation of this UInt.
      * @return the value obtained by reversing the bytes in this UInt.
      */
-    // @Native("java", "java.lang.Integer.reverseBytes(#this)")
-    @Native("c++", "((x10_uint) x10aux::int_utils::reverseBytes((x10_int) #0))")
-    /* [FIRM_CHANGE] */
-    public native def reverseBytes(): UInt;
-
+    public def reverseBytes(): UInt {
+        var x : UInt = this << 16 | this >>> 16;
+        return x << 8 & 0xFF00FF00U | x >> 8 & 0x00FF00FFU;
+    }
 
     /**
      * Return true if the given entity is a UInt, and this UInt is equal

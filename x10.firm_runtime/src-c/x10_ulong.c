@@ -17,12 +17,6 @@ x10_ulong _ZN3x104lang5ULongv3rbsEi(x10_ulong a, x10_int b)
 }
 MAKE_CONFS(_ZN3x104lang5ULong, x10_ulong)
 
-x10_ulong _ZN3x104lang5ULong12reverseBytesEv(x10_ulong self)
-{
-	extern x10_long _ZN3x104lang4Long12reverseBytesEv(x10_long);
-	return (x10_ulong)_ZN3x104lang4Long12reverseBytesEv((x10_long)self);
-}
-
 x10_int _ZN3x104lang5ULong8bitCountEv(x10_ulong self)
 {
 	extern x10_int _ZN3x104lang4Long8bitCountEv(x10_long);

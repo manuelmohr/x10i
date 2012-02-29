@@ -475,10 +475,10 @@ public struct Int implements Comparable[Int] /*TODO implements Arithmetic[Int], 
      * two's complement representation of this Int.
      * @return the value obtained by reversing the bytes in this Int.
      */
-    @Native("java", "java.lang.Integer.reverseBytes(#this)")
-    @Native("c++", "x10aux::int_utils::reverseBytes(#0)")
-    public native def reverseBytes(): Int;
-
+    public def reverseBytes(): Int {
+        var x : Int = this << 16 | this >>> 16;
+        return x << 8 & 0xFF00FF00 | x >> 8 & 0x00FF00FF;
+    }
 
     /**
      * Return true if the given entity is an Int, and this Int is equal
