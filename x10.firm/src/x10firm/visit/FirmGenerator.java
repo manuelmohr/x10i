@@ -141,9 +141,6 @@ import x10firm.visit.FirmCodeTemplate.CondTemplate;
 import x10firm.visit.FirmCodeTemplate.ExprTemplate;
 import x10firm.visit.FirmCodeTemplate.StmtTemplate;
 import x10firm.visit.x10lib.NativeGenericSupport;
-
-import com.sun.jna.Platform;
-
 import firm.ArrayType;
 import firm.ClassType;
 import firm.Construction;
@@ -802,13 +799,13 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final firm.Type[] returnTypes = new firm.Type[] { intType };
 		final firm.Type[] parameterTypes = new firm.Type[] {};
 		final MethodType mainType = new MethodType(parameterTypes, returnTypes);
-		final Entity entity = new Entity(global, "main", mainType);
-		String ldIdent = "main";
-		if (Platform.isMac() || Platform.isWindows()) {
-			ldIdent = "_" + ldIdent;
+		String name = "main";
+		if (options.getTargetTriple().getOS().equals("octopos")) {
+			name = "main_ilet";
 		}
-
-		entity.setLdIdent(ldIdent);
+		name = NameMangler.mangleKnownName(name);
+		final Entity entity = new Entity(global, name, mainType);
+		entity.setLdIdent(name);
 		entity.setVisibility(ir_visibility.ir_visibility_default);
 		entity.addLinkage(ir_linkage.IR_LINKAGE_HIDDEN_USER.val);
 

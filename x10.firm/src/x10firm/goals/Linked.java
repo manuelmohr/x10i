@@ -1,6 +1,9 @@
 package x10firm.goals;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -29,12 +32,32 @@ public class Linked extends PostCompiled {
 		final MachineTriple target = options.getTargetTriple();
 		/* darwin11 doesn't have a proper target-gcc installed, just used
 		 * "gcc" */
-		if (target.getOS().equals("darwin11")) {
+		final String os = target.getOS();
+		if (os.equals("darwin11") || os.equals("octopos")) {
 			return "gcc";
 		}
 
 		final String gcc = target + "-gcc";
 		return gcc;
+	}
+
+	private static String queryGccPath(CompilerOptions options, String path) {
+		final String gcc = getGCC(options);
+
+		final String[] arguments = new String[] { gcc, "--print-file-name="+path };
+		BufferedReader stdOut = null;
+		final String output;
+		try {
+			Process p = Runtime.getRuntime().exec(arguments);
+			stdOut = new BufferedReader(new InputStreamReader(p.getInputStream()));
+			output = stdOut.readLine();
+			if (output == null)
+				throw new RuntimeException("Failed to query gcc path '" + path + "'");
+			stdOut.close();
+		} catch (IOException e) {
+			throw new RuntimeException("Failed to query gcc path '" + path + "'", e);
+		}
+		return output;
 	}
 
 	@Override
@@ -51,32 +74,52 @@ public class Linked extends PostCompiled {
 		final String x10DistPath = System.getProperty("x10.dist", ".");
 		final String libooPath = x10DistPath + "/../liboo/build/" + target;
 		final String gcc = getGCC(options);
+		boolean linkStatically = options.linkStatically();
 
 		final List<String> cmd = new ArrayList<String>();
 		cmd.add(gcc);
+		final String  os = target.getOS();
 		// Produce a 32-bit binary when running on a 64-bit x86 host
-		if (target.getCpu().equals("x86_64")
-		    || target.getOS().equals("darwin11"))
+		if (target.getCpu().equals("x86_64") || os.equals("darwin11")) {
 			cmd.add("-m32");
-		if (options.linkStatically())
+		} else if (os.equals("octopos")) {
+			final String octopos_prefix = x10DistPath + "/../octopos-app";
+			cmd.add("-m32");
+			cmd.add("-nostdlib");
+			cmd.add("-Wl,-T" + octopos_prefix + "/sections.x");
+			cmd.add(queryGccPath(options, "crti.o"));
+			cmd.add(queryGccPath(options, "crtbegin.o"));
+			/* octopos only supports static linking */
+			linkStatically = true;
+		}
+		if (linkStatically)
 			cmd.add("-static");
 
 		cmd.add(asm.getAbsolutePath());
 		if (options.useSoftFloat())
 			cmd.add("-msoft-float");
-		if (options.linkStatically()) {
+		if (linkStatically) {
+			cmd.add(libooPath + "/liboo_rt.a");
+		} else {
 			cmd.add("-L" + libooPath);
 			cmd.add("-Wl,-R" + libooPath);
 			cmd.add("-loo_rt");
-		} else {
-			cmd.add(libooPath + "/liboo_rt.a");
 		}
 		if (!FirmState.libraryLoaded("x10")) {
 			String stdlibPath = x10DistPath + "/../x10.firm_runtime/build/" + target;
 			cmd.add(stdlibPath + "/libx10.a");
 		}
-		cmd.add("-lm");
-		cmd.add("-lpthread");
+		if (os.equals("octopos")) {
+			final String octopos_prefix = x10DistPath + "/../octopos-app";
+			cmd.add(octopos_prefix + "/liboctopos.a");
+			cmd.add("-lgcc");
+			cmd.add(queryGccPath(options, "crtend.o"));
+			cmd.add(queryGccPath(options, "crtn.o"));
+		} else {
+			cmd.add("-lm");
+			cmd.add("-lpthread");
+		}
+
 		cmd.add("-o");
 		cmd.add(exeFilename);
 
