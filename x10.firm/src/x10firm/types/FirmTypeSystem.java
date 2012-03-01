@@ -37,7 +37,9 @@ import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10MethodDef;
 import x10.types.X10ParsedClassType;
+import x10firm.visit.CodeGenError;
 import firm.ClassType;
+import firm.CompoundType;
 import firm.Entity;
 import firm.Ident;
 import firm.MethodType;
@@ -955,6 +957,30 @@ public class FirmTypeSystem {
 		return context;
 	}
 
+	private static boolean methodsCompatible(final MethodType type1, final MethodType type2) {
+		if (type1.getVariadicity() != type2.getVariadicity())
+			return false;
+		if (type1.getNRess() != type2.getNRess())
+			return false;
+		if (type1.getNParams() != type2.getNParams())
+			return false;
+		for (int i = 0; i < type1.getNRess(); ++i) {
+			firm.Type param1 = type1.getResType(i);
+			firm.Type param2 = type2.getResType(i);
+			if (param1 instanceof CompoundType != param2 instanceof CompoundType)
+				return false;
+			if (!(param1 instanceof CompoundType) && !param1.getMode().equals(param2.getMode()))
+				return false;
+		}
+		for (int i = 0; i < type2.getNParams(); ++i) {
+			firm.Type param1 = type1.getParamType(i);
+			firm.Type param2 = type2.getParamType(i);
+			if (!param1.getMode().equals(param2.getMode()))
+				return false;
+		}
+		return true;
+	}
+
 	/**
 	 * Return entity for an X10 method
 	 */
@@ -962,6 +988,7 @@ public class FirmTypeSystem {
 
 		final GenericClassContext context = getDefiningContext(instance);
 		final GenericMethodInstance gMethodInstance = new GenericMethodInstance(instance, x10TypeSystem);
+		final firm.Type type = asFirmType(instance);
 		Entity entity = context.getMethodEntity(gMethodInstance);
 
 		if (entity == null) {
@@ -977,6 +1004,16 @@ public class FirmTypeSystem {
 
 				final Entity cEntity = this.cStdlibEntities.get(nameWithDefiningClass);
 				if (cEntity != null) {
+					firm.Type entityType = cEntity.getType();
+					if (! (entityType instanceof MethodType))
+						throw new CodeGenError("native Entity without methodtype", instance.position());
+					firm.MethodType entityMType = (MethodType) entityType;
+					firm.MethodType mType = (MethodType) type;
+					if (!methodsCompatible(entityMType, mType))
+						throw new CodeGenError(
+								String.format("native Entity '%s' does not match declared type", instance),
+								instance.position());
+
 					/* fix up stuff, which was impossible to do during the import */
 					cEntity.setOwner(owningClass);
 					if (flags.isStatic()) {
@@ -991,7 +1028,6 @@ public class FirmTypeSystem {
 			}
 
 			final firm.Type ownerFirm = flags.isStatic() ? Program.getGlobalType() : owningClass;
-			final firm.Type type = asFirmType(instance);
 			entity = new Entity(ownerFirm, nameWithoutDefiningClass, type);
 			entity.setLdIdent(nameWithDefiningClass);
 
