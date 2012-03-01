@@ -68,9 +68,7 @@ public struct Char implements Comparable[Char], Ordered[Char] {
      * @param y the specified distance
      * @return the Char whose ordinal value is the sum of the given Char's ordinal value and the given distance.
      */
-    @Native("java", "((char) ((#x) + (#y)))")
-    @Native("c++",  "(x10_char(((#1).v) + (#2)))")
-    public native static operator (x:Char) + (y:Int): Char;
+    public native operator this + (y:Int): Char;
 
     /**
      * Translate a given Char's ordinal value forward by the specified distance.
@@ -78,9 +76,7 @@ public struct Char implements Comparable[Char], Ordered[Char] {
      * @param y the given Char
      * @return the Char whose ordinal value is the sum of the given Char's ordinal value and the given distance.
      */
-    @Native("java", "((char) ((#x) + (#y)))")
-    @Native("c++",  "(x10_char((#1) + ((#2).v)))")
-    public native static operator (x:Int) + (y:Char): Char;
+    public static operator (x:Int) + (y:Char): Char = y + x;
 
     /**
      * Translate a given Char's ordinal value backward by the specified distance.
@@ -88,9 +84,7 @@ public struct Char implements Comparable[Char], Ordered[Char] {
      * @param y the specified distance
      * @return the Char whose ordinal value is the difference of the given Char's ordinal value and the given distance.
      */
-    @Native("java", "((char) ((#x) - (#y)))")
-    @Native("c++",  "(x10_char((int)((#1).v - (#2))))")
-    public native static operator (x:Char) - (y:Int): Char;
+    public native operator this - (y:Int): Char;
 
     /**
      * Compute the distance between two Chars.
@@ -98,10 +92,7 @@ public struct Char implements Comparable[Char], Ordered[Char] {
      * @param y the source Char
      * @return the distance between the source Char and the target Char.
      */
-    @Native("java", "((#x) - (#y))")
-    @Native("c++",  "x10_char((#1).v - (#2).v)")
-    public native static operator (x:Char) - (y:Char): Int;
-
+    public native operator this - (y:Char): Int;
 
     // FIXME: Locale sensitivity
     /**
@@ -271,33 +262,18 @@ public struct Char implements Comparable[Char], Ordered[Char] {
     @Native("c++", "x10aux::char_utils::toTitleCase(#0)")
     public native def toTitleCase(): Char;
 
-
     /**
      * Returns the ordinal value of this Char.
      * @return the ordinal value of this Char.
      */
-    @Native("java", "((int) (#this))")
-    @Native("c++", "((x10_int) (#0).v)")
     public native def ord(): Int;
-
-    /**
-     * Returns the ordinal value of the given Char.
-     * @param c the given Char
-     * @return the ordinal value of the given Char.
-     */
-    @Native("java", "((int) (#c))")
-    @Native("c++", "((x10_int) (#1).v)")
-    public native static def ord(c:Char): Int;
 
     /**
      * Return the Char with the same ordinal value as the given Int.
      * @param x the given Int
      * @return the Char with the same ordinal value as the given Int.
      */
-    @Native("java", "((char) (#x))")
-    @Native("c++", "(x10_char(#1))")
-    public native static def chr(x:Int): Char;
-
+    public static def chr(x:Int): Char = x as Char;
 
     /**
      * Return true if the given entity is a Byte, and this Byte is equal
@@ -305,13 +281,10 @@ public struct Char implements Comparable[Char], Ordered[Char] {
      * @param x the given entity
      * @return true if this Byte is equal to the given entity.
      */
-    @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
-    @Native("c++", "x10aux::equals(#0,#1)")
-    /* [FIRM_CHANGE] */
     public def equals(x:Any):Boolean {
-       if(x instanceof Char) 
-          return equals(x as Char);
-    	 return false;
+        if(x instanceof Char)
+            return equals(x as Char);
+        return false;
     }
 
     /**
@@ -319,8 +292,6 @@ public struct Char implements Comparable[Char], Ordered[Char] {
      * @param x the given Byte
      * @return true if this Byte is equal to the given Byte.
      */
-    @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
-    @Native("c++", "x10aux::equals(#0,#1)")
     public native def equals(x:Char):Boolean;
 
     /**

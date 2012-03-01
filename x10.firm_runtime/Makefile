@@ -38,14 +38,16 @@ endif
 
 BUILDDIR?=build/$(TARGET)
 SRCDIR=src-c
+GENERATORSDIR=generators
 PLATFORMDIR=$(SRCDIR)/$(PLATFORM)
 
 LIBNAME=x10
 A_FILE=$(BUILDDIR)/lib$(LIBNAME).a
 ALL_C_FILES=$(wildcard $(SRCDIR)/*.c) $(wildcard $(PLATFORMDIR)/*.c)
 GEN_FIRM_NATIVE_SIZES=$(PLATFORMDIR)/gen_firm_native_sizes.c
+GEN_PRIMITIVE_TYPES=$(BUILDDIR)/x10_primitive_types.c
 FIRM_NATIVE_TYPES_CONF=$(BUILDDIR)/firmNativeTypes.conf
-C_FILES=$(filter-out $(GEN_FIRM_NATIVE_SIZES), $(ALL_C_FILES))
+C_FILES=$(filter-out $(GEN_FIRM_NATIVE_SIZES), $(ALL_C_FILES)) $(GEN_PRIMITIVE_TYPES)
 O_FILES=$(addprefix $(BUILDDIR), $(basename $(C_FILES:%.c=%.o)))
 H_FILES=$(wildcard $(SRCDIR)/*.h)
 CFLAGS += -I $(SRCDIR) -I $(SRCDIR)/$(PLATFORM) -Wall -W -std=c99 -fdollars-in-identifiers
@@ -63,6 +65,10 @@ $(FIRM_NATIVE_TYPES_CONF): $(GEN_FIRM_NATIVE_SIZES) $(wildcard $(PLATFORMDIR)/*.
 	$(CC) $(APP_CFLAGS) -o $(BUILDDIR)/gen_firm_native_sizes $<
 	$(SIMULATOR) $(BUILDDIR)/gen_firm_native_sizes > $@
 	rm -f gen_firm_native_sizes
+
+$(GEN_PRIMITIVE_TYPES): $(GENERATORSDIR)/create_types.py
+	mkdir -p $(BUILDDIR)
+	$< > $@
 
 $(MASTER): $(C_FILES) $(H_FILES) Makefile
 	mkdir -p $(BUILDDIR)

@@ -1,5 +1,4 @@
 #include "x10.h"
-#include "x10_primitive_types.h"
 #include "x10_nativesupport.h"
 #include "util.h"
 
@@ -21,7 +20,7 @@ x10_pointer _ZN3x104util18IndexedMemoryChunk14alloc_internalEiiibb(x10_int numEl
 	return _ZN3x104lang13NativeSupport5allocEiibb(numElements * sizeElement, alignment, congruent, zeroed);
 }
 
-void _ZN3x104util18IndexedMemoryChunk16dealloc_internalEN3x104lang7PointerE(x10_pointer ptr)
+void _ZN3x104util18IndexedMemoryChunk16dealloc_internalEPv(x10_pointer ptr)
 {
-	_ZN3x104lang13NativeSupport7deallocEN3x104lang7PointerE(ptr);
+	_ZN3x104lang13NativeSupport7deallocEPv(ptr);
 }

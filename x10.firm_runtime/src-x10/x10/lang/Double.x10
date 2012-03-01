@@ -307,9 +307,7 @@ public struct Double implements Comparable[Double], Arithmetic[Double], Ordered[
     /**
      * @deprecated use {@link #parse(String)} instead
      */
-    @Native("java", "java.lang.Double.parseDouble(#s)")
-    @Native("c++", "x10aux::double_utils::parseDouble(#1)")
-    public native static def parseDouble(s:String): Double ; //throwsNumberFormatException;
+    public static def parseDouble(s:String): Double = parse(s);
 
     /**
      * Parses the String argument as a Double value.
@@ -348,9 +346,7 @@ public struct Double implements Comparable[Double], Arithmetic[Double], Ordered[
      * all NaN values are collapsed to a single "canonical" NaN value).
      * @return the bits that represent this Double.
      */
-    @Native("java", "java.lang.Double.doubleToLongBits(#this)")
-    @Native("c++", "x10aux::double_utils::toLongBits(#0)")
-    public native def toLongBits(): Long;
+    public def toLongBits(): Long = isNaN() ? NaN.toRawLongBits() : toRawLongBits();
 
     /**
      * Returns a representation of this Double according to the IEEE 754
@@ -390,9 +386,9 @@ public struct Double implements Comparable[Double], Arithmetic[Double], Ordered[
      * @return true if this Double is equal to the given entity.
      */
     public def equals(x:Any):Boolean {
-    	if(x instanceof Double)
-    		return equals(x as Double);
-    	return false;
+        if(x instanceof Double)
+            return equals(x as Double);
+        return false;
     }
 
     /**
@@ -404,13 +400,15 @@ public struct Double implements Comparable[Double], Arithmetic[Double], Ordered[
     @Native("c++", "x10aux::equals(#0,#1)")
     public native def equals(x:Double):Boolean;
 
+    public def hashCode(): Int = toRawLongBits().hashCode();
+
     /**
-    * Returns a negative Int, zero, or a positive Int if this Double is less than, equal
-    * to, or greater than the given Double.
-    * @param x the given Double
-    * @return a negative Int, zero, or a positive Int if this Double is less than, equal
-    * to, or greater than the given Double.
-    */
-   public def compareTo(x:Double):Int = this == x ? 0 : this < x ? -1 : 1;
+     * Returns a negative Int, zero, or a positive Int if this Double is less than, equal
+     * to, or greater than the given Double.
+     * @param x the given Double
+     * @return a negative Int, zero, or a positive Int if this Double is less than, equal
+     * to, or greater than the given Double.
+     */
+    public def compareTo(x:Double):Int = this == x ? 0 : this < x ? -1 : 1;
 }
 public type Double(b:Double) = Double{self==b};

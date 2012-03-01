@@ -157,10 +157,11 @@ public class NameMangler {
 		primMangleTable.put(x10TypeSystem.UShort(),  "t");
 		primMangleTable.put(x10TypeSystem.Byte(),    "a");
 		primMangleTable.put(x10TypeSystem.UByte(),   "h");
-		primMangleTable.put(x10TypeSystem.Char(),    "Di");
+		primMangleTable.put(x10TypeSystem.Char(),    "c");
 		primMangleTable.put(x10TypeSystem.Float(),   "f");
 		primMangleTable.put(x10TypeSystem.Double(),  "d");
 		primMangleTable.put(x10TypeSystem.Boolean(), "b");
+		primMangleTable.put(x10TypeSystem.Pointer(), "Pv");
 		primMangleTable.put(x10TypeSystem.Void(),    MANGLED_VOID_TYPE);
 	}
 

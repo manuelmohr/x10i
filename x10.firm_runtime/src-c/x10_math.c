@@ -1,7 +1,6 @@
 #include <math.h>
 
 #include "x10.h"
-#include "x10_primitive_types.h"
 
 #ifdef __OCTOPOS__
 /* for now... */

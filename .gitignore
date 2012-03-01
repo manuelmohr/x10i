@@ -38,6 +38,7 @@
 
 *.o
 *.vcg
+*.pyc
 hs_err_*.log
 /x10.runtime/classes
 /x10.runtime/src-cpp/gen

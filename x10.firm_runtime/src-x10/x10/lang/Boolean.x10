@@ -87,7 +87,7 @@ public struct Boolean implements Comparable[Boolean] {
      * @return a string representation of this Boolean.
      */
     public def toString(): String {
-      return this ? "true" : "false";
+        return this ? "true" : "false";
     }
 
     /**
@@ -103,7 +103,7 @@ public struct Boolean implements Comparable[Boolean] {
      * @return the Boolean represented by the String argument.
      */
     public static def parse(s:String): Boolean {
-      return s.equalsIgnoreCase("true");
+        return s.equalsIgnoreCase("true");
     }
 
     /**
@@ -113,9 +113,9 @@ public struct Boolean implements Comparable[Boolean] {
      * @return true if this Boolean is equal to the given entity.
      */
     public def equals(x:Any):Boolean {
-    	if(x instanceof Boolean)
-    		return equals(x as Boolean);
-    	return false;
+        if(x instanceof Boolean)
+            return equals(x as Boolean);
+        return false;
     }
 
     /**
@@ -125,12 +125,7 @@ public struct Boolean implements Comparable[Boolean] {
      */
     public native def equals(x:Boolean):Boolean;
 
-    /**
-     * Returns a hashCode for the boolean
-     */
-    public def hashCode():Int {
-      return this ? 1 : 0;
-    }
+    public native def hashCode():Int;
 
     /**
     * Returns a negative Int, zero, or a positive Int if this Boolean is less than, equal
@@ -140,7 +135,7 @@ public struct Boolean implements Comparable[Boolean] {
     * to, or greater than the given Boolean.
     */
     public def compareTo(x:Boolean):Int {
-      return (this == x) ? 0 : this ? 1 : -1;
+        return (this == x) ? 0 : this ? 1 : -1;
     }
 
     // These operations are built-in.  Declaring them will prevent the

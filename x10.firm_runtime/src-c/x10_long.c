@@ -1,20 +1,5 @@
 #include "x10.h"
-#include "x10_primitive_types.h"
 #include "x10_string.h"
-
-X10_MAKE_EQUALS(_ZN3x104lang4Long6equalsEx, x10_long)
-X10_MAKE_HASHCODE(_ZN3x104lang4Long8hashCodeEv, x10_long)
-X10_MAKE_TOSTRING(_ZN3x104lang4Long8toStringEi, x10_long)
-X10_MAKE_PARSE(_ZN3x104lang4Long5parseEPN3x104lang6StringEi, x10_long)
-
-MAKE_INT_BINOPS2(_ZN3x104lang4Long, x, x10_long)
-MAKE_CMPOPS(_ZN3x104lang4Long, x, x10_long)
-MAKE_INT_UNOPS(_ZN3x104lang4Long, v, x10_long)
-x10_long _ZN3x104lang4Longv3rbsEi(x10_long a, x10_int b)
-{
-	return ((x10_long)((x10_ulong) (a) >> (0x3f & (b))));
-}
-MAKE_CONFS(_ZN3x104lang4Long, x10_long)
 
 x10_long _ZN3x104lang4Long13highestOneBitEv(x10_long self)
 {

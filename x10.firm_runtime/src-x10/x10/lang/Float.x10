@@ -309,9 +309,7 @@ public struct Float implements Comparable[Float], Arithmetic[Float], Ordered[Flo
     /**
      * @deprecated use {@link #parse(String)} instead
      */
-    @Native("java", "java.lang.Float.parseFloat(#s)")
-    @Native("c++", "x10aux::float_utils::parseFloat(#1)")
-    public native static def parseFloat(s:String): Float; //throwsNumberFormatException;
+    public static def parseFloat(s:String): Float = parse(s);
 
     /**
      * Parses the String argument as a Float value.
@@ -350,9 +348,7 @@ public struct Float implements Comparable[Float], Arithmetic[Float], Ordered[Flo
      * all NaN values are collapsed to a single "canonical" NaN value).
      * @return the bits that represent this Float.
      */
-    @Native("java", "java.lang.Float.floatToIntBits(#this)")
-    @Native("c++", "x10aux::float_utils::toIntBits(#0)")
-    public native def toIntBits(): Int;
+    public def toIntBits(): Int = isNaN() ? NaN.toRawIntBits() : toRawIntBits();
 
     /**
      * Returns a representation of this Float according to the IEEE 754
@@ -392,9 +388,9 @@ public struct Float implements Comparable[Float], Arithmetic[Float], Ordered[Flo
      * @return true if this Float is equal to the given entity.
      */
     public def equals(x:Any):Boolean {
-    	if(x instanceof Float)
-    		return equals(x as Float);
-    	return false;
+        if(x instanceof Float)
+            return equals(x as Float);
+        return false;
     }
 
     /**
@@ -405,6 +401,8 @@ public struct Float implements Comparable[Float], Arithmetic[Float], Ordered[Flo
     @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
     @Native("c++", "x10aux::equals(#0,#1)")
     public native def equals(x:Float):Boolean;
+
+    public def hashCode(): Int = toIntBits();
 
     /**
     * Returns a negative Int, zero, or a positive Int if this Float is less than, equal

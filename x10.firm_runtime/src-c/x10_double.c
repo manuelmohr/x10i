@@ -1,10 +1,20 @@
 #include <stddef.h>
 #include "x10.h"
-#include "x10_primitive_types.h"
 #include "x10_string.h"
 
-X10_MAKE_HASHCODE(_ZN3x104lang6Double8hashCodeEv, x10_double)
-X10_MAKE_EQUALS(_ZN3x104lang6Double6equalsEd, x10_double)
+/* x10.lang.Double.operator%(Double):Double */
+x10_double _ZN3x104lang6DoublermEd(x10_double a, x10_double b)
+{
+	return fmod(a, b);
+}
+
+/* x10.lang.Double.toHexString():String */
+x10_string *_ZN3x104lang6Double11toHexStringEv(x10_double self)
+{
+	X10_UNUSED(self);
+	X10_UNIMPLEMENTED();
+	return X10_NULL;
+}
 
 /*
  * For Double, we need a special toString() method to be compatible
@@ -64,54 +74,44 @@ x10_string *_ZN3x104lang6Double8toStringEv(x10_double v)
 	return x10_string_from_cstring(buf);
 }
 
-MAKE_BINOPS(_ZN3x104lang6Double, d, x10_double)
-MAKE_CMPOPS(_ZN3x104lang6Double, d, x10_double)
-MAKE_UNOPS(_ZN3x104lang6Double, v, x10_double)
-x10_double _ZN3x104lang6DoublermEd(x10_double a, x10_double b)
+/* static x10.lang.Double.parse(String): Double */
+x10_double _ZN3x104lang6Double5parseEPN3x104lang6StringE(x10_string *string)
 {
-	return fmod(a, b);
-}
-MAKE_CONFS(_ZN3x104lang6Double, x10_double)
-
-/* Use to move bits between x10_long/x10_double without confusing the compiler */
-typedef union DoubleDoubleTypePunner {
-    x10_long l;
-    x10_double d;
-} DoubleTypePunner;
-
-x10_long _ZN3x104lang6Double13toRawLongBitsEv(x10_double self)
-{
-    DoubleTypePunner tmp;
-    tmp.d = self;
-    return tmp.l;
+	X10_UNUSED(string);
+	X10_UNIMPLEMENTED();
+	return NAN;
 }
 
-x10_double _ZN3x104lang6Double12fromLongBitsEx(x10_long digits)
-{
-    DoubleTypePunner tmp;
-    tmp.l = digits;
-    return tmp.d;
-}
-
+/* x10.lang.Double.isNaN(): Boolean */
 x10_boolean _ZN3x104lang6Double5isNaNEv(x10_double self)
 {
-	return isnan(self) != 0 ? X10_TRUE : X10_FALSE;
+	return isnan(self) ? X10_TRUE : X10_FALSE;
 }
 
+/* x10.lang.Double.isInfinite(): Boolean */
 x10_boolean _ZN3x104lang6Double10isInfiniteEv(x10_double self)
 {
-	return isinf(self) != 0 ? X10_TRUE : X10_FALSE;
+	return isinf(self) ? X10_TRUE : X10_FALSE;
 }
 
-x10_long _ZN3x104lang6Double10toLongBitsEv(x10_double self)
+/* x10.lang.Double.toLongBits(): Long */
+x10_long _ZN3x104lang6Double13toRawLongBitsEv(x10_double self)
 {
-	return _ZN3x104lang6Double5isNaNEv(self) ? 0x7ff8000000000000LL : _ZN3x104lang6Double13toRawLongBitsEv(self);
+	assert(sizeof(x10_long) == sizeof(x10_double));
+	char buf[sizeof(x10_double)];
+	x10_double *as_double = (x10_double*)buf;
+	x10_long   *as_long   = (x10_long*)buf;
+	*as_double = self;
+	return *as_long;
 }
 
-x10_string *_ZN3x104lang6Double11toHexStringEv(x10_double self)
+/* static x10.lang.Double.fromLongBits(Long): Double */
+x10_double _ZN3x104lang6Double12fromLongBitsEx(x10_long x)
 {
-	X10_UNUSED(self);
-	X10_UNIMPLEMENTED();
-	return X10_NULL;
+	assert(sizeof(x10_long) == sizeof(x10_double));
+	char buf[sizeof(x10_double)];
+	x10_double *as_double = (x10_double*)buf;
+	x10_long   *as_long   = (x10_long*)buf;
+	*as_long = x;
+	return *as_double;
 }
-
