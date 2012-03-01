@@ -1,4 +1,5 @@
 #include "posix_types.h"
+#include "x10_thread.h"
 #include <stdio.h>
 
 int main(void)

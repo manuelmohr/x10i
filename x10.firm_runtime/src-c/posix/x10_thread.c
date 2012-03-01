@@ -277,14 +277,13 @@ void _ZN3x104lang6Thread5startEv(x10_thread *self)
 	pthread_mutex_unlock(&self->__thread_start_lock);
 }
 
-void _ZN3x104lang6Thread5sleepEx(x10_thread *self, x10_long millis)
+void _ZN3x104lang6Thread5sleepEx(x10_long millis)
 {
-	_ZN3x104lang6Thread5sleepExi(self, millis, 0);
+	_ZN3x104lang6Thread5sleepExi(millis, 0);
 }
 
-void _ZN3x104lang6Thread5sleepExi(x10_thread *self, x10_long millis, x10_int nanos)
+void _ZN3x104lang6Thread5sleepExi(x10_long millis, x10_int nanos)
 {
-	X10_UNUSED(self);
 	cond_mutex_t *cmp;
 	x10_boolean done = false;
 	struct timeval tval;
@@ -403,9 +402,10 @@ void _ZN3x104lang6ThreadapplyEv(x10_thread *self)
 }
 
 // TODO: Add home struct as return type
-x10_any *_ZN3x104lang6Thread4homeEv(x10_thread *self)
+x10_place _ZN3x104lang6Thread4homeEv(x10_thread *self)
 {
+	x10_place res;
+	memset(&res, 0, sizeof(res));
 	X10_UNUSED(self);
-
-	return X10_NULL;
+	return res;
 }
