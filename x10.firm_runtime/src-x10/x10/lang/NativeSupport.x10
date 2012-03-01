@@ -13,22 +13,32 @@ package x10.lang;
 
 import x10.compiler.Native;
 
+/**
+ * Low-level memory operations. The functions here are unsafe!
+ * negative numBytes values produce undefined behaviour.
+ */
 public class NativeSupport {
     /** equals sizeof(x) in C */
-    public static native def getSize[T]():Int;
+    public static native def getSize[T](): Int;
 
     /** memory compare */
-    public static native def memcmp(ptr1:Pointer, ptr2:Pointer, bytes:Int):Boolean;
+    public static native def memcmp(pointer1: Pointer, pointer2: Pointer, numBytes: Int): Int;
    
-    /** memory copy */
-    public static native def memcpy(dest:Pointer, src:Pointer, bytes:Int, overlap:Boolean):void;
+    /** memory copy, memory regions mustn't overlap */
+    public static native def memcpy(destination: Pointer, source: Pointer, numBytes: Int): void;
+
+    /** memory copy, overlapping memory regions allowed */
+    public static native def memmove(destination:Pointer, source:Pointer, numBytes: Int): void;
    
     /** memset */
-    public static native def memset(dest:Pointer, c:int, bytes:Int):void;
+    public static native def memset(destination:Pointer, c:int, numBytes:Int): void;
    
-    /** allocation of memory; the returned memory pointer is not aligned !!! (Use align_ptr for alignment of pointers) */
-    public static native def alloc(numBytes:Int, alignment:Int, congruent:Boolean, zeroed:Boolean):Pointer;
+    /** allocation of memory (uninitialized) */
+    public static native def alloc(numBytes: Int): Pointer;
 
-    /** deallocation of memory; The given memory pointer must be the real memory pointer returned by "alloc"; (not the aligned) */
-    public static native def dealloc(memPtr:Pointer):void;
+    /** allocation of memory (initialized to zero) */
+    public static native def allocZeroed(numBytes: Int): Pointer;
+
+    /** deallocation of memory */
+    public static native def dealloc(pointer: Pointer): void;
 }

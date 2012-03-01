@@ -20,7 +20,7 @@ import firm.Entity;
 /**
  *  FirmGenerator for x10.lang.NativeSupport.x10
  */
-public class SupportGenerator extends NativeGenericDispatcher {
+public class NativeSupportGenerator extends NativeGenericDispatcher {
 
 	/**
 	 *  Support code for the getSize method in NativeSupport.x10
@@ -64,7 +64,7 @@ public class SupportGenerator extends NativeGenericDispatcher {
 	/**
 	 * Constructor
 	 */
-	public SupportGenerator() {
+	public NativeSupportGenerator() {
 		addMethodGenerator(new GenGetSize());
 	}
 
@@ -73,6 +73,6 @@ public class SupportGenerator extends NativeGenericDispatcher {
 	 */
 	@Override
 	public String getDispatchName() {
-		return "NativeSupport";
+		return "x10.lang.NativeSupport";
 	}
 }

@@ -8,8 +8,8 @@ import polyglot.types.Type;
 import x10.types.MethodInstance;
 import x10.types.X10ClassType;
 import x10firm.types.FirmTypeSystem;
-import x10firm.visit.MethodConstruction;
 import x10firm.visit.FirmGenerator;
+import x10firm.visit.MethodConstruction;
 import x10firm.visit.VarEntry;
 import firm.Entity;
 import firm.Mode;
@@ -36,25 +36,21 @@ public class PointerGenerator extends NativeGenericDispatcher {
 			assert(meth.typeParameters().size() == 1);
 			final Type typeParameter = meth.typeParameters().get(0);
 
-			assert(formals.size() == 1);
-			final LocalInstance param = formals.get(0);
+			assert(formals.size() == 0);
 
 			final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
 					meth.flags(), meth.returnType(), owner);
 
 			MethodConstruction con = codeGenerator.getFirmConstruction();
-			final VarEntry var = con.getVarEntry(param);
-			assert(var != null && var.getType() == VarEntry.VARIABLE);
-
-			final Mode parMode = firmTypeSystem.getFirmMode(param.type());
+			final Mode parMode = firmTypeSystem.getFirmMode(typeParameter);
 			Node par = null;
 			if(firmTypeSystem.isFirmStructType(typeParameter)) {
 				final firm.Type firm_type = firmTypeSystem.asType(typeParameter);
 				final firm.Type frameType = entity.getGraph().getFrameType();
-				final Entity paramEntity = Entity.createParameterEntity(frameType, var.getIdx(), firm_type);
+				final Entity paramEntity = Entity.createParameterEntity(frameType, 0, firm_type);
 				par = codeGenerator.getEntityFromCurrentFrame(paramEntity);
 			} else {
-				par = con.getVariable(var.getIdx(), parMode);
+				par = con.getVariable(0, parMode);
 			}
 			assert(par != null);
 
@@ -99,21 +95,18 @@ public class PointerGenerator extends NativeGenericDispatcher {
 			assert(meth.typeParameters().size() == 1);
 			final Type typeParameter = meth.typeParameters().get(0);
 
-			assert(formals.size() == 2);
-			final LocalInstance ptr = formals.get(0);
-			final LocalInstance val = formals.get(1);
+			assert(formals.size() == 1);
+			final LocalInstance val = formals.get(0);
 
 			final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
 					meth.flags(), meth.returnType(), owner);
 
 			MethodConstruction con = codeGenerator.getFirmConstruction();
-			final VarEntry var_ptr = con.getVarEntry(ptr);
-			assert(var_ptr != null && var_ptr.getType() == VarEntry.VARIABLE);
 			final VarEntry var_val = con.getVarEntry(val);
 			assert(var_val != null);
 
-			final Mode ptrMode = firmTypeSystem.getFirmMode(ptr.type());
-			final Node address = con.getVariable(var_ptr.getIdx(), ptrMode);
+			final Mode ptrMode = Mode.getP();
+			final Node address = con.getVariable(0, ptrMode);
 
 			if(firmTypeSystem.isFirmStructType(typeParameter)) {
 				final firm.Type firm_type = firmTypeSystem.asType(typeParameter);
@@ -166,6 +159,6 @@ public class PointerGenerator extends NativeGenericDispatcher {
 	 */
 	@Override
 	public String getDispatchName() {
-		return "Pointer";
+		return "x10.lang.Pointer";
 	}
 }

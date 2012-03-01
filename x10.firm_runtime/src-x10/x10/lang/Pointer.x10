@@ -5,8 +5,8 @@ import x10.util.Ordered;
 public struct Pointer implements Comparable[Pointer] {
     public static val NULL: Pointer = getNullPointer();
 
-    public static native def read[T](x:Pointer): T;
-    public static native def write[T](x:Pointer, val y:T): void;
+    public native def read[T](): T;
+    public native def write[T](val y:T): void;
 
     /** alignment of memory; */
     public static native def align(memPtr:Pointer, alignment:Int): Pointer;

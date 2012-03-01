@@ -109,7 +109,7 @@ static void x10_thread_thread_sleep_cleanup(void *arg)
 	pthread_mutex_unlock(&(cmp->mutex));
 	pthread_mutex_destroy(&(cmp->mutex));
 	pthread_cond_destroy(&(cmp->cond));
-	x10_sysfree(cmp);
+	free(cmp);
 	signal(SIGINT, SIG_DFL);
 }
 
@@ -291,7 +291,7 @@ void _ZN3x104lang6Thread5sleepExi(x10_long millis, x10_int nanos)
 	int rc;
 
 	signal(SIGINT, x10_thread_intr_hndlr);
-	cmp = x10_sysalloc(sizeof(cond_mutex_t));
+	cmp = malloc(sizeof(cond_mutex_t));
 	pthread_mutex_init(&(cmp->mutex), NULL);
 	pthread_cond_init(&(cmp->cond), NULL);
 	pthread_mutex_lock(&(cmp->mutex));

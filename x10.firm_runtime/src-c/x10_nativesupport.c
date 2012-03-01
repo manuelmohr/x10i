@@ -1,47 +1,49 @@
-#include "x10_nativesupport.h"
 #include <string.h>
+#include "x10.h"
 
-/* memcmp */
-x10_boolean _ZN3x104lang13NativeSupport6memcmpEPvPvi(x10_pointer ptr1, x10_pointer ptr2, x10_int bytes)
+/* static x10.lang.NativeSupport.memcmp(Pointer,Pointer,Int): Int */
+x10_int _ZN3x104lang13NativeSupport6memcmpEPvPvi(x10_pointer ptr1, x10_pointer ptr2, x10_int numBytes)
 {
-	return memcmp(ptr1, ptr2, bytes) == 0;
+	return memcmp(ptr1, ptr2, numBytes);
 }
 
-/* memcpy */
-void _ZN3x104lang13NativeSupport6memcpyEPvPvib(x10_pointer dst, x10_pointer src, x10_int bytes, x10_boolean overlap)
+/* static x10.lang.NativeSupport.memcpy(Pointer,Pointer,Int) */
+void _ZN3x104lang13NativeSupport6memcpyEPvPvi(x10_pointer dst, x10_pointer src, x10_int numBytes)
 {
-	if(overlap) {
-		memmove(dst, src, bytes);
-	} else {
-		memcpy(dst, src, bytes);
-	}
+	memcpy(dst, src, numBytes);
 }
 
-/* memset */
-void _ZN3x104lang13NativeSupport6memsetEPvii(x10_pointer dest, x10_int c, x10_int bytes)
+/* static x10.lang.NativeSupport.memmove(Pointer,Pointer,Int) */
+void _ZN3x104lang13NativeSupport7memmoveEPvPvi(x10_pointer dst, x10_pointer src, x10_int numBytes)
 {
-	memset(dest, c, bytes);
+	memmove(dst, src, numBytes);
 }
 
-/** allocation of memory; the returned memory pointer is not aligned !!! (Use align_ptr for alignment of pointers) */
-x10_pointer _ZN3x104lang13NativeSupport5allocEiibb(x10_int numBytes, x10_int alignment, x10_boolean congruent, x10_boolean zeroed)
+/* static x10.lang.NativeSupport.memset(Pointer,Int,Int) */
+void _ZN3x104lang13NativeSupport6memsetEPvii(x10_pointer dest, x10_int c, x10_int numBytes)
 {
-	x10_pointer ret = X10_NULL;
-	if(congruent) {
-		assert(false && "No support for congruent memory allocation yet");
-	} else {
-		const x10_int size = numBytes + alignment;
-		ret = x10_malloc(size);
-		if(zeroed)
-		memset(ret, 0, size);
-	}
-	assert(ret != X10_NULL);
+	memset(dest, c, numBytes);
+}
+
+/* static x10.lang.NativeSupport.alloc(UInt): Pointer */
+x10_pointer _ZN3x104lang13NativeSupport5allocEi(x10_int numBytes)
+{
+	void *ret = x10_malloc(numBytes);
+	assert(ret != NULL);
 	return ret;
 }
 
-/** deallocation of memory; The given memory pointer must be the real memory pointer returned by "alloc"; (not the aligned) */
+/* static x10.lang.NativeSupport.allocZeroed(Uint): Pointer */
+x10_pointer _ZN3x104lang13NativeSupport11alocZeroedEi(x10_int numBytes)
+{
+	void *ret = x10_malloc(numBytes);
+	assert(ret != NULL);
+	memset(ret, 0, numBytes);
+	return ret;
+}
+
+/* static x10.lang.NativeSupport.dealloc(Pointer) */
 void _ZN3x104lang13NativeSupport7deallocEPv(x10_pointer ptr)
 {
-	assert(ptr != NULL);
 	x10_free(ptr);
 }

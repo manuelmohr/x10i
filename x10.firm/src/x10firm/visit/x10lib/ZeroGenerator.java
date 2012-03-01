@@ -136,6 +136,6 @@ public class ZeroGenerator extends NativeGenericDispatcher {
 	 */
 	@Override
 	public String getDispatchName() {
-		return "Zero";
+		return "x10.lang.Zero";
 	}
 }

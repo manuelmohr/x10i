@@ -24,7 +24,7 @@ public class NativeGenericSupport {
 	 * Constructor
 	 */
 	public NativeGenericSupport() {
-		addGenericGenerator(new SupportGenerator());
+		addGenericGenerator(new NativeSupportGenerator());
 		addGenericGenerator(new PointerGenerator());
 		addGenericGenerator(new ZeroGenerator());
 	}
@@ -37,9 +37,9 @@ public class NativeGenericSupport {
 	 * @return True if the given method could be dispatched.
 	 */
 	public boolean dispatch(final FirmGenerator codeGenerator, final MethodInstance meth,
-								   final List<LocalInstance> formals) {
+	                        final List<LocalInstance> formals) {
 		final X10ClassType owner = (X10ClassType)meth.container();
-		final NativeGenericDispatcher dispatcher = map.get(owner.name().toString());
+		final NativeGenericDispatcher dispatcher = map.get(owner.fullName().toString());
 		if(dispatcher == null) return false;
 		return dispatcher.dispatch(codeGenerator, meth, formals);
 	}

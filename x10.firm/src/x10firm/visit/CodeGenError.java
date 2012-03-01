@@ -13,6 +13,7 @@ public class CodeGenError extends InternalCompilerError {
 		super(message + " (node " + node + ")", node.position());
 	}
 
+	/** Construct new exception */
 	public CodeGenError(String message, Position position) {
 		super(message, position);
 	}

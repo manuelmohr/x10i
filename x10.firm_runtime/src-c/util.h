@@ -35,22 +35,6 @@ static inline void x10_init_object(x10_object *o, const x10_vtable_t *vptr)
 
 #define X10_INIT_OBJECT(o, v) x10_init_object((x10_object *) o, v)
 
-static inline void *x10_sysalloc(x10_long size)
-{
-	return malloc(size);
-}
-
-static inline void x10_sysfree(void *ptr)
-{
-	free(ptr);
-}
-
-static inline void *x10_sysrealloc(void *ptr, x10_long size)
-{
-	return realloc(ptr, size);
-}
-
-
 static inline void* x10_malloc(x10_long size)
 {
 	// TODO: Garbage collection, Out of memory exception
