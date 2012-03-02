@@ -14,8 +14,8 @@ import polyglot.util.UniqueID;
 import x10.types.MethodInstance;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
-
-import com.sun.jna.Platform;
+import x10firm.CompilerOptions;
+import x10firm.MachineTriple;
 
 /**
  * Name mangler which mangles X10 type objects to unique names
@@ -47,7 +47,7 @@ public class NameMangler {
 	 */
 	private static Map<X10ClassType, String> anonymousClassNames = new HashMap<X10ClassType, String>();
 
-	private static final String PLATFORM_PREFIX;
+	private static String PLATFORM_PREFIX = "";
 	private static final String MANGLE_PREFIX = "_Z";
 	private static final String MANGLE_SUFFIX = "";
 	private static final String QUAL_START = "N";
@@ -62,14 +62,6 @@ public class NameMangler {
 	private static final String MANGLED_TYPEINFO = "TI";
 
 	private static final String MANGLED_ANONYMOUS_CLASS_PREFIX = "$ANONYMOUS";
-
-	static {
-		if (Platform.isMac() || Platform.isWindows()) {
-			PLATFORM_PREFIX = "_";
-		} else {
-			PLATFORM_PREFIX = "";
-		}
-	}
 
 	/**
 	 * Initializes name substitutions for unary operators
@@ -169,11 +161,15 @@ public class NameMangler {
 	 * Initializes the name mangler.
 	 * @param x10TypeSystem_ Reference to the type system.
 	 */
-	public static void setup(final GenericTypeSystem x10TypeSystem_) {
+	public static void setup(final GenericTypeSystem x10TypeSystem_, final CompilerOptions options) {
 		x10TypeSystem = x10TypeSystem_;
 		setupUnOpSubstitutions();
 		setupNameSubstitutions();
 		setupPrimitiveTypesNameMangling();
+		final MachineTriple target = options.getTargetTriple();
+		if (target.isDarwin() || target.isWindowsOS()) {
+			PLATFORM_PREFIX = "_";
+		}
 	}
 
 	/**

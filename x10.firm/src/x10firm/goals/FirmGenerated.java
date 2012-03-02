@@ -67,7 +67,7 @@ public class FirmGenerated extends SourceGoal_c {
 				                   String.format("Unable to load compilergraphs for '%s'", libName));
 			}
 		}
-		firmTypeSystem.init(options.getFirmNativeTypesFilename());
+		firmTypeSystem.init(options);
 
 		final Compiler compiler = job().compiler();
 		final FirmGenerator v = new FirmGenerator(compiler, firmTypeSystem, x10TypeSystem, nodeFactory, options);

@@ -65,4 +65,31 @@ public final class MachineTriple {
 			return cpu + "-" + operatingSystem;
 		return cpu + "-" + manufacturer + "-" + operatingSystem;
 	}
+
+	/** returns true if operating system is your typical
+	 * unix variant. This mostly means POSIX available,
+	 * and ELF object file format.
+	 */
+	public boolean isUnixishOS() {
+		return operatingSystem.equals("linux")
+				|| operatingSystem.equals("bsd")
+				|| operatingSystem.equals("solaris");
+	}
+
+	/** returns true if operating system is a darwin
+	 * variant. This mostly means Mach-O object file
+	 * format and a "_" prefix to names.
+	 */
+	public boolean isDarwin() {
+		return operatingSystem.startsWith("darwin");
+	}
+
+	/** returns true if operating system is a darwin
+	 * variant. This mostly means COFF object file
+	 * format and a "_" prefix to names.
+	 */
+	public boolean isWindowsOS() {
+		return operatingSystem.equals("win32")
+				|| operatingSystem.contains("mingw");
+	}
 }

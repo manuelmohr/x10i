@@ -38,6 +38,7 @@ import x10.types.X10ConstructorInstance;
 import x10.types.X10MethodDef;
 import x10.types.X10ParsedClassType;
 import x10firm.visit.CodeGenError;
+import x10firm.CompilerOptions;
 import firm.ClassType;
 import firm.CompoundType;
 import firm.Entity;
@@ -159,14 +160,15 @@ public class FirmTypeSystem {
 	/**
 	 * Initializes the firm type system
 	 */
-	public void init(String nativeTypesConfig) {
+	public void init(final CompilerOptions options) {
 		if (inited)
 			return;
+		final String nativeTypesConfig = options.getFirmNativeTypesFilename();
 		inited = true;
 		findExistingEntities();
 		readFirmNativeTypesConfig(nativeTypesConfig);
 		initFirmTypes();
-		NameMangler.setup(x10TypeSystem);
+		NameMangler.setup(x10TypeSystem, options);
 		// Always generate the vtable for x10.lang.String.
 		asClass(x10TypeSystem.String());
 	}
