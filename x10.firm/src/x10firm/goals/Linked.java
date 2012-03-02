@@ -23,12 +23,26 @@ import x10firm.MachineTriple;
  * Final Goal, which links the generated asm with the stdlib
  */
 public class Linked extends PostCompiled {
+	private CompilerOptions options;
+
 	/** constructor */
 	public Linked(ExtensionInfo extInfo) {
 		super(extInfo);
+		options = (CompilerOptions)extInfo.getOptions();
 	}
 
-	private static String getGCC(CompilerOptions options) {
+	private void printCommandline(String[] cmdLine) {
+		if (!options.printCommandline())
+			return;
+		for (int i = 0; i < cmdLine.length; ++i) {
+			if (i > 0)
+				System.err.print(" ");
+			System.err.print(cmdLine[i]);
+		}
+		System.err.println();
+	}
+
+	private String getGCC() {
 		final MachineTriple target = options.getTargetTriple();
 		/* darwin11 doesn't have a proper target-gcc installed, just used
 		 * "gcc" */
@@ -41,14 +55,15 @@ public class Linked extends PostCompiled {
 		return gcc;
 	}
 
-	private static String queryGccPath(CompilerOptions options, String path) {
-		final String gcc = getGCC(options);
+	private String queryGccPath(String path) {
+		final String gcc = getGCC();
 
-		final String[] arguments = new String[] { gcc, "--print-file-name="+path };
+		final String[] cmdLine = new String[] { gcc, "--print-file-name="+path };
 		BufferedReader stdOut = null;
 		final String output;
 		try {
-			Process p = Runtime.getRuntime().exec(arguments);
+			printCommandline(cmdLine);
+			Process p = Runtime.getRuntime().exec(cmdLine);
 			stdOut = new BufferedReader(new InputStreamReader(p.getInputStream()));
 			output = stdOut.readLine();
 			if (output == null)
@@ -64,7 +79,6 @@ public class Linked extends PostCompiled {
 	protected boolean invokePostCompiler(Options opts, Compiler compiler,
 			ErrorQueue eq) {
 
-		final CompilerOptions options = (CompilerOptions) opts;
 		final String exeFilename = options.executable_path == null
 		                           ? "a.out"
 		                           : options.executable_path;
@@ -73,7 +87,7 @@ public class Linked extends PostCompiled {
 		final MachineTriple target = options.getTargetTriple();
 		final String x10DistPath = System.getProperty("x10.dist", ".");
 		final String libooPath = x10DistPath + "/../liboo/build/" + target;
-		final String gcc = getGCC(options);
+		final String gcc = getGCC();
 		boolean linkStatically = options.linkStatically();
 
 		final List<String> cmd = new ArrayList<String>();
@@ -87,8 +101,8 @@ public class Linked extends PostCompiled {
 			cmd.add("-m32");
 			cmd.add("-nostdlib");
 			cmd.add("-Wl,-T" + octopos_prefix + "/sections.x");
-			cmd.add(queryGccPath(options, "crti.o"));
-			cmd.add(queryGccPath(options, "crtbegin.o"));
+			cmd.add(queryGccPath("crti.o"));
+			cmd.add(queryGccPath("crtbegin.o"));
 			/* octopos only supports static linking */
 			linkStatically = true;
 		}
@@ -113,18 +127,20 @@ public class Linked extends PostCompiled {
 			final String octopos_prefix = x10DistPath + "/../octopos-app";
 			cmd.add(octopos_prefix + "/liboctopos.a");
 			cmd.add("-lgcc");
-			cmd.add(queryGccPath(options, "crtend.o"));
-			cmd.add(queryGccPath(options, "crtn.o"));
+			cmd.add(queryGccPath("crtend.o"));
+			cmd.add(queryGccPath("crtn.o"));
 		} else {
 			cmd.add("-lm");
-			cmd.add("-lpthread");
+			cmd.add("-pthread");
 		}
 
 		cmd.add("-o");
 		cmd.add(exeFilename);
 
 		// Reuse the C++ backend.
-		if (!X10CPPTranslator.doPostCompile(options, eq, Collections.<String>emptyList(), cmd.toArray(new String[0]))) {
+		String[] cmdLine = cmd.toArray(new String[0]);
+		printCommandline(cmdLine);
+		if (!X10CPPTranslator.doPostCompile(options, eq, Collections.<String>emptyList(), cmdLine)) {
 			eq.enqueue(ErrorInfo.POST_COMPILER_ERROR, "assembling and linking failed");
 			return false;
 		}
