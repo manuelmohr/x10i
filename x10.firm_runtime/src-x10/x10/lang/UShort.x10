@@ -496,6 +496,8 @@ public struct UShort implements Comparable[UShort] /*TODO implements Arithmetic[
     /* [FIRM_CHANGE] */
     public native def equals(x:UShort):Boolean;
 
+    public native def hashCode(): Int;
+
     /**
     * Returns a negative Int, zero, or a positive Int if this UShort is less than, equal
     * to, or greater than the given UShort.

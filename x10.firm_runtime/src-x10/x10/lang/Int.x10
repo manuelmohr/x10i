@@ -489,7 +489,7 @@ public struct Int implements Comparable[Int] /*TODO implements Arithmetic[Int], 
     @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
     @Native("c++", "x10aux::equals(#0,#1)")
     /* [FIRM_CHANGE] */
-    public def equals(x:Any):Boolean {
+    public def equals(x:Any): Boolean {
     	if(x instanceof Int) 
     		return equals(x as Int);
     	return false;
@@ -502,7 +502,9 @@ public struct Int implements Comparable[Int] /*TODO implements Arithmetic[Int], 
      */
     @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
     @Native("c++", "x10aux::equals(#0,#1)")
-    public native def equals(x:Int):Boolean;
+    public native def equals(x:Int): Boolean;
+
+    public native def hashCode(): Int;
 
     /**
      * Returns a negative Int, zero, or a positive Int if this Int is less than, equal

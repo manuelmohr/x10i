@@ -294,6 +294,8 @@ public struct Char implements Comparable[Char], Ordered[Char] {
      */
     public native def equals(x:Char):Boolean;
 
+    public native def hashCode(): Int;
+
     /**
     * Returns a negative Int, zero, or a positive Int if this Char is less than, equal
     * to, or greater than the given Char.

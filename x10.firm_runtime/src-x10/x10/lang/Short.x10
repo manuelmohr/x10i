@@ -409,6 +409,8 @@ public struct Short implements Comparable[Short], Arithmetic[Short], Bitwise[Sho
     @Native("c++", "x10aux::equals(#0,#1)")
     public native def equals(x:Short):Boolean;
 
+    public native def hashCode(): Int;
+
     /**
     * Returns a negative Int, zero, or a positive Int if this Short is less than, equal
     * to, or greater than the given Short.

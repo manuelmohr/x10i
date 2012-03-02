@@ -483,6 +483,8 @@ public struct UByte implements Comparable[UByte] /*TODO implements Arithmetic[UB
      /* [FIRM_CHANGE] */
     public native def equals(x:UByte):Boolean;
 
+    public native def hashCode(): Int;
+
     /**
     * Returns a negative Int, zero, or a positive Int if this UByte is less than, equal
     * to, or greater than the given UByte.

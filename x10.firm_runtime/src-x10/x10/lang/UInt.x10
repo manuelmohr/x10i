@@ -592,6 +592,8 @@ public struct UInt implements Comparable[UInt] /*TODO implements Arithmetic[UInt
     /* [FIRM_CHANGE] */
     public native def equals(x:UInt):Boolean;
 
+    public native def hashCode(): Int;
+
     /**
     * Returns a negative Int, zero, or a positive Int if this UInt is less than, equal
     * to, or greater than the given UInt.

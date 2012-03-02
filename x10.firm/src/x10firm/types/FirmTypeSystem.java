@@ -37,8 +37,8 @@ import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10MethodDef;
 import x10.types.X10ParsedClassType;
-import x10firm.visit.CodeGenError;
 import x10firm.CompilerOptions;
+import x10firm.visit.CodeGenError;
 import firm.ClassType;
 import firm.CompoundType;
 import firm.Entity;
@@ -273,19 +273,19 @@ public class FirmTypeSystem {
 				continue;
 			intSet.add(t);
 
-			final X10ParsedClassType intervace = (X10ParsedClassType) t;
-			final X10ClassDef intervaceDef = intervace.x10Def();
+			final X10ParsedClassType interface_ = (X10ParsedClassType) t;
+			final X10ClassDef interfaceDef = interface_.x10Def();
 
-			cd.addInterface(Types.ref(intervace));
+			cd.addInterface(Types.ref(interface_));
 
 			// get the substitution mapping
-			final TypeParamSubst subst = intervace.subst();
+			final TypeParamSubst subst = interface_.subst();
 			final List<ParameterType> paramTypes = subst.copyTypeParameters();
 			final List<polyglot.types.Type> argTypes = subst
 					.copyTypeArguments();
 
 			final ThisDef thisDef = x10TypeSystem.thisDef(pos, Types.ref(ct));
-			for (final MethodDef mDef : intervaceDef.methods()) {
+			for (final MethodDef mDef : interfaceDef.methods()) {
 				final X10MethodDef md = x10TypeSystem.methodDef(pos,
 						Types.ref(ct), Flags.PUBLIC, mDef.returnType(),
 						mDef.name(), mDef.formalTypes());
@@ -600,40 +600,8 @@ public class FirmTypeSystem {
 		return entity;
 	}
 
-	/**
-	 * Expands a given class type. -> Add extra methods etc.
-	 * @param classType The class type which should be expanded.
-	 */
-	private void expandClassType(final X10ClassType classType) {
-		// Currently only primitive types are expanded.
-		if(!isFirmPrimitiveType(classType)) return;
-
-		final X10ClassDef def = classType.x10Def();
-
-		final X10ClassType x10Any = x10TypeSystem.Any();
-
-		// Get the hashCode method from x10.Any
-		final List<MethodInstance> methods = x10Any.methodsNamed(Name.make("hashCode"));
-		assert(methods.size() == 1);
-		final MethodInstance x10AnyhashCodeMethodInstance = methods.get(0);
-
-		final List<MethodInstance> mm = classType.methods(Name.make("hashCode"), x10AnyhashCodeMethodInstance.formalTypes(), x10Context);
-		if(mm.size() == 0) {
-			// add the missing hashCode method to the class
-			final MethodDef x10AnyhashCodeMethodDef = x10AnyhashCodeMethodInstance.def();
-
-			final MethodDef hashCodeMethodDef = x10TypeSystem.methodDef(Position.COMPILER_GENERATED, Types.ref(classType),
-					x10AnyhashCodeMethodDef.flags().clearAbstract().Native(), x10AnyhashCodeMethodDef.returnType(), x10AnyhashCodeMethodDef.name(),
-					x10AnyhashCodeMethodDef.formalTypes());
-
-			def.addMethod(hashCodeMethodDef);
-		}
-	}
-
 	@SuppressWarnings("unused")
 	private firm.Type createClassType(final X10ClassType classType) {
-		expandClassType(classType);
-
 		final String className = NameMangler.mangleTypeObjectWithDefClass(classType);
 		final Flags flags = classType.flags();
 		ClassType result = new ClassType(className);

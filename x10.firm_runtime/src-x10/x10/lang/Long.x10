@@ -500,6 +500,8 @@ public struct Long implements Comparable[Long], Arithmetic[Long], Bitwise[Long],
     @Native("c++", "x10aux::equals(#0,#1)")
     public native def equals(x:Long):Boolean;
 
+    public native def hashCode(): Int;
+
     /**
     * Returns a negative Int, zero, or a positive Int if this Long is less than, equal
     * to, or greater than the given Long.

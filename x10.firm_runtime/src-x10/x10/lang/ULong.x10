@@ -593,6 +593,8 @@ public struct ULong implements Comparable[ULong] /*TODO implements Arithmetic[UL
     /* [FIRM_CHANGE] */
     public native def equals(x:ULong):Boolean;
 
+    public native def hashCode(): Int;
+
     /**
     * Returns a negative Int, zero, or a positive Int if this ULong is less than, equal
     * to, or greater than the given ULong.
