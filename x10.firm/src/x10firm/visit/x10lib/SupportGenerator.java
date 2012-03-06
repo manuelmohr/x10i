@@ -13,9 +13,9 @@ import x10.types.MethodInstance;
 import x10.types.X10ClassType;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
+import x10firm.visit.MethodConstruction;
 import x10firm.visit.FirmGenerator;
 import firm.Entity;
-import firm.nodes.OOConstruction;
 
 /**
  *  FirmGenerator for x10.lang.NativeSupport.x10
@@ -38,7 +38,7 @@ public class SupportGenerator extends NativeGenericDispatcher {
 			assert(meth.typeParameters().size() == 1);
 			final Type typeParameter = meth.typeParameters().get(0);
 
-			final OOConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
+			final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
 					meth.flags(), meth.returnType(), owner);
 
 			final Position pos = Position.COMPILER_GENERATED;

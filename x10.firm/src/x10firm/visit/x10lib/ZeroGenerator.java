@@ -14,10 +14,10 @@ import x10.types.MethodInstance;
 import x10.types.X10ClassType;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
+import x10firm.visit.MethodConstruction;
 import x10firm.visit.FirmGenerator;
 import firm.Entity;
 import firm.nodes.Node;
-import firm.nodes.OOConstruction;
 
 /**
  * Lowers usages of compiler-builtin x10.lang.Zero
@@ -51,7 +51,7 @@ public class ZeroGenerator extends NativeGenericDispatcher {
 			assert(meth.typeParameters().size() == 1);
 			final Type typeParameter = meth.typeParameters().get(0);
 
-			final OOConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
+			final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
 					meth.flags(), meth.returnType(), owner);
 
 			final Position pos = Position.COMPILER_GENERATED;
@@ -96,7 +96,7 @@ public class ZeroGenerator extends NativeGenericDispatcher {
 				// TODO: Add memset call
 				isStruct = true;
 				final Node tmp = codeGenerator.genStackAlloc(typeParameter);
-				OOConstruction con = codeGenerator.getFirmConstruction();
+				MethodConstruction con = codeGenerator.getFirmConstruction();
 				final Node mem = con.getCurrentMem();
 				final Node retNode = tmp != null ? con.newReturn(mem, new Node[]{tmp}) : con.newReturn(mem, new Node[]{});
 				assert(retNode != null);

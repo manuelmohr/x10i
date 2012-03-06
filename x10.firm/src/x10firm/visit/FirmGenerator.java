@@ -42,6 +42,7 @@ import polyglot.ast.ForInit;
 import polyglot.ast.ForUpdate;
 import polyglot.ast.For_c;
 import polyglot.ast.Formal_c;
+import polyglot.ast.Id;
 import polyglot.ast.Id_c;
 import polyglot.ast.If_c;
 import polyglot.ast.Import_c;
@@ -186,14 +187,16 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	private static final NativeGenericSupport gen_support = new NativeGenericSupport();
 
-	/** The current firm construction object */
-	OOConstruction con;
+	/** The current method construction object */
+	MethodConstruction con;
+
+	private List<ClassMember> initClassMembers;
 
 	/** To return Firm nodes for constructing expressions */
 	private Node returnNode;
 
 	/** X10 Context */
-	private Context x10Context = null;
+	private Context x10Context;
 
 	/** Our firm type system */
 	final FirmTypeSystem firmTypeSystem;
@@ -206,9 +209,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	/** Our own AST query */
 	private final ASTQuery query;
-
-	/** current firm context */
-	private FirmContext firmContext = new FirmContext();
 
 	/** Command-line options */
 	private CompilerOptions options;
@@ -266,7 +266,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		con_entity.setLinkage(ir_linkage.IR_LINKAGE_HIDDEN_USER.val | ir_linkage.IR_LINKAGE_CONSTANT.val);
 		con_entity.setAtomicValue(val);
 
-		final OOConstruction savedConstruction = initConstruction(method_entity,  Collections.<LocalInstance>emptyList(),
+		final MethodConstruction savedConstruction = initConstruction(method_entity,  Collections.<LocalInstance>emptyList(),
 				Collections.<LocalInstance>emptyList(), Flags.STATIC, x10TypeSystem.Void(), null);
 
 		for(polyglot.ast.Initializer n : static_init_blocks)
@@ -473,9 +473,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		final X10ClassType classType = def.asType();
 
-		final FirmContext newFirmContext = new FirmContext();
-		firmContext = firmContext.pushFirmContext(newFirmContext);
-
 		if(classType.isX10Struct()) {
 			visitStruct(n);
 		} else if (classType.isClass() || classType.flags().isInterface()) {
@@ -483,8 +480,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		} else {
 			throw new CodeGenError("Unexpected class declaration", n);
 		}
-
-		firmContext = firmContext.popFirmContext();
 	}
 
 	private void createStructTypeNameMethodBody(final X10ClassDecl clazz,
@@ -509,7 +504,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		final Entity entity = firmTypeSystem.getMethodEntity(methInstance);
 
-		final OOConstruction savedConstruction = initConstruction(entity,
+		final MethodConstruction savedConstruction = initConstruction(entity,
 				methInstance.formalNames(), new LinkedList<LocalInstance>(),
 				def.flags(), methInstance.returnType(), clazz.classDef()
 						.asType());
@@ -529,7 +524,9 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final List<ClassMember> members = body.members();
 		if(!members.isEmpty()) {
 			final List<ClassMember> inits = query.extractInits(members);
-			firmContext.setInitClassMembers(inits);
+
+			final List<ClassMember> oldInitClassMembers = initClassMembers;
+			initClassMembers = inits;
 
 			for(ClassMember member : body.members()) {
 				if(member instanceof MethodDecl_c) {
@@ -547,6 +544,9 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 				visitMember(member);
 			}
+
+			assert initClassMembers == inits;
+			initClassMembers = oldInitClassMembers;
 		}
 	}
 
@@ -590,10 +590,15 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final List<ClassMember> members = body.members();
 		if(!members.isEmpty()) {
 			final List<ClassMember> inits = query.extractInits(members);
-			firmContext.setInitClassMembers(inits);
+
+			final List<ClassMember> oldInitClassMembers = initClassMembers;
+			initClassMembers = inits;
 
 			for(final ClassMember member : body.members())
 				visitMember(member);
+
+			assert initClassMembers == inits;
+			initClassMembers = oldInitClassMembers;
 		}
 	}
 
@@ -634,23 +639,19 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	 * @param owner The owner of the procedure
 	 * @return A reference to the current (saved) construction
 	 */
-	public OOConstruction initConstruction(final Entity entity, final List<LocalInstance> formals,
+	public MethodConstruction initConstruction(final Entity entity, final List<LocalInstance> formals,
 			final List<LocalInstance> locals, final Flags flags, final Type retType, final X10ClassType owner) {
 
 		final boolean isStatic = flags.isStatic();
 		final int nVars = formals.size() + locals.size() + (isStatic ? 0 : 1);
 
 		final Graph graph = new Graph(entity, nVars);
-		final OOConstruction savedConstruction = con;
-		con = new OOConstruction(graph);
-
-		FirmContext newFirmContext = new FirmContext();
+		final MethodConstruction savedConstruction = con;
+		con = new MethodConstruction(graph);
 
 		final Map<LocalInstance, Entity> map = calculateEntityMappingForLocals(locals);
 
-		newFirmContext.setReturnType(retType);
-
-		firmContext = firmContext.pushFirmContext(newFirmContext);
+		con.returnType = retType;
 
 		final Node args = graph.getArgs();
 		if(!isStatic) {
@@ -681,7 +682,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			}
 
 			// map the local instance with the appropriate idx.
-			firmContext.setVarEntry(VarEntry.newVarEntryForLocalVariable(loc, idx));
+			con.setVarEntry(VarEntry.newVarEntryForLocalVariable(loc, idx));
 			idx++;
 		}
 
@@ -691,10 +692,10 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final Entity ent = map.get(loc);
 			if(ent != null) {
 				// a local struct
-				firmContext.setVarEntry(VarEntry.newVarEntryForStructVariable(loc, ent));
+				con.setVarEntry(VarEntry.newVarEntryForStructVariable(loc, ent));
 			} else {
 				// a normal local variable
-				firmContext.setVarEntry(VarEntry.newVarEntryForLocalVariable(loc, idx));
+				con.setVarEntry(VarEntry.newVarEntryForLocalVariable(loc, idx));
 				idx++;
 			}
 		}
@@ -707,7 +708,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	 * @param entity The method entity for which the construction should be finished
 	 * @param savedConstruction A reference to the previous construction
 	 */
-	public void finishConstruction(Entity entity, OOConstruction savedConstruction) {
+	public void finishConstruction(Entity entity, MethodConstruction savedConstruction) {
 		// create Return node if there was no explicit return statement yet
 		if (!con.getCurrentBlock().isBad()) {
 			final MethodType meth = (MethodType)entity.getType();
@@ -721,14 +722,12 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		con.finish();
 
 		con = savedConstruction;
-
-		firmContext = firmContext.popFirmContext();
 	}
 
 	private void constructGraph(final Entity entity, final CodeBlock code, final List<LocalInstance> formals,
 			final List<LocalInstance> locals, final Flags flags, final Type retType, final X10ClassType owner) {
 
-		final OOConstruction savedConstruction = initConstruction(entity, formals, locals, flags, retType, owner);
+		final MethodConstruction savedConstruction = initConstruction(entity, formals, locals, flags, retType, owner);
 
 		// Walk body and construct graph
 		visitAppropriate(code.body());
@@ -848,9 +847,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		// extract all formals and locals from the method.
 		final List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(dec);
-		final List<ClassMember> initClassMembers = firmContext.getInitClassMembers();
 
-		final OOConstruction savedConstruction = initConstruction(entity, formals, locals, flags, instance.returnType(), owner);
+		final MethodConstruction savedConstruction = initConstruction(entity, formals, locals, flags, instance.returnType(), owner);
 
 		// The instance variables must be initialized first
 		for(ClassMember member : initClassMembers) {
@@ -1070,10 +1068,10 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final Node expr                = visitExpression(n.expr());
 
 		int numCases = 0;
-		for(SwitchElement elem : n.elements()) {
-			if(elem instanceof Case) {
+		for (SwitchElement elem : n.elements()) {
+			if (elem instanceof Case) {
 				Case c = (Case)elem;
-				if(c.isDefault()) {
+				if (c.isDefault()) {
 					hasExplicitDefaultCase = true;
 					continue;
 				}
@@ -1085,54 +1083,35 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		con.setCurrentBlockBad();
 
-		final FirmScope topScope = firmContext.getTopScope();
-		FirmScope newScope = (FirmScope)topScope.clone();
-
-		Block bBreak = null;
 		final Node switchNode = con.newSwitch(expr, numCases, tbl.ptr);
+		final Block breakBlock = con.newBlock();
 
-		firmContext.pushFirmScope(newScope);
-		{
-			// Reset the break block -> Break block will be automatically created in the evaluation of the
-			// switch statement if we need one. (getBreakBlock())
-			newScope.setBreakBlock(null);
-			newScope.setCurSwitch(switchNode);
+		final Block oldBreak = con.breakBlock;
+		con.breakBlock = breakBlock;
+		final Node oldSwitch = con.switchNode;
+		con.switchNode = switchNode;
 
-			for(SwitchElement elem : n.elements())
-				visitAppropriate(elem);
+		for(SwitchElement elem : n.elements())
+			visitAppropriate(elem);
 
-			// Check if a new break block was created.
-			if(newScope.isBreakBlockSet()) {
-				bBreak = newScope.getBreakBlock();
-			}
-		}
-		firmContext.popFirmScope();
+		assert con.breakBlock == breakBlock;
+		con.breakBlock = oldBreak;
+		assert con.switchNode == switchNode;
+		con.switchNode = oldSwitch;
 
-		if(!con.getCurrentBlock().isBad()) {
+		if (!con.getCurrentBlock().isBad()) {
 			final Node jmp = con.newJmp();
-			if(bBreak == null)
-				bBreak = con.newBlock();
-
-			bBreak.addPred(jmp);
+			breakBlock.addPred(jmp);
 		}
 
-		if(!hasExplicitDefaultCase && !curBlock.isBad()) {
+		if (!hasExplicitDefaultCase) {
 			con.setCurrentBlock(curBlock);
 			final Node proj = con.newProj(switchNode, Mode.getX(), Switch.pnDefault);
-
-			if(bBreak == null)
-				bBreak = con.newBlock();
-
-			bBreak.addPred(proj);
+			breakBlock.addPred(proj);
 		}
 
-		if(bBreak != null)
-			bBreak.mature();
-
-		if(bBreak == null)
-			con.setCurrentBlockBad();
-		else
-			con.setCurrentBlock(bBreak);
+		breakBlock.mature();
+		con.setCurrentBlock(breakBlock);
 	}
 
 	@Override
@@ -1146,19 +1125,18 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final Node fallthrough = con.getCurrentBlock().isBad() ? null : con.newJmp();
 		final Block block = con.newBlock();
 
-		final FirmScope topScope = firmContext.getTopScope();
-		final Node switchCond = topScope.getCurSwitch();
-		final Block switchCondBlock = (Block)switchCond.getBlock();
+		final Node switchNode = con.switchNode;
+		final Block switchBlock = (Block)switchNode.getBlock();
 
-		con.setCurrentBlock(switchCondBlock);
+		con.setCurrentBlock(switchBlock);
 		if(!n.isDefault()) {
 			// Case label
 			final long val = n.value();
-			final Node proj = con.newProj(switchCond, Mode.getX(), (int)val); // TODO: Adjust the val (Long)
+			final Node proj = con.newProj(switchNode, Mode.getX(), (int)val); // TODO: Adjust the val (Long)
 			block.addPred(proj);
 		} else {
 			// default label
-			final Node proj = con.newProj(switchCond, Mode.getX(), Switch.pnDefault); // TODO: Adjust the projNr (Long)
+			final Node proj = con.newProj(switchNode, Mode.getX(), Switch.pnDefault); // TODO: Adjust the projNr (Long)
 			block.addPred(proj);
 		}
 
@@ -1175,26 +1153,18 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		if(con.getCurrentBlock().isBad())
 			return;
 
-		final FirmScope topScope = firmContext.getTopScope();
-		Block target = null;
-		if (br.labelNode() != null) {
-			// labeled continue or break
-			final String label = br.labelNode().id().toString();
-
+		final Block target;
+		Id targetId = br.labelNode();
+		if (targetId != null) {
 			if(br.kind() == Branch.CONTINUE)
-				target = topScope.getBlockForLabeledContinue(label);
+				target = con.labeledContinues.get(targetId);
 			else
-				target = topScope.getBlockForLabeledBreak(label);
+				target = con.labeledBreaks.get(targetId);
 		} else {
-			// unlabeled continue or break
 			if (br.kind() == Branch.CONTINUE) {
-				target = topScope.getContinueBlock();
+				target = con.continueBlock;
 			} else {
-				target = topScope.getBreakBlock();
-				if (target == null) {
-					target = con.newBlock();
-					topScope.setBreakBlock(target);
-				}
+				target = con.breakBlock;
 			}
 		}
 
@@ -1207,21 +1177,20 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(Labeled_c label) {
 		final Stmt stmt = label.statement();
-		final String lab = label.labelNode().id().toString();
+		final Id labelId = label.labelNode();
 
-		// Mark the corresponding statement with the appropriate label
-		firmContext.setLabeledStmt(lab, stmt);
+		con.lastLabel = labelId;
+		con.labeledStmt = stmt;
 
-		// Declare the label in the current firm scope
-		final FirmScope topScope = firmContext.getTopScope();
-		FirmScope newScope = (FirmScope)topScope.clone();
-
-		firmContext.pushFirmScope(newScope);
-		{
-			newScope.declFirmLabel(lab);
-			visitAppropriate(stmt);
+		final Block labeledBlock = con.newBlock();
+		if (!con.getCurrentBlock().isBad()) {
+			final Node jmp = con.newJmp();
+			labeledBlock.addPred(jmp);
 		}
-		firmContext.popFirmScope();
+		con.labeledBreaks.put(labelId, labeledBlock);
+
+		visitAppropriate(stmt);
+		labeledBlock.mature();
 	}
 
 	@Override
@@ -1238,7 +1207,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final Local_c lhsLocal = (Local_c)lhs;
 			final LocalInstance loc = lhsLocal.localInstance();
 
-			final VarEntry var = firmContext.getVarEntry(loc);
+			final VarEntry var = con.getVarEntry(loc);
 
 			if(var.getType() == VarEntry.STRUCT) {
 				// local struct variable
@@ -1268,8 +1237,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		Node ret = null;
 
 		if(n.expr() != null) {
-			final Type retType = firmContext.getReturnType();
-			assert(retType != null);
+			final Type retType = con.returnType;
 
 			// autoboxing
 			final Expr expr = x10Cast(n.expr(), retType);
@@ -1294,7 +1262,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final Expr initExpr = x10Cast(expr, n.type().type());
 			final LocalInstance loc = n.localDef().asInstance();
 
-			final VarEntry var = firmContext.getVarEntry(loc);
+			final VarEntry var = con.getVarEntry(loc);
 			assert var != null : "Instance '"+loc+"' not found in FirmContext";
 
 			if(var.getType() == VarEntry.STRUCT) {
@@ -1349,12 +1317,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Do_c n) {
-
-		String label = null;
-		if(firmContext.getLabeledStmt() == n) {
-			label = firmContext.getLabel();
-			firmContext.resetLabeledStmt();
-		}
+		final Id label = con.lastLabel;
+		con.lastLabel = null;
 
 		final Block bTrue  = con.newBlock();
 		final Block bCond  = con.newBlock();
@@ -1363,23 +1327,22 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		bTrue.addPred(con.newJmp());
 		con.setCurrentBlock(bTrue);
 
-		final FirmScope topScope  = firmContext.getTopScope();
-		FirmScope newScope  = (FirmScope)topScope.clone();
-
-		firmContext.pushFirmScope(newScope);
-		{
-			newScope.setBreakBlock(bFalse);
-			newScope.setContinueBlock(bCond);
-
-			if(label != null) {
-				newScope.setBlockForLabeledBreak(label, bFalse);
-				newScope.setBlockForLabeledContinue(label, bCond);
-			}
-
-			final Stmt body = n.body();
-			visitAppropriate(body);
+		final Block oldBreak = con.breakBlock;
+		con.breakBlock = bFalse;
+		final Block oldContinue = con.continueBlock;
+		con.continueBlock = bCond;
+		if (label != null && con.labeledStmt == n) {
+			con.labeledBreaks.put(label, bFalse);
+			con.labeledContinues.put(label, bCond);
 		}
-		firmContext.popFirmScope();
+
+		final Stmt body = n.body();
+		visitAppropriate(body);
+
+		assert con.breakBlock == bFalse;
+		con.breakBlock = oldBreak;
+		assert con.continueBlock == bCond;
+		con.continueBlock = oldContinue;
 
 		if(con.getCurrentBlock().isBad()) {
 			return;
@@ -1391,9 +1354,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		con.setCurrentBlock(bCond);
 
-		final FirmScope topScope2  = firmContext.getTopScope();
-		newScope  = (FirmScope)topScope2.clone();
-
 		evaluateCondition(n.cond(), bTrue, bFalse);
 
 		bTrue.mature();
@@ -1404,11 +1364,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(While_c n) {
-		String label = null;
-		if(firmContext.getLabeledStmt() == n) {
-			label = firmContext.getLabel();
-			firmContext.resetLabeledStmt();
-		}
+		final Id label = con.lastLabel;
+		con.lastLabel = null;
 
 		final Block bCond  = con.newBlock();
 		final Block bTrue  = con.newBlock();
@@ -1417,37 +1374,32 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		bCond.addPred(con.newJmp());
 		con.setCurrentBlock(bCond);
 
-		final FirmScope topScope = firmContext.getTopScope();
-		FirmScope newScope = (FirmScope)topScope.clone();
-
 		evaluateCondition(n.cond(), bTrue, bFalse);
 		bTrue.mature();
 
 		con.setCurrentBlock(bTrue);
 
-		final FirmScope topScope2 = firmContext.getTopScope();
-		newScope = (FirmScope)topScope2.clone();
-
-		firmContext.pushFirmScope(newScope);
-		{
-			newScope.setBreakBlock(bFalse);
-			newScope.setContinueBlock(bCond);
-
-			if(label != null) {
-				newScope.setBlockForLabeledBreak(label, bFalse);
-				newScope.setBlockForLabeledContinue(label, bCond);
-			}
-
-			final Stmt body = n.body();
-			visitAppropriate(body);
+		final Block oldBreak = con.breakBlock;
+		con.breakBlock = bFalse;
+		final Block oldContinue = con.continueBlock;
+		con.continueBlock = bCond;
+		if (label != null && con.labeledStmt == n) {
+			con.labeledBreaks.put(label, bFalse);
+			con.labeledContinues.put(label, bCond);
 		}
-		firmContext.popFirmScope();
+
+		final Stmt body = n.body();
+		visitAppropriate(body);
+
+		assert con.breakBlock == bFalse;
+		con.breakBlock = oldBreak;
+		assert con.continueBlock == bCond;
+		con.continueBlock = oldContinue;
 
 		bFalse.mature();
 
-		if(!con.getCurrentBlock().isBad())
+		if (!con.getCurrentBlock().isBad())
 			bCond.addPred(con.newJmp());
-
 		bCond.mature();
 
 		con.setCurrentBlock(bFalse);
@@ -1455,13 +1407,10 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(For_c n) {
-		String label = null;
-		if(firmContext.getLabeledStmt() == n) {
-			label = firmContext.getLabel();
-			firmContext.resetLabeledStmt();
-		}
+		final Id label = con.lastLabel;
+		con.lastLabel = null;
 
-		if(n.inits() != null) {
+		if (n.inits() != null) {
 			for(ForInit f: n.inits())
 				visitAppropriate(f);
 		}
@@ -1473,9 +1422,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		bCond.addPred(con.newJmp());
 		con.setCurrentBlock(bCond);
 
-		final FirmScope topScope = firmContext.getTopScope();
-		FirmScope newScope = (FirmScope)topScope.clone();
-
 		Expr cond = n.cond();
 		if(cond == null) {
 			cond = xnf.BooleanLit(Position.COMPILER_GENERATED, true);
@@ -1485,23 +1431,22 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		con.setCurrentBlock(bTrue);
 
-		final FirmScope topScope2 = firmContext.getTopScope();
-		newScope = (FirmScope)topScope2.clone();
-
-		firmContext.pushFirmScope(newScope);
-		{
-			newScope.setBreakBlock(bFalse);
-			newScope.setContinueBlock(bCond);
-
-			if(label != null) {
-				newScope.setBlockForLabeledBreak(label, bFalse);
-				newScope.setBlockForLabeledContinue(label, bCond);
-			}
-
-			final Stmt body = n.body();
-			visitAppropriate(body);
+		final Block oldBreak = con.breakBlock;
+		con.breakBlock = bFalse;
+		final Block oldContinue = con.continueBlock;
+		con.continueBlock = bCond;
+		if (label != null && con.labeledStmt == n) {
+			con.labeledBreaks.put(label, bFalse);
+			con.labeledContinues.put(label, bCond);
 		}
-		firmContext.popFirmScope();
+
+		final Stmt body = n.body();
+		visitAppropriate(body);
+
+		assert con.breakBlock == bFalse;
+		con.breakBlock = oldBreak;
+		assert con.continueBlock == bCond;
+		con.continueBlock = oldContinue;
 
 		bFalse.mature();
 
@@ -1757,7 +1702,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	public void visit(Local_c n) {
 		final LocalInstance loc = n.localInstance();
 
-		final VarEntry var = firmContext.getVarEntry(loc);
+		final VarEntry var = con.getVarEntry(loc);
 		assert var != null : "local instance '"+loc+"' not found in firm context";
 
 		if(var.getType() == VarEntry.STRUCT) {
@@ -2308,7 +2253,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	         * To avoid unnecessary dynamic delegation calls we can and will do a static method call on the boxed field.
 	         */
 
-			final OOConstruction savedConstruction = initConstruction(entity,
+			final MethodConstruction savedConstruction = initConstruction(entity,
 					m.formalNames(), new LinkedList<LocalInstance>(), flags,
 					m.returnType(), boxType);
 
@@ -2844,13 +2789,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	/**
 	 * return current construction object
 	 */
-	public OOConstruction getFirmConstruction() {
+	public MethodConstruction getFirmConstruction() {
 		return con;
-	}
-
-	/** returns current firm context */
-	public FirmContext getFirmContext() {
-		return firmContext;
 	}
 
 	/** returns current X10 Type System */

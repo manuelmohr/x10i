@@ -8,15 +8,14 @@ import polyglot.types.Type;
 import x10.types.MethodInstance;
 import x10.types.X10ClassType;
 import x10firm.types.FirmTypeSystem;
+import x10firm.visit.MethodConstruction;
 import x10firm.visit.FirmGenerator;
-import x10firm.visit.FirmContext;
 import x10firm.visit.VarEntry;
 import firm.Entity;
 import firm.Mode;
 import firm.nodes.CopyB;
 import firm.nodes.Load;
 import firm.nodes.Node;
-import firm.nodes.OOConstruction;
 import firm.nodes.Store;
 
 /**
@@ -40,12 +39,11 @@ public class PointerGenerator extends NativeGenericDispatcher {
 			assert(formals.size() == 1);
 			final LocalInstance param = formals.get(0);
 
-			final OOConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
+			final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
 					meth.flags(), meth.returnType(), owner);
 
-			final FirmContext context = codeGenerator.getFirmContext();
-			OOConstruction con = codeGenerator.getFirmConstruction();
-			final VarEntry var = context.getVarEntry(param);
+			MethodConstruction con = codeGenerator.getFirmConstruction();
+			final VarEntry var = con.getVarEntry(param);
 			assert(var != null && var.getType() == VarEntry.VARIABLE);
 
 			final Mode parMode = firmTypeSystem.getFirmMode(param.type());
@@ -105,14 +103,13 @@ public class PointerGenerator extends NativeGenericDispatcher {
 			final LocalInstance ptr = formals.get(0);
 			final LocalInstance val = formals.get(1);
 
-			final OOConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
+			final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
 					meth.flags(), meth.returnType(), owner);
 
-			final FirmContext context = codeGenerator.getFirmContext();
-			OOConstruction con = codeGenerator.getFirmConstruction();
-			final VarEntry var_ptr = context.getVarEntry(ptr);
+			MethodConstruction con = codeGenerator.getFirmConstruction();
+			final VarEntry var_ptr = con.getVarEntry(ptr);
 			assert(var_ptr != null && var_ptr.getType() == VarEntry.VARIABLE);
-			final VarEntry var_val = context.getVarEntry(val);
+			final VarEntry var_val = con.getVarEntry(val);
 			assert(var_val != null);
 
 			final Mode ptrMode = firmTypeSystem.getFirmMode(ptr.type());

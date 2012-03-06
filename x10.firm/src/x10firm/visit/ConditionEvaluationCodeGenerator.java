@@ -28,7 +28,6 @@ import firm.nodes.Call;
 import firm.nodes.Cond;
 import firm.nodes.InstanceOf;
 import firm.nodes.Node;
-import firm.nodes.OOConstruction;
 
 /**
  * Generates code which "evaluates" a boolean condition.
@@ -38,7 +37,7 @@ import firm.nodes.OOConstruction;
 public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	private Block trueBlock;
 	private Block falseBlock;
-	private OOConstruction con;
+	private MethodConstruction con;
 	private FirmGenerator codeGenerator;
 	private final GenericTypeSystem typeSystem;
 	private final FirmTypeSystem firmTypeSystem;
@@ -58,7 +57,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	/**
 	 * Create conditional jump to true/false Block.
 	 */
-	public static void makeJumps(final Node node, final Block trueBlock, final Block falseBlock, final OOConstruction con) {
+	public static void makeJumps(final Node node, final Block trueBlock, final Block falseBlock, final MethodConstruction con) {
 		final Node     cond      = con.newCond(node);
 		final Node     projTrue  = con.newProj(cond, Mode.getX(), Cond.pnTrue);
 		final Node     projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
@@ -176,7 +175,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	/** create code for instanceof check */
 	public static Node genInstanceOf(final Node objPtr, final Type eType, final Type cmpType,
 			final FirmGenerator codeGenerator, final GenericTypeSystem typeSystem,
-			final FirmTypeSystem firmTypeSystem, final OOConstruction con) {
+			final FirmTypeSystem firmTypeSystem, final MethodConstruction con) {
 
 		final Type exprType = typeSystem.getConcreteType(eType);
 		final Type compType = typeSystem.getConcreteType(cmpType);

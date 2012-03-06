@@ -49,7 +49,7 @@ public class FirmCodeTemplate {
 	 * @param falseExpr The false expression template
 	 * @return Phi node
 	 */
-	public static Node genConditional(final OOConstruction con, final CondTemplate cond,
+	public static Node genConditional(final MethodConstruction con, final CondTemplate cond,
 			final ExprTemplate trueExpr, final ExprTemplate falseExpr) {
 
 		final Block bTrue    = con.newBlock();
