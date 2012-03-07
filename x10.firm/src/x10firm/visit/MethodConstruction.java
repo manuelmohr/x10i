@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import polyglot.ast.Case;
 import polyglot.ast.Id;
 import polyglot.ast.Stmt;
 import polyglot.types.LocalDef;
@@ -45,6 +46,8 @@ public class MethodConstruction extends OOConstruction {
 	Stmt labeledStmt;
 	/** SwitchJmp node of current switch */
 	Node switchNode;
+	/** maps Cases to switch projection numbers */
+	Map<Case, Integer> casePNs;
 
 	/**
 	 * Create a new Firm context

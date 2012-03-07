@@ -1060,34 +1060,53 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Switch_c n) {
-
-		boolean hasExplicitDefaultCase = false;
-		final Block curBlock           = con.getCurrentBlock();
-		final Node expr                = visitExpression(n.expr());
+		boolean     hasDefaultCase = false;
+		final Block curBlock       = con.getCurrentBlock();
+		final Node  expr           = visitExpression(n.expr());
 
 		int numCases = 0;
 		for (SwitchElement elem : n.elements()) {
-			if (elem instanceof Case) {
-				Case c = (Case)elem;
-				if (c.isDefault()) {
-					hasExplicitDefaultCase = true;
-					continue;
-				}
-				numCases++;
+			if (! (elem instanceof Case))
+				continue;
+			Case c = (Case)elem;
+			if (c.isDefault()) {
+				hasDefaultCase = true;
+				continue;
 			}
+			numCases++;
 		}
 
 		SwitchTable tbl = new SwitchTable(con.getGraph(), numCases);
+		final HashMap<Case, Integer> casePNs = new HashMap<Case, Integer>();
+		int nextPn = Switch.pnMax;
+		int entry = 0;
+		for (SwitchElement elem : n.elements()) {
+			if (! (elem instanceof Case))
+				continue;
+			Case c = (Case)elem;
+			if (c.isDefault()) {
+				casePNs.put(c, Switch.pnDefault);
+				continue;
+			}
+			long value = c.value();
+			assert value == (int)value;
+			tbl.setEntry(entry, (int)value, (int)value, nextPn);
+			casePNs.put(c, nextPn);
+			++entry;
+			++nextPn;
+		}
+		assert entry == numCases;
 
-		con.setCurrentBlockBad();
-
-		final Node switchNode = con.newSwitch(expr, numCases, tbl.ptr);
+		final Node switchNode = con.newSwitch(expr, nextPn, tbl.ptr);
 		final Block breakBlock = con.newBlock();
+		con.setCurrentBlockBad();
 
 		final Block oldBreak = con.breakBlock;
 		con.breakBlock = breakBlock;
 		final Node oldSwitch = con.switchNode;
 		con.switchNode = switchNode;
+		final Map<Case,Integer> oldCasePNs = con.casePNs;
+		con.casePNs = casePNs;
 
 		for(SwitchElement elem : n.elements())
 			visitAppropriate(elem);
@@ -1096,13 +1115,15 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		con.breakBlock = oldBreak;
 		assert con.switchNode == switchNode;
 		con.switchNode = oldSwitch;
+		assert con.casePNs == casePNs;
+		con.casePNs = oldCasePNs;
 
 		if (!con.getCurrentBlock().isBad()) {
 			final Node jmp = con.newJmp();
 			breakBlock.addPred(jmp);
 		}
 
-		if (!hasExplicitDefaultCase) {
+		if (!hasDefaultCase) {
 			con.setCurrentBlock(curBlock);
 			final Node proj = con.newProj(switchNode, Mode.getX(), Switch.pnDefault);
 			breakBlock.addPred(proj);
@@ -1120,29 +1141,20 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(Case_c n) {
-		final Node fallthrough = con.getCurrentBlock().isBad() ? null : con.newJmp();
-		final Block block = con.newBlock();
+		final Block block      = con.newBlock();
+		final Node  switchNode = con.switchNode;
 
-		final Node switchNode = con.switchNode;
-		final Block switchBlock = (Block)switchNode.getBlock();
+		int pn = con.casePNs.get(n);
+		final Node proj = con.newProj(switchNode, Mode.getX(), pn);
+		block.addPred(proj);
 
-		con.setCurrentBlock(switchBlock);
-		if(!n.isDefault()) {
-			// Case label
-			final long val = n.value();
-			final Node proj = con.newProj(switchNode, Mode.getX(), (int)val); // TODO: Adjust the val (Long)
-			block.addPred(proj);
-		} else {
-			// default label
-			final Node proj = con.newProj(switchNode, Mode.getX(), Switch.pnDefault); // TODO: Adjust the projNr (Long)
-			block.addPred(proj);
+		final Block current = con.getCurrentBlock();
+		if (!current.isBad()) {
+			final Node jmp = con.newJmp();
+			block.addPred(jmp);
 		}
 
-		if(fallthrough != null)
-			block.addPred(fallthrough);
-
 		block.mature();
-
 		con.setCurrentBlock(block);
 	}
 
