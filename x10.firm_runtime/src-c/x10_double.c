@@ -40,9 +40,12 @@ x10_string *_ZN3x104lang6Double8toStringEv(x10_double v)
 {
 	x10_char buf[120];
 	if (isnan(v)) {
-		return x10_string_from_cstring("NaN");
+		return X10_STRING_FROM_CLITERAL("NaN");
 	} else if (isinf(v)) {
-		return x10_string_from_cstring(v > 0.0 ? "Infinity" : "-Infinity");
+		if (v > 0.0)
+			return X10_STRING_FROM_CLITERAL("Infinity");
+		else
+			return X10_STRING_FROM_CLITERAL("-Infinity");
 	} else if (fabs(v) >= 1E-3 && fabs(v) < 1E7) {
 		snprintf(buf, sizeof(buf), "%.15f", v);
 		kill_excess_zeroes(buf, sizeof(buf));

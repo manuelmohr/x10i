@@ -4,7 +4,7 @@
 
 x10_string *_ZN3x104lang4Char8toStringEv(x10_char self)
 {
-	return x10_string_literal(1, &self);
+	return x10_string_from_cstring_len(1, &self);
 }
 
 x10_boolean _ZN3x104lang4Char11isLowerCaseEv(x10_char self)

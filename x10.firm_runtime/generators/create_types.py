@@ -206,7 +206,7 @@ x10_string *{{method("toString", "x10.lang.Int")}}({{ctype}} self, x10_int radix
 		*(--b) = '-';
 	}
 	{%- endif %}
-	return x10_string_literal((buf+sizeof(buf)-b)/sizeof(buf[0]), b);
+	return x10_string_from_cstring_len((buf+sizeof(buf)-b)/sizeof(buf[0]), b);
 }
 {%- endif %}
 

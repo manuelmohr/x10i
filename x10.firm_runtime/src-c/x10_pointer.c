@@ -16,6 +16,5 @@ x10_string *_ZN3x104lang7Pointer8toStringEv(x10_pointer ptr)
 {
 	char buf[20];
 	snprintf(buf, sizeof(buf), "%p", ptr);
-	x10_int len = (x10_int)strlen(buf);
-	return x10_string_literal(len, buf);
+	return x10_string_from_cstring(buf);
 }

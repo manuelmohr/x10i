@@ -2,19 +2,6 @@
 #include "util.h"
 #include "x10.h"
 
-static x10_string *x10_allocate_string(x10_int len)
-{
-	return x10_malloc(sizeof(x10_string) + (len+1)*sizeof(x10_char));
-}
-
-/** initializes a new string, returns pointer to writable buffer */
-static x10_char *x10_init_string(x10_string *str, x10_uint len)
-{
-	X10_INIT_OBJECT(str, &STRING_VTABLE);
-	str->len = len;
-	return (x10_char*)(str+1);
-}
-
 static void check_string_bounds(const x10_string *str, x10_int idx)
 {
 	if (idx < 0 || idx > (str->len)) {
@@ -22,29 +9,61 @@ static void check_string_bounds(const x10_string *str, x10_int idx)
 	}
 }
 
-x10_string *x10_string_literal(x10_int len, const x10_char *chars)
+static x10_char *allocate_chars(x10_int len)
 {
-	x10_string *str    = x10_allocate_string(len);
-	x10_char   *buffer = x10_init_string(str, len);
-	memcpy(buffer, chars, len);
+	return x10_malloc(sizeof(x10_char) * len);
+}
+
+x10_string *x10_string_from_literal(x10_int len, const x10_char *chars)
+{
+	x10_string *str = x10_malloc(sizeof(*str));
+	X10_INIT_OBJECT(str, &STRING_VTABLE);
+	str->len   = len;
+	str->chars = chars;
 	return str;
+}
+
+static x10_string *x10_string_copy_from(x10_int len, const x10_char *chars)
+{
+	x10_char *new_chars = allocate_chars(len);
+	memcpy(new_chars, chars, len * sizeof(new_chars[0]));
+	return x10_string_from_literal(len, new_chars);
+}
+
+x10_string *x10_string_from_cstring_len(size_t len, const char *string)
+{
+	assert(sizeof(string[0]) == sizeof(x10_char));
+	assert(len == (size_t)(x10_int)len);
+	return x10_string_copy_from((x10_int)len, (const x10_char*)string);
 }
 
 x10_string *x10_string_from_cstring(const char *string)
 {
-	return x10_string_literal(strlen(string), string);
+	return x10_string_from_cstring_len(strlen(string), string);
 }
 
-// this()
-x10_string *_ZN3x104lang6StringC1Ev()
+/* String.this(): String */
+void _ZN3x104lang6StringC1Ev(x10_string *str)
 {
-	return x10_string_literal(0, T_(""));
+	X10_INIT_OBJECT(str, &STRING_VTABLE);
+	str->len   = 0;
+	str->chars = NULL;
 }
 
-// this(String)
-x10_string *_ZN3x104lang6StringC1EPN3x104lang6StringE(x10_string *str)
+/* String.this(Int,Pointer): String */
+void _ZN3x104lang6StringC1EiPv(x10_string *str, x10_int len, const void *data)
 {
-	return str;
+	X10_INIT_OBJECT(str, &STRING_VTABLE);
+	str->len   = len;
+	str->chars = (const x10_char*)data;
+}
+
+/* String.this(String): String */
+void _ZN3x104lang6StringC1EPN3x104lang6StringE(x10_string *str, const x10_string *other)
+{
+	X10_INIT_OBJECT(str, &STRING_VTABLE);
+	str->len   = other->len;
+	str->chars = other->chars;
 }
 
 static inline bool equals(const x10_char *chars0, const x10_char *chars1,
@@ -207,12 +226,12 @@ x10_int _ZN3x104lang6String11lastIndexOfEPN3x104lang6StringE(const x10_string *s
 	return _ZN3x104lang6String11lastIndexOfEPN3x104lang6StringEi(self, other, self->len - other->len);
 }
 
-// String.substring(String, int)
+// String.substring(String, int): String
 x10_string *_ZN3x104lang6String9substringEi(const x10_string *self, x10_int start_idx)
 {
 	check_string_bounds(self, start_idx);
 	const x10_int len = self->len - start_idx;
-	return x10_string_literal(len, &self->chars[start_idx]);
+	return x10_string_copy_from(len, &self->chars[start_idx]);
 }
 
 // String.substring(String, int, int)
@@ -224,10 +243,10 @@ x10_string *_ZN3x104lang6String9substringEii(const x10_string *self, x10_int sta
 		x10_throw_exception(X10_INDEX_OUT_OF_BOUNDS_EXCEPTION, T_("In substring"));
 
 	const x10_int len = to_idx - start_idx;
-	return x10_string_literal(len, &self->chars[start_idx]);
+	return x10_string_copy_from(len, &self->chars[start_idx]);
 }
 
-// String.endsWith
+// String.endsWith(String): Boolean
 x10_boolean _ZN3x104lang6String8endsWithEPN3x104lang6StringE(const x10_string *self, const x10_string *other)
 {
 	if (other == X10_NULL)
@@ -242,7 +261,7 @@ x10_boolean _ZN3x104lang6String8endsWithEPN3x104lang6StringE(const x10_string *s
 	return equals(haystack, other->chars, other_len);
 }
 
-// String.startsWith(String)
+// String.startsWith(String): Boolean
 x10_boolean _ZN3x104lang6String10startsWithEPN3x104lang6StringE(const x10_string *self, const x10_string *other)
 {
 	if (other == X10_NULL)
@@ -256,7 +275,7 @@ x10_boolean _ZN3x104lang6String10startsWithEPN3x104lang6StringE(const x10_string
 	return equals(self->chars, other->chars, other_len);
 }
 
-// String.trim()
+// String.trim(): String
 x10_string *_ZN3x104lang6String4trimEv(const x10_string *self)
 {
 	const x10_int   len   = self->len;
@@ -272,38 +291,34 @@ x10_string *_ZN3x104lang6String4trimEv(const x10_string *self)
 		if (!_ZN3x104lang4Char12isWhitespaceEv(chars[begin]))
 			break;
 	}
-	return x10_string_literal(end-begin, &chars[begin]);
+	return x10_string_copy_from(end-begin, &chars[begin]);
 }
 
-// String.toLowerCase()
+// String.toLowerCase(): String
 x10_string *_ZN3x104lang6String11toLowerCaseEv(const x10_string *self)
 {
-	const x10_int   self_len     = self->len;
-	const x10_char *self_chars   = self->chars;
-	x10_string     *result       = x10_allocate_string(self_len);
-	x10_char       *result_chars = x10_init_string(result, self_len);
-	x10_int         i;
-	for(i = 0; i < self_len; i++) {
-		result_chars[i] = _ZN3x104lang4Char11toLowerCaseEv(self_chars[i]);
+	const x10_int   self_len   = self->len;
+	const x10_char *self_chars = self->chars;
+	x10_char       *new_chars  = allocate_chars(self_len);
+	for(x10_int i = 0; i < self_len; i++) {
+		new_chars[i] = _ZN3x104lang4Char11toLowerCaseEv(self_chars[i]);
 	}
-	return result;
+	return x10_string_from_literal(self_len, new_chars);
 }
 
-// String.toUpperCase()
+// String.toUpperCase(): String
 x10_string *_ZN3x104lang6String11toUpperCaseEv(const x10_string *self)
 {
-	const x10_int   self_len     = self->len;
-	const x10_char *self_chars   = self->chars;
-	x10_string     *result       = x10_allocate_string(self_len);
-	x10_char       *result_chars = x10_init_string(result, self_len);
-	x10_int         i;
-	for(i = 0; i < self_len; i++) {
-		result_chars[i] = _ZN3x104lang4Char11toUpperCaseEv(self_chars[i]);
+	const x10_int   self_len   = self->len;
+	const x10_char *self_chars = self->chars;
+	x10_char       *new_chars  = allocate_chars(self_len);
+	for(x10_int i = 0; i < self_len; i++) {
+		new_chars[i] = _ZN3x104lang4Char11toUpperCaseEv(self_chars[i]);
 	}
-	return result;
+	return x10_string_from_literal(self_len, new_chars);
 }
 
-// String.compareTo(String)
+// String.compareTo(String): Int
 x10_int _ZN3x104lang6String9compareToEPN3x104lang6StringE(const x10_string *self, const x10_string *other)
 {
 	x10_null_check(other);
@@ -321,7 +336,7 @@ x10_int _ZN3x104lang6String9compareToEPN3x104lang6StringE(const x10_string *self
 	return self_len - other_len;
 }
 
-// String.compareToIgnoreCase(String)
+// String.compareToIgnoreCase(String): Int
 x10_int _ZN3x104lang6String19compareToIgnoreCaseEPN3x104lang6StringE(
 		const x10_string *self, const x10_string *other)
 {
@@ -342,28 +357,21 @@ x10_int _ZN3x104lang6String19compareToIgnoreCaseEPN3x104lang6StringE(
 	return self_len - other_len;
 }
 
+// String.typeName(): String
 x10_string *_ZN3x104lang6String8typeNameEv(const x10_string *self)
 {
 	X10_UNUSED(self);
-	return x10_string_literal(sizeof("x10.lang.String")-1, "x10.lang.String");
+	return X10_STRING_FROM_CLITERAL("x10.lang.String");
 }
 
-// static operator+(String, String)
-x10_string *_ZN3x104lang6StringplEPN3x104lang6StringEPN3x104lang6StringE(const x10_string *x, const x10_string *y)
+// operator+(String): String
+x10_string *_ZN3x104lang6StringplEPN3x104lang6StringE(const x10_string *self, const x10_string *x)
 {
-	const x10_int x_len  = x->len;
-	const x10_int y_len  = y->len;
-	const x10_int len    = x_len + y_len;
-	x10_string   *result = x10_allocate_string(len);
-	x10_char     *buffer = x10_init_string(result, len);
-
-	memcpy(buffer, x->chars, x_len*sizeof(buffer[0]));
-	memcpy(&buffer[x_len], y->chars, y_len*sizeof(buffer[0]));
-	return result;
-}
-
-// operator+(String)
-x10_string *_ZN3x104lang6StringplEPN3x104lang6StringE(const x10_string *self, const x10_string *other)
-{
-	return _ZN3x104lang6StringplEPN3x104lang6StringEPN3x104lang6StringE(self, other);
+	const x10_int self_len  = self->len;
+	const x10_int x_len     = x->len;
+	const x10_int len       = self_len + x_len;
+	x10_char     *new_chars = allocate_chars(len);
+	memcpy(new_chars, self->chars, self_len*sizeof(new_chars[0]));
+	memcpy(&new_chars[self_len], x->chars, x_len*sizeof(new_chars[0]));
+	return x10_string_from_literal(len, new_chars);
 }

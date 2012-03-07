@@ -44,6 +44,13 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
     public native def this(String): String;
 
     /**
+     * Given a length and an immutable pointer to Char data, construct a new
+     * string object. This is mainly intended for internal use by the compiler
+     * to construct objects for string literals
+     */
+    public native def this(length:Int, chars:Pointer): String;
+
+    /**
      * Construct a String from an Array[Byte].
      */
     @Native("java", "new java.lang.String((#r).raw().getByteArray(),#offset,#length)")
@@ -476,7 +483,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @return true if this String is strictly before the other String.
      */
     public operator this < (x:String): Boolean {
-      return compareTo(x) < 0;
+        return compareTo(x) < 0;
     }
 
     // FIXME: Locale sensitivity
@@ -500,7 +507,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @return true if this String is before or equal to the other String.
      */
     public operator this <= (x:String): Boolean {
-      return compareTo(x) <= 0;
+        return compareTo(x) <= 0;
     }
 
     // FIXME: Locale sensitivity
@@ -512,7 +519,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @return true if this String is after or equal to the other String.
      */
     public operator this >= (x:String): Boolean {
-      return compareTo(x) >= 0;
+        return compareTo(x) >= 0;
     }
 
     /**
@@ -546,9 +553,9 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param y the second String
      * @return the resulting String
      */
-    @Native("java", "((#x) + (#y))")
-    @Native("c++",  "((#x) + (#y))")
-    public native static operator (x:String) + (y:String): String;
+    @Native("java", "((#this) + (#x))")
+    @Native("c++",  "((#this) + (#x))")
+    public native operator this + (x:String): String;
 }
 
 public type String(s:String) = String{self==s};
