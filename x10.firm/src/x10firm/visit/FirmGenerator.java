@@ -712,18 +712,12 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	 * @param savedConstruction A reference to the previous construction
 	 */
 	public void finishConstruction(Entity entity, MethodConstruction savedConstruction) {
-		// create Return node if there was no explicit return statement yet
+		/* create Return node if there was no explicit return statement yet */
 		if (!con.getCurrentBlock().isBad()) {
-			final MethodType meth = (MethodType)entity.getType();
-			if(meth.getNRess() == 0) {
-				Node mem = con.getCurrentMem();
-				Node ret = con.newReturn(mem, new Node[0]);
-				con.getGraph().getEndBlock().addPred(ret);
-			}
+			genReturn(null);
 		}
 
 		con.finish();
-
 		con = savedConstruction;
 	}
 
@@ -847,7 +841,30 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		// extract all formals and locals from the method.
 		final List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(dec);
 
-		final MethodConstruction savedConstruction = initConstruction(entity, formals, locals, instance.returnType(), owner);
+		final boolean isStruct = x10TypeSystem.isStructType0(owner);
+		final Type returnType;
+		final Type thisType;
+		final LocalInstance_c thisInstance;
+		if (isStruct) {
+			final Position pos = Position.COMPILER_GENERATED;
+			final Name name = Name.make("$this");
+			final Flags thisFlags  = Flags.NONE;
+			final Ref_c<Type> type = new Ref_c<Type>(owner);
+			X10LocalDef_c thisDef = new X10LocalDef_c(x10TypeSystem, pos, thisFlags, type, name);
+			thisInstance = new LocalInstance_c(x10TypeSystem, pos, new Ref_c<LocalDef>(thisDef));
+			locals.add(thisInstance);
+			returnType = instance.returnType();
+			thisType = null;
+		} else {
+			returnType = null;
+			thisType = owner;
+			thisInstance = null;
+		}
+		final MethodConstruction savedConstruction = initConstruction(entity, formals, locals, returnType, thisType);
+		if (isStruct) {
+			con.thisInstance = thisInstance;
+			con.inStructConstructor = true;
+		}
 
 		// The instance variables must be initialized first
 		for(ClassMember member : initClassMembers) {
@@ -1243,25 +1260,31 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		}
 	}
 
-	@Override
-	public void visit(Return_c n) {
-		Node ret = null;
-
-		if(n.expr() != null) {
-			final Type retType = con.returnType;
-
-			// autoboxing
-			final Expr expr = x10Cast(n.expr(), retType);
-			ret = visitExpression(expr);
+	private void genReturn(Expr expr) {
+		final Node[] retValues;
+		if (con.inStructConstructor) {
+			assert expr == null;
+			final Node value = getLocalValue(con.thisInstance);
+			retValues = new Node[] { value };
+		} else if (expr != null) {
+			final Node value = visitExpression(expr);
+			retValues = new Node[] { value };
+		} else {
+			retValues = new Node[0];
 		}
-
-		final Node mem = con.getCurrentMem();
-		final Node retNode = ret != null ? con.newReturn(mem, new Node[]{ret}) : con.newReturn(mem, new Node[]{});
-		assert(retNode != null);
-
-		/* for error detection */
+		final Node mem     = con.getCurrentMem();
+		final Node retNode = con.newReturn(mem, retValues);
 		con.getGraph().getEndBlock().addPred(retNode);
 		con.setCurrentBlockBad();
+	}
+
+	@Override
+	public void visit(Return_c n) {
+		/* nothing to do in unreachable code */
+		if (con.getCurrentBlock().isBad())
+			return;
+
+		genReturn(n.expr());
 	}
 
 	@Override
@@ -1277,23 +1300,15 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			assert var != null : "Instance '"+loc+"' not found in FirmContext";
 
 			if(var.getType() == VarEntry.STRUCT) {
-
 				final Entity entity = var.getEntity();
 				final Node sel = getEntityFromCurrentFrame(entity);
 
-				if(initExpr instanceof New_c) {
-					// Optimization: initExpr is a constructor call
-					// Do a direct constructor call without copying the return value of the constructor call */
-					final New_c new_c = (New_c)initExpr;
-					genNew(sel, new_c);
-				} else {
-					// Hmm not a "new" call -> we must copy the return node of the initExpr.
-					final Node initNode = visitExpression(initExpr);
-					final Node mem = con.getCurrentMem();
-					final Node copyB = con.newCopyB(mem, sel, initNode, entity.getType());
-					final Node curMem = con.newProj(copyB, Mode.getM(), CopyB.pnM);
-					con.setCurrentMem(curMem);
-				}
+				// Hmm not a "new" call -> we must copy the return node of the initExpr.
+				final Node initNode = visitExpression(initExpr);
+				final Node mem = con.getCurrentMem();
+				final Node copyB = con.newCopyB(mem, sel, initNode, entity.getType());
+				final Node curMem = con.newProj(copyB, Mode.getM(), CopyB.pnM);
+				con.setCurrentMem(curMem);
 			} else {
 				final Node initNode = visitExpression(initExpr);
 				final int idx = var.getIdx();
@@ -1645,8 +1660,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(X10ConstructorCall_c n) {
-		/* TODO: check for this or super */
-
 		/* determine called function */
 		final X10ConstructorInstance instance = n.constructorInstance();
 		final Entity entity = firmTypeSystem.getConstructorEntity(instance);
@@ -1716,7 +1729,9 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			return getEntityFromCurrentFrame(var.getEntity());
 		}
 		final int idx = var.getIdx();
-		return con.getVariable(idx, firmTypeSystem.getFirmMode(loc.type()));
+		final Type type = loc.type();
+		final Mode mode = firmTypeSystem.getFirmMode(type);
+		return con.getVariable(idx, mode);
 	}
 
 	@Override
@@ -1757,7 +1772,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		return genAlloc(firmType, ir_where_alloc.stack_alloc);
 	}
 
-	private void genConstructorCall(final X10ConstructorInstance instance,
+	private Node genConstructorCall(final X10ConstructorInstance instance,
 			final Node[] arguments) {
 		final Entity entity = firmTypeSystem.getConstructorEntity(instance);
 		final firm.MethodType entityType = (MethodType) entity.getType();
@@ -1767,6 +1782,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
 
 		con.setCurrentMem(newMem);
+		return call;
 	}
 
 	/**
@@ -1776,43 +1792,54 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	 * @param instance The constructor instance
 	 * @param args The arguments of the constructor call (without the implicit this pointer)
 	 */
-	private void genConstructorCall(final Node objectThisNode,
+	private void genClassConstructorCall(final Node objectThisNode,
 			final X10ConstructorInstance instance,
 			final List<Expr> args) {
-		assert instance != null;
-		final int paramCount = args.size();
-		final Node[] argumentNodes = new Node[paramCount+1];
-
 		final List<Expr> arguments = wrapArguments(instance.formalTypes(), args);
+		final int        argumentCount = arguments.size() + 1;
+		final Node[]     argumentNodes = new Node[argumentCount];
 
 		int p = 0;
-		argumentNodes[p++] = objectThisNode; /* this argument */
+		argumentNodes[p++] = objectThisNode;
 
 		for (Expr arg : arguments)
 			argumentNodes[p++] = visitExpression(arg);
+		assert p == argumentNodes.length;
 
 		genConstructorCall(instance, argumentNodes);
 	}
 
-	/**
-	 * Generate firm graph for a new call
-	 * @param n The "new" node
-	 */
-	private void genNew(final Node objectThisNode, final New_c n) {
+	private Node genStructConstructorCall(final X10ConstructorInstance instance, final List<Expr> args) {
+		final List<Expr> arguments = wrapArguments(instance.formalTypes(), args);
+		int argumentCount = arguments.size();
+		final Node[] argumentNodes = new Node[argumentCount];
+		int p = 0;
+		for (Expr arg : arguments)
+			argumentNodes[p++] = visitExpression(arg);
+
+		final Node call = genConstructorCall(instance, argumentNodes);
+		final Node ress = con.newProj(call, Mode.getT(), Call.pnTResult);
+		final Type resType = instance.returnType();
+		final Mode mode = firmTypeSystem.getFirmMode(resType);
+		final Node res  = con.newProj(ress, mode, 0);
+		return res;
+	}
+
+	@Override
+	public void visit(final New_c n) {
 		final Type base_type = Types.baseType(n.objectType().type());
 		final X10ClassType type = (X10ClassType)base_type;
+		final X10ConstructorInstance constructor = n.constructorInstance();
 
 		final boolean hasTypeArguments = type.typeArguments() != null && !type.typeArguments().isEmpty();
 
 		if (hasTypeArguments) {
-			final ConstructorInstance ci = n.constructorInstance();
-
 			// Find the class declaration.
 			final ClassDeclFetcher fetcher = new ClassDeclFetcher(x10TypeSystem, xnf);
 			final X10ClassDecl decl = fetcher.getDecl(n);
 
 			// Construct type mapping.
-			final X10ClassType ct = (X10ClassType) ci.container();
+			final X10ClassType ct = (X10ClassType) constructor.container();
 			final List<ParameterType> paramTypes = ct.def().typeParameters();
 			final List<Type> actualTypes = ct.typeArguments();
 			assert actualTypes.size() == decl.typeParameters().size();
@@ -1823,22 +1850,15 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			addToWorklist(new GenericNodeInstance(decl, ptm));
 		}
 
-		Node objectNode = objectThisNode;
-		if (objectNode == null) {
-			if (x10TypeSystem.isStructType0(n.type()))
-				objectNode = genStackAlloc(type);
-			else
-				objectNode = genHeapAlloc(type);
+		final List<Expr> arguments = n.arguments();
+		if (!x10TypeSystem.isStructType0(n.type())) {
+			final Node objectNode = genHeapAlloc(type);
+			genClassConstructorCall(objectNode, constructor, arguments);
+			setReturnNode(objectNode);
+		} else {
+			final Node result = genStructConstructorCall(constructor, arguments);
+			setReturnNode(result);
 		}
-		assert objectNode != null;
-
-		genConstructorCall(objectNode, n.constructorInstance(), n.arguments());
-		setReturnNode(objectNode);
-	}
-
-	@Override
-	public void visit(New_c n) {
-		genNew(null, n);
 	}
 
 	private TargetValue getFloatLitTargetValue(FloatLit_c literal) {
@@ -1974,13 +1994,13 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	private Node createStringLiteral(String value) {
 		/* Construct call to builtin function, which creates an X10 string struct. */
 		final Entity entity = createStringEntity(value);
-		final Node stringConst = con.newSymConst(entity);
 
 		/* search for String.this(Pointer,Int): String */
 		final Type type = x10TypeSystem.String();
 		final Node object = genHeapAlloc(type);
 		final Mode sizeMode = firmTypeSystem.getFirmMode(x10TypeSystem.Int());
 		final Node sizeNode = con.newConst(value.length(), sizeMode);
+		final Node stringConst = con.newSymConst(entity);
 		final Node[] constructorArguments = new Node[] { object, sizeNode, stringConst };
 		final X10ConstructorInstance stringConstructor = getStringLiteralConstructor();
 		genConstructorCall(stringConstructor, constructorArguments);

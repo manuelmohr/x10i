@@ -495,15 +495,32 @@ public class FirmTypeSystem {
 	 */
 	public MethodType getConstructorType(X10ConstructorInstance instance) {
 		final List<polyglot.types.Type> formalTypes = instance.formalTypes();
-		final int nParameters = formalTypes.size() + 1;
-		final int nResults = 0;
 		final X10ClassType owner = (X10ClassType) instance.container();
-		final Type[] parameterTypes = new firm.Type[nParameters];
-		final Type[] resultTypes = new firm.Type[nResults];
+		final Type[] parameterTypes;
+		final Type[] resultTypes;
 
+		/* we have 2 variants:
+		 * - struct types simply return the struct, they don't have a
+		 *   this pointer as parameter.
+		 * - native constructors perform allocation themselves for increased
+		 *   flexibility
+		 * - class types don't return anything but expect allocated memory
+		 *   in the implicit this pointer.
+		 */
 		int p = 0;
-		final Type thisType = asType(owner);
-		parameterTypes[p++] = thisType;
+		if (x10TypeSystem.isStructType0(owner)) {
+			final int nParameters = formalTypes.size();
+			final polyglot.types.Type returnType = instance.returnType();
+			resultTypes = new Type[] { getFirmType(returnType) };
+			parameterTypes = new Type[nParameters];
+		} else {
+			final int nParameters = formalTypes.size() + 1;
+			resultTypes = new Type[0];
+			parameterTypes = new Type[nParameters];
+
+			final Type thisType = asType(owner);
+			parameterTypes[p++] = thisType;
+		}
 
 		for (final polyglot.types.Type type : formalTypes) {
 			final polyglot.types.Type simpType = x10TypeSystem.getConcreteType(type);
@@ -532,14 +549,11 @@ public class FirmTypeSystem {
 			return result;
 
 		result = asClass(baseType);
-		if (result instanceof ClassType) {
-			/* we really have references to classes */
+		/* we have references to stuff unless it is a struct type */
+		if (!x10TypeSystem.isStructType0(baseType)) {
 			result = new PointerType(result);
 		}
 		saveType(baseType, result);
-
-		/* currently we should never produce types without modes here */
-		assert result.getMode() != null;
 
 		return result;
 	}
@@ -696,7 +710,13 @@ public class FirmTypeSystem {
 	 * Returns the mode for a given ast-type.
 	 */
 	public Mode getFirmMode(polyglot.types.Type type) {
-		return asType(type).getMode();
+		final Type firmType = asType(type);
+		Mode mode = firmType.getMode();
+		if (mode == null) {
+			assert x10TypeSystem.isStructType0(type);
+			mode = Mode.getP();
+		}
+		return mode;
 	}
 
 	/**

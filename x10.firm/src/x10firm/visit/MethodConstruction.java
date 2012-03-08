@@ -46,6 +46,10 @@ public class MethodConstruction extends OOConstruction {
 	Map<Case, Integer> casePNs;
 	/** local instance for "this" */
 	LocalInstance thisInstance;
+	/** tells wether a struct constructor is created. So we know when a
+	 * "return" has to be interpreted as "return this";
+	 */
+	boolean inStructConstructor;
 
 	/**
 	 * Create a new Firm context
