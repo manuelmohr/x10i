@@ -70,9 +70,9 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      */
     public def equals(that:Any): boolean
     {
-      if (that instanceof String)
-        return equals(that as String);
-      return false;
+        if (that instanceof String)
+            return equals(that as String);
+        return false;
     }
 
     /**
@@ -108,7 +108,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
     @Native("c++", "x10aux::to_string(#this)")
     public def toString(): String
     {
-      return this;
+        return this;
     }
 
     /**
@@ -362,8 +362,6 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param split the String to use as a delimiter.
      * @return the Array of Strings computed by splitting this String around matches of the delimiter.
      */
-    @Native("java", "x10.lang.StringHelper.split(#regex, #this)")
-    @Native("c++", "x10::lang::StringHelper::split(#regex, #this)")
     public native def split(regex: String):Rail[String];
 
 
@@ -559,23 +557,3 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
 }
 
 public type String(s:String) = String{self==s};
-
-class StringHelper {
-    static def split(delim:String, str:String):Rail[String] {
-        if (delim.equals("")) {
-            return new Rail[String](str.length(), (i:int)=>str.substring(i, i+1));
-        }
-        val ans = new ArrayList[String]();
-        var pos:int = 0;
-        var nextMatch:int = str.indexOf(delim, pos);
-        while (nextMatch != -1) {
-          ans.add(str.substring(pos, nextMatch));
-          pos = nextMatch+delim.length();
-          nextMatch = str.indexOf(delim, pos);
-        }
-        if (pos < str.length()) {
-            ans.add(str.substring(pos, str.length()));
-        }
-        return ans.toArray();
-    }
-}
