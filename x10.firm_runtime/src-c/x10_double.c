@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <stdio.h>
 #include "x10.h"
 #include "x10_string.h"
 
@@ -28,7 +29,7 @@ static size_t kill_excess_zeroes(char *buf, size_t sz)
 	if (sz == 0 || buf[sz-1] != '0')
 		return sz;
 	for (size_t i = sz; i-- > 0; ) {
-		if (buf[i] != '0') {
+		if (buf[i] != '0' || (i>1 && buf[i-1] == '.')) {
 			return i + 1;
 		}
 	}

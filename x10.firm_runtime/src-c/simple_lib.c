@@ -49,12 +49,20 @@ void _ZN9SimpleLib5printEc(x10_char v)
 
 void _ZN9SimpleLib5printEf(x10_float v)
 {
-	printf("%"PRIx10_float"\n", v);
+	/* use Float.toString to match x10cpp based output */
+	extern x10_string *_ZN3x104lang5Float8toStringEv(x10_float v);
+	x10_string *str = _ZN3x104lang5Float8toStringEv(v);
+	x10_write_block(str->chars, str->len);
+	putchar('\n');
 }
 
 void _ZN9SimpleLib5printEd(x10_double v)
 {
-	printf("%"PRIx10_double"\n", v);
+	/* use Double.toString to match x10cpp based output */
+	extern x10_string *_ZN3x104lang6Double8toStringEv(x10_double v);
+	x10_string *str = _ZN3x104lang6Double8toStringEv(v);
+	x10_write_block(str->chars, str->len);
+	putchar('\n');
 }
 
 void _ZN9SimpleLib5printEb(x10_boolean v)
