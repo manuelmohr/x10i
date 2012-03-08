@@ -33,10 +33,10 @@ public class PointerGenerator extends NativeGenericDispatcher {
 			final X10ClassType owner = (X10ClassType)meth.container();
 			final Entity entity = firmTypeSystem.getMethodEntity(meth);
 
-			assert(meth.typeParameters().size() == 1);
+			assert meth.typeParameters().size() == 1;
 			final Type typeParameter = meth.typeParameters().get(0);
 
-			assert(formals.size() == 0);
+			assert formals.size() == 0;
 
 			final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
 					meth.flags(), meth.returnType(), owner);
@@ -52,7 +52,7 @@ public class PointerGenerator extends NativeGenericDispatcher {
 			} else {
 				par = con.getVariable(0, parMode);
 			}
-			assert(par != null);
+			assert par != null;
 
 			final firm.Type type = firmTypeSystem.asType(typeParameter);
 			final Node mem = con.getCurrentMem();
@@ -63,7 +63,7 @@ public class PointerGenerator extends NativeGenericDispatcher {
 			con.setCurrentMem(newMem);
 			final Node mem2 = con.getCurrentMem();
 			final Node retNode = con.newReturn(mem2, new Node[]{result});
-			assert(retNode != null);
+			assert retNode != null;
 			con.getGraph().getEndBlock().addPred(retNode);
 			con.setCurrentBlockBad();
 
@@ -92,10 +92,10 @@ public class PointerGenerator extends NativeGenericDispatcher {
 			final X10ClassType owner = (X10ClassType)meth.container();
 			final Entity entity = firmTypeSystem.getMethodEntity(meth);
 
-			assert(meth.typeParameters().size() == 1);
+			assert meth.typeParameters().size() == 1;
 			final Type typeParameter = meth.typeParameters().get(0);
 
-			assert(formals.size() == 1);
+			assert formals.size() == 1;
 			final LocalInstance val = formals.get(0);
 
 			final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
@@ -103,7 +103,7 @@ public class PointerGenerator extends NativeGenericDispatcher {
 
 			MethodConstruction con = codeGenerator.getFirmConstruction();
 			final VarEntry var_val = con.getVarEntry(val);
-			assert(var_val != null);
+			assert var_val != null;
 
 			final Mode ptrMode = Mode.getP();
 			final Node address = con.getVariable(0, ptrMode);
@@ -127,7 +127,7 @@ public class PointerGenerator extends NativeGenericDispatcher {
 
 			final Node mem = con.getCurrentMem();
 			final Node retNode = con.newReturn(mem, new Node[]{});
-			assert(retNode != null);
+			assert retNode != null;
 
 			con.getGraph().getEndBlock().addPred(retNode);
 			con.setCurrentBlockBad();

@@ -53,7 +53,7 @@ public class FirmGenerated extends SourceGoal_c {
 
 		final Node ast = job().ast();
 		System.out.println("FirmGenerated: " + ast);
-		assert (ast != null);
+		assert ast != null;
 		if (!((X10Ext) ast.ext()).subtreeValid())
 			return false;
 

@@ -14,8 +14,9 @@ import x10.types.MethodInstance;
 import x10.types.X10ClassType;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
-import x10firm.visit.MethodConstruction;
+import x10firm.visit.CodeGenError;
 import x10firm.visit.FirmGenerator;
+import x10firm.visit.MethodConstruction;
 import firm.Entity;
 import firm.nodes.Node;
 
@@ -48,7 +49,7 @@ public class ZeroGenerator extends NativeGenericDispatcher {
 			final X10ClassType owner = (X10ClassType)meth.container();
 			final Entity entity = firmTypeSystem.getMethodEntity(meth);
 
-			assert(meth.typeParameters().size() == 1);
+			assert meth.typeParameters().size() == 1;
 			final Type typeParameter = meth.typeParameters().get(0);
 
 			final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
@@ -88,7 +89,7 @@ public class ZeroGenerator extends NativeGenericDispatcher {
 				} else if(x10TypeSystem.isPointer(typeParameter)) {
 					ret = xnf.Return(pos, xnf.NullLit(pos).type(x10TypeSystem.Null()));
 				} else {
-					assert false : "Missing type check";
+					throw new CodeGenError(String.format("Missing builtin implementation of Zero[%s]", typeParameter), meth.position());
 				}
 			} else {
 				// must be a struct
@@ -99,14 +100,14 @@ public class ZeroGenerator extends NativeGenericDispatcher {
 				MethodConstruction con = codeGenerator.getFirmConstruction();
 				final Node mem = con.getCurrentMem();
 				final Node retNode = tmp != null ? con.newReturn(mem, new Node[]{tmp}) : con.newReturn(mem, new Node[]{});
-				assert(retNode != null);
+				assert retNode != null;
 
 				con.getGraph().getEndBlock().addPred(retNode);
 				con.setCurrentBlockBad();
 			}
 
-			if(!isStruct) {
-				assert(ret != null);
+			if (!isStruct) {
+				assert ret != null;
 				codeGenerator.visitAppropriate(ret);
 			}
 

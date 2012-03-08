@@ -25,7 +25,6 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	/** Remember type parameter mappings, used for example in name mangling. */
 	private Map<ParameterType, polyglot.types.Type> typeParameters = new HashMap<ParameterType, polyglot.types.Type>();
 
-
 	/**
 	 * @param extInfo extension info
 	 */
@@ -39,7 +38,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	 * @param type      value type
 	 */
 	public void addTypeMapping(ParameterType paramType, Type type) {
-		assert (!typeParameters.containsKey(paramType));
+		assert !typeParameters.containsKey(paramType);
 		typeParameters.put(paramType, type);
 	}
 
@@ -48,7 +47,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	 * @param paramType key type to remove
 	 */
 	public void removeTypeMapping(ParameterType paramType) {
-		assert (typeParameters.containsKey(paramType));
+		assert typeParameters.containsKey(paramType);
 		typeParameters.remove(paramType);
 	}
 
@@ -68,7 +67,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		polyglot.types.Type p = paramType;
 
 		while ((p = Types.baseType(p)) != null && super.isParameterType(p)) {
-			assert (typeParameters.containsKey(p));
+			assert typeParameters.containsKey(p);
 			p = typeParameters.get(p);
 		}
 
@@ -175,7 +174,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		if(ret instanceof X10ParsedClassType)
 			ret = fixParsedClassType((X10ParsedClassType)ret);
 		else if(super.isParameterType(ret) && typeParameters.containsKey(ret)) {
-			assert(typeParameters.containsKey(ret));
+			assert typeParameters.containsKey(ret);
 			ret = getTypeParamSub((ParameterType)ret);
 		} else if(super.isParameterType(ret)) {
 			// TODO: Need a better solution !!!
@@ -183,7 +182,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		}
 
 		// isParsedClassType => !isMissingTypeArguments
-		assert (!(ret instanceof X10ParsedClassType) || !((X10ParsedClassType) ret).isMissingTypeArguments());
+		assert !(ret instanceof X10ParsedClassType) || !((X10ParsedClassType) ret).isMissingTypeArguments();
 
 		return ret;
 	}

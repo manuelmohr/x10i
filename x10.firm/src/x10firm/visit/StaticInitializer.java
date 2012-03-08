@@ -124,7 +124,7 @@ public class StaticInitializer extends ContextVisitor {
 
         ClassBody classBody = (ClassBody) n;
         X10ClassDef classDef = ct.classDef();
-        assert(classDef != null);
+        assert classDef != null;
 
         Context cntxt = ct.enterChildScope(classBody, ((ContextVisitor) v).context());
 
@@ -564,7 +564,7 @@ public class StaticInitializer extends ContextVisitor {
 
         // run the preliminary compilation phases on the job's AST
         Node ast = cjob.ast();
-        assert (ast instanceof X10SourceFile_c);
+        assert ast instanceof X10SourceFile_c;
         if (!((X10SourceFile_c) ast).hasBeenTypeChecked())
             ast = ast.visit(new X10TypeChecker(cjob, ts, nf, cjob.nodeMemo()).begin());
         if (ast == null)

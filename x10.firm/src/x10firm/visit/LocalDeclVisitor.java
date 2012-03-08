@@ -7,13 +7,11 @@ import polyglot.ast.LocalDecl_c;
 import x10.ast.Closure_c;
 
 /**
- * Visitor which extracts all local declarations from an ast
+ * Visitor which collects all local declarations in an ast
  */
 public class LocalDeclVisitor extends DummyDelegatingVisitor {
 
-	/** Will hold all local declarations.
-	 *
-	 */
+	/** Will hold all local declarations. */
 	private List<LocalDecl_c> localDecls = new LinkedList<LocalDecl_c>();
 
 	/**

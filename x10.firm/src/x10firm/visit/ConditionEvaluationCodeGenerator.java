@@ -113,7 +113,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		for (final MethodInstance mi : instances)
 			if (typeSystem.typeEquals0(mi.formalTypes().get(0), ct, ctx))
 				instance = mi;
-		assert (instance != null);
+		assert instance != null;
 
 		// Get the method entity for our _struct_equals.
 		final Entity funcEnt = firmTypeSystem.getMethodEntity(instance);
@@ -128,11 +128,11 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		con.setCurrentMem(newMem);
 
 		// _struct_equals returns a Boolean, so project it out of the call.
-		assert (type.getNRess() == 1);
+		assert type.getNRess() == 1;
 		final firm.Type retType = type.getResType(0);
 		final Node allResults = con.newProj(call, Mode.getT(), Call.pnTResult);
 		final Mode mode = retType.getMode();
-		assert (mode != null);
+		assert mode != null;
 		return con.newProj(allResults, mode, 0);
 	}
 
@@ -195,7 +195,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		} else {
 			firmType = firmTypeSystem.asClass(compType);
 		}
-		assert(firmType != null);
+		assert firmType != null;
 
 		final Node mem = con.getCurrentMem();
 		final Node instanceOf = con.newInstanceOf(mem, objPtr, firmType);

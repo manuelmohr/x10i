@@ -17,7 +17,7 @@ public class GenericClassInstance {
 	 * Construct a {@link GenericClassInstance} for a class definition and a parameter type mapping.
 	 */
 	protected GenericClassInstance(final X10ClassDef def, final ParameterTypeMapping mapping) {
-		assert (def != null && !def.typeParameters().isEmpty() && mapping != null);
+		assert def != null && !def.typeParameters().isEmpty() && mapping != null;
 		this.def = def;
 		this.mapping = mapping;
 	}
@@ -35,7 +35,7 @@ public class GenericClassInstance {
 			this.mapping = null;
 		else {
 			this.mapping = new ParameterTypeMapping();
-			assert (def.typeParameters().size() == classType.typeArguments().size());
+			assert def.typeParameters().size() == classType.typeArguments().size();
 			for (int i = 0; i < def.typeParameters().size(); ++i)
 				this.mapping.add(def.typeParameters().get(i), classType.typeArguments().get(i));
 		}

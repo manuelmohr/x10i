@@ -50,7 +50,7 @@ public class MethodDeclFetcher {
 		Ref<? extends ContainerType> containerRef = candidate.container();
 		ContainerType containerType = Types.get(containerRef);
 		Type containerBase = Types.baseType(containerType);
-		assert (containerBase instanceof X10ClassType);
+		assert containerBase instanceof X10ClassType;
 		X10ClassDef container = ((X10ClassType) containerBase).x10Def();
 		return container;
 	}
@@ -87,7 +87,7 @@ public class MethodDeclFetcher {
 			// TODO reconstruct the AST for the job will all preliminary
 			// compiler passes
 			ast = job.ast();
-			assert (ast instanceof X10SourceFile_c);
+			assert ast instanceof X10SourceFile_c;
 			if (!((X10SourceFile_c) ast).hasBeenTypeChecked())
 				ast = ast.visit(new X10TypeChecker(job, x10TypeSystem, xnf, job.nodeMemo()).begin());
 			if (null == ast) {

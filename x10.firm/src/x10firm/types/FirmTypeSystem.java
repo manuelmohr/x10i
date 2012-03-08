@@ -188,7 +188,7 @@ public class FirmTypeSystem {
 				try {
 					size = Integer.parseInt(toker.nextToken());
 				} catch(NumberFormatException nfexc) {
-					assert false: "Illegal size " + size  +" in " + firmNativeTypesFilename;
+					throw new RuntimeException("Illegal size " + size  +" in " + firmNativeTypesFilename);
 				}
 				final X10ClassType klass = getNamedX10Type(packName, className);
 				x10NativeTypes.put(klass, NativeClassInfo.newNativeClassInfo(size));
@@ -301,7 +301,7 @@ public class FirmTypeSystem {
 						.formalTypes();
 				final List<LocalDef> fNames = mDef.formalNames();
 
-				assert (fTypes.size() == fNames.size());
+				assert fTypes.size() == fNames.size();
 				for (int i = 0; i < fTypes.size(); i++) {
 					final polyglot.types.Type x = fTypes.get(i).get();
 					Ref<? extends polyglot.types.Type> fType = fTypes.get(i);
@@ -367,7 +367,7 @@ public class FirmTypeSystem {
 			if(paramTypes.get(j) == genType)
 				break;
 
-		assert(j < paramTypes.size());
+		assert j < paramTypes.size();
 		return argTypes.get(j);
 	}
 
@@ -399,7 +399,7 @@ public class FirmTypeSystem {
 			final polyglot.types.Type simpType = x10TypeSystem.getConcreteType(type);
 			parameterTypes[p++] = getFirmType(simpType);
 		}
-		assert (p == nParameters);
+		assert p == nParameters;
 
 		if (nResults > 0) {
 			assert nResults == 1;
@@ -486,7 +486,7 @@ public class FirmTypeSystem {
 	public Type getFirmType(final polyglot.types.Type type) {
 		final Type ret = isFirmStructType(type) ? asClass(type) : asType(type);
 
-		assert(ret != null);
+		assert ret != null;
 		return ret;
 	}
 
@@ -509,7 +509,7 @@ public class FirmTypeSystem {
 			final polyglot.types.Type simpType = x10TypeSystem.getConcreteType(type);
 			parameterTypes[p++] = getFirmType(simpType);
 		}
-		assert (p == nParameters);
+		assert p == parameterTypes.length;
 
 		return new MethodType(parameterTypes, resultTypes);
 	}
@@ -781,7 +781,7 @@ public class FirmTypeSystem {
 	public X10ClassType getObjectType() {
 		final QName fullName = QName.make("x10.lang", "Object");
 	    final List<polyglot.types.Type> types = x10TypeSystem.systemResolver().check(fullName);
-	    assert(types != null && types.size() == 1);
+	    assert types != null && types.size() == 1;
 	    final Named n = types.get(0);
 	    final X10ClassType objectType = (X10ClassType)n;
 		return objectType;
@@ -891,7 +891,7 @@ public class FirmTypeSystem {
 				map.add(pt, x10TypeSystem.getConcreteType(pt));
 			classInstance = new GenericClassInstance(clazz.x10Def(), map);
 		}
-		assert(classInstance != null);
+		assert classInstance != null;
 
 		GenericClassContext context = genericContexts.get(classInstance);
 		if (context == null) {
@@ -1013,7 +1013,7 @@ public class FirmTypeSystem {
 		for (ParameterType param : ptm.getKeySet()) {
 			final polyglot.types.Type mappedType = ptm.getMappedType(param);
 
-			assert (hasFirmCoreType(mappedType) || hasFirmType(mappedType));
+			assert hasFirmCoreType(mappedType) || hasFirmType(mappedType);
 
 			x10TypeSystem.addTypeMapping(param, mappedType);
 

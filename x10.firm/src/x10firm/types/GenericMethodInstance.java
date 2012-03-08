@@ -29,12 +29,12 @@ public class GenericMethodInstance {
 		if(mi instanceof ReinstantiatedMethodInstance) {
 			// Handling of ReininstiatedMethodInstances with "pseudo" parameter types. (Closures for example)
 			final ReinstantiatedMethodInstance rmi = (ReinstantiatedMethodInstance)mi;
-			assert(rmi.typeParamSubst() != null);
+			assert rmi.typeParamSubst() != null;
 			final TypeParamSubst typeSub = rmi.typeParamSubst();
 			mapping = new ParameterTypeMapping();
 			final List<Type> typeArgs = typeSub.copyTypeArguments();
 			final List<ParameterType> typeParams = typeSub.copyTypeParameters();
-			assert(typeArgs.size() == typeParams.size());
+			assert typeArgs.size() == typeParams.size();
 			// Handling of type subst
 			for(int i = 0; i < typeArgs.size(); i++) {
 			Type typeArg = typeArgs.get(i);

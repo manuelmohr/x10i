@@ -16,7 +16,7 @@ public class VarEntry {
 	/**
 	 * A normal (local) struct variable -> Has a unique entity
 	 */
-	public static final int STRUCT   = 0x2;
+	public static final int STRUCT = 0x2;
 
 	private Entity entity;
 	private int type;
@@ -24,8 +24,8 @@ public class VarEntry {
 	private LocalDef def;
 
 	private VarEntry(final LocalDef def, final int idx, final int type, final Entity entity) {
-		assert(def != null);
-		assert(type == VARIABLE || type == STRUCT);
+		assert def != null;
+		assert type == VARIABLE || type == STRUCT;
 
 		this.def = def;
 		this.idx = idx;
@@ -71,7 +71,7 @@ public class VarEntry {
 	 *
 	 */
 	public Entity getEntity() {
-		assert(type == STRUCT);
+		assert type == STRUCT;
 		return entity;
 	}
 

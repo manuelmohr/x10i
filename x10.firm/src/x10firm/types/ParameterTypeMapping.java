@@ -44,7 +44,7 @@ public class ParameterTypeMapping {
 	 * @return the concrete type which the type parameter is currently mapped to
 	 */
 	public Type getMappedType(final ParameterType type) {
-		assert (mapping.containsKey(type));
+		assert mapping.containsKey(type);
 		return mapping.get(type);
 	}
 

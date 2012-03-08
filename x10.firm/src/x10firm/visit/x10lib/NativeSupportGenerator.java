@@ -13,8 +13,8 @@ import x10.types.MethodInstance;
 import x10.types.X10ClassType;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
-import x10firm.visit.MethodConstruction;
 import x10firm.visit.FirmGenerator;
+import x10firm.visit.MethodConstruction;
 import firm.Entity;
 
 /**
@@ -35,7 +35,7 @@ public class NativeSupportGenerator extends NativeGenericDispatcher {
 			final X10ClassType owner = (X10ClassType)meth.container();
 			final Entity entity = firmTypeSystem.getMethodEntity(meth);
 
-			assert(meth.typeParameters().size() == 1);
+			assert meth.typeParameters().size() == 1;
 			final Type typeParameter = meth.typeParameters().get(0);
 
 			final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),

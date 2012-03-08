@@ -411,7 +411,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		private final ParameterTypeMapping mapping;
 
 		public GenericNodeInstance(final polyglot.ast.Node node, final ParameterTypeMapping mapping) {
-			assert(node != null && mapping != null);
+			assert node != null && mapping != null;
 			this.node = node;
 			this.mapping = mapping;
 		}
@@ -483,6 +483,9 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		}
 	}
 
+	/**
+	 * Create the implicit typeName() function of a struct.
+	 */
 	private void createStructTypeNameMethodBody(final X10ClassDecl clazz,
 			final X10MethodDecl meth) {
 		X10MethodDef def = meth.methodDef();
@@ -773,7 +776,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		if (flags.isNative() || flags.isAbstract()) {
 			if(flags.isNative() && hasTypeParameters) {
 				boolean dispatch_ok = gen_support.dispatch(this, methodInstance, formals);
-				assert(dispatch_ok);
+				assert dispatch_ok;
 			}
 			// native code is defined elsewhere, so nothing left to do
 			return;
@@ -852,10 +855,10 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		for(ClassMember member : initClassMembers) {
 			if(member instanceof FieldDecl_c) {
 				final FieldDecl_c fieldDecl = (FieldDecl_c)member;
-				assert(fieldDecl.init() != null);
+				assert fieldDecl.init() != null;
 
 				final Flags fieldFlags = fieldDecl.flags().flags();
-				assert(!fieldFlags.isStatic());
+				assert !fieldFlags.isStatic();
 
 				final FieldInstance fieldInst = fieldDecl.fieldDef().asInstance();
 				final Node objectPointer = getThis(Mode.getP());
@@ -877,7 +880,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	 * @return The target value of the given constant expr
 	 */
 	private TargetValue constantToTargetValue(Expr expr) {
-		assert(expr != null && expr.isConstant());
+		assert expr != null && expr.isConstant();
 
 		final Object obj = expr.constantValue();
 
@@ -936,7 +939,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	private Initializer expr2Initializer(Expr expr) {
 		final Initializer result;
-		assert(expr.isConstant());
+		assert expr.isConstant();
 
 		if (expr instanceof IntLit_c) {
 			TargetValue targetValue = getIntLitTarval((IntLit_c) expr);
@@ -974,8 +977,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		if (flags.isStatic()) {
 			address = con.newSymConst(entity);
 		} else {
-			assert(objectPointer != null);
-			assert(entity != null);
+			assert objectPointer != null;
+			assert entity != null;
 			address = con.newSel(objectPointer, entity);
 		}
 
@@ -1593,7 +1596,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final List<ParameterType> paramTypes = ((X10MethodDef) methodInstance.def()).typeParameters();
 
             List<Type> actualTypes = methodInstance.typeParameters();
-            assert (actualTypes.size() == decl.typeParameters().size());
+            assert actualTypes.size() == decl.typeParameters().size();
 
             // Watch out for recursive generic types.
             for(int i = 0; i < actualTypes.size(); i++)
@@ -1777,7 +1780,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	private void genConstructorCall(final Node objectThisNode,
 			final X10ConstructorInstance instance,
 			final List<Expr> args) {
-		assert (instance != null);
+		assert instance != null;
 		final int paramCount = args.size();
 		final Node[] argumentNodes = new Node[paramCount+1];
 
@@ -1816,7 +1819,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final X10ClassType ct = (X10ClassType) ci.container();
 			final List<ParameterType> paramTypes = ct.def().typeParameters();
 			final List<Type> actualTypes = ct.typeArguments();
-			assert (actualTypes.size() == decl.typeParameters().size());
+			assert actualTypes.size() == decl.typeParameters().size();
 			final ParameterTypeMapping ptm = new ParameterTypeMapping();
 			addToMapping(ptm, paramTypes, actualTypes);
 
@@ -1831,7 +1834,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			else
 				objectNode = genHeapAlloc(type);
 		}
-		assert (objectNode != null);
+		assert objectNode != null;
 
 		genConstructorCall(objectNode, n.constructorInstance(), n.arguments());
 		setReturnNode(objectNode);
@@ -2079,7 +2082,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	 * @return A list of expressions where improper types are adjusted by explicit casts.
 	 */
 	private List<Expr> wrapArguments(final List<Type> formalTypes, final List<Expr> args) {
-		assert(formalTypes.size() == args.size());
+		assert formalTypes.size() == args.size();
 		List<Expr> ret = new LinkedList<Expr>();
 
 		int i = 0;
@@ -2120,7 +2123,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		// add implicit this pointer
 		if (!isStatic) {
-			assert(target != null && target instanceof Expr) : mi.toString();
+			assert target != null && target instanceof Expr : mi.toString();
 			final Expr receiver = (Expr)target;
 			arguments.add(0, wrapArgument(mi.container(), receiver));
 		}
@@ -2142,7 +2145,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			return null; /* no return value, we're done */
 		}
 
-		assert (type.getNRess() == 1); /* X10 does not support multiple return values */
+		assert type.getNRess() == 1; /* X10 does not support multiple return values */
 
 		firm.Type ret_type = type.getResType(0);
 		final Node all_results = con.newProj(call, Mode.getT(), Call.pnTResult);
@@ -2181,7 +2184,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		 */
 		final List<X10FieldInstance> properties = n.properties();
 		final List<Expr> args = n.arguments();
-		assert(properties.size() == args.size());
+		assert properties.size() == args.size();
 
 		final Node thisPointer = getThis(Mode.getP());
 		for(int i = 0; i < properties.size(); i++) {
@@ -2199,7 +2202,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	private void initBoxingType(final X10ClassType boxedType, final X10ClassType boxType) {
 
 		final FieldInstance boxedField = boxType.fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE));
-		assert(boxedField != null);
+		assert boxedField != null;
 
 		final Position pos = Position.COMPILER_GENERATED;
 		for(final MethodInstance m : boxType.methods()) {
@@ -2293,7 +2296,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		// save the boxed value in the box
 		final FieldInstance boxValue = boxType.fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE));
-		assert(boxValue != null);
+		assert boxValue != null;
 		genFieldInstanceAssign(box, boxValue, expr);
 
 		return box;
@@ -2305,7 +2308,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
         genCastNullCheck(node, fromType);
 		final FieldInstance boxValue = boxType.fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE));
-		assert(boxValue != null);
+		assert boxValue != null;
 		genSubtypeCheck(node, fromType, toType);
 		final Node boxedValue = genFieldLoad(node, boxValue);
 		return boxedValue;
@@ -2337,7 +2340,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final Type from = x10TypeSystem.getConcreteType(fromType);
 		final Type to   = x10TypeSystem.getConcreteType(toType);
 
-		assert(to instanceof X10ClassType);
+		assert to instanceof X10ClassType;
 		final Type compType = x10TypeSystem.isStructType0(to) ? firmTypeSystem.getBoxingType((X10ClassType)to) : to;
 
 		final CondTemplate condTemplate = new CondTemplate() {
@@ -2427,7 +2430,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	public void visit(X10Cast_c c) {
 
 		final TypeNode tn = c.castType();
-		assert (tn instanceof CanonicalTypeNode);
+		assert tn instanceof CanonicalTypeNode;
 
 		switch (c.conversionType()) {
 		case CHECKED:
@@ -2461,19 +2464,19 @@ public class FirmGenerator extends X10DelegatingVisitor {
 						break;
 					}
 				}
-				assert(false);
+				assert false;
 				break;
 			} else if(x10TypeSystem.isRefType(from) && x10TypeSystem.isStructType0(to)) {
 				// ref -> struct
 				// Unboxing -> must be a checked cast !!!
-				assert(c.conversionType() == ConversionType.CHECKED);
+				assert c.conversionType() == ConversionType.CHECKED;
 				final Expr expr = c.expr();
 				final Node ret = genUnboxing(expr, x10TypeSystem.toClass(from), x10TypeSystem.toClass(to));
 				setReturnNode(ret);
 				break;
 			}
 
-			assert(false);
+			assert false;
 			//$FALL-THROUGH$
 		case CALL_CONVERSION:
 		case UNBOXING:

@@ -20,7 +20,7 @@ public abstract class NativeGenericDispatcher {
 	 * @param generator The method generator which should be added
 	 */
 	protected void addMethodGenerator(final NativeGenericMethodGenerator generator) {
-		assert(!map.containsKey(generator.getMethodName()));
+		assert !map.containsKey(generator.getMethodName());
 		map.put(generator.getMethodName(), generator);
 	}
 
@@ -33,7 +33,8 @@ public abstract class NativeGenericDispatcher {
 	public boolean dispatch(final FirmGenerator codeGenerator, final MethodInstance meth,
 							final List<LocalInstance> formals) {
 		final NativeGenericMethodGenerator meth_generator = map.get(meth.name().toString());
-		if(meth_generator == null) return false;
+		if (meth_generator == null)
+			return false;
 
 		return meth_generator.gen(codeGenerator, meth, formals);
 	}

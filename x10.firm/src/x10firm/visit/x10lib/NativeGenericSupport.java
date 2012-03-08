@@ -16,7 +16,7 @@ public class NativeGenericSupport {
 	private Map<String, NativeGenericDispatcher> map = new HashMap<String, NativeGenericDispatcher>();
 
 	private void addGenericGenerator(final NativeGenericDispatcher dispatcher) {
-		assert(!map.containsKey(dispatcher.getDispatchName()));
+		assert !map.containsKey(dispatcher.getDispatchName());
 		map.put(dispatcher.getDispatchName(), dispatcher);
 	}
 

@@ -16,6 +16,7 @@ import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 import x10firm.CompilerOptions;
 import x10firm.MachineTriple;
+import x10firm.visit.CodeGenError;
 
 /**
  * Name mangler which mangles X10 type objects to unique names
@@ -339,7 +340,7 @@ public class NameMangler {
 		} else if (clazz.isAnonymous()) {
 			// DO NOTHING
 		} else {
-			assert (false) : "Unknown class type" + clazz;
+			throw new CodeGenError("Unknown class type" + clazz, clazz.position());
 		}
 
 		final String clazzName = clazz.isAnonymous() ? getAnonymousClassName(clazz)
@@ -446,7 +447,7 @@ public class NameMangler {
 	 */
 	private static String mangleFieldInstance(final FieldInstance field, final boolean defClass) {
 		StringBuilder buf = new StringBuilder();
-		assert(field.container() != null);
+		assert field.container() != null;
 
 		if (defClass) {
 			buf.append(QUAL_START);
@@ -467,7 +468,7 @@ public class NameMangler {
 	 */
 	private static String mangleConstructorInstance(final X10ConstructorInstance cons) {
 		StringBuilder buf = new StringBuilder();
-		assert(cons.container() != null);
+		assert cons.container() != null;
 
 		buf.append(QUAL_START);
 		buf.append(mangleType(cons.container(), true));
@@ -507,7 +508,7 @@ public class NameMangler {
 		if (ret instanceof X10ClassType) { // a class type
 			tmp = mangleClassType((X10ClassType) ret, embed);
 		} else {
-			 assert(false): "Unknown type in mangleType " + ret.getClass() + ": " + ret;
+			throw new CodeGenError("Unknown type in mangleType " + ret.getClass() + ": " + ret, ret.position());
 		}
 
 		return tmp;
@@ -532,7 +533,7 @@ public class NameMangler {
 		} else if(typeObject instanceof X10ConstructorInstance) { // a constructor
 			tmp = mangleConstructorInstance((X10ConstructorInstance)typeObject);
 		} else {
-			assert(false) : "Unknown type in mangleType" + typeObject.getClass() + ": " + typeObject;
+			throw new CodeGenError("Unknown type in mangleType" + typeObject.getClass() + ": " + typeObject, typeObject.position());
 		}
 
 		return tmp;
