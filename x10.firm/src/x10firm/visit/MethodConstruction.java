@@ -33,9 +33,9 @@ public class MethodConstruction extends OOConstruction {
 	 * (This implies that labeled statement are not duplicated,
 	 *  but for now this should be good enough as it is as bad as the
 	 *  x10 c++ backend: XTENLANG-2434 */
-	Map<Id, Block> labeledBreaks = new HashMap<Id, Block>();
+	Map<String, Block> labeledBreaks = new HashMap<String, Block>();
 	/** mapping of Id to labeled continue block */
-	Map<Id, Block> labeledContinues = new HashMap<Id, Block>();
+	Map<String, Block> labeledContinues = new HashMap<String, Block>();
 	/** Id of last labeled statement seen */
 	Id lastLabel;
 	/** last node in a labeled statement */

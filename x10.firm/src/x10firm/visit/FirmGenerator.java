@@ -1185,9 +1185,9 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		Id targetId = br.labelNode();
 		if (targetId != null) {
 			if(br.kind() == Branch.CONTINUE)
-				target = con.labeledContinues.get(targetId);
+				target = con.labeledContinues.get(targetId.toString());
 			else
-				target = con.labeledBreaks.get(targetId);
+				target = con.labeledBreaks.get(targetId.toString());
 		} else {
 			if (br.kind() == Branch.CONTINUE) {
 				target = con.continueBlock;
@@ -1215,7 +1215,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final Node jmp = con.newJmp();
 			labeledBlock.addPred(jmp);
 		}
-		con.labeledBreaks.put(labelId, labeledBlock);
+		con.labeledBreaks.put(labelId.toString(), labeledBlock);
 
 		visitAppropriate(stmt);
 		labeledBlock.mature();
@@ -1358,8 +1358,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final Block oldContinue = con.continueBlock;
 		con.continueBlock = bCond;
 		if (label != null && con.labeledStmt == n) {
-			con.labeledBreaks.put(label, bFalse);
-			con.labeledContinues.put(label, bCond);
+			con.labeledBreaks.put(label.toString(), bFalse);
+			con.labeledContinues.put(label.toString(), bCond);
 		}
 
 		final Stmt body = n.body();
@@ -1433,8 +1433,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final Block oldContinue = con.continueBlock;
 		con.continueBlock = bCond;
 		if (label != null && con.labeledStmt == n) {
-			con.labeledBreaks.put(label, bFalse);
-			con.labeledContinues.put(label, bCond);
+			con.labeledBreaks.put(label.toString(), bFalse);
+			con.labeledContinues.put(label.toString(), bCond);
 		}
 
 		final Stmt body = n.body();
@@ -1495,8 +1495,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final Block oldContinue = con.continueBlock;
 		con.continueBlock = bCond;
 		if (label != null && con.labeledStmt == n) {
-			con.labeledBreaks.put(label, bFalse);
-			con.labeledContinues.put(label, bCond);
+			con.labeledBreaks.put(label.toString(), bFalse);
+			con.labeledContinues.put(label.toString(), bCond);
 		}
 
 		final Stmt body = n.body();
