@@ -38,8 +38,10 @@ public class NativeSupportGenerator extends NativeGenericDispatcher {
 			assert meth.typeParameters().size() == 1;
 			final Type typeParameter = meth.typeParameters().get(0);
 
+			final Type returnType = meth.returnType();
+			final Type thisType = meth.flags().isStatic() ? null : owner;
 			final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
-					meth.flags(), meth.returnType(), owner);
+					returnType, thisType);
 
 			final Position pos = Position.COMPILER_GENERATED;
 			final firm.Type firmType = firmTypeSystem.getFirmType(typeParameter);

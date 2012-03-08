@@ -23,12 +23,8 @@ import firm.nodes.OOConstruction;
 public class MethodConstruction extends OOConstruction {
 	/** Maps local var defs to the appropriate var entries */
 	private Map<LocalDef, VarEntry> varEntryMapper = new HashMap<LocalDef, VarEntry>();
-
-	/**
-	 * Reference to the current procedure return type
-	 */
-	public Type returnType;
-
+	/** Reference to the current procedure return type */
+	Type returnType;
 	/** holds current target for break statements */
 	Block breakBlock;
 	/** holds current target for continue statements */
@@ -48,6 +44,8 @@ public class MethodConstruction extends OOConstruction {
 	Node switchNode;
 	/** maps Cases to switch projection numbers */
 	Map<Case, Integer> casePNs;
+	/** local instance for "this" */
+	LocalInstance thisInstance;
 
 	/**
 	 * Create a new Firm context
@@ -88,6 +86,5 @@ public class MethodConstruction extends OOConstruction {
 			}
 		}
 		return ret;
-
 	}
 }

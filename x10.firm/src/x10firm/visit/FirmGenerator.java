@@ -77,8 +77,11 @@ import polyglot.types.ConstructorInstance;
 import polyglot.types.Context;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
+import polyglot.types.LocalDef;
 import polyglot.types.LocalInstance;
+import polyglot.types.LocalInstance_c;
 import polyglot.types.Name;
+import polyglot.types.Ref_c;
 import polyglot.types.Type;
 import polyglot.types.Types;
 import polyglot.util.Position;
@@ -129,6 +132,7 @@ import x10.types.X10ConstructorInstance;
 import x10.types.X10Def;
 import x10.types.X10FieldDef;
 import x10.types.X10FieldInstance;
+import x10.types.X10LocalDef_c;
 import x10.types.X10MethodDef;
 import x10.types.checker.Converter;
 import x10.types.checker.Converter.ConversionType;
@@ -268,7 +272,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		conEntity.setAtomicValue(val);
 
 		final MethodConstruction savedConstruction = initConstruction(methodEntity,  Collections.<LocalInstance>emptyList(),
-				Collections.<LocalInstance>emptyList(), Flags.STATIC, x10TypeSystem.Void(), null);
+				Collections.<LocalInstance>emptyList(), x10TypeSystem.Void(), null);
 
 		for(polyglot.ast.Initializer n : staticInitBlocks)
 			visitAppropriate(n.body());
@@ -341,32 +345,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		con.setCurrentBlock(phiBlock);
 		return con.newPhi(new Node[]{one, zero}, mode);
-	}
-
-	/**
-	 * Calculates a unique mapping between local instances and firm entities.
-	 * @param locals A list with local instances
-	 * @return The unique mapping between local instances and firm entities.
-	 */
-	private Map<LocalInstance, Entity> calculateEntityMappingForLocals(final List<LocalInstance> locals) {
-		Map<LocalInstance, Entity> map = new HashMap<LocalInstance, Entity>();
-		final firm.Type frameType = con.getGraph().getFrameType();
-		for (final LocalInstance loc : locals) {
-			if (needEntityForLocalInstance(loc) && !map.containsKey(loc)) {
-				final Entity ent = new Entity(frameType, loc.name().toString(), firmTypeSystem.asClass(loc.type()));
-				map.put(loc, ent);
-			}
-		}
-		return map;
-	}
-
-	/**
-	 * Checks if a given local instanced needs an explicit entity
-	 * @param type The type which should be checked
-	 * @return True if the given type needs an entity
-	 */
-	private boolean needEntityForLocalInstance(final LocalInstance loc) {
-		return firmTypeSystem.isFirmStructType(loc.type());
 	}
 
 	/** reset the remembered value of the returned node of an expression */
@@ -508,10 +486,11 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		final Entity entity = firmTypeSystem.getMethodEntity(methInstance);
 
+		final X10ClassType owner = clazz.classDef().asType();
+		final Type thisType = def.flags().isStatic() ? null : owner;
 		final MethodConstruction savedConstruction = initConstruction(entity,
 				methInstance.formalNames(), new LinkedList<LocalInstance>(),
-				def.flags(), methInstance.returnType(), clazz.classDef()
-						.asType());
+				methInstance.returnType(), thisType);
 
 		// Now generate the firm graph
 		visitAppropriate(block);
@@ -632,39 +611,64 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	}
 
 	/**
+	 * Checks if a given local instanced needs an explicit entity
+	 * @param type The type which should be checked
+	 * @return True if the given type needs an entity
+	 */
+	private boolean needEntityForLocalInstance(final LocalInstance loc) {
+		return firmTypeSystem.isFirmStructType(loc.type());
+	}
+
+	/**
 	 * Initializes a new construction
 	 * @param entity The method entities for which the a new construction should be initialized
 	 * @param formals The formals of the given method entity
 	 * @param locals The locals of the given method entity
-	 *
-	 * @param owner The owner of the procedure
 	 * @return A reference to the current (saved) construction
 	 */
 	public MethodConstruction initConstruction(final Entity entity, final List<LocalInstance> formals,
-			final List<LocalInstance> locals, final Flags flags, final Type retType, final X10ClassType owner) {
+			final List<LocalInstance> locals, final Type retType, final Type thisType) {
 
-		final boolean isStatic = flags.isStatic();
-		final int nVars = formals.size() + locals.size() + (isStatic ? 0 : 1);
-
-		final Graph graph = new Graph(entity, nVars);
-		final MethodConstruction savedConstruction = con;
-		con = new MethodConstruction(graph);
-
-		final Map<LocalInstance, Entity> map = calculateEntityMappingForLocals(locals);
-
-		con.returnType = retType;
-
-		final Node args = graph.getArgs();
-		if(!isStatic) {
-			assert(owner != null);
-			final firm.Type ownerFirm = firmTypeSystem.asType(owner);
-
-			/* map 'this' */
-			final Node projThis = con.newProj(args, ownerFirm.getMode(), 0);
-			con.setVariable(0, projThis);
+		int nLocalFirmVars = 0;
+		/* locals which live on the frame type do not need
+		 * firm variables numbers */
+		for (LocalInstance loc : locals) {
+			if (!needEntityForLocalInstance(loc))
+				nLocalFirmVars++;
 		}
 
-		int idx = isStatic ? 0 : 1;
+		final int nFirmVars = formals.size() + nLocalFirmVars + (thisType != null ? 1 : 0);
+		final Graph graph = new Graph(entity, nFirmVars);
+		final MethodConstruction savedConstruction = con;
+		con = new MethodConstruction(graph);
+		con.returnType = retType;
+		final firm.Type frameType = con.getGraph().getFrameType();
+
+		final Node args = graph.getArgs();
+		int idx = 0;
+		if (thisType != null) {
+			/* Create a new formal for "this" */
+			final Position pos = Position.COMPILER_GENERATED;
+			final Name name = Name.make("$this");
+			final Flags thisFlags  = Flags.NONE;
+			final Ref_c<Type> type = new Ref_c<Type>(thisType);
+			final X10LocalDef_c thisDef = new X10LocalDef_c(x10TypeSystem, pos, thisFlags, type, name);
+			final LocalInstance_c thisInstance = new LocalInstance_c(x10TypeSystem, pos, new Ref_c<LocalDef>(thisDef));
+
+			if (firmTypeSystem.isFirmStructType(thisType)) {
+				final firm.Type firmType = firmTypeSystem.asType(thisType);
+				final Entity paramEntity = Entity.createParameterEntity(frameType, idx, firmType);
+				final Node node = getEntityFromCurrentFrame(paramEntity);
+				con.setVariable(idx, node);
+			} else {
+				final Mode mode = firmTypeSystem.getFirmMode(thisType);
+				final Node projParam = con.newProj(args, mode, idx);
+				con.setVariable(idx, projParam);
+			}
+			con.setVarEntry(VarEntry.newVarEntryForLocalVariable(thisInstance, idx));
+			con.thisInstance = thisInstance;
+			++idx;
+		}
 
 		// init and map all parameters.
 		for (final LocalInstance loc : formals) {
@@ -672,7 +676,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 			if (firmTypeSystem.isFirmStructType(type)) {
 				final firm.Type firm_type = firmTypeSystem.asType(type);
-				final firm.Type frameType = graph.getFrameType();
 				final Entity paramEntity = Entity.createParameterEntity(frameType, idx, firm_type);
 				final Node node = getEntityFromCurrentFrame(paramEntity);
 				con.setVariable(idx, node);
@@ -684,22 +687,21 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 			// map the local instance with the appropriate idx.
 			con.setVarEntry(VarEntry.newVarEntryForLocalVariable(loc, idx));
-			idx++;
+			++idx;
 		}
 
 		// map all local variables.
 		for (final LocalInstance loc : locals) {
-			// map the local instance with the appropriate idx.
-			final Entity ent = map.get(loc);
-			if(ent != null) {
-				// a local struct
+			if (needEntityForLocalInstance(loc)) {
+				final Entity ent = new Entity(frameType, loc.name().toString(), firmTypeSystem.asClass(loc.type()));
 				con.setVarEntry(VarEntry.newVarEntryForStructVariable(loc, ent));
 			} else {
 				// a normal local variable
 				con.setVarEntry(VarEntry.newVarEntryForLocalVariable(loc, idx));
-				idx++;
+				++idx;
 			}
 		}
+		assert idx == nFirmVars;
 
 		return savedConstruction;
 	}
@@ -723,17 +725,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		con.finish();
 
 		con = savedConstruction;
-	}
-
-	private void constructGraph(final Entity entity, final CodeBlock code, final List<LocalInstance> formals,
-			final List<LocalInstance> locals, final Flags flags, final Type retType, final X10ClassType owner) {
-
-		final MethodConstruction savedConstruction = initConstruction(entity, formals, locals, flags, retType, owner);
-
-		// Walk body and construct graph
-		visitAppropriate(code.body());
-
-		finishConstruction(entity, savedConstruction);
 	}
 
 	private TypeParamSubst buildSubst() {
@@ -784,7 +775,14 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		// extract all formals and locals from the method.
 		final List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(dec);
-		constructGraph(entity, dec, formals, locals, flags, defInstance.returnType(), owner);
+		final Type retType = defInstance.returnType();
+		final Type thisType = flags.isStatic() ? null : owner;
+		final MethodConstruction savedConstruction = initConstruction(entity, formals, locals, retType, thisType);
+
+		// Walk body and construct graph
+		visitAppropriate(dec.body());
+
+		finishConstruction(entity, savedConstruction);
 
 		if (query.isMainMethod(def)) {
 			processMainMethod(entity);
@@ -844,12 +842,12 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		}
 
 		final List<LocalInstance> formals = instance.formalNames();
-		final X10ClassType owner = (X10ClassType) instance.container();
+		final X10ClassType        owner   = (X10ClassType) instance.container();
 
 		// extract all formals and locals from the method.
 		final List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(dec);
 
-		final MethodConstruction savedConstruction = initConstruction(entity, formals, locals, flags, instance.returnType(), owner);
+		final MethodConstruction savedConstruction = initConstruction(entity, formals, locals, instance.returnType(), owner);
 
 		// The instance variables must be initialized first
 		for(ClassMember member : initClassMembers) {
@@ -861,7 +859,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 				assert !fieldFlags.isStatic();
 
 				final FieldInstance fieldInst = fieldDecl.fieldDef().asInstance();
-				final Node objectPointer = getThis(Mode.getP());
+				final Node objectPointer = getThis();
 				final Expr expr = fieldDecl.init();
 				genFieldInstanceAssign(objectPointer, fieldInst, expr);
 			} else {
@@ -1654,21 +1652,21 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final Entity entity = firmTypeSystem.getConstructorEntity(instance);
 		final MethodType type = (MethodType) entity.getType();
 		final Node address = con.newSymConst(entity);
-
-		final int param_count = type.getNParams();
-		final Node[] parameters = new Node[param_count];
-		int p = 0;
-		parameters[p++] = getThis(Mode.getP());
-
 		final List<Expr> arguments = wrapArguments(instance.formalTypes(), n.arguments());
 
-		for(Expr expr : arguments)
-			parameters[p++] = visitExpression(expr);
+		final int argumentCount = arguments.size() + 1;
+		assert argumentCount == type.getNParams();
+		final Node[] argumentNodes = new Node[argumentCount];
+		int p = 0;
+		argumentNodes[p++] = getThis();
 
-		assert(p == param_count);
+		for(Expr expr : arguments)
+			argumentNodes[p++] = visitExpression(expr);
+
+		assert p == argumentCount;
 
 		final Node mem = con.getCurrentMem();
-		final Node call = con.newCall(mem, address, parameters, type);
+		final Node call = con.newCall(mem, address, argumentNodes, type);
 		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
 
 		con.setCurrentMem(newMem);
@@ -1711,21 +1709,21 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		return sel;
 	}
 
+	private Node getLocalValue(LocalInstance loc) {
+		final VarEntry var = con.getVarEntry(loc);
+
+		if(var.getType() == VarEntry.STRUCT) {
+			return getEntityFromCurrentFrame(var.getEntity());
+		}
+		final int idx = var.getIdx();
+		return con.getVariable(idx, firmTypeSystem.getFirmMode(loc.type()));
+	}
+
 	@Override
 	public void visit(Local_c n) {
 		final LocalInstance loc = n.localInstance();
-
-		final VarEntry var = con.getVarEntry(loc);
-		assert var != null : "local instance '"+loc+"' not found in firm context";
-
-		if(var.getType() == VarEntry.STRUCT) {
-			final Node ret = getEntityFromCurrentFrame(var.getEntity());
-			setReturnNode(ret);
-		} else {
-			final int idx = var.getIdx();
-			final Node ret = con.getVariable(idx, firmTypeSystem.getFirmMode(loc.type()));
-			setReturnNode(ret);
-		}
+		final Node node = getLocalValue(loc);
+		setReturnNode(node);
 	}
 
 	private Node genAlloc(final firm.Type type, final ir_where_alloc where) {
@@ -1774,6 +1772,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	/**
 	 * Generate the appropriate nodes for a constructor call
 	 * @param objectThisNode The this pointer for the constructor call (implicit first parameter)
+	 *        may be null if no this pointer is necessary.
 	 * @param instance The constructor instance
 	 * @param args The arguments of the constructor call (without the implicit this pointer)
 	 */
@@ -1797,9 +1796,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	/**
 	 * Generate firm graph for a new call
-	 * @param objectThisNode The firm node of the "this" pointer. "null" if the "this" pointer was not allocated yet.
-	 *    1.) var x: MyStruct = new MyStruct(); -> "x" will be used as the "this" pointer.
-	 *    2.) new MyStruct(); -> no preallocated "this" pointer -> create a new one.
 	 * @param n The "new" node
 	 */
 	private void genNew(final Node objectThisNode, final New_c n) {
@@ -2022,15 +2018,14 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		setReturnNode(ret);
 	}
 
-	private Node getThis(Mode mode) {
-		return con.getVariable(0, mode);
+	private Node getThis() {
+		return getLocalValue(con.thisInstance);
 	}
 
 	@Override
 	public void visit(X10Special_c n) {
 		if (n.kind() == Special.THIS) {
-			firm.Mode mode = firmTypeSystem.getFirmMode(n.type());
-			final Node thisPointer = getThis(mode);
+			final Node thisPointer = getThis();
 			setReturnNode(thisPointer);
 		} else {
 			throw new CodeGenError("Special not implemented yet", n);
@@ -2186,7 +2181,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final List<Expr> args = n.arguments();
 		assert properties.size() == args.size();
 
-		final Node thisPointer = getThis(Mode.getP());
+		final Node thisPointer = getThis();
 		for(int i = 0; i < properties.size(); i++) {
 			final FieldInstance field = properties.get(i);
 			final Expr expr = args.get(i);
@@ -2220,9 +2215,10 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	         * To avoid unnecessary dynamic delegation calls we can and will do a static method call on the boxed field.
 	         */
 
+	        final Type thisType = flags.isStatic() ? null : boxType;
 			final MethodConstruction savedConstruction = initConstruction(entity,
-					m.formalNames(), new LinkedList<LocalInstance>(), flags,
-					m.returnType(), boxType);
+					m.formalNames(), new LinkedList<LocalInstance>(),
+					m.returnType(), thisType);
 
 	        // The receiver of the delegated method call -> the boxed value
 	        final Expr bxdField = xnf.Field(pos, xnf.This(pos).type(boxType), xnf.Id(pos, boxedField.name())).fieldInstance(boxedField).type(boxedType);
@@ -2576,7 +2572,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	}
 
 	/**
-	 * TODO:  Implement.
 	 * Just a stub implementation for now.
 	 */
 	@Override

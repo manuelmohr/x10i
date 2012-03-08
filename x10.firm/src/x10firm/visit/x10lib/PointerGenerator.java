@@ -38,8 +38,10 @@ public class PointerGenerator extends NativeGenericDispatcher {
 
 			assert formals.size() == 0;
 
+			final Type returnType = meth.returnType();
+			final Type thisType = meth.flags().isStatic() ? null : owner;
 			final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
-					meth.flags(), meth.returnType(), owner);
+					returnType, thisType);
 
 			MethodConstruction con = codeGenerator.getFirmConstruction();
 			final Mode parMode = firmTypeSystem.getFirmMode(typeParameter);
@@ -98,8 +100,10 @@ public class PointerGenerator extends NativeGenericDispatcher {
 			assert formals.size() == 1;
 			final LocalInstance val = formals.get(0);
 
+			final Type returnType = meth.returnType();
+			final Type thisType = meth.flags().isStatic() ? null : owner;
 			final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
-					meth.flags(), meth.returnType(), owner);
+					returnType, thisType);
 
 			MethodConstruction con = codeGenerator.getFirmConstruction();
 			final VarEntry var_val = con.getVarEntry(val);
