@@ -42,7 +42,7 @@ void _ZN9SimpleLib5printEh(x10_ubyte v)
 	printf("%"PRIx10_ubyte"\n", v);
 }
 
-void _ZN9SimpleLib5printEDi(x10_char v)
+void _ZN9SimpleLib5printEc(x10_char v)
 {
 	printf("%"PRIx10_char"\n", v);
 }

@@ -71,6 +71,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedClassNames.add("x10/lang/Double.x10");
 		allowedClassNames.add("x10/lang/Char.x10");
 		allowedClassNames.add("x10/lang/Pointer.x10");
+		allowedClassNames.add("x10/lang/String.x10");
 
 		allowedClassNames.add("x10/lang/LongRange.x10");
 

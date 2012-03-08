@@ -75,6 +75,8 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
         return false;
     }
 
+    public native def equals(other:String): boolean;
+
     /**
      * Returns true if this String is equal to the given String, ignoring case considerations.
      * @param x the given String
@@ -147,18 +149,18 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      *         whose contents are initialized to contain the Chars in this String.
      * @see #bytes()
      */
-    @Native("java", "x10.core.ArrayFactory.<x10.core.Char>makeArrayFromJavaArray(x10.rtt.Types.CHAR, (#this).toCharArray())")
-    @Native("c++", "(#this)->chars()")
-    public native def chars():Rail[Char];
+    //@Native("java", "x10.core.ArrayFactory.<x10.core.Char>makeArrayFromJavaArray(x10.rtt.Types.CHAR, (#this).toCharArray())")
+    //@Native("c++", "(#this)->chars()")
+    //public native def chars():Rail[Char];
 
     /**
      * Encodes this String into a sequence of Bytes using the platform's default charset.
      * @return the Array of Bytes representing this String in the default charset.
      * @see #chars()
      */
-    @Native("java", "x10.core.ArrayFactory.<java.lang.Byte>makeArrayFromJavaArray(x10.rtt.Types.BYTE, (#this).getBytes())")
-    @Native("c++", "(#this)->bytes()")
-    public native def bytes():Rail[Byte];
+    //@Native("java", "x10.core.ArrayFactory.<java.lang.Byte>makeArrayFromJavaArray(x10.rtt.Types.BYTE, (#this).getBytes())")
+    //@Native("c++", "(#this)->bytes()")
+    //public native def bytes():Rail[Byte];
 
     /**
      * Returns a new String that is a substring of this String.
@@ -362,7 +364,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param split the String to use as a delimiter.
      * @return the Array of Strings computed by splitting this String around matches of the delimiter.
      */
-    public native def split(regex: String):Rail[String];
+    //public native def split(regex: String):Rail[String];
 
 
     /**

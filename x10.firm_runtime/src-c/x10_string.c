@@ -139,7 +139,7 @@ x10_char _ZN3x104lang6StringapplyEi(const x10_string *self, x10_int idx)
 }
 
 // String.indexOf(char, int)
-x10_int _ZN3x104lang6String7indexOfEDii(const x10_string *self, x10_char needle, x10_int idx)
+x10_int _ZN3x104lang6String7indexOfEci(const x10_string *self, x10_char needle, x10_int idx)
 {
 	if (idx < 0)
 		idx = 0;
@@ -152,9 +152,9 @@ x10_int _ZN3x104lang6String7indexOfEDii(const x10_string *self, x10_char needle,
 }
 
 // String.indexOf(char)
-x10_int _ZN3x104lang6String7indexOfEDi(const x10_string *self, x10_char c)
+x10_int _ZN3x104lang6String7indexOfEc(const x10_string *self, x10_char c)
 {
-	return _ZN3x104lang6String7indexOfEDii(self, c, 0);
+	return _ZN3x104lang6String7indexOfEci(self, c, 0);
 }
 
 // String.indexOf(String, int)
@@ -168,7 +168,8 @@ x10_int _ZN3x104lang6String7indexOfEPN3x104lang6StringEi(const x10_string *self,
 	const x10_int   len        = self->len;
 	const x10_char *needle     = other->chars;
 	const x10_int   needle_len = other->len;
-	for (const x10_char *haystack = &self->chars[idx]; idx < (len-needle_len+1); ++idx) {
+	for ( ; idx < (len-needle_len+1); ++idx) {
+		const x10_char *haystack = &self->chars[idx];
 		if (equals(haystack, needle, needle_len))
 			return idx;
 	}
@@ -182,7 +183,7 @@ x10_int _ZN3x104lang6String7indexOfEPN3x104lang6StringE(const x10_string *self, 
 }
 
 // String.lastIndexOf(char, int)
-x10_int _ZN3x104lang6String11lastIndexOfEDii(const x10_string *self, x10_char needle, x10_int idx)
+x10_int _ZN3x104lang6String11lastIndexOfEci(const x10_string *self, x10_char needle, x10_int idx)
 {
 	const x10_int len = self->len;
 	if (idx >= len)
@@ -196,9 +197,9 @@ x10_int _ZN3x104lang6String11lastIndexOfEDii(const x10_string *self, x10_char ne
 }
 
 // String.lastIndexOf(char)
-x10_int _ZN3x104lang6String11lastIndexOfEDi(const x10_string *self, x10_char c)
+x10_int _ZN3x104lang6String11lastIndexOfEc(const x10_string *self, x10_char c)
 {
-	return _ZN3x104lang6String11lastIndexOfEDii(self, c, self->len-1);
+	return _ZN3x104lang6String11lastIndexOfEci(self, c, self->len-1);
 }
 
 // String.lastIndexOf(String, idx)
@@ -213,7 +214,8 @@ x10_int _ZN3x104lang6String11lastIndexOfEPN3x104lang6StringEi(const x10_string *
 	/* TODO: use a less naive implementation */
 	idx -= needle_len-1;
 	const x10_char *needle = other->chars;
-	for (const x10_char *haystack = &self->chars[idx]; idx >= 0; --idx) {
+	for ( ; idx >= 0; --idx) {
+		const x10_char *haystack = &self->chars[idx];
 		if (equals(haystack, needle, needle_len))
 			return idx;
 	}
@@ -288,10 +290,10 @@ x10_string *_ZN3x104lang6String4trimEv(const x10_string *self)
 	}
 	x10_int end;
 	for (end = len; end-- > 0;) {
-		if (!_ZN3x104lang4Char12isWhitespaceEv(chars[begin]))
+		if (!_ZN3x104lang4Char12isWhitespaceEv(chars[end]))
 			break;
 	}
-	return x10_string_copy_from(end-begin, &chars[begin]);
+	return x10_string_copy_from(end-begin+1, &chars[begin]);
 }
 
 // String.toLowerCase(): String
