@@ -182,27 +182,27 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	private static final Charset UTF8 = Charset.forName("UTF8");
 
-	private static final NativeGenericSupport gen_support = new NativeGenericSupport();
+	private static final NativeGenericSupport genSupport = new NativeGenericSupport();
 
 	/** The current method construction object */
-	MethodConstruction con;
+	private MethodConstruction con;
 
 	private List<ClassMember> initClassMembers;
 
-	/** To return Firm nodes for constructing expressions */
+	/** This is the "return-value" of visitor functions handling expressions. */
 	private Node returnNode;
 
 	/** X10 Context */
 	private Context x10Context;
 
 	/** Our firm type system */
-	final FirmTypeSystem firmTypeSystem;
+	private final FirmTypeSystem firmTypeSystem;
 
 	/** The X10 type system */
-	final GenericTypeSystem x10TypeSystem;
+	private final GenericTypeSystem x10TypeSystem;
 
 	/** Our node factory */
-	final X10NodeFactory_c xnf;
+	private final X10NodeFactory_c xnf;
 
 	/** Our own AST query */
 	private final ASTQuery query;
@@ -211,10 +211,10 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	private CompilerOptions options;
 
 	/** holds all static initializer blocks */
-	private static List<polyglot.ast.Initializer> static_init_blocks = new LinkedList<polyglot.ast.Initializer>();
+	private static List<polyglot.ast.Initializer> staticInitBlocks = new LinkedList<polyglot.ast.Initializer>();
 
 	/* Static Non generic members in generic classes can be only visited once. */
-	private Set<ClassMember> static_non_generic_members = new HashSet<ClassMember>();
+	private Set<ClassMember> staticMonGenericMembers = new HashSet<ClassMember>();
 	private X10ConstructorInstance stringLiteralConstructor;
 
 	/**
@@ -247,33 +247,33 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	/** Generate the static initialization constructor */
 	private void genStaticInitializationSupportCode() {
 		// get the "constructor" segment and then put the static initialization code in the "constructor" segment.
-		final ClassType con_segment = Program.getSegmentType(ir_segment_t.IR_SEGMENT_CONSTRUCTORS.val);
+		final ClassType conSegment = Program.getSegmentType(ir_segment_t.IR_SEGMENT_CONSTRUCTORS.val);
 
 		final firm.Type[] parameterTypes = new firm.Type[0];
 		final firm.Type[] resultTypes = new firm.Type[0];
 
-		final firm.Type method_type = new MethodType(parameterTypes, resultTypes);
+		final firm.Type methodType = new MethodType(parameterTypes, resultTypes);
 		final String name = NameMangler.mangleKnownName(X10_STATIC_INITIALIZER);
-		final Entity method_entity = new Entity(Program.getGlobalType(), name, method_type);
-		final firm.Type ptr_method_type = new PointerType(method_type);
+		final Entity methodEntity = new Entity(Program.getGlobalType(), name, methodType);
+		final firm.Type ptrMethodType = new PointerType(methodType);
 
-		final Entity con_entity = new Entity(con_segment, "$ctor", ptr_method_type);
+		final Entity conEntity = new Entity(conSegment, "$ctor", ptrMethodType);
 		final Graph graph = Program.getConstCodeGraph();
-		final Node val = graph.newSymConst(method_entity);
+		final Node val = graph.newSymConst(methodEntity);
 
-		con_entity.setLdIdent(name);
-		con_entity.setCompilerGenerated(true);
-		con_entity.setVisibility(ir_visibility.ir_visibility_private);
-		con_entity.setLinkage(ir_linkage.IR_LINKAGE_HIDDEN_USER.val | ir_linkage.IR_LINKAGE_CONSTANT.val);
-		con_entity.setAtomicValue(val);
+		conEntity.setLdIdent(name);
+		conEntity.setCompilerGenerated(true);
+		conEntity.setVisibility(ir_visibility.ir_visibility_private);
+		conEntity.setLinkage(ir_linkage.IR_LINKAGE_HIDDEN_USER.val | ir_linkage.IR_LINKAGE_CONSTANT.val);
+		conEntity.setAtomicValue(val);
 
-		final MethodConstruction savedConstruction = initConstruction(method_entity,  Collections.<LocalInstance>emptyList(),
+		final MethodConstruction savedConstruction = initConstruction(methodEntity,  Collections.<LocalInstance>emptyList(),
 				Collections.<LocalInstance>emptyList(), Flags.STATIC, x10TypeSystem.Void(), null);
 
-		for(polyglot.ast.Initializer n : static_init_blocks)
+		for(polyglot.ast.Initializer n : staticInitBlocks)
 			visitAppropriate(n.body());
 
-		finishConstruction(method_entity, savedConstruction);
+		finishConstruction(methodEntity, savedConstruction);
 	}
 
 	// This queue holds a list of nodes (either MethodDecls or ClassDecls)
@@ -561,8 +561,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			if(def.typeParameters().isEmpty()) {
 				if(def.flags().isStatic()) {
 					// visit static non generic methods in generic classes only once
-					if(!static_non_generic_members.contains(member)) {
-						static_non_generic_members.add(member);
+					if(!staticMonGenericMembers.contains(member)) {
+						staticMonGenericMembers.add(member);
 						visitAppropriate(member);
 						return;
 					}
@@ -574,8 +574,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final X10FieldDecl fd = (X10FieldDecl)member;
 			final X10FieldDef def = fd.fieldDef();
 			if(def.flags().isStatic()) {
-				if(!static_non_generic_members.contains(member)) {
-					static_non_generic_members.add(member);
+				if(!staticMonGenericMembers.contains(member)) {
+					staticMonGenericMembers.add(member);
 					visitAppropriate(member);
 				}
 			} else {
@@ -775,8 +775,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		if (flags.isNative() || flags.isAbstract()) {
 			if(flags.isNative() && hasTypeParameters) {
-				boolean dispatch_ok = gen_support.dispatch(this, methodInstance, formals);
-				assert dispatch_ok;
+				final boolean dispatchOk = genSupport.dispatch(this, methodInstance, formals);
+				assert dispatchOk;
 			}
 			// native code is defined elsewhere, so nothing left to do
 			return;
@@ -1926,12 +1926,12 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	}
 
 	private Entity createStringEntity(String value) {
-		final ClassType global_type = Program.getGlobalType();
-		final firm.Type elem_type = firmTypeSystem.asType(x10TypeSystem.Char());
-		final ArrayType type = new ArrayType(1, elem_type);
+		final ClassType globalType = Program.getGlobalType();
+		final firm.Type elemType = firmTypeSystem.asType(x10TypeSystem.Char());
+		final ArrayType type = new ArrayType(1, elemType);
 
 		final Ident id = Ident.createUnique("x10_str.%u");
-		final Entity ent = new Entity(global_type, id, type);
+		final Entity ent = new Entity(globalType, id, type);
 		ent.setLdIdent(id);
 
 		ent.setVisibility(ir_visibility.ir_visibility_private);
@@ -1943,7 +1943,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		final Initializer init = new Initializer(value.length());
 		final byte[] bytes = value.getBytes(UTF8);
-		final Mode mode = elem_type.getMode();
+		final Mode mode = elemType.getMode();
 		for (int i = 0; i < bytes.length; ++i) {
 			final TargetValue tv = new TargetValue(bytes[i], mode);
 			final Initializer val = new Initializer(tv);
@@ -2569,7 +2569,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(Initializer_c n) {
 		if (n.flags().flags().isStatic()) {
-			static_init_blocks.add(n);
+			staticInitBlocks.add(n);
 		} else {
 			throw new CodeGenError("Non-static initializer not implemented yet", n);
 		}
