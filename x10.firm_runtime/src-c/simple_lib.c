@@ -65,4 +65,5 @@ void _ZN9SimpleLib5printEb(x10_boolean v)
 void _ZN9SimpleLib5printEPN3x104lang6StringE(x10_string *str)
 {
 	x10_write_block(str->chars, str->len);
+	putchar('\n');
 }
