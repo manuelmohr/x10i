@@ -1380,12 +1380,26 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		con.setCurrentBlock(bCond);
 
-		evaluateCondition(n.cond(), bTrue, bFalse);
+		/* argh! X10 does not check for missing return statements behind
+		 * loops that it can prove to be endless
+		 * let's hope we can prove the same here... */
+		if (n.condIsConstantTrue()) {
+			final Node jmp = con.newJmp();
+			bTrue.addPred(jmp);
+			con.getGraph().keepAlive(bCond);
+		} else {
+			evaluateCondition(n.cond(), bTrue, bFalse);
+		}
 
 		bTrue.mature();
 		bFalse.mature();
 
-		con.setCurrentBlock(bFalse);
+		/* more fixup for X10 endless loop detection */
+		if (bFalse.getPredCount() == 0) {
+			con.setCurrentBlockBad();
+		} else {
+			con.setCurrentBlock(bFalse);
+		}
 	}
 
 	@Override
@@ -1400,7 +1414,16 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		bCond.addPred(con.newJmp());
 		con.setCurrentBlock(bCond);
 
-		evaluateCondition(n.cond(), bTrue, bFalse);
+		/* argh! X10 does not check for missing return statements behind
+		 * loops that it can prove to be endless
+		 * let's hope we can prove the same here... */
+		if (n.condIsConstantTrue()) {
+			final Node jmp = con.newJmp();
+			bTrue.addPred(jmp);
+			con.getGraph().keepAlive(bCond);
+		} else {
+			evaluateCondition(n.cond(), bTrue, bFalse);
+		}
 		bTrue.mature();
 
 		con.setCurrentBlock(bTrue);
@@ -1428,7 +1451,12 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			bCond.addPred(con.newJmp());
 		bCond.mature();
 
-		con.setCurrentBlock(bFalse);
+		/* more fixup for X10 endless loop detection */
+		if (bFalse.getPredCount() == 0) {
+			con.setCurrentBlockBad();
+		} else {
+			con.setCurrentBlock(bFalse);
+		}
 	}
 
 	@Override
@@ -1448,11 +1476,16 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		bCond.addPred(con.newJmp());
 		con.setCurrentBlock(bCond);
 
-		Expr cond = n.cond();
-		if(cond == null) {
-			cond = xnf.BooleanLit(Position.COMPILER_GENERATED, true);
+		/* argh! X10 does not check for missing return statements behind
+		 * loops that it can prove to be endless
+		 * let's hope we can prove the same here... */
+		if (n.cond() == null || n.condIsConstantTrue()) {
+			final Node jmp = con.newJmp();
+			bTrue.addPred(jmp);
+			con.getGraph().keepAlive(bCond);
+		} else {
+			evaluateCondition(n.cond(), bTrue, bFalse);
 		}
-		evaluateCondition(cond, bTrue, bFalse);
 		bTrue.mature();
 
 		con.setCurrentBlock(bTrue);
@@ -1487,7 +1520,12 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		bCond.mature();
 
-		con.setCurrentBlock(bFalse);
+		/* more fixup for X10 endless loop detection */
+		if (bFalse.getPredCount() == 0) {
+			con.setCurrentBlockBad();
+		} else {
+			con.setCurrentBlock(bFalse);
+		}
 	}
 
 	@Override
