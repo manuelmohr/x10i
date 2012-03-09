@@ -5,13 +5,12 @@ import java.util.List;
 import java.util.Map;
 
 import polyglot.types.FieldInstance;
-import polyglot.types.Flags;
-import polyglot.types.LocalInstance;
-import polyglot.types.Package;
+import polyglot.types.Name;
+import polyglot.types.QName;
 import polyglot.types.Type;
-import polyglot.types.TypeObject;
 import polyglot.util.UniqueID;
 import x10.types.MethodInstance;
+import x10.types.ParameterType;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 import x10firm.CompilerOptions;
@@ -20,6 +19,10 @@ import x10firm.visit.CodeGenError;
 
 /**
  * Name mangler which mangles X10 type objects to unique names
+ *
+ * The mangling attempts to be as close as possible to the C++ Itanium ABI
+ * which is used by many c++ compilers:
+ *   http://sourcery.mentor.com/public/cxx-abi/abi.html
  */
 public class NameMangler {
 
@@ -36,7 +39,7 @@ public class NameMangler {
 	/**
 	 * Substitution table for method names.
 	 */
-	private static Map<String, String> nameSubst = new HashMap<String, String>();
+	private static Map<String, String> binOpSubst = new HashMap<String, String>();
 
 	/**
 	 * Substitution table for unary operators.
@@ -50,92 +53,78 @@ public class NameMangler {
 
 	private static String PLATFORM_PREFIX = "";
 	private static final String MANGLE_PREFIX = "_Z";
-	private static final String MANGLE_SUFFIX = "";
-	private static final String QUAL_START = "N";
-	private static final String QUAL_END = "E";
-	private static final String TYPEARG_START = "I";
-	private static final String TYPEARG_END = "E";
-	private static final String MANGLED_VOID_TYPE = "v";
-	private static final String MANGLED_POINTER_REF = "P";
+	private static final char   QUAL_START = 'N';
+	private static final char   QUAL_END = 'E';
+	private static final char   TYPEARG_START = 'I';
+	private static final char   TYPEARG_END = 'E';
+	private static final char   MANGLE_QUALIFIER_POINTER = 'P';
 	private static final String MANGLED_CONSTRUCTOR = "C1";
-	private static final String MANGLED_THIS = "C1";
 	private static final String MANGLED_VTABLE = "TV";
 	private static final String MANGLED_TYPEINFO = "TI";
 
 	private static final String MANGLED_ANONYMOUS_CLASS_PREFIX = "$ANONYMOUS";
 
-	/**
-	 * Initializes name substitutions for unary operators
-	 */
-	private static void setupUnOpSubstitutions() {
-		unOpSubst.put("operator+", "ps");
-		unOpSubst.put("operator-", "ng");
-		// There are no substitutions in the spec for the following unary! operators
-		// -> our own additions
-		unOpSubst.put("operator~", "v3uti");
+	/** static class no need to instantiate it */
+	private NameMangler() {
 	}
 
 	/**
 	 * Initializes name substitutions
 	 */
 	private static void setupNameSubstitutions() {
+		unOpSubst.put("operator~", "co");
+		unOpSubst.put("operator+", "ps");
+		unOpSubst.put("operator-", "ng");
+
 		/* the following substitutions should be the same as in the C++ (itanium) ABI */
-		nameSubst.put("operator~",   "co");
-		nameSubst.put("operator+",   "pl");
-		nameSubst.put("operator-",   "mi");
-		nameSubst.put("operator*",   "ml");
-		nameSubst.put("operator/",   "dv");
-		nameSubst.put("operator%",   "rm");
-		nameSubst.put("operator&",   "an");
-		nameSubst.put("operator|",   "or");
-		nameSubst.put("operator^",   "eo");
-		nameSubst.put("operator=",   "aS");
-		nameSubst.put("operator+=",  "pL");
-		nameSubst.put("operator-=",  "mI");
-		nameSubst.put("operator*=",  "mL");
-		nameSubst.put("operator/=",  "dV");
-		nameSubst.put("operator%=",  "rM");
-		nameSubst.put("operator&=",  "aN");
-		nameSubst.put("operator|=",  "oR");
-		nameSubst.put("operator^=",  "eO");
-		nameSubst.put("operator<<",  "ls");
-		nameSubst.put("operator>>",  "rs");
-		nameSubst.put("operator<<=", "lS");
-		nameSubst.put("operator>>=", "rS");
-		nameSubst.put("operator==",  "eq");
-		nameSubst.put("operator!=",  "ne");
-		nameSubst.put("operator<",   "lt");
-		nameSubst.put("operator>",   "gt");
-		nameSubst.put("operator<=",  "le");
-		nameSubst.put("operator>=",  "ge");
-		nameSubst.put("operator!",   "nt");
-		nameSubst.put("operator&&",  "aa");
-		nameSubst.put("operator||",  "oo");
-		nameSubst.put("operator++",  "pp");
-		nameSubst.put("operator--",  "mm");
-		nameSubst.put("operator->",  "pt");
+		binOpSubst.put("operator+",   "pl");
+		binOpSubst.put("operator-",   "mi");
+		binOpSubst.put("operator*",   "ml");
+		binOpSubst.put("operator/",   "dv");
+		binOpSubst.put("operator%",   "rm");
+		binOpSubst.put("operator&",   "an");
+		binOpSubst.put("operator|",   "or");
+		binOpSubst.put("operator^",   "eo");
+		binOpSubst.put("operator=",   "aS");
+		binOpSubst.put("operator+=",  "pL");
+		binOpSubst.put("operator-=",  "mI");
+		binOpSubst.put("operator*=",  "mL");
+		binOpSubst.put("operator/=",  "dV");
+		binOpSubst.put("operator%=",  "rM");
+		binOpSubst.put("operator&=",  "aN");
+		binOpSubst.put("operator|=",  "oR");
+		binOpSubst.put("operator^=",  "eO");
+		binOpSubst.put("operator<<",  "ls");
+		binOpSubst.put("operator>>",  "rs");
+		binOpSubst.put("operator<<=", "lS");
+		binOpSubst.put("operator>>=", "rS");
+		binOpSubst.put("operator==",  "eq");
+		binOpSubst.put("operator!=",  "ne");
+		binOpSubst.put("operator<",   "lt");
+		binOpSubst.put("operator>",   "gt");
+		binOpSubst.put("operator<=",  "le");
+		binOpSubst.put("operator>=",  "ge");
+		binOpSubst.put("operator!",   "nt");
+		binOpSubst.put("operator&&",  "aa");
+		binOpSubst.put("operator||",  "oo");
+		binOpSubst.put("operator++",  "pp");
+		binOpSubst.put("operator--",  "mm");
+		binOpSubst.put("operator->",  "pt");
+		binOpSubst.put("operator()",  "ix");
+		/* this are our own additions */
+		binOpSubst.put("operator>>>", "v3rbs");
+		binOpSubst.put("operator()=", "v3aps");
 
 		/* inverse operators -> same as the upper operators with a 'v' <digit> 'i' prefix
 		 * our own additions
 		 */
 		Map<String, String> invNameSubs = new HashMap<String, String>();
-		for(String key : nameSubst.keySet())
-			invNameSubs.put("inverse_" + key, "v3i" + nameSubst.get(key));
+		for(String key : binOpSubst.keySet())
+			invNameSubs.put("inverse_" + key, "v" + (key.length()+1) + "i" + binOpSubst.get(key));
+		binOpSubst.putAll(invNameSubs);
 
-		/* this are our own additions */
-		nameSubst.put("operator>>>", "v3rbs");
-		nameSubst.put("operator()=", "v3aps");
-		nameSubst.put("operator()",  "apply");
-
-		nameSubst.putAll(invNameSubs);
-
-		nameSubst.put("operator_as", "cv");
-		// operator_as and implicit_operator_as must be distinct because you can have
-		// both operator definitions in a class
-		nameSubst.put("implicit_operator_as", "v3icv");
-
-		/* constructor */
-		nameSubst.put("this", MANGLED_THIS);
+		/* note: "cv" and "vXcv" are not here because they need the destination
+		 * type mangled as part of their name */
 	}
 
 	/**
@@ -155,7 +144,7 @@ public class NameMangler {
 		primMangleTable.put(x10TypeSystem.Double(),  "d");
 		primMangleTable.put(x10TypeSystem.Boolean(), "b");
 		primMangleTable.put(x10TypeSystem.Pointer(), "Pv");
-		primMangleTable.put(x10TypeSystem.Void(),    MANGLED_VOID_TYPE);
+		primMangleTable.put(x10TypeSystem.Void(),    "v");
 	}
 
 	/**
@@ -164,7 +153,6 @@ public class NameMangler {
 	 */
 	public static void setup(final GenericTypeSystem x10TypeSystem_, final CompilerOptions options) {
 		x10TypeSystem = x10TypeSystem_;
-		setupUnOpSubstitutions();
 		setupNameSubstitutions();
 		setupPrimitiveTypesNameMangling();
 		final MachineTriple target = options.getTargetTriple();
@@ -174,404 +162,283 @@ public class NameMangler {
 	}
 
 	/**
-	 * Tries to mangle a given primitive type
-	 * @param type The primitive type which should be mangled
-	 * @return The mangled name of the given primitive type or null if no mangling was set for the given primitive type
+	 * Mangles a given identifier
 	 */
-	private static String tryPrimitiveType(final Type type) {
-		return primMangleTable.get(type);
-	}
-
-	/**
-	 * Tries to mangle a given string
-	 * @param name The string which should be mangled
-	 * @return The mangled name of the given string or null if no name substitution was set for the given string
-	 */
-	private static String tryNameSubsitution(final String name) {
-		return nameSubst.get(name);
-	}
-
-	/**
-	 * Tries to mangle a given string (unary)
-	 * @param name The string which should be mangled
-	 * @return The mangled name of the given string or null if no name substitution was set for the given string
-	 */
-	private static String tryUnOpSubsitution(final String name) {
-		return unOpSubst.get(name);
-	}
-
-	/**
-	 * Mangles a given string
-	 * @param name The string which should be mangled
-	 * @return The mangled name of the given string
-	 */
-	private static String mangleName(final String name) {
-		StringBuilder buf = new StringBuilder();
+	private static void mangleIdentifier(final StringBuilder buf,
+			final String name) {
 		buf.append(name.length());
 		for (int i = 0; i < name.length(); ++i) {
 			char c = name.charAt(i);
-			if(c == '$') buf.append("_");
-			else buf.append(c);
+			if(c == '$') {
+				c = '_';
+			/**
+			 * As of X10 2.2.0 and thanks to XTENLANG-1647, a space is inserted
+			 * into the class name in x10.compiler/src/x10/util/ClosureSynthesizer.java
+			 *
+			 * As a quick fix, we translate this into a dollar sign.
+			 */
+			} else if (c == ' ') {
+				c = '$';
+			}
+			buf.append(c);
 		}
-		return buf.toString();
+	}
+
+	private static void mangleName(final StringBuilder buf,
+			final Name name) {
+		mangleIdentifier(buf, name.toString());
+	}
+
+	private static void mangleQName(final StringBuilder buf,
+			final QName qname) {
+		final QName prefix = qname.qualifier();
+		if (prefix != null)
+			mangleQName(buf, prefix);
+		mangleName(buf, qname.name());
+	}
+
+	private static void mangleTypeParameterInstantiation(final StringBuilder buf,
+			final List<ParameterType> typeParameters) {
+		if (typeParameters == null || typeParameters.size() == 0)
+			return;
+		buf.append(TYPEARG_START);
+		for (Type typeParameter : typeParameters) {
+			final Type concrete = x10TypeSystem.getConcreteType(typeParameter);
+			mangleType(buf, concrete);
+		}
+		buf.append(TYPEARG_END);
+	}
+
+	private static void mangleTypeArguments(final StringBuilder buf,
+			final List<Type> typeArguments) {
+		if (typeArguments == null || typeArguments.size() == 0)
+			return;
+		buf.append(TYPEARG_START);
+		for (Type typeArgument : typeArguments) {
+			mangleType(buf, typeArgument);
+		}
+		buf.append(TYPEARG_END);
+	}
+
+	private static void mangleAnonymousClassName(final StringBuilder buf,
+			final X10ClassType clazz) {
+		String name = anonymousClassNames.get(clazz);
+		if(name == null) {
+			name = UniqueID.newID(MANGLED_ANONYMOUS_CLASS_PREFIX);
+			anonymousClassNames.put(clazz, name);
+		}
+		buf.append(name);
+	}
+
+	private static void mangleClassName(final StringBuilder buf,
+			final X10ClassType type) {
+		if (type.isAnonymous()) {
+			mangleAnonymousClassName(buf, type);
+		} else {
+			mangleQName(buf, type.fullName());
+		}
+	}
+
+	/**
+	 * Mangles the name of a class and type arguments.
+	 * You may still append method/field names after calling this.
+	 */
+	private static void mangleClass(final StringBuilder buf,
+			final X10ClassType type) {
+		if (type.isMember()) {
+			final X10ClassType outer = (X10ClassType)type.outer();
+			mangleClass(buf, outer);
+		}
+		mangleClassName(buf, type);
+		/* currently the generic code handling is a strange hybrid, sometimes
+		 * it uses reinstantiated MethodInstances, sometimes it does not do so
+		 * and expects us to output the current mapping of type parameters.
+		 */
+		final List<Type> typeArguments = type.typeArguments();
+		if (typeArguments != null) {
+			mangleTypeArguments(buf, typeArguments);
+		} else {
+			final List<ParameterType> typeParameters = type.def().typeParameters();
+			mangleTypeParameterInstantiation(buf, typeParameters);
+		}
+	}
+
+	private static void mangleClassWithoutTypeArguments(
+			final StringBuilder buf, final X10ClassType type) {
+		if (type.isMember()) {
+			final X10ClassType outer = (X10ClassType)type.outer();
+			mangleClassWithoutTypeArguments(buf, outer);
+		}
+		mangleClassName(buf, type);
+	}
+
+	/** Mangles a complete class type */
+	private static void mangleClassType(final StringBuilder buf,
+			final X10ClassType type) {
+		/* for aesthetic reasons and because the gnu java compiler does it
+		 * similar we encode the class references as C++ pointers. The problem
+		 * with that is that we have to replicate the logic of what is a
+		 * reference and what isn't here */
+		if (!x10TypeSystem.isStructType0(type))
+			buf.append(MANGLE_QUALIFIER_POINTER);
+		buf.append(QUAL_START);
+		mangleClass(buf, type);
+		buf.append(QUAL_END);
+	}
+
+	/**
+	 * Mangle a given type
+	 */
+	private static void mangleType(final StringBuilder buf, final Type pType) {
+		Type type = GenericTypeSystem.simplifyType(pType);
+		if (type.isParameterType()) {
+			type = x10TypeSystem.getConcreteType(type);
+		}
+		String prim = primMangleTable.get(type);
+		if (prim != null) {
+			buf.append(prim);
+			return;
+		}
+
+		if (type instanceof X10ClassType) {
+			mangleClassType(buf, (X10ClassType) type);
+			return;
+		}
+		throw new CodeGenError("Unknown type in mangleType " + pType.getClass() + ": " + pType, pType.position());
+	}
+
+	private static void mangleFormals(final StringBuilder buf,
+			final List<Type> formals) {
+		if (formals.size() == 0) {
+			buf.append("v");
+			return;
+		}
+		for (Type type : formals) {
+			mangleType(buf, type);
+		}
 	}
 
 	/**
 	 * Mangles a given method name
-	 * @param name The method name which should be mangled
-	 * @return The mangled method name
 	 */
-	private static String mangleMethodName(final MethodInstance meth) {
-		final String name = meth.name().toString();
-		if(name.startsWith("operator")) {
-			final List<Type> formals = meth.formalTypes();
-			final Flags flags = meth.flags();
-			if((flags.isStatic() && formals.size() == 1) ||
-			  (!flags.isStatic() && formals.size() == 0)) { // try unary
-				String tmp = tryUnOpSubsitution(name);
-				if(tmp != null) return tmp;
-			}
-		}
-
-		final String tmp = tryNameSubsitution(name);
-		if(tmp != null) return tmp;
-		return mangleName(name);
-	}
-
-	/**
-	 * Mangles a given package
-	 * @param pack The package which should be mangled
-	 * @return The mangled name of the given package
-	 */
-	private static String manglePackage(final Package pack) {
-		StringBuilder buf = new StringBuilder();
-		final String []splits = pack.toString().split("\\.");
-		for(String split : splits)
-			buf.append(mangleName(split));
-		return buf.toString();
-	}
-
-	/**
-	 * Mangles a local instance as a argument
-	 * @param type The type which should be mangled
-	 * @return The mangled name of the given local instance as a argument
-	 */
-	private static String mangleArgument(final LocalInstance loc) {
-		StringBuilder buf = new StringBuilder();
-		buf.append(mangleParameter(loc.type()));
-		return buf.toString();
-	}
-
-	/**
-	 * Mangles a given type as an argument
-	 * @param type The type which should be mangled
-	 * @return The mangled name of the given type
-	 */
-	private static String mangleParameter(final Type type) {
-		if (x10TypeSystem.isParameterType(type))
-			return mangleParameter(x10TypeSystem.getConcreteType(type));
-
-		final Type ret = GenericTypeSystem.simplifyType(type);
-
-		String tmp = tryPrimitiveType(ret);
-		if (tmp != null)
-			return tmp;
-
-		StringBuilder buf = new StringBuilder();
-
-		boolean passAsRef = true; // only "real" classes not structs are passed as references.
-		if(ret instanceof X10ClassType) {
-			X10ClassType struct = (X10ClassType)ret;
-			if(struct.isX10Struct())
-				passAsRef = false;
-		}
-
-		if(passAsRef)
-			buf.append(MANGLED_POINTER_REF);
-
-		buf.append(mangleType(ret, false));
-
-		return buf.toString();
-	}
-
-	/**
-	 * Mangles a given type as a type parameter (Generics)
-	 * @param type The type which should be mangled
-	 * @return The mangled name of the given type
-	 */
-	private static String mangleTypeParameter(final Type type) {
-		// same as mangle type without embedding
-		return mangleType(type, false);
-	}
-
-	private static String getAnonymousClassName(final X10ClassType clazz) {
-		String name = anonymousClassNames.get(clazz);
-		if(name != null) return name;
-
-		name = UniqueID.newID(MANGLED_ANONYMOUS_CLASS_PREFIX);
-		anonymousClassNames.put(clazz, name);
-		return name;
-	}
-
-	/**
-	 * Mangles a given class type
-	 * @param clazz The class type which name should be mangled
-	 * @param embed True if the given class type is embedded.
-	 * @return The mangled name of the given class type
-	 */
-	private static String mangleClassType(final X10ClassType clazz,
-			final boolean embed) {
-		StringBuilder buf = new StringBuilder();
-		boolean needQualiEnd = false;
-		if (clazz.isTopLevel()) {
-			if (clazz.package_() != null) {
-				if (!embed) {
-					needQualiEnd = true;
-					buf.append(QUAL_START);
+	private static void mangleMethodName(final StringBuilder buf,
+			final MethodInstance method) {
+		final String name = method.name().toString();
+		if (name.startsWith("operator")) {
+			String subst = unOpSubst.get(name);
+			if (subst != null) {
+				/* really an unary operator */
+				final boolean isStatic = method.flags().isStatic();
+				final List<Type> formals = method.formalTypes();
+				if((isStatic && formals.size() == 1) ||
+				  (!isStatic && formals.size() == 0)) {
+					buf.append(subst);
+					return;
 				}
-				buf.append(manglePackage(clazz.package_()));
+			} else if (name.equals("operator_as")) {
+				final StringBuilder tbuf = new StringBuilder();
+				final Type returnType = method.returnType();
+				mangleType(tbuf, returnType);
+				final String destType = tbuf.toString();
+				buf.append('v');
+				buf.append(destType.length()+2);
+				buf.append("as");
+				buf.append(destType);
+				return;
 			}
-		} else if (clazz.isMember()) {
-			if (!embed) {
-				needQualiEnd = true;
-				buf.append(QUAL_START);
-			}
-			buf.append(mangleType(clazz.outer(), true));
-		} else if (clazz.isAnonymous()) {
-			// DO NOTHING
-		} else {
-			throw new CodeGenError("Unknown class type" + clazz, clazz.position());
+		} else if (name.equals("implicit_operator_as")) {
+			final Type returnType = method.returnType();
+			buf.append("cv");
+			mangleType(buf, returnType);
+			return;
 		}
 
-		final String clazzName = clazz.isAnonymous() ? getAnonymousClassName(clazz)
-				: clazz.name().toString();
-		buf.append(mangleName(fixClassName(clazzName)));
-
-		final List<? extends Type> typeArgs = clazz.typeArguments() != null ? clazz
-				.typeArguments() : clazz.x10Def().typeParameters();
-		if (!typeArgs.isEmpty() && !mangleGenericStaticMethodInstance) {
-			// don`t mangle type arguments if we are currently mangling a method
-			// instance.
-			buf.append(TYPEARG_START);
-			for (Type type : typeArgs)
-				buf.append(mangleTypeParameter(type));
-			buf.append(TYPEARG_END);
+		final String subst = binOpSubst.get(name);
+		if (subst != null) {
+			buf.append(subst);
+			return;
 		}
 
-		if (needQualiEnd)
-			buf.append(QUAL_END);
-
-		return buf.toString();
+		mangleIdentifier(buf, name);
 	}
 
-	/**
-	 * As of X10 2.2.0 and thanks to XTENLANG-1647, a space is inserted
-	 * into the class name in x10.compiler/src/x10/util/ClosureSynthesizer.java
-	 *
-	 * As a quick fix, we translate this into a dollar sign. However, there should be
-	 * a better solution in x10.compiler! FIXME
-	 *
-	 * @param string  a class name, potentially with spaces
-	 * @return        a class name without spaces
-	 */
-	private static String fixClassName(String string) {
-		return string.replace(' ', '$');
-	}
+	/** Mangles a complete method including container and formals */
+	public static String mangleMethod(final MethodInstance method) {
+		final StringBuilder buf = new StringBuilder();
 
-	// Flag to mark if we are currently mangling a static method instance
-	private static boolean mangleGenericStaticMethodInstance = false;
-
-	/**
-	 * Mangles a given method instance
-	 * @param method The method instance which should be mangled
-	 * @param mangleDefiningClass True if the defining class of the method should also be mangled
-	 * @return The mangled name of the given method instance
-	 */
-	private static String mangleMethodInstance(final MethodInstance method, final boolean mangleDefiningClass) {
-		StringBuilder buf = new StringBuilder();
+		buf.append(PLATFORM_PREFIX);
+		buf.append(MANGLE_PREFIX);
 		buf.append(QUAL_START);
-
-		final List<? extends Type> typeArgs = method.typeParameters() != null ? method.typeParameters() :
-			method.x10Def().typeParameters();
-
-		if (mangleDefiningClass) {
-			if (method.container() != null) {
-				if(method.flags().isStatic()) {
-					mangleGenericStaticMethodInstance = true;
-				}
-				buf.append(mangleType(method.container(), true));
-				if(mangleGenericStaticMethodInstance) {
-					mangleGenericStaticMethodInstance = false;
-				}
-				buf.append(mangleMethodName(method));
-			}
+		X10ClassType container = (X10ClassType)method.container();
+		if (method.flags().isStatic()) {
+			mangleClassWithoutTypeArguments(buf, container);
 		} else {
-			buf.append(mangleMethodName(method));
+			mangleClass(buf, container);
 		}
+		mangleMethodName(buf, method);
 
-		if (!typeArgs.isEmpty()) {
-			buf.append(TYPEARG_START);
-			for(Type type : method.typeParameters())
-				buf.append(mangleTypeParameter(type));
-			buf.append(TYPEARG_END);
+		/* currently the generic code handling is a strange hybrid, sometimes
+		 * it uses reinstantiated MethodInstances, sometimes it does not do so
+		 * and expects us to output the current mapping of type parameters.
+		 */
+		final List<Type> typeArguments = method.typeParameters();
+		final boolean hadTypeArguments;
+		if (typeArguments != null) {
+			mangleTypeArguments(buf, typeArguments);
+			hadTypeArguments = typeArguments.size() > 0;
+		} else {
+			final List<ParameterType> typeParameters = method.def().typeParameters();
+			mangleTypeParameterInstantiation(buf, typeParameters);
+			hadTypeArguments = typeParameters.size() > 0;
 		}
-
 		buf.append(QUAL_END);
-
-		if (!typeArgs.isEmpty()) {
+		mangleFormals(buf, method.formalTypes());
+		if (hadTypeArguments) {
 			// Comply with C++ ABI and mangle return type.
-			buf.append(mangleType(method.returnType(), false));
+			mangleType(buf, method.returnType());
 		}
-
-		if (!method.formalNames().isEmpty()) {
-			final List<LocalInstance> formalNames = method.formalNames();
-			final List<Type> formalTypes = method.formalTypes();
-			assert formalNames.size() == formalTypes.size();
-
-			for (int i = 0; i < formalNames.size(); ++i) {
-				final LocalInstance form = formalNames.get(i);
-				buf.append(mangleArgument(form.type(formalTypes.get(i))));
-			}
-		} else {
-			buf.append(MANGLED_VOID_TYPE);
-		}
-
 		return buf.toString();
 	}
 
-	/**
-	 * Mangles a given field instance
-	 * @param field The field instance which should be mangled
-	 * @param defClass True if the defining class of the field should also be mangled.
-	 * @return The mangled name of the given field instance
+	/** Mangles a short form of a method without container type
+	 * or other mangling prefixes. Intended to be used in interface lookup
+	 * tables.
 	 */
-	private static String mangleFieldInstance(final FieldInstance field, final boolean defClass) {
-		StringBuilder buf = new StringBuilder();
-		assert field.container() != null;
+	public static String mangleMethodShort(final MethodInstance method) {
+		final StringBuilder buf = new StringBuilder();
+		mangleMethodName(buf, method);
+		mangleFormals(buf, method.formalTypes());
+		return buf.toString();
+	}
 
-		if (defClass) {
-			buf.append(QUAL_START);
-			buf.append(mangleType(field.container(), true));
-			buf.append(mangleName(field.name().toString()));
-			buf.append(QUAL_END);
-		} else {
-			buf.append(mangleName(field.name().toString()));
-		}
-
+	/** Mangles the name for a field */
+	public static String mangleField(final FieldInstance instance) {
+		final StringBuilder buf = new StringBuilder();
+		buf.append(PLATFORM_PREFIX);
+		buf.append(MANGLE_PREFIX);
+		buf.append(QUAL_START);
+		final X10ClassType container = (X10ClassType)instance.container();
+		mangleClass(buf, container);
+		mangleIdentifier(buf, instance.name().toString());
+		buf.append(QUAL_END);
 		return buf.toString();
 	}
 
 	/**
 	 * Mangles a given constructor instance
-	 * @param cons The constructor instance which should be mangled
-	 * @return The mangled name of the given constructor instance
 	 */
-	private static String mangleConstructorInstance(final X10ConstructorInstance cons) {
-		StringBuilder buf = new StringBuilder();
-		assert cons.container() != null;
-
-		buf.append(QUAL_START);
-		buf.append(mangleType(cons.container(), true));
-		buf.append(MANGLED_CONSTRUCTOR);
-		buf.append(QUAL_END);
-
-		final List<LocalInstance> forms = cons.formalNames();
-		if (!forms.isEmpty()) {
-			for (LocalInstance form : forms)
-				buf.append(mangleArgument(form));
-		} else {
-			buf.append(MANGLED_VOID_TYPE);
-		}
-
-		return buf.toString();
-	}
-
-	/**
-	 * Mangle a given type
-	 * @param type The type which should be mangled
-	 * @param embed True if the given type is embedded in another type
-	 * @return The mangled name of the given type
-	 */
-	private static String mangleType(final Type type, final boolean embed) {
-		if (x10TypeSystem.isParameterType(type))
-			return mangleType(x10TypeSystem.getConcreteType(type), embed);
-
-		String tmp = null;
-
-		final Type ret = GenericTypeSystem.simplifyType(type);
-		if (!embed) {
-			tmp = tryPrimitiveType(ret);
-			if (tmp != null)
-				return tmp;
-		}
-
-		if (ret instanceof X10ClassType) { // a class type
-			tmp = mangleClassType((X10ClassType) ret, embed);
-		} else {
-			throw new CodeGenError("Unknown type in mangleType " + ret.getClass() + ": " + ret, ret.position());
-		}
-
-		return tmp;
-	}
-
-	/**
-	 * Mangles a given type object
-	 * @param typeObject The type object which should be mangled
-	 * @param embed True if the given type object is embedded in another type object
-	 * @return The mangled name of the given type object
-	 */
-	private static String mangleTypeObject(final TypeObject typeObject, final boolean embed, final boolean mangleDefiningClass) {
-		if(typeObject instanceof Type)
-			return mangleType((Type)typeObject, embed);
-
-		String tmp = null;
-
-		if(typeObject instanceof FieldInstance) { // a field instance
-			tmp = mangleFieldInstance((FieldInstance)typeObject, mangleDefiningClass);
-		} else if(typeObject instanceof MethodInstance) { // a method
-			tmp = mangleMethodInstance((MethodInstance)typeObject, mangleDefiningClass);
-		} else if(typeObject instanceof X10ConstructorInstance) { // a constructor
-			tmp = mangleConstructorInstance((X10ConstructorInstance)typeObject);
-		} else {
-			throw new CodeGenError("Unknown type in mangleType" + typeObject.getClass() + ": " + typeObject, typeObject.position());
-		}
-
-		return tmp;
-	}
-
-	/**
-	 * Mangles a given type object and returns the mangled name
-	 * @param type The type object for which the name should be mangled
-	 * @param mangleDefiningClass True if the defining class of the given type object should also be mangled
-	 * @return The mangled name of the given type object
-	 */
-	private static String mangleTypeObject(final TypeObject type, final boolean mangleDefiningClass) {
+	public static String mangleConstructor(final X10ConstructorInstance constructor) {
 		StringBuilder buf = new StringBuilder();
 
 		buf.append(PLATFORM_PREFIX);
 		buf.append(MANGLE_PREFIX);
-		buf.append(mangleTypeObject(type, false, mangleDefiningClass));
-		buf.append(MANGLE_SUFFIX);
-
+		buf.append(QUAL_START);
+		final X10ClassType container = (X10ClassType)constructor.container();
+		mangleClass(buf, container);
+		buf.append(MANGLED_CONSTRUCTOR);
+		buf.append(QUAL_END);
+		mangleFormals(buf, constructor.formalTypes());
 		return buf.toString();
-	}
-
-	/**
-	 * Mangles a given type object and returns the mangled name with the appropriate defining class
-	 * @param type The type object for which the name should be mangled
-	 * @return The mangled name of the given type object
-	 */
-	public static String mangleTypeObjectWithDefClass(final TypeObject type) {
-		return mangleTypeObject(type, true);
-	}
-
-	/**
-	 * Mangles a given type object and returns the mangled name withouth the appropriate defining class
-	 * @param type The type object for which the name should be mangled
-	 * @return The mangled name of the given type object
-	 */
-	public static String mangleTypeObjectWithoutDefClass(final TypeObject type) {
-		return mangleTypeObject(type, false);
 	}
 
 	/**
@@ -585,8 +452,9 @@ public class NameMangler {
 		buf.append(PLATFORM_PREFIX);
 		buf.append(MANGLE_PREFIX);
 		buf.append(MANGLED_VTABLE);
-		buf.append(mangleClassType(clazz, false));
-		buf.append(MANGLE_SUFFIX);
+		buf.append(QUAL_START);
+		mangleClass(buf, clazz);
+		buf.append(QUAL_END);
 
 		return buf.toString();
 	}
@@ -602,8 +470,9 @@ public class NameMangler {
 		buf.append(PLATFORM_PREFIX);
 		buf.append(MANGLE_PREFIX);
 		buf.append(MANGLED_TYPEINFO);
-		buf.append(mangleClassType(clazz, false));
-		buf.append(MANGLE_SUFFIX);
+		buf.append(QUAL_START);
+		mangleClass(buf, clazz);
+		buf.append(QUAL_END);
 
 		return buf.toString();
 	}

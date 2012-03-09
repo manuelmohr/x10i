@@ -42,7 +42,6 @@ import x10firm.visit.CodeGenError;
 import firm.ClassType;
 import firm.CompoundType;
 import firm.Entity;
-import firm.Ident;
 import firm.MethodType;
 import firm.Mode;
 import firm.Mode.Arithmetic;
@@ -574,7 +573,7 @@ public class FirmTypeSystem {
 	 */
 	private Entity addField(final FieldInstance field, final firm.Type klass) {
 		final Flags fieldFlags = field.flags();
-		final String name = NameMangler.mangleTypeObjectWithDefClass(field);
+		final String name = NameMangler.mangleField(field);
 
 		final Type type = getFirmType(field.type());
 		final firm.Type owner = fieldFlags.isStatic() ? Program.getGlobalType() : klass;
@@ -590,9 +589,8 @@ public class FirmTypeSystem {
 
 	@SuppressWarnings("unused")
 	private firm.Type createClassType(final X10ClassType classType) {
-		final String className = NameMangler.mangleTypeObjectWithDefClass(classType);
 		final Flags flags = classType.flags();
-		ClassType result = new ClassType(className);
+		ClassType result = new ClassType(classType.toString());
 		final NativeClassInfo classInfo = x10NativeTypes.get(classType);
 		if(classInfo != null) {
 			firmNativeTypes.put(result, classInfo);
@@ -651,15 +649,20 @@ public class FirmTypeSystem {
 			addField(field.container(classType), result);
 		}
 
-		OO.setClassVPtrEntity(result, getVptrEntity());
+		final Type global = Program.getGlobalType();
+		final Type pointerType = Mode.getP().getType();
 
-		if (!(flags.isInterface() || flags.isStruct())) {
-			Entity vtable = new Entity(Program.getGlobalType(), NameMangler.mangleVTable(classType), Mode.getP().getType());
+		if (!flags.isStruct())
+			OO.setClassVPtrEntity(result, getVptrEntity());
+
+		if (!flags.isInterface() && !flags.isStruct()) {
+			final String vtableName = NameMangler.mangleVTable(classType);
+			final Entity vtable = new Entity(global, vtableName, pointerType);
 			OO.setClassVTableEntity(result, vtable);
 		}
 
-		final Entity classInfoEntity = new Entity(Program.getGlobalType(), Ident.createUnique(className + "$"), Mode.getP().getType());
-
+		final String rttiName = NameMangler.mangleTypeinfo(classType);
+		final Entity classInfoEntity = new Entity(global, rttiName, pointerType);
 		OO.setClassRTTIEntity(result, classInfoEntity);
 
 		// Layouting of classes must be done explicitly by finishTypes
@@ -699,8 +702,6 @@ public class FirmTypeSystem {
 		if (type instanceof X10ClassType) {
 			result = createClassType((X10ClassType) type);
 		} else {
-			/* remember to put new types into coreTypeCache */
-			saveFirmCoreType(type, result);
 			throw new java.lang.RuntimeException("No implement to get firm type for: " + type);
 		}
 		return result;
@@ -830,7 +831,7 @@ public class FirmTypeSystem {
 		Entity entity = context.getConstructorEntity(instance.x10Def());
 
 		if (entity == null) {
-			final String name = NameMangler.mangleTypeObjectWithDefClass(instance);
+			final String name = NameMangler.mangleConstructor(instance);
 			final Flags flags = instance.flags();
 			final firm.Type type = getConstructorType(instance);
 
@@ -949,7 +950,6 @@ public class FirmTypeSystem {
 	 * Return entity for an X10 method
 	 */
 	public Entity getMethodEntity(final MethodInstance instance) {
-
 		final GenericClassContext context = getDefiningContext(instance);
 		final GenericMethodInstance gMethodInstance = new GenericMethodInstance(instance, x10TypeSystem);
 		final firm.Type type = asFirmType(instance);
@@ -957,8 +957,8 @@ public class FirmTypeSystem {
 
 		if (entity == null) {
 			X10ClassType owner = (X10ClassType) instance.container();
-			final String nameWithDefiningClass = NameMangler.mangleTypeObjectWithDefClass(instance);
-			final String nameWithoutDefiningClass = NameMangler.mangleTypeObjectWithoutDefClass(instance);
+			final String mangledName = NameMangler.mangleMethod(instance);
+			final String shortName = NameMangler.mangleMethodShort(instance);
 			final Flags flags = instance.flags();
 			final firm.Type owningClass = asClass(owner);
 
@@ -966,7 +966,7 @@ public class FirmTypeSystem {
 				assert !flags.isInterface() : "We do not import interfaces.";
 				assert !flags.isAbstract() : "We do not import abstract methods.";
 
-				final Entity cEntity = this.cStdlibEntities.get(nameWithDefiningClass);
+				final Entity cEntity = this.cStdlibEntities.get(mangledName);
 				if (cEntity != null) {
 					firm.Type entityType = cEntity.getType();
 					if (! (entityType instanceof MethodType))
@@ -992,8 +992,8 @@ public class FirmTypeSystem {
 			}
 
 			final firm.Type ownerFirm = flags.isStatic() ? Program.getGlobalType() : owningClass;
-			entity = new Entity(ownerFirm, nameWithoutDefiningClass, type);
-			entity.setLdIdent(nameWithDefiningClass);
+			entity = new Entity(ownerFirm, shortName, type);
+			entity.setLdIdent(mangledName);
 
 			if (flags.isStatic()) {
 				OO.setEntityBinding(entity, ddispatch_binding.bind_static);

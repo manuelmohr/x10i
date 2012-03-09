@@ -395,7 +395,7 @@ void _ZN3x104lang6Thread4nameEPN3x104lang6StringE(x10_thread *self, x10_string *
 	self->__thread_name = name;
 }
 
-void _ZN3x104lang6ThreadapplyEv(x10_thread *self)
+void _ZN3x104lang6ThreadixEv(x10_thread *self)
 {
 	X10_UNUSED(self);
 	// DO NOTHING -> We will call the Thread "threadStartHook___" hook for dynamic binding of operator()

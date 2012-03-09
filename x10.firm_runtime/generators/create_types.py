@@ -48,9 +48,7 @@ opMangling = {
 	"*":   "ml",
 	"/":   "dv",
 	"!":   "nt",
-	"~":   "v3uti",
-	"$coerce": "v3icv",
-	"$as": "cv",
+	"~":   "co",
 }
 
 intTypes = [
@@ -93,6 +91,7 @@ for type in types:
 for type in intTypes:
 	type.convertFrom = []
 	type.coerceFrom = []
+	type.convertFrom += floatTypes
 	for other in intTypes:
 		if type == other:
 			continue
@@ -124,6 +123,8 @@ typedict["x10.lang.Char"].convertFrom = [
 def mangleNameElement(element):
 	if element in opMangling:
 		return opMangling[element]
+	if element.startswith("$"):
+		return element[1:]
 	return str(len(element))+element
 
 def mangleName(name):
@@ -310,7 +311,7 @@ x10_boolean {{method(op, xtype)}}({{ctype}} self, {{ctype}} other)
 {%- for otype in type.coerceFrom %}
 
 /* {{xtype}}.operator ({{otype.name}}):{{xtype}} */
-{{ctype}} {{method("$coerce", otype.name)}}({{otype.ctype}} other)
+{{ctype}} {{method("$cv"+type.mangled, otype.name)}}({{otype.ctype}} other)
 {
 	return other;
 }
@@ -319,7 +320,7 @@ x10_boolean {{method(op, xtype)}}({{ctype}} self, {{ctype}} other)
 {%- for otype in type.convertFrom %}
 
 /* {{xtype}}.operator ({{otype.name}}) as {{xtype}} */
-{{ctype}} {{method("$as", otype.name)}}({{otype.ctype}} other)
+{{ctype}} {{method("$v" + str(len(type.mangled)+2) + "as" + type.mangled, otype.name)}}({{otype.ctype}} other)
 {
 	return ({{ctype}})other;
 }
@@ -335,5 +336,7 @@ sys.stdout.write(template.render(
 	mangleType=mangleType,
 	typedict=typedict,
 	getUnsignedIntType=getUnsignedIntType,
+	len=len,
+	str=str
 	)
 )

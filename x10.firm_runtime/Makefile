@@ -50,7 +50,7 @@ FIRM_NATIVE_TYPES_CONF=$(BUILDDIR)/firmNativeTypes.conf
 C_FILES=$(filter-out $(GEN_FIRM_NATIVE_SIZES), $(ALL_C_FILES)) $(GEN_PRIMITIVE_TYPES)
 O_FILES=$(addprefix $(BUILDDIR), $(basename $(C_FILES:%.c=%.o)))
 H_FILES=$(wildcard $(SRCDIR)/*.h)
-CFLAGS += -I $(SRCDIR) -I $(SRCDIR)/$(PLATFORM) -Wall -W -std=c99 -fdollars-in-identifiers
+CFLAGS += -I $(SRCDIR) -I $(SRCDIR)/$(PLATFORM) -Wall -W -std=c99
 APP_CFLAGS += -I $(SRCDIR)
 MASTER=$(BUILDDIR)/master.c
 O_FILE=$(MASTER:%.c=%.o)

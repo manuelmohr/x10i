@@ -29,7 +29,7 @@ void _ZN3x104lang6Thread9parkNanosEx(x10_long);
 void _ZN3x104lang6Thread6unparkEv(x10_thread *);
 
 void _ZN3x104lang6Thread4nameEPN3x104lang6StringE(x10_thread *, x10_string *);
-void _ZN3x104lang6ThreadapplyEv(x10_thread *);
+void _ZN3x104lang6ThreadixEv(x10_thread *);
 x10_string *_ZN3x104lang6Thread4nameEv(x10_thread *);
 
 // TODO: Add Place struct as return type

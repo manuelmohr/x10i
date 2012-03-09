@@ -132,8 +132,8 @@ x10_char _ZN3x104lang6String6charAtEi(const x10_string *self, x10_int idx)
 	return self->chars[idx];
 }
 
-// String.operator()
-x10_char _ZN3x104lang6StringapplyEi(const x10_string *self, x10_int idx)
+// String.operator(int): Char
+x10_char _ZN3x104lang6StringixEi(const x10_string *self, x10_int idx)
 {
 	return _ZN3x104lang6String6charAtEi(self, idx);
 }
