@@ -33,7 +33,7 @@ ifeq ($(TARGET), i686-invasic-octopos)
 	PLATFORM = octopos
 	CPARSER_TARGET =
 else
-	CFLAGS += -D_POSIX_C_SOURCE=200809L
+	CFLAGS += -D_XOPEN_SOURCE=500
 endif
 
 BUILDDIR?=build/$(TARGET)
