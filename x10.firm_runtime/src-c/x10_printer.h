@@ -4,7 +4,7 @@
 #include "x10.h"
 
 typedef struct {
-	X10_OBJECT_HEADER
+	x10_object  base;
 } x10_printer;
 
 void _ZN3x102io7Printer7printlnEPN3x104lang3AnyE(x10_printer *, x10_any *);

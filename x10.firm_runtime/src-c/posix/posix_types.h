@@ -19,7 +19,7 @@ typedef struct permit_t {
 } permit_t;
 
 struct x10_thread {
-	X10_OBJECT_HEADER
+	x10_object base;
 	// thread id
 	x10_long __thread_id;
 	// thread name
@@ -43,7 +43,7 @@ struct x10_place {
 };
 
 typedef struct x10_lock {
-	X10_OBJECT_HEADER
+	x10_object base;
 	// lock id
 	pthread_mutex_t __lock;
 	// lock attributes

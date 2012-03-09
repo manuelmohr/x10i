@@ -5,7 +5,7 @@
 #include "x10_atomic_ops.h"
 
 typedef struct {
-	X10_OBJECT_HEADER
+	x10_object base;
 	/* An int that will only contain 0 or 1 and is interpreted as an boolean.
 	 * We do this instead of using a boolean so that we know that
 	 * compareAndSet_32 can work on the whole memory word.

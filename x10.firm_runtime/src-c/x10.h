@@ -12,29 +12,6 @@
 #include <errno.h>
 #include <math.h>
 
-typedef struct {
-	uintptr_t dummy;
-} x10_vtable_t;
-
-typedef struct {
-	uintptr_t dummy;
-} x10_classinfo_t;
-
-#define OBJECT_CLASSINFO _ZN3x104lang6ObjectE$
-#define OBJECT_VTABLE    _ZTVN3x104lang6ObjectE
-#define STRING_CLASSINFO _ZN3x104lang6StringE$
-#define STRING_VTABLE    _ZTVN3x104lang6StringE
-extern const x10_vtable_t    OBJECT_VTABLE;
-extern const x10_classinfo_t OBJECT_CLASSINFO;
-extern const x10_vtable_t    STRING_VTABLE;
-extern const x10_classinfo_t STRING_CLASSINFO;
-
-typedef struct {
-	uintptr_t *vptr;
-} x10_object_header;
-
-#define X10_OBJECT_HEADER x10_object_header head;
-
 typedef void        x10_any;
 
 typedef int64_t     x10_long;

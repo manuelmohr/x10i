@@ -2,10 +2,11 @@
 #define X10_STRING_H_
 
 #include "x10.h"
+#include "x10_object.h"
 
 typedef struct {
-	X10_OBJECT_HEADER
-	x10_int        len;
+	x10_object      base;
+	x10_int         len;
 	const x10_char *chars;
 } x10_string;
 

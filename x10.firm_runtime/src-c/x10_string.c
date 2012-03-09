@@ -2,6 +2,9 @@
 #include "util.h"
 #include "x10.h"
 
+/* vtable for x10.lang.String */
+extern const x10_vtable _ZTVN3x104lang6StringE;
+
 static void check_string_bounds(const x10_string *str, x10_int idx)
 {
 	if (idx < 0 || idx > (str->len)) {
@@ -17,7 +20,7 @@ static x10_char *allocate_chars(x10_int len)
 x10_string *x10_string_from_literal(x10_int len, const x10_char *chars)
 {
 	x10_string *str = x10_malloc(sizeof(*str));
-	X10_INIT_OBJECT(str, &STRING_VTABLE);
+	x10_init_object(&str->base, &_ZTVN3x104lang6StringE);
 	str->len   = len;
 	str->chars = chars;
 	return str;
@@ -45,7 +48,7 @@ x10_string *x10_string_from_cstring(const char *string)
 /* String.this(): String */
 void _ZN3x104lang6StringC1Ev(x10_string *str)
 {
-	X10_INIT_OBJECT(str, &STRING_VTABLE);
+	x10_init_object(&str->base, &_ZTVN3x104lang6StringE);
 	str->len   = 0;
 	str->chars = NULL;
 }
@@ -53,7 +56,7 @@ void _ZN3x104lang6StringC1Ev(x10_string *str)
 /* String.this(Int,Pointer): String */
 void _ZN3x104lang6StringC1EiPv(x10_string *str, x10_int len, const void *data)
 {
-	X10_INIT_OBJECT(str, &STRING_VTABLE);
+	x10_init_object(&str->base, &_ZTVN3x104lang6StringE);
 	str->len   = len;
 	str->chars = (const x10_char*)data;
 }
@@ -61,7 +64,7 @@ void _ZN3x104lang6StringC1EiPv(x10_string *str, x10_int len, const void *data)
 /* String.this(String): String */
 void _ZN3x104lang6StringC1EPN3x104lang6StringE(x10_string *str, const x10_string *other)
 {
-	X10_INIT_OBJECT(str, &STRING_VTABLE);
+	x10_init_object(&str->base, &_ZTVN3x104lang6StringE);
 	str->len   = other->len;
 	str->chars = other->chars;
 }

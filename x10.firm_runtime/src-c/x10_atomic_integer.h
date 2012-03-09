@@ -5,7 +5,7 @@
 #include "x10_atomic_ops.h"
 
 typedef struct {
-	X10_OBJECT_HEADER
+	x10_object       base;
 	volatile x10_int value;
 } x10_atomic_integer;
 
