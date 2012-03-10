@@ -11,17 +11,17 @@ APP_CFLAGS ?=
 PLATFORM   ?= posix
 
 # The ugly part... Collection of hacks for certain architectures
-ifeq ($(findstring x86_64, $(target)), x86_64)
+ifeq ($(findstring x86_64, $(TARGET)), x86_64)
 	CFLAGS += -m32
 	CPARSER_TARGET=
 endif
-ifeq ($(findstring sparc, $(target)), sparc)
+ifeq ($(findstring sparc, $(TARGET)), sparc)
 	APP_CFLAGS += -static
 endif
-ifeq ($(findstring darwin, $(target)), darwin)
+ifeq ($(findstring darwin, $(TARGET)), darwin)
 	CPARSER_TARGET=
 endif
-ifeq ($(findstring darwin11, $(target)), darwin11)
+ifeq ($(findstring darwin11, $(TARGET)), darwin11)
 	CFLAGS += -m32
 	LFLAGS += -m32
 endif
@@ -33,7 +33,9 @@ ifeq ($(TARGET), i686-invasic-octopos)
 	PLATFORM = octopos
 	CPARSER_TARGET =
 else
+ifeq ($(findstring linux, $(TARGET)), linux)
 	CFLAGS += -D_XOPEN_SOURCE=500
+endif
 endif
 
 BUILDDIR?=build/$(TARGET)

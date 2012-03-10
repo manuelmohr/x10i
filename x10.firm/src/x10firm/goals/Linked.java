@@ -89,6 +89,7 @@ public class Linked extends PostCompiled {
 		final String libooPath = x10DistPath + "/../liboo/build/" + target;
 		final String gcc = getGCC();
 		boolean linkStatically = options.linkStatically();
+		boolean usesElf = target.isUnixishOS();
 
 		final List<String> cmd = new ArrayList<String>();
 		cmd.add(gcc);
@@ -116,7 +117,8 @@ public class Linked extends PostCompiled {
 			cmd.add(libooPath + "/liboo_rt.a");
 		} else {
 			cmd.add("-L" + libooPath);
-			cmd.add("-Wl,-R" + libooPath);
+			if (usesElf)
+				cmd.add("-Wl,-R" + libooPath);
 			cmd.add("-loo_rt");
 		}
 		if (!FirmState.libraryLoaded("x10")) {
