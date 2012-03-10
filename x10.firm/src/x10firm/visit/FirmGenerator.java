@@ -714,7 +714,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	public void finishConstruction(Entity entity, MethodConstruction savedConstruction) {
 		/* create Return node if there was no explicit return statement yet */
 		if (!con.getCurrentBlock().isBad()) {
-			genReturn(null);
+			genReturn(null, null);
 		}
 
 		con.finish();
@@ -1025,7 +1025,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	}
 
 	private Node assignToAddress(final Node address, final Type type, final Expr expr) {
-		final Node value = visitExpression(expr);
+		final Expr casted = x10Cast(expr, type);
+		final Node value = visitExpression(casted);
 
 		if (firmTypeSystem.isFirmStructType(type)) {
 			final firm.Type firmType = firmTypeSystem.asType(type);
@@ -1226,22 +1227,23 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final Expr lhs = asgn.left();
 
 		// autoboxing
-		final Expr rhs = x10Cast(asgn.right(), lhs.type());
+		final Expr right = asgn.right();
 
 		if(lhs instanceof Local_c) { // Assignment to a local variable -> Assignments to saved variables are not allowed in closures. -> so we will not handle them.
-			final Node leftRet  = visitExpression(lhs);
-			final Node rightRet = visitExpression(rhs);
-
 			final Local_c lhsLocal = (Local_c)lhs;
 			final LocalInstance loc = lhsLocal.localInstance();
 
 			final VarEntry var = con.getVarEntry(loc);
+			final Type destType = loc.type();
+			final Expr casted = x10Cast(right, destType);
+			final Node rightRet = visitExpression(casted);
 
-			if(var.getType() == VarEntry.STRUCT) {
+			if (var.getType() == VarEntry.STRUCT) {
 				// local struct variable
 				final Entity entity = var.getEntity();
 				final Node mem = con.getCurrentMem();
-				final Node copyB = con.newCopyB(mem, leftRet, rightRet, entity.getType());
+				final Node destAddr = visitExpression(lhs);
+				final Node copyB = con.newCopyB(mem, destAddr, rightRet, entity.getType());
 				final Node curMem = con.newProj(copyB, Mode.getM(), CopyB.pnM);
 				con.setCurrentMem(curMem);
 				setReturnNode(rightRet);
@@ -1249,25 +1251,26 @@ public class FirmGenerator extends X10DelegatingVisitor {
 				// local normal variable
 				final int idx = var.getIdx();
 				con.setVariable(idx, rightRet);
-				setReturnNode(con.getVariable(idx, leftRet.getMode()));
+				setReturnNode(rightRet);
 			}
 		} else if (lhs instanceof Field_c) {
 			final Field_c field = (Field_c) lhs;
-			final Node ret = genFieldAssign(field, rhs);
+			final Node ret = genFieldAssign(field, right);
 			setReturnNode(ret);
 		} else {
 			throw new CodeGenError("Unexpected assignment target", asgn);
 		}
 	}
 
-	private void genReturn(Expr expr) {
+	private void genReturn(Type returnType, Expr expr) {
 		final Node[] retValues;
 		if (con.inStructConstructor) {
 			assert expr == null;
 			final Node value = getLocalValue(con.thisInstance);
 			retValues = new Node[] { value };
 		} else if (expr != null) {
-			final Node value = visitExpression(expr);
+			final Expr casted = x10Cast(expr, returnType);
+			final Node value = visitExpression(casted);
 			retValues = new Node[] { value };
 		} else {
 			retValues = new Node[0];
@@ -1284,7 +1287,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		if (con.getCurrentBlock().isBad())
 			return;
 
-		genReturn(n.expr());
+		genReturn(con.returnType, n.expr());
 	}
 
 	@Override
