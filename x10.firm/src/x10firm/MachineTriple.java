@@ -71,7 +71,7 @@ public final class MachineTriple {
 	 * and ELF object file format.
 	 */
 	public boolean isUnixishOS() {
-		return operatingSystem.equals("linux")
+		return operatingSystem.contains("linux")
 				|| operatingSystem.equals("bsd")
 				|| operatingSystem.equals("solaris");
 	}
