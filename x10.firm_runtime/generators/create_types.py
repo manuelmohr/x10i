@@ -96,11 +96,9 @@ for type in intTypes:
 		if type == other:
 			continue
 
-		if not type.signed and other.signed:
+		if other.size > type.size:
 			type.convertFrom.append(other)
-		elif type.signed and not other.signed and other.size >= type.size:
-			type.convertFrom.append(other)
-		elif other.size > type.size:
+		elif other.size == type.size:
 			type.convertFrom.append(other)
 		else:
 			type.coerceFrom.append(other)
