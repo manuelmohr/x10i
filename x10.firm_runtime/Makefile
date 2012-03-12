@@ -38,6 +38,8 @@ ifeq ($(findstring linux, $(TARGET)), linux)
 endif
 endif
 
+CPARSER_BASE ?= ../cparser
+CPARSER = $(CPARSER_BASE)/build/cparser
 BUILDDIR?=build/$(TARGET)
 SRCDIR=src-c
 GENERATORSDIR=generators
@@ -80,8 +82,13 @@ $(MASTER): $(C_FILES) $(H_FILES) Makefile
 $(O_FILE): $(MASTER)
 	$(CC) $(CFLAGS) $< -c -o $@
 
-$(IR_FILE): $(MASTER)
-	cparser $(CFLAGS) $(CPARSER_TARGET) -w $< --export-ir -o $@
+Makefile: cparser_subdir
+cparser_subdir:
+	$(MAKE) -C $(CPARSER_BASE) FIRM_HOME=../libfirm
+.PHONY: cparser_subdir
+
+$(IR_FILE): $(MASTER) $(CPARSER)
+	$(CPARSER) $(CFLAGS) $(CPARSER_TARGET) -w $< --export-ir -o $@
 
 .PHONY: clean
 clean:

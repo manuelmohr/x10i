@@ -38,6 +38,7 @@ DATA1DIR="/data1/`whoami`"
 if test -w $DATA1DIR; then
 	BUILDBASE="$DATA1DIR/builds/x10i"
 	mkdir -p "$BUILDBASE/libfirm"
+	rm -rf libfirm/build
 	ln -s "$BUILDBASE/libfirm" libfirm/build
 
 	# This would be nice, but the antfiles usually revert this
@@ -62,6 +63,9 @@ if [ "`uname -s`" = "Darwin" ]; then
 	echo "DLLEXT = .dylib" >> libfirm/config.mak
 	echo "DLLEXT = .dylib" >> liboo/config.mak
 fi
+
+rm -f cparser/config.mak
+echo "FIRM_HOME = ../libfirm" >> cparser/config.mak
 
 # Run "ant dist" once so we have all the required stuff
 pushd x10.dist > /dev/null
