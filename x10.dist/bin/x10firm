@@ -56,7 +56,7 @@ args="${args} -x10lib ${X10_TOP}/x10.dist/firm-stdlib/libx10.properties"
 args="${args} -nativeTypesConfigPath ${X10_TOP}/x10.firm_runtime/build"
 
 # Arguments for the JavaVM
-java_args="-Xmx512m"
+java_args="-Xmx512m -Xss8m"
 java_args="${java_args} -ea"
 java_args="${java_args} -Dfile.encoding=UTF-8"
 java_args="${java_args} -Dx10.dist=${X10_TOP}/x10.dist"
