@@ -40,9 +40,6 @@ typedef char       *x10_pointer;
 #define PRIx10_float  "f"
 #define PRIx10_double "f"
 
-#define X10_OBJECT_CAST(to, what) ((to *)(what))
-#define X10_ALLOC_OBJECT(o) (o *)X10_MALLOC(sizeof(o))
-
 #define X10_UNUSED(s) (void)(s)
 #define T_(x) x
 

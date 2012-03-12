@@ -3,18 +3,15 @@
 
 #include "x10.h"
 
-/* vtable struct (no definition in the C runtime) */
-typedef struct x10_vtable    x10_vtable;
-/* typeinfo struct (no definition in the C runtime) */
-typedef struct x10_classinfo x10_classinfo;
+typedef struct x10_vtable x10_vtable;
 
 typedef struct {
 	const x10_vtable *vptr;
 } x10_object;
 
-static inline void x10_init_object(x10_object *o, const x10_vtable *vptr)
-{
-	o->vptr = vptr;
-}
+x10_object *x10_alloc_object(const x10_vtable *vptr, size_t size);
+
+#define X10_ALLOC_OBJECT(type, vptr) \
+	((type*)x10_alloc_object(vptr, sizeof(type)))
 
 #endif

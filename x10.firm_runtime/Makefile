@@ -44,6 +44,7 @@ BUILDDIR?=build/$(TARGET)
 SRCDIR=src-c
 GENERATORSDIR=generators
 PLATFORMDIR=$(SRCDIR)/$(PLATFORM)
+LIBOO_BASE ?= ../liboo
 
 LIBNAME=x10
 A_FILE=$(BUILDDIR)/lib$(LIBNAME).a
@@ -54,8 +55,9 @@ FIRM_NATIVE_TYPES_CONF=$(BUILDDIR)/firmNativeTypes.conf
 C_FILES=$(filter-out $(GEN_FIRM_NATIVE_SIZES), $(ALL_C_FILES)) $(GEN_PRIMITIVE_TYPES)
 O_FILES=$(addprefix $(BUILDDIR), $(basename $(C_FILES:%.c=%.o)))
 H_FILES=$(wildcard $(SRCDIR)/*.h)
-CFLAGS += -I $(SRCDIR) -I $(SRCDIR)/$(PLATFORM) -Wall -W -std=c99
-APP_CFLAGS += -I $(SRCDIR)
+CPPFLAGS = -I $(SRCDIR) -I $(SRCDIR)/$(PLATFORM) -I $(LIBOO_BASE)/include
+CFLAGS += -Wall -W -std=c99
+APP_CFLAGS += -std=c99
 MASTER=$(BUILDDIR)/master.c
 O_FILE=$(MASTER:%.c=%.o)
 IR_FILE=$(BUILDDIR)/$(LIBNAME).ir
@@ -66,7 +68,7 @@ $(A_FILE): $(O_FILE)
 	ar rucs $@ $?
 
 $(FIRM_NATIVE_TYPES_CONF): $(GEN_FIRM_NATIVE_SIZES) $(wildcard $(PLATFORMDIR)/*.h)
-	$(CC) $(APP_CFLAGS) -o $(BUILDDIR)/gen_firm_native_sizes $<
+	$(CC) $(CPPFLAGS) $(APP_CFLAGS) -o $(BUILDDIR)/gen_firm_native_sizes $<
 	$(SIMULATOR) $(BUILDDIR)/gen_firm_native_sizes > $@
 	rm -f gen_firm_native_sizes
 
@@ -80,7 +82,7 @@ $(MASTER): $(C_FILES) $(H_FILES) Makefile
 	echo "$(foreach file,$(C_FILES),#include \"../../$(file)\"\n)" >>$(MASTER)
 
 $(O_FILE): $(MASTER)
-	$(CC) $(CFLAGS) $< -c -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< -c -o $@
 
 Makefile: cparser_subdir
 cparser_subdir:
@@ -88,7 +90,7 @@ cparser_subdir:
 .PHONY: cparser_subdir
 
 $(IR_FILE): $(MASTER) $(CPARSER)
-	$(CPARSER) $(CFLAGS) $(CPARSER_TARGET) -w $< --export-ir -o $@
+	$(CPARSER) $(CPPFLAGS) $(CFLAGS) $(CPARSER_TARGET) -w $< --export-ir -o $@
 
 .PHONY: clean
 clean:

@@ -51,6 +51,7 @@ import firm.PrimitiveType;
 import firm.Program;
 import firm.Type;
 import firm.bindings.binding_oo.ddispatch_binding;
+import firm.bindings.binding_typerep.ir_linkage;
 import firm.bindings.binding_typerep.ir_type_state;
 import firm.bindings.binding_typerep.ir_visibility;
 
@@ -658,11 +659,15 @@ public class FirmTypeSystem {
 		if (!flags.isInterface() && !flags.isStruct()) {
 			final String vtableName = NameMangler.mangleVTable(classType);
 			final Entity vtable = new Entity(global, vtableName, pointerType);
+			vtable.setVisibility(ir_visibility.ir_visibility_default);
+			vtable.setLinkage(ir_linkage.IR_LINKAGE_CONSTANT.val);
 			OO.setClassVTableEntity(result, vtable);
 		}
 
 		final String rttiName = NameMangler.mangleTypeinfo(classType);
 		final Entity classInfoEntity = new Entity(global, rttiName, pointerType);
+		classInfoEntity.setVisibility(ir_visibility.ir_visibility_local);
+		classInfoEntity.setLinkage(ir_linkage.IR_LINKAGE_CONSTANT.val);
 		OO.setClassRTTIEntity(result, classInfoEntity);
 
 		// Layouting of classes must be done explicitly by finishTypes

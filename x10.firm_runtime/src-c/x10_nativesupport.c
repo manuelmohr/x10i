@@ -28,7 +28,7 @@ void _ZN3x104lang13NativeSupport6memsetEPvii(x10_pointer dest, x10_int c, x10_in
 /* static x10.lang.NativeSupport.alloc(UInt): Pointer */
 x10_pointer _ZN3x104lang13NativeSupport5allocEi(x10_int numBytes)
 {
-	void *ret = x10_malloc(numBytes);
+	void *ret = malloc(numBytes);
 	assert(ret != NULL);
 	return ret;
 }
@@ -36,7 +36,7 @@ x10_pointer _ZN3x104lang13NativeSupport5allocEi(x10_int numBytes)
 /* static x10.lang.NativeSupport.allocZeroed(Uint): Pointer */
 x10_pointer _ZN3x104lang13NativeSupport11alocZeroedEi(x10_int numBytes)
 {
-	void *ret = x10_malloc(numBytes);
+	void *ret = malloc(numBytes);
 	assert(ret != NULL);
 	memset(ret, 0, numBytes);
 	return ret;
@@ -45,5 +45,5 @@ x10_pointer _ZN3x104lang13NativeSupport11alocZeroedEi(x10_int numBytes)
 /* static x10.lang.NativeSupport.dealloc(Pointer) */
 void _ZN3x104lang13NativeSupport7deallocEPv(x10_pointer ptr)
 {
-	x10_free(ptr);
+	free(ptr);
 }

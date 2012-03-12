@@ -22,27 +22,6 @@ static const bool X10_FALSE = false;
 #define X10_INDEX_OUT_OF_BOUNDS_EXCEPTION T_("IndexOutOfBoundsException")
 #define X10_ILLEGAL_MONITOR_STATE_EXCEPTION T_("IllegalMonitorStateException")
 
-static inline void* x10_malloc(x10_long size)
-{
-	// TODO: Garbage collection, Out of memory exception
-	void *data = malloc(size);
-	return data;
-}
-
-static inline void* x10_realloc(void *ptr, x10_long size)
-{
-	void *data = realloc(ptr, size);
-	// TODO Out of memory exception?
-	return data;
-}
-
-static inline void x10_free(void *obj)
-{
-	// TODO: Garbage collection
-	X10_UNUSED(obj);
-	// Do nothing
-}
-
 static inline x10_object *x10_new_exception_object(const x10_char *name, const x10_char *msg)
 {
 	X10_UNUSED(name);
