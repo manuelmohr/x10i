@@ -20,7 +20,6 @@ import polyglot.ast.Block_c;
 import polyglot.ast.BooleanLit_c;
 import polyglot.ast.Branch;
 import polyglot.ast.Branch_c;
-import polyglot.ast.CanonicalTypeNode;
 import polyglot.ast.Case;
 import polyglot.ast.Case_c;
 import polyglot.ast.Catch_c;
@@ -107,7 +106,6 @@ import x10.ast.TypeDecl_c;
 import x10.ast.When_c;
 import x10.ast.X10Binary_c;
 import x10.ast.X10Call_c;
-import x10.ast.X10CanonicalTypeNode;
 import x10.ast.X10CanonicalTypeNode_c;
 import x10.ast.X10Cast_c;
 import x10.ast.X10ClassDecl;
@@ -873,7 +871,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 				final FieldInstance fieldInst = fieldDecl.fieldDef().asInstance();
 				final Node objectPointer = getThis();
 				final Expr expr = fieldDecl.init();
-				genFieldInstanceAssign(objectPointer, fieldInst, expr);
+				final Node node = uncheckedCast(expr, fieldInst.type(), dec.position());
+				genFieldInstanceAssign(objectPointer, fieldInst, node);
 			} else {
 				throw new CodeGenError("Illegal class member", dec);
 			}
@@ -977,21 +976,12 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	}
 
 	private Node getFieldAddress(final Node objectPointer, final FieldInstance instance) {
-		final FieldInstance def = instance.def().asInstance();
-		final Flags flags = def.flags();
-		/* make sure enclosing class-type has been created */
-		firmTypeSystem.asType(instance.container());
 		final Entity entity = firmTypeSystem.getEntityForField(instance);
-		Node address = null;
-		if (flags.isStatic()) {
-			address = con.newSymConst(entity);
-		} else {
-			assert objectPointer != null;
-			assert entity != null;
-			address = con.newSel(objectPointer, entity);
+		assert entity != null;
+		if (objectPointer != null) {
+			return con.newSel(objectPointer, entity);
 		}
-
-		return address;
+		return con.newSymConst(entity);
 	}
 
 	private Node genFieldLoad(final Node objectPointer, final FieldInstance fInst) {
@@ -1014,14 +1004,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		return result;
 	}
 
-	private Node genStaticFieldLoad(final FieldInstance instance) {
-		return genFieldLoad(null, instance);
-	}
-
-	private Node assignToAddress(final Node address, final Type type, final Expr expr) {
-		final Expr casted = x10Cast(expr, type);
-		final Node value = visitExpression(casted);
-
+	private void assignToAddress(final Node address, final Type type, final Node value) {
 		if (firmTypeSystem.isFirmStructType(type)) {
 			final firm.Type firmType = firmTypeSystem.asType(type);
 			final Node mem = con.getCurrentMem();
@@ -1034,30 +1017,26 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final Node newMem = con.newProj(store, Mode.getM(), Store.pnM);
 			con.setCurrentMem(newMem);
 		}
-		return value;
 	}
 
-	private Node genFieldAssign(final Field_c field, final Expr expr) {
+	private void genFieldAssign(final Field_c field, final Node value) {
 		final FieldInstance instance = field.fieldInstance().def().asInstance();
 		Node objectAddress = null;
 		if (!field.flags().isStatic())
 			objectAddress = visitExpression((Expr)field.target());
-		return genFieldInstanceAssign(objectAddress, instance, expr);
+		genFieldInstanceAssign(objectAddress, instance, value);
 	}
 
-	private Node genFieldInstanceAssign(final Node objectAddress, final FieldInstance instance, final Expr expr) {
+	private void genFieldInstanceAssign(final Node objectAddress, final FieldInstance instance, final Node value) {
 		final Node address = getFieldAddress(objectAddress, instance);
 		final Type type = instance.type();
-		return assignToAddress(address, type, expr);
+		assignToAddress(address, type, value);
 	}
 
 	@Override
 	public void visit(FieldDecl_c dec) {
 		final Flags flags = dec.flags().flags();
-
-		/* make sure enclosing class type has been created */
 		final FieldInstance instance = dec.fieldDef().asInstance();
-		firmTypeSystem.asClass(instance.container());
 
 		/* static fields may have initializers */
 		if (flags.isStatic()) {
@@ -1219,41 +1198,36 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(Assign_c asgn) {
 		final Expr lhs = asgn.left();
-
-		// autoboxing
 		final Expr right = asgn.right();
+
+		final Type destType = lhs.type();
+		final Node casted = uncheckedCast(right, destType, asgn.position());
 
 		if(lhs instanceof Local_c) { // Assignment to a local variable -> Assignments to saved variables are not allowed in closures. -> so we will not handle them.
 			final Local_c lhsLocal = (Local_c)lhs;
 			final LocalInstance loc = lhsLocal.localInstance();
-
 			final VarEntry var = con.getVarEntry(loc);
-			final Type destType = loc.type();
-			final Expr casted = x10Cast(right, destType);
-			final Node rightRet = visitExpression(casted);
 
 			if (var.getType() == VarEntry.STRUCT) {
 				// local struct variable
 				final Entity entity = var.getEntity();
 				final Node mem = con.getCurrentMem();
 				final Node destAddr = visitExpression(lhs);
-				final Node copyB = con.newCopyB(mem, destAddr, rightRet, entity.getType());
+				final Node copyB = con.newCopyB(mem, destAddr, casted, entity.getType());
 				final Node curMem = con.newProj(copyB, Mode.getM(), CopyB.pnM);
 				con.setCurrentMem(curMem);
-				setReturnNode(rightRet);
 			} else {
 				// local normal variable
 				final int idx = var.getIdx();
-				con.setVariable(idx, rightRet);
-				setReturnNode(rightRet);
+				con.setVariable(idx, casted);
 			}
 		} else if (lhs instanceof Field_c) {
 			final Field_c field = (Field_c) lhs;
-			final Node ret = genFieldAssign(field, right);
-			setReturnNode(ret);
+			genFieldAssign(field, casted);
 		} else {
 			throw new CodeGenError("Unexpected assignment target", asgn);
 		}
+		setReturnNode(casted);
 	}
 
 	private void genReturn(Type returnType, Expr expr) {
@@ -1733,17 +1707,15 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(Field_c n) {
 		final FieldInstance instance = n.fieldInstance();
-
+		final Node objectPointer;
 		final Flags flags = instance.flags();
-
 		if(flags.isStatic()) {
-			final Node ret = genStaticFieldLoad(instance);
-			setReturnNode(ret);
+			objectPointer = null;
 		} else {
-			final Node objectPointer = visitExpression((Expr)n.target());
-			final Node ret = genFieldLoad(objectPointer, instance);
-			setReturnNode(ret);
+			objectPointer = visitExpression((Expr)n.target());
 		}
+		final Node ret = genFieldLoad(objectPointer, instance);
+		setReturnNode(ret);
 	}
 
 	/**
@@ -2193,7 +2165,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		for(int i = 0; i < properties.size(); i++) {
 			final FieldInstance field = properties.get(i);
 			final Expr expr = args.get(i);
-			genFieldInstanceAssign(thisPointer, field, expr);
+			final Node node = uncheckedCast(expr, field.type(), n.position());
+			genFieldInstanceAssign(thisPointer, field, node);
 		}
 	}
 
@@ -2292,29 +2265,25 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	/**
 	 * Creates the appropriate firm graph for an autoboxing
 	 */
-	public Node genBoxing(final X10ClassType fromType, final Expr expr) {
-		final X10ClassType boxType = getBoxingType(fromType);
+	private Node genBoxing(final Expr value) {
+		final X10ClassType type = x10TypeSystem.toClass(value.type());
+		final X10ClassType boxType = getBoxingType(type);
 
 		// Generate the box
 		final Node box = genHeapAlloc(boxType);
 
 		// save the boxed value in the box
 		final FieldInstance boxValue = boxType.fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE));
-		assert boxValue != null;
-		genFieldInstanceAssign(box, boxValue, expr);
+		final Node valueNode = visitExpression(value);
+		genFieldInstanceAssign(box, boxValue, valueNode);
 
 		return box;
 	}
 
-	private Node genUnboxing(final Expr expr, final X10ClassType fromType, final X10ClassType toType) {
+	private Node genUnboxing(final Node value, final X10ClassType toType) {
 		final X10ClassType boxType = getBoxingType(toType);
-		final Node node = visitExpression(expr);
-
-        genCastNullCheck(node, fromType);
 		final FieldInstance boxValue = boxType.fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE));
-		assert boxValue != null;
-		genSubtypeCheck(node, fromType, toType);
-		final Node boxedValue = genFieldLoad(node, boxValue);
+		final Node boxedValue = genFieldLoad(value, boxValue);
 		return boxedValue;
 	}
 
@@ -2393,10 +2362,10 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		FirmCodeTemplate.genIfStatement(con, condTemplate, ifStmt, null);
 	}
 
-	private Node genRefToRefCast(final Node node, final Type fromType, final Type toType, final boolean checked) {
-
+	private Node genCheckedRefToRefCast(final Expr expr, final Type fromType, final Type toType) {
 		final Type from = x10TypeSystem.getConcreteType(fromType);
 		final Type to   = x10TypeSystem.getConcreteType(toType);
+		final Node node = visitExpression(expr);
 
 		final CondTemplate cond = new CondTemplate() {
 			@Override
@@ -2419,10 +2388,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final ExprTemplate falseExpr = new ExprTemplate() {
 			@Override
 			public Node genCode() {
-				// can have checked and unchecked casts
-				if(checked)
-					genSubtypeCheck(node, from, to);
-
+				genSubtypeCheck(node, from, to);
 				return node;
 			}
 		};
@@ -2430,68 +2396,61 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		return FirmCodeTemplate.genConditional(con, cond, trueExpr, falseExpr);
 	}
 
+	private Node checkedCast(final Expr value, final Type to, final Position pos) {
+		/* shortcut */
+		final Type from = x10TypeSystem.getConcreteType(value.type());
+		if (x10TypeSystem.typeEquals0(from, to, x10Context)) {
+			return visitExpression(value);
+		}
+
+		if (x10TypeSystem.isRefType(from) && x10TypeSystem.isRefType(to)) {
+			return genCheckedRefToRefCast(value, from, to);
+		} else if (x10TypeSystem.isRefType(from) && x10TypeSystem.isStructType0(to)) {
+			/* unboxing */
+			final Node valueNode = visitExpression(value);
+			genCastNullCheck(valueNode, from);
+			genSubtypeCheck(valueNode, from, to);
+			return genUnboxing(valueNode, x10TypeSystem.toClass(to));
+		} else {
+			throw new CodeGenError("Unsupported cast", pos);
+		}
+	}
+
+	private Node uncheckedCast(final Expr value, final Type to, final Position pos) {
+		final Type from = x10TypeSystem.getConcreteType(value.type());
+		/* shortcut */
+		if (x10TypeSystem.typeEquals0(from, to, x10Context)) {
+			return visitExpression(value);
+		}
+
+		if (x10TypeSystem.isRefType(from) && x10TypeSystem.isRefType(to)) {
+			return visitExpression(value);
+		} else if (x10TypeSystem.isStructType0(from) && x10TypeSystem.isRefType(to)) {
+			return genBoxing(value);
+		} else if (x10TypeSystem.isRefType(from) && x10TypeSystem.isStructType0(to)) {
+			final Node valueNode = visitExpression(value);
+			return genUnboxing(valueNode, x10TypeSystem.toClass(to));
+		} else {
+			throw new CodeGenError("Unsupported unchecked cast", pos);
+		}
+	}
+
 	@Override
 	public void visit(X10Cast_c c) {
-
+		final Expr arg = c.expr();
 		final TypeNode tn = c.castType();
-		assert tn instanceof CanonicalTypeNode;
+		final Type to = x10TypeSystem.getConcreteType(tn.type());
 
-		switch (c.conversionType()) {
-		case CHECKED:
-		case PRIMITIVE:
-		case SUBTYPE:
-		case UNCHECKED:
-			final X10CanonicalTypeNode xtn = (X10CanonicalTypeNode) tn;
-
-			final Type to = x10TypeSystem.getConcreteType(xtn.type());
-			final Type from = x10TypeSystem.getConcreteType(c.expr().type());
-
-			if (x10TypeSystem.typeEquals0(from, to, x10Context)) {
-				// types are statically equal no type conversion needed.
-				visitAppropriate(c.expr());
-				break;
-			} else if(x10TypeSystem.isRefType(from) && x10TypeSystem.isRefType(to)) {
-				// ref -> ref
-				final Node node = visitExpression(c.expr());
-				final Node ret = genRefToRefCast(node, from, to, c.conversionType() == Converter.ConversionType.CHECKED);
-				setReturnNode(ret);
-				break;
-			} else if(x10TypeSystem.isStructType0(from) && x10TypeSystem.isRefType(to)) {
-				// struct -> ref
-				// Check for boxing
-				if (c.conversionType() == Converter.ConversionType.SUBTYPE && x10TypeSystem.isSubtype(from, to, x10Context)) {
-					if (x10TypeSystem.isInterfaceType(to) && x10TypeSystem.isStructType0(from)) {
-						// An upcast of a struct to an implemented interface -> Need boxing
-						final Expr expr = c.expr();
-						final Node ret = genBoxing(x10TypeSystem.toClass(from), expr);
-						setReturnNode(ret);
-						break;
-					}
-				}
-				assert false;
-				break;
-			} else if(x10TypeSystem.isRefType(from) && x10TypeSystem.isStructType0(to)) {
-				// ref -> struct
-				// Unboxing -> must be a checked cast !!!
-				assert c.conversionType() == ConversionType.CHECKED;
-				final Expr expr = c.expr();
-				final Node ret = genUnboxing(expr, x10TypeSystem.toClass(from), x10TypeSystem.toClass(to));
-				setReturnNode(ret);
-				break;
-			}
-
-			assert false;
-			//$FALL-THROUGH$
-		case CALL_CONVERSION:
-		case UNBOXING:
-		case UNKNOWN_IMPLICIT_CONVERSION:
-		case UNKNOWN_CONVERSION:
-		case DESUGAR_LATER:
-			throw new CodeGenError("Unknown conversion type after type-checking.", c);
-
-		case BOXING:
-			throw new CodeGenError("Boxing conversion should have been rewritten.", c);
+		final Node ret;
+		ConversionType conversionType = c.conversionType();
+		if (conversionType == ConversionType.UNCHECKED || conversionType == ConversionType.SUBTYPE) {
+			ret = uncheckedCast(arg, to, c.position());
+		} else if (conversionType == ConversionType.CHECKED) {
+			ret = checkedCast(arg, to, c.position());
+		} else {
+			throw new CodeGenError("Unsupported cast type: " + conversionType, c);
 		}
+		setReturnNode(ret);
 	}
 
 	@Override
@@ -2708,7 +2667,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 				Node offsetC = con.newConst(offset, Mode.getIu());
 				addr = con.newAdd(baseAddr, offsetC, Mode.getP());
 			}
-			assignToAddress(addr, elementType, expr);
+			final Node node = uncheckedCast(expr, elementType, n.position());
+			assignToAddress(addr, elementType, node);
 		}
 
 		/* construct Array object */
@@ -2752,10 +2712,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		setReturnNode(objectNode);
 	}
-
-	//
-	//  Will never be implemented.
-	//
 
 	@Override
 	public void visit(Closure_c n) {

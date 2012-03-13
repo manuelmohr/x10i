@@ -62,9 +62,7 @@ import firm.bindings.binding_typerep.ir_visibility;
  * because the runtime is loaded dynamically.
  */
 public class FirmTypeSystem {
-	/** Maps polyglot types to firm types.
-	 * TODO: Use the polyglot.types.Type for hashing
-	 * */
+	/** Maps polyglot types to firm types. */
 	private final Map<polyglot.types.Type, Type> firmCoreTypes = new HashMap<polyglot.types.Type, Type>();
 
 	/** Maps some polyglot types to "native"/primitive firm types. */
@@ -640,14 +638,7 @@ public class FirmTypeSystem {
 
 		/* creates fields for properties */
 		for (final FieldInstance field : classType.properties()) {
-			// Fix by mohr on 2011-04-19
-			//
-			// At this point, classType holds the concrete type, i.e.
-			// x10.lang.Array<x10.lang.Integer>.
-			// Calling container() on field just returns the generic type, i.e.
-			// x10.lang.Array<T> which breaks our mangling.
-			// Therefore, we explicitly set the containing class type here.
-			addField(field.container(classType), result);
+			addField(field, result);
 		}
 
 		final Type global = Program.getGlobalType();
@@ -685,6 +676,9 @@ public class FirmTypeSystem {
 	 * the fields class.
 	 */
 	public Entity getEntityForField(FieldInstance instance) {
+		/* make sure enclosing class-type has been created */
+		asType(instance.container());
+
 		final GenericClassContext context = getDefiningContext(instance);
 		final Entity ent = context.getFieldEntity(instance.def());
 		return ent;
