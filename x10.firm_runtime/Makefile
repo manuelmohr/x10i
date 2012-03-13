@@ -49,7 +49,7 @@ LIBOO_BASE ?= ../liboo
 LIBNAME=x10
 A_FILE=$(BUILDDIR)/lib$(LIBNAME).a
 ALL_C_FILES=$(wildcard $(SRCDIR)/*.c) $(wildcard $(PLATFORMDIR)/*.c)
-GEN_FIRM_NATIVE_SIZES=$(PLATFORMDIR)/gen_firm_native_sizes.c
+GEN_FIRM_NATIVE_SIZES=$(SRCDIR)/gen_firm_native_sizes.c $(PLATFORMDIR)/platform_native_sizes.c
 GEN_PRIMITIVE_TYPES=$(BUILDDIR)/x10_primitive_types.c
 FIRM_NATIVE_TYPES_CONF=$(BUILDDIR)/firmNativeTypes.conf
 C_FILES=$(filter-out $(GEN_FIRM_NATIVE_SIZES), $(ALL_C_FILES)) $(GEN_PRIMITIVE_TYPES)
@@ -68,7 +68,7 @@ $(A_FILE): $(O_FILE)
 	ar rucs $@ $?
 
 $(FIRM_NATIVE_TYPES_CONF): $(GEN_FIRM_NATIVE_SIZES) $(wildcard $(PLATFORMDIR)/*.h)
-	$(CC) $(CPPFLAGS) $(APP_CFLAGS) -o $(BUILDDIR)/gen_firm_native_sizes $<
+	$(CC) $(CPPFLAGS) $(APP_CFLAGS) -o $(BUILDDIR)/gen_firm_native_sizes $(GEN_FIRM_NATIVE_SIZES)
 	$(SIMULATOR) $(BUILDDIR)/gen_firm_native_sizes > $@
 	rm -f gen_firm_native_sizes
 
