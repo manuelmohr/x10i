@@ -36,7 +36,6 @@ import polyglot.ast.Eval_c;
 import polyglot.ast.Expr;
 import polyglot.ast.FieldDecl_c;
 import polyglot.ast.Field_c;
-import polyglot.ast.FloatLit;
 import polyglot.ast.FloatLit_c;
 import polyglot.ast.ForInit;
 import polyglot.ast.ForUpdate;
@@ -47,7 +46,6 @@ import polyglot.ast.Id_c;
 import polyglot.ast.If_c;
 import polyglot.ast.Import_c;
 import polyglot.ast.Initializer_c;
-import polyglot.ast.IntLit;
 import polyglot.ast.IntLit_c;
 import polyglot.ast.Labeled_c;
 import polyglot.ast.LocalClassDecl_c;
@@ -966,8 +964,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			TargetValue targetValue = getCharLitTargetValue((CharLit_c) expr);
 			result = new Initializer(targetValue);
 		} else if (expr instanceof NullLit_c) {
-			Node nullNode = getStaticNullLitNode((NullLit_c)expr);
-			result = new Initializer(nullNode);
+			result = Initializer.getNull();
 		} else {
 			// Now we will try the constant evaluation of expr
 			result = constantExprToInitializer(expr);
@@ -1900,18 +1897,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	}
 
 	private TargetValue getFloatLitTargetValue(FloatLit_c literal) {
-		final Mode mode;
-
-		final polyglot.ast.FloatLit.Kind kind = literal.kind();
-		if (kind == FloatLit.FLOAT)
-			mode = firmTypeSystem.getFirmMode(x10TypeSystem.Float());
-		else if (kind == FloatLit.DOUBLE)
-			mode = firmTypeSystem.getFirmMode(x10TypeSystem.Double());
-		else
-			throw new CodeGenError("Unrecognized FloatLit kind " + kind, literal);
-
+		final Mode mode = firmTypeSystem.getFirmMode(literal.type());
 		final double value = literal.value();
-
 		return new TargetValue(value, mode);
 	}
 
@@ -1919,36 +1906,12 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	public void visit(FloatLit_c literal) {
 		final TargetValue targetValue = getFloatLitTargetValue(literal);
 		final Node ret = con.newConst(targetValue);
-
 		setReturnNode(ret);
 	}
 
 	private TargetValue getIntLitTarval(IntLit_c literal) {
-		final Mode mode;
-
-		final polyglot.ast.IntLit.Kind kind = literal.kind();
-		if (literal.kind() == IntLit.INT) {
-			mode = firmTypeSystem.getFirmMode(x10TypeSystem.Int());
-		} else if (literal.kind() == IntLit.UINT) {
-			mode = firmTypeSystem.getFirmMode(x10TypeSystem.UInt());
-		} else if (literal.kind() == IntLit.LONG) {
-			mode = firmTypeSystem.getFirmMode(x10TypeSystem.Long());
-		} else if (kind == IntLit.ULONG) {
-			mode = firmTypeSystem.getFirmMode(x10TypeSystem.ULong());
-		} else if (kind == IntLit.SHORT) {
-			mode = firmTypeSystem.getFirmMode(x10TypeSystem.Short());
-		} else if (kind == IntLit.USHORT) {
-			mode = firmTypeSystem.getFirmMode(x10TypeSystem.UShort());
-		} else if (kind == IntLit.BYTE) {
-			mode = firmTypeSystem.getFirmMode(x10TypeSystem.Byte());
-		} else if (kind == IntLit.UBYTE) {
-			mode = firmTypeSystem.getFirmMode(x10TypeSystem.UByte());
-		} else {
-			throw new CodeGenError("Unrecognized IntLit kind " + kind, literal);
-		}
-
+		final Mode mode = firmTypeSystem.getFirmMode(literal.type());
 		final long value = literal.value();
-
 		return new TargetValue(value, mode);
 	}
 
@@ -1956,25 +1919,12 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	public void visit(IntLit_c n) {
 		final TargetValue targetValue = getIntLitTarval(n);
 		final Node ret = con.newConst(targetValue);
-
 		setReturnNode(ret);
-	}
-
-	private Node getStaticNullLitNode(NullLit_c n) {
-		// Create a new local construction and use it to create a new null const node
-		final Graph graph = Program.getConstCodeGraph();
-		final Construction c = new OOConstruction(graph);
-		final firm.Type type = firmTypeSystem.asType(n.type());
-		final Mode mode = type.getMode();
-		Node result = c.newConst(mode.getNull());
-
-		return result;
 	}
 
 	@Override
 	public void visit(NullLit_c n) {
-		final firm.Type type = firmTypeSystem.asType(n.type());
-		final Mode mode = type.getMode();
+		final Mode mode = firmTypeSystem.getFirmMode(n.type());
 		final Node result = con.newConst(mode.getNull());
 		setReturnNode(result);
 	}
@@ -1984,7 +1934,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final firm.Type elemType = firmTypeSystem.asType(x10TypeSystem.Char());
 		final ArrayType type = new ArrayType(1, elemType);
 
-		final Ident id = Ident.createUnique("x10_str.%u");
+		final Ident id = Ident.createUnique("x10str.%u");
 		final Entity ent = new Entity(globalType, id, type);
 		ent.setLdIdent(id);
 
