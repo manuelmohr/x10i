@@ -792,9 +792,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final firm.Type[] parameterTypes = new firm.Type[] {};
 		final MethodType mainType = new MethodType(parameterTypes, returnTypes);
 		String name = "main";
-		if (options.getTargetTriple().getOS().equals("octopos")) {
-			name = "main_ilet";
-		}
 		name = NameMangler.mangleKnownName(name);
 		final Entity entity = new Entity(global, name, mainType);
 		entity.setLdIdent(name);
