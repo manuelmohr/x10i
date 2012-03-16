@@ -53,24 +53,24 @@ public class FirmScheduler extends X10Scheduler {
 		 */
 		final GoalSequence seq = new GoalSequence("FirmOutputSequence");
 
-		final Goal loweringFirm = new LoweringFirm(this, firmTypeSystem);
-		loweringFirm.intern(this);
+		Goal loweringFirm = new LoweringFirm(this, firmTypeSystem);
+		loweringFirm = loweringFirm.intern(this);
 		seq.append(loweringFirm);
 
 		final CompilerOptions options = (CompilerOptions) this.extInfo.getOptions();
 		if (options.x10_config.OPTIMIZE) {
-			final Goal optimized = new OptimizeFirm(this);
-			optimized.intern(this);
+			Goal optimized = new OptimizeFirm(this);
+			optimized = optimized.intern(this);
 			seq.append(optimized);
 		}
 
-		final Goal asmEmitted = new AsmEmitted(this);
-		asmEmitted.intern(this);
+		Goal asmEmitted = new AsmEmitted(this);
+		asmEmitted = asmEmitted.intern(this);
 		seq.append(asmEmitted);
 
 		if (options.assembleAndLink()) {
-			final Goal linked = new Linked(extInfo);
-			linked.intern(this);
+			Goal linked = new Linked(extInfo);
+			linked = linked.intern(this);
 			seq.append(linked);
 		}
 
@@ -155,8 +155,8 @@ public class FirmScheduler extends X10Scheduler {
 		final TypeSystem typeSystem = extInfo.typeSystem();
 		final X10NodeFactory_c nodeFactory = (X10NodeFactory_c) extInfo.nodeFactory();
 
-		final Goal firm_generated = new FirmGenerated(job, typeSystem, firmTypeSystem, nodeFactory);
-		firm_generated.intern(this);
+		Goal firm_generated = new FirmGenerated(job, typeSystem, firmTypeSystem, nodeFactory);
+		firm_generated = firm_generated.intern(this);
 
 		/*
 		 * Since source goals are per job/compilation unit/source file,
@@ -164,7 +164,7 @@ public class FirmScheduler extends X10Scheduler {
 		 * method.
 		 */
 
-		final SourceGoalSequence seq = new SourceGoalSequence("FirmTransformationSequence", job);
+		SourceGoalSequence seq = new SourceGoalSequence("FirmTransformationSequence", job);
 		seq.append(firm_generated);
 
 		return seq.intern(this);
