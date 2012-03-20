@@ -23,7 +23,7 @@ import firm.nodes.Store;
  */
 abstract class X10LangPointer {
 	/**
-	 * x10.lang.Pointer.read[T]();
+	 * x10.lang.Pointer.read[T](): T
 	 */
 	static class Read implements BuiltinMethodGenerator {
 		@Override
@@ -35,13 +35,11 @@ abstract class X10LangPointer {
 
 			assert meth.typeParameters().size() == 1;
 			final Type typeParameter = meth.typeParameters().get(0);
-
 			assert formals.size() == 0;
 
 			final Type returnType = meth.returnType();
-			final Type thisType = meth.flags().isStatic() ? null : owner;
 			final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
-					returnType, thisType);
+					returnType, owner);
 
 			MethodConstruction con = codeGenerator.getFirmConstruction();
 			final Mode parMode = firmTypeSystem.getFirmMode(typeParameter);
@@ -74,7 +72,7 @@ abstract class X10LangPointer {
 	}
 
 	/**
-	 * x10.lang.Pointer.write[T](val : T);
+	 * x10.lang.Pointer.write[T](val: T)
 	 */
 	static class Write implements BuiltinMethodGenerator {
 		@Override
@@ -91,9 +89,8 @@ abstract class X10LangPointer {
 			final LocalInstance val = formals.get(0);
 
 			final Type returnType = meth.returnType();
-			final Type thisType = meth.flags().isStatic() ? null : owner;
 			final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
-					returnType, thisType);
+					returnType, owner);
 
 			MethodConstruction con = codeGenerator.getFirmConstruction();
 			final VarEntry var_val = con.getVarEntry(val);

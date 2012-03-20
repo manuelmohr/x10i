@@ -22,7 +22,7 @@ public class Builtins {
 		map.put("x10.lang.Zero.get", new X10LangZeroGet());
 		map.put("x10.lang.Pointer.read", new X10LangPointer.Read());
 		map.put("x10.lang.Pointer.write", new X10LangPointer.Write());
-		map.put("X10.lang.NativeSupport.getSize", new X10LangNativeSupportGetSize());
+		map.put("x10.lang.NativeSupport.getSize", new X10LangNativeSupportGetSize());
 	}
 
 	/**
