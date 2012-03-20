@@ -23,6 +23,11 @@ public class Builtins {
 		map.put("x10.lang.Pointer.read", new X10LangPointer.Read());
 		map.put("x10.lang.Pointer.write", new X10LangPointer.Write());
 		map.put("x10.lang.NativeSupport.getSize", new X10LangNativeSupportGetSize());
+		map.put("x10.compiler.CompilerFlags.TRUE", new X10CompilerCompilerFlags.TRUE());
+		map.put("x10.compiler.CompilerFlags.FALSE", new X10CompilerCompilerFlags.FALSE());
+		map.put("x10.compiler.CompilerFlags.checkBounds", new X10CompilerCompilerFlags.CheckBounds());
+		map.put("x10.compiler.CompilerFlags.checkPlace", new X10CompilerCompilerFlags.CheckPlace());
+		map.put("x10.compiler.CompilerFlags.useUnsigned", new X10CompilerCompilerFlags.UseUnsigned());
 	}
 
 	/**

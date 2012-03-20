@@ -33,22 +33,20 @@ class X10LangZeroGet implements BuiltinMethodGenerator {
 				returnType, null);
 		final MethodConstruction con = codeGenerator.getFirmConstruction();
 
+		final Node ret;
 		if (!x10TypeSystem.isStructType0(typeParameter)) {
 			final Mode mode = firmTypeSystem.getFirmMode(typeParameter);
 			final Node node = con.newConst(mode.getNull());
 			final Node mem = con.getCurrentMem();
-			final Node ret = con.newReturn(mem, new Node[] { node });
-			con.getGraph().getEndBlock().addPred(ret);
+			ret = con.newReturn(mem, new Node[] { node });
 		} else {
 			final Node tmp = codeGenerator.genStackAlloc(typeParameter);
 			// TODO: Add memset call
 			final Node mem = con.getCurrentMem();
-			final Node retNode = con.newReturn(mem, new Node[]{tmp});
-			assert retNode != null;
-
-			con.getGraph().getEndBlock().addPred(retNode);
-			con.setCurrentBlockBad();
+			ret = con.newReturn(mem, new Node[]{tmp});
 		}
+		con.getGraph().getEndBlock().addPred(ret);
+		con.setCurrentBlockBad();
 		codeGenerator.finishConstruction(entity, savedConstruction);
 	}
 }

@@ -2775,6 +2775,13 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		return con;
 	}
 
+	/**
+	 * return compiler options
+	 */
+	public CompilerOptions getOptions() {
+		return options;
+	}
+
 	/** returns current X10 Type System */
 	public GenericTypeSystem getX10TypeSystem() {
 		return x10TypeSystem;

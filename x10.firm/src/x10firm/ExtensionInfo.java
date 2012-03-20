@@ -97,6 +97,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedClassNames.add("x10/util/Container.x10");
 		allowedClassNames.add("x10/util/IndexedMemoryChunk.x10");
 
+		allowedClassNames.add("x10/compiler/CompilerFlags.x10");
 		allowedClassNames.add("x10/compiler/InitDispatcher.x10");
 	}
 
