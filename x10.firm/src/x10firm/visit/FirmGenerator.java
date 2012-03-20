@@ -141,7 +141,7 @@ import x10firm.types.ParameterTypeMapping;
 import x10firm.visit.FirmCodeTemplate.CondTemplate;
 import x10firm.visit.FirmCodeTemplate.ExprTemplate;
 import x10firm.visit.FirmCodeTemplate.StmtTemplate;
-import x10firm.visit.x10lib.NativeGenericSupport;
+import x10firm.visit.builtins.Builtins;
 import firm.ArrayType;
 import firm.ClassType;
 import firm.Construction;
@@ -182,7 +182,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	private static final Charset UTF8 = Charset.forName("UTF8");
 
-	private static final NativeGenericSupport genSupport = new NativeGenericSupport();
+	private static final Builtins builtins = new Builtins();
 
 	/** The current method construction object */
 	private MethodConstruction con;
@@ -754,12 +754,12 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final Entity entity = firmTypeSystem.getMethodEntity(methodInstance);
 		final X10ClassType owner = (X10ClassType) methodInstance.container();
 
-		if (flags.isNative() || flags.isAbstract()) {
-			if(flags.isNative() && hasTypeParameters) {
-				final boolean dispatchOk = genSupport.dispatch(this, methodInstance, formals);
-				assert dispatchOk;
-			}
-			// native code is defined elsewhere, so nothing left to do
+		if (flags.isAbstract())
+			return;
+		if (flags.isNative()) {
+			/* for builtins we might need to dynamically create the code now */
+			builtins.generate(this, methodInstance, formals);
+			/* native code is defined elsewhere, so nothing left to do */
 			return;
 		}
 

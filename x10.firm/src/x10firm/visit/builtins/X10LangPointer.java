@@ -1,4 +1,4 @@
-package x10firm.visit.x10lib;
+package x10firm.visit.builtins;
 
 import java.util.Collections;
 import java.util.List;
@@ -21,13 +21,13 @@ import firm.nodes.Store;
 /**
  * Firm Generator for x10.lang.Pointer
  */
-public class PointerGenerator extends NativeGenericDispatcher {
+abstract class X10LangPointer {
 	/**
-	 *  Firm generator for the "read" method in x10.lang.Pointer
+	 * x10.lang.Pointer.read[T]();
 	 */
-	static class GenRead implements NativeGenericMethodGenerator {
+	static class Read implements BuiltinMethodGenerator {
 		@Override
-		public boolean gen(final FirmGenerator codeGenerator, final MethodInstance meth,
+		public void generate(final FirmGenerator codeGenerator, final MethodInstance meth,
 						   final List<LocalInstance> formals) {
 			final FirmTypeSystem firmTypeSystem = codeGenerator.getFirmTypeSystem();
 			final X10ClassType owner = (X10ClassType)meth.container();
@@ -70,26 +70,16 @@ public class PointerGenerator extends NativeGenericDispatcher {
 			con.setCurrentBlockBad();
 
 			codeGenerator.finishConstruction(entity, savedConstruction);
-
-			return true;
-		}
-
-		/**
-		 * Returns the name of the method
-		 */
-		@Override
-		public String getMethodName() {
-			return "read";
 		}
 	}
 
 	/**
-	 *  Firm generator for the "write" method in x10.lang.Pointer
+	 * x10.lang.Pointer.write[T](val : T);
 	 */
-	static class GenWrite implements NativeGenericMethodGenerator {
+	static class Write implements BuiltinMethodGenerator {
 		@Override
-		public boolean gen(final FirmGenerator codeGenerator, final MethodInstance meth,
-						   final List<LocalInstance> formals) {
+		public void generate(final FirmGenerator codeGenerator, final MethodInstance meth,
+						final List<LocalInstance> formals) {
 			final FirmTypeSystem firmTypeSystem = codeGenerator.getFirmTypeSystem();
 			final X10ClassType owner = (X10ClassType)meth.container();
 			final Entity entity = firmTypeSystem.getMethodEntity(meth);
@@ -137,32 +127,6 @@ public class PointerGenerator extends NativeGenericDispatcher {
 			con.setCurrentBlockBad();
 
 			codeGenerator.finishConstruction(entity, savedConstruction);
-
-			return true;
 		}
-
-		/**
-		 * Returns the name of the method
-		 */
-		@Override
-		public String getMethodName() {
-			return "write";
-		}
-	}
-
-	/**
-	 * Constructor
-	 */
-	public PointerGenerator() {
-		addMethodGenerator(new GenRead());
-		addMethodGenerator(new GenWrite());
-	}
-
-	/**
-	 * Returns the dispatch name
-	 */
-	@Override
-	public String getDispatchName() {
-		return "x10.lang.Pointer";
 	}
 }
