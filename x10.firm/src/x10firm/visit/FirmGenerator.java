@@ -2713,39 +2713,43 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		setReturnNode(objectNode);
 	}
 
+	private static void throwNotLoweredException(polyglot.ast.Node n) {
+		throw new CodeGenError("Node should have been lowered earlier", n);
+	}
+
 	@Override
 	public void visit(Closure_c n) {
-		throw new CodeGenError("Closures should have been desugared earlier", n);
+		throwNotLoweredException(n);
 	}
 
 	@Override
 	public void visit(LocalClassDecl_c n) {
-		throw new CodeGenError("Local classes should have been removed by a separate pass", n);
+		throwNotLoweredException(n);
 	}
 
 	@Override
 	public void visit(X10Unary_c n) {
-		throw new CodeGenError("Unary expressions should have been desugared earlier", n);
+		throwNotLoweredException(n);
 	}
 
 	@Override
 	public void visit(Unary_c n) {
-		throw new CodeGenError("Unary expressions should have been desugared earlier", n);
+		throwNotLoweredException(n);
 	}
 
 	@Override
 	public void visit(ArrayInit_c n) {
-		throw new CodeGenError("Should not be invoked", n);
+		throwNotLoweredException(n);
 	}
 
 	@Override
 	public void visit(SettableAssign_c n) {
-		throw new CodeGenError("Function assign should have been desugared earlier", n);
+		throwNotLoweredException(n);
 	}
 
 	@Override
 	public void visit(When_c n) {
-		throw new CodeGenError("When should have been desugared earlier", n);
+		throwNotLoweredException(n);
 	}
 
 	@Override
@@ -2755,17 +2759,17 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(AtExpr_c n) {
-		throw new CodeGenError("At expression should have been desugared earlier", n);
+		throwNotLoweredException(n);
 	}
 
 	@Override
 	public void visit(PackageNode_c n) {
-		throw new CodeGenError("Package nodes should have been handled by an earlier pass", n);
+		throwNotLoweredException(n);
 	}
 
 	@Override
 	public void visit(Import_c n) {
-		throw new CodeGenError("Imports should have been handled by an earlier pass", n);
+		throwNotLoweredException(n);
 	}
 
 	/**
