@@ -107,8 +107,8 @@ public class CompilerOptions extends X10CompilerOptions {
 	}
 
 	@Override
-	protected int parseCommand(final String[] args, final int index, final Set<String> source)
-			throws UsageError {
+	protected int parseCommand(final String[] args, final int index,
+			final Set<String> source) throws UsageError {
 		final int i = super.parseCommand(args, index, source);
 		if (i != index)
 			return i;

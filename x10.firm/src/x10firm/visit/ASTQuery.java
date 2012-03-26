@@ -75,44 +75,48 @@ public class ASTQuery {
 	    if (e instanceof Closure) {
 	        final Closure c = (Closure) e;
 	        final List<Stmt> ss = c.body().statements();
-            if (ss.size() != 1)
-	            return false;
-	        if (!(ss.get(0) instanceof Return))
-	            return false;
-	        return isConstantExpression(((Return) ss.get(0)).expr());
+			if (ss.size() != 1)
+				return false;
+			if (!(ss.get(0) instanceof Return))
+				return false;
+			return isConstantExpression(((Return) ss.get(0)).expr());
 	    }
-	    if (e instanceof ClosureCall) {
-	        final ClosureCall cc = (ClosureCall) e;
-	        final List<Expr> as = ((ClosureCall) e).arguments();
-	        for (final Expr a : as) {
-	            if (!isConstantExpression(a))
-	                return false;
-            }
-	        return isConstantExpression(cc.target());
-	    }
+		if (e instanceof ClosureCall) {
+			final ClosureCall cc = (ClosureCall) e;
+			final List<Expr> as = ((ClosureCall) e).arguments();
+			for (final Expr a : as) {
+				if (!isConstantExpression(a))
+					return false;
+			}
+			return isConstantExpression(cc.target());
+		}
 	    return false;
 	}
 
 	/**
 	 * Checks if a given field name is a synthetic field.
+	 *
 	 * @param name The field name which should be checked
 	 * @return True if the given field name is actually a synthetic field
 	 */
-    private static boolean isSyntheticField(final String name) {
+	private static boolean isSyntheticField(final String name) {
 		return name.startsWith("jlc$");
 	}
 
-    /**
-     * Checks if a given field decl is global init (static and the init expression must be constant).
-     * @param fd The field decl which should be checked
-     * @return True if the given field decl is a global init field decl.
-     */
+	/**
+	 * Checks if a given field decl is global init (static and the init
+	 * expression must be constant).
+	 *
+	 * @param fd
+	 *            The field decl which should be checked
+	 * @return True if the given field decl is a global init field decl.
+	 */
 	public boolean isGlobalInit(final FieldDecl fd) {
-	    return (fd.init() != null
-	         && fd.flags().flags().isStatic() && fd.flags().flags().isFinal() && isConstantExpression(fd.init())
-	         && (fd.init().type().isNumeric() || fd.init().type().isBoolean()
-	          || fd.init().type().isChar() || fd.init().type().isNull()))
-	      || isPerProcess((X10FieldDef) fd.fieldDef());
+		return (fd.init() != null && fd.flags().flags().isStatic()
+				&& fd.flags().flags().isFinal()
+				&& isConstantExpression(fd.init()) && (fd.init().type().isNumeric()
+				|| fd.init().type().isBoolean() || fd.init().type().isChar() || fd.init().type().isNull()))
+				|| isPerProcess((X10FieldDef) fd.fieldDef());
 	}
 
 	/**
@@ -130,7 +134,7 @@ public class ASTQuery {
 	        if (!(member instanceof Initializer_c) && !(member instanceof FieldDecl_c))
 	            continue;
 	        if (member instanceof FieldDecl_c && (((FieldDecl_c)member).init() == null
-	         || isSyntheticField(((FieldDecl_c)member).name().id().toString())))
+	            || isSyntheticField(((FieldDecl_c)member).name().id().toString())))
 	            continue;
 	        if (member instanceof FieldDecl_c) {
 	            final FieldDecl_c dec = (FieldDecl_c) member;
@@ -151,21 +155,21 @@ public class ASTQuery {
 	}
 
 	/** returns true if definition has @PerProcess annotation. */
-    public boolean isPerProcess(final X10Def def) {
-        try {
-            final Type type = x10TypeSystem.systemResolver().findOne(QName.make("x10.compiler.PerProcess"));
-            return !def.annotationsMatching(type).isEmpty();
-        } catch (SemanticException e) {
-            return false;
-        }
-    }
+	public boolean isPerProcess(final X10Def def) {
+		try {
+			final Type type = x10TypeSystem.systemResolver().findOne(QName.make("x10.compiler.PerProcess"));
+			return !def.annotationsMatching(type).isEmpty();
+		} catch (SemanticException e) {
+			return false;
+		}
+	}
 
-    /** test if a method is the main method (the one we start first when the
-     * program runs).
-     * Note: This code is copied from the ASTQuery class. (It doesn't have the
-     * public modifier there so we can't use it directly. Also ASTQuery
-     * unnecessarily depends on a Translator which we don't have)
-     */
+	/**
+	 * test if a method is the main method (the one we start first when the
+	 * program runs). Note: This code is copied from the ASTQuery class. (It
+	 * doesn't have the public modifier there so we can't use it directly. Also
+	 * ASTQuery unnecessarily depends on a Translator which we don't have)
+	 */
 	public boolean isMainMethod(final X10MethodDef md) {
 		return HierarchyUtils.isMainMethod(md, x10TypeSystem.emptyContext());
 	}

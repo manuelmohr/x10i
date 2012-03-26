@@ -17,11 +17,11 @@ import firm.Entity;
  * @author mohr
  */
 public class GenericClassContext {
-   /**
-    * Mapping between GenericMethodInstances and firm entities.
-    * Non-generic methods are adding with an empty {@link ParameterTypeMapping}.
-    */
-   private final Map<GenericMethodInstance, Entity> methodEntities = new HashMap<GenericMethodInstance, Entity>();
+	/**
+	 * Mapping between GenericMethodInstances and firm entities. Non-generic
+	 * methods are adding with an empty {@link ParameterTypeMapping}.
+	 */
+	private final Map<GenericMethodInstance, Entity> methodEntities = new HashMap<GenericMethodInstance, Entity>();
 
 	/**
 	 * Mapping between X10ConstructorDefs and firm entities. Constructors are

@@ -28,9 +28,17 @@
 	<!-- See http://checkstyle.sf.net/config_misc.html -->
 	<module name="RegexpSingleline">
 		<property name="format" value="\s+$"/>
-		<property name="minimum" value="0"/>
-		<property name="maximum" value="0"/>
 		<property name="message" value="Line has trailing spaces."/>
+	</module>
+
+	<module name="RegexpSingleline">
+		<property name="format" value="[^\t]\t"/>
+		<property name="message" value="Tab only allowed for indentation, not in the middle of a line."/>
+	</module>
+
+	<module name="RegexpSingleline">
+		<property name="format" value="^    "/>
+		<property name="message" value="Indent with tabs not with spaces."/>
 	</module>
 
 	<module name="TreeWalker">
@@ -177,6 +185,9 @@
 		<module name="ArrayTrailingComma"/>
 		<module name="FallThrough"/>
 		<module name="MissingOverride"/>
+		<module name="Indentation">
+			<property name="caseIndent" value="0"/>
+		</module>
 
 	</module>
 

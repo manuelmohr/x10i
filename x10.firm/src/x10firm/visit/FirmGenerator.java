@@ -1618,7 +1618,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	public void visit(final X10Call_c n) {
 		final MethodInstance methodInstance = n.methodInstance();
 
-		// If this is a call to a generic method, record the type arguments and remember to
+		// If this is a call to a generic method, record the type arguments and
+		// remember to
 		// generate code later.
 		if (!methodInstance.typeParameters().isEmpty()) {
 			// Find the method declaration.
@@ -1626,20 +1627,23 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final X10MethodDecl decl = fetcher.getDecl(n);
 
 			// Construct type mapping.
-			final List<ParameterType> paramTypes = ((X10MethodDef) methodInstance.def()).typeParameters();
+			final List<ParameterType> paramTypes
+				= ((X10MethodDef) methodInstance.def()).typeParameters();
 
-            final List<Type> actualTypes = methodInstance.typeParameters();
-            assert actualTypes.size() == decl.typeParameters().size();
+			final List<Type> actualTypes = methodInstance.typeParameters();
+			assert actualTypes.size() == decl.typeParameters().size();
 
-            // Watch out for recursive generic types.
-            for (int i = 0; i < actualTypes.size(); i++) {
-               actualTypes.set(i, x10TypeSystem.getConcreteType(actualTypes.get(i)));
-            }
+			// Watch out for recursive generic types.
+			for (int i = 0; i < actualTypes.size(); i++) {
+				final Type type = actualTypes.get(i);
+				actualTypes.set(i, x10TypeSystem.getConcreteType(type));
+			}
 
 			final ParameterTypeMapping ptm = new ParameterTypeMapping();
 			addToMapping(ptm, paramTypes, actualTypes);
 
-			final X10ClassType ct = (X10ClassType) Types.stripConstraints(n.target().type());
+			final X10ClassType ct = (X10ClassType) Types.stripConstraints(n
+					.target().type());
 			final X10ClassDef def = ct.def();
 
 			// If this is a generic method defined inside a generic class,
@@ -1650,20 +1654,25 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			// method on.
 			if (!def.typeParameters().isEmpty()) {
 				/*
-				    static generic method calls of static generic classes will be handled as following:
-					GeneriClass[T_i].genericMethod[U_j](...) ->
-					GeneriClass.genericMethod[[U_j/"actualType"]](...)
-					-> The T_i generic parameters of the generic class will not be mapped because the
-					static generic method can`t use the T_i`s of the generic class. We would also get
-					a serious problem, if one of the T_i`s will be equal to one of the U_j`s.
-				*/
+				 * static generic method calls of static generic classes will be
+				 * handled as following:
+				 * GeneriClass[T_i].genericMethod[U_j](...) ->
+				 * GeneriClass.genericMethod[[U_j/"actualType"]](...) -> The T_i
+				 * generic parameters of the generic class will not be mapped
+				 * because the static generic method can`t use the T_i`s of the
+				 * generic class. We would also get a serious problem, if one of
+				 * the T_i`s will be equal to one of the U_j`s.
+				 */
 
 				/*
-				   non static generic method calls of generic classes will be handled as following:
-				   GenericClass[T_i].genericMethod[U_j](...) ->
-				   GenericClass[T_i/"actualType"].genericMethod[[U_i/"actualType"]](...)
-				   -> The T_i generic parameters of the generic class will be mapped with the actual types.
-				*/
+				 * non static generic method calls of generic classes will be
+				 * handled as following:
+				 * GenericClass[T_i].genericMethod[U_j](...) ->
+				 * GenericClass[T_i/
+				 * "actualType"].genericMethod[[U_i/"actualType"]](...) -> The
+				 * T_i generic parameters of the generic class will be mapped
+				 * with the actual types.
+				 */
 
 				if (!methodInstance.flags().isStatic()) {
 					final List<ParameterType> cParamTypes = def.typeParameters();
@@ -2053,7 +2062,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			}
 
 			ret = xnf.X10Cast(pos, xnf.CanonicalTypeNode(pos, fType), expr, convType).type(fType);
-        }
+		}
 		return ret;
 	}
 
@@ -2311,14 +2320,14 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	 * @param msg The text message
 	 * @return A throw statement
 	 */
-	Stmt getThrowNewExceptionStmt(final Type excType, final String msg) {
+	private Stmt getThrowNewExceptionStmt(final Type excType, final String msg) {
 		final Position pos = Position.COMPILER_GENERATED;
-        final Expr excStr = xnf.StringLit(pos, msg);
-        final List<Expr> excArgs = new ArrayList<Expr>();
-        excArgs.add(excStr);
-        final Expr newClassCastExc = xnf.New(pos, xnf.CanonicalTypeNode(pos, excType), excArgs);
-        final Stmt throwStmt = xnf.Throw(pos, newClassCastExc);
-        return throwStmt;
+		final Expr excStr = xnf.StringLit(pos, msg);
+		final List<Expr> excArgs = new ArrayList<Expr>();
+		excArgs.add(excStr);
+		final Expr newClassCastExc = xnf.New(pos, xnf.CanonicalTypeNode(pos, excType), excArgs);
+		final Stmt throwStmt = xnf.Throw(pos, newClassCastExc);
+		return throwStmt;
 	}
 
 	/**

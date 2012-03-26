@@ -99,38 +99,39 @@ public class FirmScheduler extends X10Scheduler {
 		return seq.intern(this);
 	}
 
-    @Override
-    public List<Goal> goals(final Job job) {
-        final List<Goal> superGoals = super.goals(job);
-        final List<Goal> goals = new ArrayList<Goal>();
-        final Goal cg = codegenPrereq(job);
-        for (final Goal g : superGoals) {
-            if (g == cg) {
-                goals.add(StaticNestedClassRemover(job));
-                goals.add(StaticInitializer(job));
-                goals.add(ClosureRemover(job));
-            }
-            goals.add(g);
-        }
+	@Override
+	public List<Goal> goals(final Job job) {
+		final List<Goal> superGoals = super.goals(job);
+		final List<Goal> goals = new ArrayList<Goal>();
+		final Goal cg = codegenPrereq(job);
+		for (final Goal g : superGoals) {
+			if (g == cg) {
+				goals.add(StaticNestedClassRemover(job));
+				goals.add(StaticInitializer(job));
+				goals.add(ClosureRemover(job));
+			}
+			goals.add(g);
+		}
 
-        return goals;
-    }
+		return goals;
+	}
 
-    @Override
-    public Goal CodeGenBarrier() {
-        final String name = "CodeGenBarrier";
-        if (extInfo.getOptions().compile_command_line_only) {
-        	final BarrierGoal barrier = new BarrierGoal(name, commandLineJobs()) {
-                private static final long serialVersionUID = 2258041064037983928L;
+	@Override
+	public Goal CodeGenBarrier() {
+		final String name = "CodeGenBarrier";
+		if (extInfo.getOptions().compile_command_line_only) {
+			final BarrierGoal barrier = new BarrierGoal(name, commandLineJobs()) {
+				private static final long serialVersionUID = 2258041064037983928L;
+
 				@Override
-                public Goal prereqForJob(final Job job) {
-                    return codegenPrereq(job);
-                }
-            };
-            return barrier.intern(this);
-        }
+				public Goal prereqForJob(final Job job) {
+					return codegenPrereq(job);
+				}
+			};
+			return barrier.intern(this);
+		}
 
-        final AllBarrierGoal allBarrier = new AllBarrierGoal(name, this) {
+		final AllBarrierGoal allBarrier = new AllBarrierGoal(name, this) {
 			private static final long serialVersionUID = 4089824072381830523L;
 
 			@Override
@@ -147,29 +148,33 @@ public class FirmScheduler extends X10Scheduler {
 			}
 		};
 		return allBarrier.intern(this);
-    }
-
-    /** A visitor which does nothing. */
-    private static class NoVisitor extends NodeVisitor {
-       public NoVisitor() { }
-    }
-
-    @Override
-    public Goal NativeClassVisitor(final Job job) {
-       return new VisitorGoal("NoVisitor", job, new NoVisitor()).intern(this);
-    }
-
-    private Goal ClosureRemover(final Job job) {
-        final TypeSystem ts = extInfo.typeSystem();
-        final NodeFactory nf = extInfo.nodeFactory();
-		return new ValidatingVisitorGoal("ClosureRemover", job, new ClosureRemover(job, ts, nf)).intern(this);
 	}
 
-    private Goal StaticInitializer(final Job job) {
-        final TypeSystem ts = extInfo.typeSystem();
-        final NodeFactory nf = extInfo.nodeFactory();
-        return new ValidatingVisitorGoal("StaticInitialized", job, new StaticInitializer(job, ts, nf)).intern(this);
-    }
+	/** A visitor which does nothing. */
+	private static class NoVisitor extends NodeVisitor {
+		/** Constructs a new NoVisitor. */
+		public NoVisitor() {
+		}
+	}
+
+	@Override
+	public Goal NativeClassVisitor(final Job job) {
+		return new VisitorGoal("NoVisitor", job, new NoVisitor()).intern(this);
+	}
+
+	private Goal ClosureRemover(final Job job) {
+		final TypeSystem ts = extInfo.typeSystem();
+		final NodeFactory nf = extInfo.nodeFactory();
+		return new ValidatingVisitorGoal("ClosureRemover", job,
+				new ClosureRemover(job, ts, nf)).intern(this);
+	}
+
+	private Goal StaticInitializer(final Job job) {
+		final TypeSystem ts = extInfo.typeSystem();
+		final NodeFactory nf = extInfo.nodeFactory();
+		return new ValidatingVisitorGoal("StaticInitialized", job,
+				new StaticInitializer(job, ts, nf)).intern(this);
+	}
 
 	@Override
 	public Goal CodeGenerated(final Job job) {

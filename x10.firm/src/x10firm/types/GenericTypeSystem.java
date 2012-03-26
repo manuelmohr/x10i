@@ -235,19 +235,19 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	/** x10.lang.Pointer type. */
 	private X10ClassType pointer;
 
-    /**
-     * @return The FirmPointer class type.
-     */
-    public X10ClassType pointer() {
-        if (pointer == null)
-            pointer = load("x10.lang.Pointer");
-        return pointer;
-    }
+	/**
+	 * @return The FirmPointer class type.
+	 */
+	public X10ClassType pointer() {
+		if (pointer == null)
+			pointer = load("x10.lang.Pointer");
+		return pointer;
+	}
 
-    /**
-     * @param type Type to check.
-     * @return True iff {@code type} is Pointer or a subtype of Pointer.
-     */
+	/**
+	 * @param type Type to check.
+	 * @return True iff {@code type} is Pointer or a subtype of Pointer.
+	 */
 	public boolean isPointer(final Type type) {
 		return isSubtype(type, pointer());
 	}

@@ -85,7 +85,7 @@ public class MethodConstruction extends OOConstruction {
 			final LocalDef d = entry.getKey();
 			// Copy search: Name, position and flags must be equal.
 			if (def.name().equals(d.name()) && def.position().equals(d.position())
-			 && def.flags().equals(d.flags())) {
+			    && def.flags().equals(d.flags())) {
 				ret = entry.getValue();
 				break;
 			}

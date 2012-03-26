@@ -332,7 +332,7 @@ public final class NameMangler {
 				final boolean isStatic = method.flags().isStatic();
 				final List<Type> formals = method.formalTypes();
 				if ((isStatic && formals.size() == 1)
-				 || (!isStatic && formals.size() == 0)) {
+				    || (!isStatic && formals.size() == 0)) {
 					buf.append(subst);
 					return;
 				}
