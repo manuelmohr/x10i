@@ -40,36 +40,36 @@ public class GenericClassContext {
 	/**
 	 * @return The FIRM entity for the method instance {@code inst}.
 	 */
-	public Entity getMethodEntity(GenericMethodInstance inst) {
+	public Entity getMethodEntity(final GenericMethodInstance inst) {
 		return methodEntities.get(inst);
 	}
 
 	/** Map {@code inst} to {@code entity}. */
-	public void putMethodEntity(GenericMethodInstance inst, Entity entity) {
+	public void putMethodEntity(final GenericMethodInstance inst, final Entity entity) {
 		methodEntities.put(inst, entity);
 	}
 
 	/**
 	 * @return The FIRM entity for constructor {@code def}.
 	 */
-	public Entity getConstructorEntity(X10ConstructorDef def) {
+	public Entity getConstructorEntity(final X10ConstructorDef def) {
 		return constructorEntities.get(def);
 	}
 
 	/** Map {@code def} to {@code entity}. */
-	public void putConstructorEntity(X10ConstructorDef def, Entity entity) {
+	public void putConstructorEntity(final X10ConstructorDef def, final Entity entity) {
 		constructorEntities.put(def, entity);
 	}
 
 	/**
 	 * @return The FIRM entity for field {@code def}.
 	 */
-	public Entity getFieldEntity(FieldDef def) {
+	public Entity getFieldEntity(final FieldDef def) {
 		return fieldEntities.get(def);
 	}
 
 	/** Map {@code def} to {@code entity}. */
-	public void putFieldEntity(FieldDef def, Entity entity) {
+	public void putFieldEntity(final FieldDef def, final Entity entity) {
 		fieldEntities.put(def, entity);
 	}
 }

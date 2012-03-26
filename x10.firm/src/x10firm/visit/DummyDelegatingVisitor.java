@@ -93,467 +93,506 @@ import x10.visit.X10DelegatingVisitor;
 public abstract class DummyDelegatingVisitor extends X10DelegatingVisitor {
 
 	@Override
-	public void visit(Node n) {
-		assert false : "Stop at the beginning of an infinite loop for class "+n.getClass();
+	public void visit(final Node n) {
+		assert false : "Stop at the beginning of an infinite loop for class " + n.getClass();
 	}
 
 	@Override
-	public void visit(TypeDecl_c n) {
-		for(Formal f : n.formals())
+	public void visit(final TypeDecl_c n) {
+		for (final Formal f : n.formals()) {
 			visitAppropriate(f);
+		}
 	}
 
 	@Override
-	public void visit(LocalTypeDef_c n) {
+	public void visit(final LocalTypeDef_c n) {
 		visitAppropriate(n.typeDef());
 	}
 
 	@Override
-	public void visit(X10ClassDecl_c n) {
-		for (ClassMember member : n.body().members())
+	public void visit(final X10ClassDecl_c n) {
+		for (final ClassMember member : n.body().members()) {
 			visitAppropriate(member);
+		}
 	}
 
 	@Override
-	public void visit(LocalClassDecl_c n) {
+	public void visit(final LocalClassDecl_c n) {
 		throw new RuntimeException("Local classes should have been removed by a separate pass");
 	}
 
 	@Override
-	public void visit(ClassBody_c n) {
-		for (ClassMember member : n.members())
+	public void visit(final ClassBody_c n) {
+		for (final ClassMember member : n.members()) {
 			visitAppropriate(member);
+		}
 	}
 
 	@Override
-	public void visit(PackageNode_c n) {
-
-	}
-
-	@Override
-	public void visit(Import_c n) {
+	public void visit(final PackageNode_c n) {
 
 	}
 
 	@Override
-	public void visit(AssignPropertyCall_c n) {
-		for(Expr arg : n.arguments())
+	public void visit(final Import_c n) {
+
+	}
+
+	@Override
+	public void visit(final AssignPropertyCall_c n) {
+		for (final Expr arg : n.arguments()) {
 			visitAppropriate(arg);
+		}
 	}
 
 	@Override
-	public void visit(MethodDecl_c dec) {
+	public void visit(final MethodDecl_c dec) {
 		visitAppropriate(dec.body());
 	}
 
 	@Override
-	public void visit(ConstructorDecl_c dec) {
+	public void visit(final ConstructorDecl_c dec) {
 		visitAppropriate(dec.body());
 	}
 
 	@Override
-	public void visit(FieldDecl_c dec) {
-		if(dec.init() != null)
+	public void visit(final FieldDecl_c dec) {
+		if (dec.init() != null) {
 			visitAppropriate(dec.init());
+		}
 	}
 
 	@Override
-	public void visit(PropertyDecl_c n) {
-		if(n.init() != null)
+	public void visit(final PropertyDecl_c n) {
+		if (n.init() != null) {
 			visitAppropriate(n.init());
+		}
 	}
 
 	@Override
-	public void visit(Initializer_c n) {
+	public void visit(final Initializer_c n) {
 		visitAppropriate(n.body());
 	}
 
 	@Override
-	public void visit(Assert_c n) {
+	public void visit(final Assert_c n) {
 		visitAppropriate(n.cond());
-		if(n.errorMessage() != null)
+		if (n.errorMessage() != null) {
 			visitAppropriate(n.errorMessage());
+		}
 	}
 
 	@Override
-	public void visit(Switch_c n) {
-		for(SwitchElement elem : n.elements())
+	public void visit(final Switch_c n) {
+		for (final SwitchElement elem : n.elements()) {
 			visitAppropriate(elem);
+		}
 	}
 
 	@Override
-	public void visit(SwitchBlock_c n) {
-		for(Stmt stmt : n.statements())
+	public void visit(final SwitchBlock_c n) {
+		for (final Stmt stmt : n.statements()) {
 			visitAppropriate(stmt);
+		}
 	}
 
 	@Override
-	public void visit(Case_c n) {
-		if(n.expr() != null)
+	public void visit(final Case_c n) {
+		if (n.expr() != null) {
 			visitAppropriate(n.expr());
+		}
 	}
 
 	@Override
-	public void visit(Branch_c br) {
+	public void visit(final Branch_c br) {
 
 	}
 
 	@Override
-	public void visit(Labeled_c n) {
+	public void visit(final Labeled_c n) {
 		visitAppropriate(n.statement());
 	}
 
 	@Override
-	public void visit(Assign_c n) {
+	public void visit(final Assign_c n) {
 		visitAppropriate(n.left());
 		visitAppropriate(n.right());
 	}
 
 	@Override
-	public void visit(Return_c ret) {
-		if(ret.expr() != null)
+	public void visit(final Return_c ret) {
+		if (ret.expr() != null) {
 			visitAppropriate(ret.expr());
+		}
 	}
 
 	@Override
-	public void visit(Formal_c n) {
+	public void visit(final Formal_c n) {
 
 	}
 
 	@Override
-	public void visit(LocalDecl_c dec) {
-		if(dec.init() != null)
+	public void visit(final LocalDecl_c dec) {
+		if (dec.init() != null) {
 			visitAppropriate(dec.init());
+		}
 	}
 
 	@Override
-	public void visit(Block_c b) {
-		for (Stmt s : b.statements())
+	public void visit(final Block_c b) {
+		for (final Stmt s : b.statements()) {
 			visitAppropriate(s);
+		}
 	}
 
 	@Override
-	public void visit(StmtSeq_c n) {
-		for (Stmt s : n.statements())
+	public void visit(final StmtSeq_c n) {
+		for (final Stmt s : n.statements()) {
 			visitAppropriate(s);
+		}
 	}
 
 	@Override
-	public void visit(StmtExpr_c n) {
-		for (Stmt stmt : n.statements())
+	public void visit(final StmtExpr_c n) {
+		for (final Stmt stmt : n.statements()) {
 			visitAppropriate(stmt);
+		}
 
 		// evaluate the stmt expr
-		Expr e = n.result();
-		if (e != null)
+		final Expr e = n.result();
+		if (e != null) {
 			visitAppropriate(e);
+		}
 	}
 
 	@Override
-	public void visit(For_c n) {
-		if(n.inits() != null) {
-			for(ForInit i : n.inits())
+	public void visit(final For_c n) {
+		if (n.inits() != null) {
+			for (final ForInit i : n.inits()) {
 				visitAppropriate(i);
+			}
 		}
-		if(n.cond() != null) {
+		if (n.cond() != null) {
 			visitAppropriate(n.cond());
 		}
-		if(n.iters() != null) {
-			for(ForUpdate i : n.iters())
+		if (n.iters() != null) {
+			for (final ForUpdate i : n.iters()) {
 				visitAppropriate(i);
+			}
 		}
 		visitAppropriate(n.body());
 	}
 
 	@Override
-	public void visit(Do_c n) {
+	public void visit(final Do_c n) {
 		visitAppropriate(n.body());
 		visitAppropriate(n.cond());
 	}
 
 	@Override
-	public void visit(While_c n) {
+	public void visit(final While_c n) {
 		visitAppropriate(n.cond());
 		visitAppropriate(n.body());
 	}
 
 	@Override
-	public void visit(Conditional_c n) {
+	public void visit(final Conditional_c n) {
 		visitAppropriate(n.cond());
 		visitAppropriate(n.consequent());
 		visitAppropriate(n.alternative());
 	}
 
 	@Override
-	public void visit(If_c n) {
+	public void visit(final If_c n) {
 		visitAppropriate(n.consequent());
 		if (n.alternative() != null) {
 			Stmt alternative = n.alternative();
 			if (alternative instanceof Block_c) {
-				Block_c block = (Block_c) alternative;
-				if (block.statements().size() == 1 && block.statements().get(0) instanceof If_c)
+				final Block_c block = (Block_c) alternative;
+				if (block.statements().size() == 1 && block.statements().get(0) instanceof If_c) {
 					alternative = block.statements().get(0);
+				}
 			}
 			visitAppropriate(alternative);
 		}
 	}
 
 	@Override
-	public void visit(Empty_c n) {
+	public void visit(final Empty_c n) {
 
 	}
 
 	@Override
-	public void visit(Eval_c n) {
+	public void visit(final Eval_c n) {
 		visitAppropriate(n.expr());
 	}
 
 	@Override
-	public void visit(X10Call_c n) {
+	public void visit(final X10Call_c n) {
 		visitAppropriate(n.target());
-		for(Expr e : n.arguments())
+		for (final Expr e : n.arguments()) {
 			visitAppropriate(e);
+		}
 	}
 
 	@Override
-	public void visit(X10ConstructorCall_c n) {
-		for(Expr e : n.arguments())
+	public void visit(final X10ConstructorCall_c n) {
+		for (final Expr e : n.arguments()) {
 			visitAppropriate(e);
+		}
 	}
 
 	@Override
-	public void visit(Field_c n) {
+	public void visit(final Field_c n) {
 		visitAppropriate(n.target());
 	}
 
 	@Override
-	public void visit(Local_c n) {
+	public void visit(final Local_c n) {
 
 	}
 
 	@Override
-	public void visit(New_c n) {
-		if(n.qualifier() != null)
+	public void visit(final New_c n) {
+		if (n.qualifier() != null) {
 			visitAppropriate(n.qualifier());
-		for(Expr e : n.arguments())
+		}
+		for (final Expr e : n.arguments()) {
 			visitAppropriate(e);
-		if(n.body() != null)
+		}
+		if (n.body() != null) {
 			visitAppropriate(n.body());
+		}
 	}
 
 	@Override
-	public void visit(FloatLit_c literal) {
-
-	}
-
-	@Override
-	public void visit(IntLit_c n) {
+	public void visit(final FloatLit_c literal) {
 
 	}
 
 	@Override
-	public void visit(NullLit_c n) {
+	public void visit(final IntLit_c n) {
 
 	}
 
 	@Override
-	public void visit(StringLit_c n) {
+	public void visit(final NullLit_c n) {
 
 	}
 
 	@Override
-	public void visit(CharLit_c literal) {
+	public void visit(final StringLit_c n) {
+
+	}
+
+	@Override
+	public void visit(final CharLit_c literal) {
 
 	}
 
 
 	@Override
-	public void visit(BooleanLit_c literal) {
+	public void visit(final BooleanLit_c literal) {
 
 	}
 
 	@Override
-	public void visit(Id_c n) {
+	public void visit(final Id_c n) {
 
 	}
 
 	@Override
-	public void visit(X10Cast_c c) {
+	public void visit(final X10Cast_c c) {
 
 	}
 
 	@Override
-	public void visit(SubtypeTest_c n) {
+	public void visit(final SubtypeTest_c n) {
 
 	}
 
 	@Override
-	public void visit(X10Instanceof_c n) {
+	public void visit(final X10Instanceof_c n) {
 
 	}
 
 	@Override
-	public void visit(Throw_c n) {
+	public void visit(final Throw_c n) {
 		visitAppropriate(n.expr());
 	}
 
 	@Override
-	public void visit(Try_c n) {
+	public void visit(final Try_c n) {
 		visitAppropriate(n.tryBlock());
-		for(Catch c : n.catchBlocks())
+		for (final Catch c : n.catchBlocks()) {
 			visitAppropriate(c);
-		if(n.finallyBlock() != null)
+		}
+		if (n.finallyBlock() != null) {
 			visitAppropriate(n.finallyBlock());
+		}
 	}
 
 	@Override
-	public void visit(Catch_c n) {
+	public void visit(final Catch_c n) {
 		visitAppropriate(n.formal());
 		visitAppropriate(n.body());
 	}
 
 	@Override
-	public void visit(Atomic_c n) {
+	public void visit(final Atomic_c n) {
 		visitAppropriate(n.body());
 	}
 
 	@Override
-	public void visit(Next_c n) {
+	public void visit(final Next_c n) {
 
 	}
 
 	@Override
-	public void visit(ForLoop_c n) {
-		if(n.formal() != null)
+	public void visit(final ForLoop_c n) {
+		if (n.formal() != null) {
 			visitAppropriate(n.formal());
-		if(n.domain() != null)
+		}
+		if (n.domain() != null) {
 			visitAppropriate(n.domain());
+		}
 
 		visitAppropriate(n.body());
 
-		for(Stmt s : n.locals())
+		for (final Stmt s : n.locals()) {
 			visitAppropriate(s);
+		}
 	}
 
 	@Override
-	public void visit(AtEach_c n) {
+	public void visit(final AtEach_c n) {
 		visitAppropriate(n.body());
 	}
 
 	@Override
-	public void visit(Finish_c n) {
+	public void visit(final Finish_c n) {
 		visitAppropriate(n.body());
 	}
 
 	@Override
-	public void visit(ArrayAccess_c n) {
+	public void visit(final ArrayAccess_c n) {
 		visitAppropriate(n.array());
 		visitAppropriate(n.index());
 	}
 
 	@Override
-	public void visit(ParExpr_c n) {
+	public void visit(final ParExpr_c n) {
 		visitAppropriate(n.expr());
 	}
 
 	@Override
-	public void visit(Here_c n) {
+	public void visit(final Here_c n) {
 
 	}
 
 	@Override
-	public void visit(Async_c n) {
+	public void visit(final Async_c n) {
 		visitAppropriate(n.body());
 	}
 
 	@Override
-	public void visit(X10Special_c n) {
+	public void visit(final X10Special_c n) {
 
 	}
 
 	@Override
-	public void visit(Closure_c n) {
+	public void visit(final Closure_c n) {
 		visitAppropriate(n.body());
 	}
 
 	@Override
-	public void visit(ClosureCall_c n) {
+	public void visit(final ClosureCall_c n) {
 		visitAppropriate(n.target());
-		for(Expr e : n.arguments())
+		for (final Expr e : n.arguments()) {
 			visitAppropriate(e);
+		}
 	}
 
 	@Override
-	public void visit(X10CanonicalTypeNode_c n) {
+	public void visit(final X10CanonicalTypeNode_c n) {
 
 	}
 
 	@Override
-	public void visit(X10Unary_c n) {
+	public void visit(final X10Unary_c n) {
 		visitAppropriate(n.expr());
 	}
 
 	@Override
-	public void visit(Unary_c n) {
+	public void visit(final Unary_c n) {
 		visitAppropriate(n.expr());
 	}
 
 	@Override
-	public void visit(X10Binary_c n) {
+	public void visit(final X10Binary_c n) {
 		visitAppropriate(n.left());
 		visitAppropriate(n.right());
 	}
 
 	@Override
-	public void visit(Binary_c B) {
-		visitAppropriate(B.left());
-		visitAppropriate(B.right());
+	public void visit(final Binary_c b) {
+		visitAppropriate(b.left());
+		visitAppropriate(b.right());
 	}
 
 	@Override
-	public void visit(ArrayInit_c n) {
-		for(Expr e : n.elements())
+	public void visit(final ArrayInit_c n) {
+		for (final Expr e : n.elements()) {
 			visitAppropriate(e);
+		}
 	}
 
 	@Override
-	public void visit(SettableAssign_c n) {
-		if(n.array() != null)
+	public void visit(final SettableAssign_c n) {
+		if (n.array() != null) {
 			visitAppropriate(n.array());
-		for(Expr e : n.index())
+		}
+		for (final Expr e : n.index()) {
 			visitAppropriate(e);
+		}
 	}
 
 	@Override
-	public void visit(Tuple_c n) {
-		for(Expr e : n.arguments())
+	public void visit(final Tuple_c n) {
+		for (final Expr e : n.arguments()) {
 			visitAppropriate(e);
+		}
 	}
 
 	@Override
-	public void visit(When_c n) {
-		for(Expr e : n.exprs())
+	public void visit(final When_c n) {
+		for (final Expr e : n.exprs()) {
 			visitAppropriate(e);
-		for(Stmt s : n.stmts())
+		}
+		for (final Stmt s : n.stmts()) {
 			visitAppropriate(s);
+		}
 	}
 
 	@Override
-	public void visit(AtStmt_c n) {
-		if(n.place() != null)
+	public void visit(final AtStmt_c n) {
+		if (n.place() != null) {
 			visitAppropriate(n.place());
-		if(n.body() != null)
+		}
+		if (n.body() != null) {
 			visitAppropriate(n.body());
+		}
 	}
 
 	@Override
-	public void visit(AtExpr_c n) {
-		if(n.place() != null)
+	public void visit(final AtExpr_c n) {
+		if (n.place() != null) {
 			visitAppropriate(n.place());
+		}
 	}
 
 	@Override
-	public void visit(Allocation_c n) {
+	public void visit(final Allocation_c n) {
 		visitAppropriate(n.objectType());
 	}
 }

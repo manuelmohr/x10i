@@ -15,7 +15,7 @@ import firm.Mode;
 import firm.nodes.Node;
 
 /**
- * create method for static x10.lang.Zero.get[T](): T
+ * Create instance of built-in {@code static x10.lang.Zero.get[T](): T} method.
  */
 class X10LangZeroGet implements BuiltinMethodGenerator {
 	@Override
@@ -29,7 +29,8 @@ class X10LangZeroGet implements BuiltinMethodGenerator {
 		final Type typeParameter = meth.typeParameters().get(0);
 
 		final Type returnType = meth.returnType();
-		final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
+		final MethodConstruction savedConstruction
+			= codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
 				returnType, null);
 		final MethodConstruction con = codeGenerator.getFirmConstruction();
 
@@ -38,7 +39,7 @@ class X10LangZeroGet implements BuiltinMethodGenerator {
 			final Mode mode = firmTypeSystem.getFirmMode(typeParameter);
 			final Node node = con.newConst(mode.getNull());
 			final Node mem = con.getCurrentMem();
-			ret = con.newReturn(mem, new Node[] { node });
+			ret = con.newReturn(mem, new Node[] {node});
 		} else {
 			final Node tmp = codeGenerator.genStackAlloc(typeParameter);
 			// TODO: Add memset call

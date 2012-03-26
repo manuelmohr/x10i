@@ -18,21 +18,21 @@ import x10firm.MachineTriple;
 import x10firm.visit.CodeGenError;
 
 /**
- * Name mangler which mangles X10 type objects to unique names
+ * Name mangler which mangles X10 type objects to unique names.
  *
  * The mangling attempts to be as close as possible to the C++ Itanium ABI
  * which is used by many c++ compilers:
  *   http://sourcery.mentor.com/public/cxx-abi/abi.html
  */
-public class NameMangler {
+public final class NameMangler {
 
 	/**
-	 * Reference to the X10 type system
+	 * Reference to the X10 type system.
 	 */
-	private static GenericTypeSystem x10TypeSystem;
+	private static GenericTypeSystem typeSystem;
 
 	/**
-	 * Mapping of primitive types
+	 * Mapping of primitive types.
 	 */
 	private static Map<Type, String> primMangleTable = new HashMap<Type, String>();
 
@@ -51,7 +51,7 @@ public class NameMangler {
 	 */
 	private static Map<X10ClassType, String> anonymousClassNames = new HashMap<X10ClassType, String>();
 
-	private static String PLATFORM_PREFIX = "";
+	private static String platformPrefix = "";
 	private static final String MANGLE_PREFIX = "_Z";
 	private static final char   QUAL_START = 'N';
 	private static final char   QUAL_END = 'E';
@@ -64,12 +64,12 @@ public class NameMangler {
 
 	private static final String MANGLED_ANONYMOUS_CLASS_PREFIX = "$ANONYMOUS";
 
-	/** static class no need to instantiate it */
+	/** utility class no need to instantiate it. */
 	private NameMangler() {
 	}
 
 	/**
-	 * Initializes name substitutions
+	 * Initializes name substitutions.
 	 */
 	private static void setupNameSubstitutions() {
 		unOpSubst.put("operator~", "co");
@@ -118,9 +118,10 @@ public class NameMangler {
 		/* inverse operators -> same as the upper operators with a 'v' <digit> 'i' prefix
 		 * our own additions
 		 */
-		Map<String, String> invNameSubs = new HashMap<String, String>();
-		for(String key : binOpSubst.keySet())
-			invNameSubs.put("inverse_" + key, "v" + (key.length()+1) + "i" + binOpSubst.get(key));
+		final Map<String, String> invNameSubs = new HashMap<String, String>();
+		for (final String key : binOpSubst.keySet()) {
+			invNameSubs.put("inverse_" + key, "v" + (key.length() + 1) + "i" + binOpSubst.get(key));
+		}
 		binOpSubst.putAll(invNameSubs);
 
 		/* note: "cv" and "vXcv" are not here because they need the destination
@@ -131,45 +132,45 @@ public class NameMangler {
 	 * Initializes mapping between primitive types and the appropriate name mangles.
 	 */
 	private static void setupPrimitiveTypesNameMangling() {
-		primMangleTable.put(x10TypeSystem.Long(),    "x");
-		primMangleTable.put(x10TypeSystem.ULong(),   "y");
-		primMangleTable.put(x10TypeSystem.Int(),     "i");
-		primMangleTable.put(x10TypeSystem.UInt(),    "j");
-		primMangleTable.put(x10TypeSystem.Short(),   "s");
-		primMangleTable.put(x10TypeSystem.UShort(),  "t");
-		primMangleTable.put(x10TypeSystem.Byte(),    "a");
-		primMangleTable.put(x10TypeSystem.UByte(),   "h");
-		primMangleTable.put(x10TypeSystem.Char(),    "c");
-		primMangleTable.put(x10TypeSystem.Float(),   "f");
-		primMangleTable.put(x10TypeSystem.Double(),  "d");
-		primMangleTable.put(x10TypeSystem.Boolean(), "b");
-		primMangleTable.put(x10TypeSystem.Pointer(), "Pv");
-		primMangleTable.put(x10TypeSystem.Void(),    "v");
+		primMangleTable.put(typeSystem.Long(),    "x");
+		primMangleTable.put(typeSystem.ULong(),   "y");
+		primMangleTable.put(typeSystem.Int(),     "i");
+		primMangleTable.put(typeSystem.UInt(),    "j");
+		primMangleTable.put(typeSystem.Short(),   "s");
+		primMangleTable.put(typeSystem.UShort(),  "t");
+		primMangleTable.put(typeSystem.Byte(),    "a");
+		primMangleTable.put(typeSystem.UByte(),   "h");
+		primMangleTable.put(typeSystem.Char(),    "c");
+		primMangleTable.put(typeSystem.Float(),   "f");
+		primMangleTable.put(typeSystem.Double(),  "d");
+		primMangleTable.put(typeSystem.Boolean(), "b");
+		primMangleTable.put(typeSystem.pointer(), "Pv");
+		primMangleTable.put(typeSystem.Void(),    "v");
 	}
 
 	/**
 	 * Initializes the name mangler.
-	 * @param x10TypeSystem_ Reference to the type system.
+	 * @param typeSystem Reference to the type system.
 	 */
-	public static void setup(final GenericTypeSystem x10TypeSystem_, final CompilerOptions options) {
-		x10TypeSystem = x10TypeSystem_;
+	public static void setup(final GenericTypeSystem typeSystem, final CompilerOptions options) {
+		NameMangler.typeSystem = typeSystem;
 		setupNameSubstitutions();
 		setupPrimitiveTypesNameMangling();
 		final MachineTriple target = options.getTargetTriple();
 		if (target.isDarwin() || target.isWindowsOS()) {
-			PLATFORM_PREFIX = "_";
+			platformPrefix = "_";
 		}
 	}
 
 	/**
-	 * Mangles a given identifier
+	 * Mangles a given identifier.
 	 */
 	private static void mangleIdentifier(final StringBuilder buf,
 			final String name) {
 		buf.append(name.length());
 		for (int i = 0; i < name.length(); ++i) {
 			char c = name.charAt(i);
-			if(c == '$') {
+			if (c == '$') {
 				c = '_';
 			/**
 			 * As of X10 2.2.0 and thanks to XTENLANG-1647, a space is inserted
@@ -203,7 +204,7 @@ public class NameMangler {
 			return;
 		buf.append(TYPEARG_START);
 		for (Type typeParameter : typeParameters) {
-			final Type concrete = x10TypeSystem.getConcreteType(typeParameter);
+			final Type concrete = typeSystem.getConcreteType(typeParameter);
 			mangleType(buf, concrete);
 		}
 		buf.append(TYPEARG_END);
@@ -223,7 +224,7 @@ public class NameMangler {
 	private static void mangleAnonymousClassName(final StringBuilder buf,
 			final X10ClassType clazz) {
 		String name = anonymousClassNames.get(clazz);
-		if(name == null) {
+		if (name == null) {
 			name = UniqueID.newID(MANGLED_ANONYMOUS_CLASS_PREFIX);
 			anonymousClassNames.put(clazz, name);
 		}
@@ -272,14 +273,14 @@ public class NameMangler {
 		mangleClassName(buf, type);
 	}
 
-	/** Mangles a complete class type */
+	/** Mangles a complete class type. */
 	private static void mangleClassType(final StringBuilder buf,
 			final X10ClassType type) {
 		/* for aesthetic reasons and because the gnu java compiler does it
 		 * similar we encode the class references as C++ pointers. The problem
 		 * with that is that we have to replicate the logic of what is a
 		 * reference and what isn't here */
-		if (!x10TypeSystem.isStructType0(type))
+		if (!typeSystem.isStructType0(type))
 			buf.append(MANGLE_QUALIFIER_POINTER);
 		buf.append(QUAL_START);
 		mangleClass(buf, type);
@@ -287,14 +288,14 @@ public class NameMangler {
 	}
 
 	/**
-	 * Mangle a given type
+	 * Mangles a given type.
 	 */
 	private static void mangleType(final StringBuilder buf, final Type pType) {
 		Type type = GenericTypeSystem.simplifyType(pType);
 		if (type.isParameterType()) {
-			type = x10TypeSystem.getConcreteType(type);
+			type = typeSystem.getConcreteType(type);
 		}
-		String prim = primMangleTable.get(type);
+		final String prim = primMangleTable.get(type);
 		if (prim != null) {
 			buf.append(prim);
 			return;
@@ -319,19 +320,19 @@ public class NameMangler {
 	}
 
 	/**
-	 * Mangles a given method name
+	 * Mangles a given method name.
 	 */
 	private static void mangleMethodName(final StringBuilder buf,
 			final MethodInstance method) {
 		final String name = method.name().toString();
 		if (name.startsWith("operator")) {
-			String subst = unOpSubst.get(name);
+			final String subst = unOpSubst.get(name);
 			if (subst != null) {
 				/* really an unary operator */
 				final boolean isStatic = method.flags().isStatic();
 				final List<Type> formals = method.formalTypes();
-				if((isStatic && formals.size() == 1) ||
-				  (!isStatic && formals.size() == 0)) {
+				if ((isStatic && formals.size() == 1)
+				 || (!isStatic && formals.size() == 0)) {
 					buf.append(subst);
 					return;
 				}
@@ -341,7 +342,7 @@ public class NameMangler {
 				mangleType(tbuf, returnType);
 				final String destType = tbuf.toString();
 				buf.append('v');
-				buf.append(destType.length()+2);
+				buf.append(destType.length() + 2);
 				buf.append("as");
 				buf.append(destType);
 				return;
@@ -362,14 +363,14 @@ public class NameMangler {
 		mangleIdentifier(buf, name);
 	}
 
-	/** Mangles a complete method including container and formals */
+	/** Mangles a complete method including container and formals. */
 	public static String mangleMethod(final MethodInstance method) {
 		final StringBuilder buf = new StringBuilder();
 
-		buf.append(PLATFORM_PREFIX);
+		buf.append(platformPrefix);
 		buf.append(MANGLE_PREFIX);
 		buf.append(QUAL_START);
-		X10ClassType container = (X10ClassType)method.container();
+		final X10ClassType container = (X10ClassType)method.container();
 		if (method.flags().isStatic()) {
 			mangleClassWithoutTypeArguments(buf, container);
 		} else {
@@ -411,10 +412,10 @@ public class NameMangler {
 		return buf.toString();
 	}
 
-	/** Mangles the name for a field */
+	/** Mangles the name for a field. */
 	public static String mangleField(final FieldInstance instance) {
 		final StringBuilder buf = new StringBuilder();
-		buf.append(PLATFORM_PREFIX);
+		buf.append(platformPrefix);
 		buf.append(MANGLE_PREFIX);
 		buf.append(QUAL_START);
 		final X10ClassType container = (X10ClassType)instance.container();
@@ -425,12 +426,11 @@ public class NameMangler {
 	}
 
 	/**
-	 * Mangles a given constructor instance
+	 * Mangles a given constructor instance.
 	 */
 	public static String mangleConstructor(final X10ConstructorInstance constructor) {
-		StringBuilder buf = new StringBuilder();
-
-		buf.append(PLATFORM_PREFIX);
+		final StringBuilder buf = new StringBuilder();
+		buf.append(platformPrefix);
 		buf.append(MANGLE_PREFIX);
 		buf.append(QUAL_START);
 		final X10ClassType container = (X10ClassType)constructor.container();
@@ -442,14 +442,13 @@ public class NameMangler {
 	}
 
 	/**
-	 * Returns the mangled vtable name for a given class type
+	 * Returns the mangled vtable name for a given class type.
 	 * @param clazz The class type for which the mangled vtable name should be returned
 	 * @return The mangled vtable name
 	 */
 	public static String mangleVTable(final X10ClassType clazz) {
-		StringBuilder buf = new StringBuilder();
-
-		buf.append(PLATFORM_PREFIX);
+		final StringBuilder buf = new StringBuilder();
+		buf.append(platformPrefix);
 		buf.append(MANGLE_PREFIX);
 		buf.append(MANGLED_VTABLE);
 		buf.append(QUAL_START);
@@ -460,14 +459,13 @@ public class NameMangler {
 	}
 
 	/**
-	 * Returns the mangled typeinfo name for a given class type
+	 * Returns the mangled typeinfo name for a given class type.
 	 * @param clazz The class type for which the mangled typeinfo name should be returned
 	 * @return The mangled typeinfo name
 	 */
 	public static String mangleTypeinfo(final X10ClassType clazz) {
-		StringBuilder buf = new StringBuilder();
-
-		buf.append(PLATFORM_PREFIX);
+		final StringBuilder buf = new StringBuilder();
+		buf.append(platformPrefix);
 		buf.append(MANGLE_PREFIX);
 		buf.append(MANGLED_TYPEINFO);
 		buf.append(QUAL_START);
@@ -482,8 +480,8 @@ public class NameMangler {
 	 * (i.e. adds an underscore prefix on mac/windows)
 	 */
 	public static String mangleKnownName(final String name) {
-		StringBuilder buf = new StringBuilder();
-		buf.append(PLATFORM_PREFIX);
+		final StringBuilder buf = new StringBuilder();
+		buf.append(platformPrefix);
 		buf.append(name);
 		return buf.toString();
 	}

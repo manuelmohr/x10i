@@ -5,44 +5,47 @@ import firm.nodes.Node;
 import firm.nodes.OOConstruction;
 
 /**
- * Firm code templates
+ * Firm code templates.
  */
-public class FirmCodeTemplate {
+public final class FirmCodeTemplate {
+	/** this is a utiltiy class. */
+	private FirmCodeTemplate() {
+	}
+
 	/**
-	 *  Code template for conditions
+	 * Code template for conditions.
 	 */
 	interface CondTemplate {
 		/**
-		 * Generate condition code
+		 * Generates condition code.
 		 * @param trueBlock True block
 		 * @param falseBlock False block
 		 */
-		public void genCode(final Block trueBlock, final Block falseBlock);
+		void genCode(final Block trueBlock, final Block falseBlock);
 	}
 
 	/**
-	 * Code template for statements
-	 *
+	 * Code template for statements.
 	 */
 	interface StmtTemplate {
 		/**
-		 * Generate body code
+		 * Generates body code.
 		 */
-		public void genCode();
+		void genCode();
 	}
 
 	/**
-	 * Code template for expressions
+	 * Code template for expressions.
 	 */
 	interface ExprTemplate {
 		/**
-		 * Generate expression code
+		 * Generates expression code.
 		 */
-		public Node genCode();
+		Node genCode();
 	}
 
 	/**
-	 * Generate firm nodes for a conditional expression
+	 * Generate firm nodes for a conditional expression.
 	 * @param con The construction object
 	 * @param cond The condition template
 	 * @param trueExpr The true expression template
@@ -85,7 +88,7 @@ public class FirmCodeTemplate {
 	}
 
 	/**
-	 * Generate for an if statement
+	 * Generates code for an if statement.
 	 * @param con The construction object
 	 * @param cond The condition template
 	 * @param ifStmt The if statement template
@@ -110,10 +113,11 @@ public class FirmCodeTemplate {
 		ifStmt.genCode();
 
 		Node endIf = null;
-		if(con.getCurrentBlock().isBad())
+		if (con.getCurrentBlock().isBad()) {
 			con.setCurrentBlock(bTrue);
-		else
+		} else {
 			endIf = con.newJmp();
+		}
 
 		bTrue.mature();
 
@@ -122,14 +126,14 @@ public class FirmCodeTemplate {
 			con.setCurrentBlock(bFalse);
 			elseStmt.genCode();
 
-			if(!con.getCurrentBlock().isBad())
+			if (!con.getCurrentBlock().isBad())
 				bAfter.addPred(con.newJmp());
 		}
 
-		if(endIf != null)
+		if (endIf != null)
 			bAfter.addPred(endIf);
 
-		if(!con.getCurrentBlock().isBad())
+		if (!con.getCurrentBlock().isBad())
 			con.setCurrentBlock(bAfter);
 	}
 }

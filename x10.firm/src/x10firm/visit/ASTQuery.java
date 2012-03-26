@@ -38,7 +38,7 @@ public class ASTQuery {
 	private final TypeSystem x10TypeSystem;
 
 	/**
-	 * X10ASTQuery Constructor
+	 * X10ASTQuery Constructor.
 	 * @param x10TypeSystem The x10 type system
 	 */
 	public ASTQuery(final TypeSystem x10TypeSystem) {
@@ -46,11 +46,11 @@ public class ASTQuery {
 	}
 
 	/**
-	 * Returns true if a given expression is constant
+	 * Returns true if a given expression is constant.
 	 * @param e The expression which should be checked
 	 * @return True if the given expression is constant
 	 */
-	public boolean isConstantExpression(Expr e) {
+	public boolean isConstantExpression(final Expr e) {
 	    if (!e.isConstant())
 	        return false;
 	    if (e instanceof BooleanLit)
@@ -66,15 +66,15 @@ public class ASTQuery {
 	    if (e instanceof Unary)
 	        return isConstantExpression(((Unary) e).expr());
 	    if (e instanceof Binary)
-	        return isConstantExpression(((Binary) e).left()) &&
-	               isConstantExpression(((Binary) e).right());
+	        return isConstantExpression(((Binary) e).left())
+	            && isConstantExpression(((Binary) e).right());
 	    if (e instanceof Conditional)
-	        return isConstantExpression(((Conditional) e).cond()) &&
-	               isConstantExpression(((Conditional) e).consequent()) &&
-	               isConstantExpression(((Conditional) e).alternative());
+	        return isConstantExpression(((Conditional) e).cond())
+	            && isConstantExpression(((Conditional) e).consequent())
+	            && isConstantExpression(((Conditional) e).alternative());
 	    if (e instanceof Closure) {
-	        Closure c = (Closure) e;
-	        List<Stmt> ss = c.body().statements();
+	        final Closure c = (Closure) e;
+	        final List<Stmt> ss = c.body().statements();
             if (ss.size() != 1)
 	            return false;
 	        if (!(ss.get(0) instanceof Return))
@@ -82,9 +82,9 @@ public class ASTQuery {
 	        return isConstantExpression(((Return) ss.get(0)).expr());
 	    }
 	    if (e instanceof ClosureCall) {
-	        ClosureCall cc = (ClosureCall) e;
-	        List<Expr> as = ((ClosureCall) e).arguments();
-	        for (Expr a : as) {
+	        final ClosureCall cc = (ClosureCall) e;
+	        final List<Expr> as = ((ClosureCall) e).arguments();
+	        for (final Expr a : as) {
 	            if (!isConstantExpression(a))
 	                return false;
             }
@@ -94,53 +94,51 @@ public class ASTQuery {
 	}
 
 	/**
-	 * Checks if a given field name is a synthetic field
+	 * Checks if a given field name is a synthetic field.
 	 * @param name The field name which should be checked
 	 * @return True if the given field name is actually a synthetic field
 	 */
-    private static boolean isSyntheticField(String name) {
-		if (name.startsWith("jlc$")) return true;
-		return false;
+    private static boolean isSyntheticField(final String name) {
+		return name.startsWith("jlc$");
 	}
 
     /**
-     * Checks if a given field decl is global init (static and the init expression must be constant)
+     * Checks if a given field decl is global init (static and the init expression must be constant).
      * @param fd The field decl which should be checked
      * @return True if the given field decl is a global init field decl.
      */
-	public boolean isGlobalInit(FieldDecl fd) {
-	    return (fd.init() != null &&
-	            fd.flags().flags().isStatic() && fd.flags().flags().isFinal() &&
-	            isConstantExpression(fd.init()) &&
-	            (fd.init().type().isNumeric() || fd.init().type().isBoolean() ||
-	             fd.init().type().isChar() || fd.init().type().isNull()))
-	             || isPerProcess((X10FieldDef) fd.fieldDef());
+	public boolean isGlobalInit(final FieldDecl fd) {
+	    return (fd.init() != null
+	         && fd.flags().flags().isStatic() && fd.flags().flags().isFinal() && isConstantExpression(fd.init())
+	         && (fd.init().type().isNumeric() || fd.init().type().isBoolean()
+	          || fd.init().type().isChar() || fd.init().type().isNull()))
+	      || isPerProcess((X10FieldDef) fd.fieldDef());
 	}
 
 	/**
-	 * Extracts all class members from a given class members list which must be manually initialized (val instanced fields)
+	 * Extracts all class members from a given class members list which must be manually initialized
+	 * (val instanced fields).
 	 * @param members A list with class members
 	 * @return The class members from the given list which must be manually initialized
 	 */
-	public List<ClassMember> extractInits(List<ClassMember> members)
-	{
+	public List<ClassMember> extractInits(final List<ClassMember> members) {
 		final List<ClassMember> ret = new LinkedList<ClassMember>();
 
-	    for(ClassMember member : members) {
-	        if(member.memberDef().flags().isStatic())
+	    for (final ClassMember member : members) {
+	        if (member.memberDef().flags().isStatic())
 	            continue;
-	        if(!(member instanceof Initializer_c) && !(member instanceof FieldDecl_c))
+	        if (!(member instanceof Initializer_c) && !(member instanceof FieldDecl_c))
 	            continue;
-	        if(member instanceof FieldDecl_c && (((FieldDecl_c)member).init() == null ||
-	            isSyntheticField(((FieldDecl_c)member).name().id().toString())))
+	        if (member instanceof FieldDecl_c && (((FieldDecl_c)member).init() == null
+	         || isSyntheticField(((FieldDecl_c)member).name().id().toString())))
 	            continue;
 	        if (member instanceof FieldDecl_c) {
-	            FieldDecl_c dec = (FieldDecl_c) member;
-	            if(dec.flags().flags().isStatic()) {
-	                X10ClassType container = (X10ClassType)dec.fieldDef().asInstance().container();
-	                if((container.def()).typeParameters().size() != 0)
+	            final FieldDecl_c dec = (FieldDecl_c) member;
+	            if (dec.flags().flags().isStatic()) {
+	                final X10ClassType container = (X10ClassType)dec.fieldDef().asInstance().container();
+	                if ((container.def()).typeParameters().size() != 0)
 	                    continue;
-	                if(isGlobalInit(dec))
+	                if (isGlobalInit(dec))
 	                    continue;
 	            }
 	        }
@@ -152,23 +150,23 @@ public class ASTQuery {
 	    return ret;
 	}
 
-	/** returns true if definition has @PerProcess annotation */
-    public boolean isPerProcess(X10Def def) {
+	/** returns true if definition has @PerProcess annotation. */
+    public boolean isPerProcess(final X10Def def) {
         try {
-            Type t = x10TypeSystem.systemResolver().findOne(QName.make("x10.compiler.PerProcess"));
-            return !def.annotationsMatching(t).isEmpty();
+            final Type type = x10TypeSystem.systemResolver().findOne(QName.make("x10.compiler.PerProcess"));
+            return !def.annotationsMatching(type).isEmpty();
         } catch (SemanticException e) {
             return false;
         }
     }
 
     /** test if a method is the main method (the one we start first when the
-     * program runs)
+     * program runs).
      * Note: This code is copied from the ASTQuery class. (It doesn't have the
      * public modifier there so we can't use it directly. Also ASTQuery
      * unnecessarily depends on a Translator which we don't have)
      */
-	public boolean isMainMethod(X10MethodDef md) {
+	public boolean isMainMethod(final X10MethodDef md) {
 		return HierarchyUtils.isMainMethod(md, x10TypeSystem.emptyContext());
 	}
 }

@@ -5,16 +5,16 @@ import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 
 /**
- * Exception thrown when no code can be generated for a specific AST-node
+ * Exception thrown when no code can be generated for a specific AST-node.
  */
 public class CodeGenError extends InternalCompilerError {
-	/** Construct new exception */
-	public CodeGenError(String message, Node node) {
+	/** Constructs new exception. */
+	public CodeGenError(final String message, final Node node) {
 		super(message + " (node " + node + ")", node.position());
 	}
 
-	/** Construct new exception */
-	public CodeGenError(String message, Position position) {
+	/** Constructs new exception. */
+	public CodeGenError(final String message, final Position position) {
 		super(message, position);
 	}
 }

@@ -14,7 +14,7 @@ import firm.Mode;
 import firm.nodes.Node;
 
 /**
- *  Support built-in static x10.lang.NativeSupport.getSize[T](): Int
+ * Create an instance of the built-in {@code static x10.lang.NativeSupport.getSize[T](): Int} method.
  */
 class X10LangNativeSupportGetSize implements BuiltinMethodGenerator {
 
@@ -28,7 +28,8 @@ class X10LangNativeSupportGetSize implements BuiltinMethodGenerator {
 		final Type typeParameter = meth.typeParameters().get(0);
 
 		final Type returnType = meth.returnType();
-		final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
+		final MethodConstruction savedConstruction
+			= codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
 				returnType, null);
 		final MethodConstruction con = codeGenerator.getFirmConstruction();
 

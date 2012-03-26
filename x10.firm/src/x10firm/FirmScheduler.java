@@ -1,5 +1,7 @@
 package x10firm;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,14 +33,18 @@ import x10firm.visit.StaticInitializer;
  * the rest.
  */
 public class FirmScheduler extends X10Scheduler {
+	private static final String ASM_PREFIX = "x10firm_";
+	private static final String ASM_SUFFIX = ".s";
+
 	private final FirmTypeSystem firmTypeSystem;
+	private File asmOutput;
 
 	/**
 	 * Initialize the scheduler.
 	 * @param info "==ExtensionInfo.this", because this inner class is static
 	 * (strange design by X10)
 	 */
-	public FirmScheduler(ExtensionInfo info) {
+	public FirmScheduler(final ExtensionInfo info) {
 		super(info);
 		firmTypeSystem = new FirmTypeSystem((GenericTypeSystem) info.typeSystem());
 	}
@@ -64,12 +70,28 @@ public class FirmScheduler extends X10Scheduler {
 			seq.append(optimized);
 		}
 
-		Goal asmEmitted = new AsmEmitted(this);
+		try {
+			if (options.assembleAndLink()) {
+				asmOutput = File.createTempFile(ASM_PREFIX, ASM_SUFFIX);
+			} else {
+				if (options.executable_path == null) {
+					final String defaultFile = "asm_output.s";
+					System.err.println("Warning: -o not specified, defaulting to " + defaultFile);
+					asmOutput = new File(defaultFile);
+				} else {
+					asmOutput = new File(options.executable_path);
+				}
+			}
+		} catch (IOException e) {
+			throw new RuntimeException("Could not create asm file", e);
+		}
+
+		Goal asmEmitted = new AsmEmitted(this, asmOutput);
 		asmEmitted = asmEmitted.intern(this);
 		seq.append(asmEmitted);
 
 		if (options.assembleAndLink()) {
-			Goal linked = new Linked(extInfo);
+			Goal linked = new Linked(extInfo, asmOutput);
 			linked = linked.intern(this);
 			seq.append(linked);
 		}
@@ -78,11 +100,11 @@ public class FirmScheduler extends X10Scheduler {
 	}
 
     @Override
-    public List<Goal> goals(Job job) {
-        List<Goal> superGoals = super.goals(job);
-        List<Goal> goals = new ArrayList<Goal>(superGoals.size()+10);
+    public List<Goal> goals(final Job job) {
+        final List<Goal> superGoals = super.goals(job);
+        final List<Goal> goals = new ArrayList<Goal>();
         final Goal cg = codegenPrereq(job);
-        for (Goal g : superGoals) {
+        for (final Goal g : superGoals) {
             if (g == cg) {
                 goals.add(StaticNestedClassRemover(job));
                 goals.add(StaticInitializer(job));
@@ -96,22 +118,23 @@ public class FirmScheduler extends X10Scheduler {
 
     @Override
     public Goal CodeGenBarrier() {
-        String name = "CodeGenBarrier";
+        final String name = "CodeGenBarrier";
         if (extInfo.getOptions().compile_command_line_only) {
-            return new BarrierGoal(name, commandLineJobs()) {
+        	final BarrierGoal barrier = new BarrierGoal(name, commandLineJobs()) {
                 private static final long serialVersionUID = 2258041064037983928L;
 				@Override
-                public Goal prereqForJob(Job job) {
+                public Goal prereqForJob(final Job job) {
                     return codegenPrereq(job);
                 }
-            }.intern(this);
+            };
+            return barrier.intern(this);
         }
 
-		return new AllBarrierGoal(name, this) {
+        final AllBarrierGoal allBarrier = new AllBarrierGoal(name, this) {
 			private static final long serialVersionUID = 4089824072381830523L;
 
 			@Override
-			public Goal prereqForJob(Job job) {
+			public Goal prereqForJob(final Job job) {
 				if (super.scheduler.shouldCompile(job)) {
 					return codegenPrereq(job);
 				} else if (x10firm.ExtensionInfo.isAllowedClassName(job
@@ -122,41 +145,40 @@ public class FirmScheduler extends X10Scheduler {
 
 				return null;
 			}
-		}.intern(this);
+		};
+		return allBarrier.intern(this);
     }
 
-
-    // Visitor that does nothing
+    /** A visitor which does nothing. */
     private static class NoVisitor extends NodeVisitor {
        public NoVisitor() { }
     }
 
     @Override
-    // Get out of the native class visitor in firm
-    public Goal NativeClassVisitor(Job job) {
+    public Goal NativeClassVisitor(final Job job) {
        return new VisitorGoal("NoVisitor", job, new NoVisitor()).intern(this);
     }
 
-    private Goal ClosureRemover(Job job) {
-        TypeSystem ts = extInfo.typeSystem();
-        NodeFactory nf = extInfo.nodeFactory();
+    private Goal ClosureRemover(final Job job) {
+        final TypeSystem ts = extInfo.typeSystem();
+        final NodeFactory nf = extInfo.nodeFactory();
 		return new ValidatingVisitorGoal("ClosureRemover", job, new ClosureRemover(job, ts, nf)).intern(this);
 	}
 
-    private Goal StaticInitializer(Job job) {
-        TypeSystem ts = extInfo.typeSystem();
-        NodeFactory nf = extInfo.nodeFactory();
+    private Goal StaticInitializer(final Job job) {
+        final TypeSystem ts = extInfo.typeSystem();
+        final NodeFactory nf = extInfo.nodeFactory();
         return new ValidatingVisitorGoal("StaticInitialized", job, new StaticInitializer(job, ts, nf)).intern(this);
     }
 
 	@Override
-	public Goal CodeGenerated(Job job) {
+	public Goal CodeGenerated(final Job job) {
 
-		final TypeSystem typeSystem = extInfo.typeSystem();
+		final GenericTypeSystem typeSystem = (GenericTypeSystem)extInfo.typeSystem();
 		final X10NodeFactory_c nodeFactory = (X10NodeFactory_c) extInfo.nodeFactory();
 
-		Goal firm_generated = new FirmGenerated(job, typeSystem, firmTypeSystem, nodeFactory);
-		firm_generated = firm_generated.intern(this);
+		Goal firmGenerated = new FirmGenerated(job, typeSystem, firmTypeSystem, nodeFactory);
+		firmGenerated = firmGenerated.intern(this);
 
 		/*
 		 * Since source goals are per job/compilation unit/source file,
@@ -164,8 +186,8 @@ public class FirmScheduler extends X10Scheduler {
 		 * method.
 		 */
 
-		SourceGoalSequence seq = new SourceGoalSequence("FirmTransformationSequence", job);
-		seq.append(firm_generated);
+		final SourceGoalSequence seq = new SourceGoalSequence("FirmTransformationSequence", job);
+		seq.append(firmGenerated);
 
 		return seq.intern(this);
 	}

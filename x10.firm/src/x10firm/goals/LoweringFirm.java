@@ -24,20 +24,19 @@ import firm.Util;
  */
 public class LoweringFirm extends AllBarrierGoal {
 
-	private Goal prereq_redirection = null;
+	private Goal prereqRedirection = null;
 
 	private FirmTypeSystem firmTypeSystem;
 
-	/** Constructor */
-	public LoweringFirm(Scheduler scheduler, FirmTypeSystem firmTypeSystem_) {
+	/** Constructos a new LoweringFirm goal. */
+	public LoweringFirm(final Scheduler scheduler, final FirmTypeSystem firmTypeSystem) {
 		super("LoweringFirm", scheduler);
-		firmTypeSystem = firmTypeSystem_;
+		this.firmTypeSystem = firmTypeSystem;
 	}
 
 	@Override
 	public boolean runTask() {
 		final ExtensionInfo info = scheduler.extensionInfo();
-		final polyglot.frontend.Compiler compiler = info.compiler();
 		final CompilerOptions options = (CompilerOptions)info.getOptions();
 		final X10NodeFactory_c nodeFactory = (X10NodeFactory_c)info.nodeFactory();
 		final GenericTypeSystem x10TypeSystem = (GenericTypeSystem)info.typeSystem();
@@ -45,7 +44,7 @@ public class LoweringFirm extends AllBarrierGoal {
 		firmTypeSystem.finishTypeSystem();
 
 		// do post compile
-		FirmGenerator firmGen = new FirmGenerator(compiler, firmTypeSystem, x10TypeSystem, nodeFactory, options);
+		final FirmGenerator firmGen = new FirmGenerator(firmTypeSystem, x10TypeSystem, nodeFactory, options);
 		firmGen.genPostCompile();
 
 		firmTypeSystem.finishTypeSystem();
@@ -74,16 +73,16 @@ public class LoweringFirm extends AllBarrierGoal {
 	}
 
 	@Override
-	public void addPrereq(Goal goal) {
-		if (prereq_redirection == null) {
+	public void addPrereq(final Goal goal) {
+		if (prereqRedirection == null) {
 			super.addPrereq(goal);
 		} else {
-			prereq_redirection.addPrereq(goal);
+			prereqRedirection.addPrereq(goal);
 		}
 	}
 
 	@Override
-	public Goal prereqForJob(Job job) {
+	public Goal prereqForJob(final Job job) {
 		// TODO DELETE_ME: Delete the second condition when library support is implemented
 		if (!scheduler.shouldCompile(job) && !x10firm.ExtensionInfo.isAllowedClassName(job.toString())) {
 			return null;

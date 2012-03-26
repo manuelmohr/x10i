@@ -12,8 +12,8 @@ import polyglot.frontend.SourceGoal_c;
  */
 public class SourceGoalSequence extends SourceGoal_c {
 
-	/** constructor calls super -- make Java happy */
-	public SourceGoalSequence(String name, Job job) {
+	/** constructor calls super -- make Java happy. */
+	public SourceGoalSequence(final String name, final Job job) {
 		super(name, job);
 	}
 
@@ -37,14 +37,14 @@ public class SourceGoalSequence extends SourceGoal_c {
 	}
 
 	@Override
-	public void addPrereq(Goal goal) {
+	public void addPrereq(final Goal goal) {
 		// Redirect to the first goal, since all other goals transitively get
 		// the prereq as well then.
 		first.addPrereq(goal);
 	}
 
-	/** append another goal to the end of the goal sequence */
-	public void append(Goal goal) {
+	/** Append another goal to the end of the goal sequence. */
+	public void append(final Goal goal) {
 		// Depend on all goals in the sequence.
 		super.addPrereq(goal);
 

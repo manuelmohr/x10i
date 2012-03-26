@@ -10,8 +10,7 @@ import x10c.ast.X10CNodeFactory_c;
 import x10firm.types.GenericTypeSystem;
 
 /**
- * Defines our extension (Firm backend in X10 compiler) within the Polyglot framework
- *
+ * Defines our extension (Firm backend in X10 compiler) within the Polyglot framework.
  */
 public class ExtensionInfo extends x10.ExtensionInfo {
 
@@ -106,9 +105,10 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 	 * TODO DELETE ME: Delete this method when library support is implemented.
 	 */
 	public static boolean isAllowedClassName(final String className) {
-		for(final String str: allowedClassNames)
-			if(className.endsWith(str))
+		for (final String str: allowedClassNames) {
+			if (className.endsWith(str))
 				return true;
+		}
 		return false;
 	}
 }

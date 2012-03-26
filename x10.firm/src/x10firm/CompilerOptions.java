@@ -7,7 +7,6 @@ import java.io.PrintStream;
 import java.util.Set;
 
 import polyglot.frontend.ExtensionInfo;
-import polyglot.main.Main;
 import polyglot.main.UsageError;
 import x10.X10CompilerOptions;
 import firm.Backend;
@@ -19,7 +18,7 @@ import firm.Backend;
 public class CompilerOptions extends X10CompilerOptions {
 	/** Decides whether compiler outputs FIRM graphs. */
 	private boolean dumpFirmGraphs = false;
-	private static final String firmNativeTypesFilename = "firmNativeTypes.conf";
+	private static final String FIRM_NATIVE_TYPES_FILENAME = "firmNativeTypes.conf";
 	private String nativeTypesConfigPath = null;
 	private MachineTriple target = null;
 	private boolean useSoftFloat = false;
@@ -28,8 +27,8 @@ public class CompilerOptions extends X10CompilerOptions {
 	private boolean linkStatically = false;
 	private boolean printCommandline = false;
 
-	/** constructor */
-	public CompilerOptions(ExtensionInfo extension) {
+	/** Constructs new CompilerOptions. */
+	public CompilerOptions(final ExtensionInfo extension) {
 		super(extension);
 		try {
 			setHostMachineTriple();
@@ -39,9 +38,9 @@ public class CompilerOptions extends X10CompilerOptions {
 	}
 
 	private void setHostMachineTriple() throws IOException, UsageError {
-		Process p = Runtime.getRuntime().exec("gcc -dumpmachine");
-		BufferedReader stdOut = new BufferedReader(new InputStreamReader(p.getInputStream()));
-		String output = stdOut.readLine();
+		final Process p = Runtime.getRuntime().exec("gcc -dumpmachine");
+		final BufferedReader stdOut = new BufferedReader(new InputStreamReader(p.getInputStream()));
+		final String output = stdOut.readLine();
 		if (output == null)
 			throw new RuntimeException("Failed to determine host architecture");
 		target = new MachineTriple(output);
@@ -49,68 +48,68 @@ public class CompilerOptions extends X10CompilerOptions {
 	}
 
 	/**
-	 * @return True if the firm graphs should be dumped
+	 * Returns true if the firm graphs should be dumped.
 	 */
 	public boolean isDumpFirmGraphs() {
 		return dumpFirmGraphs;
 	}
 
 	/**
-	 * @return The full filename of the firm native types configuration file
+	 * Returns the full filename of the firm native types configuration file.
 	 */
 	public String getFirmNativeTypesFilename() {
 		assert nativeTypesConfigPath != null : "Path to native types config not initialized";
-		return nativeTypesConfigPath + "/" + target + "/" + firmNativeTypesFilename;
+		return nativeTypesConfigPath + "/" + target + "/" + FIRM_NATIVE_TYPES_FILENAME;
 	}
 
 	/**
-	 * @return The target triple.
+	 * Returns the target triple.
 	 */
 	public MachineTriple getTargetTriple() {
 		return target;
 	}
 
 	/**
-	 * @return Returns whether software floating point should be used or not.
+	 * Returns whether software floating point should be used or not.
 	 */
 	public boolean useSoftFloat() {
 		return useSoftFloat;
 	}
 
 	/**
-	 * @return Returns whether generated assembly file should be assembled and linked.
+	 * Returns whether generated assembly file should be assembled and linked.
 	 */
 	public boolean assembleAndLink() {
 		return assembleAndLink;
 	}
 
 	/**
-	 * returns whether we should use libraries in firm (.ir) format if available
+	 * Returns whether we should use libraries in firm (.ir) format if available.
 	 * (This allows inlining of library functions)
 	 */
 	public boolean useFirmLibraries() {
 		return useFirmLibraries;
 	}
 
-	/** returns true if result should be linked statically */
+	/** Returns true if result should be linked statically. */
 	public boolean linkStatically() {
 		return linkStatically;
 	}
 
-	/** returns true if commandline should be printed when invoking external tools */
+	/** Returns true if commandline should be printed when invoking external tools. */
 	public boolean printCommandline() {
 		return printCommandline;
 	}
 
-	private static void backendOption(String option) {
+	private static void backendOption(final String option) {
 		FirmState.initializeFirm();
 		Backend.option(option);
 	}
 
 	@Override
-	protected int parseCommand(String args[], int index, Set<String> source)
-			throws UsageError, Main.TerminationException {
-		int i = super.parseCommand(args, index, source);
+	protected int parseCommand(final String[] args, final int index, final Set<String> source)
+			throws UsageError {
+		final int i = super.parseCommand(args, index, source);
 		if (i != index)
 			return i;
 
@@ -136,7 +135,7 @@ public class CompilerOptions extends X10CompilerOptions {
 			dumpFirmGraphs = true;
 			return index + 1;
 		} else if (args[i].equals("-nativeTypesConfigPath")) {
-			nativeTypesConfigPath = args[i+1];
+			nativeTypesConfigPath = args[i + 1];
 			return index + 2;
 		} else if (args[i].equals("-S")) {
 			assembleAndLink = false;
@@ -156,10 +155,10 @@ public class CompilerOptions extends X10CompilerOptions {
 	}
 
 	/**
-	 * Print usage information
+	 * Prints usage information.
 	 */
 	@Override
-	public void usage(PrintStream out) {
+	public void usage(final PrintStream out) {
 		super.usage(out);
 		usageForFlag(out, "-mtarget=TARGET",
 				"Specify target architecture as machine-manufacturer-OS triple.");

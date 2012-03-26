@@ -20,18 +20,20 @@ import x10firm.FirmState;
 import x10firm.MachineTriple;
 
 /**
- * Final Goal, which links the generated asm with the stdlib
+ * Final Goal, which links the generated asm with the stdlib.
  */
 public class Linked extends PostCompiled {
 	private CompilerOptions options;
+	private final File asmFile;
 
-	/** constructor */
-	public Linked(ExtensionInfo extInfo) {
+	/** Constructs a new Linked goal. */
+	public Linked(final ExtensionInfo extInfo, final File asmFile) {
 		super(extInfo);
 		options = (CompilerOptions)extInfo.getOptions();
+		this.asmFile = asmFile;
 	}
 
-	private void printCommandline(String[] cmdLine) {
+	private void printCommandline(final String[] cmdLine) {
 		if (!options.printCommandline())
 			return;
 		for (int i = 0; i < cmdLine.length; ++i) {
@@ -55,16 +57,15 @@ public class Linked extends PostCompiled {
 		return gcc;
 	}
 
-	private String queryGccPath(String path) {
+	private String queryGccPath(final String path) {
 		final String gcc = getGCC();
 
-		final String[] cmdLine = new String[] { gcc, "--print-file-name="+path };
-		BufferedReader stdOut = null;
+		final String[] cmdLine = new String[] {gcc, "--print-file-name=" + path};
 		final String output;
 		try {
 			printCommandline(cmdLine);
-			Process p = Runtime.getRuntime().exec(cmdLine);
-			stdOut = new BufferedReader(new InputStreamReader(p.getInputStream()));
+			final Process p = Runtime.getRuntime().exec(cmdLine);
+			final BufferedReader stdOut = new BufferedReader(new InputStreamReader(p.getInputStream()));
 			output = stdOut.readLine();
 			if (output == null)
 				throw new RuntimeException("Failed to query gcc path '" + path + "'");
@@ -76,20 +77,18 @@ public class Linked extends PostCompiled {
 	}
 
 	@Override
-	protected boolean invokePostCompiler(Options opts, Compiler compiler,
-			ErrorQueue eq) {
+	protected boolean invokePostCompiler(final Options opts, final Compiler compiler,
+			final ErrorQueue eq) {
 
 		final String exeFilename = options.executable_path == null
 		                           ? "a.out"
 		                           : options.executable_path;
-		final File asm = new File(AsmEmitted.ASM_FILENAME);
-
 		final MachineTriple target = options.getTargetTriple();
 		final String x10DistPath = System.getProperty("x10.dist", ".");
 		final String libooPath = x10DistPath + "/../liboo/build/" + target;
 		final String gcc = getGCC();
+		final boolean usesElf = target.isUnixishOS();
 		boolean linkStatically = options.linkStatically();
-		boolean usesElf = target.isUnixishOS();
 
 		final List<String> cmd = new ArrayList<String>();
 		cmd.add(gcc);
@@ -98,10 +97,10 @@ public class Linked extends PostCompiled {
 		if (target.getCpu().equals("x86_64") || os.equals("darwin11")) {
 			cmd.add("-m32");
 		} else if (os.equals("octopos")) {
-			final String octopos_prefix = x10DistPath + "/../octopos-app";
+			final String octoposPrefix = x10DistPath + "/../octopos-app";
 			cmd.add("-m32");
 			cmd.add("-nostdlib");
-			cmd.add("-Wl,-T" + octopos_prefix + "/sections.x");
+			cmd.add("-Wl,-T" + octoposPrefix + "/sections.x");
 			cmd.add(queryGccPath("crti.o"));
 			cmd.add(queryGccPath("crtbegin.o"));
 			/* octopos only supports static linking */
@@ -110,7 +109,7 @@ public class Linked extends PostCompiled {
 		if (linkStatically)
 			cmd.add("-static");
 
-		cmd.add(asm.getAbsolutePath());
+		cmd.add(asmFile.getAbsolutePath());
 		if (options.useSoftFloat())
 			cmd.add("-msoft-float");
 		if (linkStatically) {
@@ -122,12 +121,12 @@ public class Linked extends PostCompiled {
 			cmd.add("-loo_rt");
 		}
 		if (!FirmState.libraryLoaded("x10")) {
-			String stdlibPath = x10DistPath + "/../x10.firm_runtime/build/" + target;
+			final String stdlibPath = x10DistPath + "/../x10.firm_runtime/build/" + target;
 			cmd.add(stdlibPath + "/libx10.a");
 		}
 		if (os.equals("octopos")) {
-			final String octopos_prefix = x10DistPath + "/../octopos-app";
-			cmd.add(octopos_prefix + "/liboctopos.a");
+			final String octoposPrefix = x10DistPath + "/../octopos-app";
+			cmd.add(octoposPrefix + "/liboctopos.a");
 			cmd.add("-lgcc");
 			cmd.add(queryGccPath("crtend.o"));
 			cmd.add(queryGccPath("crtn.o"));
@@ -140,13 +139,13 @@ public class Linked extends PostCompiled {
 		cmd.add(exeFilename);
 
 		// Reuse the C++ backend.
-		String[] cmdLine = cmd.toArray(new String[0]);
+		final String[] cmdLine = cmd.toArray(new String[0]);
 		printCommandline(cmdLine);
 		if (!X10CPPTranslator.doPostCompile(options, eq, Collections.<String>emptyList(), cmdLine)) {
 			eq.enqueue(ErrorInfo.POST_COMPILER_ERROR, "assembling and linking failed");
 			return false;
 		}
 
-		return asm.delete();
+		return asmFile.delete();
 	}
 }

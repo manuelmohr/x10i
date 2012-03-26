@@ -31,13 +31,14 @@ public class GenericClassInstance {
 	protected GenericClassInstance(final X10ClassType classType) {
 		this.def = classType.x10Def();
 
-		if (def.typeParameters().isEmpty())
+		if (def.typeParameters().isEmpty()) {
 			this.mapping = null;
-		else {
+		} else {
 			this.mapping = new ParameterTypeMapping();
 			assert def.typeParameters().size() == classType.typeArguments().size();
-			for (int i = 0; i < def.typeParameters().size(); ++i)
+			for (int i = 0; i < def.typeParameters().size(); ++i) {
 				this.mapping.add(def.typeParameters().get(i), classType.typeArguments().get(i));
+			}
 		}
 	}
 
@@ -45,15 +46,17 @@ public class GenericClassInstance {
 	public int hashCode() {
 		int hash = def.hashCode();
 
-		if (mapping != null)
-			for (ParameterType paramType : mapping.getKeySet())
+		if (mapping != null) {
+			for (final ParameterType paramType : mapping.getKeySet()) {
 				hash ^= mapping.getMappedType(paramType).hashCode();
+			}
+		}
 
 		return hash;
 	}
 
 	@Override
-	public boolean equals(Object other) {
+	public boolean equals(final Object other) {
 		if (!(other instanceof GenericClassInstance))
 			return false;
 

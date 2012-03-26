@@ -9,18 +9,18 @@ import polyglot.types.TypeObject;
 import x10.types.ParameterType;
 
 /**
- * Container for parameter type mappings
+ * Container for parameter type mappings.
  */
 public class ParameterTypeMapping {
 	private final Map<ParameterType, Type> mapping;
 
-	/** Construct an empty parameter type mapping. */
+	/** Constructs an empty parameter type mapping. */
 	public ParameterTypeMapping() {
 		this.mapping = new HashMap<ParameterType, Type>();
 	}
 
-	/** Construct a parameter type mapping using the supplied map. */
-	public ParameterTypeMapping(Map<ParameterType, Type> map) {
+	/** Constructs a parameter type mapping using the supplied map. */
+	public ParameterTypeMapping(final Map<ParameterType, Type> map) {
 		this.mapping = map;
 	}
 	/**
@@ -54,7 +54,7 @@ public class ParameterTypeMapping {
 	}
 
 	@Override
-	public boolean equals(Object o) {
+	public boolean equals(final Object o) {
 		if (!(o instanceof ParameterTypeMapping))
 			return false;
 
@@ -67,18 +67,19 @@ public class ParameterTypeMapping {
 			/* A simple "other.mapping.containsKey" is not enough because we can have same types with different hash
 			 * codes (different instances).
 			 * We also can`t compare the parameter types with equalsImpl because the 2 parameter type mappings can
-			 * have different contexts (for example: 1. parameter type mapping for a method "a", 2. parameter type mapping
-			 * for a method "b". -> The contexts are different but the parameter type mappings can be the same)
+			 * have different contexts (for example: 1. parameter type mapping for a method "a",
+			 *                          2. parameter type mapping for a method "b". -> The contexts are different
+			 *                          but the parameter type mappings can be the same)
 			 * Solution: We have to do a simple name comparison for the parameter types and a context dependent
 			 * comparison with "equalsImpl" for the concrete types of the parameter types.
 			 */
-			for(final ParameterType et: other.mapping.keySet()) {
-				if(pt.name().toString().equals(et.name().toString())) {
+			for (final ParameterType et: other.mapping.keySet()) {
+				if (pt.name().toString().equals(et.name().toString())) {
 					qt = et;
 					break;
 				}
 			}
-			if(qt == null)
+			if (qt == null)
 				return false;
 
 			final Type myT = mapping.get(pt);

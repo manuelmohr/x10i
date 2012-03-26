@@ -7,14 +7,14 @@ import firm.Entity;
 /**
  * Class for saving local var declarations and the appropriate firm indices, types.
  */
-public class VarEntry {
+public final class VarEntry {
 	/**
-	 * Type of a normal variable -> Has a unique index
+	 * Type of a normal variable -> Has a unique index.
 	 */
 	public static final int VARIABLE = 0x1;
 
 	/**
-	 * A normal (local) struct variable -> Has a unique entity
+	 * A normal (local) struct variable -> Has a unique entity.
 	 */
 	public static final int STRUCT = 0x2;
 
@@ -34,14 +34,14 @@ public class VarEntry {
 	}
 
 	/**
-	 * Returns the type of the var entry
+	 * Returns the type of the var entry.
 	 */
 	public int getType() {
 		return type;
 	}
 
 	/**
-	 * Creates a new var entry for a local variable
+	 * Creates a new var entry for a local variable.
 	 * @param loc The local def
 	 * @param idx The "local" index (firm) for the local def
 	 * @return The created var entry.
@@ -51,7 +51,7 @@ public class VarEntry {
 	}
 
 	/**
-	 * Creates a new var entry for a local struct def
+	 * Creates a new var entry for a local struct def.
 	 * @param loc The local struct def
 	 * @return The created var entry.
 	 */
@@ -60,14 +60,14 @@ public class VarEntry {
 	}
 
 	/**
-	 * The index of the var entry -> -1 if the var entry is actually a field instance
+	 * Returns the index of the var entry -> -1 if the var entry is actually a field instance.
 	 * @return The index of the local instance.
 	 */
 	public int getIdx() {
 		return idx;
 	}
 
-	/** Returns the entity of the var entry
+	/** Returns the entity of the var entry.
 	 *
 	 */
 	public Entity getEntity() {
@@ -76,7 +76,7 @@ public class VarEntry {
 	}
 
 	/**
-	 * Returns the var def of the var key
+	 * Returns the var def of the var key.
 	 * @return The var def
 	 */
 	public LocalDef getVarDef() {

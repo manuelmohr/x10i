@@ -11,8 +11,8 @@ import polyglot.frontend.Goal;
  */
 public class GoalSequence extends AbstractGoal_c {
 
-	/** constructor calls super -- make Java happy */
-	public GoalSequence(String name) {
+	/** constructor calls super -- make Java happy. */
+	public GoalSequence(final String name) {
 		super(name);
 	}
 
@@ -36,14 +36,14 @@ public class GoalSequence extends AbstractGoal_c {
 	}
 
 	@Override
-	public void addPrereq(Goal goal) {
+	public void addPrereq(final Goal goal) {
 		// Redirect to the first goal, since all other goals transitively get
 		// the prereq as well then.
 		first.addPrereq(goal);
 	}
 
-	/** append another goal to the end of the goal sequence */
-	public void append(Goal goal) {
+	/** Appends another goal to the end of the goal sequence. */
+	public void append(final Goal goal) {
 		// Depend on all goals in the sequence.
 		super.addPrereq(goal);
 

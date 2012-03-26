@@ -35,7 +35,7 @@ public class ClassDeclFetcher {
 	 * @param typeSystem The X10 type system.
 	 * @param xnf The node factory.
 	 */
-	public ClassDeclFetcher(TypeSystem typeSystem, X10NodeFactory_c xnf) {
+	public ClassDeclFetcher(final TypeSystem typeSystem, final X10NodeFactory_c xnf) {
 		this.x10TypeSystem = typeSystem;
 		this.xnf = xnf;
 	}
@@ -46,12 +46,12 @@ public class ClassDeclFetcher {
 	 * @param candidate the constructor definition whose container is desired
 	 * @return the definition of the X10 Class containing the constructor
 	 */
-	private static X10ClassDef getContainer(X10ConstructorDef candidate) {
-		Ref<? extends ContainerType> containerRef = candidate.container();
-		ContainerType containerType = Types.get(containerRef);
-		Type containerBase = Types.baseType(containerType);
+	private static X10ClassDef getContainer(final X10ConstructorDef candidate) {
+		final Ref<? extends ContainerType> containerRef = candidate.container();
+		final ContainerType containerType = Types.get(containerRef);
+		final Type containerBase = Types.baseType(containerType);
 		assert containerBase instanceof X10ClassType;
-		X10ClassDef container = ((X10ClassType) containerBase).x10Def();
+		final X10ClassDef container = ((X10ClassType) containerBase).x10Def();
 		return container;
 	}
 
@@ -67,8 +67,8 @@ public class ClassDeclFetcher {
 	 * @param container
 	 * @return
 	 */
-	private Job getJob(X10ConstructorDef candidate, X10ClassDef container) {
-		Job job = container.job();
+	private Job getJob(final X10ConstructorDef candidate, final X10ClassDef container) {
+		final Job job = container.job();
 		try {
 			/*
 			 * TODO: reconstruct job from position if (null == job) { String
@@ -96,11 +96,11 @@ public class ClassDeclFetcher {
 			}
 			job.ast(ast); // ASK: why does this work?
 
-		} catch (Exception x) {
-			String msg = "AST for job, " + job + " (for candidate " + candidate
+		} catch (final Exception x) {
+			final String msg = "AST for job, " + job + " (for candidate " + candidate
 					+ ") does not typecheck (" + x + ")";
 			System.err.println(msg);
-			SemanticException e = new SemanticException(msg, candidate.position());
+			final SemanticException e = new SemanticException(msg, candidate.position());
 			Errors.issue(job, e);
 			return null;
 		}
@@ -123,7 +123,7 @@ public class ClassDeclFetcher {
 		final X10ClassDecl[] decl = new X10ClassDecl[1];
 
 		ast.visit(new NodeVisitor() {
-			private boolean contains(Position outer, Position inner) {
+			private boolean contains(final Position outer, final Position inner) {
 				if (!outer.file().equals(inner.file()))
 					return false;
 				if (!outer.path().equals(inner.path()))
@@ -132,7 +132,7 @@ public class ClassDeclFetcher {
 			}
 
 			@Override
-			public polyglot.ast.Node override(polyglot.ast.Node n) {
+			public polyglot.ast.Node override(final polyglot.ast.Node n) {
 				if (null != decl[0])
 					return n; // we've already found the decl, short-circuit search
 				if (n instanceof TypeNode)
@@ -170,19 +170,19 @@ public class ClassDeclFetcher {
 	 * @return The declaration of the method invoked by call, or null if the
 	 *         declaration cannot be found.
 	 */
-	public X10ClassDecl getDecl(X10New n) {
+	public X10ClassDecl getDecl(final X10New n) {
 		// get candidate
-		X10ConstructorDef candidate = n.constructorInstance().x10Def();
+		final X10ConstructorDef candidate = n.constructorInstance().x10Def();
 
 		// get container and declaration for candidate
-		X10ClassDef container = getContainer(candidate);
+		final X10ClassDef container = getContainer(candidate);
 		if (null == container) {
 			System.err.println("unable to find container for candidate: "
 					+ candidate);
 			return null;
 		}
 
-		Job candidateJob = getJob(candidate, container);
+		final Job candidateJob = getJob(candidate, container);
 		if (null == candidateJob) {
 			System.err.println("unable to find job for candidate: " + candidate);
 			return null;
@@ -197,7 +197,7 @@ public class ClassDeclFetcher {
 
 		ast = ast.visit(new Desugarer(candidateJob, x10TypeSystem, xnf).begin());
 		ast = ast.visit(new ForLoopOptimizer(candidateJob, x10TypeSystem, xnf).begin());
-		X10ClassDecl decl = getDeclaration(container, ast);
+		final X10ClassDecl decl = getDeclaration(container, ast);
 		if (null == decl) {
 			System.err.println("unable to find declaration for candidate: "
 					+ candidate);

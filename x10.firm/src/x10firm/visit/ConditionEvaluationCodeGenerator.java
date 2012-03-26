@@ -43,21 +43,23 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	private final FirmTypeSystem firmTypeSystem;
 
 	/**
-	 * Creates a new code generator
+	 * Creates a new code generator.
 	 */
-	public ConditionEvaluationCodeGenerator(Block trueBlock, Block falseBlock, FirmGenerator codeGenerator, GenericTypeSystem typeSystem, FirmTypeSystem firmTypeSystem) {
+	public ConditionEvaluationCodeGenerator(final Block trueBlock, final Block falseBlock,
+			final FirmGenerator codeGenerator) {
 		this.trueBlock = trueBlock;
 		this.falseBlock = falseBlock;
 		this.codeGenerator = codeGenerator;
 		this.con = codeGenerator.getFirmConstruction();
-		this.typeSystem = typeSystem;
-		this.firmTypeSystem = firmTypeSystem;
+		this.typeSystem = codeGenerator.getX10TypeSystem();
+		this.firmTypeSystem = codeGenerator.getFirmTypeSystem();
 	}
 
 	/**
-	 * Create conditional jump to true/false Block.
+	 * Creates conditional jump to true/false Block.
 	 */
-	public static void makeJumps(final Node node, final Block trueBlock, final Block falseBlock, final MethodConstruction con) {
+	public static void makeJumps(final Node node, final Block trueBlock,
+			final Block falseBlock, final MethodConstruction con) {
 		final Node     cond      = con.newCond(node);
 		final Node     projTrue  = con.newProj(cond, Mode.getX(), Cond.pnTrue);
 		final Node     projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
@@ -67,29 +69,30 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	@Override
-	public void visit(BooleanLit_c literal) {
+	public void visit(final BooleanLit_c literal) {
 		final Node jmp = con.newJmp();
 
-		if (literal.value())
+		if (literal.value()) {
 			trueBlock.addPred(jmp);
-		else
+		} else {
 			falseBlock.addPred(jmp);
+		}
 
 		con.setCurrentBlockBad();
 	}
 
 	@Override
-	public void visit(Binary_c binop) {
+	public void visit(final Binary_c binop) {
 		final Binary.Operator op = binop.operator();
 		final Block middleBlock = con.newBlock();
 
 		if (op == Binary.COND_AND) {
-			ConditionEvaluationCodeGenerator subGenerator
-				= new ConditionEvaluationCodeGenerator(middleBlock, falseBlock, codeGenerator, typeSystem, firmTypeSystem);
+			final ConditionEvaluationCodeGenerator subGenerator
+				= new ConditionEvaluationCodeGenerator(middleBlock, falseBlock, codeGenerator);
 			subGenerator.visitAppropriate(binop.left());
 		} else if (op == Binary.COND_OR) {
-			ConditionEvaluationCodeGenerator subGenerator
-				= new ConditionEvaluationCodeGenerator(trueBlock, middleBlock, codeGenerator, typeSystem, firmTypeSystem);
+			final ConditionEvaluationCodeGenerator subGenerator
+				= new ConditionEvaluationCodeGenerator(trueBlock, middleBlock, codeGenerator);
 			subGenerator.visitAppropriate(binop.left());
 		} else {
 			/* all the other binary ops like the relational and other ops should
@@ -101,8 +104,8 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		visitAppropriate(binop.right());
 	}
 
-	private Node handleStructEquals(final X10Binary_c B, final Node retLeft, final Node retRight) {
-		final Expr left = B.left();
+	private Node handleStructEquals(final X10Binary_c b, final Node retLeft, final Node retRight) {
+		final Expr left = b.left();
 
 		// Find the correct _struct_equals to call.  We want S._struct_equals(S), not
 		// S._struct_equals(Any).
@@ -110,9 +113,10 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		final List<MethodInstance> instances = ct.methodsNamed(Name.make(SharedVarsMethods.STRUCT_EQUALS_METHOD));
 		MethodInstance instance = null;
 		final Context ctx = new Context(typeSystem);
-		for (final MethodInstance mi : instances)
+		for (final MethodInstance mi : instances) {
 			if (typeSystem.typeEquals0(mi.formalTypes().get(0), ct, ctx))
 				instance = mi;
+		}
 		assert instance != null;
 
 		// Get the method entity for our _struct_equals.
@@ -121,7 +125,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		final Node address = con.newSymConst(funcEnt);
 
 		// Create the call.
-		Node[] parameters = new Node[] { retLeft, retRight };
+		final Node[] parameters = new Node[] {retLeft, retRight};
 		final Node mem = con.getCurrentMem();
 		final Node call = con.newCall(mem, address, parameters, type);
 		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
@@ -137,18 +141,18 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	@Override
-	public void visit(X10Binary_c B) {
-		final Binary.Operator op = B.operator();
+	public void visit(final X10Binary_c b) {
+		final Binary.Operator op = b.operator();
 		if (op != Binary.EQ && op != Binary.NE) {
-			visit((Binary_c)B);
+			visit((Binary_c)b);
 			return;
 		}
 
 		/* only '==', '!=' are allowed operators.
 		 * all other operators are implemented by native calls. */
 
-		final Expr     left      = B.left();
-		final Expr     right     = B.right();
+		final Expr     left      = b.left();
+		final Expr     right     = b.right();
 		final Relation relation  = (op == Binary.EQ) ? Relation.Equal : Relation.LessGreater;
 		final Node     retLeft   = codeGenerator.visitExpression(left);
 		final Node     retRight  = codeGenerator.visitExpression(right);
@@ -159,20 +163,19 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		final boolean rightIsNonPrimitiveStruct = firmTypeSystem.isFirmStructType(right.type());
 
 		if (leftIsNonPrimitiveStruct && rightIsNonPrimitiveStruct) {
-			final Node ret = handleStructEquals(B, retLeft, retRight);
+			final Node ret = handleStructEquals(b, retLeft, retRight);
 			// We get a boolean out of handleStructEquals() but makeJumps() expects a Cmp, so compare
 			// the result of handleStructEquals() with true.
 			final Node toCmp = con.newConst(Mode.getBu().getOne());
 			final Node cmp = con.newCmp(ret, toCmp, relation);
 			makeJumps(cmp, trueBlock, falseBlock, con);
-		}
-		else {
+		} else {
 			final Node cmp = con.newCmp(retLeft, retRight, relation);
 			makeJumps(cmp, trueBlock, falseBlock, con);
 		}
 	}
 
-	/** create code for instanceof check */
+	/** Creates code for instanceof check. */
 	public static Node genInstanceOf(final Node objPtr, final Type eType, final Type cmpType,
 			final FirmGenerator codeGenerator, final GenericTypeSystem typeSystem,
 			final FirmTypeSystem firmTypeSystem, final MethodConstruction con) {
@@ -183,7 +186,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 
 		/* struct-types can be evaluated statically */
 		if (typeSystem.isStructType0(exprType)) {
-			boolean subtype = typeSystem.isSubtype(exprType, compType);
+			final boolean subtype = typeSystem.isSubtype(exprType, compType);
 			final Mode modeB = Mode.getb();
 			return con.newConst(subtype ? modeB.getOne() : modeB.getNull());
 		}
@@ -206,7 +209,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	@Override
-	public void visit(X10Instanceof_c n) {
+	public void visit(final X10Instanceof_c n) {
 		final Type exprType = n.expr().type();
 		final Expr objExpr = n.expr();
 		final Node objPtr = codeGenerator.visitExpression(objExpr);
@@ -217,7 +220,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	}
 
 	@Override
-	public void visit(Expr_c expr) {
+	public void visit(final Expr_c expr) {
 		/* normal expressions produce a 0 or 1 value if we want to jump
 		 * based on that we have to compare the value */
 		final Node node = codeGenerator.visitExpression(expr);

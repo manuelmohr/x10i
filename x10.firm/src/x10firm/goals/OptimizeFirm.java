@@ -21,8 +21,8 @@ public class OptimizeFirm extends AllBarrierGoal {
 	private static final int INLINE_THRESHOLD = 0;
 	private static final int INLINE_MAXSIZE = 1000;
 
-	/** Constructor */
-	public OptimizeFirm(Scheduler scheduler) {
+	/** Constructos a new OptimizeFirm goal. */
+	public OptimizeFirm(final Scheduler scheduler) {
 		super("OptimizeFirm", scheduler);
 	}
 
@@ -35,7 +35,7 @@ public class OptimizeFirm extends AllBarrierGoal {
 
 		/* Dump the normal firm graph */
 		if (options.isDumpFirmGraphs()) {
-			for (Graph g : Program.getGraphs()) {
+			for (final Graph g : Program.getGraphs()) {
 				Dump.dumpGraph(g, "--optimized");
 			}
 		}
@@ -92,8 +92,7 @@ public class OptimizeFirm extends AllBarrierGoal {
 	}
 
 	@Override
-	public Goal prereqForJob(Job job) {
-		// TODO Auto-generated method stub
+	public Goal prereqForJob(final Job job) {
 		return null;
 	}
 }

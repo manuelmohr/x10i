@@ -16,7 +16,7 @@ public class Builtins {
 	private Map<String, BuiltinMethodGenerator> map = new HashMap<String, BuiltinMethodGenerator>();
 
 	/**
-	 * Constructor
+	 * Constructor.
 	 */
 	public Builtins() {
 		map.put("x10.lang.Zero.get", new X10LangZeroGet());
@@ -31,7 +31,7 @@ public class Builtins {
 	}
 
 	/**
-	 * Dispatch a given native generic method to the appropriate generics generator
+	 * Dispatch a given native generic method to the appropriate generics generator.
 	 * @param codeGenerator The firm code generator
 	 * @param meth The method instance for which the firm code should be generated
 	 * @param formals The formals of the methods

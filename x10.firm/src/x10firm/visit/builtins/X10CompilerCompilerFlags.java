@@ -15,12 +15,12 @@ import firm.Mode;
 import firm.nodes.Node;
 
 /**
- * x10.compiler.CompilerFlags builtins
+ * Creates instances of {@code x10.compiler.CompilerFlags} built-in methods.
  */
 public abstract class X10CompilerCompilerFlags {
-	private static void generateBoolMethod(FirmGenerator codeGenerator,
-			MethodInstance methodInstance, List<LocalInstance> formals,
-			boolean value) {
+	private static void generateBoolMethod(final FirmGenerator codeGenerator,
+			final MethodInstance methodInstance, final List<LocalInstance> formals,
+			final boolean value) {
 		final FirmTypeSystem firmTypeSystem = codeGenerator.getFirmTypeSystem();
 		final Entity entity = firmTypeSystem.getMethodEntity(methodInstance);
 
@@ -32,56 +32,56 @@ public abstract class X10CompilerCompilerFlags {
 		final Mode mode = firmTypeSystem.getFirmMode(returnType);
 		final Node cnst = con.newConst(value ? mode.getOne() : mode.getNull());
 		final Node mem = con.getCurrentMem();
-		final Node ret = con.newReturn(mem, new Node[] { cnst });
+		final Node ret = con.newReturn(mem, new Node[] {cnst});
 		con.getGraph().getEndBlock().addPred(ret);
 		con.setCurrentBlockBad();
 
 		codeGenerator.finishConstruction(entity, savedConstruction);
 	}
 
-	/** static x10.compiler.CompilerFlags.TRUE(): Boolean */
+	/** Creates instance of {@code static x10.compiler.CompilerFlags.TRUE(): Boolean} method. */
 	static class TRUE implements BuiltinMethodGenerator {
 		@Override
-		public void generate(FirmGenerator codeGenerator,
-				MethodInstance methodInstance, List<LocalInstance> formals) {
+		public void generate(final FirmGenerator codeGenerator,
+				final MethodInstance methodInstance, final List<LocalInstance> formals) {
 			generateBoolMethod(codeGenerator, methodInstance, formals, true);
 		}
 	}
 
-	/** static x10.compiler.CompilerFlags.FALSE(): Boolean */
+	/** Creates instance of {@code static x10.compiler.CompilerFlags.FALSE(): Boolean} method. */
 	static class FALSE implements BuiltinMethodGenerator {
 		@Override
-		public void generate(FirmGenerator codeGenerator,
-				MethodInstance methodInstance, List<LocalInstance> formals) {
+		public void generate(final FirmGenerator codeGenerator,
+				final MethodInstance methodInstance, final List<LocalInstance> formals) {
 			generateBoolMethod(codeGenerator, methodInstance, formals, false);
 		}
 	}
 
-	/** static x10.compiler.CompilerFlags.checkBounds(): Boolean */
+	/** Creates instance of {@code static x10.compiler.CompilerFlags.checkBounds(): Boolean} method. */
 	static class CheckBounds implements BuiltinMethodGenerator {
 		@Override
-		public void generate(FirmGenerator codeGenerator,
-				MethodInstance methodInstance, List<LocalInstance> formals) {
+		public void generate(final FirmGenerator codeGenerator,
+				final MethodInstance methodInstance, final List<LocalInstance> formals) {
 			final CompilerOptions options = codeGenerator.getOptions();
 			generateBoolMethod(codeGenerator, methodInstance, formals, !options.x10_config.NO_CHECKS);
 		}
 	}
 
-	/** static x10.compiler.CompilerFlags.checkPlace(): Boolean */
+	/** Creates instance of {@code static x10.compiler.CompilerFlags.checkPlace(): Boolean} method. */
 	static class CheckPlace implements BuiltinMethodGenerator {
 		@Override
-		public void generate(FirmGenerator codeGenerator,
-				MethodInstance methodInstance, List<LocalInstance> formals) {
+		public void generate(final FirmGenerator codeGenerator,
+				final MethodInstance methodInstance, final List<LocalInstance> formals) {
 			final CompilerOptions options = codeGenerator.getOptions();
 			generateBoolMethod(codeGenerator, methodInstance, formals, !options.x10_config.NO_CHECKS);
 		}
 	}
 
-	/** static x10.compiler.CompilerFlags.useUnsigned(): Boolean */
+	/** Creates instance of {@code static x10.compiler.CompilerFlags.useUnsigned(): Boolean} method. */
 	static class UseUnsigned implements BuiltinMethodGenerator {
 		@Override
-		public void generate(FirmGenerator codeGenerator,
-				MethodInstance methodInstance, List<LocalInstance> formals) {
+		public void generate(final FirmGenerator codeGenerator,
+				final MethodInstance methodInstance, final List<LocalInstance> formals) {
 			generateBoolMethod(codeGenerator, methodInstance, formals, true);
 		}
 	}

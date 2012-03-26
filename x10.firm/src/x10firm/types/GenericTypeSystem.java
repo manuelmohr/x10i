@@ -8,7 +8,6 @@ import java.util.Map;
 import polyglot.frontend.ExtensionInfo;
 import polyglot.types.Context;
 import polyglot.types.Type;
-import polyglot.types.TypeSystem;
 import polyglot.types.Types;
 import x10.types.ParameterType;
 import x10.types.X10ClassDef;
@@ -17,42 +16,43 @@ import x10.types.X10ParsedClassType;
 import x10c.types.X10CTypeSystem_c;
 
 /**
- * Implements generic-aware versions of the methods provided by {@link TypeSystem}.
+ * Implements generic-aware versions of the methods provided by {@link X10CTypeSystem_c}.
  * This means that passing ParameterTypes like T are handled correctly by all
  * methods by looking up the type that T is currently mapped to.
  */
 public class GenericTypeSystem extends X10CTypeSystem_c {
 	/** Remember type parameter mappings, used for example in name mangling. */
-	private Map<ParameterType, polyglot.types.Type> typeParameters = new HashMap<ParameterType, polyglot.types.Type>();
+	private final Map<ParameterType, polyglot.types.Type> typeParameters
+		= new HashMap<ParameterType, polyglot.types.Type>();
 
 	/**
 	 * @param extInfo extension info
 	 */
-	public GenericTypeSystem(ExtensionInfo extInfo) {
+	public GenericTypeSystem(final ExtensionInfo extInfo) {
 		super(extInfo);
 	}
 
 	/**
-	 * Insert a new (key->value) parameter type mapping
+	 * Inserts a new (key->value) parameter type mapping.
 	 * @param paramType key type
 	 * @param type      value type
 	 */
-	public void addTypeMapping(ParameterType paramType, Type type) {
+	public void addTypeMapping(final ParameterType paramType, final Type type) {
 		assert !typeParameters.containsKey(paramType);
 		typeParameters.put(paramType, type);
 	}
 
 	/**
-	 * Remove an existing type mapping
+	 * Removes an existing type mapping.
 	 * @param paramType key type to remove
 	 */
-	public void removeTypeMapping(ParameterType paramType) {
+	public void removeTypeMapping(final ParameterType paramType) {
 		assert typeParameters.containsKey(paramType);
 		typeParameters.remove(paramType);
 	}
 
 	/**
-	 * Returns the type mapping
+	 * Returns the type mapping.
 	 * @return The type mapping
 	 */
 	public Map<ParameterType, Type> getMapping() {
@@ -63,10 +63,13 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	 * @param paramType  the key type, which is mapped to a value type
 	 * @return           the corresponding value type
 	 */
-	public Type getTypeParamSub(ParameterType paramType) {
+	public Type getTypeParamSub(final ParameterType paramType) {
 		polyglot.types.Type p = paramType;
 
-		while ((p = Types.baseType(p)) != null && super.isParameterType(p)) {
+		while (super.isParameterType(p)) {
+			p = Types.baseType(p);
+			if (p == null)
+				break;
 			assert typeParameters.containsKey(p);
 			p = typeParameters.get(p);
 		}
@@ -75,62 +78,68 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	}
 
 	/**
-	 * @return True iff {@code param} is a struct type.
+	 * Returns True iff {@code param} is a struct type.
 	 */
-	public boolean isStructType0(Type type) {
+	public boolean isStructType0(final Type type) {
 		final Type ret = getConcreteType(type);
 		return super.isStructType(ret);
 	}
 
 	/**
-	 * @return True iff {@code t1} is a subtype of {@code t2}.
+	 * Returns True iff {@code t1} is a subtype of {@code t2}.
 	 */
-	public boolean isSubtype0(Type t1, Type t2) {
-		final Type t1_ = getConcreteType(t1),
-				   t2_ = getConcreteType(t2);
+	public boolean isSubtype0(final Type t1, final Type t2) {
+		final Type t1c = getConcreteType(t1);
+		final Type t2c = getConcreteType(t2);
 
-		return super.isSubtype(t1_, t2_);
+		return super.isSubtype(t1c, t2c);
 	}
 
 	/**
-	 * @return True iff {@code t1} is equal to {@code t2} in {@code context}.
+	 * Returns True iff {@code t1} is equal to {@code t2} in {@code context}.
 	 */
-	public boolean typeEquals0(Type t1, Type t2, Context context) {
-		final Type t1_ = getConcreteType(t1),
-				   t2_ = getConcreteType(t2);
+	public boolean typeEquals0(final Type t1, final Type t2, final Context context) {
+		final Type t1c = getConcreteType(t1);
+		final Type t2c = getConcreteType(t2);
 
-		return super.typeEquals(t1_, t2_, context);
+		return super.typeEquals(t1c, t2c, context);
 	}
 
 	/**
-	 * @return True iff {@code t1} is equal to {@code t2} in {@code context}, ignoring their dep clauses and the dep clauses of their type arguments recursively.
+	 * Returns True iff {@code t1} is equal to {@code t2} in {@code context},
+	 * ignoring their dep clauses and the dep clauses of their type arguments
+	 * recursively.
 	 */
-	public boolean typeDeepBaseEquals0(Type t1, Type t2, Context context) {
-		final Type t1_ = getConcreteType(t1),
-				   t2_ = getConcreteType(t2);
+	public boolean typeDeepBaseEquals0(final Type t1, final Type t2, final Context context) {
+		final Type t1c = getConcreteType(t1);
+		final Type t2c = getConcreteType(t2);
 
-		return super.typeDeepBaseEquals(t1_, t2_, context);
+		return super.typeDeepBaseEquals(t1c, t2c, context);
 	}
 
-	private Map<String, X10ParsedClassType> remapped_classes = new HashMap<String, X10ParsedClassType>();
+	private final Map<String, X10ParsedClassType> remappedClasses
+		= new HashMap<String, X10ParsedClassType>();
 
-	private static String getGenericClassName(final X10ParsedClassType klass, final List<polyglot.types.Type> typeArguments) {
-		StringBuffer buf = new StringBuffer();
+	private static String getGenericClassName(final X10ParsedClassType klass,
+			final List<polyglot.types.Type> typeArguments) {
+		final StringBuffer buf = new StringBuffer();
 		buf.append(klass.name().toString());
 		buf.append("[");
-		for(final polyglot.types.Type arg: typeArguments)
+		for (final polyglot.types.Type arg: typeArguments) {
 			buf.append(arg);
+		}
 		buf.append("]");
 		return buf.toString();
 	}
 
-	private X10ParsedClassType getFixedClassTypeFromCache(final X10ParsedClassType klass, final List<polyglot.types.Type> typeArguments) {
+	private X10ParsedClassType getFixedClassTypeFromCache(final X10ParsedClassType klass,
+			final List<polyglot.types.Type> typeArguments) {
 		final String klassName = getGenericClassName(klass, typeArguments);
-		X10ParsedClassType ret = remapped_classes.get(klassName);
-		if(ret != null)
+		X10ParsedClassType ret = remappedClasses.get(klassName);
+		if (ret != null)
 			return ret;
 		ret = klass.typeArguments(typeArguments);
-		remapped_classes.put(klassName, ret);
+		remappedClasses.put(klassName, ret);
 		return ret;
 	}
 
@@ -138,16 +147,16 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	private X10ParsedClassType fixParsedClassType(final X10ParsedClassType klass) {
 		if (klass.isMissingTypeArguments()) {
 			final X10ClassDef def = klass.def();
-			List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
-			for (ParameterType pt : def.typeParameters())
+			final List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
+			for (final ParameterType pt : def.typeParameters()) {
 				typeArguments.add(getConcreteType(pt));
+			}
 
 			return getFixedClassTypeFromCache(klass, typeArguments);
-		}
-		else if (klass.typeArguments() != null && !klass.typeArguments().isEmpty()) {
-			List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
+		} else if (klass.typeArguments() != null && !klass.typeArguments().isEmpty()) {
+			final List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
 			boolean hasUnknownTypeParams = false;
-			for (polyglot.types.Type typeArg : klass.typeArguments()) {
+			for (final polyglot.types.Type typeArg : klass.typeArguments()) {
 				if (typeArg instanceof ParameterType) {  // No constrained types here.
 					typeArguments.add(getConcreteType(typeArg));
 					hasUnknownTypeParams = true;
@@ -156,7 +165,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 				}
 			}
 
-			if(hasUnknownTypeParams)
+			if (hasUnknownTypeParams)
 				return getFixedClassTypeFromCache(klass, typeArguments);
 		}
 
@@ -164,19 +173,20 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	}
 
 	/**
-	 * Returns the concrete type for a given type (after substitution of type parameters etc.)
+	 * Returns the concrete type for a given type
+	 * (after substitution of type parameters etc.).
 	 * @param type The given type
 	 * @return The concrete type
 	 */
 	public Type getConcreteType(final Type type) {
 		Type ret = simplifyType(type);
 
-		if(ret instanceof X10ParsedClassType)
+		if (ret instanceof X10ParsedClassType)
 			ret = fixParsedClassType((X10ParsedClassType)ret);
-		else if(super.isParameterType(ret) && typeParameters.containsKey(ret)) {
+		else if (super.isParameterType(ret) && typeParameters.containsKey(ret)) {
 			assert typeParameters.containsKey(ret);
 			ret = getTypeParamSub((ParameterType)ret);
-		} else if(super.isParameterType(ret)) {
+		} else if (super.isParameterType(ret)) {
 			// TODO: Need a better solution !!!
 			ret = Object();
 		}
@@ -188,7 +198,8 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	}
 
 	/**
-	 * Simplifies a given polyglot type -> Returns the base type of a given type. -> Removes constrained types, annotations etc.
+	 * Simplifies a given polyglot type -> Returns the base type of a given type.
+	 * -> Removes constrained types, annotations etc.
 	 * @param type The type which should be simplified
 	 * @return The simplified version of the given type
 	 */
@@ -200,7 +211,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	 * @param t some type
 	 * @return  is it a key mapped to a class type?
 	 */
-	public boolean isClass(Type t) {
+	public boolean isClass(final Type t) {
 		final Type ret = getConcreteType(t);
 		return ret.isClass();
 	}
@@ -221,16 +232,16 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 		return !isStructType0(ret) && (ret == Null() || isClass(ret) || isInterfaceType(ret));
 	}
 
-	/** Own additions for the native pointer type */
-	private X10ClassType Pointer_;
+	/** x10.lang.Pointer type. */
+	private X10ClassType pointer;
 
     /**
      * @return The FirmPointer class type.
      */
-    public X10ClassType Pointer() {
-        if (Pointer_ == null)
-            Pointer_ = load("x10.lang.Pointer");
-        return Pointer_;
+    public X10ClassType pointer() {
+        if (pointer == null)
+            pointer = load("x10.lang.Pointer");
+        return pointer;
     }
 
     /**
@@ -238,6 +249,6 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
      * @return True iff {@code type} is Pointer or a subtype of Pointer.
      */
 	public boolean isPointer(final Type type) {
-		return isSubtype(type, Pointer());
+		return isSubtype(type, pointer());
 	}
 }

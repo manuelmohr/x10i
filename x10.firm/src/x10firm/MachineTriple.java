@@ -22,7 +22,7 @@ public final class MachineTriple {
 	 */
 	public MachineTriple(final String triple) throws UsageError {
 		final Pattern pattern = Pattern.compile("([^-]+)-([^-]+)-(.+)");
-		Matcher matcher = pattern.matcher(triple);
+		final Matcher matcher = pattern.matcher(triple);
 
 		if (!matcher.matches())
 			throw new UsageError("Invalid target triple: \"" + triple + "\"");
@@ -54,7 +54,7 @@ public final class MachineTriple {
 		return cpu;
 	}
 
-	/** Returns operating system part of the target triple */
+	/** Returns operating system part of the target triple. */
 	public String getOS() {
 		return operatingSystem;
 	}

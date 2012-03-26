@@ -19,11 +19,11 @@ import firm.nodes.Node;
 import firm.nodes.Store;
 
 /**
- * Firm Generator for x10.lang.Pointer
+ * Firm Generator for {@code x10.lang.Pointer} class.
  */
 abstract class X10LangPointer {
 	/**
-	 * x10.lang.Pointer.read[T](): T
+	 * Creates an instance of {@code x10.lang.Pointer.read[T](): T}.
 	 */
 	static class Read implements BuiltinMethodGenerator {
 		@Override
@@ -38,16 +38,17 @@ abstract class X10LangPointer {
 			assert formals.size() == 0;
 
 			final Type returnType = meth.returnType();
-			final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
-					returnType, owner);
+			final MethodConstruction savedConstruction
+				= codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
+						returnType, owner);
 
-			MethodConstruction con = codeGenerator.getFirmConstruction();
+			final MethodConstruction con = codeGenerator.getFirmConstruction();
 			final Mode parMode = firmTypeSystem.getFirmMode(typeParameter);
 			Node par = null;
-			if(firmTypeSystem.isFirmStructType(typeParameter)) {
-				final firm.Type firm_type = firmTypeSystem.asType(typeParameter);
+			if (firmTypeSystem.isFirmStructType(typeParameter)) {
+				final firm.Type firmType = firmTypeSystem.asType(typeParameter);
 				final firm.Type frameType = entity.getGraph().getFrameType();
-				final Entity paramEntity = Entity.createParameterEntity(frameType, 0, firm_type);
+				final Entity paramEntity = Entity.createParameterEntity(frameType, 0, firmType);
 				par = codeGenerator.getEntityFromCurrentFrame(paramEntity);
 			} else {
 				par = con.getVariable(0, parMode);
@@ -72,7 +73,7 @@ abstract class X10LangPointer {
 	}
 
 	/**
-	 * x10.lang.Pointer.write[T](val: T)
+	 * Creates an instance of {@code x10.lang.Pointer.write[T](val: T)}.
 	 */
 	static class Write implements BuiltinMethodGenerator {
 		@Override
@@ -89,27 +90,28 @@ abstract class X10LangPointer {
 			final LocalInstance val = formals.get(0);
 
 			final Type returnType = meth.returnType();
-			final MethodConstruction savedConstruction = codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
+			final MethodConstruction savedConstruction
+				= codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
 					returnType, owner);
 
-			MethodConstruction con = codeGenerator.getFirmConstruction();
-			final VarEntry var_val = con.getVarEntry(val);
-			assert var_val != null;
+			final MethodConstruction con = codeGenerator.getFirmConstruction();
+			final VarEntry varValue = con.getVarEntry(val);
+			assert varValue != null;
 
 			final Mode ptrMode = Mode.getP();
 			final Node address = con.getVariable(0, ptrMode);
 
-			if(firmTypeSystem.isFirmStructType(typeParameter)) {
-				final firm.Type firm_type = firmTypeSystem.asType(typeParameter);
+			if (firmTypeSystem.isFirmStructType(typeParameter)) {
+				final firm.Type firmType = firmTypeSystem.asType(typeParameter);
 				final firm.Type frameType = entity.getGraph().getFrameType();
-				final Entity paramEntity = Entity.createParameterEntity(frameType, var_val.getIdx(), firm_type);
+				final Entity paramEntity = Entity.createParameterEntity(frameType, varValue.getIdx(), firmType);
 				final Node asgn = codeGenerator.getEntityFromCurrentFrame(paramEntity);
 				final Node mem = con.getCurrentMem();
 				final Node copyB = con.newCopyB(mem, address, asgn, paramEntity.getType());
 				final Node curMem = con.newProj(copyB, Mode.getM(), CopyB.pnM);
 				con.setCurrentMem(curMem);
 			} else {
-				final Node asgn = con.getVariable(var_val.getIdx(), firmTypeSystem.getFirmMode(val.type()));
+				final Node asgn = con.getVariable(varValue.getIdx(), firmTypeSystem.getFirmMode(val.type()));
 				final Node mem = con.getCurrentMem();
 				final Node store = con.newStore(mem, address, asgn);
 				final Node newMem = con.newProj(store, Mode.getM(), Store.pnM);
