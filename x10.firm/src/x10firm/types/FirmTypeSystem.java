@@ -198,38 +198,6 @@ public class FirmTypeSystem {
 		}
 	}
 
-	private void saveType(final polyglot.types.Type x10Type, final Type firmType) {
-		firmTypes.put(x10Type, firmType);
-	}
-
-	private Type getType(final polyglot.types.Type x10Type) {
-		return firmTypes.get(x10Type);
-	}
-
-	private boolean hasFirmType(final polyglot.types.Type x10Type) {
-		return firmTypes.containsKey(x10Type);
-	}
-
-	private Type removeFirmType(final polyglot.types.Type x10Type) {
-		return firmTypes.remove(x10Type);
-	}
-
-	private void saveFirmCoreType(final polyglot.types.Type x10Type, final Type firmType) {
-		firmCoreTypes.put(x10Type, firmType);
-	}
-
-	private Type getFirmCoreType(final polyglot.types.Type x10Type) {
-		return firmCoreTypes.get(x10Type);
-	}
-
-	private boolean hasFirmCoreType(final polyglot.types.Type x10Type) {
-		return firmCoreTypes.containsKey(x10Type);
-	}
-
-	private Type removeFirmCoreType(final polyglot.types.Type x10Type) {
-		return firmCoreTypes.remove(x10Type);
-	}
-
 	/**
 	 * Returns the boxing type for a given struct type.
 	 *
@@ -504,7 +472,7 @@ public class FirmTypeSystem {
 		/* strip type-constraints */
 		final polyglot.types.Type baseType = x10TypeSystem.getConcreteType(type);
 
-		firm.Type result = getType(baseType);
+		firm.Type result = firmTypes.get(baseType);
 		if (result != null)
 			return result;
 
@@ -513,7 +481,7 @@ public class FirmTypeSystem {
 		if (!x10TypeSystem.isStructType0(baseType)) {
 			result = new PointerType(result);
 		}
-		saveType(baseType, result);
+		firmTypes.put(baseType, result);
 
 		return result;
 	}
@@ -559,7 +527,7 @@ public class FirmTypeSystem {
 
 		/* put the class into the core types already, because we could
 		 * have a field referencing ourself */
-		saveFirmCoreType(classType, result);
+		firmCoreTypes.put(classType, result);
 
 		/* create supertypes */
 		final polyglot.types.Type superType = classType.superClass();
@@ -657,7 +625,7 @@ public class FirmTypeSystem {
 	public firm.Type asClass(final polyglot.types.Type origType) {
 		final polyglot.types.Type type = x10TypeSystem.getConcreteType(origType);
 
-		Type result = getFirmCoreType(type);
+		Type result = firmCoreTypes.get(type);
 		if (result != null)
 			return result;
 
@@ -976,15 +944,15 @@ public class FirmTypeSystem {
 		for (final ParameterType param : ptm.getKeySet()) {
 			final polyglot.types.Type mappedType = ptm.getMappedType(param);
 
-			assert hasFirmCoreType(mappedType) || hasFirmType(mappedType);
+			assert firmCoreTypes.containsKey(mappedType) || firmTypes.containsKey(mappedType);
 
 			x10TypeSystem.addTypeMapping(param, mappedType);
 
-			if (hasFirmCoreType(mappedType))
-				saveFirmCoreType(param, getFirmCoreType(mappedType));
+			if (firmCoreTypes.containsKey(mappedType))
+				firmCoreTypes.put(param, firmCoreTypes.get(mappedType));
 
-			if (hasFirmType(mappedType))
-				saveType(param, firmTypes.get(mappedType));
+			if (firmTypes.containsKey(mappedType))
+				firmTypes.put(param, firmTypes.get(mappedType));
 		}
 	}
 
@@ -996,11 +964,8 @@ public class FirmTypeSystem {
 		for (final ParameterType param : ptm.getKeySet()) {
 			x10TypeSystem.removeTypeMapping(param);
 
-			if (hasFirmCoreType(param))
-				removeFirmCoreType(param);
-
-			if (hasFirmType(param))
-				removeFirmType(param);
+			firmCoreTypes.remove(param);
+			firmTypes.remove(param);
 		}
 	}
 }
