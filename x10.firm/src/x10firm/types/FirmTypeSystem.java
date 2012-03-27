@@ -54,9 +54,6 @@ import firm.bindings.binding_typerep.ir_visibility;
 
 /**
  * Includes everything to map X10 types to Firm types
- *
- * XXX While the mapping is static, the X10 type system is not,
- * because the runtime is loaded dynamically.
  */
 public class FirmTypeSystem {
 	/** Maps polyglot types to firm types. */
