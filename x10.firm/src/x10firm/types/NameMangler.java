@@ -380,11 +380,12 @@ public final class NameMangler {
 			hadTypeArguments = typeParameters.size() > 0;
 		}
 		buf.append(QUAL_END);
-		mangleFormals(buf, method.formalTypes());
 		if (hadTypeArguments) {
-			// Comply with C++ ABI and mangle return type.
+			/* C++ ABI requires that return type is mangled for
+			 * generic methods */
 			mangleType(buf, method.returnType());
 		}
+		mangleFormals(buf, method.formalTypes());
 		return buf.toString();
 	}
 
