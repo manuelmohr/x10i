@@ -131,6 +131,12 @@ import x10.types.X10LocalDef_c;
 import x10.types.X10MethodDef;
 import x10.types.checker.Converter;
 import x10.types.checker.Converter.ConversionType;
+import x10.types.constants.BooleanValue;
+import x10.types.constants.CharValue;
+import x10.types.constants.ConstantValue;
+import x10.types.constants.DoubleValue;
+import x10.types.constants.FloatValue;
+import x10.types.constants.IntegralValue;
 import x10.util.HierarchyUtils;
 import x10.visit.X10DelegatingVisitor;
 import x10firm.CompilerOptions;
@@ -882,48 +888,26 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	 * @param expr The constant expr
 	 * @return The target value of the given constant expr
 	 */
-	private TargetValue constantToTargetValue(final Expr expr) {
-		assert expr != null && expr.isConstant();
+	private TargetValue constantExprToTargetValue(final Expr expr) {
+		assert expr.isConstant();
+		final ConstantValue cnst = expr.constantValue();
+		final Mode mode = firmTypeSystem.getFirmMode(expr.type());
+		final TargetValue targetValue;
 
-		final Object obj = expr.constantValue();
-
-		TargetValue targetValue = null;
-
-		// all unsigned types can`t be evaluated at compile time, because they use an "implicit operator as"
-		// to convert the datatype to long, integer etc.
-
-		if (obj instanceof Integer || obj instanceof Long || obj instanceof Byte || obj instanceof Short) {
-			final Mode mode;
-			final long value;
-			if (obj instanceof Integer) {
-				mode = firmTypeSystem.getFirmMode(x10TypeSystem.Int());
-				value = ((Integer)obj).longValue();
-			} else if (obj instanceof Long) {
-				mode = firmTypeSystem.getFirmMode(x10TypeSystem.Long());
-				value = ((Long)obj).longValue();
-			} else if (obj instanceof Byte) {
-				mode = firmTypeSystem.getFirmMode(x10TypeSystem.Byte());
-				value = ((Byte)obj).longValue();
-			} else { // SHORT
-				mode = firmTypeSystem.getFirmMode(x10TypeSystem.Short());
-				value = ((Short)obj).longValue();
-			}
+		if (cnst instanceof IntegralValue || cnst instanceof CharValue) {
+			final long value = cnst.integralValue();
 			targetValue = new TargetValue(value, mode);
-		} else if (obj instanceof Float || obj instanceof Double) {
-			final Mode mode;
-			final double value;
-			if (obj instanceof Float) {
-				mode = firmTypeSystem.getFirmMode(x10TypeSystem.Float());
-				value = ((Float)obj).doubleValue();
-			} else {
-				mode = firmTypeSystem.getFirmMode(x10TypeSystem.Double());
-				value = ((Double)obj).doubleValue();
-			}
+		} else if (cnst instanceof FloatValue) {
+			final float value = cnst.floatValue();
 			targetValue = new TargetValue(value, mode);
-		} else if (obj instanceof Boolean) {
-			final Mode mode = firmTypeSystem.getFirmMode(x10TypeSystem.Boolean());
-			final boolean value = ((Boolean)obj).booleanValue();
+		} else if (cnst instanceof DoubleValue) {
+			final double value = cnst.doubleValue();
+			targetValue = new TargetValue(value, mode);
+		} else if (cnst instanceof BooleanValue) {
+			final boolean value = ((BooleanValue)cnst).value();
 			targetValue = value ? mode.getOne() : mode.getNull();
+		} else {
+			throw new CodeGenError("Couldn't fold constant for firm backend", expr);
 		}
 
 		return targetValue;
@@ -934,39 +918,9 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	 * @param expr The constant expr
 	 * @return The initializer for the given constant expr
 	 */
-	private Initializer constantExprToInitializer(final Expr expr) {
-		final TargetValue targetValue = constantToTargetValue(expr);
-		if (targetValue == null) return null;
+	private Initializer exprToInitializer(final Expr expr) {
+		final TargetValue targetValue = constantExprToTargetValue(expr);
 		return new Initializer(targetValue);
-	}
-
-	private Initializer expr2Initializer(final Expr expr) {
-		final Initializer result;
-		assert expr.isConstant();
-
-		if (expr instanceof IntLit_c) {
-			final TargetValue targetValue = getIntLitTarval((IntLit_c) expr);
-			result = new Initializer(targetValue);
-		} else if (expr instanceof BooleanLit_c) {
-			final TargetValue targetValue = getBooleanLitTargetValue((BooleanLit_c) expr);
-			result = new Initializer(targetValue);
-		} else if (expr instanceof FloatLit_c) {
-			final TargetValue targetValue = getFloatLitTargetValue((FloatLit_c) expr);
-			result = new Initializer(targetValue);
-		} else if (expr instanceof CharLit_c) {
-			final TargetValue targetValue = getCharLitTargetValue((CharLit_c) expr);
-			result = new Initializer(targetValue);
-		} else if (expr instanceof NullLit_c) {
-			result = Initializer.getNull();
-		} else {
-			// Now we will try the constant evaluation of expr
-			result = constantExprToInitializer(expr);
-			if (result != null)
-				return result;
-
-			throw new CodeGenError("unimplemented initializer expression", expr);
-		}
-		return result;
 	}
 
 	private Node getFieldAddress(final Node objectPointer, final FieldInstance instance) {
@@ -1037,7 +991,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final Expr init = dec.init();
 			// Check for in place initializer
 			if (init != null && ASTQuery.isGlobalInit(x10TypeSystem, dec)) {
-				final Initializer initializer = expr2Initializer(init);
+				final Initializer initializer = exprToInitializer(init);
 				final Entity entity = firmTypeSystem.getEntityForField(instance);
 				entity.setInitializer(initializer);
 			}
