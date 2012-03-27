@@ -21,8 +21,6 @@ import polyglot.types.LocalDef;
 import polyglot.types.MemberInstance;
 import polyglot.types.MethodDef;
 import polyglot.types.Name;
-import polyglot.types.Named;
-import polyglot.types.QName;
 import polyglot.types.Ref;
 import polyglot.types.Types;
 import polyglot.util.Position;
@@ -261,7 +259,7 @@ public class FirmTypeSystem {
 		final String name = getUniqueBoxingName(concreteType);
 
 		// Get the "Object" class and set it as the super class
-		final X10ClassType objectType = getObjectType();
+		final X10ClassType objectType = x10TypeSystem.Object();
 
 		cd.position(pos);
 		cd.name(Name.make(name));
@@ -784,18 +782,6 @@ public class FirmTypeSystem {
 		firmTypes.put(x10TypeSystem.Null(), typePointer);
 
 		NameMangler.addPrimitiveMangling(x10TypeSystem.Void(), "v");
-	}
-
-	/**
-	 * Returns a class type for x10.lang.Object.
-	 */
-	public X10ClassType getObjectType() {
-		final QName fullName = QName.make("x10.lang", "Object");
-	    final List<polyglot.types.Type> types = x10TypeSystem.systemResolver().check(fullName);
-	    assert types != null && types.size() == 1;
-	    final Named n = types.get(0);
-	    final X10ClassType objectType = (X10ClassType)n;
-		return objectType;
 	}
 
 	/**
