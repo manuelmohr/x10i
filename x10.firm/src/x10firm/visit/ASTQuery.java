@@ -27,22 +27,14 @@ import x10.ast.ParExpr;
 import x10.types.X10ClassType;
 import x10.types.X10Def;
 import x10.types.X10FieldDef;
-import x10.types.X10MethodDef;
-import x10.util.HierarchyUtils;
 
 /**
  * Our main class for AST queries.
  */
-public class ASTQuery {
+public final class ASTQuery {
 
-	private final TypeSystem x10TypeSystem;
-
-	/**
-	 * X10ASTQuery Constructor.
-	 * @param x10TypeSystem The x10 type system
-	 */
-	public ASTQuery(final TypeSystem x10TypeSystem) {
-		this.x10TypeSystem = x10TypeSystem;
+	/** Utility class. */
+	private ASTQuery() {
 	}
 
 	/**
@@ -50,7 +42,7 @@ public class ASTQuery {
 	 * @param e The expression which should be checked
 	 * @return True if the given expression is constant
 	 */
-	public boolean isConstantExpression(final Expr e) {
+	public static boolean isConstantExpression(final Expr e) {
 	    if (!e.isConstant())
 	        return false;
 	    if (e instanceof BooleanLit)
@@ -107,16 +99,15 @@ public class ASTQuery {
 	 * Checks if a given field decl is global init (static and the init
 	 * expression must be constant).
 	 *
-	 * @param fd
-	 *            The field decl which should be checked
+	 * @param fd The field decl which should be checked
 	 * @return True if the given field decl is a global init field decl.
 	 */
-	public boolean isGlobalInit(final FieldDecl fd) {
+	public static boolean isGlobalInit(final TypeSystem typeSystem, final FieldDecl fd) {
 		return (fd.init() != null && fd.flags().flags().isStatic()
 				&& fd.flags().flags().isFinal()
 				&& isConstantExpression(fd.init()) && (fd.init().type().isNumeric()
 				|| fd.init().type().isBoolean() || fd.init().type().isChar() || fd.init().type().isNull()))
-				|| isPerProcess((X10FieldDef) fd.fieldDef());
+				|| isPerProcess(typeSystem, (X10FieldDef) fd.fieldDef());
 	}
 
 	/**
@@ -125,7 +116,8 @@ public class ASTQuery {
 	 * @param members A list with class members
 	 * @return The class members from the given list which must be manually initialized
 	 */
-	public List<ClassMember> extractInits(final List<ClassMember> members) {
+	public static List<ClassMember> extractInits(final TypeSystem typeSystem, final List<ClassMember> members)
+	{
 		final List<ClassMember> ret = new LinkedList<ClassMember>();
 
 	    for (final ClassMember member : members) {
@@ -142,7 +134,7 @@ public class ASTQuery {
 	                final X10ClassType container = (X10ClassType)dec.fieldDef().asInstance().container();
 	                if ((container.def()).typeParameters().size() != 0)
 	                    continue;
-	                if (isGlobalInit(dec))
+	                if (isGlobalInit(typeSystem, dec))
 	                    continue;
 	            }
 	        }
@@ -155,22 +147,12 @@ public class ASTQuery {
 	}
 
 	/** returns true if definition has @PerProcess annotation. */
-	public boolean isPerProcess(final X10Def def) {
+	public static boolean isPerProcess(final TypeSystem typeSystem, final X10Def def) {
 		try {
-			final Type type = x10TypeSystem.systemResolver().findOne(QName.make("x10.compiler.PerProcess"));
+			final Type type = typeSystem.systemResolver().findOne(QName.make("x10.compiler.PerProcess"));
 			return !def.annotationsMatching(type).isEmpty();
 		} catch (SemanticException e) {
 			return false;
 		}
-	}
-
-	/**
-	 * test if a method is the main method (the one we start first when the
-	 * program runs). Note: This code is copied from the ASTQuery class. (It
-	 * doesn't have the public modifier there so we can't use it directly. Also
-	 * ASTQuery unnecessarily depends on a Translator which we don't have)
-	 */
-	public boolean isMainMethod(final X10MethodDef md) {
-		return HierarchyUtils.isMainMethod(md, x10TypeSystem.emptyContext());
 	}
 }

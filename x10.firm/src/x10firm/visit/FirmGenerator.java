@@ -131,6 +131,7 @@ import x10.types.X10LocalDef_c;
 import x10.types.X10MethodDef;
 import x10.types.checker.Converter;
 import x10.types.checker.Converter.ConversionType;
+import x10.util.HierarchyUtils;
 import x10.visit.X10DelegatingVisitor;
 import x10firm.CompilerOptions;
 import x10firm.types.FirmTypeSystem;
@@ -201,9 +202,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	/** Our node factory. */
 	private final X10NodeFactory_c xnf;
 
-	/** Our own AST query. */
-	private final ASTQuery query;
-
 	/** Command-line options. */
 	private CompilerOptions options;
 
@@ -224,7 +222,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		this.firmTypeSystem = firmTypeSystem;
 		this.x10TypeSystem  = x10TypeSystem;
 		this.xnf            = nodeFactory;
-		this.query          = new ASTQuery(x10TypeSystem);
 		this.x10Context     = new Context(x10TypeSystem);
 		this.options        = options;
 	}
@@ -496,8 +493,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final ClassBody body = n.body();
 		final List<ClassMember> members = body.members();
 		if (!members.isEmpty()) {
-			final List<ClassMember> inits = query.extractInits(members);
-
+			final List<ClassMember> inits = ASTQuery.extractInits(x10TypeSystem, members);
 			final List<ClassMember> oldInitClassMembers = initClassMembers;
 			initClassMembers = inits;
 
@@ -562,8 +558,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final ClassBody body = n.body();
 		final List<ClassMember> members = body.members();
 		if (!members.isEmpty()) {
-			final List<ClassMember> inits = query.extractInits(members);
-
+			final List<ClassMember> inits = ASTQuery.extractInits(x10TypeSystem, members);
 			final List<ClassMember> oldInitClassMembers = initClassMembers;
 			initClassMembers = inits;
 
@@ -773,7 +768,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		finishConstruction(entity, savedConstruction);
 
-		if (query.isMainMethod(def)) {
+		if (HierarchyUtils.isMainMethod(def, x10TypeSystem.emptyContext())) {
 			processMainMethod(entity);
 		}
 	}
@@ -1041,7 +1036,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		if (flags.isStatic()) {
 			final Expr init = dec.init();
 			// Check for in place initializer
-			if (init != null && query.isGlobalInit(dec)) {
+			if (init != null && ASTQuery.isGlobalInit(x10TypeSystem, dec)) {
 				final Initializer initializer = expr2Initializer(init);
 				final Entity entity = firmTypeSystem.getEntityForField(instance);
 				entity.setInitializer(initializer);

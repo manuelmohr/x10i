@@ -84,10 +84,8 @@ import x10c.types.X10CTypeSystem_c;
  * Lowering of all non const static initializer.
  */
 public class StaticInitializer extends ContextVisitor {
-
 	private final X10CTypeSystem_c xts;
 	private final X10CNodeFactory_c xnf;
-	private final ASTQuery query;
 
 	private final WeakHashMap<X10ProcedureDef, ProcedureDecl> procDeclCache
 		= new WeakHashMap<X10ProcedureDef, ProcedureDecl>();
@@ -111,7 +109,6 @@ public class StaticInitializer extends ContextVisitor {
 		super(job, ts, nf);
 		xts = (X10CTypeSystem_c) ts;
 		xnf = (X10CNodeFactory_c) nf;
-		query = new ASTQuery(ts);
 	}
 
 	@Override
@@ -289,7 +286,7 @@ public class StaticInitializer extends ContextVisitor {
 				if (n instanceof X10FieldDecl) {
 					final X10FieldDecl fd = (X10FieldDecl) n;
 					final Flags flags = fd.fieldDef().flags();
-					if (query.isPerProcess(fd.fieldDef()))
+					if (ASTQuery.isPerProcess(xts, fd.fieldDef()))
 						return n;
 					if (flags.isFinal() && flags.isStatic()) {
 						// static final field
@@ -310,7 +307,7 @@ public class StaticInitializer extends ContextVisitor {
 				}
 				if (n instanceof X10Field_c) {
 					final X10Field_c f = (X10Field_c) n;
-					if (query.isPerProcess(f.fieldInstance().x10Def()))
+					if (ASTQuery.isPerProcess(xts, f.fieldInstance().x10Def()))
 						return n;
 					if (f.flags().isFinal() && f.flags().isStatic()) {
 						// found reference to static field
@@ -354,7 +351,7 @@ public class StaticInitializer extends ContextVisitor {
 					return n;
 
 				if (n instanceof Expr) {
-					if (query.isGlobalInit(fd)) {
+					if (ASTQuery.isGlobalInit(xts, fd)) {
 						// initialization can be done in all places -- do not
 						// visit subtree further
 						// System.out.println("isGlobalInit true in checkFieldDeclRHS: "+(Expr)n);
@@ -416,7 +413,7 @@ public class StaticInitializer extends ContextVisitor {
 		final X10ClassType receiver = cd.asType();
 		final StaticFieldInfo fieldInfo = getFieldEntry(receiver, leftName.id());
 
-		fieldInfo.right = query.isGlobalInit(fd) ? null : fd.init();
+		fieldInfo.right = ASTQuery.isGlobalInit(xts, fd) ? null : fd.init();
 		fieldInfo.fieldDef = fd.fieldDef();
 
 		return fieldInfo;
