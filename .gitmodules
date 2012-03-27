@@ -9,5 +9,5 @@
 	url = http://pp.info.uni-karlsruhe.de/git/liboo.git
 [submodule "cparser"]
 	path = cparser
-	url = /ben/local/GIT/public/cparser.git
+	url = http://pp.info.uni-karlsruhe.de/git/cparser.git
 	fetchRecurseSubmodules = no
