@@ -5,9 +5,9 @@ import java.util.Set;
 
 import polyglot.ast.NodeFactory;
 import polyglot.frontend.Scheduler;
+import polyglot.types.TypeSystem_c;
 import x10.X10CompilerOptions;
 import x10c.ast.X10CNodeFactory_c;
-import x10firm.types.GenericTypeSystem;
 
 /**
  * Defines our extension (Firm backend in X10 compiler) within the Polyglot framework.
@@ -38,7 +38,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 
 	@Override
 	protected polyglot.types.TypeSystem createTypeSystem() {
-		return new GenericTypeSystem(this);
+		return new TypeSystem_c(this);
 	}
 
 	@Override

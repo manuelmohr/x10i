@@ -37,6 +37,7 @@ public class FirmScheduler extends X10Scheduler {
 	private static final String ASM_PREFIX = "x10firm_";
 	private static final String ASM_SUFFIX = ".s";
 
+	private final GenericTypeSystem typeSystem;
 	private final FirmTypeSystem firmTypeSystem;
 	private File asmOutput;
 	private final FirmGenerator generator;
@@ -48,7 +49,7 @@ public class FirmScheduler extends X10Scheduler {
 	 */
 	public FirmScheduler(final ExtensionInfo info) {
 		super(info);
-		final GenericTypeSystem typeSystem = (GenericTypeSystem)info.typeSystem();
+		typeSystem = new GenericTypeSystem((TypeSystem_c)info.typeSystem());
 		firmTypeSystem = new FirmTypeSystem(typeSystem);
 
 		final CompilerOptions options = (CompilerOptions) info.getOptions();
@@ -176,7 +177,7 @@ public class FirmScheduler extends X10Scheduler {
 	}
 
 	private Goal StaticInitializer(final Job job) {
-		final TypeSystem_c ts = generator.getTypeSystem();
+		final TypeSystem_c ts = generator.getTypeSystem().getTypeSystem();
 		final X10NodeFactory_c nf = generator.getNodeFactory();
 		return new ValidatingVisitorGoal("StaticInitialized", job,
 				new StaticInitializer(job, ts, nf)).intern(this);

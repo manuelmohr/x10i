@@ -35,7 +35,7 @@ class X10LangZeroGet implements BuiltinMethodGenerator {
 		final MethodConstruction con = codeGenerator.getFirmConstruction();
 
 		final Node ret;
-		if (!typeSystem.isStructType0(typeParameter)) {
+		if (!typeSystem.isStructType(typeParameter)) {
 			final Mode mode = firmTypeSystem.getFirmMode(typeParameter);
 			final Node node = con.newConst(mode.getNull());
 			final Node mem = con.getCurrentMem();

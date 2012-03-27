@@ -139,8 +139,8 @@ public final class NameMangler {
 	/**
 	 * Initializes the name mangler.
 	 */
-	public static void setup(final GenericTypeSystem typeSystem, final CompilerOptions options) {
-		NameMangler.typeSystem = typeSystem;
+	public static void setup(final GenericTypeSystem newTypeSystem, final CompilerOptions options) {
+		NameMangler.typeSystem = newTypeSystem;
 		setupNameSubstitutions();
 		final MachineTriple target = options.getTargetTriple();
 		if (target.isDarwin() || target.isWindowsOS()) {
@@ -266,7 +266,7 @@ public final class NameMangler {
 		 * similar we encode the class references as C++ pointers. The problem
 		 * with that is that we have to replicate the logic of what is a
 		 * reference and what isn't here */
-		if (!typeSystem.isStructType0(type))
+		if (!typeSystem.isStructType(type))
 			buf.append(MANGLE_QUALIFIER_POINTER);
 		buf.append(QUAL_START);
 		mangleClass(buf, type);
@@ -277,10 +277,7 @@ public final class NameMangler {
 	 * Mangles a given type.
 	 */
 	private static void mangleType(final StringBuilder buf, final Type pType) {
-		Type type = GenericTypeSystem.simplifyType(pType);
-		if (type.isParameterType()) {
-			type = typeSystem.getConcreteType(type);
-		}
+		final Type type = typeSystem.getConcreteType(pType);
 		final String prim = primMangleTable.get(type);
 		if (prim != null) {
 			buf.append(prim);

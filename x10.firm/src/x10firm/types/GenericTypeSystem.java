@@ -1,111 +1,83 @@
 package x10firm.types;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import polyglot.frontend.ExtensionInfo;
 import polyglot.types.Context;
 import polyglot.types.Type;
+import polyglot.types.TypeSystem_c;
 import polyglot.types.Types;
-import x10.types.ParameterType;
-import x10.types.X10ClassDef;
+import x10.types.TypeParamSubst;
 import x10.types.X10ClassType;
-import x10.types.X10ParsedClassType;
-import x10c.types.X10CTypeSystem_c;
 
 /**
- * Implements generic-aware versions of the methods provided by {@link X10CTypeSystem_c}.
+ * Implements generic-aware versions of the methods provided by {@link TypeSystem_c}.
  * This means that passing ParameterTypes like T are handled correctly by all
  * methods by looking up the type that T is currently mapped to.
+ *
+ * Note that we remove all all constraint types while doing so, as they are
+ * not relevant for code generation (and we want to avoid creating different
+ * versions of a generic method just because of different constraints).
  */
-public class GenericTypeSystem extends X10CTypeSystem_c {
-	/** Remember type parameter mappings, used for example in name mangling. */
-	private final Map<ParameterType, polyglot.types.Type> typeParameters
-		= new HashMap<ParameterType, polyglot.types.Type>();
+public class GenericTypeSystem {
+	/** underlying X10 type system. */
+	private final TypeSystem_c typeSystem;
 	/** An empty context, because some functions expect one. */
-	private Context emptyContext;
+	private final Context emptyContext;
+	/** current type parameter substitution. */
+	private TypeParamSubst subst;
 
 	/**
-	 * @param extInfo extension info
+	 * Constructs a new GenericTypeSystem.
 	 */
-	public GenericTypeSystem(final ExtensionInfo extInfo) {
-		super(extInfo);
-		emptyContext = emptyContext();
+	public GenericTypeSystem(final TypeSystem_c typeSystem) {
+		this.typeSystem = typeSystem;
+		emptyContext = typeSystem.emptyContext();
+		subst = TypeParamSubst.IDENTITY;
 	}
 
 	/**
-	 * Inserts a new (key->value) parameter type mapping.
-	 * @param paramType key type
-	 * @param type      value type
+	 * Returns reference to the base TypeSystem (dangerous! The base type
+	 * system does not perform type parameter substitution based on the context
+	 * only use this if you know what that means!)
 	 */
-	public void addTypeMapping(final ParameterType paramType, final Type type) {
-		assert !typeParameters.containsKey(paramType);
-		typeParameters.put(paramType, type);
+	public TypeSystem_c getTypeSystem() {
+		return typeSystem;
 	}
 
-	/**
-	 * Removes an existing type mapping.
-	 * @param paramType key type to remove
-	 */
-	public void removeTypeMapping(final ParameterType paramType) {
-		assert typeParameters.containsKey(paramType);
-		typeParameters.remove(paramType);
+	/** Set a new type mapping. */
+	public void setSubst(final TypeParamSubst subst) {
+		this.subst = subst;
 	}
 
-	/**
-	 * Returns the type mapping.
-	 * @return The type mapping
-	 */
-	public Map<ParameterType, Type> getMapping() {
-		return typeParameters;
-	}
-
-	/**
-	 * @param paramType  the key type, which is mapped to a value type
-	 * @return           the corresponding value type
-	 */
-	public Type getTypeParamSub(final ParameterType paramType) {
-		polyglot.types.Type p = paramType;
-
-		while (super.isParameterType(p)) {
-			p = Types.baseType(p);
-			if (p == null)
-				break;
-			assert typeParameters.containsKey(p);
-			p = typeParameters.get(p);
-		}
-
-		return p;
+	/** Returns the current type mapping. */
+	public TypeParamSubst getSubst() {
+		return subst;
 	}
 
 	/**
 	 * Returns True iff {@code param} is a struct type.
 	 */
-	public boolean isStructType0(final Type type) {
+	public boolean isStructType(final Type type) {
 		final Type ret = getConcreteType(type);
-		return super.isStructType(ret);
+		return typeSystem.isStructType(ret);
 	}
 
 	/**
 	 * Returns True iff {@code t1} is a subtype of {@code t2}.
 	 */
-	public boolean isSubtype0(final Type t1, final Type t2) {
+	public boolean isSubtype(final Type t1, final Type t2) {
 		final Type t1c = getConcreteType(t1);
 		final Type t2c = getConcreteType(t2);
 
-		return super.isSubtype(t1c, t2c);
+		return typeSystem.isSubtype(t1c, t2c, emptyContext);
 	}
 
 	/**
 	 * Returns True iff {@code t1} is equal to {@code t2}.
 	 */
-	public boolean typeEquals0(final Type t1, final Type t2) {
+	public boolean typeEquals(final Type t1, final Type t2) {
 		final Type t1c = getConcreteType(t1);
 		final Type t2c = getConcreteType(t2);
 
-		return super.typeEquals(t1c, t2c, emptyContext);
+		return typeSystem.typeEquals(t1c, t2c, emptyContext);
 	}
 
 	/**
@@ -113,76 +85,21 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	 * ignoring their dep clauses and the dep clauses of their type arguments
 	 * recursively.
 	 */
-	public boolean typeBaseEquals0(final Type t1, final Type t2) {
+	public boolean typeBaseEquals(final Type t1, final Type t2) {
 		final Type t1c = getConcreteType(t1);
 		final Type t2c = getConcreteType(t2);
 
-		return super.typeBaseEquals(t1c, t2c, emptyContext);
+		return typeSystem.typeBaseEquals(t1c, t2c, emptyContext);
 	}
 
 	/**
 	 * Returns true iff {@code t1} is base equals to {@code t2}.
 	 */
-	public boolean typeDeepBaseEquals0(final Type t1, final Type t2) {
+	public boolean typeDeepBaseEquals(final Type t1, final Type t2) {
 		final Type t1c = getConcreteType(t1);
 		final Type t2c = getConcreteType(t2);
 
-		return super.typeDeepBaseEquals(t1c, t2c, emptyContext);
-	}
-
-	private final Map<String, X10ParsedClassType> remappedClasses
-		= new HashMap<String, X10ParsedClassType>();
-
-	private static String getGenericClassName(final X10ParsedClassType klass,
-			final List<polyglot.types.Type> typeArguments) {
-		final StringBuffer buf = new StringBuffer();
-		buf.append(klass.name().toString());
-		buf.append("[");
-		for (final polyglot.types.Type arg: typeArguments) {
-			buf.append(arg);
-		}
-		buf.append("]");
-		return buf.toString();
-	}
-
-	private X10ParsedClassType getFixedClassTypeFromCache(final X10ParsedClassType klass,
-			final List<polyglot.types.Type> typeArguments) {
-		final String klassName = getGenericClassName(klass, typeArguments);
-		X10ParsedClassType ret = remappedClasses.get(klassName);
-		if (ret != null)
-			return ret;
-		ret = klass.typeArguments(typeArguments);
-		remappedClasses.put(klassName, ret);
-		return ret;
-	}
-
-
-	private X10ParsedClassType fixParsedClassType(final X10ParsedClassType klass) {
-		if (klass.isMissingTypeArguments()) {
-			final X10ClassDef def = klass.def();
-			final List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
-			for (final ParameterType pt : def.typeParameters()) {
-				typeArguments.add(getConcreteType(pt));
-			}
-
-			return getFixedClassTypeFromCache(klass, typeArguments);
-		} else if (klass.typeArguments() != null && !klass.typeArguments().isEmpty()) {
-			final List<polyglot.types.Type> typeArguments = new ArrayList<polyglot.types.Type>();
-			boolean hasUnknownTypeParams = false;
-			for (final polyglot.types.Type typeArg : klass.typeArguments()) {
-				if (typeArg instanceof ParameterType) {  // No constrained types here.
-					typeArguments.add(getConcreteType(typeArg));
-					hasUnknownTypeParams = true;
-				} else {
-					typeArguments.add(typeArg);
-				}
-			}
-
-			if (hasUnknownTypeParams)
-				return getFixedClassTypeFromCache(klass, typeArguments);
-		}
-
-		return klass;
+		return typeSystem.typeDeepBaseEquals(t1c, t2c, emptyContext);
 	}
 
 	/**
@@ -192,40 +109,19 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	 * @return The concrete type
 	 */
 	public Type getConcreteType(final Type type) {
-		Type ret = simplifyType(type);
-
-		if (ret instanceof X10ParsedClassType)
-			ret = fixParsedClassType((X10ParsedClassType)ret);
-		else if (super.isParameterType(ret) && typeParameters.containsKey(ret)) {
-			assert typeParameters.containsKey(ret);
-			ret = getTypeParamSub((ParameterType)ret);
-		} else if (super.isParameterType(ret)) {
-			// TODO: Need a better solution !!!
-			ret = Object();
-		}
-
-		// isParsedClassType => !isMissingTypeArguments
-		assert !(ret instanceof X10ParsedClassType) || !((X10ParsedClassType) ret).isMissingTypeArguments();
-
-		return ret;
+		/* first remove constraints and annotationes, we don't need and want
+		 * them in the backend */
+		final Type stripped = Types.stripConstraints(type);
+		return subst.reinstantiate(stripped);
 	}
 
 	/**
-	 * Simplifies a given polyglot type -> Returns the base type of a given type.
-	 * -> Removes constrained types, annotations etc.
-	 * @param type The type which should be simplified
-	 * @return The simplified version of the given type
-	 */
-	public static polyglot.types.Type simplifyType(final polyglot.types.Type type) {
-		return Types.stripConstraints(Types.baseType(type));
-	}
-
-	/**
-	 * @param t some type
+	 * Tests whether {@code type} is a class type.
+	 * @param type some type
 	 * @return  is it a key mapped to a class type?
 	 */
-	public boolean isClass(final Type t) {
-		final Type ret = getConcreteType(t);
+	public boolean isClass(final Type type) {
+		final Type ret = getConcreteType(type);
 		return ret.isClass();
 	}
 
@@ -242,7 +138,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	 */
 	public boolean isRefType(final Type type) {
 		final Type ret = getConcreteType(type);
-		return !isStructType0(ret) && (ret == Null() || isClass(ret) || isInterfaceType(ret));
+		return !isStructType(ret) && (ret == typeSystem.Null() || isClass(ret) || typeSystem.isInterfaceType(ret));
 	}
 
 	/** x10.lang.Pointer type. */
@@ -253,7 +149,7 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	 */
 	public X10ClassType pointer() {
 		if (pointer == null)
-			pointer = load("x10.lang.Pointer");
+			pointer = typeSystem.load("x10.lang.Pointer");
 		return pointer;
 	}
 
@@ -263,5 +159,49 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	 */
 	public boolean isPointer(final Type type) {
 		return isSubtype(type, pointer());
+	}
+
+	/**
+	 * Returns true iff type is an Int type.
+	 */
+	public boolean isInt(final Type type) {
+		return isSubtype(type, typeSystem.Int());
+	}
+
+	/**
+	 * Returns true iff type is a parameter type.
+	 */
+	public boolean isParameterType(final Type type) {
+		return typeSystem.isParameterType(type);
+	}
+
+	@Override
+	public String toString() {
+		return subst.toString();
+	}
+
+	/** returns true if 2 TypeParamSubst are the same.
+	 * (until the class implements equals() itself) */
+	public static boolean substEquals(final TypeParamSubst subst1, final TypeParamSubst subst2) {
+		/* TODO: this depends on the arbitrary order of the args/parameters although
+		 * if we only switch order of the arguments/parameters TypeParamSubst stay
+		 * the same. */
+		if (!subst1.copyTypeArguments().equals(subst2.copyTypeArguments()))
+			return false;
+		if (!subst1.copyTypeParameters().equals(subst2.copyTypeParameters()))
+			return false;
+		return true;
+	}
+
+	/** returns a hash key for a TypeParamSubst.
+	 * (until the class implements hashKey itself) */
+	public static int getSubstHashKey(final TypeParamSubst subst) {
+		return subst.copyTypeArguments().hashCode()
+		     ^ subst.copyTypeParameters().hashCode();
+	}
+
+	/** Returns an empty Context. */
+	public Context emptyContext() {
+		return emptyContext;
 	}
 }

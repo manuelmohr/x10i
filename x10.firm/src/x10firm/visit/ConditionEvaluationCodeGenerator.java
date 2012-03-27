@@ -112,7 +112,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		final List<MethodInstance> instances = ct.methodsNamed(Name.make(SharedVarsMethods.STRUCT_EQUALS_METHOD));
 		MethodInstance instance = null;
 		for (final MethodInstance mi : instances) {
-			if (typeSystem.typeEquals0(mi.formalTypes().get(0), ct))
+			if (typeSystem.typeEquals(mi.formalTypes().get(0), ct))
 				instance = mi;
 		}
 		assert instance != null;
@@ -183,14 +183,14 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		firm.Type firmType = null;
 
 		/* struct-types can be evaluated statically */
-		if (typeSystem.isStructType0(exprType)) {
+		if (typeSystem.isStructType(exprType)) {
 			final boolean subtype = typeSystem.isSubtype(exprType, compType);
 			final Mode modeB = Mode.getb();
 			return con.newConst(subtype ? modeB.getOne() : modeB.getNull());
 		}
 
 		/* If the compare type is a struct type we must compare against the boxing type of the struct type */
-		if (typeSystem.isStructType0(compType)) {
+		if (typeSystem.isStructType(compType)) {
 			final Type tmp = codeGenerator.getBoxingType((X10ClassType)compType);
 			firmType = firmTypeSystem.asClass(tmp);
 		} else {
@@ -211,8 +211,9 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		final Type exprType = n.expr().type();
 		final Expr objExpr = n.expr();
 		final Node objPtr = codeGenerator.visitExpression(objExpr);
+		final Type compareType = n.compareType().type();
 
-		final Node node = genInstanceOf(objPtr, exprType, n.compareType().typeRef().get(),
+		final Node node = genInstanceOf(objPtr, exprType, compareType,
 		                                codeGenerator, typeSystem, firmTypeSystem, con);
 		makeJumps(node, trueBlock, falseBlock, con);
 	}

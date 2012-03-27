@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 
 import polyglot.ast.Allocation_c;
@@ -79,6 +80,7 @@ import polyglot.types.LocalInstance_c;
 import polyglot.types.Name;
 import polyglot.types.Ref_c;
 import polyglot.types.Type;
+import polyglot.types.TypeSystem_c;
 import polyglot.types.Types;
 import polyglot.util.Position;
 import x10.ast.AssignPropertyCall_c;
@@ -119,6 +121,7 @@ import x10.ast.X10Special_c;
 import x10.ast.X10Unary_c;
 import x10.types.MethodInstance;
 import x10.types.ParameterType;
+import x10.types.ReinstantiatedMethodInstance;
 import x10.types.TypeParamSubst;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
@@ -143,7 +146,6 @@ import x10firm.CompilerOptions;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
 import x10firm.types.NameMangler;
-import x10firm.types.ParameterTypeMapping;
 import x10firm.visit.FirmCodeTemplate.CondTemplate;
 import x10firm.visit.FirmCodeTemplate.ExprTemplate;
 import x10firm.visit.FirmCodeTemplate.StmtTemplate;
@@ -257,9 +259,10 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		conEntity.setLinkage(ir_linkage.IR_LINKAGE_HIDDEN_USER.val | ir_linkage.IR_LINKAGE_CONSTANT.val);
 		conEntity.setAtomicValue(val);
 
+		final Type voidT = typeSystem.getTypeSystem().Void();
 		final MethodConstruction savedConstruction
 			= initConstruction(methodEntity, Collections.<LocalInstance>emptyList(),
-				Collections.<LocalInstance>emptyList(), typeSystem.Void(), null);
+				Collections.<LocalInstance>emptyList(), voidT, null);
 
 		for (final polyglot.ast.Initializer n : staticInitBlocks) {
 			visitAppropriate(n.body());
@@ -270,7 +273,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	/** This queue holds a list of nodes (either MethodDecls or ClassDecls)
 	 * and their corresponding mapping of parameter types. */
-	private static List<GenericNodeInstance> workList = new LinkedList<GenericNodeInstance>();
+	private static Queue<GenericNodeInstance> workList = new LinkedList<GenericNodeInstance>();
 	/** Set of generic nodes instances in the worklist for faster checking of duplicates. */
 	private static Set<GenericNodeInstance> workListSet = new HashSet<GenericNodeInstance>();
 
@@ -283,15 +286,14 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	}
 
 	private void genGenericCode() {
-		/* The list can increase while we are iterating over it!
-		 * (When we have a new generic method in another generic method) */
-		for (int i = 0; i < workList.size(); i++) {
-			final GenericNodeInstance gi = workList.get(i);
-			final ParameterTypeMapping ptm = gi.getMapping();
+		// The list can increase while we are iterating over it!
+		// (When we have a new generic method in another generic method)
+		while (!workList.isEmpty()) {
+			final GenericNodeInstance gi = workList.poll();
+			final TypeParamSubst subst = gi.getSubst();
 
-			firmTypeSystem.pushTypeMapping(ptm);
+			typeSystem.setSubst(subst);
 			visitAppropriate(gi.getNode());
-			firmTypeSystem.popTypeMapping(ptm);
 		}
 	}
 
@@ -377,20 +379,22 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	 */
 	private static final class GenericNodeInstance {
 		private final polyglot.ast.Node node;
-		private final ParameterTypeMapping mapping;
+		private final TypeParamSubst subst;
+		private final int hash;
 
-		public GenericNodeInstance(final polyglot.ast.Node node, final ParameterTypeMapping mapping) {
-			assert node != null && mapping != null;
+		public GenericNodeInstance(final polyglot.ast.Node node, final TypeParamSubst subst) {
+			assert node != null && subst != null;
 			this.node = node;
-			this.mapping = mapping;
+			this.subst = subst;
+			hash = node.toString().hashCode() ^ GenericTypeSystem.getSubstHashKey(subst);
 		}
 
 		public polyglot.ast.Node getNode() {
 			return node;
 		}
 
-		public ParameterTypeMapping getMapping() {
-			return mapping;
+		public TypeParamSubst getSubst() {
+			return subst;
 		}
 
 		private X10Def getDef() {
@@ -404,12 +408,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		@Override
 		public int hashCode() {
-			int hash = node.toString().hashCode();
-
-			for (final ParameterType paramType : mapping.getKeySet()) {
-				hash ^= mapping.getMappedType(paramType).hashCode();
-			}
-
 			return hash;
 		}
 
@@ -419,12 +417,13 @@ public class FirmGenerator extends X10DelegatingVisitor {
 				return false;
 
 			final GenericNodeInstance rhs = (GenericNodeInstance) other;
-			return getDef() == rhs.getDef() && mapping.equals(rhs.mapping);
+			return getDef() == rhs.getDef()
+					&& GenericTypeSystem.substEquals(subst, rhs.subst);
 		}
 
 		@Override
 		public String toString() {
-			return node.toString() + " WITH " + mapping.toString();
+			return node.toString() + " WITH " + subst.toString();
 		}
 	}
 
@@ -470,7 +469,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		// generate -> return "[packageName].ClassName";
 		final Expr str = xnf.StringLit(pos,
 				clazz.classDef().fullName().toString()).type(
-				typeSystem.String());
+				typeSystem.getTypeSystem().String());
 		final Return ret = xnf.X10Return(pos, str, false);
 		statements.add(ret);
 
@@ -495,7 +494,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final ClassBody body = n.body();
 		final List<ClassMember> members = body.members();
 		if (!members.isEmpty()) {
-			final List<ClassMember> inits = ASTQuery.extractInits(typeSystem, members);
+			final List<ClassMember> inits = ASTQuery.extractInits(typeSystem.getTypeSystem(), members);
 			final List<ClassMember> oldInitClassMembers = initClassMembers;
 			initClassMembers = inits;
 
@@ -560,7 +559,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final ClassBody body = n.body();
 		final List<ClassMember> members = body.members();
 		if (!members.isEmpty()) {
-			final List<ClassMember> inits = ASTQuery.extractInits(typeSystem, members);
+			final List<ClassMember> inits = ASTQuery.extractInits(typeSystem.getTypeSystem(), members);
 			final List<ClassMember> oldInitClassMembers = initClassMembers;
 			initClassMembers = inits;
 
@@ -602,7 +601,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	}
 
 	/**
-	 * Checks if a given local instanced needs an explicit entity.
+	 * Checks if a given local instance needs an explicit entity.
 	 * @param type The type which should be checked
 	 * @return True if the given type needs an entity
 	 */
@@ -643,8 +642,9 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final Name name = Name.make("$this");
 			final Flags thisFlags  = Flags.NONE;
 			final Ref_c<Type> type = new Ref_c<Type>(thisType);
-			final X10LocalDef_c thisDef = new X10LocalDef_c(typeSystem, pos, thisFlags, type, name);
-			final LocalInstance_c thisInstance = new LocalInstance_c(typeSystem, pos, new Ref_c<LocalDef>(thisDef));
+			final TypeSystem_c x10TypeSystem = typeSystem.getTypeSystem();
+			final X10LocalDef_c thisDef = new X10LocalDef_c(x10TypeSystem, pos, thisFlags, type, name);
+			final LocalInstance_c thisInstance = new LocalInstance_c(x10TypeSystem, pos, new Ref_c<LocalDef>(thisDef));
 
 			if (firmTypeSystem.isFirmStructType(thisType)) {
 				final firm.Type firmType = firmTypeSystem.asType(thisType);
@@ -712,38 +712,16 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		con = savedConstruction;
 	}
 
-	private TypeParamSubst buildSubst() {
-		final Map<ParameterType, Type> mapping = typeSystem.getMapping();
-		final List<Type> actualTypes = new ArrayList<Type>(mapping.values());
-		final List<ParameterType> paramTypes = new ArrayList<ParameterType>(mapping.keySet());
-
-		return new TypeParamSubst(typeSystem, actualTypes, paramTypes);
-	}
-
 	@Override
 	public void visit(final MethodDecl_c dec) {
 		final X10MethodDef def = (X10MethodDef) dec.methodDef();
 		final MethodInstance defInstance = def.asInstance();
 
-		final boolean hasTypeParameters = !def.typeParameters().isEmpty();
-		MethodInstance methodInstance;
-		if (!hasTypeParameters) {
-			methodInstance = defInstance;
-		} else {
-			// If we compile a generic method, asInstance() will give
-			// us a method instance where generic types are used.  But we know
-			// better at this point, because we can substitute the real types.
-			final TypeParamSubst subst = buildSubst();
-			methodInstance = subst.reinstantiate(def.asInstance());
-
-			// Substitute type parameters manually.  Why doesn't X10 do this?!
-			final List<Type> typeArguments = new ArrayList<Type>();
-			for (final ParameterType paramType : def.typeParameters()) {
-				typeArguments.add(typeSystem.getConcreteType(paramType));
-			}
-
-			methodInstance = (MethodInstance) methodInstance.typeParameters(typeArguments);
-		}
+		// If we compile a generic method, asInstance() will give
+		// us a method instance where generic types are used.  But we know
+		// better at this point, because we can substitute the real types.
+		final TypeParamSubst subst = typeSystem.getSubst();
+		final MethodInstance methodInstance = subst.reinstantiate(defInstance);
 
 		final Flags flags = methodInstance.flags();
 		final List<LocalInstance> formals = defInstance.formalNames();
@@ -770,7 +748,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		finishConstruction(entity, savedConstruction);
 
-		if (HierarchyUtils.isMainMethod(def, typeSystem.emptyContext())) {
+		if (HierarchyUtils.isMainMethod(def, typeSystem.getTypeSystem().emptyContext())) {
 			processMainMethod(entity);
 		}
 	}
@@ -779,7 +757,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		/* let's create a simple "main" function which just calls the other main */
 		final firm.Type global = Program.getGlobalType();
 		/* let's hope the X10 int type is compatible to the C int-type */
-		final firm.Type intType = firmTypeSystem.asType(typeSystem.Int());
+		final firm.Type intType = firmTypeSystem.asType(typeSystem.getTypeSystem().Int());
 		final firm.Type[] returnTypes = new firm.Type[] {intType};
 		final firm.Type[] parameterTypes = new firm.Type[] {};
 		final MethodType mainType = new MethodType(parameterTypes, returnTypes);
@@ -830,7 +808,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		// extract all formals and locals from the method.
 		final List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(dec);
 
-		final boolean isStruct = typeSystem.isStructType0(owner);
+		final boolean isStruct = typeSystem.isStructType(owner);
 		final Type returnType;
 		final Type thisType;
 		final LocalInstance_c thisInstance;
@@ -839,8 +817,9 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final Name name = Name.make("$this");
 			final Flags thisFlags  = Flags.NONE;
 			final Ref_c<Type> type = new Ref_c<Type>(owner);
-			final X10LocalDef_c thisDef = new X10LocalDef_c(typeSystem, pos, thisFlags, type, name);
-			thisInstance = new LocalInstance_c(typeSystem, pos, new Ref_c<LocalDef>(thisDef));
+			final TypeSystem_c x10TypeSystem = typeSystem.getTypeSystem();
+			final X10LocalDef_c thisDef = new X10LocalDef_c(x10TypeSystem, pos, thisFlags, type, name);
+			thisInstance = new LocalInstance_c(x10TypeSystem, pos, new Ref_c<LocalDef>(thisDef));
 			locals.add(thisInstance);
 			returnType = instance.returnType();
 			thisType = null;
@@ -921,7 +900,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	private Node getFieldAddress(final Node objectPointer, final FieldInstance instance) {
 		final Entity entity = firmTypeSystem.getEntityForField(instance);
-		assert entity != null;
 		if (objectPointer != null) {
 			return con.newSel(objectPointer, entity);
 		}
@@ -986,7 +964,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		if (flags.isStatic()) {
 			final Expr init = dec.init();
 			// Check for in place initializer
-			if (init != null && ASTQuery.isGlobalInit(typeSystem, dec)) {
+			if (init != null && ASTQuery.isGlobalInit(typeSystem.getTypeSystem(), dec)) {
 				final Initializer initializer = exprToInitializer(init);
 				final Entity entity = firmTypeSystem.getEntityForField(instance);
 				entity.setInitializer(initializer);
@@ -1548,15 +1526,29 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		resetReturnNode();
 	}
 
-	private void addToMapping(final ParameterTypeMapping ptm,
-			final List<ParameterType> paramTypes, final List<Type> actualTypes) {
-		for (int i = 0; i < paramTypes.size(); ++i) {
-			Type t = actualTypes.get(i);
-			if (typeSystem.isParameterType(t))
-				t = typeSystem.getConcreteType(Types.baseType(t));
-
-			ptm.add(paramTypes.get(i), Types.stripConstraints(t));
+	/**
+	 * Create a new TypeParamSubst with simplified and stripped type arguments.
+	 */
+	public static TypeParamSubst createSubst(final GenericTypeSystem typeSystem,
+			final List<ParameterType> parameters, final List<? extends Type> arguments) {
+		final ArrayList<Type> newArguments = new ArrayList<Type>(arguments.size());
+		for (Type type : arguments) {
+			newArguments.add(typeSystem.getConcreteType(type));
 		}
+		return new TypeParamSubst(typeSystem.getTypeSystem(), newArguments, parameters);
+	}
+
+	private TypeParamSubst createSubst(final TypeParamSubst subst,
+			final List<ParameterType> parameters, final List<Type> arguments) {
+		if (subst == null || subst.isIdentityInstantiation()) {
+			return createSubst(typeSystem, parameters, arguments);
+		}
+
+		final List<ParameterType> newParameters = subst.copyTypeParameters();
+		newParameters.addAll(parameters);
+		final List<Type> newArguments = subst.copyTypeArguments();
+		newArguments.addAll(arguments);
+		return createSubst(typeSystem, newParameters, newArguments);
 	}
 
 	@Override
@@ -1566,68 +1558,23 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		// If this is a call to a generic method, record the type arguments and
 		// remember to
 		// generate code later.
-		if (!methodInstance.typeParameters().isEmpty()) {
+		final List<Type> typeArguments = methodInstance.typeParameters();
+		if (!typeArguments.isEmpty()) {
+			TypeParamSubst addSubst = null;
+			if (methodInstance instanceof ReinstantiatedMethodInstance) {
+				final ReinstantiatedMethodInstance reinstantiated
+					= (ReinstantiatedMethodInstance) methodInstance;
+				addSubst = reinstantiated.typeParamSubst();
+			}
+			final List<ParameterType> typeParameters = ((X10MethodDef) methodInstance.def()).typeParameters();
+			final TypeParamSubst subst = createSubst(addSubst, typeParameters, typeArguments);
+
 			// Find the method declaration.
-			final MethodDeclFetcher fetcher = new MethodDeclFetcher(typeSystem, xnf);
+			final MethodDeclFetcher fetcher = new MethodDeclFetcher(typeSystem.getTypeSystem(), xnf);
 			final X10MethodDecl decl = fetcher.getDecl(n);
 
-			// Construct type mapping.
-			final List<ParameterType> paramTypes
-				= ((X10MethodDef) methodInstance.def()).typeParameters();
-
-			final List<Type> actualTypes = methodInstance.typeParameters();
-			assert actualTypes.size() == decl.typeParameters().size();
-
-			// Watch out for recursive generic types.
-			for (int i = 0; i < actualTypes.size(); i++) {
-				final Type type = actualTypes.get(i);
-				actualTypes.set(i, typeSystem.getConcreteType(type));
-			}
-
-			final ParameterTypeMapping ptm = new ParameterTypeMapping();
-			addToMapping(ptm, paramTypes, actualTypes);
-
-			final X10ClassType ct = (X10ClassType) Types.stripConstraints(n
-					.target().type());
-			final X10ClassDef def = ct.def();
-
-			// If this is a generic method defined inside a generic class,
-			// also save the type mapping for the generic class.
-			// We do not have to remember to instantiate this class
-			// with the given type argument here, because this must have already
-			// happened before when someone created the object that we call the
-			// method on.
-			if (!def.typeParameters().isEmpty()) {
-				/*
-				 * static generic method calls of static generic classes will be
-				 * handled as following:
-				 * GeneriClass[T_i].genericMethod[U_j](...) ->
-				 * GeneriClass.genericMethod[[U_j/"actualType"]](...) -> The T_i
-				 * generic parameters of the generic class will not be mapped
-				 * because the static generic method can`t use the T_i`s of the
-				 * generic class. We would also get a serious problem, if one of
-				 * the T_i`s will be equal to one of the U_j`s.
-				 */
-
-				/*
-				 * non static generic method calls of generic classes will be
-				 * handled as following:
-				 * GenericClass[T_i].genericMethod[U_j](...) ->
-				 * GenericClass[T_i/
-				 * "actualType"].genericMethod[[U_i/"actualType"]](...) -> The
-				 * T_i generic parameters of the generic class will be mapped
-				 * with the actual types.
-				 */
-
-				if (!methodInstance.flags().isStatic()) {
-					final List<ParameterType> cParamTypes = def.typeParameters();
-					final List<Type> cActualTypes = ct.typeArguments();
-					addToMapping(ptm, cParamTypes, cActualTypes);
-				}
-			}
-
 			// Remember the parameter type configuration to generate code later.
-			addToWorklist(new GenericNodeInstance(decl, ptm));
+			addToWorklist(new GenericNodeInstance(decl, subst));
 		}
 		final Node ret = genX10Call(methodInstance, n.arguments(), n.target());
 		setReturnNode(ret);
@@ -1807,27 +1754,25 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final X10ClassType type = (X10ClassType)baseType;
 		final X10ConstructorInstance constructor = n.constructorInstance();
 
-		final boolean hasTypeArguments = type.typeArguments() != null && !type.typeArguments().isEmpty();
+		/* Note: we should use constructor.def().typeParamters() and
+		 * constructor.typeParameters(), unfortunately X10 seems to not set them
+		 * correctly. We use type.XXX instead which should be the same in a new
+		 * expression */
+		final List<ParameterType> typeParameters = type.def().typeParameters();
+		if (!typeParameters.isEmpty()) {
+			final List<Type> typeArguments = type.typeArguments();
+			final TypeParamSubst subst = createSubst((TypeParamSubst)null, typeParameters, typeArguments);
 
-		if (hasTypeArguments) {
 			// Find the class declaration.
-			final ClassDeclFetcher fetcher = new ClassDeclFetcher(typeSystem, xnf);
+			final ClassDeclFetcher fetcher = new ClassDeclFetcher(typeSystem.getTypeSystem(), xnf);
 			final X10ClassDecl decl = fetcher.getDecl(n);
 
-			// Construct type mapping.
-			final X10ClassType ct = (X10ClassType) constructor.container();
-			final List<ParameterType> paramTypes = ct.def().typeParameters();
-			final List<Type> actualTypes = ct.typeArguments();
-			assert actualTypes.size() == decl.typeParameters().size();
-			final ParameterTypeMapping ptm = new ParameterTypeMapping();
-			addToMapping(ptm, paramTypes, actualTypes);
-
 			// Remember the parameter type configuration to generate code later.
-			addToWorklist(new GenericNodeInstance(decl, ptm));
+			addToWorklist(new GenericNodeInstance(decl, subst));
 		}
 
 		final List<Expr> arguments = n.arguments();
-		if (!typeSystem.isStructType0(n.type())) {
+		if (!typeSystem.isStructType(n.type())) {
 			final Node objectNode = genHeapAlloc(type);
 			genClassConstructorCall(objectNode, constructor, arguments);
 			setReturnNode(objectNode);
@@ -1872,7 +1817,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	private Entity createStringEntity(final String value) {
 		final ClassType globalType = Program.getGlobalType();
-		final firm.Type elemType = firmTypeSystem.asType(typeSystem.Char());
+		final Type charType = typeSystem.getTypeSystem().Char();
+		final firm.Type elemType = firmTypeSystem.asType(charType);
 		final ArrayType type = new ArrayType(1, elemType);
 
 		final Ident id = Ident.createUnique("x10str.%u");
@@ -1899,9 +1845,10 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		return ent;
 	}
 
+	/** Returns "String.this(Int,Pointer): String" constructor instance. */
 	private X10ConstructorInstance getStringLiteralConstructor() {
 		if (stringLiteralConstructor == null) {
-			final X10ClassType classType = typeSystem.String();
+			final X10ClassType classType = typeSystem.getTypeSystem().String();
 			for (ConstructorInstance constructor : classType.constructors()) {
 				final List<Type> paramTypes = constructor.formalTypes();
 				if (paramTypes.size() != 2)
@@ -1922,13 +1869,12 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	}
 
 	private Node createStringLiteral(final String value) {
-		/* Construct call to builtin function, which creates an X10 string struct. */
+		/* Construct call to built-in function, which creates an X10 string struct. */
 		final Entity entity = createStringEntity(value);
 
-		/* search for String.this(Pointer,Int): String */
-		final Type type = typeSystem.String();
+		final Type type = typeSystem.getTypeSystem().String();
 		final Node object = genHeapAlloc(type);
-		final Mode sizeMode = firmTypeSystem.getFirmMode(typeSystem.Int());
+		final Mode sizeMode = firmTypeSystem.getFirmMode(typeSystem.getTypeSystem().Int());
 		final Node sizeNode = con.newConst(value.length(), sizeMode);
 		final Node stringConst = con.newSymConst(entity);
 		final Node[] constructorArguments = new Node[] {object, sizeNode, stringConst};
@@ -1957,7 +1903,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	}
 
 	private TargetValue getBooleanLitTargetValue(final BooleanLit_c literal) {
-		final Mode mode = firmTypeSystem.getFirmMode(typeSystem.Boolean());
+		final Mode mode = firmTypeSystem.getFirmMode(literal.type());
 		return literal.value() ? mode.getOne() : mode.getNull();
 	}
 
@@ -1997,24 +1943,18 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	 * @return The given expression if no cast must be done or a wrapping cast node.
 	 */
 	private Expr x10Cast(final Expr expr, final Type fType) {
+		final Type exprType = expr.type();
 		Expr ret = expr;
-		if (!typeSystem.typeDeepBaseEquals0(fType, expr.type())) {
+		if (!typeSystem.typeDeepBaseEquals(fType, exprType)) {
 			final Position pos = expr.position();
 			Converter.ConversionType convType = Converter.ConversionType.UNCHECKED;
 
-			if (typeSystem.isSubtype(expr.type(), fType)) {
+			if (typeSystem.isSubtype(exprType, fType)) {
 				convType = Converter.ConversionType.SUBTYPE;
 			}
 
 			ret = xnf.X10Cast(pos, xnf.CanonicalTypeNode(pos, fType), expr, convType).type(fType);
 		}
-		return ret;
-	}
-
-	private Expr wrapArgument(final Type fType, final Expr arg) {
-		Expr ret = arg;
-		if (!typeSystem.typeEquals0(fType, arg.type()))
-			ret = x10Cast(arg, fType);
 		return ret;
 	}
 
@@ -2032,12 +1972,10 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		int i = 0;
 		for (final Expr arg : args) {
-		    final Type fType = formalTypes.get(i);
-
-		    final Expr wrappedArg = wrapArgument(fType, arg);
-
-		    ret.add(wrappedArg);
-		    i++;
+			final Type fType = formalTypes.get(i);
+			final Expr castedArg = x10Cast(arg, fType);
+			ret.add(castedArg);
+			i++;
 		}
 
 		return ret;
@@ -2054,7 +1992,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final Flags flags = mi.flags();
 		final boolean isStatic = flags.isStatic();
 		final boolean isFinal  = flags.isFinal();
-		final boolean isStruct = typeSystem.isStructType0(mi.container());
+		final boolean isStruct = typeSystem.isStructType(mi.container());
 		final boolean isStaticBinding = (isStatic || isFinal || isStruct);
 		final Entity entity = firmTypeSystem.getMethodEntity(mi);
 
@@ -2070,7 +2008,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		if (!isStatic) {
 			assert target != null && target instanceof Expr : mi.toString();
 			final Expr receiver = (Expr)target;
-			arguments.add(0, wrapArgument(mi.container(), receiver));
+			final Expr casted = x10Cast(receiver, mi.container());
+			arguments.add(0, casted);
 		}
 
 		assert arguments.size() == paramCount : "parameters are off : " + arguments.size() + " vs " + paramCount;
@@ -2205,7 +2144,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 					.methodInstance(method).type(m.returnType());
 
 			// append an optional return
-			if (method.returnType() != typeSystem.Void()) {
+			if (method.returnType() != typeSystem.getTypeSystem().Void()) {
 				final Return ret = xnf.X10Return(pos, call, false);
 				statements.add(ret);
 			} else {
@@ -2288,7 +2227,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final Type to   = typeSystem.getConcreteType(toType);
 
 		assert to instanceof X10ClassType;
-		final Type compType = typeSystem.isStructType0(to) ? firmTypeSystem.getBoxingType((X10ClassType)to) : to;
+		final Type compType = typeSystem.isStructType(to) ? firmTypeSystem.getBoxingType((X10ClassType)to) : to;
 
 		final CondTemplate condTemplate = new CondTemplate() {
 			@Override
@@ -2302,8 +2241,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final StmtTemplate ifStmt = new StmtTemplate() {
 			@Override
 			public void genCode() {
-				final Stmt throwStmt = getThrowNewExceptionStmt(typeSystem.ClassCastException(),
-						"Cannot cast " + from + " to " + to);
+				final X10ClassType exceptionType = typeSystem.getTypeSystem().ClassCastException();
+				final Stmt throwStmt = getThrowNewExceptionStmt(exceptionType, "Cannot cast " + from + " to " + to);
 				visitAppropriate(throwStmt);
 			}
 		};
@@ -2318,8 +2257,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final CondTemplate condTemplate = new CondTemplate() {
 			@Override
 			public void genCode(final Block trueBlock, final Block falseBlock) {
-				final Position pos = Position.COMPILER_GENERATED;
-				final Node nullNode = visitExpression(xnf.NullLit(pos).type(typeSystem.Null()));
+				final Node nullNode = con.newConst(Mode.getP().getNull());
 				final Node cmp = con.newCmp(node, nullNode, Relation.Equal);
 				ConditionEvaluationCodeGenerator.makeJumps(cmp, trueBlock, falseBlock, con);
 			}
@@ -2328,8 +2266,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final StmtTemplate ifStmt = new StmtTemplate() {
 			@Override
 			public void genCode() {
-				final Stmt throwStmt = getThrowNewExceptionStmt(typeSystem.ClassCastException(),
-						"null cannot be cast to struct " + type);
+				final X10ClassType exceptionType = typeSystem.getTypeSystem().ClassCastException();
+				final Stmt throwStmt = getThrowNewExceptionStmt(exceptionType, "null cannot be cast to struct " + type);
 				visitAppropriate(throwStmt);
 			}
 		};
@@ -2345,8 +2283,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final CondTemplate cond = new CondTemplate() {
 			@Override
 			public void genCode(final Block trueBlock, final Block falseBlock) {
-				final Position pos = Position.COMPILER_GENERATED;
-				final Node nullNode = visitExpression(xnf.NullLit(pos).type(typeSystem.Null()));
+				final Node nullNode = con.newConst(Mode.getP().getNull());
 				final Node cmp = con.newCmp(node, nullNode, Relation.Equal);
 				ConditionEvaluationCodeGenerator.makeJumps(cmp, trueBlock, falseBlock, con);
 			}
@@ -2356,7 +2293,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			@Override
 			public Node genCode() {
 				final Position pos = Position.COMPILER_GENERATED;
-				return visitExpression(xnf.NullLit(pos).type(typeSystem.Null()));
+				return visitExpression(xnf.NullLit(pos).type(typeSystem.getTypeSystem().Null()));
 			}
 		};
 
@@ -2374,13 +2311,13 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	private Node checkedCast(final Expr value, final Type to, final Position pos) {
 		/* shortcut */
 		final Type from = typeSystem.getConcreteType(value.type());
-		if (typeSystem.typeEquals0(from, to)) {
+		if (typeSystem.typeEquals(from, to)) {
 			return visitExpression(value);
 		}
 
 		if (typeSystem.isRefType(from) && typeSystem.isRefType(to)) {
 			return genCheckedRefToRefCast(value, from, to);
-		} else if (typeSystem.isRefType(from) && typeSystem.isStructType0(to)) {
+		} else if (typeSystem.isRefType(from) && typeSystem.isStructType(to)) {
 			/* unboxing */
 			final Node valueNode = visitExpression(value);
 			genCastNullCheck(valueNode, from);
@@ -2392,17 +2329,18 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	}
 
 	private Node uncheckedCast(final Expr value, final Type to, final Position pos) {
-		final Type from = typeSystem.getConcreteType(value.type());
+		final Type from = value.type();
+
 		/* shortcut */
-		if (typeSystem.typeEquals0(from, to)) {
+		if (typeSystem.typeEquals(from, to)) {
 			return visitExpression(value);
 		}
 
 		if (typeSystem.isRefType(from) && typeSystem.isRefType(to)) {
 			return visitExpression(value);
-		} else if (typeSystem.isStructType0(from) && typeSystem.isRefType(to)) {
+		} else if (typeSystem.isStructType(from) && typeSystem.isRefType(to)) {
 			return genBoxing(value);
-		} else if (typeSystem.isRefType(from) && typeSystem.isStructType0(to)) {
+		} else if (typeSystem.isRefType(from) && typeSystem.isStructType(to)) {
 			final Node valueNode = visitExpression(value);
 			return genUnboxing(valueNode, typeSystem.toClass(to));
 		} else {
@@ -2438,11 +2376,11 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	public void visit(final SubtypeTest_c n) {
 		final Type subType = n.subtype().type();
 		final Type superType = n.supertype().type();
-		final Mode mode = firmTypeSystem.getFirmMode(typeSystem.Boolean());
+		final Mode mode = firmTypeSystem.getFirmMode(typeSystem.getTypeSystem().Boolean());
 		final boolean res;
 
 		if (n.equals()) {
-			res = typeSystem.typeBaseEquals0(subType, superType);
+			res = typeSystem.typeBaseEquals(subType, superType);
 		} else {
 			res = typeSystem.isSubtype(subType, superType);
 		}
@@ -2474,24 +2412,25 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		final Node cond = visitExpression(n.cond());
 
-		final Node errMsg;
+		final Type stringType = typeSystem.getTypeSystem().String();
+		Node errMsg = null;
 		if (n.errorMessage() != null) {
 			errMsg = visitExpression(n.errorMessage());
 		} else {
-			errMsg = con.newConst(0, firmTypeSystem.getFirmMode(typeSystem.String()));
+			errMsg = con.newConst(0, firmTypeSystem.getFirmMode(stringType));
 		}
 
 		final Node position;
 		if (n.position() != null) {
 			position = createStringLiteral(n.position().nameAndLineString());
 		} else {
-			position = con.newConst(0, firmTypeSystem.getFirmMode(typeSystem.String()));
+			position = con.newConst(0, firmTypeSystem.getFirmMode(stringType));
 		}
 
 		final firm.Type[] parameterTypes = new firm.Type[] {
-			firmTypeSystem.asType(typeSystem.Boolean()),
-			firmTypeSystem.asType(typeSystem.String()),
-			firmTypeSystem.asType(typeSystem.String()),
+			firmTypeSystem.asType(typeSystem.getTypeSystem().Boolean()),
+			firmTypeSystem.asType(stringType),
+			firmTypeSystem.asType(stringType),
 		};
 		final firm.Type[] resultTypes = new firm.Type[] {};
 		final MethodType type = new firm.MethodType(parameterTypes, resultTypes);
@@ -2669,7 +2608,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			throw new CodeGenError("Couldn't find Array.this(Pointer,Int) constructor", n);
 		}
 		final Node arrayAddr = genHeapAlloc(concreteType);
-		final Mode sizeMode = firmTypeSystem.getFirmMode(typeSystem.Int());
+		final Mode sizeMode = firmTypeSystem.getFirmMode(typeSystem.getTypeSystem().Int());
 		final Node sizeNode = con.newConst(size, sizeMode);
 		final Node[] constructorArguments = new Node[] {arrayAddr, baseAddr, sizeNode};
 		genConstructorCall(arrayConstructor, constructorArguments);
@@ -2684,7 +2623,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final X10ClassType type = (X10ClassType)baseType;
 
 		Node objectNode;
-		if (typeSystem.isStructType0(n.type())) {
+		if (typeSystem.isStructType(n.type())) {
 			objectNode = genStackAlloc(type);
 		} else {
 			objectNode = genHeapAlloc(type);
