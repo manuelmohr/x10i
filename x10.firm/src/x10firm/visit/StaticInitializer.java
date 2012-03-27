@@ -26,7 +26,6 @@ import polyglot.ast.Initializer;
 import polyglot.ast.IntLit;
 import polyglot.ast.MethodDecl;
 import polyglot.ast.Node;
-import polyglot.ast.NodeFactory;
 import polyglot.ast.ProcedureDecl;
 import polyglot.ast.Receiver;
 import polyglot.ast.Stmt;
@@ -47,7 +46,7 @@ import polyglot.types.ParsedClassType;
 import polyglot.types.Ref;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
-import polyglot.types.TypeSystem;
+import polyglot.types.TypeSystem_c;
 import polyglot.types.Types;
 import polyglot.util.Pair;
 import polyglot.util.Position;
@@ -64,6 +63,7 @@ import x10.ast.X10FieldDecl;
 import x10.ast.X10Field_c;
 import x10.ast.X10MethodDecl;
 import x10.ast.X10New_c;
+import x10.ast.X10NodeFactory_c;
 import x10.ast.X10SourceFile_c;
 import x10.extension.X10Ext;
 import x10.types.ConstrainedType;
@@ -77,15 +77,13 @@ import x10.types.X10ProcedureDef;
 import x10.util.CollectionFactory;
 import x10.visit.Desugarer;
 import x10.visit.X10TypeChecker;
-import x10c.ast.X10CNodeFactory_c;
-import x10c.types.X10CTypeSystem_c;
 
 /**
  * Lowering of all non const static initializer.
  */
 public class StaticInitializer extends ContextVisitor {
-	private final X10CTypeSystem_c xts;
-	private final X10CNodeFactory_c xnf;
+	private final TypeSystem_c xts;
+	private final X10NodeFactory_c xnf;
 
 	private final WeakHashMap<X10ProcedureDef, ProcedureDecl> procDeclCache
 		= new WeakHashMap<X10ProcedureDef, ProcedureDecl>();
@@ -105,10 +103,10 @@ public class StaticInitializer extends ContextVisitor {
 	private final Map<Pair<Type, Name>, StaticFieldInfo> staticFinalFields = CollectionFactory.newHashMap();
 
 	/** Constructs a new StaticInitializer. */
-	public StaticInitializer(final Job job, final TypeSystem ts, final NodeFactory nf) {
+	public StaticInitializer(final Job job, final TypeSystem_c ts, final X10NodeFactory_c nf) {
 		super(job, ts, nf);
-		xts = (X10CTypeSystem_c) ts;
-		xnf = (X10CNodeFactory_c) nf;
+		xts = ts;
+		xnf = nf;
 	}
 
 	@Override

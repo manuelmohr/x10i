@@ -12,6 +12,7 @@ import polyglot.frontend.Goal;
 import polyglot.frontend.Job;
 import polyglot.frontend.VisitorGoal;
 import polyglot.types.TypeSystem;
+import polyglot.types.TypeSystem_c;
 import polyglot.visit.NodeVisitor;
 import x10.ExtensionInfo;
 import x10.ExtensionInfo.X10Scheduler;
@@ -175,8 +176,8 @@ public class FirmScheduler extends X10Scheduler {
 	}
 
 	private Goal StaticInitializer(final Job job) {
-		final TypeSystem ts = extInfo.typeSystem();
-		final NodeFactory nf = extInfo.nodeFactory();
+		final TypeSystem_c ts = generator.getX10TypeSystem();
+		final X10NodeFactory_c nf = generator.getNodeFactory();
 		return new ValidatingVisitorGoal("StaticInitialized", job,
 				new StaticInitializer(job, ts, nf)).intern(this);
 	}

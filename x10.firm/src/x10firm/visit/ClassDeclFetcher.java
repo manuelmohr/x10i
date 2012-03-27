@@ -6,7 +6,7 @@ import polyglot.types.ContainerType;
 import polyglot.types.Ref;
 import polyglot.types.SemanticException;
 import polyglot.types.Type;
-import polyglot.types.TypeSystem;
+import polyglot.types.TypeSystem_c;
 import polyglot.types.Types;
 import polyglot.util.Position;
 import polyglot.visit.NodeVisitor;
@@ -28,15 +28,15 @@ import x10.visit.X10TypeChecker;
  * refactor this and put it into a separate class soon.
  */
 public class ClassDeclFetcher {
-	private final TypeSystem x10TypeSystem;
+	private final TypeSystem_c typeSystem;
 	private final X10NodeFactory_c xnf;
 
 	/**
 	 * @param typeSystem The X10 type system.
 	 * @param xnf The node factory.
 	 */
-	public ClassDeclFetcher(final TypeSystem typeSystem, final X10NodeFactory_c xnf) {
-		this.x10TypeSystem = typeSystem;
+	public ClassDeclFetcher(final TypeSystem_c typeSystem, final X10NodeFactory_c xnf) {
+		this.typeSystem = typeSystem;
 		this.xnf = xnf;
 	}
 
@@ -89,7 +89,7 @@ public class ClassDeclFetcher {
 			ast = job.ast();
 			assert ast instanceof X10SourceFile_c;
 			if (!((X10SourceFile_c) ast).hasBeenTypeChecked())
-				ast = ast.visit(new X10TypeChecker(job, x10TypeSystem, xnf, job.nodeMemo()).begin());
+				ast = ast.visit(new X10TypeChecker(job, typeSystem, xnf, job.nodeMemo()).begin());
 			if (null == ast) {
 				System.err.println("Unable to reconstruct AST for " + job);
 				return null;
@@ -195,8 +195,8 @@ public class ClassDeclFetcher {
 			return null;
 		}
 
-		ast = ast.visit(new Desugarer(candidateJob, x10TypeSystem, xnf).begin());
-		ast = ast.visit(new ForLoopOptimizer(candidateJob, x10TypeSystem, xnf).begin());
+		ast = ast.visit(new Desugarer(candidateJob, typeSystem, xnf).begin());
+		ast = ast.visit(new ForLoopOptimizer(candidateJob, typeSystem, xnf).begin());
 		final X10ClassDecl decl = getDeclaration(container, ast);
 		if (null == decl) {
 			System.err.println("unable to find declaration for candidate: "
