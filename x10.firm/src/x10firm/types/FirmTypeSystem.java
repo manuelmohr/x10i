@@ -33,6 +33,7 @@ import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10MethodDef;
 import x10.types.X10ParsedClassType;
+import x10.types.X10ParsedClassType_c;
 import x10firm.CompilerOptions;
 import x10firm.visit.CodeGenError;
 import firm.ClassType;
@@ -527,7 +528,16 @@ public class FirmTypeSystem {
 
 		/* creates fields for properties */
 		for (final FieldInstance field : classType.properties()) {
-			createField(field, result);
+			/* when calling X10ParsedClassType.fields() the fields get reinstantiated,
+			 * for some reason (simply a bug?) this does not happen for properties() */
+			final FieldInstance reinstantiated;
+			if (classType instanceof X10ParsedClassType_c) {
+				X10ParsedClassType_c x10c = (X10ParsedClassType_c) classType;
+				reinstantiated = x10c.subst().reinstantiate(field);
+			} else {
+				reinstantiated = field;
+			}
+			createField(reinstantiated, result);
 		}
 
 		final Type global = Program.getGlobalType();
