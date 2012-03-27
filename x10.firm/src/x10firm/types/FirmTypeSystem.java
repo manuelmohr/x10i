@@ -294,7 +294,7 @@ public class FirmTypeSystem {
 		final Type ft = asClass(boxedClassType);
 
 		final FieldInstance fieldInstance = boxValue.asInstance();
-		addField(fieldInstance, ft);
+		createField(fieldInstance, ft);
 
 		structBoxingTypes.put(type, boxedClassType);
 		return boxedClassType;
@@ -464,7 +464,7 @@ public class FirmTypeSystem {
 	 * @param klass The defining class of the field
 	 * @return The firm entity for the field
 	 */
-	private Entity addField(final FieldInstance field, final firm.Type klass) {
+	private Entity createField(final FieldInstance field, final firm.Type klass) {
 		final Flags fieldFlags = field.flags();
 		final String name = NameMangler.mangleField(field);
 
@@ -528,12 +528,12 @@ public class FirmTypeSystem {
 
 		/* create fields */
 		for (final FieldInstance field : classType.fields()) {
-			addField(field, result);
+			createField(field, result);
 		}
 
 		/* creates fields for properties */
 		for (final FieldInstance field : classType.properties()) {
-			addField(field, result);
+			createField(field, result);
 		}
 
 		final Type global = Program.getGlobalType();
