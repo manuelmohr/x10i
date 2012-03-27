@@ -24,12 +24,15 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	/** Remember type parameter mappings, used for example in name mangling. */
 	private final Map<ParameterType, polyglot.types.Type> typeParameters
 		= new HashMap<ParameterType, polyglot.types.Type>();
+	/** An empty context, because some functions expect one. */
+	private Context emptyContext;
 
 	/**
 	 * @param extInfo extension info
 	 */
 	public GenericTypeSystem(final ExtensionInfo extInfo) {
 		super(extInfo);
+		emptyContext = emptyContext();
 	}
 
 	/**
@@ -96,25 +99,35 @@ public class GenericTypeSystem extends X10CTypeSystem_c {
 	}
 
 	/**
-	 * Returns True iff {@code t1} is equal to {@code t2} in {@code context}.
+	 * Returns True iff {@code t1} is equal to {@code t2}.
 	 */
-	public boolean typeEquals0(final Type t1, final Type t2, final Context context) {
+	public boolean typeEquals0(final Type t1, final Type t2) {
 		final Type t1c = getConcreteType(t1);
 		final Type t2c = getConcreteType(t2);
 
-		return super.typeEquals(t1c, t2c, context);
+		return super.typeEquals(t1c, t2c, emptyContext);
 	}
 
 	/**
-	 * Returns True iff {@code t1} is equal to {@code t2} in {@code context},
+	 * Returns True iff {@code t1} is equal to {@code t2},
 	 * ignoring their dep clauses and the dep clauses of their type arguments
 	 * recursively.
 	 */
-	public boolean typeDeepBaseEquals0(final Type t1, final Type t2, final Context context) {
+	public boolean typeBaseEquals0(final Type t1, final Type t2) {
 		final Type t1c = getConcreteType(t1);
 		final Type t2c = getConcreteType(t2);
 
-		return super.typeDeepBaseEquals(t1c, t2c, context);
+		return super.typeBaseEquals(t1c, t2c, emptyContext);
+	}
+
+	/**
+	 * Returns true iff {@code t1} is base equals to {@code t2}.
+	 */
+	public boolean typeDeepBaseEquals0(final Type t1, final Type t2) {
+		final Type t1c = getConcreteType(t1);
+		final Type t2c = getConcreteType(t2);
+
+		return super.typeDeepBaseEquals(t1c, t2c, emptyContext);
 	}
 
 	private final Map<String, X10ParsedClassType> remappedClasses

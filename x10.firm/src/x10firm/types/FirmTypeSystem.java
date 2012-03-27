@@ -12,7 +12,6 @@ import java.util.Set;
 import java.util.StringTokenizer;
 
 import polyglot.types.ClassDef;
-import polyglot.types.Context;
 import polyglot.types.Def;
 import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
@@ -80,9 +79,6 @@ public class FirmTypeSystem {
 	private final Map<GenericClassInstance, GenericClassContext> genericContexts
 		= new HashMap<GenericClassInstance, GenericClassContext>();
 
-	/** X10 Context. */
-	private Context x10Context = null;
-
 	/** All class instances share the same location for the vptr (the pointer to the vtable). */
 	private Entity vptrEntity;
 
@@ -124,7 +120,6 @@ public class FirmTypeSystem {
 	 */
 	public FirmTypeSystem(final GenericTypeSystem x10TypeSystem) {
 		this.x10TypeSystem = x10TypeSystem;
-		this.x10Context    = new Context(this.x10TypeSystem);
 	}
 
 	private void findExistingEntities() {
@@ -780,7 +775,7 @@ public class FirmTypeSystem {
 
 		final List<MethodInstance> overrides = new LinkedList<MethodInstance>();
 
-		overrides.addAll(instance.overrides(x10Context));
+		overrides.addAll(instance.overrides(x10TypeSystem.emptyContext()));
 		final X10ClassType myClassType = (X10ClassType)instance.container();
 		// Watch out for constructors of classes with super classes
 		if (myClassType.superClass() != null && overrides.size() > 1) {

@@ -196,9 +196,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	/** This is the "return-value" of visitor functions handling expressions. */
 	private Node returnNode;
 
-	/** X10 Context. */
-	private Context x10Context;
-
 	/** Our firm type system. */
 	private final FirmTypeSystem firmTypeSystem;
 
@@ -228,7 +225,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		this.firmTypeSystem = firmTypeSystem;
 		this.x10TypeSystem  = x10TypeSystem;
 		this.xnf            = nodeFactory;
-		this.x10Context     = new Context(x10TypeSystem);
 		this.options        = options;
 	}
 
@@ -2002,11 +1998,11 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	 */
 	private Expr x10Cast(final Expr expr, final Type fType) {
 		Expr ret = expr;
-		if (!x10TypeSystem.typeDeepBaseEquals0(fType, expr.type(), x10Context)) {
+		if (!x10TypeSystem.typeDeepBaseEquals0(fType, expr.type())) {
 			final Position pos = expr.position();
 			Converter.ConversionType convType = Converter.ConversionType.UNCHECKED;
 
-			if (x10TypeSystem.isSubtype(expr.type(), fType, x10Context)) {
+			if (x10TypeSystem.isSubtype(expr.type(), fType)) {
 				convType = Converter.ConversionType.SUBTYPE;
 			}
 
@@ -2017,7 +2013,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	private Expr wrapArgument(final Type fType, final Expr arg) {
 		Expr ret = arg;
-		if (!x10TypeSystem.typeEquals0(fType, arg.type(), x10Context))
+		if (!x10TypeSystem.typeEquals0(fType, arg.type()))
 			ret = x10Cast(arg, fType);
 		return ret;
 	}
@@ -2190,8 +2186,9 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			// find the appropriate method instance (concrete method) -> to
 			// avoid unnecessary dynamic delegation calls.
 			MethodInstance method = null;
-			for (final MethodInstance meth : boxedType.methods(m.name(), m.formalTypes(), x10Context)) {
-				if (meth.isSameMethod(m, x10Context)) {
+			final Context context = x10TypeSystem.emptyContext();
+			for (final MethodInstance meth : boxedType.methods(m.name(), m.formalTypes(), context)) {
+				if (meth.isSameMethod(m, context)) {
 					method = meth;
 					break;
 				}
@@ -2377,7 +2374,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	private Node checkedCast(final Expr value, final Type to, final Position pos) {
 		/* shortcut */
 		final Type from = x10TypeSystem.getConcreteType(value.type());
-		if (x10TypeSystem.typeEquals0(from, to, x10Context)) {
+		if (x10TypeSystem.typeEquals0(from, to)) {
 			return visitExpression(value);
 		}
 
@@ -2397,7 +2394,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	private Node uncheckedCast(final Expr value, final Type to, final Position pos) {
 		final Type from = x10TypeSystem.getConcreteType(value.type());
 		/* shortcut */
-		if (x10TypeSystem.typeEquals0(from, to, x10Context)) {
+		if (x10TypeSystem.typeEquals0(from, to)) {
 			return visitExpression(value);
 		}
 
@@ -2445,7 +2442,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final boolean res;
 
 		if (n.equals()) {
-			res = x10TypeSystem.typeBaseEquals(subType, superType, x10Context);
+			res = x10TypeSystem.typeBaseEquals0(subType, superType);
 		} else {
 			res = x10TypeSystem.isSubtype(subType, superType);
 		}
