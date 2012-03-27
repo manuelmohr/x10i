@@ -21,6 +21,7 @@ import polyglot.types.MemberInstance;
 import polyglot.types.MethodDef;
 import polyglot.types.Name;
 import polyglot.types.Ref;
+import polyglot.types.TypeSystem_c;
 import polyglot.types.Types;
 import polyglot.util.Position;
 import x10.types.MethodInstance;
@@ -28,7 +29,6 @@ import x10.types.ParameterType;
 import x10.types.ThisDef;
 import x10.types.TypeParamSubst;
 import x10.types.X10ClassDef;
-import x10.types.X10ClassDef_c;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10MethodDef;
@@ -195,62 +195,54 @@ public class FirmTypeSystem {
 
 	/**
 	 * Returns the boxing type for a given struct type.
-	 *
-	 * @param type
-	 *            The type for which the boxing type should be returned
+	 * @param type The type for which the boxing type should be returned
 	 * @return The boxing type for the given struct type
 	 */
 	public X10ClassType getBoxingType(final X10ClassType type) {
-		final X10ClassType concreteType = (X10ClassType)typeSystem.getConcreteType(type);
-
-		assert typeSystem.isStructType0(concreteType);
-
-		final X10ClassType ret = structBoxingTypes.get(concreteType);
+		assert typeSystem.isStructType(type);
+		final X10ClassType ret = structBoxingTypes.get(type);
 		if (ret != null)
 			return ret;
 
 		final Position pos = Position.COMPILER_GENERATED;
-
-		final X10ClassDef cd = new X10ClassDef_c(typeSystem, null);
+		final TypeSystem_c x10TypeSystem = typeSystem;
+		final X10ClassType objectType = x10TypeSystem.Object();
 
 		// use a unique name for the boxing class
-		final String name = getUniqueBoxingName(concreteType);
+		final String name = getUniqueBoxingName(type);
 
-		// Get the "Object" class and set it as the super class
-		final X10ClassType objectType = typeSystem.Object();
+		final X10ClassDef boxedClass = x10TypeSystem.createClassDef();
+		boxedClass.position(pos);
+		boxedClass.name(Name.make(name));
+		boxedClass.setPackage(Types.ref(type.package_()));
+		boxedClass.kind(ClassDef.TOP_LEVEL);
+		boxedClass.flags(Flags.FINAL);
+		boxedClass.superType(Types.ref(objectType));
 
-		cd.position(pos);
-		cd.name(Name.make(name));
-		cd.setPackage(null);
-		cd.kind(ClassDef.TOP_LEVEL);
-		cd.flags(Flags.FINAL);
-		cd.superType(Types.ref(objectType));
+		final X10ClassType boxedClassType = boxedClass.asType();
+		final Ref<X10ClassType> boxedClassRef = Types.ref(boxedClassType);
+		final ThisDef thisDef = x10TypeSystem.thisDef(pos, boxedClassRef);
 
-		final X10ClassType ct = cd.asType();
+		final HashSet<polyglot.types.Type> ifaceSet = new HashSet<polyglot.types.Type>();
 
-		final Set<polyglot.types.Type> intSet = new HashSet<polyglot.types.Type>();
-
-		// "interfaces" method returns duplicates???
-		for (final polyglot.types.Type t : concreteType.interfaces()) {
-			if (intSet.contains(t))
+		for (final polyglot.types.Type t : type.interfaces()) {
+			// interfaces() returns duplicates???
+			if (ifaceSet.contains(t))
 				continue;
-			intSet.add(t);
+			ifaceSet.add(t);
 
 			final X10ParsedClassType iface = (X10ParsedClassType) t;
 			final X10ClassDef interfaceDef = iface.x10Def();
 
-			cd.addInterface(Types.ref(iface));
+			boxedClass.addInterface(Types.ref(iface));
 
 			// get the substitution mapping
 			final TypeParamSubst subst = iface.subst();
-			final List<ParameterType> paramTypes = subst.copyTypeParameters();
-			final List<polyglot.types.Type> argTypes = subst.copyTypeArguments();
 
-			final ThisDef thisDef = typeSystem.thisDef(pos, Types.ref(ct));
 			for (final MethodDef mDef : interfaceDef.methods()) {
-				final X10MethodDef md = typeSystem.methodDef(pos, Types.ref(ct), Flags.PUBLIC, mDef.returnType(),
+				final X10MethodDef md = x10TypeSystem.methodDef(pos,
+						boxedClassRef, Flags.PUBLIC, mDef.returnType(),
 						mDef.name(), mDef.formalTypes());
-				md.setTypeParameters(mDef.typeParameters());
 				md.setThisDef(thisDef);
 				md.setGuard(mDef.guard());
 				md.setTypeGuard(mDef.typeGuard());
@@ -264,71 +256,48 @@ public class FirmTypeSystem {
 
 				assert fTypes.size() == fNames.size();
 				for (int i = 0; i < fTypes.size(); i++) {
-					final polyglot.types.Type x = fTypes.get(i).get();
-					Ref<? extends polyglot.types.Type> fType = fTypes.get(i);
-					LocalDef fName = fNames.get(i);
+					final Ref<? extends polyglot.types.Type> fType = fTypes.get(i);
+					final Ref<? extends polyglot.types.Type> newType = subst.reinstantiate(fType);
+					final LocalDef fName = fNames.get(i);
 
-					// formal type generic substitution
-					if (x instanceof ParameterType) {
-						fType = Types.ref(getConcreteTypeFromSubst(x, paramTypes, argTypes));
-						fName = typeSystem.localDef(Position.COMPILER_GENERATED, fName.flags(), fType, fName.name());
+					final LocalDef newName;
+					if (newType != fType) {
+						newName = x10TypeSystem.localDef(pos, fName.flags(), newType, fName.name());
+					} else {
+						newName = fName;
 					}
 
-					formalNames.add(fName);
-					formalTypes.add(fType);
+					formalNames.add(newName);
+					formalTypes.add(newType);
 				}
 
 				// Watch out for generic return types -> Do a substitution
 				Ref<? extends polyglot.types.Type> returnType = mDef.returnType();
-				final polyglot.types.Type retType = returnType.get();
-				if (retType instanceof ParameterType) {
-					returnType = Types.ref(getConcreteTypeFromSubst(retType, paramTypes, argTypes));
-				}
+				returnType = subst.reinstantiate(returnType);
+				md.setReturnType(returnType);
 
 				md.setFormalNames(formalNames);
 				md.setFormalTypes(formalTypes);
-				md.setReturnType(returnType);
 
-				cd.addMethod(md);
+				boxedClass.addMethod(md);
 			}
 		}
 
 		// add the boxed value to the class.
-		final Ref<X10ClassType> boxType = Types.ref(concreteType);
-		final Name boxName = Name.make(BOXED_VALUE);
-		final Ref<X10ClassType> containerRef = Types.ref(ct);
-		final FieldDef boxValue = typeSystem.fieldDef(pos, containerRef, Flags.PUBLIC, boxType, boxName);
-		cd.addField(boxValue);
+		final FieldDef boxValue = x10TypeSystem.fieldDef(pos,
+				Types.ref(boxedClassType), Flags.PUBLIC, Types.ref(type),
+				Name.make(BOXED_VALUE));
+		boxedClass.addField(boxValue);
 
 		// preinit the type
-		asType(ct);
-		final Type ft = asClass(ct);
+		asType(boxedClassType);
+		final Type ft = asClass(boxedClassType);
 
 		final FieldInstance fieldInstance = boxValue.asInstance();
 		addField(fieldInstance, ft);
 
-		structBoxingTypes.put(concreteType, ct);
-
-		return ct;
-	}
-
-	/**
-	 * Returns the appropriate concrete type for a given generic type and a type mapping.
-	 * @param genType The generic type for which the concrete type should be returned
-	 * @param paramTypes A list which generic types
-	 * @param argTypes A list with concrete types
-	 * @return The concrete type for the given generic type
-	 */
-	private static polyglot.types.Type getConcreteTypeFromSubst(final polyglot.types.Type genType,
-			final List<ParameterType> paramTypes, final List<polyglot.types.Type> argTypes) {
-		int j = 0;
-		for (; j < paramTypes.size(); j++) {
-			if (paramTypes.get(j) == genType)
-				break;
-		}
-
-		assert j < paramTypes.size();
-		return argTypes.get(j);
+		structBoxingTypes.put(type, boxedClassType);
+		return boxedClassType;
 	}
 
 	/**
