@@ -24,7 +24,6 @@ import polyglot.types.Name;
 import polyglot.types.Named;
 import polyglot.types.QName;
 import polyglot.types.Ref;
-import polyglot.types.TypeObject;
 import polyglot.types.Types;
 import polyglot.util.Position;
 import x10.types.MethodInstance;
@@ -69,6 +68,8 @@ public class FirmTypeSystem {
 	/** Maps some polyglot types to "native"/primitive firm types. */
 	private final Map<polyglot.types.Type, Type> firmTypes
 		= new HashMap<polyglot.types.Type, Type>();
+
+	private final Set<polyglot.types.Type> primitiveTypes = new HashSet<polyglot.types.Type>();
 
 	/** We import C functions at the beginning. When we encounter the corresponding X10 native methods,
 	 * we have to get the C function entity by the mangled name.
@@ -455,34 +456,8 @@ public class FirmTypeSystem {
 	 * @return True if we need the core type for the given type
 	 */
 	public boolean isFirmStructType(final polyglot.types.Type type) {
-		final polyglot.types.Type baseType = x10TypeSystem.getConcreteType(type);
-		return Types.isX10Struct(baseType) && !isFirmPrimitiveType(baseType);
-	}
-
-	/**
-	 * Checks if 2 types are equal.
-	 * @param type1 The first type
-	 * @param type2 The second type
-	 * @return True if both types are equal.
-	 */
-	private boolean equalTypes(final polyglot.types.Type type1, final polyglot.types.Type type2) {
-		return x10TypeSystem.equals((TypeObject)type1, (TypeObject)type2);
-	}
-
-	/**
-	 * True if the given type is handled as a primitive type in firm.
-	 * @param type The type which should be checked
-	 * @return True if the given type is handled as a primitive type.
-	 */
-	public boolean isFirmPrimitiveType(final polyglot.types.Type type) {
 		final polyglot.types.Type concrete = x10TypeSystem.getConcreteType(type);
-		return equalTypes(concrete, x10TypeSystem.Int())     || equalTypes(concrete, x10TypeSystem.UInt())
-		    || equalTypes(concrete, x10TypeSystem.Long())    || equalTypes(concrete, x10TypeSystem.ULong())
-		    || equalTypes(concrete, x10TypeSystem.Short())   || equalTypes(concrete, x10TypeSystem.UShort())
-		    || equalTypes(concrete, x10TypeSystem.Byte())    || equalTypes(concrete, x10TypeSystem.UByte())
-		    || equalTypes(concrete, x10TypeSystem.Float())   || equalTypes(concrete, x10TypeSystem.Double())
-		    || equalTypes(concrete, x10TypeSystem.Boolean()) || equalTypes(concrete, x10TypeSystem.Char())
-		    || equalTypes(concrete, x10TypeSystem.pointer());
+		return x10TypeSystem.isStructType(concrete) && !primitiveTypes.contains(concrete);
 	}
 
 	/**
@@ -729,6 +704,12 @@ public class FirmTypeSystem {
 		return mode;
 	}
 
+	private void recordPrimitiveType(final polyglot.types.Type x10Type, final Type firmType, final String mangled) {
+		firmTypes.put(x10Type, firmType);
+		primitiveTypes.add(x10Type);
+		NameMangler.addPrimitiveMangling(x10Type, mangled);
+	}
+
 	/**
 	 * Should be called before the firm-graph is constructed. This extra step
 	 * is necessary because at the time the type-system Object is created in
@@ -740,56 +721,56 @@ public class FirmTypeSystem {
 		/* we "lower" some well-known types directly to firm modes */
 		final Mode modePointer = Mode.getP();
 		final Type typePointer = new PrimitiveType(modePointer);
-		saveType(x10TypeSystem.pointer(), typePointer);
+		recordPrimitiveType(x10TypeSystem.pointer(), typePointer, "Pv");
 
 		final Mode modeLong = Mode.createIntMode("Long", Arithmetic.TwosComplement, 64, true, 64);
 		final Type typeLong = new PrimitiveType(modeLong);
 		typeLong.setAlignmentBytes(4);
-		saveType(x10TypeSystem.Long(), typeLong);
+		recordPrimitiveType(x10TypeSystem.Long(), typeLong, "x");
 
 		final Mode modeULong = Mode.createIntMode("ULong", Arithmetic.TwosComplement, 64, false, 64);
 		final Type typeULong = new PrimitiveType(modeULong);
 		typeULong.setAlignmentBytes(4);
-		saveType(x10TypeSystem.ULong(), typeULong);
+		recordPrimitiveType(x10TypeSystem.ULong(), typeULong, "y");
 
 		final Mode modeInt = Mode.createIntMode("Int", Arithmetic.TwosComplement, 32, true, 32);
 		final Type typeInt = new PrimitiveType(modeInt);
-		saveType(x10TypeSystem.Int(), typeInt);
+		recordPrimitiveType(x10TypeSystem.Int(), typeInt, "i");
 
 		final Mode modeUInt = Mode.createIntMode("UInt", Arithmetic.TwosComplement, 32, false, 32);
 		final Type typeUInt = new PrimitiveType(modeUInt);
-		saveType(x10TypeSystem.UInt(), typeUInt);
+		recordPrimitiveType(x10TypeSystem.UInt(), typeUInt, "j");
 
 		final Mode modeShort = Mode.createIntMode("Short", Arithmetic.TwosComplement, 16, true, 32);
 		final Type typeShort = new PrimitiveType(modeShort);
-		saveType(x10TypeSystem.Short(), typeShort);
+		recordPrimitiveType(x10TypeSystem.Short(), typeShort, "s");
 
 		final Mode modeUShort = Mode.createIntMode("UShort", Arithmetic.TwosComplement, 16, false, 32);
 		final Type typeUShort = new PrimitiveType(modeUShort);
-		saveType(x10TypeSystem.UShort(), typeUShort);
+		recordPrimitiveType(x10TypeSystem.UShort(), typeUShort, "t");
 
 		final Mode modeByte = Mode.createIntMode("Byte", Arithmetic.TwosComplement, 8, true, 32);
 		final Type typeByte = new PrimitiveType(modeByte);
-		saveType(x10TypeSystem.Byte(), typeByte);
+		recordPrimitiveType(x10TypeSystem.Byte(), typeByte, "a");
 
 		final Mode modeUByte = Mode.createIntMode("UByte", Arithmetic.TwosComplement, 8, false, 32);
 		final Type typeUByte = new PrimitiveType(modeUByte);
-		saveType(x10TypeSystem.UByte(), typeUByte);
+		recordPrimitiveType(x10TypeSystem.UByte(), typeUByte, "h");
 
 		/* since octopos has no real support for unicode yet, and we have a somewhat hardware-centric
 		 * project we go for 8bit-chars for now. (You can still use UTF-8 strings after all) */
 		final Mode modeChar = modeByte;
 		final Type typeChar = new PrimitiveType(modeChar);
-		saveType(x10TypeSystem.Char(), typeChar);
+		recordPrimitiveType(x10TypeSystem.Char(), typeChar, "c");
 
 		final Mode modeFloat = Mode.createFloatMode("Float", Arithmetic.IEE754, 8, 23);
 		final Type typeFloat = new PrimitiveType(modeFloat);
-		saveType(x10TypeSystem.Float(), typeFloat);
+		recordPrimitiveType(x10TypeSystem.Float(), typeFloat, "f");
 
 		final Mode modeDouble = Mode.createFloatMode("Double", Arithmetic.IEE754, 11, 52);
 		final Type typeDouble = new PrimitiveType(modeDouble);
 		typeLong.setAlignmentBytes(4);
-		saveType(x10TypeSystem.Double(), typeDouble);
+		recordPrimitiveType(x10TypeSystem.Double(), typeDouble, "d");
 
 		/* Note that the mode_b in firm can't be used here, since it is an
 		 * internal mode which cannot be used for fields/call parameters/return
@@ -797,12 +778,12 @@ public class FirmTypeSystem {
 		 * conditional jumps. */
 		final Mode modeBoolean = Mode.getBu();
 		final Type typeBoolean = new PrimitiveType(modeBoolean);
-		saveType(x10TypeSystem.Boolean(), typeBoolean);
+		recordPrimitiveType(x10TypeSystem.Boolean(), typeBoolean, "b");
 
-		final Type unknown = Type.getUnknown();
-		final Type nullRefType = new PointerType(unknown);
-		saveType(x10TypeSystem.Null(), nullRefType);
-		/* Note: there is no sensible firmCoreType for Null() */
+		/* do not fail for Null() types */
+		firmTypes.put(x10TypeSystem.Null(), typePointer);
+
+		NameMangler.addPrimitiveMangling(x10TypeSystem.Void(), "v");
 	}
 
 	/**

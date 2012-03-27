@@ -131,21 +131,9 @@ public final class NameMangler {
 	/**
 	 * Initializes mapping between primitive types and the appropriate name mangles.
 	 */
-	private static void setupPrimitiveTypesNameMangling() {
-		primMangleTable.put(typeSystem.Long(),    "x");
-		primMangleTable.put(typeSystem.ULong(),   "y");
-		primMangleTable.put(typeSystem.Int(),     "i");
-		primMangleTable.put(typeSystem.UInt(),    "j");
-		primMangleTable.put(typeSystem.Short(),   "s");
-		primMangleTable.put(typeSystem.UShort(),  "t");
-		primMangleTable.put(typeSystem.Byte(),    "a");
-		primMangleTable.put(typeSystem.UByte(),   "h");
-		primMangleTable.put(typeSystem.Char(),    "c");
-		primMangleTable.put(typeSystem.Float(),   "f");
-		primMangleTable.put(typeSystem.Double(),  "d");
-		primMangleTable.put(typeSystem.Boolean(), "b");
-		primMangleTable.put(typeSystem.pointer(), "Pv");
-		primMangleTable.put(typeSystem.Void(),    "v");
+	static void addPrimitiveMangling(final Type type, final String mangled) {
+		assert !primMangleTable.containsKey(type);
+		primMangleTable.put(type, mangled);
 	}
 
 	/**
@@ -155,7 +143,6 @@ public final class NameMangler {
 	public static void setup(final GenericTypeSystem typeSystem, final CompilerOptions options) {
 		NameMangler.typeSystem = typeSystem;
 		setupNameSubstitutions();
-		setupPrimitiveTypesNameMangling();
 		final MachineTriple target = options.getTargetTriple();
 		if (target.isDarwin() || target.isWindowsOS()) {
 			platformPrefix = "_";
