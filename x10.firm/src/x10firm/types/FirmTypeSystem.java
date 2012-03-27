@@ -500,7 +500,9 @@ public class FirmTypeSystem {
 			result.addSuperType(firmSuperType);
 			new Entity(result, "$super", firmSuperType);
 		} else if (flags.isStruct() || classType.isAnonymous()) {
-			/* no superclass */
+			final X10ClassType any = typeSystem.Any();
+			final Type firmAny = asClass(any);
+			result.addSuperType(firmAny);
 		} else if (flags.isInterface()) {
 			/* no superclass interface */
 			OO.setClassIsInterface(result, true);
@@ -512,18 +514,10 @@ public class FirmTypeSystem {
 
 		/* create interfaces */
 		final Set<polyglot.types.Type> interfaces = new LinkedHashSet<polyglot.types.Type>(classType.interfaces());
-		for (final polyglot.types.Type t : interfaces) {
-			final polyglot.types.Type iface = GenericTypeSystem.simplifyType(t);
+		for (final polyglot.types.Type iface : interfaces) {
 			assert ((polyglot.types.ClassType)iface).flags().isInterface() : "Not an interface: " + iface;
 			final Type firmIface = asClass(iface);
 			result.addSuperType(firmIface);
-		}
-
-		final X10ClassType astAny = typeSystem.Any();
-		if (noSuperType(result) && classType != astAny) {
-			/* Every X10 type implements Any */
-			final Type firmAny = asClass(astAny);
-			result.addSuperType(firmAny);
 		}
 
 		/* create fields */
@@ -559,10 +553,6 @@ public class FirmTypeSystem {
 		// Layouting of classes must be done explicitly by finishTypes
 
 		return result;
-	}
-
-	private static boolean noSuperType(final ClassType result) {
-		return result.getNSuperTypes() == 0;
 	}
 
 	/**
