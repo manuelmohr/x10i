@@ -23,9 +23,9 @@ import x10firm.goals.GoalSequence;
 import x10firm.goals.Linked;
 import x10firm.goals.LoweringFirm;
 import x10firm.goals.OptimizeFirm;
-import x10firm.goals.SourceGoalSequence;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
+import x10firm.visit.FirmGenerator;
 import x10firm.visit.StaticInitializer;
 
 /**
@@ -38,6 +38,7 @@ public class FirmScheduler extends X10Scheduler {
 
 	private final FirmTypeSystem firmTypeSystem;
 	private File asmOutput;
+	private final FirmGenerator generator;
 
 	/**
 	 * Initialize the scheduler.
@@ -46,7 +47,12 @@ public class FirmScheduler extends X10Scheduler {
 	 */
 	public FirmScheduler(final ExtensionInfo info) {
 		super(info);
-		firmTypeSystem = new FirmTypeSystem((GenericTypeSystem) info.typeSystem());
+		final GenericTypeSystem typeSystem = (GenericTypeSystem)info.typeSystem();
+		firmTypeSystem = new FirmTypeSystem(typeSystem);
+
+		final CompilerOptions options = (CompilerOptions) info.getOptions();
+		final X10NodeFactory_c nodeFactory = (X10NodeFactory_c) extInfo.nodeFactory();
+		generator = new FirmGenerator(firmTypeSystem, typeSystem, nodeFactory, options);
 	}
 
 	@Override
@@ -59,8 +65,7 @@ public class FirmScheduler extends X10Scheduler {
 		 */
 		final GoalSequence seq = new GoalSequence("FirmOutputSequence");
 
-		Goal loweringFirm = new LoweringFirm(this, firmTypeSystem);
-		loweringFirm = loweringFirm.intern(this);
+		final Goal loweringFirm = new LoweringFirm(this, generator).intern(this);
 		seq.append(loweringFirm);
 
 		final CompilerOptions options = (CompilerOptions) this.extInfo.getOptions();
@@ -178,22 +183,7 @@ public class FirmScheduler extends X10Scheduler {
 
 	@Override
 	public Goal CodeGenerated(final Job job) {
-
-		final GenericTypeSystem typeSystem = (GenericTypeSystem)extInfo.typeSystem();
-		final X10NodeFactory_c nodeFactory = (X10NodeFactory_c) extInfo.nodeFactory();
-
-		Goal firmGenerated = new FirmGenerated(job, typeSystem, firmTypeSystem, nodeFactory);
-		firmGenerated = firmGenerated.intern(this);
-
-		/*
-		 * Since source goals are per job/compilation unit/source file,
-		 * they must include their job into their hashCode for the internal
-		 * method.
-		 */
-
-		final SourceGoalSequence seq = new SourceGoalSequence("FirmTransformationSequence", job);
-		seq.append(firmGenerated);
-
-		return seq.intern(this);
+		final Goal firmGenerated = new FirmGenerated(job, generator).intern(this);
+		return firmGenerated;
 	}
 }

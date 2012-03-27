@@ -7,10 +7,7 @@ import polyglot.frontend.ExtensionInfo;
 import polyglot.frontend.Goal;
 import polyglot.frontend.Job;
 import polyglot.frontend.Scheduler;
-import x10.ast.X10NodeFactory_c;
 import x10firm.CompilerOptions;
-import x10firm.types.FirmTypeSystem;
-import x10firm.types.GenericTypeSystem;
 import x10firm.visit.FirmGenerator;
 import firm.Backend;
 import firm.Dump;
@@ -25,29 +22,21 @@ import firm.Util;
 public class LoweringFirm extends AllBarrierGoal {
 
 	private Goal prereqRedirection = null;
-
-	private FirmTypeSystem firmTypeSystem;
+	private FirmGenerator generator;
 
 	/** Constructos a new LoweringFirm goal. */
-	public LoweringFirm(final Scheduler scheduler, final FirmTypeSystem firmTypeSystem) {
+	public LoweringFirm(final Scheduler scheduler, final FirmGenerator generator) {
 		super("LoweringFirm", scheduler);
-		this.firmTypeSystem = firmTypeSystem;
+		this.generator = generator;
 	}
 
 	@Override
 	public boolean runTask() {
 		final ExtensionInfo info = scheduler.extensionInfo();
 		final CompilerOptions options = (CompilerOptions)info.getOptions();
-		final X10NodeFactory_c nodeFactory = (X10NodeFactory_c)info.nodeFactory();
-		final GenericTypeSystem x10TypeSystem = (GenericTypeSystem)info.typeSystem();
 
-		firmTypeSystem.finishTypeSystem();
-
-		// do post compile
-		final FirmGenerator firmGen = new FirmGenerator(firmTypeSystem, x10TypeSystem, nodeFactory, options);
-		firmGen.genPostCompile();
-
-		firmTypeSystem.finishTypeSystem();
+		generator.genPostCompile();
+		generator.getFirmTypeSystem().finishTypeSystem();
 
 		/* dump the firm typegraph */
 		if (options.isDumpFirmGraphs()) {
@@ -68,6 +57,13 @@ public class LoweringFirm extends AllBarrierGoal {
 		OO.lowerProgram();
 		Util.lowerSels();
 		Backend.lowerForTarget();
+
+		/* Dump the normal firm graph */
+		if (options.isDumpFirmGraphs()) {
+			for (Graph g : Program.getGraphs()) {
+				Dump.dumpGraph(g, "--lowered");
+			}
+		}
 
 		return true;
 	}

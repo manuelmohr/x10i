@@ -53,7 +53,7 @@ import firm.bindings.binding_typerep.ir_type_state;
 import firm.bindings.binding_typerep.ir_visibility;
 
 /**
- * Includes everything to map X10 types to Firm types
+ * Includes everything to map X10 types to Firm types.
  */
 public class FirmTypeSystem {
 	/** Maps polyglot types to firm types. */

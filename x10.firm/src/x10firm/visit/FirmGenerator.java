@@ -212,7 +212,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	private X10ConstructorInstance stringLiteralConstructor;
 
 	/**
-	 * Constructs a new X10FirmCodeGenerator.
+	 * Constructs a new FirmGenerator.
 	 */
 	public FirmGenerator(final FirmTypeSystem firmTypeSystem,
 			final GenericTypeSystem x10TypeSystem,
