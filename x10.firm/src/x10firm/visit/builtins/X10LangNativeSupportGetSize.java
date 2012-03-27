@@ -33,7 +33,7 @@ class X10LangNativeSupportGetSize implements BuiltinMethodGenerator {
 				returnType, null);
 		final MethodConstruction con = codeGenerator.getFirmConstruction();
 
-		final firm.Type firmType = firmTypeSystem.getFirmType(typeParameter);
+		final firm.Type firmType = firmTypeSystem.asType(typeParameter);
 		final Mode mode = firmTypeSystem.getFirmMode(returnType);
 		final int size = firmType.getSizeBytes();
 		final Node cnst = con.newConst(size, mode);

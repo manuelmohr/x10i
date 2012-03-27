@@ -398,16 +398,14 @@ public class FirmTypeSystem {
 		}
 
 		for (final polyglot.types.Type type : formalTypes) {
-			final polyglot.types.Type simpType = x10TypeSystem.getConcreteType(type);
-			parameterTypes[p++] = getFirmType(simpType);
+			parameterTypes[p++] = asType(type);
 		}
 		assert p == nParameters;
 
 		if (nResults > 0) {
 			assert nResults == 1;
 			final polyglot.types.Type type = methodInstance.returnType();
-			final polyglot.types.Type simpType = x10TypeSystem.getConcreteType(type);
-			resultTypes[0] = getFirmType(simpType);
+			resultTypes[0] = asType(type);
 		}
 
 		return new MethodType(parameterTypes, resultTypes);
@@ -459,18 +457,6 @@ public class FirmTypeSystem {
 	}
 
 	/**
-	 * Returns the firm type for a given polygot type.
-	 * @param type The polyglot type
-	 * @return The appropriate firm type for the given polyglot type
-	 */
-	public Type getFirmType(final polyglot.types.Type type) {
-		final Type ret = isFirmStructType(type) ? asClass(type) : asType(type);
-
-		assert ret != null;
-		return ret;
-	}
-
-	/**
 	 * Creates a method type for an X10 constructor.
 	 */
 	public MethodType getConstructorType(final X10ConstructorInstance instance) {
@@ -491,7 +477,7 @@ public class FirmTypeSystem {
 		if (x10TypeSystem.isStructType0(owner)) {
 			final int nParameters = formalTypes.size();
 			final polyglot.types.Type returnType = instance.returnType();
-			resultTypes = new Type[] {getFirmType(returnType)};
+			resultTypes = new Type[] {asType(returnType)};
 			parameterTypes = new Type[nParameters];
 		} else {
 			final int nParameters = formalTypes.size() + 1;
@@ -503,8 +489,7 @@ public class FirmTypeSystem {
 		}
 
 		for (final polyglot.types.Type type : formalTypes) {
-			final polyglot.types.Type simpType = x10TypeSystem.getConcreteType(type);
-			parameterTypes[p++] = getFirmType(simpType);
+			parameterTypes[p++] = asType(type);
 		}
 		assert p == parameterTypes.length;
 
@@ -556,7 +541,7 @@ public class FirmTypeSystem {
 		final Flags fieldFlags = field.flags();
 		final String name = NameMangler.mangleField(field);
 
-		final Type type = getFirmType(field.type());
+		final Type type = asType(field.type());
 		final firm.Type owner = fieldFlags.isStatic() ? Program.getGlobalType() : klass;
 		final Entity entity = new Entity(owner, name, type);
 
