@@ -176,7 +176,7 @@ public class FirmScheduler extends X10Scheduler {
 	}
 
 	private Goal StaticInitializer(final Job job) {
-		final TypeSystem_c ts = generator.getX10TypeSystem();
+		final TypeSystem_c ts = generator.getTypeSystem();
 		final X10NodeFactory_c nf = generator.getNodeFactory();
 		return new ValidatingVisitorGoal("StaticInitialized", job,
 				new StaticInitializer(job, ts, nf)).intern(this);

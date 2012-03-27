@@ -50,7 +50,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		this.falseBlock = falseBlock;
 		this.codeGenerator = codeGenerator;
 		this.con = codeGenerator.getFirmConstruction();
-		this.typeSystem = codeGenerator.getX10TypeSystem();
+		this.typeSystem = codeGenerator.getTypeSystem();
 		this.firmTypeSystem = codeGenerator.getFirmTypeSystem();
 	}
 

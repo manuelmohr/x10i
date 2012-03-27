@@ -112,14 +112,14 @@ public class FirmTypeSystem {
 	public static final String BOXED_VALUE = "__value__";
 
 	/** Reference to the generic type system. */
-	private final GenericTypeSystem x10TypeSystem;
+	private final GenericTypeSystem typeSystem;
 
 	/**
 	 * Construct a firm type system object.
-	 * @param x10TypeSystem The X10 type system
+	 * @param typeSystem The X10 type system
 	 */
-	public FirmTypeSystem(final GenericTypeSystem x10TypeSystem) {
-		this.x10TypeSystem = x10TypeSystem;
+	public FirmTypeSystem(final GenericTypeSystem typeSystem) {
+		this.typeSystem = typeSystem;
 	}
 
 	private void findExistingEntities() {
@@ -162,7 +162,7 @@ public class FirmTypeSystem {
 		findExistingEntities();
 		readFirmNativeTypesConfig(nativeTypesConfig);
 		initFirmTypes();
-		NameMangler.setup(x10TypeSystem, options);
+		NameMangler.setup(typeSystem, options);
 	}
 
 	private void readFirmNativeTypesConfig(final String firmNativeTypesFilename) {
@@ -182,7 +182,7 @@ public class FirmTypeSystem {
 				} catch (final NumberFormatException nfexc) {
 					throw new RuntimeException("Illegal size " + size  + " in " + firmNativeTypesFilename);
 				}
-				final X10ClassType klass = x10TypeSystem.load(qualifiedName);
+				final X10ClassType klass = typeSystem.load(qualifiedName);
 				x10NativeTypes.put(klass, NativeClassInfo.newNativeClassInfo(size));
 			}
 
@@ -201,9 +201,9 @@ public class FirmTypeSystem {
 	 * @return The boxing type for the given struct type
 	 */
 	public X10ClassType getBoxingType(final X10ClassType type) {
-		final X10ClassType concreteType = (X10ClassType) x10TypeSystem.getConcreteType(type);
+		final X10ClassType concreteType = (X10ClassType)typeSystem.getConcreteType(type);
 
-		assert x10TypeSystem.isStructType0(concreteType);
+		assert typeSystem.isStructType0(concreteType);
 
 		final X10ClassType ret = structBoxingTypes.get(concreteType);
 		if (ret != null)
@@ -211,13 +211,13 @@ public class FirmTypeSystem {
 
 		final Position pos = Position.COMPILER_GENERATED;
 
-		final X10ClassDef cd = new X10ClassDef_c(x10TypeSystem, null);
+		final X10ClassDef cd = new X10ClassDef_c(typeSystem, null);
 
 		// use a unique name for the boxing class
 		final String name = getUniqueBoxingName(concreteType);
 
 		// Get the "Object" class and set it as the super class
-		final X10ClassType objectType = x10TypeSystem.Object();
+		final X10ClassType objectType = typeSystem.Object();
 
 		cd.position(pos);
 		cd.name(Name.make(name));
@@ -246,9 +246,9 @@ public class FirmTypeSystem {
 			final List<ParameterType> paramTypes = subst.copyTypeParameters();
 			final List<polyglot.types.Type> argTypes = subst.copyTypeArguments();
 
-			final ThisDef thisDef = x10TypeSystem.thisDef(pos, Types.ref(ct));
+			final ThisDef thisDef = typeSystem.thisDef(pos, Types.ref(ct));
 			for (final MethodDef mDef : interfaceDef.methods()) {
-				final X10MethodDef md = x10TypeSystem.methodDef(pos, Types.ref(ct), Flags.PUBLIC, mDef.returnType(),
+				final X10MethodDef md = typeSystem.methodDef(pos, Types.ref(ct), Flags.PUBLIC, mDef.returnType(),
 						mDef.name(), mDef.formalTypes());
 				md.setTypeParameters(mDef.typeParameters());
 				md.setThisDef(thisDef);
@@ -271,7 +271,7 @@ public class FirmTypeSystem {
 					// formal type generic substitution
 					if (x instanceof ParameterType) {
 						fType = Types.ref(getConcreteTypeFromSubst(x, paramTypes, argTypes));
-						fName = x10TypeSystem.localDef(Position.COMPILER_GENERATED, fName.flags(), fType, fName.name());
+						fName = typeSystem.localDef(Position.COMPILER_GENERATED, fName.flags(), fType, fName.name());
 					}
 
 					formalNames.add(fName);
@@ -297,7 +297,7 @@ public class FirmTypeSystem {
 		final Ref<X10ClassType> boxType = Types.ref(concreteType);
 		final Name boxName = Name.make(BOXED_VALUE);
 		final Ref<X10ClassType> containerRef = Types.ref(ct);
-		final FieldDef boxValue = x10TypeSystem.fieldDef(pos, containerRef, Flags.PUBLIC, boxType, boxName);
+		final FieldDef boxValue = typeSystem.fieldDef(pos, containerRef, Flags.PUBLIC, boxType, boxName);
 		cd.addField(boxValue);
 
 		// preinit the type
@@ -344,7 +344,7 @@ public class FirmTypeSystem {
 		final Flags flags = methodInstance.flags();
 		final boolean isStatic = flags.isStatic();
 		final int nParameters = formalTypes.size() + (isStatic ? 0 : 1);
-		final int nResults = methodInstance.returnType() == x10TypeSystem.Void() ? 0 : 1;
+		final int nResults = methodInstance.returnType() == typeSystem.Void() ? 0 : 1;
 		final X10ClassType owner = (X10ClassType) methodInstance.container();
 		final Type[] parameterTypes = new firm.Type[nParameters];
 		final Type[] resultTypes = new firm.Type[nResults];
@@ -410,8 +410,8 @@ public class FirmTypeSystem {
 	 * @return True if we need the core type for the given type
 	 */
 	public boolean isFirmStructType(final polyglot.types.Type type) {
-		final polyglot.types.Type concrete = x10TypeSystem.getConcreteType(type);
-		return x10TypeSystem.isStructType(concrete) && !primitiveTypes.contains(concrete);
+		final polyglot.types.Type concrete = typeSystem.getConcreteType(type);
+		return typeSystem.isStructType(concrete) && !primitiveTypes.contains(concrete);
 	}
 
 	/**
@@ -432,7 +432,7 @@ public class FirmTypeSystem {
 		 *   in the implicit this pointer.
 		 */
 		int p = 0;
-		if (x10TypeSystem.isStructType0(owner)) {
+		if (typeSystem.isStructType0(owner)) {
 			final int nParameters = formalTypes.size();
 			final polyglot.types.Type returnType = instance.returnType();
 			resultTypes = new Type[] {asType(returnType)};
@@ -465,7 +465,7 @@ public class FirmTypeSystem {
 	 */
 	public firm.Type asType(final polyglot.types.Type type) {
 		/* strip type-constraints */
-		final polyglot.types.Type baseType = x10TypeSystem.getConcreteType(type);
+		final polyglot.types.Type baseType = typeSystem.getConcreteType(type);
 
 		firm.Type result = firmTypes.get(baseType);
 		if (result != null)
@@ -473,7 +473,7 @@ public class FirmTypeSystem {
 
 		result = asClass(baseType);
 		/* we have references to stuff unless it is a struct type */
-		if (!x10TypeSystem.isStructType0(baseType)) {
+		if (!typeSystem.isStructType0(baseType)) {
 			result = new PointerType(result);
 		}
 		firmTypes.put(baseType, result);
@@ -550,7 +550,7 @@ public class FirmTypeSystem {
 			result.addSuperType(firmIface);
 		}
 
-		final X10ClassType astAny = x10TypeSystem.Any();
+		final X10ClassType astAny = typeSystem.Any();
 		if (noSuperType(result) && classType != astAny) {
 			/* Every X10 type implements Any */
 			final Type firmAny = asClass(astAny);
@@ -618,7 +618,7 @@ public class FirmTypeSystem {
 	 * @return the firm type for a given ast-type.
 	 */
 	public firm.Type asClass(final polyglot.types.Type origType) {
-		final polyglot.types.Type type = x10TypeSystem.getConcreteType(origType);
+		final polyglot.types.Type type = typeSystem.getConcreteType(origType);
 
 		Type result = firmCoreTypes.get(type);
 		if (result != null)
@@ -639,7 +639,7 @@ public class FirmTypeSystem {
 		final Type firmType = asType(type);
 		Mode mode = firmType.getMode();
 		if (mode == null) {
-			assert x10TypeSystem.isStructType0(type);
+			assert typeSystem.isStructType0(type);
 			mode = Mode.getP();
 		}
 		return mode;
@@ -662,56 +662,56 @@ public class FirmTypeSystem {
 		/* we "lower" some well-known types directly to firm modes */
 		final Mode modePointer = Mode.getP();
 		final Type typePointer = new PrimitiveType(modePointer);
-		recordPrimitiveType(x10TypeSystem.pointer(), typePointer, "Pv");
+		recordPrimitiveType(typeSystem.pointer(), typePointer, "Pv");
 
 		final Mode modeLong = Mode.createIntMode("Long", Arithmetic.TwosComplement, 64, true, 64);
 		final Type typeLong = new PrimitiveType(modeLong);
 		typeLong.setAlignmentBytes(4);
-		recordPrimitiveType(x10TypeSystem.Long(), typeLong, "x");
+		recordPrimitiveType(typeSystem.Long(), typeLong, "x");
 
 		final Mode modeULong = Mode.createIntMode("ULong", Arithmetic.TwosComplement, 64, false, 64);
 		final Type typeULong = new PrimitiveType(modeULong);
 		typeULong.setAlignmentBytes(4);
-		recordPrimitiveType(x10TypeSystem.ULong(), typeULong, "y");
+		recordPrimitiveType(typeSystem.ULong(), typeULong, "y");
 
 		final Mode modeInt = Mode.createIntMode("Int", Arithmetic.TwosComplement, 32, true, 32);
 		final Type typeInt = new PrimitiveType(modeInt);
-		recordPrimitiveType(x10TypeSystem.Int(), typeInt, "i");
+		recordPrimitiveType(typeSystem.Int(), typeInt, "i");
 
 		final Mode modeUInt = Mode.createIntMode("UInt", Arithmetic.TwosComplement, 32, false, 32);
 		final Type typeUInt = new PrimitiveType(modeUInt);
-		recordPrimitiveType(x10TypeSystem.UInt(), typeUInt, "j");
+		recordPrimitiveType(typeSystem.UInt(), typeUInt, "j");
 
 		final Mode modeShort = Mode.createIntMode("Short", Arithmetic.TwosComplement, 16, true, 32);
 		final Type typeShort = new PrimitiveType(modeShort);
-		recordPrimitiveType(x10TypeSystem.Short(), typeShort, "s");
+		recordPrimitiveType(typeSystem.Short(), typeShort, "s");
 
 		final Mode modeUShort = Mode.createIntMode("UShort", Arithmetic.TwosComplement, 16, false, 32);
 		final Type typeUShort = new PrimitiveType(modeUShort);
-		recordPrimitiveType(x10TypeSystem.UShort(), typeUShort, "t");
+		recordPrimitiveType(typeSystem.UShort(), typeUShort, "t");
 
 		final Mode modeByte = Mode.createIntMode("Byte", Arithmetic.TwosComplement, 8, true, 32);
 		final Type typeByte = new PrimitiveType(modeByte);
-		recordPrimitiveType(x10TypeSystem.Byte(), typeByte, "a");
+		recordPrimitiveType(typeSystem.Byte(), typeByte, "a");
 
 		final Mode modeUByte = Mode.createIntMode("UByte", Arithmetic.TwosComplement, 8, false, 32);
 		final Type typeUByte = new PrimitiveType(modeUByte);
-		recordPrimitiveType(x10TypeSystem.UByte(), typeUByte, "h");
+		recordPrimitiveType(typeSystem.UByte(), typeUByte, "h");
 
 		/* since octopos has no real support for unicode yet, and we have a somewhat hardware-centric
 		 * project we go for 8bit-chars for now. (You can still use UTF-8 strings after all) */
 		final Mode modeChar = modeByte;
 		final Type typeChar = new PrimitiveType(modeChar);
-		recordPrimitiveType(x10TypeSystem.Char(), typeChar, "c");
+		recordPrimitiveType(typeSystem.Char(), typeChar, "c");
 
 		final Mode modeFloat = Mode.createFloatMode("Float", Arithmetic.IEE754, 8, 23);
 		final Type typeFloat = new PrimitiveType(modeFloat);
-		recordPrimitiveType(x10TypeSystem.Float(), typeFloat, "f");
+		recordPrimitiveType(typeSystem.Float(), typeFloat, "f");
 
 		final Mode modeDouble = Mode.createFloatMode("Double", Arithmetic.IEE754, 11, 52);
 		final Type typeDouble = new PrimitiveType(modeDouble);
 		typeLong.setAlignmentBytes(4);
-		recordPrimitiveType(x10TypeSystem.Double(), typeDouble, "d");
+		recordPrimitiveType(typeSystem.Double(), typeDouble, "d");
 
 		/* Note that the mode_b in firm can't be used here, since it is an
 		 * internal mode which cannot be used for fields/call parameters/return
@@ -719,12 +719,12 @@ public class FirmTypeSystem {
 		 * conditional jumps. */
 		final Mode modeBoolean = Mode.getBu();
 		final Type typeBoolean = new PrimitiveType(modeBoolean);
-		recordPrimitiveType(x10TypeSystem.Boolean(), typeBoolean, "b");
+		recordPrimitiveType(typeSystem.Boolean(), typeBoolean, "b");
 
 		/* do not fail for Null() types */
-		firmTypes.put(x10TypeSystem.Null(), typePointer);
+		firmTypes.put(typeSystem.Null(), typePointer);
 
-		NameMangler.addPrimitiveMangling(x10TypeSystem.Void(), "v");
+		NameMangler.addPrimitiveMangling(typeSystem.Void(), "v");
 	}
 
 	/**
@@ -775,7 +775,7 @@ public class FirmTypeSystem {
 
 		final List<MethodInstance> overrides = new LinkedList<MethodInstance>();
 
-		overrides.addAll(instance.overrides(x10TypeSystem.emptyContext()));
+		overrides.addAll(instance.overrides(typeSystem.emptyContext()));
 		final X10ClassType myClassType = (X10ClassType)instance.container();
 		// Watch out for constructors of classes with super classes
 		if (myClassType.superClass() != null && overrides.size() > 1) {
@@ -801,7 +801,7 @@ public class FirmTypeSystem {
 			for (final polyglot.types.Type type : clazz.typeArguments()) {
 				if (type instanceof ParameterType) {
 					final ParameterType tmp = (ParameterType)type;
-					map.add(tmp, x10TypeSystem.getConcreteType(tmp));
+					map.add(tmp, typeSystem.getConcreteType(tmp));
 				}
 			}
 
@@ -814,7 +814,7 @@ public class FirmTypeSystem {
 			// FIXME:  This is a hack to workaround a problem in X10.
 			final ParameterTypeMapping map = new ParameterTypeMapping();
 			for (final ParameterType pt : typeParameters) {
-				map.add(pt, x10TypeSystem.getConcreteType(pt));
+				map.add(pt, typeSystem.getConcreteType(pt));
 			}
 			classInstance = new GenericClassInstance(clazz.x10Def(), map);
 		}
@@ -857,7 +857,7 @@ public class FirmTypeSystem {
 	 */
 	public Entity getMethodEntity(final MethodInstance instance) {
 		final GenericClassContext context = getDefiningContext(instance);
-		final GenericMethodInstance gMethodInstance = new GenericMethodInstance(instance, x10TypeSystem);
+		final GenericMethodInstance gMethodInstance = new GenericMethodInstance(instance, typeSystem);
 		final firm.Type type = asFirmType(instance);
 		Entity entity = context.getMethodEntity(gMethodInstance);
 
@@ -905,7 +905,7 @@ public class FirmTypeSystem {
 				OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 			} else if (owner.flags().isInterface()) {
 				OO.setEntityBinding(entity, ddispatch_binding.bind_interface);
-			} else if (x10TypeSystem.isStructType0(owner)) {
+			} else if (typeSystem.isStructType0(owner)) {
 				// struct methods needn`t be dynamic
 				OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 			} else {
@@ -941,7 +941,7 @@ public class FirmTypeSystem {
 
 			assert firmCoreTypes.containsKey(mappedType) || firmTypes.containsKey(mappedType);
 
-			x10TypeSystem.addTypeMapping(param, mappedType);
+			typeSystem.addTypeMapping(param, mappedType);
 
 			if (firmCoreTypes.containsKey(mappedType))
 				firmCoreTypes.put(param, firmCoreTypes.get(mappedType));
@@ -957,7 +957,7 @@ public class FirmTypeSystem {
 	 */
 	public void popTypeMapping(final ParameterTypeMapping ptm) {
 		for (final ParameterType param : ptm.getKeySet()) {
-			x10TypeSystem.removeTypeMapping(param);
+			typeSystem.removeTypeMapping(param);
 
 			firmCoreTypes.remove(param);
 			firmTypes.remove(param);

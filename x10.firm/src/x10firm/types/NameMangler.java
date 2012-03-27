@@ -138,7 +138,6 @@ public final class NameMangler {
 
 	/**
 	 * Initializes the name mangler.
-	 * @param typeSystem Reference to the type system.
 	 */
 	public static void setup(final GenericTypeSystem typeSystem, final CompilerOptions options) {
 		NameMangler.typeSystem = typeSystem;

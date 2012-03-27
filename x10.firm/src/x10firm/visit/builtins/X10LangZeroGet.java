@@ -22,7 +22,7 @@ class X10LangZeroGet implements BuiltinMethodGenerator {
 	public void generate(final FirmGenerator codeGenerator, final MethodInstance meth,
 		                 final List<LocalInstance> formals) {
 		final FirmTypeSystem firmTypeSystem = codeGenerator.getFirmTypeSystem();
-		final GenericTypeSystem x10TypeSystem = codeGenerator.getX10TypeSystem();
+		final GenericTypeSystem typeSystem = codeGenerator.getTypeSystem();
 		final Entity entity = firmTypeSystem.getMethodEntity(meth);
 
 		assert meth.typeParameters().size() == 1;
@@ -35,7 +35,7 @@ class X10LangZeroGet implements BuiltinMethodGenerator {
 		final MethodConstruction con = codeGenerator.getFirmConstruction();
 
 		final Node ret;
-		if (!x10TypeSystem.isStructType0(typeParameter)) {
+		if (!typeSystem.isStructType0(typeParameter)) {
 			final Mode mode = firmTypeSystem.getFirmMode(typeParameter);
 			final Node node = con.newConst(mode.getNull());
 			final Node mem = con.getCurrentMem();
