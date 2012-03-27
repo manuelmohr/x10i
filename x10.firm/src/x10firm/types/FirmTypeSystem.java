@@ -183,9 +183,9 @@ public class FirmTypeSystem {
 			String line = null;
 			while ((line = in.readLine()) != null) {
 				final StringTokenizer tokenizer = new StringTokenizer(line);
-				assert tokenizer.countTokens() == 3 : "Illegal format in " + firmNativeTypesFilename;
-				final String packName  = tokenizer.nextToken();
-				final String className = tokenizer.nextToken();
+				if (tokenizer.countTokens() != 2)
+					throw new RuntimeException("Illegal format in " + firmNativeTypesFilename);
+				final String qualifiedName = tokenizer.nextToken();
 				int size = 0;
 
 				try {
@@ -193,7 +193,7 @@ public class FirmTypeSystem {
 				} catch (final NumberFormatException nfexc) {
 					throw new RuntimeException("Illegal size " + size  + " in " + firmNativeTypesFilename);
 				}
-				final X10ClassType klass = getNamedX10Type(packName, className);
+				final X10ClassType klass = x10TypeSystem.load(qualifiedName);
 				x10NativeTypes.put(klass, NativeClassInfo.newNativeClassInfo(size));
 			}
 
@@ -818,21 +818,6 @@ public class FirmTypeSystem {
 	}
 
 	/**
-	 * Returns an x10 type.
-	 *
-	 * @param packageName Package name of the x10 type
-	 * @param className Class name of the x10 type
-	 *
-	 * @return a class type for the given full class name
-	 */
-	public X10ClassType getNamedX10Type(final String packageName, final String className) {
-		final QName fullName = QName.make(packageName, className);
-		final X10ClassType x10Type = x10TypeSystem.load(fullName.toString());
-		return x10Type;
-	}
-
-	/**
-	 * Returns a firm entity corresponding to a constructor.
 	 * @param instance a constructor method instance
 	 * @return a Firm entity corresponding to the constructor
 	 */

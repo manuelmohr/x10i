@@ -7,6 +7,6 @@ extern void gen_platform_native_sizes(void);
 int main(void)
 {
 	gen_platform_native_sizes();
-	printf("x10.lang String %zu\n", sizeof(x10_string));
+	printf("x10.lang.String %zu\n", sizeof(x10_string));
 	return 0;
 }
