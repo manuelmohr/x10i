@@ -171,8 +171,6 @@ public class FirmTypeSystem {
 		readFirmNativeTypesConfig(nativeTypesConfig);
 		initFirmTypes();
 		NameMangler.setup(x10TypeSystem, options);
-		// Always generate the vtable for x10.lang.String.
-		asClass(x10TypeSystem.String());
 	}
 
 	private void readFirmNativeTypesConfig(final String firmNativeTypesFilename) {
