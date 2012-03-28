@@ -304,7 +304,7 @@ public class FirmTypeSystem {
 	 * @param methodInstance an X10 method instance, for which a Firm type is needed
 	 * @return corresponding Firm type
 	 */
-	public MethodType asFirmType(final MethodInstance methodInstance) {
+	private MethodType asFirmType(final MethodInstance methodInstance) {
 		final List<polyglot.types.Type> formalTypes
 			= methodInstance.formalTypes();
 		final Flags flags = methodInstance.flags();
@@ -508,7 +508,6 @@ public class FirmTypeSystem {
 		/* create interfaces */
 		final Set<polyglot.types.Type> interfaces = new LinkedHashSet<polyglot.types.Type>(classType.interfaces());
 		for (final polyglot.types.Type iface : interfaces) {
-			assert ((polyglot.types.ClassType)iface).flags().isInterface() : "Not an interface: " + iface;
 			final Type firmIface = asClass(iface);
 			result.addSuperType(firmIface);
 		}
@@ -787,6 +786,10 @@ public class FirmTypeSystem {
 		if (entity != null)
 			return entity;
 
+		return createMethodEntity(name, instance);
+	}
+
+	private Entity createMethodEntity(final String name, final MethodInstance instance) {
 		final firm.Type type = asFirmType(instance);
 		final X10ClassType owner = (X10ClassType) instance.container();
 		final String shortName = NameMangler.mangleMethodShort(instance);
@@ -798,6 +801,8 @@ public class FirmTypeSystem {
 		} else {
 			ownerFirm = Program.getGlobalType();
 		}
+
+		Entity entity = null;
 
 		/* try to get it from stdlib */
 		if (flags.isNative()) {
@@ -818,45 +823,44 @@ public class FirmTypeSystem {
 
 				/* fix up stuff, which was impossible to do during the import */
 				cEntity.setOwner(ownerFirm);
-				if (flags.isStatic()) {
-					OO.setEntityBinding(cEntity, ddispatch_binding.bind_static);
-				} else {
-					OO.setEntityBinding(cEntity, ddispatch_binding.bind_dynamic);
-				}
 
-				entities.put(name, cEntity);
-				return cEntity;
+				entity = cEntity;
 			}
 		}
 
-		final Entity newEntity = new Entity(ownerFirm, shortName, type);
-		newEntity.setLdIdent(name);
+		if (entity == null) {
+			entity = new Entity(ownerFirm, shortName, type);
+			entity.setLdIdent(name);
+		}
 
 		if (flags.isStatic()) {
-			OO.setEntityBinding(newEntity, ddispatch_binding.bind_static);
+			OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 		} else if (owner.flags().isInterface()) {
-			OO.setEntityBinding(newEntity, ddispatch_binding.bind_interface);
+			OO.setEntityBinding(entity, ddispatch_binding.bind_interface);
 		} else if (typeSystem.isStructType(owner)) {
-			// struct methods needn`t be dynamic
-			OO.setEntityBinding(newEntity, ddispatch_binding.bind_static);
+			/* structs have no virtual table */
+			OO.setEntityBinding(entity, ddispatch_binding.bind_static);
+		} else if (!instance.def().typeParameters().isEmpty()) {
+			/* generic methods have to be bound statically */
+			OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 		} else {
-			OO.setEntityBinding(newEntity, ddispatch_binding.bind_dynamic);
+			OO.setEntityBinding(entity, ddispatch_binding.bind_dynamic);
 		}
 
 		if (flags.isAbstract()) {
-			OO.setMethodAbstract(newEntity, true);
+			OO.setMethodAbstract(entity, true);
 		}
 		if (flags.isNative()) {
-			newEntity.setVisibility(ir_visibility.ir_visibility_external);
+			entity.setVisibility(ir_visibility.ir_visibility_external);
 		}
 
 		final MethodInstance m = getOverriddenMethod(instance);
 		if (m != null) {
 			final Entity ent = getMethodEntity(m);
-			newEntity.addEntityOverwrites(ent);
+			entity.addEntityOverwrites(ent);
 		}
 
-		entities.put(name, newEntity);
-		return newEntity;
+		entities.put(name, entity);
+		return entity;
 	}
 }
