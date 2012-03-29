@@ -1923,6 +1923,9 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		if (n.kind() == Special.THIS) {
 			final Node thisPointer = getThis();
 			setReturnNode(thisPointer);
+		} else if (n.kind() == Special.SUPER) {
+			final Node thisPointer = getThis();
+			setReturnNode(thisPointer);
 		} else {
 			throw new CodeGenError("Special not implemented yet", n);
 		}
