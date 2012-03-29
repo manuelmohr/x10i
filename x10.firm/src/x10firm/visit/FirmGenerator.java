@@ -213,7 +213,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	/** Holds all static initializer blocks. */
 	private static List<polyglot.ast.Initializer> staticInitBlocks = new LinkedList<polyglot.ast.Initializer>();
 
-	private Set<ClassMember> staticMonGenericMembers = new HashSet<ClassMember>();
+	private Set<ClassMember> staticNonGenericMembers = new HashSet<ClassMember>();
 	private X10ConstructorInstance stringLiteralConstructor;
 
 	/**
@@ -530,8 +530,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			if (def.typeParameters().isEmpty()) {
 				if (def.flags().isStatic()) {
 					// visit static non generic methods in generic classes only once
-					if (!staticMonGenericMembers.contains(member)) {
-						staticMonGenericMembers.add(member);
+					if (!staticNonGenericMembers.contains(member)) {
+						staticNonGenericMembers.add(member);
 						visitAppropriate(member);
 						return;
 					}
@@ -543,8 +543,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final X10FieldDecl fd = (X10FieldDecl)member;
 			final X10FieldDef def = fd.fieldDef();
 			if (def.flags().isStatic()) {
-				if (!staticMonGenericMembers.contains(member)) {
-					staticMonGenericMembers.add(member);
+				if (!staticNonGenericMembers.contains(member)) {
+					staticNonGenericMembers.add(member);
 					visitAppropriate(member);
 				}
 			} else {
