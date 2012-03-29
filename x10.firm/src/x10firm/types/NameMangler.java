@@ -234,7 +234,11 @@ public final class NameMangler {
 			final X10ClassType type) {
 		if (type.isMember()) {
 			final X10ClassType outer = (X10ClassType)type.outer();
-			mangleClass(buf, outer);
+			if (type.flags().isStatic()) {
+				mangleClassWithoutTypeArguments(buf, outer);
+			} else {
+				mangleClass(buf, outer);
+			}
 		}
 		mangleClassName(buf, type);
 		/* currently the generic code handling is a strange hybrid, sometimes
