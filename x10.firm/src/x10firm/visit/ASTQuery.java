@@ -17,9 +17,6 @@ import polyglot.ast.IntLit;
 import polyglot.ast.Return;
 import polyglot.ast.Stmt;
 import polyglot.ast.Unary;
-import polyglot.types.QName;
-import polyglot.types.SemanticException;
-import polyglot.types.Type;
 import polyglot.types.TypeSystem;
 import x10.ast.Closure;
 import x10.ast.ClosureCall;
@@ -146,13 +143,22 @@ public final class ASTQuery {
 	    return ret;
 	}
 
-	/** returns true if definition has @PerProcess annotation. */
+	/**
+	 * Returns true if definition has @PerProcess annotation.
+	 * @param typeSystem underlying typeSystem
+	 * @param def the definition to check
+	 */
 	public static boolean isPerProcess(final TypeSystem typeSystem, final X10Def def) {
+		/* Matze: we ignore @PerProcess for now, since we can't do anything
+		 * usefull with it yet without multi-tile support */
+		return false;
+		/*
 		try {
 			final Type type = typeSystem.systemResolver().findOne(QName.make("x10.compiler.PerProcess"));
 			return !def.annotationsMatching(type).isEmpty();
 		} catch (SemanticException e) {
 			return false;
 		}
+		*/
 	}
 }
