@@ -55,7 +55,16 @@ public abstract class Writer {
     { Marshal.DOUBLE.write(this, x); }
     public def writeBoolean(x: Boolean): void //throws IOException 
     { Marshal.BOOLEAN.write(this, x); }
-    
+
+    public def write(buf: Pointer, len: Int): void {
+        for (var i : Int = 0; i < len; ++i) {
+            val p = buf + i;
+            write(p.read[Byte]());
+        }
+    }
+
+    /* Matze: disabled the following for now
+
     // made final to satisfy the restrictions on template functions in c++
     public final def write[T](m: Marshal[T], x: T): void //throws IOException 
     { m.write(this, x); }
@@ -72,7 +81,5 @@ public abstract class Writer {
         }
     }
 
-    // DO NOT CALL from X10 code -- only used in @Native annotations
-    @Native("java", "x10.core.io.OutputStream.getNativeOutputStream(#this)")
-    public final def getNativeOutputStream(): OutputStreamWriter.OutputStream = null;
+    */
 }

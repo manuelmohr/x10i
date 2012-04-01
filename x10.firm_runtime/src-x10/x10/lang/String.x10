@@ -556,6 +556,12 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
     @Native("java", "((#this) + (#x))")
     @Native("c++",  "((#this) + (#x))")
     public native operator this + (x:String): String;
+
+    /**
+     * Returns a pointer to the string data.
+     * This is an internal function to be used by the runtime only.
+     */
+    public native def getPointer(): Pointer;
 }
 
 public type String(s:String) = String{self==s};

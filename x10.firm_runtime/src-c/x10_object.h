@@ -2,8 +2,12 @@
 #define X10_OBJECT_H_
 
 #include "x10.h"
+#include <liboo/rts_types.h>
 
-typedef struct x10_vtable x10_vtable;
+typedef struct x10_vtable {
+	const class_info_t *runtime_type_info;
+	void *fptrs[]; /* function pointer follow here */
+} x10_vtable;
 
 typedef struct {
 	const x10_vtable *vptr;

@@ -1,15 +1,8 @@
 #include <stdint.h>
 
-#include <liboo/rts_types.h>
-
 #include "x10_object.h"
 #include "x10_string.h"
 #include "util.h"
-
-struct x10_vtable {
-	const class_info_t *runtime_type_info;
-	void *fptrs[]; /* function pointer follow here */
-};
 
 x10_object *x10_alloc_object(const x10_vtable *vptr, size_t size)
 {

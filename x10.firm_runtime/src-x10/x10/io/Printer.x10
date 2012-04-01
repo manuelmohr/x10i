@@ -52,9 +52,10 @@ public class Printer extends FilterWriter {
     public def print(s:String): void {
         lock.lock();
         try {
-        	val ss = s != null ? s : "null";
-            val b = ss.bytes();
-            write(b, 0, b.size);
+            val ss = s != null ? s : "null";
+            val ptr = ss.getPointer();
+            val len = ss.length() * NativeSupport.getSize[Char]();
+            write(ptr, len);
         }
         catch (e: IOException) {
             // should use a finally block here but until we fix XTENLANG-203 this is better
@@ -65,6 +66,7 @@ public class Printer extends FilterWriter {
         lock.unlock();
     }
 
+    /*
     public def printf(fmt: String): void { printfArray(fmt, new Array[Any](0)); }
     public def printf(fmt: String, o1: Any): void { printfArray(fmt, [o1 as Any]); }
     public def printf(fmt: String, o1: Any, o2: Any): void { printfArray(fmt, [o1 as Any,o2]); }
@@ -85,6 +87,7 @@ public class Printer extends FilterWriter {
     public def printfArray(fmt: String, args: Array[Any](1)): void { 
         print(String.format(fmt, args));
     }
+    */
         
     public def flush(): void {
         try {

@@ -25,4 +25,7 @@ public class FilterWriter extends Writer {
 
     public def write(b: Byte): void //throws IOException 
     { w.write(b); }
+
+    public def write(ptr: Pointer, len: Int): void
+    { w.write(ptr, len); }
 }

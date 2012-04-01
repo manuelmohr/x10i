@@ -57,6 +57,15 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 	static {
 		allowedFiles.add("x10/compiler/CompilerFlags.x10");
 		allowedFiles.add("x10/compiler/InitDispatcher.x10");
+		allowedFiles.add("x10/io/Console.x10");
+		allowedFiles.add("x10/io/FilterWriter.x10");
+		allowedFiles.add("x10/io/InputStreamReader.x10");
+		allowedFiles.add("x10/io/Marshal.x10");
+		allowedFiles.add("x10/io/OutputStreamWriter.x10");
+		allowedFiles.add("x10/io/Printer.x10");
+		allowedFiles.add("x10/io/Reader.x10");
+		allowedFiles.add("x10/io/ReaderIterator.x10");
+		allowedFiles.add("x10/io/Writer.x10");
 		allowedFiles.add("x10/lang/Any.x10");
 		allowedFiles.add("x10/lang/Arithmetic.x10");
 		allowedFiles.add("x10/lang/Bitwise.x10");
@@ -87,6 +96,12 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedFiles.add("x10/lang/ULong.x10");
 		allowedFiles.add("x10/lang/UShort.x10");
 		allowedFiles.add("x10/lang/Zero.x10");
+		allowedFiles.add("x10/util/AbstractCollection.x10");
+		allowedFiles.add("x10/util/AbstractContainer.x10");
+		allowedFiles.add("x10/util/ArrayList.x10");
+		allowedFiles.add("x10/util/Box.x10");
+		allowedFiles.add("x10/util/Builder.x10");
+		allowedFiles.add("x10/util/Collection.x10");
 		allowedFiles.add("x10/util/concurrent/AtomicBoolean.x10");
 		allowedFiles.add("x10/util/concurrent/AtomicDouble.x10");
 		allowedFiles.add("x10/util/concurrent/AtomicFloat.x10");
@@ -94,16 +109,13 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedFiles.add("x10/util/concurrent/AtomicLong.x10");
 		allowedFiles.add("x10/util/concurrent/Fences.x10");
 		allowedFiles.add("x10/util/concurrent/Lock.x10");
-		allowedFiles.add("x10/util/AbstractContainer.x10");
-		allowedFiles.add("x10/util/AbstractCollection.x10");
-		allowedFiles.add("x10/util/ArrayList.x10");
-		allowedFiles.add("x10/util/Builder.x10");
-		allowedFiles.add("x10/util/Collection.x10");
 		allowedFiles.add("x10/util/Container.x10");
+		allowedFiles.add("x10/util/CollectionIterator.x10");
 		allowedFiles.add("x10/util/GrowableIndexedMemoryChunk.x10");
-		allowedFiles.add("x10/util/Indexed.x10");
 		allowedFiles.add("x10/util/IndexedMemoryChunk.x10");
+		allowedFiles.add("x10/util/Indexed.x10");
 		allowedFiles.add("x10/util/List.x10");
+		allowedFiles.add("x10/util/ListIterator.x10");
 		allowedFiles.add("x10/util/Ordered.x10");
 		allowedFiles.add("x10/util/StringBuilder.x10");
 	}

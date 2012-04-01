@@ -120,23 +120,29 @@ public abstract class Reader {
      */
     public final def read[T](m:Marshal[T]):T = m.read(this);
 
+    // Matze: disabled the following for now until we have better Array support
+
     /**
      * Fill the argument array by reading the next a.size elements. 
      * Throws IOException if not enough elements.
      */
+    /*
     public final def read[T](m:Marshal[T], a:Array[T](1)):void { 
         read[T](m, a, 0, a.size); 
     }
+    */
 
     /**
      * Fill len elements of the argument array starting at off.
      * Throws IOException if not enough elements.
      */
+    /*
     public final def read[T](m: Marshal[T], a:Array[T](1), off:Int, len:Int):void {
         for (var i: Int = off; i < off+len; i++) {
             a(i) = read[T](m);
         }
     }
+    */
     
     public def lines(): ReaderIterator[String] = new ReaderIterator[String](Marshal.LINE, this);
     public def chars(): ReaderIterator[Char] = new ReaderIterator[Char](Marshal.CHAR, this);

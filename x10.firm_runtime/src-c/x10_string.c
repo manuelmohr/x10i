@@ -376,3 +376,9 @@ x10_string *_ZN3x104lang6StringplEPN3x104lang6StringE(const x10_string *self, co
 	memcpy(&new_chars[self_len], x->chars, x_len*sizeof(new_chars[0]));
 	return x10_string_from_literal(len, new_chars);
 }
+
+// String.getPointer(): Pointer
+x10_pointer _ZN3x104lang6String10getPointerEv(const x10_string *self)
+{
+	return (x10_pointer)self->chars;
+}
