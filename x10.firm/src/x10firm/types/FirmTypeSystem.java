@@ -291,7 +291,7 @@ public class FirmTypeSystem {
 		final Type ft = asClass(boxedClassType);
 
 		final FieldInstance fieldInstance = boxValue.asInstance();
-		createField(fieldInstance, ft);
+		getFieldEntity(fieldInstance, ft);
 
 		structBoxingTypes.put(type, boxedClassType);
 		return boxedClassType;
@@ -458,18 +458,22 @@ public class FirmTypeSystem {
 	 * @param klass The defining class of the field
 	 * @return The firm entity for the field
 	 */
-	private Entity createField(final FieldInstance field, final firm.Type klass) {
-		final Flags fieldFlags = field.flags();
+	private Entity getFieldEntity(final FieldInstance field, final firm.Type owner) {
 		final String name = NameMangler.mangleField(field);
+		final Entity existingEntity = entities.get(name);
+		if (existingEntity != null)
+			return existingEntity;
 
 		final Type type = asType(field.type());
-		final firm.Type owner = fieldFlags.isStatic() ? Program.getGlobalType() : klass;
-		final Entity entity = new Entity(owner, name, type);
+		/* the asType call could have created the type for us */
+		final Entity existingEntity2 = entities.get(name);
+		if (existingEntity2 != null)
+			return existingEntity2;
 
+		final Entity entity = new Entity(owner, name, type);
 		entity.setLdIdent(name);
 		OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 		entities.put(name, entity);
-
 		return entity;
 	}
 
@@ -514,7 +518,8 @@ public class FirmTypeSystem {
 
 		/* create fields */
 		for (final FieldInstance field : classType.fields()) {
-			createField(field, result);
+			final Type owner = field.flags().isStatic() ? Program.getGlobalType() : result;
+			getFieldEntity(field, owner);
 		}
 
 		/* creates fields for properties */
@@ -528,7 +533,8 @@ public class FirmTypeSystem {
 			} else {
 				reinstantiated = field;
 			}
-			createField(reinstantiated, result);
+			final Type owner = reinstantiated.flags().isStatic() ? Program.getGlobalType() : result;
+			getFieldEntity(reinstantiated, result);
 		}
 
 		final Type global = Program.getGlobalType();
@@ -561,15 +567,17 @@ public class FirmTypeSystem {
 	 * Note: this will only work if createClassType was already called for
 	 * the fields class.
 	 */
-	public Entity getEntityForField(final FieldInstance instance) {
-		/* make sure enclosing class-type has been created,
-		 * this should in turn create all fields */
-		asClass(instance.container());
+	public Entity getFieldEntity(final FieldInstance instance) {
+		final firm.Type owner;
+		if (!instance.flags().isStatic()) {
+			/* make sure enclosing class-type has been created,
+			 * this should in turn create all fields */
+			owner = asClass(instance.container());
+		} else {
+			owner = Program.getGlobalType();
+		}
 
-		final String name = NameMangler.mangleField(instance);
-		final Entity entity = entities.get(name);
-		assert entity != null;
-		return entity;
+		return getFieldEntity(instance, owner);
 	}
 
 	/**

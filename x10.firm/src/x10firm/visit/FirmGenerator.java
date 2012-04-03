@@ -899,7 +899,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	}
 
 	private Node getFieldAddress(final Node objectPointer, final FieldInstance instance) {
-		final Entity entity = firmTypeSystem.getEntityForField(instance);
+		final Entity entity = firmTypeSystem.getFieldEntity(instance);
 		if (objectPointer != null) {
 			return con.newSel(objectPointer, entity);
 		}
@@ -966,7 +966,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			// Check for in place initializer
 			if (init != null && ASTQuery.isGlobalInit(typeSystem.getTypeSystem(), dec)) {
 				final Initializer initializer = exprToInitializer(init);
-				final Entity entity = firmTypeSystem.getEntityForField(instance);
+				final Entity entity = firmTypeSystem.getFieldEntity(instance);
 				entity.setInitializer(initializer);
 			}
 		}
