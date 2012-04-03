@@ -216,6 +216,9 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	private Set<ClassMember> staticNonGenericMembers = new HashSet<ClassMember>();
 	private X10ConstructorInstance stringLiteralConstructor;
 
+	/** true if we're in a subtree of a type with unbound type parameters. */
+	private boolean unboundTypeParameters;
+
 	/**
 	 * Constructs a new FirmGenerator.
 	 */
@@ -368,6 +371,9 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		} else if (n instanceof X10SourceFile_c) {
 			visit((X10SourceFile_c) n);
 			return;
+		} else if (n instanceof TypeDecl_c) {
+			/* nothing to do */
+			return;
 		}
 
 		throw new CodeGenError("Unhandled node type" + n.getClass(), n);
@@ -429,11 +435,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	private void visit(final X10SourceFile_c sourceFile) {
 		for (TopLevelDecl topLevelDeclaration : sourceFile.decls()) {
-			if (topLevelDeclaration instanceof X10ClassDecl) {
-				final X10ClassDecl decl = (X10ClassDecl) topLevelDeclaration;
-				if (decl.typeParameters().isEmpty())
-					visit(decl);
-			}
+			visit(topLevelDeclaration);
 		}
 	}
 
@@ -443,6 +445,15 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 		final X10ClassType classType = def.asType();
 
+		final boolean oldUnboundTypeParameters = unboundTypeParameters;
+		/* static classes are independent of their surroundings
+		 * (they only have an effect as an additional namespace) */
+		if (def.flags().isStatic())
+			unboundTypeParameters = false;
+		if (def.typeParameters().size() > 0 && typeSystem.getSubst().isIdentityInstantiation()) {
+			unboundTypeParameters = true;
+		}
+
 		if (classType.isX10Struct()) {
 			visitStruct(n);
 		} else if (classType.isClass() || classType.flags().isInterface()) {
@@ -450,6 +461,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		} else {
 			throw new CodeGenError("Unexpected class declaration", n);
 		}
+
+		unboundTypeParameters = oldUnboundTypeParameters;
 	}
 
 	/**
@@ -489,6 +502,22 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		finishConstruction(entity, savedConstruction);
 	}
 
+	private boolean fixStructTypename(final X10ClassDecl n, final ClassMember member) {
+		if (!(member instanceof MethodDecl_c))
+			return false;
+		final X10MethodDecl md = (X10MethodDecl)member;
+		final X10MethodDef def = md.methodDef();
+		final MethodInstance methodInstance = def.asInstance();
+		final String name = methodInstance.name().toString();
+
+		// Special case for typeName method -> must be created manually
+		if (name.equals("typeName") && def.formalNames().size() == 0) {
+			createStructTypeNameMethodBody(n, md);
+			return true;
+		}
+		return false;
+	}
+
 	private void visitStruct(final X10ClassDecl n) {
 
 		final ClassBody body = n.body();
@@ -498,23 +527,12 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final List<ClassMember> oldInitClassMembers = initClassMembers;
 			initClassMembers = inits;
 
-			for (ClassMember member : body.members()) {
-				if (member instanceof MethodDecl_c) {
-					final X10MethodDecl md = (X10MethodDecl)member;
-					final X10MethodDef def = md.methodDef();
-					final MethodInstance methodInstance = def.asInstance();
-					final String name = methodInstance.name().toString();
-
-					// Special case for typeName method -> must be created manually
-					if (name.equals("typeName") && def.formalNames().size() == 0) {
-						createStructTypeNameMethodBody(n, md);
-						continue;
-					}
-				}
+			for (final ClassMember member : members) {
+				if (!unboundTypeParameters && fixStructTypename(n, member))
+					continue;
 
 				visitMember(member);
 			}
-
 			assert initClassMembers == inits;
 			initClassMembers = oldInitClassMembers;
 		}
@@ -527,17 +545,17 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final X10MethodDef def = md.methodDef();
 			// don`t visit generic method declarations yet, because we don`t know the concrete type parameters.
 			// See X10Call_c
-			if (def.typeParameters().isEmpty()) {
-				if (def.flags().isStatic()) {
-					// visit static non generic methods in generic classes only once
-					if (!staticNonGenericMembers.contains(member)) {
-						staticNonGenericMembers.add(member);
-						visitAppropriate(member);
-						return;
-					}
-				} else {
+			if (!def.typeParameters().isEmpty())
+				return;
+			if (def.flags().isStatic()) {
+				// visit static non generic methods in generic classes only once
+				if (!staticNonGenericMembers.contains(member)) {
+					staticNonGenericMembers.add(member);
 					visitAppropriate(member);
+					return;
 				}
+			} else if (!unboundTypeParameters) {
+				visitAppropriate(member);
 			}
 		} else if (member instanceof FieldDecl_c) {
 			final X10FieldDecl fd = (X10FieldDecl)member;
@@ -547,7 +565,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 					staticNonGenericMembers.add(member);
 					visitAppropriate(member);
 				}
-			} else {
+			} else if (!unboundTypeParameters) {
 				visitAppropriate(member);
 			}
 		} else {
@@ -792,6 +810,9 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(final ConstructorDecl_c dec) {
+		if (unboundTypeParameters)
+			return;
+
 		final X10ConstructorDef      def      = (X10ConstructorDef) dec.constructorDef();
 		final Flags                  flags    = def.flags();
 		final X10ConstructorInstance instance = (X10ConstructorInstance) def.asInstance();
