@@ -26,6 +26,7 @@ public class CompilerOptions extends X10CompilerOptions {
 	private boolean useFirmLibraries = true;
 	private boolean linkStatically = false;
 	private boolean printCommandline = false;
+	private boolean dumpGoalGraph = false;
 
 	/** Constructs new CompilerOptions. */
 	public CompilerOptions(final ExtensionInfo extension) {
@@ -101,6 +102,11 @@ public class CompilerOptions extends X10CompilerOptions {
 		return printCommandline;
 	}
 
+	/** Returns true if goal graph should be dumped. */
+	public boolean dumpGoalGraph() {
+		return dumpGoalGraph;
+	}
+
 	private static void backendOption(final String option) {
 		FirmState.initializeFirm();
 		Backend.option(option);
@@ -134,6 +140,9 @@ public class CompilerOptions extends X10CompilerOptions {
 		} else if (args[i].equals("-dumpgraphs")) {
 			dumpFirmGraphs = true;
 			return index + 1;
+		} else if (args[i].equals("-dumpgoalgraph")) {
+			dumpGoalGraph = true;
+			return index + 1;
 		} else if (args[i].equals("-nativeTypesConfigPath")) {
 			nativeTypesConfigPath = args[i + 1];
 			return index + 2;
@@ -166,6 +175,8 @@ public class CompilerOptions extends X10CompilerOptions {
 				"Use soft float.");
 		usageForFlag(out, "-b<flag>",
 				"Set firm backend options (use -bhelp for additional help)");
+		usageForFlag(out, "-dumpgoalgraph",
+				"Dump compiler scheduler job graph");
 		usageForFlag(out, "-dumpgraphs",
 				"Dump FIRM graphs");
 		usageForFlag(out, "-nativeTypesConfigPath <pathname>",

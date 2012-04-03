@@ -79,4 +79,9 @@ public class AsmEmitted extends AllBarrierGoal {
 
 		return scheduler.End(job);
 	}
+
+	@Override
+	public String toString() {
+		return name() + " - " + output;
+	}
 }

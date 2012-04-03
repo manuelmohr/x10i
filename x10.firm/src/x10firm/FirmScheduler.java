@@ -1,7 +1,9 @@
 package x10firm;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,6 +42,7 @@ public class FirmScheduler extends X10Scheduler {
 	private final GenericTypeSystem typeSystem;
 	private final FirmTypeSystem firmTypeSystem;
 	private File asmOutput;
+	private final CompilerOptions options;
 	private final FirmGenerator generator;
 
 	/**
@@ -52,7 +55,7 @@ public class FirmScheduler extends X10Scheduler {
 		typeSystem = new GenericTypeSystem((TypeSystem_c)info.typeSystem());
 		firmTypeSystem = new FirmTypeSystem(typeSystem);
 
-		final CompilerOptions options = (CompilerOptions) info.getOptions();
+		options = (CompilerOptions) info.getOptions();
 		final X10NodeFactory_c nodeFactory = (X10NodeFactory_c) extInfo.nodeFactory();
 		generator = new FirmGenerator(firmTypeSystem, typeSystem, nodeFactory, options);
 	}
@@ -70,7 +73,6 @@ public class FirmScheduler extends X10Scheduler {
 		final Goal loweringFirm = new LoweringFirm(this, generator).intern(this);
 		seq.append(loweringFirm);
 
-		final CompilerOptions options = (CompilerOptions) this.extInfo.getOptions();
 		if (options.x10_config.OPTIMIZE) {
 			Goal optimized = new OptimizeFirm(this);
 			optimized = optimized.intern(this);
@@ -189,5 +191,30 @@ public class FirmScheduler extends X10Scheduler {
 	public Goal CodeGenerated(final Job job) {
 		final Goal firmGenerated = new FirmGenerated(job, generator).intern(this);
 		return firmGenerated;
+	}
+
+	private void dumpGoalGraph(final String filename) {
+		try {
+			final FileOutputStream out = new FileOutputStream(filename);
+			final PrintWriter writer = new PrintWriter(out);
+			final Goal root = EndAll();
+			GoalGraphDumper.dumpGoalGraph(writer, root);
+			writer.close();
+			out.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public boolean runToCompletion() {
+		if (options.dumpGoalGraph()) {
+			dumpGoalGraph("goalgraph-before.vcg");
+		}
+		final boolean result = super.runToCompletion();
+		if (options.dumpGoalGraph()) {
+			dumpGoalGraph("goalgraph-after.vcg");
+		}
+		return result;
 	}
 }
