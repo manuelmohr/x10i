@@ -6,7 +6,8 @@ import java.util.Map;
 
 import polyglot.types.FieldInstance;
 import polyglot.types.Name;
-import polyglot.types.QName;
+import polyglot.types.Package;
+import polyglot.types.Ref;
 import polyglot.types.Type;
 import polyglot.util.UniqueID;
 import x10.types.MethodInstance;
@@ -176,14 +177,6 @@ public final class NameMangler {
 		mangleIdentifier(buf, name.toString());
 	}
 
-	private static void mangleQName(final StringBuilder buf,
-			final QName qname) {
-		final QName prefix = qname.qualifier();
-		if (prefix != null)
-			mangleQName(buf, prefix);
-		mangleName(buf, qname.name());
-	}
-
 	private static void mangleTypeParameterInstantiation(final StringBuilder buf,
 			final List<ParameterType> typeParameters) {
 		if (typeParameters == null || typeParameters.size() == 0)
@@ -222,8 +215,18 @@ public final class NameMangler {
 		if (type.isAnonymous()) {
 			mangleAnonymousClassName(buf, type);
 		} else {
-			mangleQName(buf, type.fullName());
+			mangleName(buf, type.name());
 		}
+	}
+
+	private static void manglePackage(final StringBuilder buf,
+			final Package pkg) {
+		if (pkg == null)
+			return;
+		final Ref<? extends Package> outer = pkg.prefix();
+		if (outer != null)
+			manglePackage(buf, outer.get());
+		mangleName(buf, pkg.name());
 	}
 
 	/**
@@ -239,6 +242,9 @@ public final class NameMangler {
 			} else {
 				mangleClass(buf, outer);
 			}
+		} else {
+			final Package pkg = type.package_();
+			manglePackage(buf, pkg);
 		}
 		mangleClassName(buf, type);
 		/* currently the generic code handling is a strange hybrid, sometimes
@@ -259,6 +265,9 @@ public final class NameMangler {
 		if (type.isMember()) {
 			final X10ClassType outer = (X10ClassType)type.outer();
 			mangleClassWithoutTypeArguments(buf, outer);
+		} else {
+			final Package pkg = type.package_();
+			manglePackage(buf, pkg);
 		}
 		mangleClassName(buf, type);
 	}
@@ -407,7 +416,11 @@ public final class NameMangler {
 		buf.append(MANGLE_PREFIX);
 		buf.append(QUAL_START);
 		final X10ClassType container = (X10ClassType)instance.container();
-		mangleClass(buf, container);
+		if (instance.flags().isStatic()) {
+			mangleClassWithoutTypeArguments(buf, container);
+		} else {
+			mangleClass(buf, container);
+		}
 		mangleIdentifier(buf, instance.name().toString());
 		buf.append(QUAL_END);
 		return buf.toString();
