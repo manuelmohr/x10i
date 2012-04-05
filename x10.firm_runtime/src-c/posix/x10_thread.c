@@ -147,7 +147,13 @@ void x10_thread_interrupt(x10_thread *self)
 	}
 }
 
-void _ZN3x104lang6Thread18threadStartHook___Ev(x10_thread *);
+void _ZN3x104lang6Thread3runEv(x10_thread *);
+
+/* avoid linker error if Thread class is not compiled */
+void __attribute__((weak)) _ZN3x104lang6Thread3runEv(x10_thread *thread)
+{
+	(void)thread;
+}
 
 // Thread start routine.
 static void *thread_start_routine(void *arg)
@@ -174,7 +180,7 @@ static void *thread_start_routine(void *arg)
 	__thread_start_trap();
 
 	// call the thread start hook
-	_ZN3x104lang6Thread18threadStartHook___Ev(tp);
+	_ZN3x104lang6Thread3runEv(tp);
 
 	// finished running
 	tp->__thread_running = false;

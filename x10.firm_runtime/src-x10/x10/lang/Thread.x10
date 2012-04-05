@@ -22,10 +22,10 @@ import x10.io.SerialData;
  */
 @NativeRep("java", "x10.runtime.impl.java.Thread", null, "x10.runtime.impl.java.Thread.$RTT")
 @NativeRep("c++", "x10aux::ref<x10::lang::Thread>", "x10::lang::Thread", null)
-class Thread implements CustomSerialization {
+abstract class Thread implements CustomSerialization {
     /** Call the "operator()" method.
         Hack, so the native runtime does not need to call a dynamically bound method. */
-    private def threadStartHook___() { this(); }
+    private def run():void { this(); }
 
     public native def this(String);
 
@@ -49,7 +49,7 @@ class Thread implements CustomSerialization {
 
     public native def home():Place;
 
-    public native operator this():void;
+    public abstract operator this():void;
 
     /**
      * Serialization of Thread objects is forbidden.
