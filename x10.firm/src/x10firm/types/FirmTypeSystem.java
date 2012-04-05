@@ -18,6 +18,7 @@ import polyglot.types.Flags;
 import polyglot.types.LocalDef;
 import polyglot.types.MethodDef;
 import polyglot.types.Name;
+import polyglot.types.QName;
 import polyglot.types.Ref;
 import polyglot.types.TypeSystem_c;
 import polyglot.types.Types;
@@ -98,12 +99,7 @@ public class FirmTypeSystem {
 	}
 
 	/** Maps between X10ClassTypes and the appropriate native class info. */
-	private final Map<X10ClassType, NativeClassInfo> x10NativeTypes
-		= new HashMap<X10ClassType, NativeClassInfo>();
-
-	/** Maps between firm class types and the appropriate native object size. */
-	private final Map<ClassType, NativeClassInfo> firmNativeTypes
-		= new HashMap<ClassType, NativeClassInfo>();
+	private final Map<String, NativeClassInfo> x10NativeTypes = new HashMap<String, NativeClassInfo>();
 
 	/** Name of the boxed value. */
 	public static final String BOXED_VALUE = "__value__";
@@ -172,15 +168,15 @@ public class FirmTypeSystem {
 				if (tokenizer.countTokens() != 2)
 					throw new RuntimeException("Illegal format in " + firmNativeTypesFilename);
 				final String qualifiedName = tokenizer.nextToken();
-				int size = 0;
-
+				final String sizeString = tokenizer.nextToken();
+				final int size;
 				try {
-					size = Integer.parseInt(tokenizer.nextToken());
-				} catch (final NumberFormatException nfexc) {
-					throw new RuntimeException("Illegal size " + size  + " in " + firmNativeTypesFilename);
+					size = Integer.parseInt(sizeString);
+				} catch (final NumberFormatException e) {
+					throw new RuntimeException("Illegal size " + sizeString + " in " + firmNativeTypesFilename);
 				}
-				final X10ClassType klass = typeSystem.getTypeSystem().load(qualifiedName);
-				x10NativeTypes.put(klass, NativeClassInfo.newNativeClassInfo(size));
+				final NativeClassInfo info = NativeClassInfo.newNativeClassInfo(size);
+				x10NativeTypes.put(qualifiedName, info);
 			}
 
 			in.close();
@@ -352,10 +348,6 @@ public class FirmTypeSystem {
 		}
 
 		klass.layoutFields();
-		// set the appropriate native size of the firm type
-		final NativeClassInfo classInfo = firmNativeTypes.get(klass);
-		if (classInfo != null)
-			klass.setSizeBytes(classInfo.getSize());
 		klass.finishLayout();
 	}
 
@@ -470,6 +462,8 @@ public class FirmTypeSystem {
 		if (existingEntity2 != null)
 			return existingEntity2;
 
+		/* we mustn't create entities in native classes with known size */
+		assert owner.getTypeState() != ir_type_state.layout_fixed;
 		final Entity entity = new Entity(owner, name, type);
 		entity.setLdIdent(name);
 		OO.setEntityBinding(entity, ddispatch_binding.bind_static);
@@ -481,9 +475,11 @@ public class FirmTypeSystem {
 	private firm.Type createClassType(final X10ClassType classType) {
 		final Flags flags = classType.flags();
 		final ClassType result = new ClassType(classType.toString());
-		final NativeClassInfo classInfo = x10NativeTypes.get(classType);
+		final QName qname = classType.fullName();
+		final NativeClassInfo classInfo = x10NativeTypes.get(qname.toString());
 		if (classInfo != null) {
-			firmNativeTypes.put(result, classInfo);
+			result.setSizeBytes(classInfo.getSize());
+			result.setTypeState(ir_type_state.layout_fixed);
 		}
 
 		/* put the class into the core types already, because we could
