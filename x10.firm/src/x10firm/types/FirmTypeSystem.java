@@ -633,14 +633,16 @@ public class FirmTypeSystem {
 		final Type typePointer = new PrimitiveType(modePointer);
 		recordPrimitiveType(typeSystem.pointer(), typePointer, "Pv");
 
+		final int maxAlign = 4;
+
 		final Mode modeLong = Mode.createIntMode("Long", Arithmetic.TwosComplement, 64, true, 64);
 		final Type typeLong = new PrimitiveType(modeLong);
-		typeLong.setAlignmentBytes(4);
+		typeLong.setAlignmentBytes(maxAlign);
 		recordPrimitiveType(x10TypeSystem.Long(), typeLong, "x");
 
 		final Mode modeULong = Mode.createIntMode("ULong", Arithmetic.TwosComplement, 64, false, 64);
 		final Type typeULong = new PrimitiveType(modeULong);
-		typeULong.setAlignmentBytes(4);
+		typeULong.setAlignmentBytes(maxAlign);
 		recordPrimitiveType(x10TypeSystem.ULong(), typeULong, "y");
 
 		final Mode modeInt = Mode.createIntMode("Int", Arithmetic.TwosComplement, 32, true, 32);
@@ -679,7 +681,7 @@ public class FirmTypeSystem {
 
 		final Mode modeDouble = Mode.createFloatMode("Double", Arithmetic.IEE754, 11, 52);
 		final Type typeDouble = new PrimitiveType(modeDouble);
-		typeLong.setAlignmentBytes(4);
+		typeLong.setAlignmentBytes(maxAlign);
 		recordPrimitiveType(x10TypeSystem.Double(), typeDouble, "d");
 
 		/* Note that the mode_b in firm can't be used here, since it is an

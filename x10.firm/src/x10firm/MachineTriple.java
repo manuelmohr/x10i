@@ -27,9 +27,10 @@ public final class MachineTriple {
 		if (!matcher.matches())
 			throw new UsageError("Invalid target triple: \"" + triple + "\"");
 
-		cpu = matcher.group(1);
-		String newManufacturer = matcher.group(2);
-		String newOperatingSystem = matcher.group(3);
+		int g = 1;
+		cpu = matcher.group(g++);
+		String newManufacturer = matcher.group(g++);
+		String newOperatingSystem = matcher.group(g++);
 
 		/** some people leave out the manifacturere, in combination with
 		 * the "linux-gnu" operating system the parser gets confused and
