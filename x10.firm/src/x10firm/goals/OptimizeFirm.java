@@ -1,10 +1,7 @@
 package x10firm.goals;
 
-import polyglot.frontend.AllBarrierGoal;
+import polyglot.frontend.AbstractGoal_c;
 import polyglot.frontend.ExtensionInfo;
-import polyglot.frontend.Goal;
-import polyglot.frontend.Job;
-import polyglot.frontend.Scheduler;
 import x10firm.CompilerOptions;
 
 import com.sun.jna.Pointer;
@@ -16,14 +13,14 @@ import firm.Program;
 /**
  * This defines the lowering pass.
  */
-public class OptimizeFirm extends AllBarrierGoal {
+public class OptimizeFirm extends AbstractGoal_c {
 
 	private static final int INLINE_THRESHOLD = 0;
 	private static final int INLINE_MAXSIZE = 1000;
 
-	/** Constructos a new OptimizeFirm goal. */
-	public OptimizeFirm(final Scheduler scheduler) {
-		super("OptimizeFirm", scheduler);
+	/** Constructs a new OptimizeFirm goal. */
+	public OptimizeFirm() {
+		super("OptimizeFirm");
 	}
 
 	@Override
@@ -89,10 +86,5 @@ public class OptimizeFirm extends AllBarrierGoal {
 		firm.bindings.binding_iroptimize.optimize_class_casts();
 		firm.bindings.binding_lowering.lower_const_code();
 		firm.bindings.binding_iroptimize.inline_functions(INLINE_MAXSIZE, INLINE_THRESHOLD, null);
-	}
-
-	@Override
-	public Goal prereqForJob(final Job job) {
-		return null;
 	}
 }

@@ -111,8 +111,9 @@ public class FirmTypeSystem {
 	 * Construct a firm type system object.
 	 * @param typeSystem The X10 type system
 	 */
-	public FirmTypeSystem(final GenericTypeSystem typeSystem) {
+	public FirmTypeSystem(final GenericTypeSystem typeSystem, final CompilerOptions options) {
 		this.typeSystem = typeSystem;
+		init(options);
 	}
 
 	private void findExistingEntities() {
@@ -147,7 +148,7 @@ public class FirmTypeSystem {
 	private boolean inited = false;
 
 	/** Initializes the firm type system. */
-	public void init(final CompilerOptions options) {
+	private void init(final CompilerOptions options) {
 		if (inited)
 			return;
 		final String nativeTypesConfig = options.getFirmNativeTypesFilename();

@@ -5,16 +5,11 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
-import polyglot.frontend.Compiler;
-import polyglot.frontend.ExtensionInfo;
-import polyglot.main.Options;
+import polyglot.frontend.AbstractGoal_c;
 import polyglot.util.ErrorInfo;
 import polyglot.util.ErrorQueue;
-import polyglot.visit.PostCompiled;
-import x10cpp.visit.X10CPPTranslator;
 import x10firm.CompilerOptions;
 import x10firm.FirmState;
 import x10firm.MachineTriple;
@@ -22,15 +17,18 @@ import x10firm.MachineTriple;
 /**
  * Final Goal, which links the generated asm with the stdlib.
  */
-public class Linked extends PostCompiled {
+public class Linked extends AbstractGoal_c {
 	private CompilerOptions options;
 	private final File asmFile;
+	private final ErrorQueue errorQueue;
 
 	/** Constructs a new Linked goal. */
-	public Linked(final ExtensionInfo extInfo, final File asmFile) {
-		super(extInfo);
-		options = (CompilerOptions)extInfo.getOptions();
+	public Linked(final CompilerOptions options, final File asmFile,
+			final ErrorQueue errorQueue) {
+		super("Linked");
+		this.options = options;
 		this.asmFile = asmFile;
+		this.errorQueue = errorQueue;
 	}
 
 	private void printCommandline(final String[] cmdLine) {
@@ -77,9 +75,7 @@ public class Linked extends PostCompiled {
 	}
 
 	@Override
-	protected boolean invokePostCompiler(final Options opts, final Compiler compiler,
-			final ErrorQueue eq) {
-
+	public boolean runTask() {
 		final String exeFilename = options.executable_path == null
 		                           ? "a.out"
 		                           : options.executable_path;
@@ -138,11 +134,37 @@ public class Linked extends PostCompiled {
 		cmd.add("-o");
 		cmd.add(exeFilename);
 
-		// Reuse the C++ backend.
 		final String[] cmdLine = cmd.toArray(new String[0]);
 		printCommandline(cmdLine);
-		if (!X10CPPTranslator.doPostCompile(options, eq, Collections.<String>emptyList(), cmdLine)) {
-			eq.enqueue(ErrorInfo.POST_COMPILER_ERROR, "assembling and linking failed");
+
+		try {
+			final Runtime runtime = Runtime.getRuntime();
+			final Process process = runtime.exec(cmdLine);
+
+			final InputStreamReader err = new InputStreamReader(process.getErrorStream());
+			try {
+				final int bufferSize = 256;
+				final char[] c = new char[bufferSize];
+				final StringBuffer sb = new StringBuffer();
+				int len;
+				while ((len = err.read(c)) > 0) {
+					sb.append(String.valueOf(c, 0, len));
+				}
+
+				if (sb.length() != 0) {
+					errorQueue.enqueue(ErrorInfo.POST_COMPILER_ERROR, sb.toString());
+				}
+			} finally {
+				err.close();
+			}
+
+			final int ret = process.waitFor();
+			if (ret != 0) {
+				errorQueue.enqueue(ErrorInfo.POST_COMPILER_ERROR, "assembling and linking failed");
+				return false;
+			}
+		} catch (Exception e) {
+			errorQueue.enqueue(ErrorInfo.POST_COMPILER_ERROR, "assembling and linking failed");
 			return false;
 		}
 

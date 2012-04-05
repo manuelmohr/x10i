@@ -222,21 +222,21 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	/**
 	 * Constructs a new FirmGenerator.
 	 */
-	public FirmGenerator(final FirmTypeSystem firmTypeSystem,
-			final GenericTypeSystem typeSystem,
+	public FirmGenerator(final TypeSystem_c x10TypeSystem,
 			final X10NodeFactory_c nodeFactory,
 			final CompilerOptions options) {
 
-		this.firmTypeSystem = firmTypeSystem;
-		this.typeSystem     = typeSystem;
-		this.xnf            = nodeFactory;
-		this.options        = options;
+		typeSystem = new GenericTypeSystem(x10TypeSystem);
+		firmTypeSystem = new FirmTypeSystem(typeSystem, options);
+		xnf = nodeFactory;
+		this.options = options;
 	}
 
 	/** Performs all post compile tasks. */
 	public void genPostCompile() {
 		genGenericCode();
 		genStaticInitializationSupportCode();
+		firmTypeSystem.finishTypeSystem();
 	}
 
 	/** Generates the static initialization constructor. */

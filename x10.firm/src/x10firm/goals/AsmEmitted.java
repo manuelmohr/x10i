@@ -3,12 +3,8 @@ package x10firm.goals;
 import java.io.File;
 import java.io.IOException;
 
-import polyglot.frontend.AllBarrierGoal;
-import polyglot.frontend.Goal;
-import polyglot.frontend.Job;
-import polyglot.frontend.Scheduler;
+import polyglot.frontend.AbstractGoal_c;
 import x10firm.CompilerOptions;
-import x10firm.ExtensionInfo;
 import firm.Backend;
 import firm.Dump;
 import firm.Graph;
@@ -19,16 +15,14 @@ import firm.bindings.binding_iroptimize;
 /**
  * Assembler emission goal.
  */
-public class AsmEmitted extends AllBarrierGoal {
+public class AsmEmitted extends AbstractGoal_c {
 	private final File output;
 
 	private static final String COMPILATION_UNIT_NAME = "x10program";
 
-	private Goal prereqRedirection = null;
-
 	/** Constructs a new AsmEmitted goal. */
-	public AsmEmitted(final Scheduler scheduler, final File output) {
-		super("AsmEmitted", scheduler);
+	public AsmEmitted(final File output) {
+		super("AsmEmitted");
 		this.output = output;
 	}
 
@@ -59,25 +53,6 @@ public class AsmEmitted extends AllBarrierGoal {
 		}
 
 		return true;
-	}
-
-	@Override
-	public void addPrereq(final Goal goal) {
-		if (prereqRedirection == null) {
-			super.addPrereq(goal);
-		} else {
-			prereqRedirection.addPrereq(goal);
-		}
-	}
-
-	@Override
-	public Goal prereqForJob(final Job job) {
-		// TODO DELETE ME: Delete the second condition when library support is implemented
-		if (!scheduler.shouldCompile(job) && !ExtensionInfo.isAllowedClassName(job.toString())) {
-			return null;
-		}
-
-		return scheduler.End(job);
 	}
 
 	@Override

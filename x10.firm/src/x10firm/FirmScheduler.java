@@ -7,28 +7,20 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
-import polyglot.ast.NodeFactory;
-import polyglot.frontend.AllBarrierGoal;
-import polyglot.frontend.BarrierGoal;
 import polyglot.frontend.Goal;
 import polyglot.frontend.Job;
-import polyglot.frontend.VisitorGoal;
-import polyglot.types.TypeSystem;
+import polyglot.frontend.SourceGoal_c;
 import polyglot.types.TypeSystem_c;
-import polyglot.visit.NodeVisitor;
+import polyglot.util.ErrorQueue;
 import x10.ExtensionInfo;
 import x10.ExtensionInfo.X10Scheduler;
 import x10.ast.X10NodeFactory_c;
 import x10c.visit.ClosureRemover;
 import x10firm.goals.AsmEmitted;
 import x10firm.goals.FirmGenerated;
-import x10firm.goals.GoalSequence;
 import x10firm.goals.Linked;
 import x10firm.goals.LoweringFirm;
 import x10firm.goals.OptimizeFirm;
-import x10firm.types.FirmTypeSystem;
-import x10firm.types.GenericTypeSystem;
-import x10firm.visit.FirmGenerator;
 import x10firm.visit.StaticInitializer;
 
 /**
@@ -39,11 +31,22 @@ public class FirmScheduler extends X10Scheduler {
 	private static final String ASM_PREFIX = "x10firm_";
 	private static final String ASM_SUFFIX = ".s";
 
-	private final GenericTypeSystem typeSystem;
-	private final FirmTypeSystem firmTypeSystem;
 	private File asmOutput;
+	private final TypeSystem_c typeSystem;
 	private final CompilerOptions options;
-	private final FirmGenerator generator;
+	private final X10NodeFactory_c nodeFactory;
+
+	/** A source goal which does nothing. */
+	private class SourceNop extends SourceGoal_c {
+		public SourceNop(final String name, final Job job) {
+			super(name, job);
+			scheduler = FirmScheduler.this;
+		}
+		@Override
+		public boolean runTask() {
+			return true;
+		}
+	}
 
 	/**
 	 * Initialize the scheduler.
@@ -52,31 +55,21 @@ public class FirmScheduler extends X10Scheduler {
 	 */
 	public FirmScheduler(final ExtensionInfo info) {
 		super(info);
-		typeSystem = new GenericTypeSystem((TypeSystem_c)info.typeSystem());
-		firmTypeSystem = new FirmTypeSystem(typeSystem);
-
-		options = (CompilerOptions) info.getOptions();
-		final X10NodeFactory_c nodeFactory = (X10NodeFactory_c) extInfo.nodeFactory();
-		generator = new FirmGenerator(firmTypeSystem, typeSystem, nodeFactory, options);
+		typeSystem = (TypeSystem_c)info.typeSystem();
+		options = (CompilerOptions)info.getOptions();
+		nodeFactory = (X10NodeFactory_c)info.nodeFactory();
 	}
 
 	@Override
 	protected Goal PostCompiled() {
+		final Goal loweringFirm = new LoweringFirm(this).intern(this);
 
-		/*
-		 * The other X10 backends and Polyglot use this goal to invoke
-		 * javac/gcc on the generated source code.  In the Firm context this
-		 * corresponds to emitting assembler and linking with the stdlib.
-		 */
-		final GoalSequence seq = new GoalSequence("FirmOutputSequence");
-
-		final Goal loweringFirm = new LoweringFirm(this, generator).intern(this);
-		seq.append(loweringFirm);
-
+		final Goal optimized;
 		if (options.x10_config.OPTIMIZE) {
-			Goal optimized = new OptimizeFirm(this);
-			optimized = optimized.intern(this);
-			seq.append(optimized);
+			optimized = new OptimizeFirm().intern(this);
+			optimized.addPrereq(loweringFirm);
+		} else {
+			optimized = loweringFirm;
 		}
 
 		try {
@@ -95,17 +88,29 @@ public class FirmScheduler extends X10Scheduler {
 			throw new RuntimeException("Could not create asm file", e);
 		}
 
-		Goal asmEmitted = new AsmEmitted(this, asmOutput);
-		asmEmitted = asmEmitted.intern(this);
-		seq.append(asmEmitted);
+		final Goal asmEmitted = new AsmEmitted(asmOutput).intern(this);
+		asmEmitted.addPrereq(optimized);
 
+		final Goal last;
 		if (options.assembleAndLink()) {
-			Goal linked = new Linked(extInfo, asmOutput);
-			linked = linked.intern(this);
-			seq.append(linked);
+			final ErrorQueue errorQueue = extInfo.compiler().errorQueue();
+			last = new Linked(options, asmOutput, errorQueue).intern(this);
+			last.addPrereq(asmEmitted);
+		} else {
+			last = asmEmitted;
 		}
 
-		return seq.intern(this);
+		return last;
+	}
+
+	@Override
+	public Goal CodeGenerated(final Job job) {
+		return new SourceNop("Nop(CodeGenerated)", job);
+	}
+
+	@Override
+	public Goal CodeGenBarrier() {
+		return new FirmGenerated(this, typeSystem, nodeFactory, options).intern(this);
 	}
 
 	@Override
@@ -127,70 +132,33 @@ public class FirmScheduler extends X10Scheduler {
 		return goals;
 	}
 
-	@Override
-	public Goal CodeGenBarrier() {
-		final String name = "CodeGenBarrier";
-		if (extInfo.getOptions().compile_command_line_only) {
-			final BarrierGoal barrier = new BarrierGoal(name, commandLineJobs()) {
-				private static final long serialVersionUID = 2258041064037983928L;
-
-				@Override
-				public Goal prereqForJob(final Job job) {
-					return codegenPrereq(job);
-				}
-			};
-			return barrier.intern(this);
-		}
-
-		final AllBarrierGoal allBarrier = new AllBarrierGoal(name, this) {
-			private static final long serialVersionUID = 4089824072381830523L;
-
-			@Override
-			public Goal prereqForJob(final Job job) {
-				if (super.scheduler.shouldCompile(job)) {
-					return codegenPrereq(job);
-				} else if (x10firm.ExtensionInfo.isAllowedClassName(job
-						.toString())) {
-					// DELETE ME (whole else if): Need library support
-					return codegenPrereq(job);
-				}
-
-				return null;
-			}
-		};
-		return allBarrier.intern(this);
-	}
-
-	/** A visitor which does nothing. */
-	private static class NoVisitor extends NodeVisitor {
-		/** Constructs a new NoVisitor. */
-		public NoVisitor() {
-		}
+	/** returns requirement for codegen barrier. */
+	public Goal codeGenPrereq(final Job job) {
+		return ClosureRemover(job);
 	}
 
 	@Override
 	public Goal NativeClassVisitor(final Job job) {
-		return new VisitorGoal("NoVisitor", job, new NoVisitor()).intern(this);
+		return new SourceNop("Nop(NativeClassVisitor)", job).intern(this);
 	}
 
 	private Goal ClosureRemover(final Job job) {
-		final TypeSystem ts = extInfo.typeSystem();
-		final NodeFactory nf = extInfo.nodeFactory();
 		return new ValidatingVisitorGoal("ClosureRemover", job,
-				new ClosureRemover(job, ts, nf)).intern(this);
+				new ClosureRemover(job, typeSystem, nodeFactory)).intern(this);
 	}
 
 	private Goal StaticInitializer(final Job job) {
-		final TypeSystem_c ts = generator.getTypeSystem().getTypeSystem();
-		final X10NodeFactory_c nf = generator.getNodeFactory();
 		return new ValidatingVisitorGoal("StaticInitialized", job,
-				new StaticInitializer(job, ts, nf)).intern(this);
+				new StaticInitializer(job, typeSystem, nodeFactory)).intern(this);
 	}
 
 	@Override
-	public Goal CodeGenerated(final Job job) {
-		final Goal firmGenerated = new FirmGenerated(job, generator).intern(this);
-		return firmGenerated;
+	public boolean shouldCompile(final Job job) {
+		if (commandLineJobs().contains(job))
+			return true;
+		if (x10firm.ExtensionInfo.isAllowedFileName(job.toString()))
+			return true;
+		return super.shouldCompile(job);
 	}
 
 	private void dumpGoalGraph(final String filename) {
