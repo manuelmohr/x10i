@@ -545,16 +545,27 @@ public class FirmTypeSystem {
 
 		if (!flags.isInterface() && !flags.isStruct()) {
 			final String vtableName = NameMangler.mangleVTable(classType);
-			final Entity vtable = new Entity(global, vtableName, pointerType);
+			final Entity cEntity = cStdlibEntities.get(vtableName);
+			final Entity vtable;
+			if (cEntity != null) {
+				if (!cEntity.hasLinkage(ir_linkage.IR_LINKAGE_WEAK)) {
+					throw new RuntimeException(
+							"Existing entity for vtable in c-library (" + vtableName + ") is not weak");
+				}
+				cEntity.removeLinkage(ir_linkage.IR_LINKAGE_WEAK);
+				vtable = cEntity;
+			} else {
+				vtable = new Entity(global, vtableName, pointerType);
+			}
 			vtable.setVisibility(ir_visibility.ir_visibility_default);
-			vtable.setLinkage(ir_linkage.IR_LINKAGE_CONSTANT.val);
+			vtable.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
 			OO.setClassVTableEntity(result, vtable);
 		}
 
 		final String rttiName = NameMangler.mangleTypeinfo(classType);
 		final Entity classInfoEntity = new Entity(global, rttiName, pointerType);
 		classInfoEntity.setVisibility(ir_visibility.ir_visibility_local);
-		classInfoEntity.setLinkage(ir_linkage.IR_LINKAGE_CONSTANT.val);
+		classInfoEntity.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
 		OO.setClassRTTIEntity(result, classInfoEntity);
 
 		// Layouting of classes must be done explicitly by finishTypes
@@ -815,27 +826,30 @@ public class FirmTypeSystem {
 		Entity entity = null;
 
 		/* try to get it from stdlib */
-		if (flags.isNative()) {
-			assert !flags.isInterface() : "We do not import interfaces.";
-			assert !flags.isAbstract() : "We do not import abstract methods.";
-
-			final Entity cEntity = this.cStdlibEntities.get(name);
-			if (cEntity != null) {
-				final firm.Type entityType = cEntity.getType();
-				if (!(entityType instanceof MethodType))
-					throw new CodeGenError("native Entity without methodtype", instance.position());
-				final MethodType entityMType = (MethodType) entityType;
-				final MethodType mType = (MethodType) type;
-				if (!methodsCompatible(entityMType, mType))
-					throw new CodeGenError(
-							String.format("native Entity '%s' does not match declared type", instance),
-							instance.position());
-
-				/* fix up stuff, which was impossible to do during the import */
-				cEntity.setOwner(ownerFirm);
-
-				entity = cEntity;
+		final Entity cEntity = this.cStdlibEntities.get(name);
+		if (cEntity != null) {
+			/* make weak entities non-weak and remove existing implementation */
+			if (cEntity.hasLinkage(ir_linkage.IR_LINKAGE_WEAK)) {
+				cEntity.removeLinkage(ir_linkage.IR_LINKAGE_WEAK);
+				Program.removeGraph(cEntity.getGraph());
+			} else {
+				assert flags.isNative();
 			}
+
+			final firm.Type entityType = cEntity.getType();
+			if (!(entityType instanceof MethodType))
+				throw new CodeGenError("native Entity without methodtype", instance.position());
+			final MethodType entityMType = (MethodType) entityType;
+			final MethodType mType = (MethodType) type;
+			if (!methodsCompatible(entityMType, mType))
+				throw new CodeGenError(
+						String.format("native Entity '%s' does not match declared type", instance),
+						instance.position());
+
+			/* fix up stuff, which was impossible to do during the import */
+			cEntity.setOwner(ownerFirm);
+
+			entity = cEntity;
 		}
 
 		if (entity == null) {

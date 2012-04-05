@@ -164,9 +164,9 @@ import firm.Program;
 import firm.Relation;
 import firm.SwitchTable;
 import firm.TargetValue;
-import firm.bindings.binding_ircons.ir_linkage;
 import firm.bindings.binding_ircons.ir_where_alloc;
 import firm.bindings.binding_irprog.ir_segment_t;
+import firm.bindings.binding_typerep.ir_linkage;
 import firm.bindings.binding_typerep.ir_type_state;
 import firm.bindings.binding_typerep.ir_visibility;
 import firm.nodes.Alloc;
@@ -259,7 +259,8 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		conEntity.setLdIdent(name);
 		conEntity.setCompilerGenerated(true);
 		conEntity.setVisibility(ir_visibility.ir_visibility_private);
-		conEntity.setLinkage(ir_linkage.IR_LINKAGE_HIDDEN_USER.val | ir_linkage.IR_LINKAGE_CONSTANT.val);
+		conEntity.addLinkage(ir_linkage.IR_LINKAGE_HIDDEN_USER);
+		conEntity.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
 		conEntity.setAtomicValue(val);
 
 		final Type voidT = typeSystem.getTypeSystem().Void();
@@ -784,7 +785,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		final Entity entity = new Entity(global, name, mainType);
 		entity.setLdIdent(name);
 		entity.setVisibility(ir_visibility.ir_visibility_default);
-		entity.addLinkage(ir_linkage.IR_LINKAGE_HIDDEN_USER.val);
+		entity.addLinkage(ir_linkage.IR_LINKAGE_HIDDEN_USER);
 
 		final Graph graph = new Graph(entity, 0);
 		final Construction construction = new OOConstruction(graph);
@@ -1847,7 +1848,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		ent.setLdIdent(id);
 
 		ent.setVisibility(ir_visibility.ir_visibility_private);
-		ent.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT.val);
+		ent.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
 
 		type.setBounds(0, 0, value.length() - 1);
 		type.setSizeBytes(value.length() * elemType.getSizeBytes());
