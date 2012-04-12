@@ -115,9 +115,11 @@ public class FirmScheduler extends X10Scheduler {
 			if (g == cg) {
 				goals.add(StaticNestedClassRemover(job));
 				goals.add(StaticInitializer(job));
+				goals.add(g); /* g (Lowerer) might construct new closures, so ClosureRemover must run afterwards */
 				goals.add(ClosureRemover(job));
+			} else {
+				goals.add(g);
 			}
-			goals.add(g);
 		}
 
 		return goals;
