@@ -10,7 +10,7 @@ import polyglot.util.Position;
 public class CodeGenError extends InternalCompilerError {
 	/** Constructs new exception. */
 	public CodeGenError(final String message, final Node node) {
-		super(message + " (node " + node + ")", node.position());
+		super(message + " (node '" + node.getClass() + "': '" + node + "')", node.position());
 	}
 
 	/** Constructs new exception. */
