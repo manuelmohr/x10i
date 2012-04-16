@@ -4,7 +4,7 @@ guessed_target := $(shell $(CC) -dumpmachine)
 TARGET         ?= $(guessed_target)
 
 CPARSER_TARGET ?= -mtarget=$(TARGET)
-CFLAGS         ?=
+CFLAGS         ?= -g
 
 SIMULATOR  ?=
 APP_CFLAGS ?=
