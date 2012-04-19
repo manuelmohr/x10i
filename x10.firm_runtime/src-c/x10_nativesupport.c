@@ -42,6 +42,27 @@ x10_pointer _ZN3x104lang13NativeSupport11alocZeroedEi(x10_int numBytes)
 	return ret;
 }
 
+/* static x10.lang.NativeSupport.realloc(Pointer, Int, Int): Pointer */
+x10_pointer _ZN3x104lang13NativeSupport7reallocEPvii(x10_pointer prev,
+	x10_int prev_bytes, x10_int num_bytes)
+{
+	(void) prev_bytes;
+	void *ret = realloc(prev, num_bytes);
+	return ret;
+}
+
+/* static x10.lang.NativeSupport.reallocZeroed(Pointer, Int, Int): Pointer */
+x10_pointer _ZN3x104lang13NativeSupport13reallocZeroedEPvii(x10_pointer prev,
+	x10_int prev_bytes, x10_int num_bytes)
+{
+	void *ret = realloc(prev, num_bytes);
+	if (num_bytes > prev_bytes) {
+		char *p = ((char*)ret) + prev_bytes;
+		memset(p, 0, num_bytes - prev_bytes);
+	}
+	return ret;
+}
+
 /* static x10.lang.NativeSupport.dealloc(Pointer) */
 void _ZN3x104lang13NativeSupport7deallocEPv(x10_pointer ptr)
 {

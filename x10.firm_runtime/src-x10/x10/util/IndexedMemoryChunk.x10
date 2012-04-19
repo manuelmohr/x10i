@@ -23,37 +23,43 @@ import x10.compiler.NativeRep;
  * This abstraction is provide to enable other higher-level
  * abstractions (such as Array) to be implemented efficiently
  * and to allow low-level programming of memory regions at the
- * X10 level when absolutely required for performance.
- *
- * This class performs unsafe memory operations, no bounds checking is
- * performed. Use Array[] if you need safe access.
+ * X10 level when absolutely required for performance. Most of the API
+ * of this class is safe, but there are some loopholes that can be used
+ * when absolutely necessary for performance.<p>
  */
 public struct IndexedMemoryChunk[T] {
-    // Pointer to the allocated aligned memory
+    // Pointer to the allocated memory
     private val ptr: Pointer;
+    // Length of the allocated memory chunk (number of Ts not number of bytes)
+    private val length: Int;
 
-    private def this(ptr: Pointer) {
+    private def this(ptr: Pointer, length: Int) {
         this.ptr = ptr;
+        this.length = length;
     }
 
     /** unused; prevent instantiaton outside of native code */
     private native def this();
 
-    private static def calculateSize[T](numElements: Int): Int {
+    private static def calculateSize[T](length: Int): Int {
         /* TODO: check for overflow */
-        return numElements * NativeSupport.getSize[T]();
+        return length * NativeSupport.getSize[T]();
     }
 
-    public static def allocateUninitialized[T](numElements: Int): IndexedMemoryChunk[T] {
-        val size   = calculateSize[T](numElements);
-        val memory = NativeSupport.alloc(size);
-        return IndexedMemoryChunk[T](memory);
+    private def calculateIndex(i: Int): Pointer {
+        return ptr + calculateSize[T](i);
     }
 
-    public static def allocateZeroed[T](numElements: Int): IndexedMemoryChunk[T]{T haszero} {
-        val size   = calculateSize[T](numElements);
+    public static def allocateUninitialized[T](length: Int): IndexedMemoryChunk[T] {
+        val size   = calculateSize[T](length);
         val memory = NativeSupport.alloc(size);
-        return IndexedMemoryChunk[T](memory);
+        return IndexedMemoryChunk[T](memory, length);
+    }
+
+    public static def allocateZeroed[T](length: Int): IndexedMemoryChunk[T]{T haszero} {
+        val size   = calculateSize[T](length);
+        val memory = NativeSupport.alloc(size);
+        return IndexedMemoryChunk[T](memory, length);
     }
 
     /**
@@ -69,13 +75,35 @@ public struct IndexedMemoryChunk[T] {
     }
 
     /**
+     * Resizes the indexed memory chunk. Returns a new IndexedMemoryChunk
+     * the old one is not valid anymore after this call.
+     */
+    public static def resize[T](old: IndexedMemoryChunk[T], newLength: Int): IndexedMemoryChunk[T] {
+        val prevSize = calculateSize[T](old.length);
+        val newSize = calculateSize[T](newLength);
+        val newptr = NativeSupport.realloc(old.ptr, prevSize, newSize);
+        return IndexedMemoryChunk[T](newptr, newLength);
+    }
+
+    /**
+     * Resizes the indexed memory chunk, set new elements to zero. Returns a new
+     * IndexedMemoryChunk, the old one is not valid anymore after this call.
+     */
+    public static def resizeZeroed[T](old: IndexedMemoryChunk[T], newLength: Int): IndexedMemoryChunk[T] {
+        val prevSize = calculateSize[T](old.length);
+        val newSize = calculateSize[T](newLength);
+        val newptr = NativeSupport.reallocZeroed(old.ptr, prevSize, newSize);
+        return IndexedMemoryChunk[T](newptr, newLength);
+    }
+
+    /**
      * Operator that allows access of IndexedMemoryChunk elements by index.
      *
      * @param i The index to retreive.
      * @return The value at that index.
      */
     public operator this(index: Int): T {
-        val p = ptr + index*NativeSupport.getSize[T]();
+        val p = calculateIndex(index);
         return p.read[T]();
     }
 
@@ -87,7 +115,7 @@ public struct IndexedMemoryChunk[T] {
      * @return The new value.
      */
     public operator this(index: Int) = (value: T): void {
-        val p = ptr + index*NativeSupport.getSize[T]();
+        val p = calculateIndex(index);
         p.write[T](value);
     }
 
@@ -96,11 +124,16 @@ public struct IndexedMemoryChunk[T] {
      * by zeroing the storage.  Note that this is intentionally not
      * type safe because it does require T hasZero.
      */
-    public def clear(index: Int, numElems: Int): void {
-        val p    = ptr + index*NativeSupport.getSize[T]();
-        val size = numElems * NativeSupport.getSize[T]();
+    public def clear(index: Int, length: Int): void {
+        val p    = calculateIndex(index);
+        val size = calculateSize[T](length);
         NativeSupport.memset(p, 0, size);
     }
+
+    /**
+     * Return the size of the IndexedMemoryChunk (in elements)
+     */
+    public def length(): Int = length;
 
     /**
      * Copies a contiguous portion of a local IndexedMemoryChunk
@@ -173,9 +206,9 @@ public struct IndexedMemoryChunk[T] {
     public static def copy[T](src: IndexedMemoryChunk[T], srcIndex: Int,
                               dst: IndexedMemoryChunk[T], dstIndex: Int,
                               numElems: Int): void {
-        val srcPtr = src.ptr + srcIndex*NativeSupport.getSize[T]();
-        val dstPtr = dst.ptr + dstIndex*NativeSupport.getSize[T]();
-        val size   = numElems * NativeSupport.getSize[T]();
+        val srcPtr = src.calculateIndex(srcIndex);
+        val dstPtr = dst.calculateIndex(dstIndex);
+        val size   = calculateSize[T](numElems);
         NativeSupport.memcpy(dstPtr, srcPtr, size);
     }
 
@@ -184,7 +217,7 @@ public struct IndexedMemoryChunk[T] {
         if (!(that instanceof IndexedMemoryChunk[T]))
             return false;
         val other = that as IndexedMemoryChunk[T];
-        return other.ptr == ptr;
+        return other.ptr == ptr && other.length == length;
     }
     public def hashCode(): Int = ptr.hashCode();
 }

@@ -39,6 +39,12 @@ public class NativeSupport {
     /** allocation of memory (initialized to zero) */
     public static native def allocZeroed(numBytes: Int): Pointer;
 
+    /** reallocation of memory */
+    public static native def realloc(previous: Pointer, previousBytes: Int, numBytes: Int): Pointer;
+
+    /** reallocation of memory sets new elements to zero when growing */
+    public static native def reallocZeroed(previous: Pointer, previousBytes: Int, numBytes: Int): Pointer;
+
     /** deallocation of memory */
     public static native def dealloc(pointer: Pointer): void;
 }
