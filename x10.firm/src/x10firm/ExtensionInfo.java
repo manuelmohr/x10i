@@ -4,6 +4,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import polyglot.ast.NodeFactory;
+import polyglot.frontend.Job;
 import polyglot.frontend.Scheduler;
 import polyglot.types.TypeSystem_c;
 import x10.X10CompilerOptions;
@@ -81,6 +82,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedFiles.add("x10/lang/Bitwise.x10");
 		allowedFiles.add("x10/lang/Arithmetic.x10");
 		allowedFiles.add("x10/lang/Iterable.x10");
+		allowedFiles.add("x10/lang/NativeSupport.x10");
 
 		allowedFiles.add("x10/lang/Iterable.x10");
 		allowedFiles.add("x10/lang/Iterator.x10");
@@ -104,7 +106,8 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 	 * with the current compiler.
 	 * TODO DELETE ME: Delete this method when library support is implemented.
 	 */
-	public static boolean isAllowedFileName(final String fileName) {
+	public static boolean shouldGenerateCodeFor(final Job job) {
+		final String fileName = job.toString();
 		for (final String str: allowedFiles) {
 			if (fileName.endsWith(str))
 				return true;

@@ -69,6 +69,9 @@ public class ClassDeclFetcher {
 	 */
 	private Job getJob(final X10ConstructorDef candidate, final X10ClassDef container) {
 		final Job job = container.job();
+		if (job != null && !job.extensionInfo().scheduler().shouldCompile(job))
+			return null;
+
 		try {
 			/*
 			 * TODO: reconstruct job from position if (null == job) { String

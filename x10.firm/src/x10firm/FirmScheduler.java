@@ -156,7 +156,7 @@ public class FirmScheduler extends X10Scheduler {
 	public boolean shouldCompile(final Job job) {
 		if (commandLineJobs().contains(job))
 			return true;
-		if (x10firm.ExtensionInfo.isAllowedFileName(job.toString()))
+		if (x10firm.ExtensionInfo.shouldGenerateCodeFor(job))
 			return true;
 		return super.shouldCompile(job);
 	}
