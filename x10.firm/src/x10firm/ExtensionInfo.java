@@ -64,6 +64,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedFiles.add("x10/lang/Byte.x10");
 		allowedFiles.add("x10/lang/Char.x10");
 		allowedFiles.add("x10/lang/Comparable.x10");
+		allowedFiles.add("x10/lang/Complex.x10");
 		allowedFiles.add("x10/lang/Double.x10");
 		allowedFiles.add("x10/lang/Float.x10");
 		allowedFiles.add("x10/lang/Indexable.x10");
@@ -73,6 +74,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedFiles.add("x10/lang/Iterator.x10");
 		allowedFiles.add("x10/lang/LongRange.x10");
 		allowedFiles.add("x10/lang/Long.x10");
+		allowedFiles.add("x10/lang/Math.x10");
 		allowedFiles.add("x10/lang/NativeSupport.x10");
 		allowedFiles.add("x10/lang/Object.x10");
 		allowedFiles.add("x10/lang/Pointer.x10");
@@ -92,6 +94,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedFiles.add("x10/util/concurrent/Fences.x10");
 		allowedFiles.add("x10/util/concurrent/Lock.x10");
 		allowedFiles.add("x10/util/Container.x10");
+		allowedFiles.add("x10/util/GrowableIndexedMemoryChunk.x10");
 		allowedFiles.add("x10/util/IndexedMemoryChunk.x10");
 	}
 
