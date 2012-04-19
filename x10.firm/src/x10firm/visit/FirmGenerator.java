@@ -277,11 +277,11 @@ public class FirmGenerator extends X10DelegatingVisitor {
 
 	/** This queue holds a list of nodes (either MethodDecls or ClassDecls)
 	 * and their corresponding mapping of parameter types. */
-	private static Queue<GenericNodeInstance> workList = new LinkedList<GenericNodeInstance>();
+	private Queue<GenericNodeInstance> workList = new LinkedList<GenericNodeInstance>();
 	/** Set of generic nodes instances in the worklist for faster checking of duplicates. */
-	private static Set<GenericNodeInstance> workListSet = new HashSet<GenericNodeInstance>();
+	private Set<GenericNodeInstance> workListSet = new HashSet<GenericNodeInstance>();
 
-	private static void addToWorklist(final GenericNodeInstance other) {
+	private void addToWorklist(final GenericNodeInstance other) {
 		// Check for duplicates.
 		if (workListSet.contains(other)) return;
 
