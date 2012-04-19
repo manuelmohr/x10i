@@ -112,7 +112,6 @@ import x10.ast.X10Cast_c;
 import x10.ast.X10ClassDecl;
 import x10.ast.X10ClassDecl_c;
 import x10.ast.X10ConstructorCall_c;
-import x10.ast.X10FieldDecl;
 import x10.ast.X10Instanceof_c;
 import x10.ast.X10MethodDecl;
 import x10.ast.X10NodeFactory_c;
@@ -128,7 +127,6 @@ import x10.types.X10ClassType;
 import x10.types.X10ConstructorDef;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10Def;
-import x10.types.X10FieldDef;
 import x10.types.X10FieldInstance;
 import x10.types.X10LocalDef_c;
 import x10.types.X10MethodDef;
@@ -213,11 +211,13 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	/** Holds all static initializer blocks. */
 	private static List<polyglot.ast.Initializer> staticInitBlocks = new LinkedList<polyglot.ast.Initializer>();
 
-	private Set<ClassMember> staticNonGenericMembers = new HashSet<ClassMember>();
 	private X10ConstructorInstance stringLiteralConstructor;
 
 	/** true if we're in a subtree of a type with unbound type parameters. */
 	private boolean unboundTypeParameters;
+
+	/** true if no static methods should be generated */
+	private boolean dontGenerateStatics;
 
 	/**
 	 * Constructs a new FirmGenerator.
@@ -290,6 +290,9 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	}
 
 	private void genGenericCode() {
+		/* static methods have already been generated, don't do it again */
+		dontGenerateStatics = true;
+
 		// The list can increase while we are iterating over it!
 		// (When we have a new generic method in another generic method)
 		while (!workList.isEmpty()) {
@@ -451,16 +454,31 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		 * (they only have an effect as an additional namespace) */
 		if (def.flags().isStatic())
 			unboundTypeParameters = false;
-		if (def.typeParameters().size() > 0 && typeSystem.getSubst().isIdentityInstantiation()) {
-			unboundTypeParameters = true;
+		/* see if all our type parameters are bound */
+		final TypeParamSubst subst = typeSystem.getSubst();
+		for (ParameterType paramType : def.typeParameters()) {
+			if (subst.reinstantiate(paramType) == paramType) {
+				unboundTypeParameters = true;
+				break;
+			}
 		}
 
-		if (classType.isX10Struct()) {
-			visitStruct(n);
-		} else if (classType.isClass() || classType.flags().isInterface()) {
-			visitClass(n);
-		} else {
-			throw new CodeGenError("Unexpected class declaration", n);
+		final boolean isStruct = classType.isX10Struct();
+		final ClassBody body = n.body();
+		final List<ClassMember> members = body.members();
+		if (!members.isEmpty()) {
+			final List<ClassMember> inits = ASTQuery.extractInits(typeSystem.getTypeSystem(), members);
+			final List<ClassMember> oldInitClassMembers = initClassMembers;
+			initClassMembers = inits;
+
+			for (final ClassMember member : members) {
+				if (isStruct && !unboundTypeParameters && fixStructTypename(n, member))
+					continue;
+
+				visitAppropriate(member);
+			}
+			assert initClassMembers == inits;
+			initClassMembers = oldInitClassMembers;
 		}
 
 		unboundTypeParameters = oldUnboundTypeParameters;
@@ -517,78 +535,6 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			return true;
 		}
 		return false;
-	}
-
-	private void visitStruct(final X10ClassDecl n) {
-
-		final ClassBody body = n.body();
-		final List<ClassMember> members = body.members();
-		if (!members.isEmpty()) {
-			final List<ClassMember> inits = ASTQuery.extractInits(typeSystem.getTypeSystem(), members);
-			final List<ClassMember> oldInitClassMembers = initClassMembers;
-			initClassMembers = inits;
-
-			for (final ClassMember member : members) {
-				if (!unboundTypeParameters && fixStructTypename(n, member))
-					continue;
-
-				visitMember(member);
-			}
-			assert initClassMembers == inits;
-			initClassMembers = oldInitClassMembers;
-		}
-	}
-
-	private void visitMember(final ClassMember member) {
-
-		if (member instanceof MethodDecl_c) {
-			final X10MethodDecl md = (X10MethodDecl)member;
-			final X10MethodDef def = md.methodDef();
-			// don`t visit generic method declarations yet, because we don`t know the concrete type parameters.
-			// See X10Call_c
-			if (!def.typeParameters().isEmpty())
-				return;
-			if (def.flags().isStatic()) {
-				// visit static non generic methods in generic classes only once
-				if (!staticNonGenericMembers.contains(member)) {
-					staticNonGenericMembers.add(member);
-					visitAppropriate(member);
-					return;
-				}
-			} else if (!unboundTypeParameters) {
-				visitAppropriate(member);
-			}
-		} else if (member instanceof FieldDecl_c) {
-			final X10FieldDecl fd = (X10FieldDecl)member;
-			final X10FieldDef def = fd.fieldDef();
-			if (def.flags().isStatic()) {
-				if (!staticNonGenericMembers.contains(member)) {
-					staticNonGenericMembers.add(member);
-					visitAppropriate(member);
-				}
-			} else if (!unboundTypeParameters) {
-				visitAppropriate(member);
-			}
-		} else {
-			visitAppropriate(member);
-		}
-	}
-
-	private void visitClass(final X10ClassDecl n) {
-		final ClassBody body = n.body();
-		final List<ClassMember> members = body.members();
-		if (!members.isEmpty()) {
-			final List<ClassMember> inits = ASTQuery.extractInits(typeSystem.getTypeSystem(), members);
-			final List<ClassMember> oldInitClassMembers = initClassMembers;
-			initClassMembers = inits;
-
-			for (final ClassMember member : body.members()) {
-				visitMember(member);
-			}
-
-			assert initClassMembers == inits;
-			initClassMembers = oldInitClassMembers;
-		}
 	}
 
 	/** Finds all locals in the given method.
@@ -734,21 +680,36 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(final MethodDecl_c dec) {
 		final X10MethodDef def = (X10MethodDef) dec.methodDef();
+		final Flags flags = def.flags();
+		if (flags.isAbstract())
+			return;
+
+		final List<ParameterType> typeParameters = def.typeParameters();
+		if (flags.isStatic()) {
+			if (dontGenerateStatics && typeParameters.isEmpty())
+				return;
+		} else if (unboundTypeParameters) {
+			return;
+		}
+
+		// stop if one of our type parameters is unbound
+		final TypeParamSubst subst = typeSystem.getSubst();
+		for (ParameterType paramType : typeParameters) {
+			if (subst.reinstantiate(paramType) == paramType)
+				return;
+		}
+
 		final MethodInstance defInstance = def.asInstance();
 
 		// If we compile a generic method, asInstance() will give
 		// us a method instance where generic types are used.  But we know
 		// better at this point, because we can substitute the real types.
-		final TypeParamSubst subst = typeSystem.getSubst();
 		final MethodInstance methodInstance = subst.reinstantiate(defInstance);
 
-		final Flags flags = methodInstance.flags();
 		final List<LocalInstance> formals = defInstance.formalNames();
 		final Entity entity = firmTypeSystem.getMethodEntity(methodInstance);
 		final X10ClassType owner = (X10ClassType) methodInstance.container();
 
-		if (flags.isAbstract())
-			return;
 		if (flags.isNative()) {
 			/* for builtins we might need to dynamically create the code now */
 			builtins.generate(this, methodInstance, formals);
@@ -980,6 +941,13 @@ public class FirmGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(final FieldDecl_c dec) {
 		final Flags flags = dec.flags().flags();
+		if (flags.isStatic()) {
+			if (dontGenerateStatics)
+				return;
+		} else if (unboundTypeParameters) {
+			return;
+		}
+
 		final FieldInstance instance = dec.fieldDef().asInstance();
 
 		/* static fields may have initializers */

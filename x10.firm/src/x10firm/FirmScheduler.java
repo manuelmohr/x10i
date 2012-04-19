@@ -117,11 +117,11 @@ public class FirmScheduler extends X10Scheduler {
 	public List<Goal> goals(final Job job) {
 		final List<Goal> superGoals = super.goals(job);
 		final List<Goal> goals = new ArrayList<Goal>();
-		final Goal cg = codegenPrereq(job);
+		final Goal cg = Lowerer(job);
 		for (final Goal g : superGoals) {
 			if (g == cg) {
-				goals.add(StaticNestedClassRemover(job));
 				goals.add(StaticInitializer(job));
+				//goals.add(StaticNestedClassRemover(job));
 				goals.add(g); /* g (Lowerer) might construct new closures, so ClosureRemover must run afterwards */
 				goals.add(ClosureRemover(job));
 			} else {
