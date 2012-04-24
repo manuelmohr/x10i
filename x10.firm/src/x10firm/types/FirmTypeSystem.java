@@ -34,6 +34,7 @@ import x10.types.X10ParsedClassType;
 import x10.types.X10ParsedClassType_c;
 import x10firm.CompilerOptions;
 import x10firm.visit.CodeGenError;
+import x10firm.visit.GenericCodeInstantiationQueue;
 import firm.ClassType;
 import firm.CompoundType;
 import firm.Entity;
@@ -77,6 +78,8 @@ public class FirmTypeSystem {
 	private final Map<X10ClassType, X10ClassType> structBoxingTypes
 		= new HashMap<X10ClassType, X10ClassType>();
 
+	private final GenericCodeInstantiationQueue instantiationQueue;
+
 	/** All class instances share the same location for the vptr (the pointer to the vtable). */
 	private Entity vptrEntity;
 
@@ -111,8 +114,10 @@ public class FirmTypeSystem {
 	 * Construct a firm type system object.
 	 * @param typeSystem The X10 type system
 	 */
-	public FirmTypeSystem(final GenericTypeSystem typeSystem, final CompilerOptions options) {
+	public FirmTypeSystem(final GenericTypeSystem typeSystem, final CompilerOptions options,
+	                      final GenericCodeInstantiationQueue instantiationQueue) {
 		this.typeSystem = typeSystem;
+		this.instantiationQueue = instantiationQueue;
 		init(options);
 	}
 
@@ -482,6 +487,8 @@ public class FirmTypeSystem {
 			result.setSizeBytes(classInfo.getSize());
 			result.setTypeState(ir_type_state.layout_fixed);
 		}
+
+		instantiationQueue.instantiateGenericClass(classType);
 
 		/* put the class into the core types already, because we could
 		 * have a field referencing ourself */

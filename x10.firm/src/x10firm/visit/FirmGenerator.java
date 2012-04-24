@@ -180,7 +180,7 @@ import firm.nodes.Switch;
 /**
  * creates a firm-program (a collection of firm-graphs) from an X10-AST.
  */
-public class FirmGenerator extends X10DelegatingVisitor {
+public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeInstantiationQueue {
 	private static final String X10_THROW_STUB         = "x10_throw_stub";
 	private static final String X10_ASSERT             = "x10_assert";
 	private static final String X10_STATIC_INITIALIZER = "x10_static_initializer";
@@ -227,7 +227,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final CompilerOptions options) {
 
 		typeSystem = new GenericTypeSystem(x10TypeSystem);
-		firmTypeSystem = new FirmTypeSystem(typeSystem, options);
+		firmTypeSystem = new FirmTypeSystem(typeSystem, options, this);
 		xnf = nodeFactory;
 		this.options = options;
 	}
@@ -1737,27 +1737,36 @@ public class FirmGenerator extends X10DelegatingVisitor {
 		return res;
 	}
 
+	/**
+	 * Ensure that there is an instantiation of a generic class.
+	 * (This is automatically called as part of FirmTypeSystem.asType)
+	 */
+	@Override
+	public void instantiateGenericClass(final X10ClassType type) {
+		/** Ensure that generic types are instantiated */
+		final List<ParameterType> typeParameters = type.def().typeParameters();
+		if (typeParameters.isEmpty())
+			return;
+
+		// Find the class declaration.
+		final X10ClassDecl decl = DeclFetcher.getDecl(type);
+		/* some automatically generated types have no decls
+		 * not adding them is fine since they don't contain code
+		 * anyway */
+		if (decl != null) {
+			final List<polyglot.types.Type> typeArguments = type.typeArguments();
+			final TypeParamSubst subst = FirmGenerator.createSubst(typeSystem, typeParameters, typeArguments);
+
+			// Remember the parameter type configuration to generate code later.
+			addToWorklist(new GenericNodeInstance(decl, subst));
+		}
+	}
+
 	@Override
 	public void visit(final New_c n) {
 		final Type baseType = Types.baseType(n.objectType().type());
 		final X10ClassType type = (X10ClassType)baseType;
 		final X10ConstructorInstance constructor = n.constructorInstance();
-
-		/* Note: we should use constructor.def().typeParamters() and
-		 * constructor.typeParameters(), unfortunately X10 seems to not set them
-		 * correctly. We use type.XXX instead which should be the same in a new
-		 * expression */
-		final List<ParameterType> typeParameters = type.def().typeParameters();
-		if (!typeParameters.isEmpty()) {
-			final List<Type> typeArguments = type.typeArguments();
-			final TypeParamSubst subst = createSubst((TypeParamSubst)null, typeParameters, typeArguments);
-
-			// Find the class declaration.
-			final X10ClassDecl decl = DeclFetcher.getDecl(type);
-
-			// Remember the parameter type configuration to generate code later.
-			addToWorklist(new GenericNodeInstance(decl, subst));
-		}
 
 		final List<Expr> arguments = n.arguments();
 		if (!typeSystem.isStructType(n.type())) {
