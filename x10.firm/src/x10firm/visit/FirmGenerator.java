@@ -148,9 +148,13 @@ import x10firm.visit.FirmCodeTemplate.CondTemplate;
 import x10firm.visit.FirmCodeTemplate.ExprTemplate;
 import x10firm.visit.FirmCodeTemplate.StmtTemplate;
 import x10firm.visit.builtins.Builtins;
+
+import com.sun.jna.Pointer;
+
 import firm.ArrayType;
 import firm.ClassType;
 import firm.Construction;
+import firm.DebugInfo;
 import firm.Entity;
 import firm.Graph;
 import firm.Ident;
@@ -230,6 +234,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		firmTypeSystem = new FirmTypeSystem(typeSystem, options, this);
 		xnf = nodeFactory;
 		this.options = options;
+		DebugInfo.init();
 	}
 
 	/** Performs all post compile tasks. */
@@ -1565,8 +1570,15 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			// Remember the parameter type configuration to generate code later.
 			addToWorklist(new GenericNodeInstance(decl, subst));
 		}
-		final Node ret = genX10Call(methodInstance, n.arguments(), n.target());
+		final Node ret = genX10Call(n.position(), methodInstance, n.arguments(), n.target());
 		setReturnNode(ret);
+	}
+
+	private void setDebugInfo(final Node node, final Position pos) {
+		if (options.x10_config.DEBUG) {
+			final Pointer dbgInfo = DebugInfo.createInfo(pos.file(), pos.line());
+			node.setDebugInfo(dbgInfo);
+		}
 	}
 
 	@Override
@@ -1593,6 +1605,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node mem = con.getCurrentMem();
 		final Node call = con.newCall(mem, address, argumentNodes, type);
 		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
+
+		setDebugInfo(call, n.position());
 
 		con.setCurrentMem(newMem);
 	}
@@ -1682,7 +1696,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		return genAlloc(firmType, ir_where_alloc.stack_alloc);
 	}
 
-	private Node genConstructorCall(final X10ConstructorInstance instance,
+	private Node genConstructorCall(final Position pos, final X10ConstructorInstance instance,
 			final Node[] arguments) {
 		final Entity entity = firmTypeSystem.getConstructorEntity(instance);
 		final firm.MethodType entityType = (MethodType) entity.getType();
@@ -1690,6 +1704,10 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node mem = con.getCurrentMem();
 		final Node call = con.newCall(mem, address, arguments, entityType);
 		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
+
+		if (pos != null) {
+			setDebugInfo(call, pos);
+		}
 
 		con.setCurrentMem(newMem);
 		return call;
@@ -1702,7 +1720,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	 * @param instance The constructor instance
 	 * @param args The arguments of the constructor call (without the implicit this pointer)
 	 */
-	private void genClassConstructorCall(final Node objectThisNode,
+	private void genClassConstructorCall(final Position pos, final Node objectThisNode,
 			final X10ConstructorInstance instance,
 			final List<Expr> args) {
 		final List<Expr> arguments = wrapArguments(instance.formalTypes(), args);
@@ -1717,10 +1735,11 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		}
 		assert p == argumentNodes.length;
 
-		genConstructorCall(instance, argumentNodes);
+		genConstructorCall(pos, instance, argumentNodes);
 	}
 
-	private Node genStructConstructorCall(final X10ConstructorInstance instance, final List<Expr> args) {
+	private Node genStructConstructorCall(final Position pos, final X10ConstructorInstance instance,
+			final List<Expr> args) {
 		final List<Expr> arguments = wrapArguments(instance.formalTypes(), args);
 		final int argumentCount = arguments.size();
 		final Node[] argumentNodes = new Node[argumentCount];
@@ -1729,7 +1748,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			argumentNodes[p++] = visitExpression(arg);
 		}
 
-		final Node call = genConstructorCall(instance, argumentNodes);
+		final Node call = genConstructorCall(pos, instance, argumentNodes);
 		final Node ress = con.newProj(call, Mode.getT(), Call.pnTResult);
 		final Type resType = instance.returnType();
 		final Mode mode = firmTypeSystem.getFirmMode(resType);
@@ -1771,10 +1790,10 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final List<Expr> arguments = n.arguments();
 		if (!typeSystem.isStructType(n.type())) {
 			final Node objectNode = genHeapAlloc(type);
-			genClassConstructorCall(objectNode, constructor, arguments);
+			genClassConstructorCall(n.position(), objectNode, constructor, arguments);
 			setReturnNode(objectNode);
 		} else {
-			final Node result = genStructConstructorCall(constructor, arguments);
+			final Node result = genStructConstructorCall(n.position(), constructor, arguments);
 			setReturnNode(result);
 		}
 	}
@@ -1876,7 +1895,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node stringConst = con.newSymConst(entity);
 		final Node[] constructorArguments = new Node[] {object, sizeNode, stringConst};
 		final X10ConstructorInstance stringConstructor = getStringLiteralConstructor();
-		genConstructorCall(stringConstructor, constructorArguments);
+		genConstructorCall(null, stringConstructor, constructorArguments);
 
 		return object;
 	}
@@ -1932,7 +1951,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	public void visit(final ClosureCall_c c) {
 		/* determine called function */
 		final MethodInstance applyMethodInstance = c.closureInstance();
-		final Node ret = genX10Call(applyMethodInstance, c.arguments(), c.target());
+		final Node ret = genX10Call(c.position(), applyMethodInstance, c.arguments(), c.target());
 		setReturnNode(ret);
 	}
 
@@ -1988,7 +2007,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	 * @param target The target of the method call.
 	 * @return The return node or null if the call doesn`t have a return value
 	 */
-	private Node genX10Call(final MethodInstance mi, final List<Expr> args, final Receiver target) {
+	private Node genX10Call(final Position pos, final MethodInstance mi,
+	                        final List<Expr> args, final Receiver target) {
 		final Flags flags = mi.flags();
 		final boolean isStatic = flags.isStatic();
 		final boolean isFinal  = flags.isFinal();
@@ -2025,6 +2045,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node call = con.newCall(mem, address, parameters, type);
 		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
 		con.setCurrentMem(newMem);
+
+		setDebugInfo(call, pos);
 
 		if (type.getNRess() == 0) {
 			return null; /* no return value, we're done */
@@ -2444,6 +2466,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
 		con.setCurrentMem(newMem);
 
+		setDebugInfo(call, n.position());
+
 		setReturnNode(call);
 	}
 
@@ -2473,6 +2497,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node call = con.newCall(mem, address, parameters, type);
 		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
 		con.setCurrentMem(newMem);
+
+		setDebugInfo(call, n.position());
 
 		con.getGraph().keepAlive(call);
 		con.getGraph().keepAlive(con.getCurrentBlock());
@@ -2611,7 +2637,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Mode sizeMode = firmTypeSystem.getFirmMode(typeSystem.getTypeSystem().Int());
 		final Node sizeNode = con.newConst(size, sizeMode);
 		final Node[] constructorArguments = new Node[] {arrayAddr, baseAddr, sizeNode};
-		genConstructorCall(arrayConstructor, constructorArguments);
+		genConstructorCall(n.position(), arrayConstructor, constructorArguments);
 
 		setReturnNode(arrayAddr);
 	}

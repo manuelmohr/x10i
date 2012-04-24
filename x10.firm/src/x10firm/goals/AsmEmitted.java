@@ -9,6 +9,8 @@ import firm.Backend;
 import firm.Dump;
 import firm.Graph;
 import firm.Program;
+import firm.bindings.binding_be;
+import firm.bindings.binding_be.dwarf_source_language;
 import firm.bindings.binding_irgopt;
 import firm.bindings.binding_iroptimize;
 
@@ -44,7 +46,13 @@ public class AsmEmitted extends AbstractGoal_c {
 
 		/* emit asm */
 		try {
-			Backend.option("omitfp"); // makes the assembler a bit more readable
+			if (options.x10_config.DEBUG) {
+				binding_be.be_dwarf_set_source_language(dwarf_source_language.DW_LANG_C_plus_plus.val);
+				binding_be.be_dwarf_set_compilation_directory(new File(".").getAbsolutePath());
+				Backend.option("debuginfo=dwarf");
+			} else {
+				Backend.option("omitfp"); // makes the assembler a bit more readable
+			}
 			Backend.createAssembler(output.getAbsolutePath(), COMPILATION_UNIT_NAME);
 		} catch (IOException e) {
 			System.out.println("Could not create asm file");
