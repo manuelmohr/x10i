@@ -1560,8 +1560,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final TypeParamSubst subst = createSubst(addSubst, typeParameters, typeArguments);
 
 			// Find the method declaration.
-			final MethodDeclFetcher fetcher = new MethodDeclFetcher(typeSystem.getTypeSystem(), xnf);
-			final X10MethodDecl decl = fetcher.getDecl(n);
+			final X10MethodDecl decl = DeclFetcher.getDecl(n);
 
 			// Remember the parameter type configuration to generate code later.
 			addToWorklist(new GenericNodeInstance(decl, subst));
@@ -1754,8 +1753,7 @@ public class FirmGenerator extends X10DelegatingVisitor {
 			final TypeParamSubst subst = createSubst((TypeParamSubst)null, typeParameters, typeArguments);
 
 			// Find the class declaration.
-			final ClassDeclFetcher fetcher = new ClassDeclFetcher(typeSystem.getTypeSystem(), xnf);
-			final X10ClassDecl decl = fetcher.getDecl(n);
+			final X10ClassDecl decl = DeclFetcher.getDecl(type);
 
 			// Remember the parameter type configuration to generate code later.
 			addToWorklist(new GenericNodeInstance(decl, subst));
