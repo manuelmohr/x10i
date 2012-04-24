@@ -216,7 +216,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	/** true if we're in a subtree of a type with unbound type parameters. */
 	private boolean unboundTypeParameters;
 
-	/** true if no static methods should be generated */
+	/** true if no static methods should be generated. */
 	private boolean dontGenerateStatics;
 
 	/**

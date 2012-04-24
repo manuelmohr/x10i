@@ -25,7 +25,11 @@ import x10.types.X10MethodDef;
  *
  * TODO: cache the results
  */
-public class DeclFetcher {
+public final class DeclFetcher {
+
+	/** Utility class, do not instantiated. */
+	private DeclFetcher() {
+	}
 
 	/**
 	 * Get the definition of the X10 Class that implements a given constructor.
@@ -49,7 +53,7 @@ public class DeclFetcher {
 		if (!job.extensionInfo().scheduler().shouldCompile(job))
 			return null;
 
-		Node ast = job.ast();
+		final Node ast = job.ast();
 		if (ast == null) {
 			System.err.println("Unable to reconstruct AST for " + job);
 			return null;
@@ -178,7 +182,7 @@ public class DeclFetcher {
 			return null;
 		}
 
-		Node ast = candidateJob.ast();
+		final Node ast = candidateJob.ast();
 		if (null == ast) {
 			System.err.println("unable to find ast for candidated: " + container);
 			return null;
