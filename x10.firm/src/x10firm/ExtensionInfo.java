@@ -78,6 +78,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedFiles.add("x10/lang/NativeSupport.x10");
 		allowedFiles.add("x10/lang/Object.x10");
 		allowedFiles.add("x10/lang/Pointer.x10");
+		allowedFiles.add("x10/lang/Settable.x10");
 		allowedFiles.add("x10/lang/Short.x10");
 		allowedFiles.add("x10/lang/String.x10");
 		allowedFiles.add("x10/lang/Thread.x10");
@@ -93,9 +94,18 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedFiles.add("x10/util/concurrent/AtomicLong.x10");
 		allowedFiles.add("x10/util/concurrent/Fences.x10");
 		allowedFiles.add("x10/util/concurrent/Lock.x10");
+		allowedFiles.add("x10/util/AbstractContainer.x10");
+		allowedFiles.add("x10/util/AbstractCollection.x10");
+		allowedFiles.add("x10/util/ArrayList.x10");
+		allowedFiles.add("x10/util/Builder.x10");
+		allowedFiles.add("x10/util/Collection.x10");
 		allowedFiles.add("x10/util/Container.x10");
 		allowedFiles.add("x10/util/GrowableIndexedMemoryChunk.x10");
+		allowedFiles.add("x10/util/Indexed.x10");
 		allowedFiles.add("x10/util/IndexedMemoryChunk.x10");
+		allowedFiles.add("x10/util/List.x10");
+		allowedFiles.add("x10/util/Ordered.x10");
+		allowedFiles.add("x10/util/StringBuilder.x10");
 	}
 
 	/** returns true if it is expected, that the given class compiles cleanly

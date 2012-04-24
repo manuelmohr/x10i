@@ -136,6 +136,11 @@ public struct IndexedMemoryChunk[T] {
     public def length(): Int = length;
 
     /**
+     * Return pointer to data (unsafe)
+     */
+    public def pointer(): Pointer = ptr;
+
+    /**
      * Copies a contiguous portion of a local IndexedMemoryChunk
      * to a destination RemoteIndexedMemoryChunk at the specified place.
      * If the destination place is the current place, then the copy happens synchronously.
