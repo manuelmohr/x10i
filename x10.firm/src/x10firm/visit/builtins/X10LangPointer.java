@@ -28,7 +28,7 @@ abstract class X10LangPointer {
 	static class Read implements BuiltinMethodGenerator {
 		@Override
 		public void generate(final FirmGenerator codeGenerator, final MethodInstance meth,
-						   final List<LocalInstance> formals) {
+		                     final List<LocalInstance> formals) {
 			final FirmTypeSystem firmTypeSystem = codeGenerator.getFirmTypeSystem();
 			final X10ClassType owner = (X10ClassType)meth.container();
 			final Entity entity = firmTypeSystem.getMethodEntity(meth);
@@ -44,24 +44,22 @@ abstract class X10LangPointer {
 
 			final MethodConstruction con = codeGenerator.getFirmConstruction();
 			final Mode parMode = firmTypeSystem.getFirmMode(typeParameter);
-			Node par = null;
+			final Node result;
+			final firm.Type firmType = firmTypeSystem.asType(typeParameter);
 			if (firmTypeSystem.isFirmStructType(typeParameter)) {
-				final firm.Type firmType = firmTypeSystem.asType(typeParameter);
 				final firm.Type frameType = entity.getGraph().getFrameType();
 				final Entity paramEntity = Entity.createParameterEntity(frameType, 0, firmType);
-				par = codeGenerator.getEntityFromCurrentFrame(paramEntity);
+				result = codeGenerator.getEntityFromCurrentFrame(paramEntity);
 			} else {
-				par = con.getVariable(0, parMode);
+				final Node addr = con.getVariable(0, parMode);
+				final Node mem = con.getCurrentMem();
+				final Mode loadMode = firmType.getMode();
+				final Node load = con.newLoad(mem, addr, loadMode);
+				final Node newMem = con.newProj(load, Mode.getM(), Load.pnM);
+				result = con.newProj(load, loadMode, Load.pnRes);
+				con.setCurrentMem(newMem);
 			}
-			assert par != null;
 
-			final firm.Type type = firmTypeSystem.asType(typeParameter);
-			final Node mem = con.getCurrentMem();
-			final Mode loadMode = type.getMode();
-			final Node load = con.newLoad(mem, par, loadMode);
-			final Node newMem = con.newProj(load, Mode.getM(), Load.pnM);
-			final Node result = con.newProj(load, loadMode, Load.pnRes);
-			con.setCurrentMem(newMem);
 			final Node mem2 = con.getCurrentMem();
 			final Node retNode = con.newReturn(mem2, new Node[]{result});
 			assert retNode != null;
@@ -101,22 +99,21 @@ abstract class X10LangPointer {
 			final Mode ptrMode = Mode.getP();
 			final Node address = con.getVariable(0, ptrMode);
 
+			final Node newMem;
 			if (firmTypeSystem.isFirmStructType(typeParameter)) {
-				final firm.Type firmType = firmTypeSystem.asType(typeParameter);
-				final firm.Type frameType = entity.getGraph().getFrameType();
-				final Entity paramEntity = Entity.createParameterEntity(frameType, varValue.getIdx(), firmType);
-				final Node asgn = codeGenerator.getEntityFromCurrentFrame(paramEntity);
+				final Node value = con.getVariable(varValue.getIdx(), ptrMode);
 				final Node mem = con.getCurrentMem();
-				final Node copyB = con.newCopyB(mem, address, asgn, paramEntity.getType());
-				final Node curMem = con.newProj(copyB, Mode.getM(), CopyB.pnM);
-				con.setCurrentMem(curMem);
+				final firm.Type firmType = firmTypeSystem.asType(typeParameter);
+				final Node copyB = con.newCopyB(mem, address, value, firmType);
+				newMem = con.newProj(copyB, Mode.getM(), CopyB.pnM);
 			} else {
-				final Node asgn = con.getVariable(varValue.getIdx(), firmTypeSystem.getFirmMode(val.type()));
+				final Mode mode = firmTypeSystem.getFirmMode(val.type());
+				final Node asgn = con.getVariable(varValue.getIdx(), mode);
 				final Node mem = con.getCurrentMem();
 				final Node store = con.newStore(mem, address, asgn);
-				final Node newMem = con.newProj(store, Mode.getM(), Store.pnM);
-				con.setCurrentMem(newMem);
+				newMem = con.newProj(store, Mode.getM(), Store.pnM);
 			}
+			con.setCurrentMem(newMem);
 
 			final Node mem = con.getCurrentMem();
 			final Node retNode = con.newReturn(mem, new Node[]{});
