@@ -7,6 +7,7 @@ import polyglot.ast.Binary_c;
 import polyglot.ast.BooleanLit_c;
 import polyglot.ast.Expr;
 import polyglot.ast.Expr_c;
+import polyglot.ast.NullLit;
 import polyglot.types.Name;
 import polyglot.types.Type;
 import polyglot.types.Types;
@@ -154,11 +155,13 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		final Relation relation  = (op == Binary.EQ) ? Relation.Equal : Relation.LessGreater;
 		final Node     retLeft   = codeGenerator.visitExpression(left);
 		final Node     retRight  = codeGenerator.visitExpression(right);
+		final Type     leftType  = left.type();
+		final Type     rightType = right.type();
 
 		// Special case:  For non-firm-primitive structs we want to generate a call to _struct_equals.
 		// "Non-firm-primitive" means these are structs that are not mapped directly to machine types.
-		final boolean leftIsNonPrimitiveStruct = firmTypeSystem.isFirmStructType(left.type());
-		final boolean rightIsNonPrimitiveStruct = firmTypeSystem.isFirmStructType(right.type());
+		final boolean leftIsNonPrimitiveStruct = firmTypeSystem.isFirmStructType(leftType);
+		final boolean rightIsNonPrimitiveStruct = firmTypeSystem.isFirmStructType(rightType);
 
 		if (leftIsNonPrimitiveStruct && rightIsNonPrimitiveStruct) {
 			final Node ret = handleStructEquals(b, retLeft, retRight);
@@ -168,6 +171,21 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 			final Node cmp = con.newCmp(ret, toCmp, relation);
 			makeJumps(cmp, trueBlock, falseBlock, con);
 		} else {
+			/* special case: there may be struct == null (I guess it's a bug,
+			 * reported it in XTENLANG-3044) */
+			if ((left instanceof NullLit && typeSystem.isStructType(rightType))
+				|| (right instanceof NullLit && typeSystem.isStructType(leftType))) {
+				final Node jmp = con.newJmp();
+				if (relation == Relation.Equal) {
+					falseBlock.addPred(jmp);
+					con.setCurrentBlockBad();
+				} else {
+					trueBlock.addPred(jmp);
+					con.setCurrentBlockBad();
+				}
+				return;
+			}
+
 			final Node cmp = con.newCmp(retLeft, retRight, relation);
 			makeJumps(cmp, trueBlock, falseBlock, con);
 		}
