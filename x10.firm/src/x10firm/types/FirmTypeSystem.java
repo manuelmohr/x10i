@@ -537,6 +537,7 @@ public class FirmTypeSystem {
 			} else {
 				reinstantiated = field;
 			}
+			assert !reinstantiated.flags().isStatic() : "static properties are impossible";
 			getFieldEntity(reinstantiated, result);
 		}
 
