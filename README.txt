@@ -35,6 +35,9 @@ After the build the x10.dist directory should hold a working x10 distribution.
 This means executables in bin/ and library files in lib/.
 For our Firm backend use bin/x10firm instead of bin/x10c or bin/x10c++.
 
+Tip: "ant dist-firm" compiles everything necessary for x10firm without
+     recompiling the x10c++, x10c parts
+
 
 
 
@@ -48,6 +51,20 @@ handle SIGSEGV nostop noprint pass
 handle SIGILL nostop noprint pass
 handle SIGQUIT nostop noprint pass
 end
+
+Tip2:
+You can easily run x10firm in gdb like this:
+JAVA="gdb --args java" x10firm ...
+
+Tip3: Somehow the JVM manages to take control before a SIGABRT signal is sent
+ from a failed assert in C code. So if you hit an assert and only see a broken
+ backtrace, then instead create a breakpoint on the "abort" function and the
+ debugger will stop early enough for you to see a meaningfull backtrace.
+
+Tip4: If you are unlucky and have a SIGSEGV in the C code, then you should not
+ use the "javadebug" macro from above but instead press "c" multiple times
+ to skip all the java internal SIGSEGVs until you hit the SIGSEGV in the C
+ code.
 
 == AST Dumping ==
 You can use -dump PASSNAME to dump the x10 ast after a specific pass (for
