@@ -477,7 +477,6 @@ public class FirmTypeSystem {
 		return entity;
 	}
 
-	@SuppressWarnings("unused")
 	private firm.Type createClassType(final X10ClassType classType) {
 		final Flags flags = classType.flags();
 		final ClassType result = new ClassType(classType.toString());
@@ -499,7 +498,8 @@ public class FirmTypeSystem {
 		if (superType != null) {
 			final Type firmSuperType = asClass(superType);
 			result.addSuperType(firmSuperType);
-			new Entity(result, "$super", firmSuperType);
+			final Entity superObject = new Entity(result, "$super", firmSuperType);
+			superObject.setOffset(0);
 		} else if (flags.isStruct() || classType.isAnonymous()) {
 			final X10ClassType any = typeSystem.getTypeSystem().Any();
 			final Type firmAny = asClass(any);
@@ -537,7 +537,6 @@ public class FirmTypeSystem {
 			} else {
 				reinstantiated = field;
 			}
-			final Type owner = reinstantiated.flags().isStatic() ? Program.getGlobalType() : result;
 			getFieldEntity(reinstantiated, result);
 		}
 

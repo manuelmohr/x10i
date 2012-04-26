@@ -1576,7 +1576,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	private void setDebugInfo(final Node node, final Position pos) {
 		if (options.x10_config.DEBUG) {
-			final Pointer dbgInfo = DebugInfo.createInfo(pos.file(), pos.line());
+			final Pointer dbgInfo = DebugInfo.createInfo(pos.file(), pos.line(), pos.column());
 			node.setDebugInfo(dbgInfo);
 		}
 	}
