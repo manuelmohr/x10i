@@ -77,6 +77,7 @@ import polyglot.types.Flags;
 import polyglot.types.LocalDef;
 import polyglot.types.LocalInstance;
 import polyglot.types.LocalInstance_c;
+import polyglot.types.MethodDef;
 import polyglot.types.Name;
 import polyglot.types.Ref_c;
 import polyglot.types.Type;
@@ -220,7 +221,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	/** true if we're in a subtree of a type with unbound type parameters. */
 	private boolean unboundTypeParameters;
 
-	/** true if no static methods should be generated. */
+	/** true if no static methods/classes should be generated. */
 	private boolean dontGenerateStatics;
 
 	/**
@@ -457,8 +458,9 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final boolean oldUnboundTypeParameters = unboundTypeParameters;
 		/* static classes are independent of their surroundings
 		 * (they only have an effect as an additional namespace) */
-		if (def.flags().isStatic())
+		if (def.flags().isStatic()) {
 			unboundTypeParameters = false;
+		}
 		/* see if all our type parameters are bound */
 		final TypeParamSubst subst = typeSystem.getSubst();
 		for (ParameterType paramType : def.typeParameters()) {
@@ -479,6 +481,12 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			for (final ClassMember member : members) {
 				if (isStruct && !unboundTypeParameters && fixStructTypename(n, member))
 					continue;
+				/* avoid instantiating static classes multiple times */
+				if (dontGenerateStatics && member instanceof X10ClassDecl) {
+					final X10ClassDecl asClassDecl  = (X10ClassDecl) member;
+					if (asClassDecl.classDef().flags().isStatic())
+						continue;
+				}
 
 				visitAppropriate(member);
 			}
@@ -1550,26 +1558,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	public void visit(final X10Call_c n) {
 		final MethodInstance methodInstance = n.methodInstance();
 
-		// If this is a call to a generic method, record the type arguments and
-		// remember to
-		// generate code later.
-		final List<Type> typeArguments = methodInstance.typeParameters();
-		if (!typeArguments.isEmpty()) {
-			TypeParamSubst addSubst = null;
-			if (methodInstance instanceof ReinstantiatedMethodInstance) {
-				final ReinstantiatedMethodInstance reinstantiated
-					= (ReinstantiatedMethodInstance) methodInstance;
-				addSubst = reinstantiated.typeParamSubst();
-			}
-			final List<ParameterType> typeParameters = ((X10MethodDef) methodInstance.def()).typeParameters();
-			final TypeParamSubst subst = createSubst(addSubst, typeParameters, typeArguments);
-
-			// Find the method declaration.
-			final X10MethodDecl decl = DeclFetcher.getDecl(n);
-
-			// Remember the parameter type configuration to generate code later.
-			addToWorklist(new GenericNodeInstance(decl, subst));
-		}
+		instantiateGenericMethod(methodInstance);
 		final Node ret = genX10Call(n.position(), methodInstance, n.arguments(), n.target());
 		setReturnNode(ret);
 	}
@@ -1763,22 +1752,47 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	@Override
 	public void instantiateGenericClass(final X10ClassType type) {
 		/** Ensure that generic types are instantiated */
-		final List<ParameterType> typeParameters = type.def().typeParameters();
+		final X10ClassDef def = type.def();
+		final List<ParameterType> typeParameters = def.typeParameters();
 		if (typeParameters.isEmpty())
 			return;
 
+		final List<Type> typeArguments = type.typeArguments();
+		final TypeParamSubst subst = createSubst(typeSystem, typeParameters, typeArguments);
+
 		// Find the class declaration.
-		final X10ClassDecl decl = DeclFetcher.getDecl(type);
+		final X10ClassDecl decl = DeclFetcher.getDecl(def);
 		/* some automatically generated types have no decls
 		 * not adding them is fine since they don't contain code
 		 * anyway */
 		if (decl != null) {
-			final List<polyglot.types.Type> typeArguments = type.typeArguments();
-			final TypeParamSubst subst = FirmGenerator.createSubst(typeSystem, typeParameters, typeArguments);
-
 			// Remember the parameter type configuration to generate code later.
 			addToWorklist(new GenericNodeInstance(decl, subst));
 		}
+	}
+
+	private void instantiateGenericMethod(final MethodInstance instance) {
+		// If this is a call to a generic method, record the type arguments and
+		// remember to generate code later.
+		final List<Type> typeArguments = instance.typeParameters();
+		if (typeArguments.isEmpty())
+			return;
+
+		TypeParamSubst addSubst = null;
+		if (instance instanceof ReinstantiatedMethodInstance) {
+			final ReinstantiatedMethodInstance reinstantiated
+				= (ReinstantiatedMethodInstance) instance;
+			addSubst = reinstantiated.typeParamSubst();
+		}
+		final MethodDef def = instance.def();
+		final List<ParameterType> typeParameters = def.typeParameters();
+		final TypeParamSubst subst = createSubst(addSubst, typeParameters, typeArguments);
+
+		// Find the method declaration.
+		final X10MethodDecl decl = DeclFetcher.getDecl(def);
+
+		// Remember the parameter type configuration to generate code later.
+		addToWorklist(new GenericNodeInstance(decl, subst));
 	}
 
 	@Override
