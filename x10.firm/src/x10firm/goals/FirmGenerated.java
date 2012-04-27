@@ -86,6 +86,8 @@ public class FirmGenerated extends AllBarrierGoal {
 			}
 		}
 
+		Program.check();
+
 		return true;
 	}
 

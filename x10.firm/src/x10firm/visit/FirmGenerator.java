@@ -261,7 +261,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Graph graph = Program.getConstCodeGraph();
 		final Node val = graph.newSymConst(methodEntity);
 
-		conEntity.setLdIdent(name);
+		conEntity.setLdIdent("");
 		conEntity.setCompilerGenerated(true);
 		conEntity.setVisibility(ir_visibility.ir_visibility_private);
 		conEntity.addLinkage(ir_linkage.IR_LINKAGE_HIDDEN_USER);
