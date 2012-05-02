@@ -64,7 +64,7 @@ abstract class X10LangPointer {
 			final Node retNode = con.newReturn(mem2, new Node[]{result});
 			assert retNode != null;
 			con.getGraph().getEndBlock().addPred(retNode);
-			con.setCurrentBlockBad();
+			con.setUnreachable();
 
 			codeGenerator.finishConstruction(entity, savedConstruction);
 		}
@@ -120,7 +120,7 @@ abstract class X10LangPointer {
 			assert retNode != null;
 
 			con.getGraph().getEndBlock().addPred(retNode);
-			con.setCurrentBlockBad();
+			con.setUnreachable();
 
 			codeGenerator.finishConstruction(entity, savedConstruction);
 		}

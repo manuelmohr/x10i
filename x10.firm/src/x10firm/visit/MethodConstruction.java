@@ -92,4 +92,13 @@ public class MethodConstruction extends OOConstruction {
 		}
 		return ret;
 	}
+
+	/**
+	 * Returns current break block, creates a new one if necessary.
+	 */
+	public Block createBreakBlock() {
+		if (breakBlock == null)
+			breakBlock = newBlock();
+		return breakBlock;
+	}
 }

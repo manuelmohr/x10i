@@ -39,7 +39,7 @@ class X10LangNativeSupportGetSize implements BuiltinMethodGenerator {
 		final Node mem = con.getCurrentMem();
 		final Node ret = con.newReturn(mem, new Node[] {cnst});
 		con.getGraph().getEndBlock().addPred(ret);
-		con.setCurrentBlockBad();
+		con.setUnreachable();
 
 		codeGenerator.finishConstruction(entity, savedConstruction);
 	}

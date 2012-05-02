@@ -682,7 +682,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	 */
 	public void finishConstruction(final Entity entity, final MethodConstruction savedConstruction) {
 		/* create Return node if there was no explicit return statement yet */
-		if (!con.getCurrentBlock().isBad()) {
+		if (!con.isUnreachable()) {
 			genReturn(null, null);
 		}
 
@@ -777,7 +777,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node zero = construction.newConst(intType.getMode().getNull());
 		final Node returnn = construction.newReturn(returnMem, new Node[] {zero});
 		construction.getGraph().getEndBlock().addPred(returnn);
-		construction.setCurrentBlockBad();
+		construction.setUnreachable();
 
 		construction.finish();
 		Program.setMainGraph(graph);
@@ -1015,11 +1015,10 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		assert entry == numCases;
 
 		final Node switchNode = con.newSwitch(expr, nextPn, tbl.ptr);
-		final Block breakBlock = con.newBlock();
-		con.setCurrentBlockBad();
+		con.setUnreachable();
 
 		final Block oldBreak = con.breakBlock;
-		con.breakBlock = breakBlock;
+		con.breakBlock = null;
 		final Node oldSwitch = con.switchNode;
 		con.switchNode = switchNode;
 		final Map<Case, Integer> oldCasePNs = con.casePNs;
@@ -1029,26 +1028,29 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			visitAppropriate(elem);
 		}
 
-		assert con.breakBlock == breakBlock;
 		con.breakBlock = oldBreak;
 		assert con.switchNode == switchNode;
 		con.switchNode = oldSwitch;
 		assert con.casePNs == casePNs;
 		con.casePNs = oldCasePNs;
 
-		if (!con.getCurrentBlock().isBad()) {
-			final Node jmp = con.newJmp();
-			breakBlock.addPred(jmp);
-		}
-
 		if (!hasDefaultCase) {
 			con.setCurrentBlock(curBlock);
 			final Node proj = con.newProj(switchNode, Mode.getX(), Switch.pnDefault);
-			breakBlock.addPred(proj);
+			con.createBreakBlock().addPred(proj);
 		}
 
-		breakBlock.mature();
-		con.setCurrentBlock(breakBlock);
+		if (!con.isUnreachable()) {
+			final Node jmp = con.newJmp();
+			con.createBreakBlock().addPred(jmp);
+		}
+
+		if (con.breakBlock != null) {
+			con.breakBlock.mature();
+			con.setCurrentBlock(con.breakBlock);
+		} else {
+			con.setUnreachable();
+		}
 	}
 
 	@Override
@@ -1067,8 +1069,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node proj = con.newProj(switchNode, Mode.getX(), pn);
 		block.addPred(proj);
 
-		final Block current = con.getCurrentBlock();
-		if (!current.isBad()) {
+		if (!con.isUnreachable()) {
 			final Node jmp = con.newJmp();
 			block.addPred(jmp);
 		}
@@ -1079,7 +1080,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	@Override
 	public void visit(final Branch_c br) {
-		if (con.getCurrentBlock().isBad())
+		if (con.isUnreachable())
 			return;
 
 		final Block target;
@@ -1094,14 +1095,14 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			if (br.kind() == Branch.CONTINUE) {
 				target = con.continueBlock;
 			} else {
-				target = con.breakBlock;
+				target = con.createBreakBlock();
 			}
 		}
 
 		final Node jmp = con.newJmp();
 		target.addPred(jmp);
 
-		con.setCurrentBlockBad();
+		con.setUnreachable();
 	}
 
 	@Override
@@ -1113,7 +1114,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		con.labeledStmt = stmt;
 
 		final Block labeledBlock = con.newBlock();
-		if (!con.getCurrentBlock().isBad()) {
+		if (!con.isUnreachable()) {
 			final Node jmp = con.newJmp();
 			labeledBlock.addPred(jmp);
 		}
@@ -1178,13 +1179,13 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node mem     = con.getCurrentMem();
 		final Node retNode = con.newReturn(mem, retValues);
 		con.getGraph().getEndBlock().addPred(retNode);
-		con.setCurrentBlockBad();
+		con.setUnreachable();
 	}
 
 	@Override
 	public void visit(final Return_c n) {
 		/* nothing to do in unreachable code */
-		if (con.getCurrentBlock().isBad())
+		if (con.isUnreachable())
 			return;
 
 		genReturn(con.returnType, n.expr());
@@ -1276,7 +1277,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		assert con.continueBlock == bCond;
 		con.continueBlock = oldContinue;
 
-		if (con.getCurrentBlock().isBad()) {
+		if (con.isUnreachable()) {
 			return;
 		}
 
@@ -1302,7 +1303,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 		/* more fixup for X10 endless loop detection */
 		if (bFalse.getPredCount() == 0) {
-			con.setCurrentBlockBad();
+			con.setUnreachable();
 		} else {
 			con.setCurrentBlock(bFalse);
 		}
@@ -1353,13 +1354,13 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 		bFalse.mature();
 
-		if (!con.getCurrentBlock().isBad())
+		if (!con.isUnreachable())
 			bCond.addPred(con.newJmp());
 		bCond.mature();
 
 		/* more fixup for X10 endless loop detection */
 		if (bFalse.getPredCount() == 0) {
-			con.setCurrentBlockBad();
+			con.setUnreachable();
 		} else {
 			con.setCurrentBlock(bFalse);
 		}
@@ -1422,14 +1423,14 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			}
 		}
 
-		if (!con.getCurrentBlock().isBad())
+		if (!con.isUnreachable())
 			bCond.addPred(con.newJmp());
 
 		bCond.mature();
 
 		/* more fixup for X10 endless loop detection */
 		if (bFalse.getPredCount() == 0) {
-			con.setCurrentBlockBad();
+			con.setUnreachable();
 		} else {
 			con.setCurrentBlock(bFalse);
 		}
@@ -2516,7 +2517,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 		con.getGraph().keepAlive(call);
 		con.getGraph().keepAlive(con.getCurrentBlock());
-		con.setCurrentBlockBad();
+		con.setUnreachable();
 	}
 
 	@Override

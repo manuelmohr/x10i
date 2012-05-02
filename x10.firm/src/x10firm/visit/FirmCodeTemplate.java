@@ -113,7 +113,7 @@ public final class FirmCodeTemplate {
 		ifStmt.genCode();
 
 		Node endIf = null;
-		if (con.getCurrentBlock().isBad()) {
+		if (con.isUnreachable()) {
 			con.setCurrentBlock(bTrue);
 		} else {
 			endIf = con.newJmp();
@@ -126,14 +126,14 @@ public final class FirmCodeTemplate {
 			con.setCurrentBlock(bFalse);
 			elseStmt.genCode();
 
-			if (!con.getCurrentBlock().isBad())
+			if (!con.isUnreachable())
 				bAfter.addPred(con.newJmp());
 		}
 
 		if (endIf != null)
 			bAfter.addPred(endIf);
 
-		if (!con.getCurrentBlock().isBad())
+		if (!con.isUnreachable())
 			con.setCurrentBlock(bAfter);
 	}
 }

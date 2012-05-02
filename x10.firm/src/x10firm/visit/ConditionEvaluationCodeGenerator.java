@@ -65,7 +65,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		final Node     projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
 		trueBlock.addPred(projTrue);
 		falseBlock.addPred(projFalse);
-		con.setCurrentBlockBad();
+		con.setUnreachable();
 	}
 
 	@Override
@@ -78,7 +78,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 			falseBlock.addPred(jmp);
 		}
 
-		con.setCurrentBlockBad();
+		con.setUnreachable();
 	}
 
 	@Override
@@ -178,10 +178,10 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 				final Node jmp = con.newJmp();
 				if (relation == Relation.Equal) {
 					falseBlock.addPred(jmp);
-					con.setCurrentBlockBad();
+					con.setUnreachable();
 				} else {
 					trueBlock.addPred(jmp);
-					con.setCurrentBlockBad();
+					con.setUnreachable();
 				}
 				return;
 			}

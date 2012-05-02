@@ -47,7 +47,7 @@ class X10LangZeroGet implements BuiltinMethodGenerator {
 			ret = con.newReturn(mem, new Node[]{tmp});
 		}
 		con.getGraph().getEndBlock().addPred(ret);
-		con.setCurrentBlockBad();
+		con.setUnreachable();
 		codeGenerator.finishConstruction(entity, savedConstruction);
 	}
 }
