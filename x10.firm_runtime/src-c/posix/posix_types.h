@@ -42,12 +42,12 @@ struct x10_place {
 	x10_int id;
 };
 
-typedef struct x10_lock {
+struct x10_lock {
 	x10_object base;
 	// lock id
 	pthread_mutex_t __lock;
 	// lock attributes
 	pthread_mutexattr_t __lock_attr;
-} x10_lock;
+};
 
 #endif

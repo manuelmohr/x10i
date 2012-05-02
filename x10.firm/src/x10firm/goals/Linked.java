@@ -74,13 +74,21 @@ public class Linked extends AbstractGoal_c {
 		return output;
 	}
 
+	private static String distPath() {
+		return System.getProperty("x10.dist", ".");
+	}
+
+	private static String octoposPrefix() {
+		return distPath() + "/../octopos-app/releases/current/x86guest/default/";
+	}
+
 	@Override
 	public boolean runTask() {
 		final String exeFilename = options.executable_path == null
 		                           ? "a.out"
 		                           : options.executable_path;
 		final MachineTriple target = options.getTargetTriple();
-		final String x10DistPath = System.getProperty("x10.dist", ".");
+		final String x10DistPath = distPath();
 		final String libooPath = x10DistPath + "/../liboo/build/" + target;
 		final String gcc = getGCC();
 		final boolean usesElf = target.isUnixishOS();
@@ -93,10 +101,9 @@ public class Linked extends AbstractGoal_c {
 		if (target.getCpu().equals("x86_64") || os.equals("darwin11")) {
 			cmd.add("-m32");
 		} else if (os.equals("octopos")) {
-			final String octoposPrefix = x10DistPath + "/../octopos-app";
 			cmd.add("-m32");
 			cmd.add("-nostdlib");
-			cmd.add("-Wl,-T" + octoposPrefix + "/sections.x");
+			cmd.add("-Wl,-T" + octoposPrefix() + "lib/sections.x");
 			cmd.add(queryGccPath("crti.o"));
 			cmd.add(queryGccPath("crtbegin.o"));
 			/* octopos only supports static linking */
@@ -121,8 +128,8 @@ public class Linked extends AbstractGoal_c {
 			cmd.add(stdlibPath + "/libx10.a");
 		}
 		if (os.equals("octopos")) {
-			final String octoposPrefix = x10DistPath + "/../octopos-app";
-			cmd.add(octoposPrefix + "/liboctopos.a");
+			cmd.add(octoposPrefix() + "lib/liboctopos.a");
+			cmd.add(octoposPrefix() + "lib/libcsubset.a");
 			cmd.add("-lgcc");
 			cmd.add(queryGccPath("crtend.o"));
 			cmd.add(queryGccPath("crtn.o"));

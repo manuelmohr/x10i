@@ -5,7 +5,7 @@
 #include "util.h"
 #include "posix_types.h"
 
-x10_lock *_ZN3x104util10concurrent4LockC1Ev(x10_lock *self)
+void _ZN3x104util10concurrent4LockC1Ev(x10_lock *self)
 {
     // create lock attributes object
     // ??check the return code for ENOMEM and throw OutOfMemoryError??
@@ -29,8 +29,6 @@ x10_lock *_ZN3x104util10concurrent4LockC1Ev(x10_lock *self)
     // create lock object
     // ??check the return code for ENOMEM and throw OutOfMemoryError??
     (void)pthread_mutex_init(&(self->__lock), &(self->__lock_attr));
-
-    return self;
 }
 
 void _ZN3x104util10concurrent4Lock4lockEv(x10_lock *self)

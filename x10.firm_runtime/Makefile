@@ -5,6 +5,7 @@ TARGET         ?= $(guessed_target)
 
 CPARSER_TARGET ?= -mtarget=$(TARGET)
 CFLAGS         ?= -g
+CPPFLAGS       ?=
 
 SIMULATOR  ?=
 APP_CFLAGS ?=
@@ -26,10 +27,11 @@ ifeq ($(findstring darwin11, $(TARGET)), darwin11)
 	LFLAGS += -m32
 endif
 ifeq ($(TARGET), i686-invasic-octopos)
-	OCTOPOS_BASE=../octopos-app
+	OCTOPOS_BASE=../octopos-app/releases/current/x86guest/default
 	GCC_INCLUDE:=$(shell $(CC) --print-file-name=include)
-	CFLAGS += -m32 -fno-stack-protector -mfpmath=sse -msse2 -nostdinc -D__OCTOPOS__ -I $(GCC_INCLUDE) -I $(OCTOPOS_BASE)/include
-	LFLAGS += -m32 -nostdlib -Wl,-T,$(OCTOPOS_BASE)/sections.x $(OCTOPOS_BASE)/liboctopos.a
+	CFLAGS += -m32 -fno-stack-protector -mfpmath=sse -msse2
+	CPPFLAGS += -nostdinc -D__OCTOPOS__ -I $(GCC_INCLUDE) -I $(OCTOPOS_BASE)/include
+	LFLAGS += -m32 -nostdlib -Wl,-T,$(OCTOPOS_BASE)/lib/sections.x $(OCTOPOS_BASE)/lib/liboctopos.a $(OCTOPOS_BASE)/lib/libcsubset.a
 	PLATFORM = octopos
 	CPARSER_TARGET =
 else
@@ -55,7 +57,7 @@ FIRM_NATIVE_TYPES_CONF=$(BUILDDIR)/firmNativeTypes.conf
 C_FILES=$(filter-out $(GEN_FIRM_NATIVE_SIZES), $(ALL_C_FILES)) $(GEN_PRIMITIVE_TYPES)
 O_FILES=$(addprefix $(BUILDDIR), $(basename $(C_FILES:%.c=%.o)))
 H_FILES=$(wildcard $(SRCDIR)/*.h)
-CPPFLAGS = -I $(SRCDIR) -I $(SRCDIR)/$(PLATFORM) -I $(LIBOO_BASE)/include
+CPPFLAGS += -I $(SRCDIR) -I $(SRCDIR)/$(PLATFORM) -I $(LIBOO_BASE)/include
 CFLAGS += -Wall -W -std=c99
 APP_CFLAGS += -std=c99
 MASTER=$(BUILDDIR)/master.c
