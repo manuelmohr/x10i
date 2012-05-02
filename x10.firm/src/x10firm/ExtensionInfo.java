@@ -55,6 +55,25 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 	// TODO: DELETE ME: Need library support
 	private static Set<String> allowedFiles = new HashSet<String>();
 	static {
+		allowedFiles.add("x10/array/Array.x10");
+		allowedFiles.add("x10/array/EmptyRegion.x10");
+		allowedFiles.add("x10/array/FullRegion.x10");
+		allowedFiles.add("x10/array/MatBuilder.x10");
+		allowedFiles.add("x10/array/Mat.x10");
+		allowedFiles.add("x10/array/Point.x10");
+		allowedFiles.add("x10/array/PolyMat.x10");
+		allowedFiles.add("x10/array/PolyMatBuilder.x10");
+		allowedFiles.add("x10/array/PolyRegion.x10");
+		allowedFiles.add("x10/array/PolyRow.x10");
+		allowedFiles.add("x10/array/PolyScanner.x10");
+		allowedFiles.add("x10/array/RectRegion1D.x10");
+		allowedFiles.add("x10/array/RectRegion.x10");
+		allowedFiles.add("x10/array/RectLayout.x10");
+		allowedFiles.add("x10/array/Region.x10");
+		allowedFiles.add("x10/array/Row.x10");
+		allowedFiles.add("x10/array/VarMat.x10");
+		allowedFiles.add("x10/array/ValRow.x10");
+		allowedFiles.add("x10/array/VarRow.x10");
 		allowedFiles.add("x10/compiler/CompilerFlags.x10");
 		allowedFiles.add("x10/compiler/InitDispatcher.x10");
 		allowedFiles.add("x10/io/Console.x10");
@@ -65,6 +84,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedFiles.add("x10/io/Printer.x10");
 		allowedFiles.add("x10/io/Reader.x10");
 		allowedFiles.add("x10/io/ReaderIterator.x10");
+		allowedFiles.add("x10/io/StringWriter.x10");
 		allowedFiles.add("x10/io/Writer.x10");
 		allowedFiles.add("x10/lang/Any.x10");
 		allowedFiles.add("x10/lang/Arithmetic.x10");
@@ -79,6 +99,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedFiles.add("x10/lang/Indexable.x10");
 		allowedFiles.add("x10/lang/IntRange.x10");
 		allowedFiles.add("x10/lang/Int.x10");
+		allowedFiles.add("x10/lang/IntRange.x10");
 		allowedFiles.add("x10/lang/Iterable.x10");
 		allowedFiles.add("x10/lang/Iterable.x10");
 		allowedFiles.add("x10/lang/Iterator.x10");
@@ -88,6 +109,8 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedFiles.add("x10/lang/NativeSupport.x10");
 		allowedFiles.add("x10/lang/Object.x10");
 		allowedFiles.add("x10/lang/Pointer.x10");
+		allowedFiles.add("x10/lang/Rail.x10");
+		allowedFiles.add("x10/lang/Sequence.x10");
 		allowedFiles.add("x10/lang/Settable.x10");
 		allowedFiles.add("x10/lang/Short.x10");
 		allowedFiles.add("x10/lang/String.x10");
