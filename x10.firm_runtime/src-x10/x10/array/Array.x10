@@ -247,7 +247,7 @@ public final class Array[T] (
      */
     public def this(ptr : Pointer, len : Int)
     {
-        this(IndexedMemoryChunk[T](ptr, ptr, len));
+        this(IndexedMemoryChunk[T](ptr, len));
     }
 
     /**
@@ -893,10 +893,12 @@ public final class Array[T] (
      * @throws IllegalArgumentException if mismatch in size of backing storage
      *         of the two arrays.
      */
+    /*
     public static def asyncCopy[T](src:Array[T], dst:RemoteArray[T]) {
         if (src.raw.length() != dst.rawData.length()) throw new IllegalArgumentException("source and destination do not have equal size");
         IndexedMemoryChunk.asyncCopy(src.raw, 0, dst.rawData, 0, src.raw.length());
     }
+    */
 
 
     /**
@@ -925,6 +927,7 @@ public final class Array[T] (
      * @throws IllegalArgumentException if the specified copy regions would
      *         result in an ArrayIndexOutOfBoundsException.
      */
+    /*
     public static def asyncCopy[T](src:Array[T], srcPoint:Point,
             dst:RemoteArray[T], dstPoint:Point,
             numElems:int) {
@@ -932,6 +935,7 @@ public final class Array[T] (
         val dstIndex = at (gra) gra().region.indexOf(dstPoint);
         asyncCopy(src, src.region.indexOf(srcPoint), dst, dstIndex, numElems);
     }
+    */
 
 
     /**
@@ -969,6 +973,7 @@ public final class Array[T] (
      * @throws IllegalArgumentException if the specified copy regions would
      *         result in an ArrayIndexOutOfBoundsException.
      */
+    /*
     public static def asyncCopy[T](src:Array[T], srcIndex:int,
             dst:RemoteArray[T], dstIndex:int,
             numElems:int) {
@@ -980,6 +985,7 @@ public final class Array[T] (
         }
         IndexedMemoryChunk.asyncCopy(src.raw, srcIndex, dst.rawData, dstIndex, numElems);
     }
+    */
 
 
     /**
@@ -1003,10 +1009,12 @@ public final class Array[T] (
      * @throws IllegalArgumentException if mismatch in size of backing storage
      *         of the two arrays.
      */
+    /*
     public static def asyncCopy[T](src:RemoteArray[T], dst:Array[T]) {
         if (src.rawData.length() != dst.raw.length()) throw new IllegalArgumentException("source and destination do not have equal size");
         IndexedMemoryChunk.asyncCopy(src.rawData, 0, dst.raw, 0, dst.raw.length());
     }
+    */
 
 
     /**
@@ -1035,6 +1043,7 @@ public final class Array[T] (
      * @throws IllegalArgumentException if the specified copy regions would
      *         result in an ArrayIndexOutOfBoundsException.
      */
+    /*
     public static def asyncCopy[T](src:RemoteArray[T], srcPoint:Point,
             dst:Array[T], dstPoint:Point,
             numElems:int) {
@@ -1042,6 +1051,7 @@ public final class Array[T] (
         val srcIndex = at (gra) gra().region.indexOf(srcPoint);
         asyncCopy(src, srcIndex, dst, dst.region.indexOf(dstPoint), numElems);
     }
+   */
 
 
     /**
@@ -1079,6 +1089,7 @@ public final class Array[T] (
      * @throws IllegalArgumentException if the specified copy regions would
      *         result in an ArrayIndexOutOfBoundsException.
      */
+    /*
     public static def asyncCopy[T](src:RemoteArray[T], srcIndex:int,
             dst:Array[T], dstIndex:int,
             numElems:int) {
@@ -1090,6 +1101,7 @@ public final class Array[T] (
         }
         IndexedMemoryChunk.asyncCopy(src.rawData, srcIndex, dst.raw, dstIndex, numElems);
     }
+    */
 
 
     /**

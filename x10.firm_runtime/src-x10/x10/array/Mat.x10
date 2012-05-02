@@ -28,10 +28,10 @@ abstract class Mat[T](rows:Int, cols:Int){T <: Row}
     public def iterator() = mat.values().iterator();
 
     public def printInfo(ps:Printer, label:String): void {
-        ps.printf("%s\n", label);
+        ps.println(label);
         var row:int = 0;
         for (r:Row in this) {
-            ps.printf("    ");
+            ps.print("    ");
             r.printInfo(ps, row++);
         }
     }

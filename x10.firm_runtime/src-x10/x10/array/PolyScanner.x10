@@ -221,7 +221,7 @@ final class PolyScanner(rank:Int)/*(C:PolyMat)*/ {
      * next  x[0] x[1] ...  x[k]+1 min[k+1] ...  min[rank-1]
      *
      * i.e. bump k, reset k+1 through rank-1
-     * finished if k<0
+     * finished if k&lt;0
      *
      * next() does the bumping and resetting
      *
@@ -321,7 +321,7 @@ final class PolyScanner(rank:Int)/*(C:PolyMat)*/ {
                     ps.print(" "+minSum(k)(l)(m));
                 ps.print("\n");
             }
-            ps.printf("  max\n");
+            ps.print("  max\n");
             for (var l: int = 0; l<myMax(k).rows; l++) {
                 ps.print("  ");
                 for (var m: int = 0; m<myMax(k)(l).cols; m++)

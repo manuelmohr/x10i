@@ -63,7 +63,9 @@ public struct IntRange(
 
     public operator this && (that:Region(1)): Region(1) = (this as Region(1)) && that;
 
+    /*
     public operator this -> (p:Place) = Dist.makeConstant(this as Region(1), p);
+    */
 
     public def toString():String = min+".."+max;
 
