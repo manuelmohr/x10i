@@ -25,14 +25,14 @@ public class Error extends Throwable {
     /**
      * Construct an Error with no detail message and no cause.
      */
-    public def this() { super(); } 
+    public def this() { super(); }
 
     /**
      * Construct an Error with the specified detail message and no cause.
      *
      * @param message the detail message
      */
-    public def this(message: String) { super(message); } 
+    public def this(message: String) { super(message); }
 
     /**
      * Construct an Error with the specified detail message and the specified cause.
@@ -47,7 +47,7 @@ public class Error extends Throwable {
      *
      * @param cause the cause
      */
-    public def this(cause: Throwable) { super(cause); } 
+    public def this(cause: Throwable) { super(cause); }
 }
 
 // vim:tabstop=4:shiftwidth=4:expandtab

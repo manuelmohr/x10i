@@ -25,7 +25,7 @@ import x10.util.GrowableIndexedMemoryChunk;
  *
  *
  */
-public class Future[T] implements ()=>T { 
+public class Future[T] implements ()=>T {
     private val root = GlobalRef[Future[T]](this);
 
     /**

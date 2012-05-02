@@ -426,7 +426,7 @@ public struct UByte implements Comparable[UByte] /*TODO implements Arithmetic[UB
     // @Native("java", "((byte) (java.lang.Integer.parseInt(#s, #radix) & 0xff))")
     @Native("c++", "(x10aux::byte_utils::parseUByte(#1, #2))")
      /* [FIRM_CHANGE] */
-    public native static def parse(s:String, radix:Int): UByte; //throws NumberFormatException 
+    public native static def parse(s:String, radix:Int): UByte; //throws NumberFormatException
 
     /**
      * Parses the String argument as a decimal UByte.
@@ -468,7 +468,7 @@ public struct UByte implements Comparable[UByte] /*TODO implements Arithmetic[UB
      /* [FIRM_CHANGE] */
     public def equals(x:Any):Boolean {
     	if(x instanceof UByte) {
-    		return equals(x as UByte); 
+    		return equals(x as UByte);
     	}
     	return false;
     }

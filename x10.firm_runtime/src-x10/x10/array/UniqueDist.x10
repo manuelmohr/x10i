@@ -15,11 +15,11 @@ import x10.compiler.CompilerFlags;
 
 /**
  * A distribution that maps the region 0..(numPlaces()-1)
- * to the members of its PlaceGroup such that for 
- * every Place p the region returned by get is 
+ * to the members of its PlaceGroup such that for
+ * every Place p the region returned by get is
  * the single point region that matches the indexOf
  * p in the PlaceGroup.
- * In particular, if the PlaceGroup of the UniqueDist 
+ * In particular, if the PlaceGroup of the UniqueDist
  * is PlaceGroup.WORLD, then each Place p will be assigned
  * the region p.id..p.id.
  */
@@ -29,7 +29,7 @@ final class UniqueDist extends Dist/*(1)*/ {
     * The place group for this distribution
     */
    private val pg:PlaceGroup;
-   
+
     /**
      * Cached restricted region for the current place.
      */
@@ -120,7 +120,7 @@ final class UniqueDist extends Dist/*(1)*/ {
     }
 
     public def restriction(p:Place):Dist(rank) {
-	return new WrappedDistPlaceRestricted(this, p) as Dist(rank);  
+	return new WrappedDistPlaceRestricted(this, p) as Dist(rank);
     }
 
     public def equals(thatObj:Any):boolean {

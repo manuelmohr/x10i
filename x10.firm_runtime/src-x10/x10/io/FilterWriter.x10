@@ -13,17 +13,17 @@ package x10.io;
 
 public class FilterWriter extends Writer {
     val w: Writer;
-    
+
     protected def inner(): Writer = w;
 
     public def this(w: Writer) { this.w = w; }
 
-    public def close(): void //throws IOException 
+    public def close(): void //throws IOException
     { w.close(); }
-    public def flush(): void //throws IOException 
+    public def flush(): void //throws IOException
     { w.flush(); }
 
-    public def write(b: Byte): void //throws IOException 
+    public def write(b: Byte): void //throws IOException
     { w.write(b); }
 
     public def write(ptr: Pointer, len: Int): void

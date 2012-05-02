@@ -17,7 +17,7 @@ import x10.util.HashMap;
 
 /**
  * Runtime representation of an async. Only to be used in the runtime implementation.
- * 
+ *
  * @author tardieu
  */
 class Activity {
@@ -27,7 +27,7 @@ class Activity {
         // and register spawnee on these on clocks
         static def make(clocks:Rail[Clock]) {
             val clockPhases = new ClockPhases();
-            for(var i:Int = 0; i < clocks.size; i++) 
+            for(var i:Int = 0; i < clocks.size; i++)
                 clockPhases.put(clocks(i), clocks(i).register());
             return clockPhases;
         }
@@ -57,7 +57,7 @@ class Activity {
             return super.serialize();
         }
         def this() { super(); }
-        def this(a:SerialData) { 
+        def this(a:SerialData) {
             super(a);  // see optimization in serialize();
         }
     }

@@ -19,14 +19,14 @@ import x10.util.Map;
 /**
  * @author tardieu
  *
- * Ported from 2.0 to 2.1 via naive simulation of 
+ * Ported from 2.0 to 2.1 via naive simulation of
  *       2.0 style global object by injecting a root field
- *       that is a GlobalRef(this) and always accessing fields 
+ *       that is a GlobalRef(this) and always accessing fields
  *       as this.root().f instead of this.f.
  * TODO: Port to Dual Class implementation of global objects.
  */
 public final class Clock(name:String) {
-	
+
 	private val root = GlobalRef[Clock](this);
 	public def equals(a:Any) {
 		if (a == null || ! (a instanceof Clock))
@@ -34,7 +34,7 @@ public final class Clock(name:String) {
 		return (a as Clock).root == this.root;
 	}
 	public def hashCode() = root.hashCode();
-	
+
     public static def make(): Clock = make("");
     public static def make(name:String):Clock {
         if (Runtime.STATIC_THREADS) throw new ClockUseException("Clocks are not compatible with static threads.");
@@ -44,7 +44,7 @@ public final class Clock(name:String) {
     }
 
     public static FIRST_PHASE = 1;
-    // NOTE: all transient fields must always be accessed as this.root().f (and at place this.root.home), 
+    // NOTE: all transient fields must always be accessed as this.root().f (and at place this.root.home),
     // not this.f
     private transient var count:Int = 1;
     private transient var alive:Int = 1;
@@ -56,7 +56,7 @@ public final class Clock(name:String) {
 
     // should be accessed through root()
     @Pinned private def resumeLocal()  {
-        atomic 
+        atomic
             if (--alive == 0) {
                 alive = count;
                 ++phase;
@@ -85,10 +85,10 @@ public final class Clock(name:String) {
         	val me = root();
         	atomic {
         		 ++ me.count;
-                 if (-ph != me.phase) 
+                 if (-ph != me.phase)
                 	 ++ me.alive;
         	}
-        }   
+        }
         return ph;
      }
      @Global def resumeUnsafe() {
@@ -167,7 +167,7 @@ public final class Clock(name:String) {
     }
 
     public def toString():String = name.equals("") ? super.toString() : name;
-    
+
     private def clockUseException(method:String) {
         if (dropped()) throw new ClockUseException("invalid invocation of " + method + "() on clock " + toString() + "; calling activity is not clocked on this clock");
     }

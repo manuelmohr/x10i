@@ -19,7 +19,7 @@ import x10.compiler.Native;
  * created. Besides that, the ref offers only the operations of Any at a
  * place other than the one where it was created (its home place).  Two
  * such refs are == if and only if they were created at the same place
- * and at that place the objects they encapsulate are ==.  
+ * and at that place the objects they encapsulate are ==.
  *
  * <p> At its home place, the value when applied to the empty list of
  * arguments returns its encapsulated value.
@@ -35,13 +35,13 @@ public struct GlobalRef[T](
     @Native("c++", "x10::lang::Place::place((#this)->location)")
     public property home():Place = home;
 
-    /** 
+    /**
      * Create a value encapsulating the given object of type T.
      */
     @Native("c++", "x10::lang::GlobalRef(#this)")
-    public native def this(t:T):GlobalRef[T]{self.home==here}; 
+    public native def this(t:T):GlobalRef[T]{self.home==here};
 
-    /** 
+    /**
      * Can only be invoked at the place at which the value was
      * created. Returns the object encapsulated in the value.
      */
@@ -60,7 +60,7 @@ public struct GlobalRef[T](
     private native def localApply():T;
 
     /**
-     * Evaluates the given closure at (this.home), passing as a 
+     * Evaluates the given closure at (this.home), passing as a
      * parameter the object that is encapsulated by this GlobalRef.
      * This is equivalent to the following idiom:
      *   if (here == this.home) return eval(this());
@@ -73,7 +73,7 @@ public struct GlobalRef[T](
     public native def evalAtHome[U](eval:(T)=> U):U;
 
     /**
-     * If (this.home == here), returns the object that is 
+     * If (this.home == here), returns the object that is
      * encapsulated by this GlobalRef.  If (this.home != here),
      * returns a copy at the current place.
      * This is equivalent to the following idiom:
@@ -87,7 +87,7 @@ public struct GlobalRef[T](
     public native def getLocalOrCopy():T;
 
     /*
-     * @Native methods from Any because the handwritten C++ code doesn't 100% match 
+     * @Native methods from Any because the handwritten C++ code doesn't 100% match
      * what the compiler would have generated.
      */
 
@@ -121,7 +121,7 @@ public struct GlobalRef[T](
         }
 
         /**
-         * If (ref.home == here), returns the object that is 
+         * If (ref.home == here), returns the object that is
          * encapsulated by ref.  If (ref.home != here),
          * returns a copy at the current place.
          * This is equivalent to the following idiom:

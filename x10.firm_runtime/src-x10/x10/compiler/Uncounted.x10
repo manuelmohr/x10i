@@ -32,10 +32,10 @@ import x10.lang.annotations.StatementAnnotation;
  *
  * class Box[T] {
  *     var t:T;
- * 
+ *
  *     def this(init:T) { t = init; }
  * }
- * 
+ *
  * public class Foo {
  *     public static def main(args:Array[String]) {
  *         val box = new Box[Boolean](false);
@@ -48,7 +48,7 @@ import x10.lang.annotations.StatementAnnotation;
  *         await box.t;
  *     }
  * }
- * 
+ *
  */
 public interface Uncounted
     extends StatementAnnotation {

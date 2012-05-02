@@ -26,18 +26,18 @@ import x10.util.Box;
  *    }
  *    p.flush();
  * } catch (IOException) { }
- */    
+ */
 public class ReaderIterator[T] implements Iterator[T], Iterable[T] {
     val r: Reader;
     val m: Marshal[T];
     var next: Box[T];
-    
+
     public def this(m: Marshal[T], r: Reader) {
        this.m = m;
        this.r = r;
        //       this.next = null;
     }
-    
+
     /** Allow the iterator to be used in a for loop. */
     public def iterator(): Iterator[T] = this;
 
@@ -48,7 +48,7 @@ public class ReaderIterator[T] implements Iterator[T], Iterable[T] {
         next = null;
         return x;
     }
-    
+
     public def hasNext(): Boolean {
         if (next == null) {
             try {

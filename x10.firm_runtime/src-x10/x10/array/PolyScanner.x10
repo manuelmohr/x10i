@@ -24,22 +24,22 @@ import x10.io.*;
  * mins and maxes.
  *
  *           0   1   2   r-1
- * 
+ *
  * min[0]
  *           A0  0   0   0   B   X0 bounded by B / A0
  *           A0  0   0   0   B   X0 bounded by B / A0
  *           ...                 ...
- * 
+ *
  * min[1]
  *           A0  A1  0   0   B   X1 bounded by (B+A0*X0) / A1
  *           A0  A1  0   0   B   X1 bounded by (B+A0*X0) / A1
  *           ...                 ...
- * 
+ *
  * min[2]
  *           A0  A1  A2  0   B   X2 bounded by (B+A0*X0+A1*X1) / A2
  *           A0  A1  A2  0   B   X2 bounded by (B+A0*X0+A1*X1) / A2
  *           ...                 ...
- * 
+ *
  * min[3]
  *           A0  A1  A2  A3  B   X3 bounded by (B+A0*X0+A1*X1+A2*X2) / A3
  *           A0  A1  A2  A3  B   X3 bounded by (B+A0*X0+A1*X1+A2*X2) / A3
@@ -89,7 +89,7 @@ final class PolyScanner(rank:Int)/*(C:PolyMat)*/ {
     private def this(pm: PolyMat):PolyScanner{self.rank==pm.rank} {
 	property(pm.rank);
         var pm0:PolyMat = pm.simplifyAll();
-       
+
         this.C = pm;
         val r = pm0.rank;
         val n = new Rail[VarMat](r);
@@ -293,7 +293,7 @@ final class PolyScanner(rank:Int)/*(C:PolyMat)*/ {
     public def iterator():Iterator[Point(rank)] = new Iterator[Point(rank)]() {
     	val it = new RailIt();
         public final def hasNext() = it.hasNext();
-        public final def next(): Point(rank) = it.next(); 
+        public final def next(): Point(rank) = it.next();
         public final def remove() { it.remove(); }
     };
 

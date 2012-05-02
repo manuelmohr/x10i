@@ -49,7 +49,7 @@ public final class SPMDBarrier(count:Int) {
         property(count);
         assert (Runtime.NTHREADS >= count) : "SPMDBarrier constructor invoked with task count greater than Runtime.NTHREADS";
     }
-    
+
     /* register caller task with the barrier */
     public def register() {
         workers(index++) = Runtime.worker();

@@ -22,18 +22,18 @@ import x10.compiler.Incomplete;
 import x10.util.IndexedMemoryChunk;
 
 /**
- * <p>A distributed array (DistArray) defines a mapping from {@link Point}s to data 
+ * <p>A distributed array (DistArray) defines a mapping from {@link Point}s to data
  * values of some type T. The Points in the DistArray's domain are defined by
- * specifying a {@link Region} over which the Array is defined.  Attempting to access 
- * a data value at a Point not included in the Array's Region will result in a 
+ * specifying a {@link Region} over which the Array is defined.  Attempting to access
+ * a data value at a Point not included in the Array's Region will result in a
  * {@link ArrayIndexOutOfBoundsException} being raised. The array's distribution ({@link Dist})
  * defines a mapping for the Points in the DistArray's region to Places. This defines
  * the Place where the data element for each Point is actually stored. Attempting to access
  * a data element from any other place will result in a {@link BadPlaceException} being
  * raised.</p>
  *
- * <p>The closely related class {@link Array} is used to define 
- * non-distributed arrays where the data values for the Points in the 
+ * <p>The closely related class {@link Array} is used to define
+ * non-distributed arrays where the data values for the Points in the
  * array's domain are all stored in a single place.  Although it is possible to
  * use a DistArray to store data in only a single place by creating a "constant distribution",
  * an Array will significantly outperform a DistArray with a constant distribution.</p>
@@ -76,9 +76,9 @@ public final class DistArray[T] (
     protected transient var cachedRawValid:boolean;
     /** Cached pointer to the backing storage */
     protected transient var cachedRaw:IndexedMemoryChunk[T];
-    
+
     /**
-     * Method to acquire a pointer to the backing storage for the 
+     * Method to acquire a pointer to the backing storage for the
      * array's data in the current place.
      */
     protected final def raw():IndexedMemoryChunk[T] {
@@ -91,7 +91,7 @@ public final class DistArray[T] (
     }
 
     /**
-     * @return the portion of the DistArray that is stored 
+     * @return the portion of the DistArray that is stored
      *    locally at the current place, as an Array
      */
     public def getLocalPortion():Array[T](dist.rank) {
@@ -123,15 +123,15 @@ public final class DistArray[T] (
 
     /**
      * Create a distributed array over the argument distribution whose elements
-     * are initialized by executing the given initializer function for each 
-     * element of the array in the place where the argument Point is mapped. 
+     * are initialized by executing the given initializer function for each
+     * element of the array in the place where the argument Point is mapped.
      * The function will be evaluated exactly once for each point
      * in dist in an arbitrary order to compute the initial value for each array element.</p>
-     * 
+     *
      * Within each place, it is unspecified whether the function evaluations will
-     * be done sequentially by a single activity for each point or concurrently for disjoint sets 
-     * of points by one or more child activities. 
-     * 
+     * be done sequentially by a single activity for each point or concurrently for disjoint sets
+     * of points by one or more child activities.
+     *
      * @param dist the given distribution
      * @param init the initializer function
      * @return the newly created DistArray
@@ -186,9 +186,9 @@ public final class DistArray[T] (
     /**
      * Create a DistArray that views the same backing data
      * as the argument DistArray using a different distribution.</p>
-     * 
-     * An unchecked invariant for this to be correct is that for every 
-     * point p in d, <code>d.offset(p) == a.dist.offset(p)</code>.  
+     *
+     * An unchecked invariant for this to be correct is that for every
+     * point p in d, <code>d.offset(p) == a.dist.offset(p)</code>.
      * This invariant is too expensive to be checked dynamically, so it simply must
      * be respected by the DistArray code that calls this constructor.
      */
@@ -199,21 +199,21 @@ public final class DistArray[T] (
 
     /**
      * Create a DistArray from a distribution and a PlaceLocalHandle[LocalState[T]]
-     * This constructor is intended for internal use only by operations such as 
+     * This constructor is intended for internal use only by operations such as
      * map to enable them to complete with only 1 collective operation instead of 2.
      */
     protected def this(d:Dist, pls:PlaceLocalHandle[LocalState[T]]) {
         property(d);
         localHandle = pls;
     }
-    
-    
+
+
     /**
      * Return the element of this array corresponding to the given point.
      * The rank of the given point has to be the same as the rank of this array.
      * If the distribution does not map the given Point to the current place,
      * then a BadPlaceException will be raised.
-     * 
+     *
      * @param pt the given point
      * @return the element of this array corresponding to the given point.
      * @see #operator(Int)
@@ -230,7 +230,7 @@ public final class DistArray[T] (
      * Functionally equivalent to indexing the array via a one-dimensional point.
      * If the distribution does not map the specified index to the current place,
      * then a BadPlaceException will be raised.
-     * 
+     *
      * @param i0 the given index in the first dimension
      * @return the element of this array corresponding to the given index.
      * @see #operator(Point)
@@ -247,7 +247,7 @@ public final class DistArray[T] (
      * Functionally equivalent to indexing the array via a two-dimensional point.
      * If the distribution does not map the specified index to the current place,
      * then a BadPlaceException will be raised.
-     * 
+     *
      * @param i0 the given index in the first dimension
      * @param i1 the given index in the second dimension
      * @return the element of this array corresponding to the given pair of indices.
@@ -284,7 +284,7 @@ public final class DistArray[T] (
      * Functionally equivalent to indexing the array via a four-dimensional point.
      * If the distribution does not map the specified index to the current place,
      * then a BadPlaceException will be raised.
-     * 
+     *
      * @param i0 the given index in the first dimension
      * @param i1 the given index in the second dimension
      * @param i2 the given index in the third dimension
@@ -305,13 +305,13 @@ public final class DistArray[T] (
      * The rank of the given point has to be the same as the rank of this array.
      * If the distribution does not map the specified index to the current place,
      * then a BadPlaceException will be raised.
-     * 
+     *
      * @param v the given value
      * @param pt the given point
      * @return the new value of the element of this array corresponding to the given point.
      * @see #operator(Point)
      * @see #set(T, Int)
-     */    
+     */
     public final operator this(pt: Point(rank))=(v: T): T {
         val offset = dist.offset(pt);
         raw()(offset) = v;
@@ -325,13 +325,13 @@ public final class DistArray[T] (
      * Functionally equivalent to setting the array via a one-dimensional point.
      * If the distribution does not map the specified index to the current place,
      * then a BadPlaceException will be raised.
-     * 
+     *
      * @param v the given value
      * @param i0 the given index in the first dimension
      * @return the new value of the element of this array corresponding to the given index.
      * @see #operator(Int)
      * @see #set(T, Point)
-     */    
+     */
     public final operator this(i0: int)=(v: T){rank==1}: T {
         val offset = dist.offset(i0);
         raw()(offset) = v;
@@ -345,7 +345,7 @@ public final class DistArray[T] (
      * Functionally equivalent to setting the array via a two-dimensional point.
      * If the distribution does not map the specified index to the current place,
      * then a BadPlaceException will be raised.
-     * 
+     *
      * @param v the given value
      * @param i0 the given index in the first dimension
      * @param i1 the given index in the second dimension
@@ -366,7 +366,7 @@ public final class DistArray[T] (
      * Functionally equivalent to setting the array via a three-dimensional point.
      * If the distribution does not map the specified index to the current place,
      * then a BadPlaceException will be raised.
-     * 
+     *
      * @param v the given value
      * @param i0 the given index in the first dimension
      * @param i1 the given index in the second dimension
@@ -387,8 +387,8 @@ public final class DistArray[T] (
      * Only applies to four-dimensional arrays.
      * Functionally equivalent to setting the array via a four-dimensional point.     * If the distribution does not map the specified index to the current place,
      * then a BadPlaceException will be raised.
-     * 
-     * 
+     *
+     *
      * @param v the given value
      * @param i0 the given index in the first dimension
      * @param i1 the given index in the second dimension
@@ -412,13 +412,13 @@ public final class DistArray[T] (
      * Return a DistArray that access the same backing storage
      * as this array, but only over the Points in the argument
      * distribtion.</p>
-     * 
+     *
      * For this operation to be semantically sound, it should
-     * be the case that for every point p in d, 
+     * be the case that for every point p in d,
      * <code>this.dist.offset(p) == d.offset</code>.
      * This invariant is not statically or dynamically checked;
-     * but must be ensured by the caller's of this API. 
-     * 
+     * but must be ensured by the caller's of this API.
+     *
      * @param d the Dist to use as the restriction
      */
     public def restriction(d:Dist(rank)) {
@@ -427,10 +427,10 @@ public final class DistArray[T] (
 
     /**
      * Return a DistArray that is defined over the same distribution
-     * and backing storage as this DistArray instance, but is 
+     * and backing storage as this DistArray instance, but is
      * restricted to only allowing access to those points that are
      * contained in the argument region r.
-     * 
+     *
      * @param r the Region to which to restrict the array
      */
     public def restriction(r: Region(rank)): DistArray[T](rank) {
@@ -439,10 +439,10 @@ public final class DistArray[T] (
 
     /**
      * Return a DistArray that is defined over the same distribution
-     * and backing storage as this DistArray instance, but is 
+     * and backing storage as this DistArray instance, but is
      * restricted to only allowing access to those points that are
-     * mapped by the defining distripution to the argument Place. 
-     * 
+     * mapped by the defining distripution to the argument Place.
+     *
      * @param p the Place to which to restrict the array
      */
     public def restriction(p: Place): DistArray[T](rank) {
@@ -451,20 +451,20 @@ public final class DistArray[T] (
 
     /**
      * Return a DistArray that is defined over the same distribution
-     * and backing storage as this DistArray instance, but is 
+     * and backing storage as this DistArray instance, but is
      * restricted to only allowing access to those points that are
      * contained in the argument region r.
-     * 
+     *
      * @param r the Region to which to restrict the array
      */
     public operator this | (r: Region(rank)) = restriction(r);
-    
+
     /**
      * Return a DistArray that is defined over the same distribution
-     * and backing storage as this DistArray instance, but is 
+     * and backing storage as this DistArray instance, but is
      * restricted to only allowing access to those points that are
-     * mapped by the defining distripution to the argument Place. 
-     * 
+     * mapped by the defining distripution to the argument Place.
+     *
      * @param p the Place to which to restrict the array
      */
     public operator this | (p: Place) = restriction(p);
@@ -476,7 +476,7 @@ public final class DistArray[T] (
 
     /**
      * Fill all elements of the array to contain the argument value.
-     * 
+     *
      * @param v the value with which to fill the array
      */
     public def fill(v:T) {
@@ -490,13 +490,13 @@ public final class DistArray[T] (
             }
         }
     }
-    
+
     /**
      * Map the function onto the elements of this array
      * constructing a new result array such that for all points <code>p</code>
      * in <code>this.dist</code>,
      * <code>result(p) == op(this(p))</code>.<p>
-     * 
+     *
      * @param op the function to apply to each element of the array
      * @return a new array with the same distribution as this array where <code>result(p) == op(this(p))</code>
      */
@@ -511,7 +511,7 @@ public final class DistArray[T] (
             }
             return new LocalState[U](newImc);
         });
-        return new DistArray[U](dist, plh);                       
+        return new DistArray[U](dist, plh);
     }
 
     /**
@@ -519,7 +519,7 @@ public final class DistArray[T] (
      * storing the results in the dst array such that for all points <code>p</code>
      * in <code>this.dist</code>,
      * <code>dst(p) == op(this(p))</code>.<p>
-     * 
+     *
      * @param dst the destination array for the results of the map operation
      * @param op the function to apply to each element of the array
      * @return dst after applying the map operation.
@@ -540,14 +540,14 @@ public final class DistArray[T] (
         }
         return dst;
     }
-    
+
     /**
      * Map the given function onto the elements of this array
      * storing the results in the dst array for the subset of points included
      * in the filter region such that for all points <code>p</code>
      * in <code>filter</code>,
      * <code>dst(p) == op(this(p))</code>.<p>
-     * 
+     *
      * @param dst the destination array for the results of the map operation
      * @param op the function to apply to each element of the array
      * @param filter the region to use as a filter on the map operation
@@ -570,13 +570,13 @@ public final class DistArray[T] (
         }
         return dst;
     }
-    
+
     /**
      * Map the given function onto the elements of this array
-     * and the other src array, storing the results in a new result array 
+     * and the other src array, storing the results in a new result array
      * such that for all points <code>p</code> in <code>this.dist</code>,
      * <code>result(p) == op(this(p), src(p))</code>.<p>
-     * 
+     *
      * @param src the other src array
      * @param op the function to apply to each element of the array
      * @return a new array with the same distribution as this array containing the result of the map
@@ -593,15 +593,15 @@ public final class DistArray[T] (
             }
             return new LocalState[S](newImc);
         });
-        return new DistArray[S](dist, plh);                       
+        return new DistArray[S](dist, plh);
     }
-    
+
     /**
      * Map the given function onto the elements of this array
-     * and the other src array, storing the results in the given dst array 
+     * and the other src array, storing the results in the given dst array
      * such that for all points <code>p</code> in <code>this.dist</code>,
      * <code>dst(p) == op(this(p), src(p))</code>.<p>
-     * 
+     *
      * @param dst the destination array for the map operation
      * @param src the second source array for the map operation
      * @param op the function to apply to each element of the array
@@ -624,13 +624,13 @@ public final class DistArray[T] (
         }
         return dst;
     }
- 
+
     /**
      * Map the given function onto the elements of this array
-     * and the other src array, storing the results in the given dst array 
+     * and the other src array, storing the results in the given dst array
      * such that for all points in the filter region <code>p</code> in <code>filter</code>,
      * <code>dst(p) == op(this(p), src(p))</code>.<p>
-     * 
+     *
      * @param dst the destination array for the map operation
      * @param src the second source array for the map operation
      * @param op the function to apply to each element of the array
@@ -661,7 +661,7 @@ public final class DistArray[T] (
      * Each element of the array will be given as an argument to the reduction
      * function exactly once, but in an arbitrary order.  The reduction function
      * may be applied concurrently to implement a parallel reduction.
-     * 
+     *
      * @param op the reduction function
      * @param unit the given initial value
      * @return the final result of the reduction.
@@ -669,13 +669,13 @@ public final class DistArray[T] (
      * @see #reduce(U,T)=>U,(U,U)=>U,U)
      */
     public final def reduce(op:(T,T)=>T, unit:T):T  = reduce[T](op, op, unit);
-    
+
     /**
      * Reduce this array using the given function and the given initial value.
      * Each element of the array will be given as an argument to the reduction
      * function exactly once, but in an arbitrary order.  The reduction function
      * may be applied concurrently to implement a parallel reduction.
-     * 
+     *
      * @param lop the local reduction function
      * @param gop the global reduction function
      * @param unit the given initial value

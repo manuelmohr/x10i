@@ -13,7 +13,7 @@ package x10.util;
 
 public interface List[T] extends Collection[T], Indexed[T], Settable[Int,T] {
   public def indices(): List[Int];
-  
+
   public def addBefore(i: Int, T): void;
   public def removeAt(i: Int): T;
   public def indexOf(T): Int;
@@ -23,14 +23,14 @@ public interface List[T] extends Collection[T], Indexed[T], Settable[Int,T] {
   public def iterator(): ListIterator[T];
   public def iteratorFrom(i: Int): ListIterator[T];
   public def subList(fromIndex: Int, toIndex: Int): List[T];
-  
+
   public def removeFirst(): T;
   public def removeLast(): T;
   public def getFirst(): T;
   public def getLast(): T;
 
   public def reverse(): void;
-  
+
   public def sort() {T <: Comparable[T]} : void;
   public def sort(cmp: (T,T)=>Int): void;
   // public def sort(lessThan: (T,T)=>Boolean): void;

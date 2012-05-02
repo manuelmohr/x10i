@@ -21,7 +21,7 @@ abstract public class CollectingFinish[T] extends FinishFrame {
         super(up);
         this.reducer = rd;
         @Ifdef("__CPP__") {this.result = rd.zero();}
-        @Ifndef("__CPP__"){ //java path 
+        @Ifndef("__CPP__"){ //java path
             val size = Runtime.NTHREADS;
             this.resultRail = IndexedMemoryChunk.allocateUninitialized[T](size);
             for(var i:int = 0; i < size; i++){
@@ -41,7 +41,7 @@ abstract public class CollectingFinish[T] extends FinishFrame {
             resultRail(i) = reducer.zero();
         }
     }
-    
+
     @Ifdef("__CPP__")
     public def realloc() {
         if (null != redirect) return redirect;
@@ -59,7 +59,7 @@ abstract public class CollectingFinish[T] extends FinishFrame {
         Frame.cast[FinishFrame, CollectingFinish[T]](tmp).result = result;
         return tmp;
     }
-    
+
     public final def accept(t:T, worker:Worker){
         @Ifdef("__CPP__"){
             if(redirect == null){
@@ -70,13 +70,13 @@ abstract public class CollectingFinish[T] extends FinishFrame {
                val rr = cast[FinishFrame, CollectingFinish[T]](redirect).resultRail;
                rr(id) = reducer(rr(id), t);
             }
-        } 
+        }
         @Ifndef("__CPP__"){
             val id = worker.id;
             resultRail(id) = reducer(resultRail(id), t);
         }
     }
-    
+
     //In finish frame's fast path, the result is stored here.
     public final def fastResult(worker:Worker):T {
         @Ifdef("__CPP__"){
@@ -87,9 +87,9 @@ abstract public class CollectingFinish[T] extends FinishFrame {
             resultRail.deallocate();
             return result;
         }
-    
+
     }
-    
+
     public final def result():T {
         //do merge
         @Ifdef("__CPP__"){

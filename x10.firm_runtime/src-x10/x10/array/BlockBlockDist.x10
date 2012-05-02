@@ -19,9 +19,9 @@ import x10.compiler.CompilerFlags;
  *
  * It caches the region for the current place as a transient field.
  * This makes the initial access to this information somewhat slow,
- * but optimizes the wire-transfer size of the Dist object. 
+ * but optimizes the wire-transfer size of the Dist object.
  * This appears to be the appropriate tradeoff, since Dist objects
- * are frequently serialized and usually the restriction operation is 
+ * are frequently serialized and usually the restriction operation is
  * applied to get the Region for here, not for other places.
  */
 final class BlockBlockDist extends Dist {
@@ -30,7 +30,7 @@ final class BlockBlockDist extends Dist {
      * The place group for this distribution
      */
     private val pg:PlaceGroup;
-   
+
     /**
      * The first axis along which the region is distributed
      */
@@ -59,7 +59,7 @@ final class BlockBlockDist extends Dist {
      * The key algorithm for this class.
      * Compute the region for the given place by doing region algebra.
      *
-     * Assumption: Caller has done error checking to ensure that place is 
+     * Assumption: Caller has done error checking to ensure that place is
      *   actually a member of pg.
      */
     private def blockBlockRegionForPlace(place:Place):Region{self.rank==this.rank} {
@@ -122,15 +122,15 @@ final class BlockBlockDist extends Dist {
             }
             val rFirst = lowFirst..hiFirst;
             val rSecond = lowSecond..hiSecond;
-            
+
             return (beforeAxes.product(rFirst).product(betweenAxes).product(rSecond).product(afterAxes) as Region(region.rank)).intersection(region);
         }
     }
 
     /**
-     * Given an index into the "axis dimensions" determine which place it 
+     * Given an index into the "axis dimensions" determine which place it
      * is mapped to.
-     * Assumption: Caller has done error checking to ensure that index is 
+     * Assumption: Caller has done error checking to ensure that index is
      *   actually within the bounds of the axis dimension.
      */
     private def mapIndexToPlace(index0:int, index1:int) {
@@ -288,7 +288,7 @@ final class BlockBlockDist extends Dist {
         val r = get(here);
         return r.size()-1;
     }
-        
+
     public def restriction(r:Region(rank)):Dist(rank) {
         return new WrappedDistRegionRestricted(this, r) as Dist(rank); // TODO: cast should not be needed
     }

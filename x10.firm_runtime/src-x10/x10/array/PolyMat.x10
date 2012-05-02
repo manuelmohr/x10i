@@ -182,7 +182,7 @@ class PolyMat(rank: int) extends Mat[PolyRow] {
         var msg: String = "axis " + axis + " has no minimum";
         throw new UnboundedRegionException(msg);
     }
-    
+
     def rectMax(axis: int): int {
 
         for (r:PolyRow in this) {
@@ -236,7 +236,7 @@ class PolyMat(rank: int) extends Mat[PolyRow] {
         var pm: PolyMat = this;
         for (var i: int = 0; i<rank; i++)
             pm = pm.eliminate(i, false);
-    
+
         // look for contradictions
         for (r:PolyRow in pm) {
             if (r(rank)>0)

@@ -15,7 +15,7 @@ import x10.compiler.NativeRep;
 
 /**
  * Used for generating static initialization code (SingleVM MultiPlace support) in Java backend.
- * 
+ *
  */
 @NativeRep("java", "x10.runtime.impl.java.PlaceLocalHandle", null, null)
 class PlaceLocalHandle {

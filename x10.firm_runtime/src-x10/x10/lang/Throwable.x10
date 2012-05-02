@@ -41,15 +41,15 @@ public class Throwable {
         	this.cause = cause;
         this.message = message;
     }
-    
+
     @Native("java", "#this.getMessage()")
     @Native("c++", "(#this)->getMessage()")
     public def getMessage():String = message;
-    
+
     @Native("java", "#this.getCause()")
     @Native("c++", "(#this)->getCause()")
     public final def getCause():Throwable = cause;
-    
+
     @Native("java", "#this.toString()")
     @Native("c++", "x10aux::to_string(#this)")
     public def toString():String {

@@ -24,9 +24,9 @@ class ValRow extends Row {
         super(cols);
         row = new Array[int](cols, init);
     }
-    
+
     public operator this(i:Int) = row(i);
-    
+
     public operator this(i:Int)=(v:int):int {
         throw new IllegalOperationException("ValRow.set");
     }

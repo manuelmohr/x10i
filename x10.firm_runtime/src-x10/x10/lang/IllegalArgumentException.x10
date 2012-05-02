@@ -26,7 +26,7 @@ public class IllegalArgumentException extends RuntimeException {
      *
      * @param message the detail message
      */
-    public def this(message: String) { super(message); } 
+    public def this(message: String) { super(message); }
 
     /**
      * Construct an IllegalArgumentException with the specified detail message and cause.
@@ -34,14 +34,14 @@ public class IllegalArgumentException extends RuntimeException {
      * @param message the detail message
      * @param cause the cause
      */
-    public def this(message: String, cause: Throwable) { super(message, cause); } 
+    public def this(message: String, cause: Throwable) { super(message, cause); }
 
     /**
      * Construct an IllegalArgumentException with no detail message and the specified cause.
      *
      * @param cause the cause
      */
-    public def this(cause: Throwable) { super(cause); } 
+    public def this(cause: Throwable) { super(cause); }
 }
 
 // vim:tabstop=4:shiftwidth=4:expandtab

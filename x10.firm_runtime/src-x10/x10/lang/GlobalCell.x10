@@ -12,16 +12,16 @@
 package x10.lang;
 
 public class GlobalCell[T] {
-	
+
 	protected val root : GlobalRef[Cell[T]];
     def this(v:T) {
     	root = GlobalRef[Cell[T]](new Cell[T](v));
     }
-   
+
 
     /**
      * Return a string representation of the GlobalCell.
-     * 
+     *
      */
     public def toString()  = root.toString();
 
@@ -50,9 +50,9 @@ public class GlobalCell[T] {
      * @return the new value stored in the Cell.
      */
     public operator this()=(x:T) { set(x); }
-    public def set(x:T) { 
-    	at(root) { 
-    		root().value = x; 
+    public def set(x:T) {
+    	at(root) {
+    		root().value = x;
         }
     	return x;
    }

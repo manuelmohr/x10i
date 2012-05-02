@@ -13,7 +13,7 @@ package x10.util;
 
 /**
  * A place-local worker-local handle.
- * 
+ *
  * @author tardieu
  */
 public class WorkerLocalHandle[T] implements ()=>T,(T)=>void {

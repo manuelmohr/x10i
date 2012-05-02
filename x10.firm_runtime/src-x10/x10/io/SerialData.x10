@@ -13,7 +13,7 @@ package x10.io;
 
 /**
  * Data container used 	in the CustomSerialization protocol.
- * 
+ *
  * @see CustomSerialization
  */
 public final class SerialData {
@@ -23,6 +23,6 @@ public final class SerialData {
     this.data = data;
     this.superclassData = superclassData;
   }
-  
+
   public def toString():String = "SerialData(" + data + "," + superclassData + ")";
 }

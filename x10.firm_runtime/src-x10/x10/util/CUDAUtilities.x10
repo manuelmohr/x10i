@@ -35,7 +35,7 @@ public class CUDAUtilities {
      */
     public static def autoBlocks() : Int = 8;
 
-    /** Automatically choose enough threads to saturate the GPU.  
+    /** Automatically choose enough threads to saturate the GPU.
       * @see autoBlocks
       */
     public static def autoThreads() : Int = 1;

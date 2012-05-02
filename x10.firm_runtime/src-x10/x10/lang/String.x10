@@ -355,9 +355,9 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
 
 
     /**
-     * Splits this String around matches of the given string; 
+     * Splits this String around matches of the given string;
      * unlike in Java the splitting String is treated as a simple String
-     * to be matched character by character (as in indexOf), not as 
+     * to be matched character by character (as in indexOf), not as
      * a regular expression.
      * Trailing empty strings are not included in the resulting Array.
      *

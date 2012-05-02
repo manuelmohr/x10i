@@ -20,8 +20,8 @@ final class WrappedDistRegionRestricted extends Dist {
 
     def this(d:Dist, r:Region(d.rank)):WrappedDistRegionRestricted(d.rank) {
         super(d.region.intersection(r));
-        base = d;  
-        filter = r;  
+        base = d;
+        filter = r;
     }
 
     public def places():PlaceGroup {
@@ -31,7 +31,7 @@ final class WrappedDistRegionRestricted extends Dist {
     public def numPlaces() = base.numPlaces();
 
     public def regions():Sequence[Region(rank)] {
-        return new Array[Region(rank)](Place.MAX_PLACES, 
+        return new Array[Region(rank)](Place.MAX_PLACES,
                                           (i:int)=>base.get(Place(i)).intersection(filter)).sequence();
     }
 
@@ -73,7 +73,7 @@ final class WrappedDistRegionRestricted extends Dist {
     public def maxOffset():int = base.maxOffset();
 
     public def restriction(r:Region(rank)):Dist(rank) {
-        return new WrappedDistRegionRestricted(base, filter.intersection(r)); 
+        return new WrappedDistRegionRestricted(base, filter.intersection(r));
     }
 
     public def restriction(p:Place):Dist(rank) {

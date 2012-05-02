@@ -18,7 +18,7 @@ import x10.util.Stack;
 /**
  * Lock with wait/notify capabilities.
  * Cooperates with runtime scheduler.
- * 
+ *
  * @author tardieu
  */
 @Pinned public class Monitor extends Lock {

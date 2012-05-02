@@ -490,7 +490,7 @@ public struct Int implements Comparable[Int] /*TODO implements Arithmetic[Int], 
     @Native("c++", "x10aux::equals(#0,#1)")
     /* [FIRM_CHANGE] */
     public def equals(x:Any): Boolean {
-    	if(x instanceof Int) 
+    	if(x instanceof Int)
     		return equals(x as Int);
     	return false;
     }

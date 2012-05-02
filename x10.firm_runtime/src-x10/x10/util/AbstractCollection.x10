@@ -15,7 +15,7 @@ package x10.util;
 public abstract class AbstractCollection[T] extends AbstractContainer[T] implements Collection[T] {
   public abstract def add(T): Boolean;
   public abstract def remove(T): Boolean;
-  
+
   public def addAll(c: Container[T]): Boolean = addAllWhere(c, (T) => true);
   public def retainAll(c: Container[T]): Boolean = removeAllWhere((x:T) => !c.contains(x));
   public def removeAll(c: Container[T]): Boolean = removeAllWhere((x:T) => c.contains(x));
@@ -28,7 +28,7 @@ public abstract class AbstractCollection[T] extends AbstractContainer[T] impleme
       }
       return result;
   }
-  
+
   public def removeAllWhere(p: (T) => Boolean): Boolean {
      var result: Boolean = false;
      for (x: T in this.clone()) {
@@ -37,8 +37,8 @@ public abstract class AbstractCollection[T] extends AbstractContainer[T] impleme
      }
      return result;
   }
-  
+
   public def clear(): void { removeAllWhere((T)=>true); }
-  
+
   public abstract def clone(): Collection[T];
 }

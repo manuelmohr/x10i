@@ -11,11 +11,11 @@
 
 package x10.compiler;
 
-/** 
+/**
  * A class that is used in elimination of finally clauses for the C++ backend.
- * 
+ *
  * NOT INTENDED FOR USE BY X10 PROGRAMMERS
- * 
+ *
  * @author Bowen Alpern
  */
 
@@ -23,7 +23,7 @@ import x10.io.CustomSerialization;
 import x10.io.SerialData;
 
 public class Finalization extends x10.lang.Throwable implements CustomSerialization {
-    
+
     public var value: Any          = null;
     public var label: String       = null;
     public var isReturn: boolean   = false;

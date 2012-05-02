@@ -17,11 +17,11 @@ import x10.compiler.NativeRep;
 @NativeRep("java", "x10.core.concurrent.AtomicReference<#T$box>", null, "new x10.rtt.ParameterizedType(x10.core.concurrent.AtomicReference.$RTT, #T$rtt)")
 @NativeRep("c++", "x10aux::ref<x10::util::concurrent::AtomicReference<#T > >", "x10::util::concurrent::AtomicReference<#T >", null)
 public final class AtomicReference[T]{T<:Object} {
-	
+
 	// Unusable due to compiler bug.  See http://jira.codehaus.org/browse/XTENLANG-127 (Yoav todo: this bug was fixed!)
 	// public native def this():AtomicReference[T];
 	// public native def this(v:T):AtomicReference[T];
-	
+
 	// Hack around XTENLANG-127.  Delete as soon as it is fixed.
 	@Native("java", "new x10.core.concurrent.AtomicReference<#T$box>(#T$rtt)")
 	@Native("c++", "x10::util::concurrent::AtomicReference<#T >::_make()")
@@ -47,7 +47,7 @@ public final class AtomicReference[T]{T<:Object} {
 	@Native("java", "#this.weakCompareAndSet(#expect,#update)")
 	@Native("c++", "(#this)->weakCompareAndSet(#expect,#update)")
 	public native def weakCompareAndSet(expect:T, update:T):Boolean;
-	
+
 	@Native("java", "#this.getAndSet(#v)")
 	@Native("c++", "(#this)->getAndSet(#v)")
 	public native def getAndSet(v:T):T;
@@ -56,4 +56,4 @@ public final class AtomicReference[T]{T<:Object} {
 	@Native("c++", "(#this)->toString()")
 	public native def toString():String;
 }
- 
+

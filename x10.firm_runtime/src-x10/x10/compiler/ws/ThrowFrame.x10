@@ -4,7 +4,7 @@ import x10.compiler.Ifdef;
 
 public final class ThrowFrame extends Frame {
     val throwable:Throwable;
-    
+
     public def this(up:Frame, throwable:Throwable) {
         super(up);
         this.throwable = throwable;

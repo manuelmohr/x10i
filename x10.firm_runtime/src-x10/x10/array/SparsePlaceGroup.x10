@@ -15,8 +15,8 @@ package x10.array;
  * <p>An implementation of PlaceGroup that simply uses a sorted Array[Place] to
  * represent the Places in the group.  This implementation is only suitable
  * when the PlaceGroup contains a fairly small number of places.
- * This can happen either becase the group is very sparse, or because the total 
- * number of places being used by the program is small.  In either case, 
+ * This can happen either becase the group is very sparse, or because the total
+ * number of places being used by the program is small.  In either case,
  * this PlaceGroup should have acceptable performance.</p>
  *
  * <p>Although the basic operations (contains, indexOf) could be asymptotically
@@ -27,7 +27,7 @@ package x10.array;
  * decided to go with the lower constants and ignore the asymptotic analysis.</p>
  */
 public final class SparsePlaceGroup extends PlaceGroup {
- 
+
   /**
    * The set of places.
    * The array is in sorted order by Place.id.
@@ -51,7 +51,7 @@ public final class SparsePlaceGroup extends PlaceGroup {
 
   /**
    * Construct a SparsePlaceGroup that contains a single place, p.
-   * @param p the place 
+   * @param p the place
    */
   public def this(p:Place) {
     places = [p as Place];
@@ -77,5 +77,5 @@ public final class SparsePlaceGroup extends PlaceGroup {
     return -1;
   }
 }
- 
+
 

@@ -58,7 +58,7 @@ final class RectRegion1D extends Region{rect,rank==1} {
         if (zeroBased) {
 	    if (!containsInternal(i0)) return -1;
             return i0;
-        } else { 
+        } else {
 	    if (!containsInternal(i0)) return -1;
             return i0 - min;
         }
@@ -92,10 +92,10 @@ final class RectRegion1D extends Region{rect,rank==1} {
     // region operations
     //
 
-    protected def computeBoundingBox():Region(rank)=this; 
+    protected def computeBoundingBox():Region(rank)=this;
 
     def toRectRegion() = new RectRegion(min, max);
-    
+
     public def min():(int)=>int = (i:int)=> min(i);
     public def max():(int)=>int = (i:int)=> max(i);
 
@@ -121,7 +121,7 @@ final class RectRegion1D extends Region{rect,rank==1} {
         return toRectRegion().intersection(that);
     }
 
-    
+
     public def product(that:Region):Region{self != null} /*self.rank==this.rank+that.rank*/{
         return toRectRegion().product(that);
     }
@@ -137,7 +137,7 @@ final class RectRegion1D extends Region{rect,rank==1} {
 
     public def eliminate(axis:int):Region{self.rect} /*(rank-1)*/ {
         return toRectRegion().eliminate(axis);
-    }    
+    }
 
     private static class RRIterator implements Iterator[Point(1)] {
         val min:int;
@@ -148,7 +148,7 @@ final class RectRegion1D extends Region{rect,rank==1} {
             min = rr.min;
             max = rr.max;
             cur = min;
-        }        
+        }
 
         public def hasNext() = cur <= max;
 

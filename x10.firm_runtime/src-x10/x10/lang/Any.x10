@@ -18,7 +18,7 @@ import x10.compiler.NoThisAccess;
 /**
  * The top of the type hierarchy.
  * Implemented by all classes and structs.
- * 
+ *
  *
  * @author vj 12/14/09
  */
@@ -26,11 +26,11 @@ public interface Any {
 
     /**
      * Return the string representation of this entity.
-     * 
-     * <p> The method is a common method that is likely to be called within the 
+     *
+     * <p> The method is a common method that is likely to be called within the
      * body of atomic/when. So any programmer overriding this method should
-     * ensure that operations that are illegal in atomic/when blocks (viz, 
-     * the use of when, at, async etc) are not performed in the implementation 
+     * ensure that operations that are illegal in atomic/when blocks (viz,
+     * the use of when, at, async etc) are not performed in the implementation
      * of this method. That is, this method implementation should be "safe".
      *
      * @return a string representation of this entity.
@@ -54,16 +54,16 @@ public interface Any {
      * then so should y.equals(x) be; and x.equals(y) should return the same
      * value on subsequent invocations.
      *
-     * <p> The method is a common method that is likely to be called within the 
+     * <p> The method is a common method that is likely to be called within the
      * body of atomic/when. So any programmer overriding this method should
-     * ensure that operations that are illegal in atomic/when blocks (viz, 
-     * the use of when, at, async etc) are not performed in the implementation 
+     * ensure that operations that are illegal in atomic/when blocks (viz,
+     * the use of when, at, async etc) are not performed in the implementation
      * of this method. That is, the implementation of this method should be "safe".
-     * 
+     *
      * <p> So, either the equality comparison
-     * has to be based only on locally available information (highly desirable), 
+     * has to be based only on locally available information (highly desirable),
      * or the implementation has
-     * to ensure that the method is being invoked in the right place, and 
+     * to ensure that the method is being invoked in the right place, and
      * possibly throw an exception if it is not.
      *
      * @param that the given entity
@@ -77,16 +77,16 @@ public interface Any {
      * same value on subsequent invocations, with an additional requirement that
      * if x.equals(y) is true, then x.hashCode() should equal y.hashCode().
      *
-     * <p> The method is a common method that is likely to be called within the 
+     * <p> The method is a common method that is likely to be called within the
      * body of atomic/when. So any programmer overriding this method should
-     * ensure that operations that are illegal in atomic/when blocks (viz, 
-     * the use of when, at, async etc) are not performed in the implementation 
+     * ensure that operations that are illegal in atomic/when blocks (viz,
+     * the use of when, at, async etc) are not performed in the implementation
      * of this method. That is, the implementation of this method should be "safe".
-     * 
-     * <p> So, either the equality comparison 
-     * has to be based only on locally available information (highly desirable), 
+     *
+     * <p> So, either the equality comparison
+     * has to be based only on locally available information (highly desirable),
      * or the implementation has
-     * to ensure that the method is being invoked in the right place, and 
+     * to ensure that the method is being invoked in the right place, and
      * possibly throw an exception if it is not.
      *
      * @return the hash code of this entity.

@@ -12,7 +12,7 @@
 package x10.lang;
 
 public class RuntimeException extends Exception {
-    public def this() { super(); } 
+    public def this() { super(); }
     public def this(message: String) { super(message); }
     public def this(message: String, cause: Throwable) { super(message, cause); }
     public def this(cause: Throwable) { super(cause); }

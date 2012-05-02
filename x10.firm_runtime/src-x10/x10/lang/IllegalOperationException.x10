@@ -18,7 +18,7 @@ public class IllegalOperationException extends RuntimeException {
     /**
      * Construct an IllegalOperationException with the default detail message.
      */
-    public def this() { super("illegal operation exception"); } 
+    public def this() { super("illegal operation exception"); }
 
     /**
      * Construct an IllegalOperationException with the specified detail message.

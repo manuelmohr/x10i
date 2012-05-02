@@ -221,7 +221,7 @@ abstract class FinishState {
         protected def this(ref:GlobalRef[FinishState]) {
             super(ref);
         }
-        private def this(data:SerialData) { 
+        private def this(data:SerialData) {
             super(data.data as GlobalRef[FinishState]);
             if (ref.home.id == Runtime.hereInt()) {
                 me = (ref as GlobalRef[FinishState]{home==here})();
@@ -243,7 +243,7 @@ abstract class FinishState {
         public final def waitForFinish() { assert false; }
         public def simpleLatch():SimpleLatch = null;
     }
-    
+
     static UNCOUNTED_FINISH = new UncountedFinish();
 
     // a mapping from finish refs to local finish objects
@@ -325,7 +325,7 @@ abstract class FinishState {
         protected def this(ref:GlobalRef[FinishState]) {
             super(ref);
         }
-        private def this(data:SerialData) { 
+        private def this(data:SerialData) {
             super(data.data as GlobalRef[FinishState]);
             if (ref.home.id == Runtime.hereInt()) {
                 me = (ref as GlobalRef[FinishState]{home==here})();
@@ -598,7 +598,7 @@ abstract class FinishState {
             super(new RootCollectingFinish(reducer));
             this.reducer = reducer;
         }
-        private def this(data:SerialData) { 
+        private def this(data:SerialData) {
             super(data.superclassData.data as GlobalRef[FinishState]);
             val tmpReducer = data.data as Reducible[T];
             reducer = tmpReducer;

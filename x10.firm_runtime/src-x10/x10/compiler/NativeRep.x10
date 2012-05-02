@@ -34,5 +34,5 @@ import x10.lang.annotations.ClassAnnotation;
                                  or the provided string if that property is not known.</dd>
  * </dl>
  *
- */ 
+ */
 public interface NativeRep(lang: String, referencedType: String, constructedType: String, rtt: String) extends ClassAnnotation { }

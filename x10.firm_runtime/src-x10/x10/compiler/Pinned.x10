@@ -19,7 +19,7 @@ import x10.lang.annotations.MethodAnnotation;
  * Methods. These uses can be understood in the context of the <em>Dual
  * Class idiom</em> and <em>Single Class idiom</em> for implementing global
  * objects.
- * 
+ *
  * <p> <bf>Dual class idiom</bf>: This idiom uses two classes, an
  * <code>@Pinned</code> class <code>P</code> that captures the mutable
  * state of the object (an instance of <code>P</code> is called a <em>
@@ -44,13 +44,13 @@ import x10.lang.annotations.MethodAnnotation;
  * <code>root()</code> object.  The <code>equals()</code> method on
  * <code>GlobalP</code> objects should return <code>true</code> only
  * if the <code>root</code> fields are equal.
- * 
- * 
+ *
+ *
  * <p> <bf>Single Class idiom</bf>: This idiom was used in X10 2.0 The
  * same class <code>C</code> is used to implement both the root object and the
  * proxy object.  Hence a global object is implemented by one or more
  * instances of this class. One instance is the root object and the
- * others are proxies. The class should have a field <code>val 
+ * others are proxies. The class should have a field <code>val
  * root:GlobalRef[C]</code> initialized with a global reference to
  * itself. The equals() method on C should return true only if the
  * root fields are equal.  Fields marked "transient" contain
@@ -64,7 +64,7 @@ import x10.lang.annotations.MethodAnnotation;
  * but should place-shift to root.home.  At root.home they can access
  * the root object by evaluating root(), and may access its transient
  * fields.
- * 
+ *
  * <p> Note that one can move from the Single Class Idiom to the Dual
  * Class Idiom (highy recommended)
  * <p> The @Pinned class annotation is used to support the Dual Class
@@ -74,15 +74,15 @@ import x10.lang.annotations.MethodAnnotation;
  * <p> The @Pinned method annotation is used to support the
  * Single Class idiom: it marks methods that are intended to be
  * invoked on the root object.
- * 
+ *
  * <p> It may make sense for the runtime to dynamically throw errors
  * if an instance of an @Pinned class is detected crossing place
  * boundaries.
- * 
+ *
  * <p>This method is not processed by any phase of the compiler at
  *  this time.  It is intended to document programmer intent.
  *
  * @see Global
- * 
+ *
  */
 public interface Pinned extends MethodAnnotation, ClassAnnotation { }

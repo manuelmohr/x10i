@@ -17,16 +17,16 @@ import x10.compiler.CompilerFlags;
  * <p>A BlockDist divides the coordinates along one axis
  * of its Region in a block fashion and distributes them
  * as evenly as possible to the places in its PlaceGroup.</p>
- * 
+ *
  * It caches the region for the current place as a transient field.
  * This makes the initial access to this information somewhat slow,
- * but optimizes the wire-transfer size of the Dist object. 
+ * but optimizes the wire-transfer size of the Dist object.
  * This appears to be the appropriate tradeoff, since Dist objects
- * are frequently serialized and usually the restriction operation is 
+ * are frequently serialized and usually the restriction operation is
  * applied to get the Region for here, not for other places.
  */
 final class BlockDist extends Dist {
-   
+
     /**
      * The place group for this distribution
      */
@@ -54,7 +54,7 @@ final class BlockDist extends Dist {
      * The key algorithm for this class.
      * Compute the region for the given place by doing region algebra.
      *
-     * Assumption: Caller has done error checking to ensure that place is 
+     * Assumption: Caller has done error checking to ensure that place is
      *   actually a member of pg.
      */
     private def blockRegionForPlace(place:Place):Region{self.rank==this.rank} {
@@ -68,7 +68,7 @@ final class BlockDist extends Dist {
         val i = pg.indexOf(place);
         val low = min + blockSize*i + (i< leftOver ? i : leftOver);
         val hi = low + blockSize + (i < leftOver ? 0 : -1);
-        
+
         if (region instanceof RectRegion) {
             // Optimize common case.
             val newMin = new Array[Int](rank, (i:Int) => region.min(i));
@@ -88,10 +88,10 @@ final class BlockDist extends Dist {
     }
 
     /**
-     * Given an index into the "axis dimension" determine which place it 
+     * Given an index into the "axis dimension" determine which place it
      * is mapped to.
      *
-     * Assumption: Caller has done error checking to ensure that index is 
+     * Assumption: Caller has done error checking to ensure that index is
      *   actually within the bounds of the axis dimension.
      */
     private def mapIndexToPlace(index:int):Place {
@@ -103,7 +103,7 @@ final class BlockDist extends Dist {
         val blockSize = numElems/P;
         val leftOver = numElems - P*blockSize;
         val normalizedIndex = index-min;
-        
+
         val nominalPlace = normalizedIndex/(blockSize+1);
         if (nominalPlace < leftOver) {
             return pg(nominalPlace);
@@ -112,10 +112,10 @@ final class BlockDist extends Dist {
             return pg(pg.numPlaces() - 1 - (indexFromTop/(blockSize)));
         }
     }
-    
-    
+
+
     public def places():PlaceGroup = pg;
-    
+
     public def numPlaces():int = pg.numPlaces();
 
     public def regions():Sequence[Region(rank)] {
@@ -132,7 +132,7 @@ final class BlockDist extends Dist {
             return blockRegionForPlace(p);
         }
     }
-    
+
     // replicated from superclass to workaround xlC bug with using & itables
     public operator this(p:Place):Region(rank) = get(p);
 
@@ -231,7 +231,7 @@ final class BlockDist extends Dist {
         val r = get(here);
         return r.size()-1;
     }
-        
+
     public def restriction(r:Region(rank)):Dist(rank) {
         return new WrappedDistRegionRestricted(this, r) as Dist(rank); // TODO: cast should not be needed
     }
@@ -240,7 +240,7 @@ final class BlockDist extends Dist {
         return new WrappedDistPlaceRestricted(this, p) as Dist(rank); // TODO: cast should not be needed
     }
 
-    
+
     public def equals(thatObj:Any):boolean {
         if (this == thatObj) return true;
         if (!(thatObj instanceof BlockDist)) return super.equals(thatObj);

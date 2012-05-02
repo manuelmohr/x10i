@@ -14,7 +14,7 @@ package x10.util;
 import x10.compiler.Native;
 import x10.compiler.Pinned;
 
-@Pinned 
+@Pinned
 public class StringBuilder implements Builder[Any,String] {
      val buf: ArrayList[Char];
 

@@ -26,12 +26,12 @@ public class Object implements Any {
     /**
      * Default constructor.
      */
-    // (for java) Note: new x10.lang.Object() returns x10.core.Ref instead of java.lang.Object  
+    // (for java) Note: new x10.lang.Object() returns x10.core.Ref instead of java.lang.Object
     @Native("java", "x10.core.Ref.$make()")
     public native def this();
 
     /**
-     * Return true if the given entity is an Object, and is == to this. The method should 
+     * Return true if the given entity is an Object, and is == to this. The method should
      * be overridden in user classes that wish to define their own notion of equality.
      *
      * <p>  Please see the documentation for x10.lang.Any.equals.
@@ -47,7 +47,7 @@ public class Object implements Any {
      * Return the default (implementation-defined) hash code of this object. The method
      * should be overridden in user classes that wish to define their own notion of equality
      * so that if two objects are not equal they do not have the same hash code.
-     * 
+     *
      * <p>  Please see the documentation for x10.lang.Any.hashCode().
      * @seeAlso x10.lang.Any
      * @return the hash code of this object.
@@ -61,7 +61,7 @@ public class Object implements Any {
      *
      * Note that the method is safe, so the implementations cannot
      * spawn activities at other places.  So, either the string representation
-     * has to be based on only information available at the current place, 
+     * has to be based on only information available at the current place,
      * or the implementation has to throw an exception if it cannot perform the toString
      * operation with the avaiable information.
      *

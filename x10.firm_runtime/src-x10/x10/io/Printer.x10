@@ -27,16 +27,16 @@ import x10.util.concurrent.Lock;
  *    }
  *    p.flush();
  * } catch (IOException) { }
- */    
+ */
 public class Printer extends FilterWriter {
     public def this(w: Writer) { super(w); }
 
     private static NEWLINE:Char = '\n'; // System.getProperty("line.separator");
 
     private lock = new Lock();
-    
+
     public def println(): void { print(NEWLINE); }
-    
+
     public final def println(o:Any): void {
         print(o==null? "null\n" : o.toString()+"\n");
     }
@@ -44,7 +44,7 @@ public class Printer extends FilterWriter {
     public final def println(s:String): void {
     	print(s==null? "null\n" : s+"\n");
     }
-    
+
     public final def print(o:Any): void {
     	print(o==null? "null" : o.toString());
     }
@@ -71,36 +71,36 @@ public class Printer extends FilterWriter {
     public def printf(fmt: String, o1: Any): void { printfArray(fmt, [o1 as Any]); }
     public def printf(fmt: String, o1: Any, o2: Any): void { printfArray(fmt, [o1 as Any,o2]); }
     public def printf(fmt: String, o1: Any, o2: Any, o3: Any): void { printfArray(fmt, [o1 as Any,o2,o3]); }
-    public def printf(fmt: String, o1: Any, o2: Any, o3: Any, o4: Any): void { 
-        printfArray(fmt, [o1,o2,o3,o4]); 
+    public def printf(fmt: String, o1: Any, o2: Any, o3: Any, o4: Any): void {
+        printfArray(fmt, [o1,o2,o3,o4]);
     }
-    public def printf(fmt: String, o1: Any, o2: Any, o3: Any, o4: Any, o5: Any): void { 
-       printfArray(fmt, [o1,o2,o3,o4,o5]); 
+    public def printf(fmt: String, o1: Any, o2: Any, o3: Any, o4: Any, o5: Any): void {
+       printfArray(fmt, [o1,o2,o3,o4,o5]);
     }
-    public def printf(fmt: String, o1: Any, o2: Any, o3: Any, o4: Any, o5: Any, o6: Any): void { 
-       printfArray(fmt, [o1,o2,o3,o4,o5,o6]); 
+    public def printf(fmt: String, o1: Any, o2: Any, o3: Any, o4: Any, o5: Any, o6: Any): void {
+       printfArray(fmt, [o1,o2,o3,o4,o5,o6]);
     }
 
-    public def printf(fmt: String, args: Rail[Any]): void { 
+    public def printf(fmt: String, args: Rail[Any]): void {
         print(String.format(fmt, new Array[Any](args.size, (i:int)=>args(i))));
     }
-    public def printfArray(fmt: String, args: Array[Any](1)): void { 
+    public def printfArray(fmt: String, args: Array[Any](1)): void {
         print(String.format(fmt, args));
     }
     */
-        
+
     public def flush(): void {
         try {
             super.flush();
         }
         catch (IOException) { }
     }
-    
+
     public def close(): void {
         try {
             super.close();
         }
         catch (IOException) { }
     }
-    
+
 }

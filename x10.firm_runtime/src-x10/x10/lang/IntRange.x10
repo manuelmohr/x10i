@@ -19,12 +19,12 @@ public struct IntRange(
                 * The minimum value included in the range
                 */
                min:Int,
-               
+
                /**
                 * The maximum value included in the range
                 */
                max:Int,
-               
+
                /**
                 * Is the range zero-based?
                 */
@@ -40,7 +40,7 @@ public struct IntRange(
     	val zero:Boolean = min == 0;
         property(min, max, zero);
     }
-    
+
     /**
      * The product of two int ranges is interpreted as if the IntRanges
      * were first converted to Region(1) and then the * operator applied.
@@ -52,21 +52,21 @@ public struct IntRange(
     /**
      * Return a new IntRange of the same size of this, but
      * with min/max shifted by i.
-     */    
+     */
     public def translate(i:int) = new IntRange(min+i, max+i);
 
     /**
      * Return a new IntRange of the same size of this, but
      * with min/max shifted by p(0).
-     */    
+     */
     public def translate(p:Point(1)) = new IntRange(min+p(0), max+p(0));
-    
+
     public operator this && (that:Region(1)): Region(1) = (this as Region(1)) && that;
 
     public operator this -> (p:Place) = Dist.makeConstant(this as Region(1), p);
 
     public def toString():String = min+".."+max;
-    
+
     public def equals(that:Any):Boolean {
         if (that instanceof IntRange) {
             val other = that as IntRange;
@@ -74,12 +74,12 @@ public struct IntRange(
         }
         return false;
     }
-    
+
     public def hashCode():int = (max-min).hashCode();
-    
+
     public def iterator():Iterator[Int] {
         return new IntRangeIt(min, max);
-    }  
+    }
 
     private static class IntRangeIt implements Iterator[Int] {
         var cur:int;

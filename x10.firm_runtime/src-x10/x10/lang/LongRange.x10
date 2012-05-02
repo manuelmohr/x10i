@@ -19,12 +19,12 @@ public struct LongRange(
                 * The minimum value included in the range
                 */
                min:Long,
-               
+
                /**
                 * The maximum value included in the range
                 */
                max:Long,
-               
+
                /**
                 * Is the range zero-based?
                 */
@@ -40,9 +40,9 @@ public struct LongRange(
         val x = min == 0l;
         property(min, max, x);
     }
-    
+
     public def toString():String = min+".."+max;
-    
+
     public def equals(that:Any):Boolean {
         if (that instanceof LongRange) {
             val other = that as LongRange;
@@ -50,12 +50,12 @@ public struct LongRange(
         }
         return false;
     }
-    
+
     public def hashCode():int = (max-min).hashCode();
-    
+
     public def iterator():Iterator[Long] {
         return new LongRangeIt(min, max);
-    }  
+    }
 
     private static class LongRangeIt implements Iterator[Long] {
         var cur:Long;

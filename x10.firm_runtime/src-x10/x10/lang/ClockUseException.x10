@@ -27,7 +27,7 @@ public class ClockUseException extends RuntimeException {
      *
      * @param message the detail message
      */
-    public def this(message: String) { super(message); } 
+    public def this(message: String) { super(message); }
 }
 
 // vim:shiftwidth=4:tabstop=4:expandtab

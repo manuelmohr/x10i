@@ -26,7 +26,7 @@ public class FileReader extends InputStreamReader {
         public native def this(path: String); //throws FileNotFoundException;
     }
 
-    public def this(file: File) //throws IOException 
+    public def this(file: File) //throws IOException
     {
         super(new FileInputStream(file.getPath()));
         this.file = file;

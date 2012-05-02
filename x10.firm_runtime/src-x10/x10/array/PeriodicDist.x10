@@ -14,10 +14,10 @@ package x10.array;
 import x10.compiler.Inline;
 
 /**
- * A periodic dist decorates a standard X10 dist by implementing 
+ * A periodic dist decorates a standard X10 dist by implementing
  * periodic boundary conditions, in which elements at each edge of
  * the region are considered to be neighbours, and indexes that fall
- * outside the "home" region in any dimension are wrapped around modulo 
+ * outside the "home" region in any dimension are wrapped around modulo
  * the size of the region in that dimension.
  */
 public final class PeriodicDist extends Dist {

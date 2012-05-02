@@ -23,16 +23,16 @@ public class NativeSupport {
 
     /** memory compare */
     public static native def memcmp(pointer1: Pointer, pointer2: Pointer, numBytes: Int): Int;
-   
+
     /** memory copy, memory regions mustn't overlap */
     public static native def memcpy(destination: Pointer, source: Pointer, numBytes: Int): void;
 
     /** memory copy, overlapping memory regions allowed */
     public static native def memmove(destination:Pointer, source:Pointer, numBytes: Int): void;
-   
+
     /** memset */
     public static native def memset(destination:Pointer, c:int, numBytes:Int): void;
-   
+
     /** allocation of memory (uninitialized) */
     public static native def alloc(numBytes: Int): Pointer;
 

@@ -8,7 +8,7 @@
  *
  *  (C) Copyright IBM Corporation 2006-2010.
  */
- 
+
 package x10.compiler;
 
 @NativeRep("java", "x10.core.LocalVar<#T$box>", null, "new x10.rtt.ParameterizedType(x10.core.LocalVar.$RTT, #T$rtt)")
@@ -18,10 +18,10 @@ public class LocalVar[T] {
 
     @Native("java", "(#this).$apply$G()")
     public operator this():T = null as Any as T;
-    
+
     @Native("java", "(#this).get$G()")
     public def get():T = null as Any as T;
-    
+
     @Native("java", "(#this).set$G(#local)")
     public operator this(local:T):T {return local;}
 }

@@ -18,7 +18,7 @@ public final class Worker {
     public val lock = new Lock();
 
     public var throwable:Throwable = null;
-    
+
     public def this(i:Int, workers:Rail[Worker]) {
         random = new Random(i + (i << 8) + (i << 16) + (i << 24));
         this.id = i;

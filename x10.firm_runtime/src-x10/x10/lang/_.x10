@@ -52,7 +52,7 @@ public class _ {
     public static type ulong = ULong;
     public static type uint64 = ULong;
     public static type nat64 = ULong;
- 
+
     public static type int8 = byte;
     public static type int16 = short;
     public static type int32 = int;

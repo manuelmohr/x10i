@@ -146,17 +146,17 @@ FileSystem operations
 
     // @Incomplete def this(u: URI);
 
-    public def lines(): ReaderIterator[String] //throws IOException 
+    public def lines(): ReaderIterator[String] //throws IOException
      = openRead().lines();
     public def chars(): ReaderIterator[Char] //throws IOException
      = openRead().chars();
-    public def bytes(): ReaderIterator[Byte] //throws IOException 
+    public def bytes(): ReaderIterator[Byte] //throws IOException
     = openRead().bytes();
-    public def openRead():FileReader //throws IOException 
+    public def openRead():FileReader //throws IOException
     = new FileReader(this);
-    public def openWrite():FileWriter //throws IOException 
+    public def openWrite():FileWriter //throws IOException
     = new FileWriter(this);
-    public def printer():Printer //throws IOException 
+    public def printer():Printer //throws IOException
     = new Printer(openWrite());
 
     public def getName(): String = name;
@@ -167,7 +167,7 @@ FileSystem operations
     protected def nativeFile()  = new NativeFile(getPath());
 
     public def getAbsoluteFile(): File = new File(nativeFile().getAbsolutePath());
-    public def getCanonicalFile(): File  // throws IOException 
+    public def getCanonicalFile(): File  // throws IOException
     = new File(nativeFile().getCanonicalPath());
 
     // incomplete def toURL(): URL;
@@ -180,9 +180,9 @@ FileSystem operations
     @Incomplete def isAlias(): Boolean  {         throw new UnsupportedOperationException(); }
     @Incomplete def hardLinkCount(): Boolean {         throw new UnsupportedOperationException(); }
     @Incomplete def inodeNumber(): Long {         throw new UnsupportedOperationException(); }
-    @Incomplete def permissions(): Int {         throw new UnsupportedOperationException();} 
+    @Incomplete def permissions(): Int {         throw new UnsupportedOperationException();}
     // FilePermission;
-    
+
     public def isDirectory(): Boolean = nativeFile().isDirectory();
     public def isFile(): Boolean = nativeFile().isFile();
     public def isHidden(): Boolean = nativeFile().isHidden();

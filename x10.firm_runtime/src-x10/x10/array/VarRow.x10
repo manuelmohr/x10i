@@ -19,12 +19,12 @@ final class VarRow extends Row {
         super(cols);
         row = new Rail[int](cols, init);
     }
-    
+
     public def this(cols: Int) {
         super(cols);
         row = new Rail[int](cols);
     }
-    
+
     def row() = row as Rail[int];
     public operator this(i:Int) = row()(i);
 

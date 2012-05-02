@@ -18,22 +18,22 @@ public abstract class OutputStreamWriter extends Writer {
     public native def close(): void; //throws IOException;
 
     public native def flush(): void; //throws IOException;
-        
+
     public native def write(v: Int): void; //throws IOException
-        
+
     public native def write(r: Pointer, len: Int): void; //throws IOException
 
     public def write(x: Byte): void {
         write(x);
     }
-    
+
     /*
-    public def write(buf:Array[Byte](1)): void //throws IOException 
+    public def write(buf:Array[Byte](1)): void //throws IOException
     {
         out.write(buf);
     }
 
-    public def write(buf:Array[Byte](1), off: Int, len: Int): void //throws IOException 
+    public def write(buf:Array[Byte](1), off: Int, len: Int): void //throws IOException
     {
         out.write(buf, off, len);
     }

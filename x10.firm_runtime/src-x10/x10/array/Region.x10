@@ -58,13 +58,13 @@ public abstract class Region(
      * Construct an empty region of the specified rank.
      */
     public static def makeEmpty(rank:int):Region(rank){self!=null,rect} = new EmptyRegion(rank);
-     
+
     /**
      * Construct an unbounded region of a given rank that contains all
      * points of that rank.
      */
     public static def makeFull(rank: int): Region(rank){self !=null,rect} = new FullRegion(rank);
-    
+
     /**
      * Construct a region of rank 0 that contains the single point of
      * rank 0. Useful as the identity region under Cartesian product.
@@ -90,19 +90,19 @@ public abstract class Region(
 
     /**
      * Returns a PolyRegion that represents the rectangular region with smallest point minArg and largest point
-     * maxArg. 
-     * <p> Most users of the Region API should call makeRectangular which will return a 
-     * RectRegion. Methods on RectRegion automatically construct a PolyRegion (by calling makeRectangularPoly) 
+     * maxArg.
+     * <p> Most users of the Region API should call makeRectangular which will return a
+     * RectRegion. Methods on RectRegion automatically construct a PolyRegion (by calling makeRectangularPoly)
      * if they need to implement operations (such as intersection, product etc) that are difficult to define
      * on a RectRegion's representation.
      * @param minArg:Array[int] -- specifies the smallest point in the region
      * @param maxArg:Array[int] -- specifies the largest point in the region (must have the same rank as minArg
-     * @return A Region of rank minarg.length 
+     * @return A Region of rank minarg.length
      */
     public static def makeRectangularPoly(minArg:Array[int](1), maxArg:Array[int](1)):Region(minArg.size){
        if (minArg.size != maxArg.size) throw new IllegalArgumentException("min and max not equal size ("+minArg.size+" != "+maxArg.size+")");
            val rank = minArg.size;
-           val pmb = new PolyMatBuilder(rank); 
+           val pmb = new PolyMatBuilder(rank);
            for (i in 0..(rank-1)) {
                if (minArg(i) > Int.MIN_VALUE) {
                    // add -1*x(i) + minArg(i) <= 0, i.e. x(i) >= minArg(i)
@@ -116,9 +116,9 @@ public abstract class Region(
                }
            }
            val pm = pmb.toSortedPolyMat(false);
-           return PolyRegion.make(pm);// as Region(minArg.size); 
+           return PolyRegion.make(pm);// as Region(minArg.size);
     }
-     
+
     /**
      * Construct a rectangular region whose bounds are specified as
      * arrays of ints.
@@ -126,7 +126,7 @@ public abstract class Region(
     public static def makeRectangular[S,T](minArg:Array[S](1), maxArg:Array[T](1)){S<:Int,T<:Int}:Region(minArg.size){self.rect} {
         if (minArg.size == 1) {
         	// To remove the cast, the constraint solver should be able to handle arithmetic.
-            return new RectRegion1D(minArg(0), maxArg(0)) as Region(minArg.size){rect}; 
+            return new RectRegion1D(minArg(0), maxArg(0)) as Region(minArg.size){rect};
         } else {
             val minArray = new Array[int](minArg.size, (i:int)=>minArg(i));
             val maxArray = new Array[int](maxArg.size, (i:int)=>maxArg(i));
@@ -181,7 +181,7 @@ public abstract class Region(
      * the main diagonal.
      */
     public static def makeBanded(size: int):Region(2) = PolyRegion.makeBanded(size, 1, 1);
-    
+
     /**
      * Construct an upper triangular region of the given size.
      */
@@ -194,7 +194,7 @@ public abstract class Region(
      */
     public static def makeUpperTriangular(rowMin: int, colMin: int, size: int): Region(2)
         = PolyRegion.makeUpperTriangular2(rowMin, colMin, size);
-    
+
     /**
      * Construct a lower triangular region of the given size.
      */
@@ -230,18 +230,18 @@ public abstract class Region(
 
     /**
      * Returns the index of the argument point in the lexograpically ordered
-     * enumeration of all Points in this region.  Will return -1 to indicate 
+     * enumeration of all Points in this region.  Will return -1 to indicate
      * that the argument point is not included in this region.  If the argument
      * point is contained in this region, then a value between 0 and size-1
-     * will be returned.  The primary usage of indexOf is in the context of 
-     * Arrays, where it enables the conversion from "logical" indicies 
+     * will be returned.  The primary usage of indexOf is in the context of
+     * Arrays, where it enables the conversion from "logical" indicies
      * specified in Points into lower level indices specified by Ints that
      * can be used in primitive operations such as copyTo and in interfacing
-     * to native code.  Often indexOf will be used in conjuntion with the 
+     * to native code.  Often indexOf will be used in conjuntion with the
      * raw() method of Array or DistArray.
      */
     public abstract def indexOf(Point):Int;
-    
+
     public def indexOf(i0:int) = indexOf(Point.make(i0));
     public def indexOf(i0:int, i1:int) = indexOf(Point.make(i0, i1));
     public def indexOf(i0:int, i1:int, i2:int) = indexOf(Point.make(i0,i1,i2));
@@ -262,17 +262,17 @@ public abstract class Region(
     abstract protected  def computeBoundingBox(): Region(rank);
 
     /**
-     * Returns a function that can be used to access the lower bounds 
-     * of the bounding box of the region. 
+     * Returns a function that can be used to access the lower bounds
+     * of the bounding box of the region.
      */
     abstract public def min():(int)=>int;
 
     /**
-     * Returns a function that can be used to access the upper bounds 
-     * of the bounding box of the region. 
+     * Returns a function that can be used to access the upper bounds
+     * of the bounding box of the region.
      */
     abstract public def max():(int)=>int;
-    
+
     /**
      * Returns the lower bound of the bounding box of the region along
      * the ith axis.
@@ -283,7 +283,7 @@ public abstract class Region(
      * Returns the upper bound of the bounding box of the region along
      * the ith axis.
      */
-    public def max(i:Int) = max()(i);    
+    public def max(i:Int) = max()(i);
 
     /**
      * Returns the smallest point in the bounding box of the region
@@ -303,35 +303,35 @@ public abstract class Region(
     /**
      * Returns the complement of a region. The complement of a bounded
      * region will be unbounded.
-   
+
 
     abstract public def complement(): Region(rank);
   */
-    
+
     /**
      * Returns the union of two regions: a region that contains all
      * points that are in either this region or that region.
-     
+
 
     abstract public def union(that: Region(rank)): Region(rank);
 
 */
-    
+
     /**
      * Returns the union of two regions if they are disjoint,
      * otherwise throws an exception.
      *   abstract public def disjointUnion(that: Region(rank)): Region(rank);
      */
 
-  
+
 
     /**
      * Returns the intersection of two regions: a region that contains all
      * points that are in both this region and that region.
-     * 
+     *
      */
     abstract public def intersection(that: Region(rank)): Region(rank);
-    
+
 
     /**
      * Returns the difference between two regions: a region that
@@ -345,7 +345,7 @@ public abstract class Region(
      * region.
      */
      public def disjoint(that:Region(rank)) = intersection(that).isEmpty();
-   
+
 
     /**
      * Returns the Cartesian product of two regions. The Cartesian
@@ -359,8 +359,8 @@ public abstract class Region(
 
     /**
      * Returns the region shifted by a Point (vector). The Point has
-     * to have the same rank as the region. A point p+v is in 
-     * <code>translate(v)</code> iff <code>p</code> is in <code>this</code>. 
+     * to have the same rank as the region. A point p+v is in
+     * <code>translate(v)</code> iff <code>p</code> is in <code>this</code>.
      */
 
     abstract public def translate(v: Point(rank)): Region(rank);
@@ -379,7 +379,7 @@ public abstract class Region(
      * specified axis.
      */
 
-   
+
     abstract public def eliminate(axis: int): Region /*(rank-1)*/;
 
 
@@ -398,12 +398,12 @@ public abstract class Region(
     // conversion
     //
     /**
-     * An Array of k Region(1)'s can be converted into a Region(k), by 
+     * An Array of k Region(1)'s can be converted into a Region(k), by
      * multiplying them.
      */
     public static operator[T] (a:Array[T](1)){T<:Region(1){self.rect}}:Region(a.size){self.rect} = make[T](a);
 
-    // NOTE: This really should be 
+    // NOTE: This really should be
     //   public static operator[T] (a:Array[T](1)){T<:IntRange}:Region(a.size){self.rect} { ... }
     // but we can't have two overloaded generic methods in X10 2.2.
     // Therefore we make this one slightly less general than it should be as the least bad
@@ -419,7 +419,7 @@ public abstract class Region(
             return new RectRegion(mins, maxs);
         }
     }
-        
+
     public static operator (r:IntRange):Region(1){rect&&self!=null&&zeroBased==r.zeroBased} {
         return new RectRegion1D(r.min, r.max) as Region(1){rect&&self!=null&&zeroBased==r.zeroBased};
     }
@@ -434,7 +434,7 @@ public abstract class Region(
     //public operator this - (that: Region(rank)): Region(rank) = difference(that);
 
     public operator this * (that: Region) = product(that);
-    
+
     public operator this + (v: Point(rank)) = translate(v);
     public operator (v: Point(rank)) + this = translate(v);
     public operator this - (v: Point(rank)) = translate(-v);
@@ -457,7 +457,7 @@ public abstract class Region(
 
 
     abstract public def contains(p:Point):boolean;
-    
+
     public def contains(i:int){rank==1} = contains(Point.make(i));
 
     public def contains(i0:int, i1:int){rank==2} = contains(Point.make(i0,i1));

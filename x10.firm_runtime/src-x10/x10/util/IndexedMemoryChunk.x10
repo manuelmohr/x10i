@@ -33,7 +33,7 @@ public struct IndexedMemoryChunk[T] {
     // Length of the allocated memory chunk (number of Ts not number of bytes)
     private val length: Int;
 
-    private def this(ptr: Pointer, length: Int) {
+    public def this(ptr: Pointer, length: Int) {
         this.ptr = ptr;
         this.length = length;
     }

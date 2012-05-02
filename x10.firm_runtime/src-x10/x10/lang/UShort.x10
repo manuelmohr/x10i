@@ -430,7 +430,7 @@ public struct UShort implements Comparable[UShort] /*TODO implements Arithmetic[
     // @Native("java", "((short) (java.lang.Integer.parseInt(#s, #radix) & 0xffff))")
     @Native("c++", "x10aux::short_utils::parseUShort(#1, #2)")
     /* [FIRM_CHANGE] */
-    public native static def parse(s:String, radix:Int): UShort; //throwsNumberFormatException 
+    public native static def parse(s:String, radix:Int): UShort; //throwsNumberFormatException
 
     /**
      * Parses the String argument as a decimal UShort.
@@ -483,7 +483,7 @@ public struct UShort implements Comparable[UShort] /*TODO implements Arithmetic[
     	if(x instanceof UShort) {
     		return equals(x as UShort);
     	}
-    	return false; 
+    	return false;
     }
 
     /**

@@ -17,7 +17,7 @@ import x10.io.SerialData;
 
 /**
  * Native thread. Only to be used in the runtime implementation.
- * 
+ *
  * @author tardieu
  */
 @NativeRep("java", "x10.runtime.impl.java.Thread", null, "x10.runtime.impl.java.Thread.$RTT")

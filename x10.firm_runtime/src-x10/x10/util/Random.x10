@@ -17,26 +17,26 @@ public class Random {
     public def this() {
         this(Timer.milliTime());
     }
-    
+
     public def this(seed: Long) {
         setSeed(seed);
     }
-    
+
     @NonEscaping public final def setSeed(seed: Long): void {
         init(seed);
     }
-     
+
     /** Return a 32-bit random integer */
     public def nextInt(): Int = random();
 
     /** Return a 32-bit random integer in the range 0 to maxPlus1-1
-     * when maxPlus1 > 0. Return 0 if maxPlus1 <= 0 instead of throwing 
+     * when maxPlus1 > 0. Return 0 if maxPlus1 <= 0 instead of throwing
      * an IllegalArgumentException, to simplify user code.
      */
     public def nextInt(maxPlus1: int): int {
         if (maxPlus1 <= 0)
             return 0;
-        
+
         var n: int = maxPlus1;
 
         if ((n & -n) == n) {
@@ -74,14 +74,14 @@ public class Random {
             }
         }
     }
-     
+
     /** Return a 64-bit random (long) integer */
     public def nextLong(): long = ((nextInt() as Long) << 32) | (nextInt() & 0xFFFFFFFFL);
 
     public def nextLong(maxPlus1: long): long {
         if (maxPlus1 <= 0)
             return 0L;
-        
+
         var n: long = maxPlus1;
 
         if ((n & -n) == n) {
@@ -182,7 +182,7 @@ public class Random {
             s = (MT(i) & 0x80000000) | (MT(i+1) & 0x7FFFFFFF);
             MT(i) = MT(i-(N-M)) ^ (s >>> 1) ^ ((s & 1) * 0x9908B0DF);
         }
-    
+
         s = (MT(N-1) & 0x80000000) | (MT(0) & 0x7FFFFFFF);
         MT(N-1) = MT(M-1) ^ (s >>> 1) ^ ((s & 1) * 0x9908B0DF);
     }

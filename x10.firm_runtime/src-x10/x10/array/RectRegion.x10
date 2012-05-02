@@ -88,7 +88,7 @@ final class RectRegion extends Region{rect} {
         } else {
             min3 = max3 = 0;
         }
-	
+
 	if (minArg.size>4) {
 	  mins = minArg;
 	  maxs = maxArg;
@@ -140,7 +140,7 @@ final class RectRegion extends Region{rect} {
         if (zeroBased) {
 	    if (rank != 1 || !containsInternal(i0)) return -1;
             return i0;
-        } else { 
+        } else {
 	    if (rank != 1 || !containsInternal(i0)) return -1;
             return i0 - min0;
         }
@@ -152,7 +152,7 @@ final class RectRegion extends Region{rect} {
             var offset:int = i0;
             offset = offset*(max1 + 1) + i1;
             return offset;
-        } else { 
+        } else {
 	    if (rank != 2 || !containsInternal(i0,i1)) return -1;
             var offset:int = i0 - min0;
             offset = offset*(max1 - min1 + 1) + i1 - min1;
@@ -167,7 +167,7 @@ final class RectRegion extends Region{rect} {
             offset = offset*(max1 + 1) + i1;
             offset = offset*(max2 + 1) + i2;
             return offset;
-        } else { 
+        } else {
 	    if (rank != 3 || !containsInternal(i0,i1,i2)) return -1;
             var offset:int = i0 - min0;
             offset = offset*(max1 - min1 + 1) + i1 - min1;
@@ -184,7 +184,7 @@ final class RectRegion extends Region{rect} {
             offset = offset*(max2 + 1) + i2;
             offset = offset*(max3 + 1) + i3;
             return offset;
-        } else { 
+        } else {
 	    if (rank != 4 || !containsInternal(i0,i1,i2,i3)) return -1;
             var offset:int = i0 - min0;
             offset = offset*(max1 - min1 + 1) + i1 - min1;
@@ -222,8 +222,8 @@ final class RectRegion extends Region{rect} {
     // region operations
     //
 
-    protected def computeBoundingBox():Region(rank)=this; 
-    
+    protected def computeBoundingBox():Region(rank)=this;
+
     public def min():(int)=>int = (i:int)=> min(i);
     public def max():(int)=>int = (i:int)=> max(i);
 
@@ -268,12 +268,12 @@ final class RectRegion extends Region{rect} {
         return i0>=min0 && i0<=max0;
     }
 
-    private def containsInternal(i0:int, i1:int):boolean { 
+    private def containsInternal(i0:int, i1:int):boolean {
         if (CompilerFlags.useUnsigned() && zeroBased) {
             return ((i0 as UInt) <= (max0 as UInt)) &&
                    ((i1 as UInt) <= (max1 as UInt));
         } else {
-            return i0>=min0 && i0<=max0 && 
+            return i0>=min0 && i0<=max0 &&
                    i1>=min1 && i1<=max1;
         }
     }
@@ -284,8 +284,8 @@ final class RectRegion extends Region{rect} {
                    ((i1 as UInt) <= (max1 as UInt)) &&
                    ((i2 as UInt) <= (max2 as UInt));
         } else {
-            return i0>=min0 && i0<=max0 && 
-                   i1>=min1 && i1<=max1 && 
+            return i0>=min0 && i0<=max0 &&
+                   i1>=min1 && i1<=max1 &&
                    i2>=min2 && i2<=max2;
         }
     }
@@ -297,9 +297,9 @@ final class RectRegion extends Region{rect} {
                    ((i2 as UInt) <= (max2 as UInt)) &&
                    ((i3 as UInt) <= (max3 as UInt));
         } else {
-            return i0>=min0 && i0<=max0 && 
-                   i1>=min1 && i1<=max1 && 
-                   i2>=min2 && i2<=max2 && 
+            return i0>=min0 && i0<=max0 &&
+                   i1>=min1 && i1<=max1 &&
+                   i2>=min2 && i2<=max2 &&
                    i3>=min3 && i3<=max3;
         }
     }
@@ -315,8 +315,8 @@ final class RectRegion extends Region{rect} {
     	}
     	return polyRep;
     }
-    
-    
+
+
     public def intersection(that:Region(rank)):Region(rank) {
         if (that.isEmpty()) {
 	       return that;
@@ -341,9 +341,9 @@ final class RectRegion extends Region{rect} {
             return (toPolyRegion() as Region(rank)).intersection(that);
         }
     }
-    
 
-    
+
+
     public def product(that:Region):Region{self != null} /*self.rank==this.rank+that.rank*/{
         if (that.isEmpty()) {
             return Region.makeEmpty(rank + that.rank);
@@ -386,7 +386,7 @@ final class RectRegion extends Region{rect} {
         val newMin = new Array[int](k, (i:int)=>i<axis?min(i):min(i+1));
         val newMax = new Array[int](k, (i:int)=>i<axis?max(i):max(i+1));
         return new RectRegion(newMin, newMax);
-    }    
+    }
 
 
     private static class RRIterator(myRank:int) implements Iterator[Point(myRank)] {
@@ -401,7 +401,7 @@ final class RectRegion extends Region{rect} {
             max = rr.max();
             done = rr.size == 0;
             cur = new Rail[int](myRank, min);
-        }        
+        }
 
         public def hasNext() = !done;
 
@@ -437,7 +437,7 @@ final class RectRegion extends Region{rect} {
 
     public def equals(thatObj:Any):boolean {
 	if (this == thatObj) return true;
-        if (!(thatObj instanceof Region)) return false; 
+        if (!(thatObj instanceof Region)) return false;
         val that:Region = thatObj as Region;
 
         // we only handle rect==rect

@@ -90,7 +90,7 @@ public final struct Place(id: Int)  {
     @Native("c++", "x10aux::child_index(#id)")
     public static def childIndex(id:Int):Int { throw new BadPlaceException(); }
 
-    private static childrenArray = 
+    private static childrenArray =
         new Array[Array[Place](1)](ALL_PLACES,
                                    (p: Int) => new Array[Place](numChildren(p), (i:Int) => Place(child(p,i))));
 
@@ -114,8 +114,8 @@ public final struct Place(id: Int)  {
     /**
      * Creates a Place struct from an integer place id.
      */
-    public def this(id: Int):Place(id) { 
-        property(id); 
+    public def this(id: Int):Place(id) {
+        property(id);
         if (CompilerFlags.checkPlace() && (id < 0 || id >= ALL_PLACES)) {
             throw new IllegalArgumentException(id+" is not a valid Place id");
         }
@@ -160,7 +160,7 @@ public final struct Place(id: Int)  {
     public static def numPlaces():int = ALL_PLACES;
 
     /**
-     * 
+     *
      */
     public def isFirst(): Boolean = id == 0;
     public def isLast(): Boolean = id == MAX_PLACES - 1;
@@ -203,7 +203,7 @@ public final struct Place(id: Int)  {
     public def equals(p:Any) = p instanceof Place && (p as Place).id==this.id;
     public def hashCode()=id;
 
-    
+
     /**
      * Converts a GlobalRef to its home.
      */

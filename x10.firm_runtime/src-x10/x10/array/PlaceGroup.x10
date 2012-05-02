@@ -16,8 +16,8 @@ package x10.array;
  * <p> A PlaceGroup represents an ordered set of Places.
  * PlaceGroups are represented by a specialized set of classes (instead of using
  * arbitrary collection types) because it is necessary for performance/scalability
- * to have optimized representations of specific special cases.  The API is also 
- * designed specifically to efficiently support the operations needed by Dist, 
+ * to have optimized representations of specific special cases.  The API is also
+ * designed specifically to efficiently support the operations needed by Dist,
  * DistArray, and Team.</p>
  *
  * @see Place
@@ -57,13 +57,13 @@ public abstract class PlaceGroup implements Sequence[Place] {
   /**
    * <p>If the argument place is contained in the PlaceGroup
    * return an int between 0 and numPlaces()-1 that is the
-   * ordinal number of the Place in the PlaceGroup. 
+   * ordinal number of the Place in the PlaceGroup.
    * If the argument place is not contained in the PlaceGroup,
    * then return -1.</p>
    *
    * <p>If the PlaceGroup pg contains place, then the invariant
    * <code>pg(indexOf(place)).equals(place) == true</code> holds.</p>
-   * 
+   *
    * @return the index of place
    */
   public def indexOf(place:Place):int = indexOf(place.id);
@@ -71,14 +71,14 @@ public abstract class PlaceGroup implements Sequence[Place] {
   /**
    * <p>If the Place with id equal to id is contained in the PlaceGroup
    * return an int between 0 and numPlaces()-1 that is the
-   * ordinal number of said Place in the PlaceGroup. 
+   * ordinal number of said Place in the PlaceGroup.
    * If the argument place is not contained in the PlaceGroup,
    * then return -1.</p>
    *
-   * <p>If the PlaceGroup pg contains the argument Place, 
+   * <p>If the PlaceGroup pg contains the argument Place,
    * then the invariant
    * <code>pg(indexOf(id)).equals(Place.place(id)) == true</code> holds.</p>
-   * 
+   *
    * @return the index of the Place encoded by id
    */
   public abstract def indexOf(id:int):int;
@@ -116,7 +116,7 @@ public abstract class PlaceGroup implements Sequence[Place] {
       return (thatObj instanceof WorldPlaceGroup) ? true : super.equals(thatObj);
     }
     public def hashCode() = Place.numPlaces().hashCode();
-  }  
+  }
 }
- 
+
 

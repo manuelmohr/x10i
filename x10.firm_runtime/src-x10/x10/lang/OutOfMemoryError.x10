@@ -12,6 +12,6 @@
 package x10.lang;
 
 public class OutOfMemoryError extends Error {
-    public def this() { super(); } 
-    public def this(message: String) { super(message); } 
+    public def this() { super(); }
+    public def this(message: String) { super(message); }
 }

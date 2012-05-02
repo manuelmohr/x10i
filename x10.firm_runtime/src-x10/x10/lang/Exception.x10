@@ -27,7 +27,7 @@ public class Exception extends Throwable {
      *
      * @param message the detail message
      */
-    public def this(message: String) { super(message); } 
+    public def this(message: String) { super(message); }
 
     /**
      * Construct an Exception with the specified detail message and cause.
@@ -35,14 +35,14 @@ public class Exception extends Throwable {
      * @param message the detail message
      * @param cause the cause
      */
-    public def this(message: String, cause: Throwable) { super(message, cause); } 
+    public def this(message: String, cause: Throwable) { super(message, cause); }
 
     /**
      * Construct an Exception with no detail message and the specified cause.
      *
      * @param cause the cause
      */
-    public def this(cause: Throwable) { super(cause); } 
+    public def this(cause: Throwable) { super(cause); }
 
     /**
      * Create a String representation of this Exception.

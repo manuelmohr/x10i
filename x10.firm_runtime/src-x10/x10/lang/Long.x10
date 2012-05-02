@@ -503,23 +503,23 @@ public struct Long implements Comparable[Long], Arithmetic[Long], Bitwise[Long],
     public native def hashCode(): Int;
 
     /**
-    * Returns a negative Int, zero, or a positive Int if this Long is less than, equal
-    * to, or greater than the given Long.
-    * @param x the given Long
-    * @return a negative Int, zero, or a positive Int if this Long is less than, equal
-    * to, or greater than the given Long.
-    */
-   public def compareTo(x:Long):Int = this == x ? 0 : this < x ? -1 : 1;
-   
-   /**
-    * Constructs a LongRange from
-    * the lower bound to the upper bound, inclusive.
-    * @param lower the lower bound
-    * @param upper the upper bound
-    * @return a range from lower to upper, inclusive.
-    */
-   @Native("java", "x10.lang.LongRange.$make(#x, #y)")
-   @Native("c++", "x10::lang::LongRange::_make(#1, #2)")
-   public native static operator (x:Long) .. (y:Long):LongRange{min==x,max==y};
+     * Returns a negative Int, zero, or a positive Int if this Long is less than, equal
+     * to, or greater than the given Long.
+     * @param x the given Long
+     * @return a negative Int, zero, or a positive Int if this Long is less than, equal
+     * to, or greater than the given Long.
+     */
+    public def compareTo(x:Long):Int = this == x ? 0 : this < x ? -1 : 1;
+
+    /**
+     * Constructs a LongRange from
+     * the lower bound to the upper bound, inclusive.
+     * @param lower the lower bound
+     * @param upper the upper bound
+     * @return a range from lower to upper, inclusive.
+     */
+    @Native("java", "x10.lang.LongRange.$make(#x, #y)")
+    @Native("c++", "x10::lang::LongRange::_make(#1, #2)")
+    public native static operator (x:Long) .. (y:Long):LongRange{min==x,max==y};
 }
 public type Long(b:Long) = Long{self==b};

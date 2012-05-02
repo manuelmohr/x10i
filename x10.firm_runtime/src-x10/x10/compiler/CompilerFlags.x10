@@ -11,12 +11,12 @@
 
 package x10.compiler;
 
-/** 
- * A class that allows transmission of compiler command line 
+/**
+ * A class that allows transmission of compiler command line
  * flags to to code in the class libraries that wants to check
  * compilation modes.
  */
-public class CompilerFlags { 
+public class CompilerFlags {
 
     /**
      * @return <code>true</code> if the compiler was invoked with
@@ -57,12 +57,12 @@ public class CompilerFlags {
     @Native("java", "false")
     @Native("c++", "false")
     public static native def FALSE():boolean;
-    
+
     /**
      * A "true" that is not understood by the constant propagator
      */
     @Native("java", "true")
     @Native("c++",  "true")
     public static native def TRUE():boolean;
-    
+
 }

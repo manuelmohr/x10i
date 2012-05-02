@@ -49,7 +49,7 @@ public abstract class Dist(
      * @return a "unique" distribution over all places.
      */
     public static def makeUnique():Dist(1) {
-        return UNIQUE as Dist(1);        
+        return UNIQUE as Dist(1);
     }
     // Cache pre-allocated UniqueDist to optimize makeUnique calls.
     private static val UNIQUE = new UniqueDist();
@@ -83,9 +83,9 @@ public abstract class Dist(
      * @param r the given region
      * @param axis the dimension to cycle over
      * @return a "cyclic" distribution over r.
-     */     
+     */
     public static def makeCyclic(r:Region, axis:int):Dist(r) = makeBlockCyclic(r, axis, 1);
-    
+
     /**
      * Create a distribution over the specified region that varies in
      * place only along the zeroth axis, and maps the ith
@@ -93,16 +93,16 @@ public abstract class Dist(
      *
      * @param r the given region
      * @return a "cyclic" distribution over r, cycling over the zeroth axis.
-     
+
     public static def makeCyclic(r:Region):Dist(r) = makeBlockCyclic(r, 0, 1);
-    
+
     /**
      * Create a distribution over the specified region that varies in
      * place only along the specified axis. It divides the coordinates
      * along that axis into Place.MAX_PLACES blocks, and assigns
      * successive blocks to successive places.  If the number of coordinates
-     * in the axis does not divide evenly into the number of blocks, then 
-     * the first (max(axis)-min(axis)+1)%Place.MAX_PLACES blocks will be assigned 
+     * in the axis does not divide evenly into the number of blocks, then
+     * the first (max(axis)-min(axis)+1)%Place.MAX_PLACES blocks will be assigned
      * one more coordinate than the remaining blocks.
      *
      * @param r the given region
@@ -137,8 +137,8 @@ public abstract class Dist(
      * place only along the 0-th axis. It divides the coordinates
      * along the 0-th axis into Place.MAX_PLACES blocks, and assigns
      * successive blocks to successive places.  If the number of coordinates
-     * in the axis does not divide evenly into the number of blocks, then 
-     * the first (max(axis)-min(axis)+1)%Place.MAX_PLACES blocks will be assigned 
+     * in the axis does not divide evenly into the number of blocks, then
+     * the first (max(axis)-min(axis)+1)%Place.MAX_PLACES blocks will be assigned
      * one more coordinate than the remaining blocks.
      *
      * @param r the given region
@@ -208,8 +208,8 @@ public abstract class Dist(
      * place only along the specified axis. It divides the coordinates
      * along that axis into pg.numPlaces() blocks, and assigns successive
      * blocks to successive places in pg. If the number of coordinates
-     * in the axis does not divide evenly into the number of places in pg, then 
-     * the first (max(axis)-min(axis)+1)%pg.numPlaces() blocks will be assigned 
+     * in the axis does not divide evenly into the number of places in pg, then
+     * the first (max(axis)-min(axis)+1)%pg.numPlaces() blocks will be assigned
      * one more coordinate than the remaining blocks.
      *
      * @param r the given region
@@ -343,9 +343,9 @@ public abstract class Dist(
 
     /**
      * Return the offset in linearized place-local storage of the given point.
-     * Throw a BadPlaceException if the given point is not mapped to 
+     * Throw a BadPlaceException if the given point is not mapped to
      * the current place.  Primarily intended to be used by the DistArray implementation,
-     * but may be useful for other data structures as well that need to associate 
+     * but may be useful for other data structures as well that need to associate
      * Points in a Distribution with a dense, zero-based numbering.
      *
      * @param pt the given point
@@ -355,9 +355,9 @@ public abstract class Dist(
 
     /**
      * Return the offset in linearized place-local storage of the point [i0]
-     * Throw a BadPlaceException if the given point is not mapped to 
+     * Throw a BadPlaceException if the given point is not mapped to
      * the current place.  Primarily intended to be used by the DistArray implementation,
-     * but may be useful for other data structures as well that need to associate 
+     * but may be useful for other data structures as well that need to associate
      * Points in a Distribution with a dense, zero-based numbering.
      *
      * Only applies to one-dimensional distributions.
@@ -370,9 +370,9 @@ public abstract class Dist(
 
     /**
      * Return the offset in linearized place-local storage of the point [i0,i1].
-     * Throw a BadPlaceException if the given point is not mapped to 
+     * Throw a BadPlaceException if the given point is not mapped to
      * the current place.  Primarily intended to be used by the DistArray implementation,
-     * but may be useful for other data structures as well that need to associate 
+     * but may be useful for other data structures as well that need to associate
      * Points in a Distribution with a dense, zero-based numbering.
      *
      * Only applies to two-dimensional distributions.
@@ -386,9 +386,9 @@ public abstract class Dist(
 
     /**
      * Return the offset in linearized place-local storage of the point [i0,i1,i2].
-     * Throw a BadPlaceException if the given point is not mapped to 
+     * Throw a BadPlaceException if the given point is not mapped to
      * the current place.  Primarily intended to be used by the DistArray implementation,
-     * but may be useful for other data structures as well that need to associate 
+     * but may be useful for other data structures as well that need to associate
      * Points in a Distribution with a dense, zero-based numbering.
      *
      * Only applies to three-dimensional distributions.
@@ -403,9 +403,9 @@ public abstract class Dist(
 
     /**
      * Return the offset in linearized place-local storage of the point [i0,i1,i2,i3].
-     * Throw a BadPlaceException if the given point is not mapped to 
+     * Throw a BadPlaceException if the given point is not mapped to
      * the current place.  Primarily intended to be used by the DistArray implementation,
-     * but may be useful for other data structures as well that need to associate 
+     * but may be useful for other data structures as well that need to associate
      * Points in a Distribution with a dense, zero-based numbering.
      *
      * Only applies to four-dimensional distributions.
@@ -455,7 +455,7 @@ public abstract class Dist(
      *
      * @param r the given region
      * @return the intersection of this distribution with r.
-    
+
      abstract public def intersection(r:Region(rank)):Dist(rank);
  */
     /**
@@ -465,10 +465,10 @@ public abstract class Dist(
      *
      * @param r the given region
      * @return the difference of this distribution and r.
-    
+
     abstract public def difference(r:Region(rank)):Dist(rank);
  */
-    
+
     /**
      * Return the distribution defined over r, which must be
      * contained in this.region, and which maps every point in its
@@ -508,7 +508,7 @@ public abstract class Dist(
      *
      * @param that the given distribution
      * @return the intersection of this distribution with that.
-   
+
     abstract public def intersection(that:Dist(rank)):Dist(rank);
   */
     /**
@@ -519,7 +519,7 @@ public abstract class Dist(
      *
      * @param that the given distribution
      * @return the difference of this distribution and that.
-    
+
     abstract public def difference(that:Dist(rank)):Dist(rank);
  */
     /**
@@ -530,10 +530,10 @@ public abstract class Dist(
      *
      * @param that the given distribution
      * @return the disjoint union of this distribution and that.
-     
+
     abstract public def union(that:Dist(rank)):Dist(rank);
 */
-    
+
     /**
      * Return a distribution whose region is the union of the regions
      * of the two distributions, and which maps each point p to
@@ -546,7 +546,7 @@ public abstract class Dist(
 
     /**
      * Return true iff that is a distribution and both distributions are defined
-     * over equal regions and place groups, and map every point in said region to 
+     * over equal regions and place groups, and map every point in said region to
      * the same place.
      *
      * @param that the given distribution
@@ -621,25 +621,25 @@ public abstract class Dist(
      *
      * @param d the given distribution
      * @return the disjoint union of this distribution and d.
-    
+
     public operator this || (d:Dist(rank)):Dist(rank) = union(d);
  */
-    
+
     /**
      * Subtract the specified distribution from this distribution.
      *
      * @param d the given distribution
      * @return the difference of this distribution and d.
-    
+
     public operator this - (d:Dist(rank)):Dist(rank) = difference(d);
  */
-    
+
     /**
      * Subtract the specified region from this distribution.
      *
      * @param r the given region
      * @return the difference of this distribution and r.
-     
+
     public operator this - (r:Region(rank)):Dist(rank) = difference(r);
 */
 
@@ -671,35 +671,35 @@ public abstract class Dist(
 
     protected static @NoInline @NoReturn def raiseBoundsError(i0:int) {
         throw new ArrayIndexOutOfBoundsException("point (" + i0 + ") not contained in distribution");
-    }    
+    }
     protected static @NoInline @NoReturn def raiseBoundsError(i0:int, i1:int) {
         throw new ArrayIndexOutOfBoundsException("point (" + i0 + ", "+i1+") not contained in distribution");
-    }    
+    }
     protected static @NoInline @NoReturn def raiseBoundsError(i0:int, i1:int, i2:int) {
         throw new ArrayIndexOutOfBoundsException("point (" + i0 + ", "+i1+", "+i2+") not contained in distribution");
-    }    
+    }
     protected static @NoInline @NoReturn def raiseBoundsError(i0:int, i1:int, i2:int, i3:int) {
         throw new ArrayIndexOutOfBoundsException("point (" + i0 + ", "+i1+", "+i2+", "+i3+") not contained in distribution");
-    }    
+    }
     protected static @NoInline @NoReturn def raiseBoundsError(pt:Point) {
         throw new ArrayIndexOutOfBoundsException("point " + pt + " not contained in distribution");
-    }    
+    }
 
     protected static @NoInline @NoReturn def raisePlaceError(i0:int) {
         throw new BadPlaceException("point (" + i0 + ") not defined at " + here);
-    }    
+    }
     protected static @NoInline @NoReturn def raisePlaceError(i0:int, i1:int) {
         throw new BadPlaceException("point (" + i0 + ", "+i1+") not defined at " + here);
-    }    
+    }
     protected static @NoInline @NoReturn def raisePlaceError(i0:int, i1:int, i2:int) {
         throw new BadPlaceException("point (" + i0 + ", "+i1+", "+i2+") not defined at " + here);
-    }    
+    }
     protected static @NoInline @NoReturn def raisePlaceError(i0:int, i1:int, i2:int, i3:int) {
         throw new BadPlaceException("point (" + i0 + ", "+i1+", "+i2+", "+i3+") not defined at " + here);
-    }    
+    }
     protected static @NoInline @NoReturn def raisePlaceError(pt:Point) {
         throw new BadPlaceException("point " + pt + " not defined at " + here);
-    }    
+    }
 }
 public type Dist(r:Int) = Dist{self.rank==r};
 public type Dist(r:Region) = Dist{self.region==r};

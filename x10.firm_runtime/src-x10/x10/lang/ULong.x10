@@ -430,7 +430,7 @@ public struct ULong implements Comparable[ULong] /*TODO implements Arithmetic[UL
     @Native("java", "x10.lang.ULong.$make(x10.core.Unsigned.parseULong(#s, #radix))")
     @Native("c++", "x10aux::long_utils::parseULong(#1, #2)")
     /* [FIRM_CHANGE] */
-    public native static def parse(s:String, radix:Int): ULong; //throws NumberFormatException 
+    public native static def parse(s:String, radix:Int): ULong; //throws NumberFormatException
 
     /**
      * Parses the String argument as a decimal ULong.
@@ -580,7 +580,7 @@ public struct ULong implements Comparable[ULong] /*TODO implements Arithmetic[UL
     public def equals(x:Any):Boolean {
     	if(x instanceof ULong)
     		return equals(x as ULong);
-    	return false; 
+    	return false;
     }
 
     /**

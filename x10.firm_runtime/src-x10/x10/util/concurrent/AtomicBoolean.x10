@@ -19,18 +19,18 @@ import x10.compiler.Volatile;
 public final class AtomicBoolean {
    /*
     * An int that will only contain 0 or 1 and is interpreted as an boolean.
-    * We do this instead of using a boolean so that we know that compareAndSet_32 
+    * We do this instead of using a boolean so that we know that compareAndSet_32
     * can work on the whole memory word.
     */
     private @Volatile var value:Int;
-    
+
     public def this():AtomicBoolean {
         value = 0;
     }
     public def this(v:Boolean):AtomicBoolean {
         value = v ? 1 : 0;
     }
-    
+
     @Native("java", "#this.get()")
     public def get():Boolean = value == 1;
 
@@ -46,7 +46,7 @@ public final class AtomicBoolean {
     @Native("java", "#this.weakCompareAndSet(#expect,#update)")
     @Native("c++", "x10aux::atomic_boolean_funs::weakCompareAndSet(#this, #expect, #update)")
     public native def weakCompareAndSet(expect:Boolean, update:Boolean):Boolean;
-    
+
     @Native("java", "#this.getAndSet(#v)")
     public def getAndSet(v:Boolean):Boolean {
 	val oldVal = get();
@@ -57,4 +57,4 @@ public final class AtomicBoolean {
     @Native("java", "#this.toString()")
     public def toString():String = get().toString();
 }
- 
+

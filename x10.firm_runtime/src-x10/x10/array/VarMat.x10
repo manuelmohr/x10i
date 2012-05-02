@@ -12,7 +12,7 @@
 package x10.array;
 
 final class VarMat extends Mat[VarRow] {
-    
+
     public def this(cols:Int, mat:Array[VarRow](1)) {
         super(mat.size, cols, mat);
     }

@@ -14,13 +14,13 @@ package x10.util;
 
 /**
  * A place-local worker-local storage facility.
- * 
+ *
  * For instance, the following program will non-deterministically output
  * Hello or Bye depending on which worker runs each async.
- * 
+ *
  * class Foo {
  *   static store = new x10.util.WorkerLocalStorage[String,String]();
- * 
+ *
  *   public static def main(Array[String]) {
  *     finish async at (here.next()) {
  *       store.put("salutation", "Hello");
@@ -30,9 +30,9 @@ package x10.util;
  *     }
  *   }
  * }
- * 
+ *
  * @author tardieu
- * 
+ *
  */
 public class WorkerLocalStorage[Key,Value] {
     private val store = PlaceLocalHandle.make(Dist.makeUnique(),

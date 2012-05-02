@@ -21,7 +21,7 @@ final class WrappedDistPlaceRestricted extends Dist {
 
     def this(d:Dist, p:Place):WrappedDistPlaceRestricted(d.rank) {
         super(d(p));
-        base = d; 
+        base = d;
         filter = p;
     }
 
@@ -76,7 +76,7 @@ final class WrappedDistPlaceRestricted extends Dist {
     public def maxOffset():int = base.maxOffset();
 
     public def restriction(r:Region(rank)):Dist(rank) {
-        return new WrappedDistRegionRestricted(this, r); 
+        return new WrappedDistRegionRestricted(this, r);
     }
 
     public def restriction(p:Place):Dist(rank) {

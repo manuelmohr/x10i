@@ -15,7 +15,7 @@ import x10.compiler.NativeRep;
 
 /**
  * Used for generating static initialization code in Java backend.
- * 
+ *
  */
 @NativeRep("java", "x10.runtime.impl.java.InitDispatcher", null, null)
 class InitDispatcher {

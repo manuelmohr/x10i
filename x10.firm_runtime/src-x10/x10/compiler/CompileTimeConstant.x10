@@ -15,9 +15,9 @@ import x10.lang.annotations.MethodAnnotation;
 
 /**
  * Annotation to allow the compiler front-end access to command-line constants.
- * 
+ *
  * option: the name of a static field in x10.Configuration, possibly prepended by "!".
- * 
+ *
  * The Inliner will replace a call to such a method with a Lit node representing the value of the option
  * (negated, if the name is preceded by "!" and the type is boolean or Boolean).
  */

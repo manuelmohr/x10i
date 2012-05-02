@@ -23,7 +23,7 @@ package x10.io;
  *    }
  *    p.flush();
  * } catch (IOException) { }
- */    
+ */
 public abstract class Reader {
     /**
      * Close the input stream
@@ -49,7 +49,7 @@ public abstract class Reader {
     public abstract def mark(Int): void; //throws IOException
     public abstract def reset(): void; //throws IOException
     public abstract def markSupported(): Boolean;
-    
+
     /**
      * Read the next Boolean from the input; throws IOException if none.
      */
@@ -123,12 +123,12 @@ public abstract class Reader {
     // Matze: disabled the following for now until we have better Array support
 
     /**
-     * Fill the argument array by reading the next a.size elements. 
+     * Fill the argument array by reading the next a.size elements.
      * Throws IOException if not enough elements.
      */
     /*
-    public final def read[T](m:Marshal[T], a:Array[T](1)):void { 
-        read[T](m, a, 0, a.size); 
+    public final def read[T](m:Marshal[T], a:Array[T](1)):void {
+        read[T](m, a, 0, a.size);
     }
     */
 
@@ -143,7 +143,7 @@ public abstract class Reader {
         }
     }
     */
-    
+
     public def lines(): ReaderIterator[String] = new ReaderIterator[String](Marshal.LINE, this);
     public def chars(): ReaderIterator[Char] = new ReaderIterator[Char](Marshal.CHAR, this);
     public def bytes(): ReaderIterator[Byte] = new ReaderIterator[Byte](Marshal.BYTE, this);

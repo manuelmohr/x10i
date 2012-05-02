@@ -22,8 +22,8 @@ import x10.util.Ordered;
  * Array[int]. Point arithmetic is supported.
  */
 
-public final class Point(rank:Int) implements (Int) => Int, 
-                                              Ordered[Point(rank)], 
+public final class Point(rank:Int) implements (Int) => Int,
+                                              Ordered[Point(rank)],
                                               Comparable[Point(rank)] {
     private val c0:int;
     private val c1:int;
@@ -138,68 +138,68 @@ public final class Point(rank:Int) implements (Int) => Int,
 
     /**  The point <code>-p</code> is the same as <code>p</code> with each index negated.
      */
-    public operator - this: Point(rank) 
+    public operator - this: Point(rank)
        = Point.make(rank, (i:Int)=>-this(i));
 
     /**  The ith coordinate of point <code>p+q</code> is <code>p(i)+q(i)</code>.
      */
-    public operator this + (that: Point(rank)): Point(rank) 
+    public operator this + (that: Point(rank)): Point(rank)
        = Point.make(rank, (i:Int)=> this(i) + that(i));
 
 
     /**  The ith coordinate of point <code>p-q</code> is <code>p(i)-q(i)</code>.
      */
-    public operator this - (that: Point(rank)): Point(rank) 
+    public operator this - (that: Point(rank)): Point(rank)
        = Point.make(rank, (i:Int)=> this(i) - that(i));
 
     /**  The ith coordinate of point <code>p*q</code> is <code>p(i)*q(i)</code>.
      */
-    public operator this * (that: Point(rank)): Point(rank) 
+    public operator this * (that: Point(rank)): Point(rank)
        = Point.make(rank, (i:Int)=> this(i) * that(i));
 
     /**  The ith coordinate of point <code>p/q</code> is <code>p(i)/q(i)</code>.
      */
-    public operator this / (that: Point(rank)): Point(rank) 
+    public operator this / (that: Point(rank)): Point(rank)
        = Point.make(rank, (i:Int)=> this(i) / that(i));
 
     /**  The ith coordinate of point <code>p+c</code> is <code>p(i)+c</code>.
      */
-    public operator this + (c: int): Point(rank) 
+    public operator this + (c: int): Point(rank)
        = Point.make(rank, (i:Int) => this(i) + c);
 
     /**  The ith coordinate of point <code>p-c</code> is <code>p(i)-c</code>.
      */
-    public operator this - (c: int): Point(rank) 
+    public operator this - (c: int): Point(rank)
        = Point.make(rank, (i:Int) => this(i) - c);
 
     /**  The ith coordinate of point <code>p*c</code> is <code>p(i)*c</code>.
      */
-    public operator this * (c: int): Point(rank) 
+    public operator this * (c: int): Point(rank)
        = Point.make(rank, (i:Int) => this(i) * c);
 
     /**  The ith coordinate of point <code>p/c</code> is <code>p(i)/c</code>.
      */
-    public operator this / (c: int): Point(rank) 
+    public operator this / (c: int): Point(rank)
        = Point.make(rank, (i:Int) => this(i) / c);
 
     /**  The ith coordinate of point <code>c+p</code> is <code>c+p(i)</code>.
      */
-    public operator (c: int) + this: Point(rank) 
+    public operator (c: int) + this: Point(rank)
        = Point.make(rank, (i:Int) => c + this(i));
 
     /**  The ith coordinate of point <code>c-p</code> is <code>c-p(i)</code>.
      */
-    public operator (c: int) - this: Point(rank) 
+    public operator (c: int) - this: Point(rank)
        = Point.make(rank, (i:Int) => c - this(i));
 
     /**  The ith coordinate of point <code>c*p</code> is <code>c*p(i)</code>.
      */
-    public operator (c: int) * this: Point(rank) 
+    public operator (c: int) * this: Point(rank)
        = Point.make(rank, (i:Int) => c * this(i));
 
     /**  The ith coordinate of point <code>c/p</code> is <code>c/p(i)</code>.
      */
-    public operator (c: int) / this: Point(rank) 
+    public operator (c: int) / this: Point(rank)
        = Point.make(rank, (i:Int) => c / this(i));
 
     /**
@@ -289,9 +289,9 @@ public final class Point(rank:Int) implements (Int) => Int,
      */
     public def toString() {
         var s:String = "[";
-        if (rank>0) s += this(0); 
+        if (rank>0) s += this(0);
         for (var i:int=1; i<rank; i++)
-            s += "," + this(i); 
+            s += "," + this(i);
         s += "]";
         return s;
     }

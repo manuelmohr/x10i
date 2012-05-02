@@ -19,13 +19,13 @@ import x10.io.CustomSerialization;
 import x10.io.SerialData;
 
 /**
- * A GrowableIndexedMemoryChunk provides the abstraction of 
- * a variable size IndexedMemoryChunk.  It is implemented 
- * by wrapping a backing IndexedMemoryChunk and automatically 
+ * A GrowableIndexedMemoryChunk provides the abstraction of
+ * a variable size IndexedMemoryChunk.  It is implemented
+ * by wrapping a backing IndexedMemoryChunk and automatically
  * growing the backing store as needed to support the requested
- * insertion operations. 
- * 
- * @See ArrayList, which provides a similar abstraction of a 
+ * insertion operations.
+ *
+ * @See ArrayList, which provides a similar abstraction of a
  *      Growable Array. Like Array, ArrayList is type safe.
  */
 public final class GrowableIndexedMemoryChunk[T] /*implements CustomSerialization*/ {
@@ -33,23 +33,23 @@ public final class GrowableIndexedMemoryChunk[T] /*implements CustomSerializatio
 
    /**
     * Elements 0..length-1 have valid entries of type T.
-    * Elements length..imc.length-1 may not be valid 
-    * values of type T.  
+    * Elements length..imc.length-1 may not be valid
+    * values of type T.
     * It is an invariant of this class, that such elements
     * will never be accessed.
     */
     private var length: Int;
 
-    /** 
-     * Create a GrowableIndexedMemoryChunk with an initial 
+    /**
+     * Create a GrowableIndexedMemoryChunk with an initial
      * capacity of 0.
      */
     public def this() {
         this(0);
     }
 
-    /** 
-     * Create a GrowableIndexedMemoryChunk with an initial 
+    /**
+     * Create a GrowableIndexedMemoryChunk with an initial
      * capacity of cap.
      */
     public def this(cap:Int) {
@@ -80,7 +80,7 @@ public final class GrowableIndexedMemoryChunk[T] /*implements CustomSerializatio
         imc(length++) = v;
     }
 
-    /** 
+    /**
      * Insert all elements of items starting at the specified index.
      * This will raise an UnsupportedOperationException if p &gt; length.
      * If p &lt; length, then the elements from p..length-1 will first
@@ -115,8 +115,8 @@ public final class GrowableIndexedMemoryChunk[T] /*implements CustomSerializatio
         }
     }
 
-    /** 
-     * Get the current length; indices from 0..length-1 are currently valid 
+    /**
+     * Get the current length; indices from 0..length-1 are currently valid
      * values of type T and may be accessed.
      */
     public def length():Int = length;
@@ -126,7 +126,7 @@ public final class GrowableIndexedMemoryChunk[T] /*implements CustomSerializatio
      */
     public def capacity():Int = imc.length();
 
-    /** 
+    /**
      * Remove the last element. May shrink backing storage.
      */
     public def removeLast():void {
@@ -135,7 +135,7 @@ public final class GrowableIndexedMemoryChunk[T] /*implements CustomSerializatio
         shrink(length+1);
     }
 
-    /** 
+    /**
      * Remove all elements.
      */
     public def clear():void {
@@ -178,7 +178,7 @@ public final class GrowableIndexedMemoryChunk[T] /*implements CustomSerializatio
        return ans;
     }
 
-    /** 
+    /**
      * Copy current data into an Array.
      */
     /*
@@ -191,7 +191,7 @@ public final class GrowableIndexedMemoryChunk[T] /*implements CustomSerializatio
         val oldCapacity = capacity();
         if (newCapacity < oldCapacity*2) {
             newCapacity = oldCapacity*2;
-        } 
+        }
         if (newCapacity < 8) {
             newCapacity = 8;
         }

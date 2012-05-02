@@ -30,4 +30,4 @@ public class Fences {
     @Native("c++", "x10aux::atomic_ops::store_store_barrier()")
     public static native def storeStoreBarrier():void;
 }
- 
+

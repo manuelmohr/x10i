@@ -13,25 +13,25 @@ package x10.io;
 
 public class FilterReader extends Reader {
     val r: Reader;
-    
+
     protected def inner(): Reader = r;
 
     public def this(r: Reader) { this.r = r; }
-    public def close(): void //throws IOException 
+    public def close(): void //throws IOException
     { r.close(); }
-    public def read(): Byte //throws IOException 
+    public def read(): Byte //throws IOException
     = r.read();
-    
-    public def available(): Int //throws IOException 
+
+    public def available(): Int //throws IOException
     = r.available();
-    
-    public def skip(off: Int): void //throws IOException 
+
+    public def skip(off: Int): void //throws IOException
     { r.skip(off); }
 
-    public def mark(off: Int): void //throws IOException 
+    public def mark(off: Int): void //throws IOException
     { r.mark(off); }
-    public def reset(): void //throws IOException 
+    public def reset(): void //throws IOException
     { r.reset(); }
     public def markSupported(): Boolean = r.markSupported();
-    
+
 }

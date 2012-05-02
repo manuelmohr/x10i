@@ -430,7 +430,7 @@ public struct UInt implements Comparable[UInt] /*TODO implements Arithmetic[UInt
     // @Native("java", "java.lang.Integer.parseInt(#s, #radix)")
     @Native("c++", "(x10aux::int_utils::parseUInt(#1, #2))")
     /* [FIRM_CHANGE] */
-    public native static def parse(s:String, radix:Int): UInt; //throwsNumberFormatException 
+    public native static def parse(s:String, radix:Int): UInt; //throwsNumberFormatException
 
     /**
      * Parses the String argument as a decimal UInt.
@@ -577,7 +577,7 @@ public struct UInt implements Comparable[UInt] /*TODO implements Arithmetic[UInt
     /* [FIRM_CHANGE] */
     public def equals(x:Any):Boolean {
     	if(x instanceof UInt) {
-    		return equals(x as UInt); 
+    		return equals(x as UInt);
     	}
     	return false;
     }

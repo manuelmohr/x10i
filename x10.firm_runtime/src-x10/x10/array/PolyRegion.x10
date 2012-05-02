@@ -40,7 +40,7 @@ class PolyRegion extends Region {
         	 s++;
           size=s;
     	}
-        return size;     
+        return size;
     }
 
     @Incomplete public def indexOf(Point):int {
@@ -49,8 +49,8 @@ class PolyRegion extends Region {
 
 
     public def iterator():Iterator[Point(rank)]
-          = PolyScanner.make(mat).iterator(); 
-  
+          = PolyScanner.make(mat).iterator();
+
 
     //
     // Region methods
@@ -61,7 +61,7 @@ class PolyRegion extends Region {
         if (t instanceof PolyRegion) {
 
             // start
-            val that = t as PolyRegion; 
+            val that = t as PolyRegion;
             val pmb = new PolyMatBuilder(rank);
 
             // these halfspaces
@@ -74,7 +74,7 @@ class PolyRegion extends Region {
 
             // done
             val pm = pmb.toSortedPolyMat(false);
-            return PolyRegion.make(pm); 
+            return PolyRegion.make(pm);
 
         } else if (t instanceof RectRegion) {
         	return intersection((t as RectRegion).toPolyRegion());
@@ -89,11 +89,11 @@ class PolyRegion extends Region {
             throw new UnsupportedOperationException("intersection(" + t/*.getClass().getName()*/ + ")");
         }
     }
-                          
-                          
-    public def contains(that: Region(rank)): boolean = 
+
+
+    public def contains(that: Region(rank)): boolean =
     	computeBoundingBox().contains(that.computeBoundingBox());
-     
+
     /**
      * Projection is computed by using FME to eliminate variables on
      * all but the axis of interest.
@@ -112,9 +112,9 @@ class PolyRegion extends Region {
      */
 
     // XXX add a test case for this; also for projection!
-  
+
     public def eliminate(axis: int): Region/*(rank1)*/ {
-        val pm = mat.eliminate(axis, true); 
+        val pm = mat.eliminate(axis, true);
         val result = PolyRegion.make(pm);
         return result /*as Region(rank1)*/;
     }
@@ -190,7 +190,7 @@ class PolyRegion extends Region {
             prlb.add(region as Region(rank)); // XXXX
         }
 
-        return new UnionRegion(prlb as PolyRegionListBuilder{self.rank == this.rank}); 
+        return new UnionRegion(prlb as PolyRegionListBuilder{self.rank == this.rank});
     }
 */
     public def isEmpty(): boolean {

@@ -25,10 +25,10 @@ public class FileWriter extends OutputStreamWriter {
     // TODO: This is questionable.
     //       What does it mean to send a File to another node?
     val file: File;
-    
+
     // @Native("java", "new java.io.BufferedOutputStream(new java.io.FileOutputStream(#path))")
     private static def make(path: String):OutputStream{ //throws IOException {
-        return new FileOutputStream(path);       
+        return new FileOutputStream(path);
     }
 
     public def this(file: File) { //throws IOException {

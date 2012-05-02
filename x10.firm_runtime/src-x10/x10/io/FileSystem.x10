@@ -19,14 +19,14 @@ public abstract class FileSystem {
     static PATH_SEPARATOR_CHAR: Char = ':'; // System.getProperty("x10.io.pathSeparator")(0);
     static PATH_SEPARATOR: String = ":"; // System.getProperty("x10.io.pathSeparator");
 
-    @Incomplete def delete(File) : void //throws IOException 
+    @Incomplete def delete(File) : void //throws IOException
     { throw new UnsupportedOperationException();}
     @Incomplete def deleteOnExit(File) : void //throws IOException
     {         throw new UnsupportedOperationException(); }
     @Incomplete def rename(f: File, t: File) : void //throws IOException
         {         throw new UnsupportedOperationException(); }
     @Incomplete def mkdir(File) : void //throws IOException
-    {         throw new UnsupportedOperationException(); }                                              
+    {         throw new UnsupportedOperationException(); }
     @Incomplete def mkdirs(File) : void //throws IOException
     {         throw new UnsupportedOperationException(); }
     @Incomplete def exists(File) : Boolean

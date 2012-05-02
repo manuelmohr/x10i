@@ -36,7 +36,7 @@ import x10.util.concurrent.SimpleLatch;
  * - Native runtime starts worker0 thread.
  * - Native runtime invokes Runtime.start(...) from worker0 (Thread.currentThread() == worker0).
  * - Runtime.start(...) returns when application code execution has completed.
- * 
+ *
  * @author tardieu
  */
 @Pinned public final class Runtime {
@@ -47,7 +47,7 @@ import x10.util.concurrent.SimpleLatch;
     @Native("c++", "x10aux::system_utils::println(x10aux::to_string(#any)->c_str())")
     /* [FIRM_CHANGE] */
     public static def println(any:Any) : void { println(any.toString()); }
-    
+
     /* [FIRM_CHANGE] */
     public native static def println(str: String) : void;
 
@@ -79,7 +79,7 @@ import x10.util.concurrent.SimpleLatch;
     @Native("java", "x10.runtime.impl.java.Runtime.runClosureAt(#id, #body)")
     @Native("c++", "x10aux::run_closure_at(#id, #body)")
     static def runClosureAt(id:Int, body:()=>void):void { body(); }
-    
+
     @Native("java", "x10.runtime.impl.java.Runtime.runClosureAt(#id, #body)")
     @Native("c++", "x10aux::run_closure_at(#id, #body, #endpoint)")
     static def runClosureAt(id:Int, body:()=>void, endpoint:Int):void { body(); }
@@ -87,7 +87,7 @@ import x10.util.concurrent.SimpleLatch;
     @Native("java", "x10.runtime.impl.java.Runtime.runClosureCopyAt(#id, #body)")
     @Native("c++", "x10aux::run_closure_at(#id, #body)")
     static def runClosureCopyAt(id:Int, body:()=>void):void { body(); }
-    
+
     @Native("java", "x10.runtime.impl.java.Runtime.runClosureCopyAt(#id, #body)")
     @Native("c++", "x10aux::run_closure_at(#id, #body, #endpoint)")
     static def runClosureCopyAt(id:Int, body:()=>void, endpoint:Int):void { body(); }
@@ -232,7 +232,7 @@ import x10.util.concurrent.SimpleLatch;
                                                               getCopiedBytesReceived+that.getCopiedBytesReceived);
         public operator this - (that:X10RTStats) = this + (-that);
 
-        public def toString () = 
+        public def toString () =
             "msg:"+msg+
             " put:"+put+
             " putCopiedBytesSent:"+putCopiedBytesSent+
@@ -342,15 +342,15 @@ import x10.util.concurrent.SimpleLatch;
     @PerProcess public static WARN_ON_THREAD_CREATION = x10_warn_on_thread_creation();
 
     //Work-Stealing Runtime Related Interface
-    
+
     public static def wsInit():void {
         pool.wsBlockedContinuations = new Deque();
     }
-    
+
     public static def wsFIFO():Deque {
         return worker().wsfifo;
     }
-    
+
     public static def wsProcessEvents():void {
         event_probe();
     }
@@ -370,7 +370,7 @@ import x10.util.concurrent.SimpleLatch;
         dealloc(body);
     }
 
-    /* 
+    /*
      * Run a ws command in local or remote, such as a finish join action, or stop all workers action
      */
     public static def wsRunCommand(id:Int, body:()=>void):void {
@@ -578,7 +578,7 @@ import x10.util.concurrent.SimpleLatch;
                 super.unpark();
             }
         }
-        
+
         /**
          * Serialization of Worker objects is forbidden.
          * @throws UnsupportedOperationException
@@ -599,9 +599,9 @@ import x10.util.concurrent.SimpleLatch;
 
     @Pinned static class Pool {
         val latch = new SimpleLatch();
-        
+
         var wsEnd:Boolean = false;
-        
+
         private var size:Int; // the number of workers in the pool
 
         private var spares:Int = 0; // the number of spare workers in the pool
@@ -789,19 +789,19 @@ import x10.util.concurrent.SimpleLatch;
     // async at and at must make a copy of the closure parameter (local or remote)
     // async at and at should dealloc the closure parameter
     // async must not copy or dealloc the closure parameter
-    
+
     /**
      * Run async at
      */
     public static def runAsync(place:Place, clocks:Rail[Clock], body:()=>void):void {
     	runAsync(place, clocks, body, 0);
     }
-    
+
     public static def runAsync(place:Place, clocks:Rail[Clock], body:()=>void, endpoint:Int):void {
         // Do this before anything else
         val a = activity();
         a.ensureNotInAtomic();
-        
+
         val state = a.finishState();
         val clockPhases = a.clockPhases().make(clocks);
         state.notifySubActivitySpawn(place);
@@ -814,7 +814,7 @@ import x10.util.concurrent.SimpleLatch;
         }
         dealloc(body);
     }
-    
+
     public static def runAsync(place:Place, body:()=>void):void {
     	runAsync(place, body, 0);
     }
@@ -823,7 +823,7 @@ import x10.util.concurrent.SimpleLatch;
         // Do this before anything else
         val a = activity();
         a.ensureNotInAtomic();
-        
+
         val state = a.finishState();
         state.notifySubActivitySpawn(place);
         if (place.id == hereInt()) {
@@ -833,7 +833,7 @@ import x10.util.concurrent.SimpleLatch;
         }
         dealloc(body);
     }
-    
+
     /**
      * Run async
      */
@@ -841,7 +841,7 @@ import x10.util.concurrent.SimpleLatch;
         // Do this before anything else
         val a = activity();
         a.ensureNotInAtomic();
-        
+
         val state = a.finishState();
         val clockPhases = a.clockPhases().make(clocks);
         state.notifySubActivitySpawn(here);
@@ -852,7 +852,7 @@ import x10.util.concurrent.SimpleLatch;
         // Do this before anything else
         val a = activity();
         a.ensureNotInAtomic();
-        
+
         val state = a.finishState();
         state.notifySubActivitySpawn(here);
         execute(new Activity(body, state));
@@ -868,12 +868,12 @@ import x10.util.concurrent.SimpleLatch;
     public static def runUncountedAsync(place:Place, body:()=>void):void {
     	runUncountedAsync(place, body, 0);
     }
-    
+
     public static def runUncountedAsync(place:Place, body:()=>void, endpoint:Int):void {
         // Do this before anything else
         val a = activity();
         a.ensureNotInAtomic();
-        
+
         if (place.id == hereInt()) {
             execute(new Activity(deepCopy(body), FinishState.UNCOUNTED_FINISH));
         } else {
@@ -891,7 +891,7 @@ import x10.util.concurrent.SimpleLatch;
         // Do this before anything else
         val a = activity();
         a.ensureNotInAtomic();
-        
+
         execute(new Activity(body, new FinishState.UncountedFinish()));
     }
 
@@ -1088,7 +1088,7 @@ import x10.util.concurrent.SimpleLatch;
             f = new FinishState.FinishSPMD(); break;
         case Pragma.FINISH_LOCAL:
             f = new FinishState.LocalFinish(); break;
-        default: 
+        default:
             f = new FinishState.Finish();
         }
         return activity().swapFinish(f);
@@ -1142,7 +1142,7 @@ import x10.util.concurrent.SimpleLatch;
         worker().push(activity);
     }
 
-    // submit 
+    // submit
     public static def execute(body:()=>void, finishState:FinishState):void {
         execute(new Activity(body, finishState));
     }

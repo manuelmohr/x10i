@@ -75,9 +75,9 @@ public final struct PlaceLocalHandle[T]{T <: Object} {
     * by evaluating init at each place.  When this method returns, the local objects
     * will be initialized and available via the returned PlaceLocalHandle instance
     * at every place in the distribution.
-    * 
+    *
     * Require an initialization closure that does not change place asynchronously.
-    * 
+    *
     * @param dist A distribution specifiying the places where local objects should be created.
     * @param init the initialization closure used to create the local object.
     * @return a PlaceLocalHandle that can be used to access the local objects.

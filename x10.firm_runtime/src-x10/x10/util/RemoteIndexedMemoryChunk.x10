@@ -19,7 +19,7 @@ import x10.compiler.NativeRep;
 
 /**
  * A low-level abstraction of a chunk of memory that
- * contains a dense, indexed from 0 collection of 
+ * contains a dense, indexed from 0 collection of
  * values of type T.  No bounds checking or other
  * error checking is performed on read/write access to
  * this memory.<p>
@@ -41,8 +41,8 @@ public struct RemoteIndexedMemoryChunk[T] {
     @Native("java", "x10.core.RemoteIndexedMemoryChunk.<#T$box>wrap(#imc)")
     @Native("c++", "x10::util::RemoteIndexedMemoryChunk<#T >((#imc)->raw(), (#imc)->length())")
     public static native def wrap[T](imc:IndexedMemoryChunk[T]):RemoteIndexedMemoryChunk[T];
-    
-    /** 
+
+    /**
      * Can only be invoked at the place at which the RemoteIndexedMemoryChunk was
      * created. Returns the encapsulated IndexedMemoryChunk.
      */
@@ -65,11 +65,11 @@ public struct RemoteIndexedMemoryChunk[T] {
      */
     @Native("java", "((#this).home)")
     @Native("c++", "(#this)->home")
-    public native property home():Place; 
-         
+    public native property home():Place;
+
 
    /*
-    * @Native methods from Any because the handwritten C++ code doesn't 100% match 
+    * @Native methods from Any because the handwritten C++ code doesn't 100% match
     * what the compiler would have generated.
     */
 
