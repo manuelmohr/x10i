@@ -11,6 +11,7 @@
 
 package x10.core;
 
+import x10.rtt.RuntimeType;
 import x10.rtt.Type;
 import x10.rtt.Types;
 import x10.x10rt.X10JavaDeserializer;
@@ -29,9 +30,9 @@ final public class ULong extends Number implements StructI, java.lang.Comparable
     private static final long serialVersionUID = 1L;
     private static final short _serialization_id = x10.x10rt.DeserializationDispatcher.addDispatcher(x10.x10rt.DeserializationDispatcher.ClosureKind.CLOSURE_KIND_NOT_ASYNC, ULong.class);
     
-    public static final x10.rtt.RuntimeType<?> $RTT = Types.ULONG;
-    public x10.rtt.RuntimeType<?> $getRTT() {return $RTT;}
-    public x10.rtt.Type<?> $getParam(int i) {return null;}
+    public static final RuntimeType<?> $RTT = Types.ULONG;
+    public RuntimeType<?> $getRTT() {return $RTT;}
+    public Type<?> $getParam(int i) {return null;}
 
     final long $value;
 
@@ -42,7 +43,7 @@ final public class ULong extends Number implements StructI, java.lang.Comparable
     private abstract static class Cache {
         static final boolean enabled = java.lang.Boolean.parseBoolean(System.getProperty("x10.lang.ULong.Cache.enabled", "false"));
         static final int low = 0;
-        static final int high = enabled ? 255 : low; // disable caching
+        static final int high = enabled ? 255 : (low - 1); // disable caching
         static final ULong cache[] = new ULong[high - low + 1];
         static {
             for (int i = 0; i < cache.length; ++i) {
@@ -70,7 +71,8 @@ final public class ULong extends Number implements StructI, java.lang.Comparable
     }
 
     public static long $unbox(Object obj) {
-        return ((x10.core.ULong)obj).$value;
+    	if (obj instanceof ULong) return ((ULong)obj).$value;
+    	else return ((java.lang.Long)obj).longValue();
     }
     
     public static long $unbox(long value) {
@@ -142,26 +144,31 @@ final public class ULong extends Number implements StructI, java.lang.Comparable
     // implements Arithmetic<ULong>
     public ULong $plus$G() { return this; }
     public ULong $minus$G() { return ULong.$box(-$value); }
-    public ULong $plus(ULong a, Type t) { return ULong.$box($value + a.$value); }
-    public ULong $minus(ULong a, Type t) { return ULong.$box($value - a.$value); }
-    public ULong $times(ULong a, Type t) { return ULong.$box($value * a.$value); }
-    public ULong $over(ULong a, Type t) { return ULong.$box(Unsigned.div($value,a.$value)); }
+    public ULong $plus(java.lang.Object a, Type t) { return ULong.$box($value + ((ULong)a).$value); }
+    public ULong $minus(java.lang.Object a, Type t) { return ULong.$box($value - ((ULong)a).$value); }
+    public ULong $times(java.lang.Object a, Type t) { return ULong.$box($value * ((ULong)a).$value); }
+    public ULong $over(java.lang.Object a, Type t) { return ULong.$box(Unsigned.div($value,((ULong)a).$value)); }
     
     // implements Bitwise<ULong>
     public ULong $tilde$G() { return ULong.$box(~$value); }
-    public ULong $ampersand(ULong a, Type t) { return ULong.$box($value & a.$value); }
-    public ULong $bar(ULong a, Type t) { return ULong.$box($value | a.$value); }
-    public ULong $caret(ULong a, Type t) { return ULong.$box($value ^ a.$value); }
+    public ULong $ampersand(java.lang.Object a, Type t) { return ULong.$box($value & ((ULong)a).$value); }
+    public ULong $bar(java.lang.Object a, Type t) { return ULong.$box($value | ((ULong)a).$value); }
+    public ULong $caret(java.lang.Object a, Type t) { return ULong.$box($value ^ ((ULong)a).$value); }
     public ULong $left$G(final int count) { return ULong.$box($value << count); }
     public ULong $right$G(final int count) { return ULong.$box($value >>> count); } // ULong is always unsigned
     public ULong $unsigned_right$G(final int count) { return ULong.$box($value >>> count); }
     
-    // implements Ordered<ULong>. Rely on autoboxing of booleans
-    public Object $lt(ULong a, Type t) { return Unsigned.lt($value,a.$value); }
-    public Object $gt(ULong a, Type t) { return Unsigned.gt($value,a.$value); }
-    public Object $le(ULong a, Type t) { return Unsigned.le($value,a.$value); }
-    public Object $ge(ULong a, Type t) { return Unsigned.ge($value,a.$value); }
-    
+    // implements Ordered<ULong>
+    public java.lang.Object $lt(java.lang.Object a, Type t) { return x10.core.Boolean.$box(Unsigned.lt($value,((ULong)a).$value)); }
+    public java.lang.Object $gt(java.lang.Object a, Type t) { return x10.core.Boolean.$box(Unsigned.gt($value,((ULong)a).$value)); }
+    public java.lang.Object $le(java.lang.Object a, Type t) { return x10.core.Boolean.$box(Unsigned.le($value,((ULong)a).$value)); }
+    public java.lang.Object $ge(java.lang.Object a, Type t) { return x10.core.Boolean.$box(Unsigned.ge($value,((ULong)a).$value)); }
+    // for X10PrettyPrinterVisitor.returnSpecialTypeFromDispatcher
+    public boolean $lt$O(java.lang.Object a, Type t) { return Unsigned.lt($value,((ULong)a).$value); }
+    public boolean $gt$O(java.lang.Object a, Type t) { return Unsigned.gt($value,((ULong)a).$value); }
+    public boolean $le$O(java.lang.Object a, Type t) { return Unsigned.le($value,((ULong)a).$value); }
+    public boolean $ge$O(java.lang.Object a, Type t) { return Unsigned.ge($value,((ULong)a).$value); }
+
     // extends abstract class java.lang.Number
     @Override
     public int intValue() {

@@ -112,7 +112,7 @@ final public class RuntimeTypeExpander extends Expander {
             
             // XTENLANG-1102
             if (args.size() > 0) {
-                er.w.write("new x10.rtt.ParameterizedType(");
+                er.w.write("x10.rtt.ParameterizedType.make(");
                 printFunRTT(ct, args, ret);
                 for (Type a:args) {
                     er.w.write(",");
@@ -147,12 +147,16 @@ final public class RuntimeTypeExpander extends Expander {
             List<Type> classTypeArgs = ct.typeArguments();
             if (classTypeArgs == null) classTypeArgs = Collections.<Type>emptyList();
             if (pat == null) {
-            	String rttString = getRTT(Emitter.mangleQName(cd.fullName()).toString(), hasConflictingField(ct, tr));
+                String rttString = getRTT(Emitter.mangleQName(cd.fullName()).toString(), hasConflictingField(ct, tr));
+                // XTENLANG-2118 hack: RTTs for Java types should be looked up using getRTT
+                if (ct.isJavaType()) {
+                    rttString = X10PrettyPrinterVisitor.X10_RTT_TYPES + ".getRTT("+Emitter.mangleQName(cd.fullName()).toString()+".class)";
+                }
                 // XTENLANG-1102
                 if (ct.isGloballyAccessible() && classTypeArgs.size() == 0) {
                     er.w.write(rttString);
                 } else {
-                    er.w.write("new x10.rtt.ParameterizedType(");
+                    er.w.write("x10.rtt.ParameterizedType.make(");
                     er.w.write(rttString);
                     for (int i = 0; i < classTypeArgs.size(); i++) {
                         er.w.write(", ");
@@ -182,6 +186,9 @@ final public class RuntimeTypeExpander extends Expander {
                     } else {
                         name = null;
                     }
+            		component = new TypeExpander(er, at, X10PrettyPrinterVisitor.PRINT_TYPE_PARAMS);
+//                	components.put(String.valueOf(i++), component); // N.B. don't use number index to avoid breaking existing code
+                    if (name != null) { components.put(name, component); }
             		component = new TypeExpander(er, at, X10PrettyPrinterVisitor.PRINT_TYPE_PARAMS | X10PrettyPrinterVisitor.BOX_PRIMITIVES);
                 	components.put(String.valueOf(i++), component);
                     if (name != null) { components.put(name+Emitter.NATIVE_ANNOTATION_BOXED_REP_SUFFIX, component); }
@@ -225,16 +232,16 @@ final public class RuntimeTypeExpander extends Expander {
             return "x10.rtt.Types.CHAR";
         if (t.isNumeric()) {
             TypeSystem ts = (TypeSystem) er.tr.typeSystem();
-            if (ts.isUnsigned(t)) {
-                if (ts.isUByte(t))
+            if (t.isUnsignedNumeric()) {
+                if (t.isUByte())
                     return "x10.rtt.Types.UBYTE";
-                if (ts.isUShort(t))
+                if (t.isUShort())
                     return "x10.rtt.Types.USHORT";
-                if (ts.isUInt(t))
+                if (t.isUInt())
                     return "x10.rtt.Types.UINT";
-                if (ts.isULong(t))
+                if (t.isULong())
                     return "x10.rtt.Types.ULONG";
-            } else {
+            } else if (t.isSignedNumeric()) {
                 if (t.isByte())
                     return "x10.rtt.Types.BYTE";
                 if (t.isShort())
@@ -243,6 +250,7 @@ final public class RuntimeTypeExpander extends Expander {
                     return "x10.rtt.Types.INT";
                 if (t.isLong())
                     return "x10.rtt.Types.LONG";
+            } else {
                 if (t.isFloat())
                     return "x10.rtt.Types.FLOAT";
                 if (t.isDouble())

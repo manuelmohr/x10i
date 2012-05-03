@@ -14,28 +14,28 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import x10.rtt.RuntimeType;
+import x10.rtt.RuntimeType.Variance;
+import x10.rtt.Type;
+import x10.rtt.Types;
+
 public class LocalVar<T> extends x10.core.Ref {
 
     private static final long serialVersionUID = 1L;
+    
+    private static final short $_serialization_id = x10.x10rt.DeserializationDispatcher.addDispatcher(x10.x10rt.DeserializationDispatcher.ClosureKind.CLOSURE_KIND_NOT_ASYNC, LocalVar.class);
 
-    public static final x10.rtt.RuntimeType<LocalVar<?>> $RTT =
-        new x10.rtt.NamedType<LocalVar<?>>(
+    public static final RuntimeType<LocalVar<?>> $RTT =
+        x10.rtt.NamedType.<LocalVar<?>> make(
                 "x10.compiler.LocalVar",
                 /* base class */ LocalVar.class,
-                /* variances */ new x10.rtt.RuntimeType.Variance[] { x10.rtt.RuntimeType.Variance.INVARIANT },
-                /* parents */ new x10.rtt.Type[] { x10.rtt.Types.OBJECT }
+                /* variances */ RuntimeType.INVARIANTS(1),
+                /* parents */ new Type[] { Types.OBJECT }
     );
-
     @Override
-    public x10.rtt.RuntimeType<?> $getRTT() {
-        return $RTT;
-    }
-
+    public RuntimeType<?> $getRTT() { return $RTT; }
     @Override
-    public x10.rtt.Type<?> $getParam(int i) {
-        if (i == 0) return T;
-        return null;
-    }
+    public Type<?> $getParam(int i) { if (i == 0) return T; return null; }
 
     private void writeObject(java.io.ObjectOutputStream oos) throws java.io.IOException {
         if (x10.runtime.impl.java.Runtime.TRACE_SER) {
@@ -48,7 +48,7 @@ public class LocalVar<T> extends x10.core.Ref {
     private static final Object nullObject = new Object();
     private static AtomicLong lastId = new AtomicLong(0);
 
-    private x10.rtt.Type<?> T;
+    private Type<?> T;
     private long id;
 
     // constructor just for allocation
@@ -56,7 +56,7 @@ public class LocalVar<T> extends x10.core.Ref {
         super($dummy);
     }
 
-    public LocalVar<T> $init(final x10.rtt.Type<?> T, final T local, java.lang.Class<?> $dummy0) {
+    public LocalVar<T> $init(final Type<?> T, final T local, __0x10$compiler$LocalVar$$T $dummy) {
         super.$init();
         this.T = T;
         long temp = lastId.getAndIncrement();
@@ -67,8 +67,7 @@ public class LocalVar<T> extends x10.core.Ref {
         idToObject.put(id, local == null ? nullObject : local);
         return this;
     }
-
-    public LocalVar(final x10.rtt.Type<?> T, final T local, java.lang.Class<?> $dummy0) {
+    public LocalVar(final Type<?> T, final T local, __0x10$compiler$LocalVar$$T $dummy) {
         super();
         this.T = T;
         long temp = lastId.getAndIncrement();
@@ -78,6 +77,8 @@ public class LocalVar<T> extends x10.core.Ref {
         id = temp;
         idToObject.put(id, local == null ? nullObject : local);
     }
+    // synthetic type for parameter mangling
+    public abstract static class __0x10$compiler$LocalVar$$T {}
     
     public T $apply$G() {
         Object local = idToObject.remove(id);
@@ -89,12 +90,30 @@ public class LocalVar<T> extends x10.core.Ref {
         return (T) (local == nullObject ? null : local);
     }
 
-    public T set$G(final T local) {
+    public T set__0x10$compiler$LocalVar$$T$G(final T local) {
         idToObject.put(id,local);
         return local;
     }
 
     final public LocalVar<T> x10$compiler$LocalVar$$x10$compiler$LocalVar$this() {
         return LocalVar.this;
+    }
+        
+    public static x10.x10rt.X10JavaSerializable $_deserialize_body(Ref $_obj, x10.x10rt.X10JavaDeserializer $deserializer) throws java.io.IOException {
+        return $_obj;
+    }
+    
+    public static x10.x10rt.X10JavaSerializable $_deserializer(x10.x10rt.X10JavaDeserializer $deserializer) throws java.io.IOException { 
+        LocalVar $_obj = new LocalVar((java.lang.System[]) null);
+        $deserializer.record_reference($_obj);
+        return $_deserialize_body($_obj, $deserializer);
+    }
+    
+    public short $_get_serialization_id() {
+         return $_serialization_id;
+    }
+    
+    public void $_serialize(x10.x10rt.X10JavaSerializer $serializer) throws java.io.IOException {
+        
     }
 }

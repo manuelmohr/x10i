@@ -14,6 +14,8 @@ import polyglot.ast.Binary;
 import polyglot.frontend.*;
 import polyglot.main.Report;
 import polyglot.main.Reporter;
+import polyglot.types.reflect.ClassFile;
+import polyglot.types.reflect.ClassFileLazyClassInitializer;
 import polyglot.util.*;
 import x10.constraint.XField;
 import x10.constraint.XFormula;
@@ -227,6 +229,10 @@ public class TypeSystem_c implements TypeSystem
 	return loadedResolver;
     }
 
+    public ClassFileLazyClassInitializer classFileLazyClassInitializer(ClassFile clazz) {
+        return new ClassFileLazyClassInitializer(clazz, this);
+    }
+
     public ImportTable importTable(String sourceName, Ref<? extends Package> pkg) {
 	assert_(pkg);
 	return new ImportTable(this, pkg, sourceName);
@@ -363,7 +369,7 @@ public class TypeSystem_c implements TypeSystem
         return list;
     }
     
-    public X10ConstructorDef defaultConstructor(Position pos, Ref<? extends ClassType> container) {
+    public X10ConstructorDef defaultConstructor(Position pos, Position errorPos, Ref<? extends ClassType> container) {
         assert_(container);
 
         // access for the default constructor is determined by the
@@ -379,16 +385,16 @@ public class TypeSystem_c implements TypeSystem
         if (flags.isPublic()) {
             access = access.Public();
         }
-        return constructorDef(pos, container,
+        return constructorDef(pos, errorPos, container,
                               access, Collections.<Ref<? extends Type>>emptyList()
                               );
         }
 
 
-    public X10ConstructorDef constructorDef(Position pos, Ref<? extends ClassType> container, Flags flags, List<Ref<? extends Type>> argTypes) {
-        return constructorDef(pos, container, flags, argTypes,  null);
+    public X10ConstructorDef constructorDef(Position pos, Position errorPos, Ref<? extends ClassType> container, Flags flags, List<Ref<? extends Type>> argTypes) {
+        return constructorDef(pos, errorPos, container, flags, argTypes,  null);
     }
-    public X10ConstructorDef constructorDef(Position pos, Ref<? extends ClassType> container, Flags flags, List<Ref<? extends Type>> argTypes,
+    public X10ConstructorDef constructorDef(Position pos, Position errorPos, Ref<? extends ClassType> container, Flags flags, List<Ref<? extends Type>> argTypes,
            Ref<? extends Type> offerType)
     {
         assert_(container);
@@ -396,17 +402,17 @@ public class TypeSystem_c implements TypeSystem
 
         ThisDef thisDef = ((X10ClassType) Types.get(container)).x10Def().thisDef();
 
-        return constructorDef(pos, container, flags, Types.ref(Types.get(container)), argTypes, thisDef, dummyLocalDefs(argTypes),
+        return constructorDef(pos, errorPos, container, flags, Types.ref(Types.get(container)), argTypes, thisDef, dummyLocalDefs(argTypes),
                 null, null,  offerType);
     }
 
-    public X10ConstructorDef constructorDef(Position pos, Ref<? extends ContainerType> container, Flags flags, Ref<? extends Type> returnType,
+    public X10ConstructorDef constructorDef(Position pos, Position errorPos, Ref<? extends ContainerType> container, Flags flags, Ref<? extends Type> returnType,
             List<Ref<? extends Type>> argTypes, ThisDef thisDef, List<LocalDef> formalNames, Ref<CConstraint> guard, Ref<TypeConstraint> typeGuard,
             Ref<? extends Type> offerType)
     {
         assert_(container);
         assert_(argTypes);
-        return new X10ConstructorDef_c(this, pos, container, flags, returnType, argTypes, thisDef, formalNames, guard, typeGuard,  offerType);
+        return new X10ConstructorDef_c(this, pos, errorPos, container, flags, returnType, argTypes, thisDef, formalNames, guard, typeGuard,  offerType);
     }
     
     public X10InitializerDef initializerDef(Position pos, Ref<? extends ClassType> container, Flags flags) {
@@ -437,23 +443,23 @@ public class TypeSystem_c implements TypeSystem
     }
 
     
-    public X10MethodDef methodDef(Position pos, Ref<? extends ContainerType> container, Flags flags,
+    public X10MethodDef methodDef(Position pos, Position errorPos, Ref<? extends ContainerType> container, Flags flags,
             Ref<? extends Type> returnType, Name name,
             List<Ref<? extends Type>> argTypes) {
-        return methodDef(pos, container, flags, returnType, name, argTypes, null);
+        return methodDef(pos, errorPos, container, flags, returnType, name, argTypes, null);
     }
-    public X10MethodDef methodDef(Position pos, Ref<? extends ContainerType> container,
+    public X10MethodDef methodDef(Position pos, Position errorPos, Ref<? extends ContainerType> container,
                                   Flags flags, Ref<? extends Type> returnType, Name name,
                                   List<Ref<? extends Type>> argTypes,  Ref<? extends Type> offerType)
     {
         ThisDef thisDef = ((X10ClassType) Types.get(container)).x10Def().thisDef();
         assert (!name.toString().contains(AtDef.DUMMY_AT_ASYNC));
         // set up null thisVar for method def's, so the outer contexts are searched for thisVar.
-        return methodDef(pos, container, flags, returnType, name, Collections.<ParameterType>emptyList(), argTypes,
+        return methodDef(pos, errorPos, container, flags, returnType, name, Collections.<ParameterType>emptyList(), argTypes,
                          thisDef, dummyLocalDefs(argTypes), null, null, offerType, null);
     }
 
-    public X10MethodDef methodDef(Position pos, Ref<? extends ContainerType> container,
+    public X10MethodDef methodDef(Position pos, Position errorPos, Ref<? extends ContainerType> container,
                                   Flags flags, Ref<? extends Type> returnType, Name name,
                                   List<ParameterType> typeParams, List<Ref<? extends Type>> argTypes,
                                   ThisDef thisDef, List<LocalDef> formalNames,
@@ -466,7 +472,7 @@ public class TypeSystem_c implements TypeSystem
         assert_(returnType);
         assert_(typeParams);
         assert_(argTypes);
-        return new X10MethodDef_c(this, pos, container, flags, returnType, name, typeParams, argTypes, thisDef, formalNames, guard, typeGuard, offerType, body);
+        return new X10MethodDef_c(this, pos, errorPos, container, flags, returnType, name, typeParams, argTypes, thisDef, formalNames, guard, typeGuard, offerType, body);
     }
     public ClassDef classDefOf(Type t) {
         t = Types.baseType(t);
@@ -480,6 +486,9 @@ public class TypeSystem_c implements TypeSystem
      * from or equals ancestor.
      **/
     public boolean descendsFrom(ClassDef child, ClassDef ancestor) {
+        if (child == ancestor)
+            return true;
+
         ClassDef a = classDefOf(Any());
 
         if (ancestor == a)
@@ -488,16 +497,14 @@ public class TypeSystem_c implements TypeSystem
         if (child == a)
             return false;
 
-        if (child == ancestor)
-            return true;
-
-        ClassDef o = classDefOf(Object());
-
-        if (ancestor == o)
-            return true;
-
-        if (child == o)
-            return false;
+        // XTENLANG-2118: this short-circuit is no longer valid for classes that don't extend x10.lang.Object
+        //ClassDef o = classDefOf(Object());
+        //
+        //if (ancestor == o)
+        //    return true;
+        //
+        //if (child == o)
+        //    return false;
 
         Type sup = Types.get(child.superType());
 
@@ -674,7 +681,7 @@ public class TypeSystem_c implements TypeSystem
         X10ClassDef_c superType = superRef==null ? null : Types.getDef(superRef.get());
 
         if (goal == superType) {
-        throw new SemanticException("Circular inheritance involving " + goal,curr.position());
+        throw new SemanticException("Circular inheritance involving " + goal,curr.errorPosition());
         }
 
         checkCycles(superType, goal);
@@ -682,7 +689,7 @@ public class TypeSystem_c implements TypeSystem
         for (Ref<? extends Type> siType : curr.interfaces()) {
             X10ClassDef_c si = Types.getDef(siType.get());
             if (si == goal) {
-                throw new SemanticException("Circular inheritance involving " + goal,curr.position());
+                throw new SemanticException("Circular inheritance involving " + goal,curr.errorPosition());
             }
             checkCycles(si, goal);
         }
@@ -722,9 +729,7 @@ public class TypeSystem_c implements TypeSystem
     }
 
     public boolean isNumeric(Type t) {
-        if (isChar(t))
-            return false;
-        return t.isLongOrLess() || t.isFloat() || t.isDouble() || isUByte(t) || isUShort(t) || isUInt(t) || isULong(t);
+        return isSignedNumeric(t) || isUnsignedNumeric(t) || isFloat(t) || isDouble(t);
     }
 
     public boolean isSignedNumeric(Type t) {
@@ -736,16 +741,11 @@ public class TypeSystem_c implements TypeSystem
     }
 
     public boolean isIntOrLess(Type t) {
-        if (isChar(t))
-            return false;
-        return t.isByte() || t.isShort() || t.isChar() || t.isInt() || isUByte(t) || isUShort(t);
+        return isByte(t) || isShort(t) || isInt(t) || isUByte(t) || isUShort(t);
     }
 
     public boolean isLongOrLess(Type t) {
-        if (isChar(t))
-            return false;
-        return t.isByte() || t.isShort() || t.isChar() || t.isInt() || t.isLong()
-        || isUByte(t) || isUShort(t) || isUInt(t) || isULong(t);
+        return isSignedNumeric(t) || isUnsignedNumeric(t);
     }
 
     public boolean isBoolean(Type t) {
@@ -808,7 +808,7 @@ public class TypeSystem_c implements TypeSystem
      * uncheckedExceptions().
      */
     public boolean isUncheckedException(Type type) {
-        return isThrowable(type);
+        return isThrowable(type) || isJavaUncheckedException(type);
     }
     /**
      * Returns a list of the Throwable types that need not be declared
@@ -817,6 +817,8 @@ public class TypeSystem_c implements TypeSystem
     public Collection<Type> uncheckedExceptions() {
         List<Type> l = new ArrayList<Type>(1);
         l.add(Throwable());
+        l.add(JavaRuntimeException());
+        l.add(JavaError());
         return l;
         }
     
@@ -1572,11 +1574,16 @@ public class TypeSystem_c implements TypeSystem
         List<MethodInstance> candidates = new ArrayList<MethodInstance>();
 
         List<Type> types = env(matcher.context()).upperBounds(container, true);
+        SemanticException err = null;
         for (Type t : types) {
-            List<MethodInstance> ms = superFindAcceptableMethods(t, matcher);
-            candidates.addAll(ms);
+            try {
+                List<MethodInstance> ms = superFindAcceptableMethods(t, matcher);
+                candidates.addAll(ms);
+            } catch (SemanticException e) {
+                err = e;
+            }
         }
-
+        if (candidates.size()==0 && err!=null) throw err;
         return candidates;
     }
     /**
@@ -2009,13 +2016,13 @@ public class TypeSystem_c implements TypeSystem
             formalNames.add(localDef(pos, Flags.FINAL, Types.ref(t), Name.make("p"+(++i))));
         }
         ThisDef thisDef = thisDef(pos, Types.ref(container));
-        X10MethodDef md = (X10MethodDef) methodDef(pos, Types.ref(container), flags,
+        X10MethodDef md = (X10MethodDef) methodDef(pos, pos, Types.ref(container), flags,
                                                    Types.ref(returnType), name, Collections.<ParameterType>emptyList(),
                                                    args, thisDef, formalNames, null, null,  null, null);
         List<ParameterType> typeParams = new ArrayList<ParameterType>();
         i = 0;
         for (Type r : typeArgs) {
-            typeParams.add(new ParameterType(this, pos, Name.make("T"+(++i)), Types.ref(md)));
+            typeParams.add(new ParameterType(this, pos, pos, Name.make("T"+(++i)), Types.ref(md)));
         }
         md.setTypeParameters(typeParams);
         return md.asInstance().error(error);
@@ -2034,7 +2041,7 @@ public class TypeSystem_c implements TypeSystem
             formalNames.add(localDef(pos, Flags.FINAL, Types.ref(t), Name.make("p"+(++i))));
         }
         ThisDef thisDef = thisDef(pos, Types.ref(container));
-        X10ConstructorDef cd = (X10ConstructorDef) constructorDef(pos, Types.ref(container), flags,
+        X10ConstructorDef cd = (X10ConstructorDef) constructorDef(pos, pos, Types.ref(container), flags,
                 Types.ref(container), args,
                 thisDef, formalNames, null, null,  null);
 //        List<Ref<? extends Type>> typeParams = new ArrayList<Ref<? extends Type>>();
@@ -2097,31 +2104,23 @@ public class TypeSystem_c implements TypeSystem
         return forName(name);
     }
 
-    protected Type OBJECT_;
+    protected X10ClassType OBJECT_;
     protected Type CLASS_;
-    protected Type STRING_;
-    protected Type THROWABLE_;
+    protected X10ClassType STRING_;
+    protected X10ClassType THROWABLE_;
+    protected X10ClassType JLTHROWABLE_;
 
-    public Type JavaObject()  { 
-        if (OBJECT_ != null) 
-            return OBJECT_;
-        return OBJECT_ = load("java.lang.Object"); 
-    }
     public Type JavaClass()   { 
         if (CLASS_ != null) return CLASS_;
         return CLASS_ = load("java.lang.Class"); 
     }
-    public Type JavaString()  { 
-        if (STRING_ != null) return STRING_;
-        return STRING_ = load("java.lang.String"); 
+    public X10ClassType JavaThrowable() {
+        if (JLTHROWABLE_ != null) return JLTHROWABLE_;
+        return JLTHROWABLE_ = load("java.lang.Throwable");
     }
-    public Type JavaThrowable() { 
-        if (THROWABLE_ != null) return THROWABLE_;
-        return THROWABLE_ = load("java.lang.Throwable"); 
-    }
-    public Type JavaError() { return load("java.lang.Error"); }
-    public Type JavaException() { return load("java.lang.Exception"); }
-    public Type javaRuntimeException() { return load("java.lang.RuntimeException"); }
+    public X10ClassType JavaError() { return load("java.lang.Error"); }
+    public X10ClassType JavaException() { return load("java.lang.Exception"); }
+    public X10ClassType JavaRuntimeException() { return load("java.lang.RuntimeException"); }
     public Type Cloneable() { return load("java.lang.Cloneable"); }
     public Type Serializable() { return load("java.io.Serializable"); }
     public Type JavaNullPointerException() { return load("java.lang.NullPointerException"); }
@@ -2337,10 +2336,6 @@ public class TypeSystem_c implements TypeSystem
         return load("x10.lang.Exception");
     }
 
-    public X10ClassType RuntimeException() {
-        return load("x10.lang.RuntimeException");
-    }
-
     public X10ClassType NullPointerException() {
         return load("x10.lang.NullPointerException");
     }
@@ -2526,6 +2521,13 @@ public class TypeSystem_c implements TypeSystem
         if (embedType_ == null)
             embedType_ = load("x10.compiler.Embed");
         return embedType_;
+    }
+
+    protected X10ClassType throwsType_;
+    public X10ClassType Throws() {
+        if (throwsType_ == null)
+        	throwsType_ = load("x10.interop.java.Throws");
+        return throwsType_;
     }
 
     protected X10ClassType arrayType_ = null;
@@ -2817,7 +2819,7 @@ public class TypeSystem_c implements TypeSystem
 
     public Type arrayOf(Position pos, Ref<? extends Type> type) {
         // Should be called only by the Java class file loader.
-        Type r = Array();
+        Type r = JavaArray();
         return Types.instantiate(r, type);
     }
     /**
@@ -2866,6 +2868,89 @@ public class TypeSystem_c implements TypeSystem
 	return new JavaArrayType_c(this, pos, type);
     }
 
+    protected X10ClassType javaInteropType_ = null;
+    public X10ClassType JavaInterop() {
+        if (javaInteropType_ == null)
+            javaInteropType_ = load("x10.interop.Java");
+        return javaInteropType_;
+    }
+
+    private static final class JavaArrayClassWrapper extends X10ParsedClassType_c {
+        private static final long serialVersionUID = 815224489372855897L;
+        private JavaArrayType arrType = null;
+        private JavaArrayClassWrapper(TypeSystem ts, Position pos, Position errorPos, Ref<? extends X10ClassDef> def) {
+            super(ts, pos, errorPos, def);
+            ts.systemResolver().install(def.get().fullName(), this);
+        }
+        @Override
+        public X10ParsedClassType typeArguments(List<Type> typeArgs) {
+            JavaArrayClassWrapper n = (JavaArrayClassWrapper) super.typeArguments(typeArgs);
+            if (n == this) return n;
+            assert (typeArgs != null && typeArgs.size() == 1);
+            n.arrType = ((TypeSystem_c) typeSystem()).arrayType(position(), Types.ref(typeArgs.get(0)));
+            return n;
+        }
+    }
+
+    protected X10ClassType javaArrayType_ = null;
+    public X10ClassType JavaArray() {
+        if (javaArrayType_ == null) {
+            X10ClassDef cd = new X10ClassDef_c(this, null) {
+                private static final long serialVersionUID = -1118624958040369022L;
+                @Override
+                public X10ClassType asType() {
+                    if (asType == null) {
+                        asType = new JavaArrayClassWrapper(ts, position(), errorPosition(), Types.ref(this));
+                    }
+                    return (X10ClassType) asType;
+                }
+            };
+            cd.name(Name.make("array"));
+            cd.position(Position.COMPILER_GENERATED);
+            cd.flags(Flags.PUBLIC.Static());
+            cd.superType(null);
+            javaArrayType_ = cd.asType(); // Careful here -- JavaInterop will refer back to array
+            X10ClassDef xiJdef = JavaInterop().def();
+            cd.setPackage(xiJdef.package_());
+            cd.outer(Types.ref(xiJdef));
+            cd.kind(ClassDef.MEMBER);
+            xiJdef.addMemberClass(Types.ref(javaArrayType_));
+            //cd.setFromJavaClassFile(); // pretend it's a Java class
+        }
+        return javaArrayType_;
+    }
+    
+    public boolean isJavaArray(Type me) {
+        return me.isClass() && me.toClass().def() == JavaArray().def();
+    }
+    
+    public boolean isPrimitiveJavaArray(Type me) {
+        if (!isJavaArray(me)) {
+            return false;
+        }
+        String arrayType = me.toClass().typeArguments().get(0).toString();
+        return "x10.lang.Boolean".equals(arrayType) ||
+                "x10.lang.String".equals(arrayType) ||
+                "x10.lang.Int".equals(arrayType) ||
+                "x10.lang.Byte".equals(arrayType) ||
+                "x10.lang.Char".equals(arrayType) ||
+                "x10.lang.Short".equals(arrayType) ||
+                "x10.lang.Double".equals(arrayType) ||
+                "x10.lang.Float".equals(arrayType) ||
+                "x10.lang.Long".equals(arrayType);
+    }
+    
+    public boolean isJavaThrowable(Type type) {
+        assert_(type);
+        return emptyContextSubtype(type,JavaThrowable());
+    }
+
+    public boolean isJavaUncheckedException(Type type) {
+    	assert_(type);
+    	return emptyContextSubtype(type,JavaRuntimeException()) ||
+    	       emptyContextSubtype(type, JavaError());
+    }
+    
     public Type arrayOf(Ref<? extends Type> type, int dims) {
 	return arrayOf(null, type, dims);
     }
@@ -2955,9 +3040,11 @@ public class TypeSystem_c implements TypeSystem
 
 	assert ct.asType().isGloballyAccessible();
 
-	if (sb.length() > 0)
-	    return QName.make(ct.fullName(), Name.make(sb.toString()));
-	else
+	if (sb.length() > 0) {
+	    QName fullName = ct.fullName();
+	    sb.insert(0, fullName.name());
+		return QName.make(fullName.qualifier(), Name.make(sb.toString()));
+	} else
 	    return QName.make(ct.fullName());
     }
 
@@ -3002,16 +3089,16 @@ public class TypeSystem_c implements TypeSystem
         return new X10ClassDef_c(this, fromSource);
     }
 
-    public X10ParsedClassType createClassType(Position pos, Ref<? extends X10ClassDef> def) {
-        return new X10ParsedClassType_c(this, pos, def);
+    public X10ParsedClassType createClassType(Position pos, Position errorPosition, Ref<? extends X10ClassDef> def) {
+        return new X10ParsedClassType_c(this, pos, errorPosition, def);
     }
 
-    public X10ConstructorInstance createConstructorInstance(Position pos, Ref<? extends ConstructorDef> def) {
-        return new X10ConstructorInstance_c(this, pos, (Ref<? extends X10ConstructorDef>) def);
+    public X10ConstructorInstance createConstructorInstance(Position pos, Position errorPos, Ref<? extends ConstructorDef> def) {
+        return new X10ConstructorInstance_c(this, pos, errorPos, (Ref<? extends X10ConstructorDef>) def);
     }
 
-    public MethodInstance createMethodInstance(Position pos, Ref<? extends MethodDef> def) {
-        return new MethodInstance_c(this, pos, (Ref<? extends X10MethodDef>) def);
+    public MethodInstance createMethodInstance(Position pos, Position errorPos, Ref<? extends MethodDef> def) {
+        return new MethodInstance_c(this, pos, errorPos, (Ref<? extends X10MethodDef>) def);
     }
 
     public X10FieldInstance createFieldInstance(Position pos, Ref<? extends FieldDef> def) {
@@ -3022,8 +3109,8 @@ public class TypeSystem_c implements TypeSystem
         return new X10LocalInstance_c(this, pos, (Ref<? extends X10LocalDef>) def);
     }
 
-    public ClosureInstance createClosureInstance(Position pos, Ref<? extends ClosureDef> def) {
-        return new ClosureInstance_c(this, pos, def);
+    public ClosureInstance createClosureInstance(Position pos, Position errorPos, Ref<? extends ClosureDef> def) {
+        return new ClosureInstance_c(this, pos, errorPos, def);
     }
 
     public ThisInstance createThisInstance(Position pos, Ref<? extends ThisDef> def) {
@@ -3783,13 +3870,6 @@ public class TypeSystem_c implements TypeSystem
         return true;
     }
     */
-    public boolean isSigned(Type t) {
-        return isByte(t) || isShort(t) || isInt(t) || isLong(t);
-    }
-
-    public boolean isUnsigned(Type t) {
-        return isUByte(t) || isUShort(t) || isUInt(t) || isULong(t);
-    }
 
     public Type promote2(Type t1, Type t2) throws SemanticException {
         if (isDouble(t1) || isDouble(t2))
@@ -4008,6 +4088,22 @@ public class TypeSystem_c implements TypeSystem
     public boolean isStruct(Type me) {
         return Types.isX10Struct(me);
             //typeEquals(me, Struct(), emptyContext());
+    }
+
+    public boolean isObject(Type me) {
+        return typeEquals(me, Object(), emptyContext());
+    }
+
+    public boolean isString(Type me) {
+        return finalSubtype(me,String());
+    }
+
+    public boolean isIndexedMemoryChunk(Type me) {
+        return finalSubtype(me,IndexedMemoryChunk());
+    }
+
+    public boolean isRuntime(Type me) {
+        return finalSubtype(me,Runtime());
     }
 
     public boolean isClock(Type me) {
@@ -4300,9 +4396,9 @@ public class TypeSystem_c implements TypeSystem
 
     private void allImplementedInterfaces(X10ClassType c, boolean checkSuperClasses, List<X10ClassType> l) {
         Context context = createContext();
-        if (c.typeEquals(Object(), context)) {
-            return;
-        }
+        //if (c.typeEquals(Object(), context)) {
+        //    return;
+        //}
 
         for (Type old : l) {
             if (c.typeEquals(old, context)) {
@@ -4444,5 +4540,4 @@ public class TypeSystem_c implements TypeSystem
     public boolean consistent(Type t, Context context) {
         return env(context).consistent(t);
     }
-
 }

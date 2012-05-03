@@ -1,3 +1,10 @@
+#if defined(__CYGWIN__) || defined(__FreeBSD__)
+#undef __STRICT_ANSI__ // Strict ANSI mode is too strict in Cygwin and FreeBSD
+#endif
+
+#include <cstdlib>
+#include <cstdio>
+
 #include <x10rt_front.h>
 #include <x10rt_logical.h>
 
@@ -68,8 +75,21 @@ x10rt_place x10rt_child_index (x10rt_place child)
 { return x10rt_lgl_child_index(child); }
 
 
+static uint32_t print_headers = getenv("X10RT_PRINT_MSG_HEADERS") != NULL
+                              ? (uint32_t)strtoull(getenv("X10RT_PRINT_MSG_HEADERS"),NULL,10)
+                              : 0xFFFFFFFF;
 void x10rt_send_msg (x10rt_msg_params *p)
-{ return x10rt_lgl_send_msg(p); }
+{
+    if (p->len > print_headers) {
+        ::fprintf(stderr,"p%llu --%llu--> p%llu (%'llu bytes)\n",
+                  (unsigned long long)x10rt_lgl_here(),
+                  (unsigned long long)p->type,
+                  (unsigned long long)p->dest_place,
+                  (unsigned long long)p->len);
+    }
+    return x10rt_lgl_send_msg(p);
+}
+
 
 void x10rt_send_get (x10rt_msg_params *p, void *buf, x10rt_copy_sz len)
 { return x10rt_lgl_send_get(p, buf, len); }

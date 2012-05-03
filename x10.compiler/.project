@@ -3,7 +3,6 @@
 	<name>x10.compiler</name>
 	<comment></comment>
 	<projects>
-		<project>x10.common</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

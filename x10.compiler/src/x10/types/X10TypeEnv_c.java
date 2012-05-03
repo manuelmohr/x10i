@@ -148,7 +148,7 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
                                     + " should be declared abstract; it does not define "
                                     + mi.signature()
                                     + ", which is declared in "
-                                    + rt.toClass().fullName(), ct.position());
+                                    + rt.toClass().fullName(), ct.errorPosition());
                             Map<String, Object> map = CollectionFactory.newHashMap();
                             map.put(CodedErrorInfo.ERROR_CODE_KEY, CodedErrorInfo.ERROR_CODE_METHOD_NOT_IMPLEMENTED);
                             Name name = ct.name();
@@ -1039,6 +1039,18 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
     					return false;
     				if (ct2.typeArguments().size() != numParams)
     					return false;
+        			// XTENLANG-2118 Java array hack
+        			if (ts.isJavaArray(ct1)) {
+        				assert (numParams == 1);
+        				Type a1 = ct1.typeArguments().get(0);
+        				Type a2 = ct2.typeArguments().get(0);
+        				if (a1.isNumeric() || a1.isChar() || a2.isNumeric() || a2.isChar()) {
+        					// The equality case should have been caught by the typeEquals() call above
+        					return false;
+        				}
+        				// For non-numeric types, Java arrays are covariant
+        				return isSubtype(a1, a2);
+        			}
     				if (def.variances().size() != numParams)
     					return false; // FIXME: throw an InternalCompilerError
     				for (int i = 0; i < numParams; i++) {
@@ -1476,8 +1488,8 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
             
             boolean fits = false;
             
-            boolean signedFrom = ts.isSigned(fromType);
-            boolean unsignedFrom = ts.isUnsigned(fromType);
+            boolean signedFrom = ts.isSignedNumeric(fromType);
+            boolean unsignedFrom = ts.isUnsignedNumeric(fromType);
 
             if (signedFrom) {
                 if (ts.isUByte(toType)) {
@@ -1822,6 +1834,11 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
     	if (Types.isX10Struct(type1) || Types.isX10Struct(type2)) {
     		return ts.Any();
     	}
+    	// XTENLANG-2118: Since they are not equal, and one is not a subtype of another
+    	// and one of them is not a subtype of Object, the lub has to be Any.
+    	if (!ts.isSubtype(type1, ts.Object()) || !ts.isSubtype(type2, ts.Object())) {
+    		return ts.Any();
+    	}
     	// Now neither is a struct. Neither is null.
     	if (type1 instanceof ObjectType && type2 instanceof ObjectType) {
     		// Walk up the hierarchy
@@ -2016,17 +2033,17 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
             throw new SemanticException(mi.signature() + " in " + mi.container() 
                                         +" cannot override " 
                                         +mj.signature() + " in " + mj.container() 
-                                        + "; method names are not equal",mi.position());
+                                        + "; method names are not equal",mi.errorPosition());
         }
         if (mi.formalNames().size() != mj.formalNames().size()) {
             throw new SemanticException(mi.signature() + " in " + mi.container() 
                                         + " cannot override " + mj.signature() + " in " + mj.container() 
-                                        +"; different number of arguments",mi.position());
+                                        +"; different number of arguments",mi.errorPosition());
         }
         if (mi.typeParameters().size() != mj.typeParameters().size()) {
             throw new SemanticException(mi.signature() + " in " + mi.container() 
                                         +" cannot override " + mj.signature() + " in " + mj.container()
-                                        + "; different number of type parameters",mi.position());
+                                        + "; different number of type parameters",mi.errorPosition());
         }
 
         XVar[] newSymbols = genSymbolicVars(mj.formalNames().size()+1);
@@ -2061,7 +2078,7 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
         if (!allEqual) {
             throw new SemanticException(mi.signature() + " in " + mi.container() + " cannot override " 
                                         +mj.signature() + " in " + mj.container() 
-                                        +"; incompatible parameter types",mi.position());
+                                        +"; incompatible parameter types",mi.errorPosition());
         }
 
         Type miRet = Subst.subst(mi.returnType(), newSymbols, miSymbols);
@@ -2105,7 +2122,7 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
              + "\n\t Overiding Method in " + mi.container() + ":" + mi.signature()
              + "\n\t Method in " + mj.container()+":" + mj.signature()
              ,
-             mi.position());
+             mi.errorPosition());
         }
 
         if (mi.flags().moreRestrictiveThan(mj.flags())) {
@@ -2114,7 +2131,7 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
                               mj.flags());
             throw new SemanticException(mi.signature() + " in " 
             		+ mi.container() +" cannot override " +mj.signature() 
-            		+ " in " + mj.container() +"; attempting to assign weaker " +"access privileges",mi.position());
+            		+ " in " + mj.container() +"; attempting to assign weaker " +"access privileges",mi.errorPosition());
         }
 
         if (mi.flags().isStatic() != mj.flags().isStatic()) {
@@ -2125,7 +2142,7 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
                               (mj.flags().isStatic() ? "" : "not") + " static");
             throw new SemanticException(mi.signature() + " in " + mi.container()
             		+" cannot override " +mj.signature() + " in " + mj.container()
-            		+"; overridden method is " +(mj.flags().isStatic() ? "" : "not") +"static",mi.position());
+            		+"; overridden method is " +(mj.flags().isStatic() ? "" : "not") +"static",mi.errorPosition());
         }
 
         if (! mi.def().equals(mj.def()) && mj.flags().isFinal()) {
@@ -2134,7 +2151,7 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
                 reporter.report(3, mj.flags() + " final");
             throw new SemanticException(mi.signature() + " in " + mi.container() 
             		+" cannot override " +mj.signature() + " in " + mj.container()
-            		+"; overridden method is final",mi.position());
+            		+"; overridden method is final",mi.errorPosition());
         }
     }
 
@@ -2181,7 +2198,7 @@ public class X10TypeEnv_c extends TypeEnv_c implements X10TypeEnv {
                                         + " " + mj.signature() 
                                         + " in " + mj.container() 
                                         +"; attempting to assign weaker behavioral annotations",
-                                        mi.position());
+                                        mi.errorPosition());
         }
     }
 

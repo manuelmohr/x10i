@@ -26,10 +26,10 @@ public final class Math {
 
    @Native("cuda", "fabsf(#a)")
    @Native("c++", "::fabsf(#a)") // @Native for performance
-   public static def abs(a:Float):Float = a<=0.0f ? 0.0f-a : a;
+   public static def abs(a:Float):Float = a<0.0f ? -a : a;
 
    @Native("c++", "::fabs(#a)") // @Native for performance
-   public static def abs(a:Double):Double = a<=0.0 ? 0.0-a : a;
+   public static def abs(a:Double):Double = a<0.0 ? -a : a;
 
    @Native("java", "java.lang.Math.ceil(#a)")
    @Native("c++", "x10aux::math_utils::ceil(#a)")
@@ -42,6 +42,18 @@ public final class Math {
    @Native("java", "java.lang.Math.round(#a)")
    @Native("c++", "x10aux::math_utils::round(#a)")
    public static native def round(a:Double):Double;
+
+   @Native("java", "java.lang.Math.getExponent(#a)")
+   @Native("c++", "::ilogbf(#a)")
+   public static native def getExponent(a:Float):Int;
+
+   @Native("java", "java.lang.Math.getExponent(#a)")
+   @Native("c++", "::ilogb(#a)")
+   public static native def getExponent(a:Double):Int;
+
+   @Native("java", "(float)java.lang.Math.pow(#a, #b)")
+   @Native("c++", "::powf(#a,#b)")
+   public static native def powf(a:Float, b:Float):Float;
 
    @Native("java", "java.lang.Math.pow(#a, #b)")
    @Native("c++", "x10aux::math_utils::pow(#a,#b)")

@@ -15,6 +15,7 @@ import x10.core.Ref;
 import x10.rtt.NamedType;
 import x10.rtt.RuntimeType;
 import x10.rtt.Type;
+import x10.rtt.Types;
 
 public class OutputStream extends Ref {
   
@@ -41,7 +42,7 @@ public class OutputStream extends Ref {
         try {
             stream.close();
         } catch (java.io.IOException e) {
-            throw x10.core.ThrowableUtilities.getCorrespondingX10Exception(e);
+            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
         }
     }
     
@@ -49,7 +50,7 @@ public class OutputStream extends Ref {
         try {
             stream.flush();
         } catch (java.io.IOException e) {
-            throw x10.core.ThrowableUtilities.getCorrespondingX10Exception(e);
+            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
         }
     }
     
@@ -57,7 +58,7 @@ public class OutputStream extends Ref {
         try {
             stream.write(b);
         } catch (java.io.IOException e) {
-            throw x10.core.ThrowableUtilities.getCorrespondingX10Exception(e);
+            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
         }
     }
     
@@ -65,35 +66,53 @@ public class OutputStream extends Ref {
         try {
             stream.write(b);
         } catch (java.io.IOException e) {
-            throw x10.core.ThrowableUtilities.getCorrespondingX10Exception(e);
+            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
         }
     }
     
     // XTENLANG-2680
+    // for !Emitter.manglePrimitivesAsShortName
     public void write__0$1x10$lang$Byte$2(x10.array.Array buf) {
         try {
             stream.write(buf.raw().getByteArray());
         } catch (java.io.IOException e) {
-            throw x10.core.ThrowableUtilities.getCorrespondingX10Exception(e);
+            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
         }
     }
+//    // for Emitter.manglePrimitivesAsShortName
+//    public void write__0$1$B$2(x10.array.Array buf) {
+//        try {
+//            stream.write(buf.raw().getByteArray());
+//        } catch (java.io.IOException e) {
+//            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
+//        }
+//    }
 
     public void write(byte[] b, int off, int len) {
         try {
             stream.write(b, off, len);
         } catch (java.io.IOException e) {
-            throw x10.core.ThrowableUtilities.getCorrespondingX10Exception(e);
+            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
         }
     }
     
     // XTENLANG-2680
+    // for !Emitter.manglePrimitivesAsShortName
     public void write__0$1x10$lang$Byte$2(x10.array.Array buf, int off, int len) {
         try {
             stream.write(buf.raw().getByteArray(), off, len);
         } catch (java.io.IOException e) {
-            throw x10.core.ThrowableUtilities.getCorrespondingX10Exception(e);
+            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
         }
     }
+//    // for Emitter.manglePrimitivesAsShortName
+//    public void write__0$1$B$2(x10.array.Array buf, int off, int len) {
+//        try {
+//            stream.write(buf.raw().getByteArray(), off, len);
+//        } catch (java.io.IOException e) {
+//            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
+//        }
+//    }
 
     public static OutputStream getNativeOutputStream(x10.io.Writer w) {
         OutputStream os = null;
@@ -125,12 +144,14 @@ public class OutputStream extends Ref {
     //
     // Runtime type information
     //
-    public static final RuntimeType<OutputStream> $RTT = new NamedType<OutputStream>(
+    public static final RuntimeType<OutputStream> $RTT = NamedType.<OutputStream> make(
         "x10.io.OutputStreamWriter.OutputStream",
         OutputStream.class,
-        new Type[] { x10.rtt.Types.OBJECT }
+        new Type[] { Types.OBJECT }
     );
+    @Override
     public RuntimeType<?> $getRTT() { return $RTT; }
+    @Override
     public Type<?> $getParam(int i) { return null; }
 
 
@@ -177,7 +198,7 @@ public class OutputStream extends Ref {
         public void write(byte[] b, int off, int len) {
             throw new x10.lang.UnsupportedOperationException();
         }
-        public static final RuntimeType<WriterOutputStream> $RTT = new NamedType<WriterOutputStream>(
+        public static final RuntimeType<WriterOutputStream> $RTT = NamedType.<WriterOutputStream> make(
             "x10.io.OutputStreamWriter.OutputStream.WriterOutputStream",
             WriterOutputStream.class,
             new Type[] { OutputStream.$RTT }

@@ -34,9 +34,9 @@
 #define X10RT_PAMI_SCATTER_ALG "X10RT_PAMI_SCATTER_ALG"
 #define X10RT_PAMI_ALLTOALL_ALG "X10RT_PAMI_ALLTOALL_ALG"
 #define X10RT_PAMI_ALLREDUCE_ALG "X10RT_PAMI_ALLREDUCE_ALG"
+#define X10RT_PAMI_ALLGATHER_ALG "X10RT_PAMI_ALLGATHER_ALG"
 
 enum MSGTYPE {STANDARD=1, PUT, GET, GET_COMPLETE, NEW_TEAM}; // PAMI doesn't send messages with type=0... it just silently eats them.
-enum COLLTYPE{BARRIER=0, BCAST, SCATTER, ALLTOALL, ALLREDUCE};
 
 //mechanisms for the callback functions used in the register and probe methods
 typedef void (*handlerCallback)(const x10rt_msg_params *);
@@ -64,8 +64,10 @@ pami_type_t DATATYPE_CONVERSION_TABLE[] = {PAMI_TYPE_UNSIGNED_CHAR, PAMI_TYPE_SI
 size_t DATATYPE_MULTIPLIER_TABLE[] = {1,1,2,2,4,4,8,8,8,4,12}; // the number of bytes used for each entry in the table above.
 // values for pami_op are mapped to indexes of x10rt_red_op_type
 pami_data_function OPERATION_CONVERSION_TABLE[] = {PAMI_DATA_SUM, PAMI_DATA_PROD, PAMI_DATA_NOOP, PAMI_DATA_BAND, PAMI_DATA_BOR, PAMI_DATA_BXOR, PAMI_DATA_MAX, PAMI_DATA_MIN};
-// values of x10rt_op_type are mapped to pami_atomic_t
-//pami_atomic_t REMOTE_MEMORY_OP_CONVERSION_TABLE[] = {PAMI_ATOMIC_ADD, PAMI_ATOMIC_AND, PAMI_ATOMIC_OR, PAMI_ATOMIC_XOR};
+// values of x10rt_op_type are mapped to pami_atomic_t.
+// The x10rt_op_type values correspond to the HFI values, not the PAMI_Rmw() values, so we need to convert when not using HFI.
+// The conversion table assumes HFI values: enum x10rt_op_type={X10RT_OP_ADD = 0x00, X10RT_OP_AND = 0x01, X10RT_OP_OR  = 0x02, X10RT_OP_XOR = 0x03}
+pami_atomic_t REMOTE_MEMORY_OP_CONVERSION_TABLE[] = {PAMI_ATOMIC_ADD, PAMI_ATOMIC_AND, PAMI_ATOMIC_OR, PAMI_ATOMIC_XOR};
 
 struct x10rtCallback
 {
@@ -101,8 +103,16 @@ struct x10rt_pami_team_callback
 struct x10rt_pami_team
 {
 	pami_geometry_t geometry; // abstract geometry ID
+	pami_algorithm_t algorithm[PAMI_XFER_COUNT]; // which algorithm to use with each collective.  We only set values for the algorithms used here
 	uint32_t size; // number of members in the team
 	pami_task_t *places; // list of team members
+};
+
+struct x10rt_pami_team_destroy
+{
+	x10rt_completion_handler *tch;
+	void *arg;
+	int teamid;
 };
 
 struct x10rt_pami_team_databuffer
@@ -136,7 +146,6 @@ struct x10rt_pami_state
 	hfi_remote_update_fn hfi_update;
 	pami_extension_t async_extension; // for async progress
 	bool blockingSend; // flag based on X10RT_PAMI_BLOCKING_SEND
-	uint32_t collectiveAlgorithmSelection[5]; // algorithm selection for each supported collective. barrier, broadcast, scatter, alltoall, allreduce
 } state;
 
 static void local_msg_dispatch (pami_context_t context, void* cookie, const void* header_addr, size_t header_size,
@@ -177,6 +186,60 @@ bool checkBoolEnvVar(char* value)
 	return (value && !(strcasecmp("false", value) == 0) && !(strcasecmp("0", value) == 0) && !(strcasecmp("f", value) == 0));
 }
 
+// Query PAMI for the algorithm to use with a specific team and collective
+void queryAvailableAlgorithms(x10rt_pami_team* team, pami_xfer_type_t collective, size_t indexToUse)
+{
+	pami_result_t status = PAMI_ERROR;
+
+	// figure out how many different algorithms are available
+	size_t num_algorithms[2]; // [0]=always works, and [1]=sometimes works lists
+	status = PAMI_Geometry_algorithms_num(team->geometry, collective, num_algorithms);
+	if (status != PAMI_SUCCESS || num_algorithms[0]==0) error("Unable to query the algorithm counts");
+
+	// query what the different algorithms are
+	pami_algorithm_t *always_works_alg = (pami_algorithm_t*)alloca(sizeof(pami_algorithm_t)*num_algorithms[0]);
+	pami_metadata_t *always_works_md = (pami_metadata_t*)alloca(sizeof(pami_metadata_t)*num_algorithms[0]);
+	pami_algorithm_t *must_query_alg = (pami_algorithm_t*)alloca(sizeof(pami_algorithm_t)*num_algorithms[1]);
+	pami_metadata_t *must_query_md = (pami_metadata_t*)alloca(sizeof(pami_metadata_t)*num_algorithms[1]);
+	status = PAMI_Geometry_algorithms_query(team->geometry, collective, always_works_alg,
+			always_works_md, num_algorithms[0], must_query_alg, must_query_md, num_algorithms[1]);
+	if (status != PAMI_SUCCESS) error("Unable to query the supported algorithms");
+
+	if (indexToUse >= num_algorithms[0]+num_algorithms[1])
+		error("You requested index %i for collective algorithm %i, which is more than the number available", indexToUse, collective);
+
+	if (indexToUse < num_algorithms[0])
+		team->algorithm[collective] = always_works_alg[indexToUse];
+	else
+		team->algorithm[collective] = must_query_alg[indexToUse-num_algorithms[0]];
+}
+
+// For every collective we support, check if the user has set an override to the algorithm selection,
+// and set the algorithm for the given team
+void determineCollectiveAlgorithms(x10rt_pami_team* team)
+{
+	char* userChoice = getenv(X10RT_PAMI_BARRIER_ALG);
+	queryAvailableAlgorithms(team, PAMI_XFER_BARRIER, userChoice?atoi(userChoice):0);
+
+	userChoice = getenv(X10RT_PAMI_BCAST_ALG);
+	queryAvailableAlgorithms(team, PAMI_XFER_BROADCAST, userChoice?atoi(userChoice):0);
+
+	userChoice = getenv(X10RT_PAMI_SCATTER_ALG);
+	queryAvailableAlgorithms(team, PAMI_XFER_SCATTER, userChoice?atoi(userChoice):0);
+
+	// NOTE: I've had lots of issues with these algorithms, bouncing between "I0:Pairwise:P2P:P2P" (alg[0]) and I0:M2MComposite:P2P:P2P (alg[1])
+	userChoice = getenv(X10RT_PAMI_ALLTOALL_ALG);
+	queryAvailableAlgorithms(team, PAMI_XFER_ALLTOALL, userChoice?atoi(userChoice):0);
+
+	userChoice = getenv(X10RT_PAMI_ALLREDUCE_ALG);
+	queryAvailableAlgorithms(team, PAMI_XFER_ALLREDUCE, userChoice?atoi(userChoice):0);
+
+	// only used in the team split operation
+	userChoice = getenv(X10RT_PAMI_ALLGATHER_ALG);
+	queryAvailableAlgorithms(team, PAMI_XFER_ALLGATHER, userChoice?atoi(userChoice):0);
+}
+
+
 // small bit of code to extend the number of allocated teams.  Returns the original lastTeamIndex
 unsigned expandTeams(unsigned numNewTeams)
 {
@@ -204,14 +267,6 @@ void registerHandlers(pami_context_t context, bool setSendImmediateLimit)
 	pami_dispatch_hint_t hints;
 	memset(&hints, 0, sizeof(pami_send_hint_t));
 	hints.recv_contiguous = PAMI_HINT_ENABLE;
-
-	// TODO: this check is here to workaround a bug on x86 shared memory introduced in pami 1118a.
-	// otherwise, this would always be enabled
-	char* shmem = getenv("MP_SHARED_MEMORY");
-	if (!shmem || strcasecmp("no", shmem)!=0)
-		hints.buffer_registered = PAMI_HINT_ENABLE;
-
-	//hints.multicontext = PAMI_HINT_DISABLE;
 
 	// set up our callback functions, which will convert PAMI messages to X10 callbacks
 	pami_dispatch_callback_function fn;
@@ -258,10 +313,16 @@ void registerHandlers(pami_context_t context, bool setSendImmediateLimit)
 		PAMI_Client_query (state.client, &configuration, 1);
 		if (configuration.value.intval == 0)
 		{
+			#ifdef __GNUC__
+			__extension__
+			#endif
 			async_progress_register_function PAMIX_Context_async_progress_register = (async_progress_register_function) PAMI_Extension_symbol (state.async_extension, "register");
 			PAMIX_Context_async_progress_register (context, NULL, NULL, NULL, NULL);
 		}
 
+		#ifdef __GNUC__
+		__extension__
+		#endif
 		async_progress_enable_function PAMIX_Context_async_progress_enable = (async_progress_enable_function) PAMI_Extension_symbol (state.async_extension, "enable");
 		PAMIX_Context_async_progress_enable (context, PAMIX_ASYNC_ALL);
 
@@ -295,7 +356,7 @@ pami_context_t getConcurrentContext()
 			pthread_mutex_unlock(&state.stateLock);
 
 			#ifdef DEBUG
-				fprintf(stderr, "New worker thread %u detected at place %u.  Assigning it context %i\n", pthread_self(), state.myPlaceId, i);
+				fprintf(stderr, "New worker thread %lu detected at place %u.  Assigning it context %i\n", pthread_self(), state.myPlaceId, i);
 			#endif
 			registerHandlers(state.context[i], !i);
 			pthread_setspecific(state.contextLookupTable, state.context[i]);
@@ -391,7 +452,7 @@ static void local_msg_dispatch (
 		struct x10rt_msg_params *hdr = (struct x10rt_msg_params *)malloc(sizeof(struct x10rt_msg_params));
 		if (hdr == NULL) error("Unable to allocate memory for a msg_dispatch callback");
 		hdr->dest_place = state.myPlaceId;
-		hdr->dest_endpoint = 0; // TODO
+		hdr->dest_endpoint = 0; // TODO endpoints
 		hdr->len = pipe_size; // this is going to be large-ish, otherwise recv would be null
 		hdr->msg = malloc(pipe_size);
 		if (hdr->msg == NULL) error("Unable to allocate a msg_dispatch buffer of size %u", pipe_size);
@@ -410,7 +471,7 @@ static void local_msg_dispatch (
 	{	// all the data is available, and ready to process
 		x10rt_msg_params mp;
 		mp.dest_place = state.myPlaceId;
-		mp.dest_endpoint = 0; // TODO
+		mp.dest_endpoint = 0; // TODO endpoints
 		mp.type = *((x10rt_msg_type*)header_addr);
 		mp.len = pipe_size;
 		if (mp.len > 0)
@@ -548,6 +609,7 @@ static void get_handler_complete (pami_context_t   context,
 	parameters.send.data.iov_len    = 0;
 	parameters.send.dest 			= header->dest_place;
 	memset(&parameters.send.hints, 0, sizeof(pami_send_hint_t));
+	parameters.send.hints.buffer_registered = PAMI_HINT_ENABLE;
 	parameters.events.cookie        = cookie;
 	parameters.events.local_fn      = cookie_free;
 	parameters.events.remote_fn     = NULL;
@@ -661,21 +723,34 @@ static void team_creation_complete (pami_context_t   context,
 	if (result != PAMI_SUCCESS)
 		error("Error detected in team_creation_complete");
 
-	if (cookie)
+	if (cookie) // should always be true
 	{
 		x10rt_pami_team_create *team = (x10rt_pami_team_create*)cookie;
 		#ifdef DEBUG
-			fprintf(stderr, "New team %u created at place %u\n", team->teamIndex, state.myPlaceId);
+			fprintf(stderr, "New team %u created via split at place %u\n", team->teamIndex, state.myPlaceId);
 		#endif
+		determineCollectiveAlgorithms(&state.teams[team->teamIndex]);
 		team->cb2(team->teamIndex, team->arg);
 		free(team);
 	}
 	#ifdef DEBUG
 	else
-		fprintf(stderr, "New team created at place %u\n", state.myPlaceId);
+		fprintf(stderr, "New team created via split at place %u\n", state.myPlaceId);
 	#endif
 }
 
+static void team_creation_complete_nocallback (pami_context_t   context,
+                       void          * cookie,
+                       pami_result_t    result)
+{
+	if (result != PAMI_SUCCESS)
+		error("Error detected in team_creation_complete_nocallback");
+
+	determineCollectiveAlgorithms((x10rt_pami_team *)cookie);
+	#ifdef DEBUG
+		fprintf(stderr, "New Team created via team_new at place %u\n", state.myPlaceId);
+	#endif
+}
 
 static void team_create_dispatch_part2 (pami_context_t   context,
                        void          * cookie,
@@ -715,7 +790,7 @@ static void team_create_dispatch (
 {
 	uint32_t newTeamId = *((uint32_t*)header_addr);
 	if (newTeamId <= state.lastTeamIndex)
-		error("Caught an invalid request to put the same place in a team more than once");
+		error("Place %u attempted to join team %u, but it is already a member of that team.  A place can not be in the same team more than once.", state.myPlaceId, newTeamId);
 
 	unsigned previousLastTeam = expandTeams(1);
 	if (previousLastTeam+1 != newTeamId) error("misalignment detected in team_create_dispatch");
@@ -754,11 +829,24 @@ static void team_create_dispatch (
 		#endif
 
 		pami_result_t   status = PAMI_ERROR;
-		status = PAMI_Geometry_create_tasklist(state.client, 0, &config, 1, &state.teams[newTeamId].geometry, state.teams[0].geometry, newTeamId, state.teams[newTeamId].places, state.teams[newTeamId].size, context, team_creation_complete, cookie);
+		status = PAMI_Geometry_create_tasklist(state.client, 0, &config, 1, &state.teams[newTeamId].geometry, state.teams[0].geometry, newTeamId, state.teams[newTeamId].places, state.teams[newTeamId].size, context, team_creation_complete_nocallback, &state.teams[newTeamId]);
 		if (status != PAMI_SUCCESS) error("Unable to create a new team");
 	}
 }
 
+static void team_destroy_complete (pami_context_t context, void* cookie, pami_result_t result)
+{
+	if (result != PAMI_SUCCESS)
+		error("Error detected in team_destroy_complete");
+
+	x10rt_pami_team_destroy* ptd = (x10rt_pami_team_destroy*)cookie;
+
+	state.teams[ptd->teamid].size = 0;
+	free(state.teams[ptd->teamid].places);
+	state.teams[ptd->teamid].places = NULL;
+	ptd->tch(ptd->arg);
+	free(cookie);
+}
 
 
 /** Initialize the X10RT API logical layer.
@@ -774,8 +862,8 @@ static void team_create_dispatch (
 void x10rt_net_init (int *argc, char ***argv, x10rt_msg_type *counter)
 {
 	pami_result_t   status = PAMI_ERROR;
-	const char    *name = "X10";
-	setenv("MP_MSG_API", name, 1);
+	setenv("MP_MSG_API", "X10", 0);
+	const char *name = getenv("MP_MSG_API");
 
 	// Check if we want to enable async progress
 	if (checkBoolEnvVar(getenv(X10RT_PAMI_ASYNC_PROGRESS)))
@@ -869,10 +957,10 @@ void x10rt_net_init (int *argc, char ***argv, x10rt_msg_type *counter)
 			status = PAMI_Extension_open (state.client, "EXT_hfi_extension", &state.hfi_extension);
 			if (status == PAMI_SUCCESS)
 			{
-				state.hfi_update = (hfi_remote_update_fn) PAMI_Extension_symbol(state.hfi_extension, "hfi_remote_update"); // if fail, hfi_update is set to NULL
-				#ifdef DEBUG
-					fprintf(stderr, "HFI present and enabled at place %u\n", state.myPlaceId);
+				#ifdef __GNUC__
+				__extension__
 				#endif
+				state.hfi_update = (hfi_remote_update_fn) PAMI_Extension_symbol(state.hfi_extension, "hfi_remote_update"); // This may succeed even if HFI is not available
 			}
 			else
 			{
@@ -891,25 +979,13 @@ void x10rt_net_init (int *argc, char ***argv, x10rt_msg_type *counter)
 	state.teams[0].places = NULL;
 	status = PAMI_Geometry_world(state.client, &state.teams[0].geometry);
 	if (status != PAMI_SUCCESS) error("Unable to create the world geometry");
+	determineCollectiveAlgorithms(state.teams);
 
 	// check if we should have send block until all data is out
 	if (checkBoolEnvVar(getenv(X10RT_PAMI_BLOCKING_SEND)))
 		state.blockingSend = true;
 	else
 		state.blockingSend = false;
-
-	// check for overrides to the collective algorithm selection
-	memset(state.collectiveAlgorithmSelection, 0, sizeof(state.collectiveAlgorithmSelection));
-	if (getenv(X10RT_PAMI_BARRIER_ALG))
-		state.collectiveAlgorithmSelection[BARRIER] = atoi(getenv(X10RT_PAMI_BARRIER_ALG));
-	if (getenv(X10RT_PAMI_BCAST_ALG))
-		state.collectiveAlgorithmSelection[BCAST] = atoi(getenv(X10RT_PAMI_BCAST_ALG));
-	if (getenv(X10RT_PAMI_SCATTER_ALG))
-		state.collectiveAlgorithmSelection[SCATTER] = atoi(getenv(X10RT_PAMI_SCATTER_ALG));
-	if (getenv(X10RT_PAMI_ALLTOALL_ALG))
-		state.collectiveAlgorithmSelection[ALLTOALL] = atoi(getenv(X10RT_PAMI_ALLTOALL_ALG));
-	if (getenv(X10RT_PAMI_ALLREDUCE_ALG))
-		state.collectiveAlgorithmSelection[ALLREDUCE] = atoi(getenv(X10RT_PAMI_ALLREDUCE_ALG));
 }
 
 
@@ -1040,6 +1116,7 @@ void x10rt_net_send_msg (x10rt_msg_params *p)
 		parameters.send.data.iov_len    = p->len;
 		parameters.send.dest 			= target;
 		memset(&parameters.send.hints, 0, sizeof(pami_send_hint_t));
+		parameters.send.hints.buffer_registered = PAMI_HINT_ENABLE;
 		parameters.events.remote_fn     = NULL;
 
 		#ifdef DEBUG
@@ -1185,6 +1262,7 @@ void x10rt_net_send_put (x10rt_msg_params *p, void *buf, x10rt_copy_sz len)
 		parameters.send.data.iov_len    = header->x10msg.len;
 		parameters.send.dest 			= target;
 		memset(&parameters.send.hints, 0, sizeof(pami_send_hint_t));
+		parameters.send.hints.buffer_registered = PAMI_HINT_ENABLE;
 		parameters.events.cookie		= (void*)header;
 		parameters.events.local_fn		= free_header_data;
 		parameters.events.remote_fn     = NULL;
@@ -1255,6 +1333,7 @@ void x10rt_net_send_get (x10rt_msg_params *p, void *buf, x10rt_copy_sz len)
 	parameters.send.data.iov_len    = header->x10msg.len;
 	parameters.send.dest 			= target;
 	memset(&parameters.send.hints, 0, sizeof(pami_send_hint_t));
+	parameters.send.hints.buffer_registered = PAMI_HINT_ENABLE;
 	parameters.events.cookie        = NULL;
 	parameters.events.local_fn      = NULL;
 	parameters.events.remote_fn     = NULL;
@@ -1284,19 +1363,22 @@ void x10rt_net_probe()
 	pami_result_t status = PAMI_ERROR;
 	if (state.numParallelContexts)
 	{
-		status = PAMI_Context_advance(getConcurrentContext(), 100);
-		if (status == PAMI_EAGAIN)
-			sched_yield();
+		pami_context_t context = getConcurrentContext();
+		do { status = PAMI_Context_advance(context, 1);
+		} while (status == PAMI_SUCCESS); // PAMI_Context_advance returns PAMI_EAGAIN when no messages were processed
+		if (status == PAMI_ERROR) error ("Problem advancing the current context");
 	}
 	else
 	{
 		status = PAMI_Context_trylock(state.context[0]);
 		if (status == PAMI_EAGAIN) return; // context is already in use
 		if (status != PAMI_SUCCESS) error ("Unable to lock the PAMI context");
-		status = PAMI_Context_advance(state.context[0], 100);
+
+		do { status = PAMI_Context_advance(state.context[0], 1);
+		} while (status == PAMI_SUCCESS); // PAMI_Context_advance returns PAMI_EAGAIN when no messages were processed
+		if (status == PAMI_ERROR) error ("Problem advancing the context");
+
 		if (PAMI_Context_unlock(state.context[0]) != PAMI_SUCCESS) error ("Unable to unlock the PAMI context");
-		if (status == PAMI_EAGAIN)
-			sched_yield();
 	}
 }
 
@@ -1318,6 +1400,9 @@ void x10rt_net_finalize()
 
 	if (state.async_extension != NULL)
 	{
+		#ifdef __GNUC__
+		__extension__
+		#endif
 		async_progress_disable_function PAMIX_Context_async_progress_disable = (async_progress_disable_function) PAMI_Extension_symbol (state.async_extension, "disable");
 		if (state.numParallelContexts)
 			for (int i=0; i<state.numParallelContexts; i++)
@@ -1379,6 +1464,16 @@ void x10rt_net_remote_op (x10rt_place place, x10rt_remote_ptr victim, x10rt_op_t
 			status = state.hfi_update (state.context[0], 1, &remote_info);
 			PAMI_Context_unlock(state.context[0]);
 		}
+		if (status != PAMI_SUCCESS)
+		{
+			state.hfi_update = NULL;
+			#ifdef DEBUG
+				fprintf(stderr, "Place %u discovered HFI is not available.  Disabling.\n", state.myPlaceId);
+			#endif
+			// redo the call, but this time hfi_update will be null, and we'll use the else path below
+			x10rt_net_remote_op(place, victim, type, value);
+			return;
+		}
 	}
 	else
 	{
@@ -1389,7 +1484,7 @@ void x10rt_net_remote_op (x10rt_place place, x10rt_remote_ptr victim, x10rt_op_t
 		operation.hints.buffer_registered = PAMI_HINT_ENABLE;
 		operation.remote = (void *)victim;
 		operation.value = &value;
-		operation.operation = (pami_atomic_t)type;
+		operation.operation = (pami_atomic_t)REMOTE_MEMORY_OP_CONVERSION_TABLE[type];
 		operation.type = PAMI_TYPE_UNSIGNED_LONG_LONG;
 		#ifdef DEBUG
 			fprintf(stderr, "Place %u executing a remote operation %u on %p at place %u\n", state.myPlaceId, type, operation.remote, place);
@@ -1414,7 +1509,7 @@ void x10rt_net_remote_ops (x10rt_remote_op_params *ops, size_t numOps)
 	{
 		// use HFI remote operations
 		#ifdef DEBUG
-			fprintf(stderr, "Place %u executing a remote %u operations using HFI\n", numOps, state.myPlaceId);
+			fprintf(stderr, "Place %u executing a remote %u operations using HFI\n", state.myPlaceId, numOps);
 		#endif
 		if (state.numParallelContexts)
 			status = state.hfi_update (getConcurrentContext(), numOps, (hfi_remote_update_info_t*)ops);
@@ -1423,6 +1518,16 @@ void x10rt_net_remote_ops (x10rt_remote_op_params *ops, size_t numOps)
 			PAMI_Context_lock(state.context[0]);
 			status = state.hfi_update(state.context[0], numOps, (hfi_remote_update_info_t*)ops);
 			PAMI_Context_unlock(state.context[0]);
+		}
+		if (status != PAMI_SUCCESS)
+		{
+			state.hfi_update = NULL;
+			#ifdef DEBUG
+				fprintf(stderr, "Place %u discovered HFI is not available... disabling.\n", state.myPlaceId);
+			#endif
+			// redo the call, but this time hfi_update will be null, and we'll use the else path below
+			x10rt_net_remote_ops(ops, numOps);
+			return;
 		}
 	}
 	else
@@ -1450,7 +1555,7 @@ void x10rt_net_remote_ops (x10rt_remote_op_params *ops, size_t numOps)
 				error("Unable to create a target endpoint for sending a remote memory operation to %u: %i\n", ops[i].dest, status);
 			operation.remote = (void*)ops[i].dest_buf;
 			operation.value = &ops[i].value;
-			operation.operation = (pami_atomic_t)ops[i].op;
+			operation.operation = (pami_atomic_t)REMOTE_MEMORY_OP_CONVERSION_TABLE[ops[i].op];
 			status = PAMI_Rmw(context, &operation);
 		}
 		if (!state.numParallelContexts)
@@ -1516,6 +1621,7 @@ void x10rt_net_team_new (x10rt_place placec, x10rt_place *placev,
 	parameters.send.data.iov_base   = state.teams[newTeamId].places; // team members
 	parameters.send.data.iov_len    = placec*sizeof(pami_task_t);
 	memset(&parameters.send.hints, 0, sizeof(pami_send_hint_t));
+	parameters.send.hints.buffer_registered = PAMI_HINT_ENABLE;
 	parameters.events.cookie        = NULL;
 	parameters.events.local_fn      = NULL;
 	parameters.events.remote_fn     = NULL;
@@ -1653,19 +1759,8 @@ void x10rt_net_team_split (x10rt_team parent, x10rt_place parent_role, x10rt_pla
 		status = PAMI_Context_lock(context);
 		if (status != PAMI_SUCCESS) error("Unable to lock the context to send a message");
 	}
-	// figure out how many different algorithms are available for the barrier
-	size_t num_algorithms[2]; // [0]=always works, and [1]=sometimes works lists
-	status = PAMI_Geometry_algorithms_num(state.teams[parent].geometry, PAMI_XFER_ALLGATHER, num_algorithms);
-	if (status != PAMI_SUCCESS || num_algorithms[0]==0) error("Unable to query the algorithm counts for team %u", parent);
-	pami_algorithm_t *always_works_alg = (pami_algorithm_t*)alloca(sizeof(pami_algorithm_t)*num_algorithms[0]);
-	pami_metadata_t *always_works_md = (pami_metadata_t*)alloca(sizeof(pami_metadata_t)*num_algorithms[0]);
-	pami_algorithm_t *must_query_alg = (pami_algorithm_t*)alloca(sizeof(pami_algorithm_t)*num_algorithms[1]);
-	pami_metadata_t *must_query_md = (pami_metadata_t*)alloca(sizeof(pami_metadata_t)*num_algorithms[1]);
-	status = PAMI_Geometry_algorithms_query(state.teams[parent].geometry, PAMI_XFER_ALLGATHER, always_works_alg,
-			always_works_md, num_algorithms[0], must_query_alg, must_query_md, num_algorithms[1]);
-	if (status != PAMI_SUCCESS) error("Unable to query the supported algorithms for team %u", parent);
 
-	// select a algorithm, and issue the collective
+	// Issue the collective
 	x10rt_pami_team_create *cbd = (x10rt_pami_team_create *)malloc(sizeof(x10rt_pami_team_create));
 	if (cbd == NULL) error("Unable to allocate memory for a team split structure");
 	cbd->cb2 = ch;
@@ -1677,10 +1772,10 @@ void x10rt_net_team_split (x10rt_team parent, x10rt_place parent_role, x10rt_pla
 	pami_xfer_t operation;
 	operation.cb_done = split_stage2;
 	operation.cookie = cbd;
-	operation.algorithm = always_works_alg[0];
+	operation.algorithm = state.teams[parent].algorithm[PAMI_XFER_ALLGATHER];
 	operation.cmd.xfer_allgather.rcvbuf = (char*)colors;
 	operation.cmd.xfer_allgather.rtype = PAMI_TYPE_BYTE;
-	operation.cmd.xfer_allgather.rtypecount = sizeof(x10rt_place)*parentTeamSize;
+	operation.cmd.xfer_allgather.rtypecount = sizeof(x10rt_place);// *parentTeamSize;
 	operation.cmd.xfer_allgather.sndbuf = (char*)&color;
 	operation.cmd.xfer_allgather.stype = PAMI_TYPE_BYTE;
 	operation.cmd.xfer_allgather.stypecount = sizeof(x10rt_place);
@@ -1695,12 +1790,26 @@ void x10rt_net_team_del (x10rt_team team, x10rt_place role,
                          x10rt_completion_handler *ch, void *arg)
 {
 	pami_result_t status = PAMI_ERROR;
-	status = PAMI_Geometry_destroy(state.client, &state.teams[team].geometry);
+	pami_context_t context;
+
+	x10rt_pami_team_destroy* ptd = (x10rt_pami_team_destroy*)malloc(sizeof(x10rt_pami_team_destroy));
+	ptd->teamid = team;
+	ptd->arg = arg;
+	ptd->tch = ch;
+	if (state.numParallelContexts)
+		context = getConcurrentContext();
+	else
+	{
+		context = state.context[0];
+		status = PAMI_Context_lock(context);
+		if (status != PAMI_SUCCESS) error("Unable to lock the context to send a message");
+	}
+
+	status = PAMI_Geometry_destroy(state.client, &state.teams[team].geometry, context, team_destroy_complete, ptd);
 	if (status != PAMI_SUCCESS) error("Unable to destroy geometry");
-	state.teams[team].size = 0;
-	free(state.teams[team].places);
-	state.teams[team].places = NULL;
-	ch(arg);
+
+	if (!state.numParallelContexts)
+		PAMI_Context_unlock(context);
 }
 
 x10rt_place x10rt_net_team_sz (x10rt_team team)
@@ -1737,21 +1846,8 @@ void x10rt_net_barrier (x10rt_team team, x10rt_place role, x10rt_completion_hand
 		status = PAMI_Context_lock(context);
 		if (status != PAMI_SUCCESS) error("Unable to lock the context to send a message");
 	}
-	// figure out how many different algorithms are available for the barrier
-	size_t num_algorithms[2]; // [0]=always works, and [1]=sometimes works lists
-	status = PAMI_Geometry_algorithms_num(state.teams[team].geometry, PAMI_XFER_BARRIER, num_algorithms);
-	if (status != PAMI_SUCCESS || num_algorithms[0]==0) error("Unable to query the algorithm counts for team %u", team);
 
-	// query what the different algorithms are
-	pami_algorithm_t *always_works_alg = (pami_algorithm_t*)alloca(sizeof(pami_algorithm_t)*num_algorithms[0]);
-	pami_metadata_t *always_works_md = (pami_metadata_t*)alloca(sizeof(pami_metadata_t)*num_algorithms[0]);
-	pami_algorithm_t *must_query_alg = (pami_algorithm_t*)alloca(sizeof(pami_algorithm_t)*num_algorithms[1]);
-	pami_metadata_t *must_query_md = (pami_metadata_t*)alloca(sizeof(pami_metadata_t)*num_algorithms[1]);
-	status = PAMI_Geometry_algorithms_query(state.teams[team].geometry, PAMI_XFER_BARRIER, always_works_alg,
-			always_works_md, num_algorithms[0], must_query_alg, must_query_md, num_algorithms[1]);
-	if (status != PAMI_SUCCESS) error("Unable to query the supported algorithms for team %u", team);
-
-	// select a algorithm, and issue the collective
+	// Issue the collective
 	x10rt_pami_team_callback *tcb = (x10rt_pami_team_callback *)malloc(sizeof(x10rt_pami_team_callback));
 	if (tcb == NULL) error("Unable to allocate memory for a barrier callback header");
 	tcb->tcb = ch;
@@ -1759,27 +1855,10 @@ void x10rt_net_barrier (x10rt_team team, x10rt_place role, x10rt_completion_hand
 	memset(&tcb->operation, 0, sizeof (tcb->operation));
 	tcb->operation.cb_done = collective_operation_complete;
 	tcb->operation.cookie = tcb;
-	// TODO - figure out a better way to choose.  For now, the code just uses the first *known good* algorithm.
+	tcb->operation.algorithm = state.teams[team].algorithm[PAMI_XFER_BARRIER];
 	#ifdef DEBUG
-		if ((team==0 && state.myPlaceId==0) || (team>0 && state.myPlaceId == state.teams[team].places[0]))
-		{
-			fprintf(stderr, "Barrier algorithms are always %s", always_works_md[0].name);
-			for (size_t i=1; i<num_algorithms[0]; i++)
-				fprintf(stderr, ", %s", always_works_md[i].name);
-			if (num_algorithms[1] > 0)
-			{
-				fprintf(stderr, " and sometimes %s", must_query_md[0].name);
-				for (size_t i=1; i<num_algorithms[1]; i++)
-					fprintf(stderr, ", %s", must_query_md[i].name);
-			}
-			fprintf(stderr, ".\n");
-		}
-		fprintf(stderr, "Place %u, role %u executing barrier (%i). cookie=%p\n", state.myPlaceId, role, state.collectiveAlgorithmSelection[BARRIER], (void*)tcb);
+		fprintf(stderr, "Place %u, role %u executing barrier. cookie=%p\n", state.myPlaceId, role, (void*)tcb);
 	#endif
-	if (state.collectiveAlgorithmSelection[BARRIER] < num_algorithms[0])
-		tcb->operation.algorithm = always_works_alg[state.collectiveAlgorithmSelection[BARRIER]];
-	else
-		tcb->operation.algorithm = must_query_alg[state.collectiveAlgorithmSelection[BARRIER]-num_algorithms[0]];
 
 	status = PAMI_Collective(context, &tcb->operation);
 	if (status != PAMI_SUCCESS) error("Unable to issue a barrier on team %u", team);
@@ -1805,21 +1884,7 @@ void x10rt_net_bcast (x10rt_team team, x10rt_place role, x10rt_place root, const
 		fprintf(stderr, "Place %u executing broadcast of %lu %lu-byte elements on team %u, with role=%u, root=%u\n", state.myPlaceId, count, el, team, role, root);
 	#endif
 
-	// figure out how many different algorithms are available for the barrier
-	size_t num_algorithms[2]; // [0]=always works, and [1]=sometimes works lists
-	status = PAMI_Geometry_algorithms_num(state.teams[team].geometry, PAMI_XFER_BROADCAST, num_algorithms);
-	if (status != PAMI_SUCCESS || num_algorithms[0]==0) error("Unable to query the algorithm counts for team %u", team);
-
-	// query what the different algorithms are
-	pami_algorithm_t *always_works_alg = (pami_algorithm_t*)alloca(sizeof(pami_algorithm_t)*num_algorithms[0]);
-	pami_metadata_t *always_works_md = (pami_metadata_t*)alloca(sizeof(pami_metadata_t)*num_algorithms[0]);
-	pami_algorithm_t *must_query_alg = (pami_algorithm_t*)alloca(sizeof(pami_algorithm_t)*num_algorithms[1]);
-	pami_metadata_t *must_query_md = (pami_metadata_t*)alloca(sizeof(pami_metadata_t)*num_algorithms[1]);
-	status = PAMI_Geometry_algorithms_query(state.teams[team].geometry, PAMI_XFER_BROADCAST, always_works_alg,
-			always_works_md, num_algorithms[0], must_query_alg, must_query_md, num_algorithms[1]);
-	if (status != PAMI_SUCCESS) error("Unable to query the supported algorithms for team %u", team);
-
-	// select a algorithm, and issue the collective
+	// Issue the collective
 	x10rt_pami_team_callback *tcb = (x10rt_pami_team_callback *)malloc(sizeof(x10rt_pami_team_callback));
 	if (tcb == NULL) error("Unable to allocate memory for a broadcast callback header");
 	tcb->tcb = ch;
@@ -1827,28 +1892,7 @@ void x10rt_net_bcast (x10rt_team team, x10rt_place role, x10rt_place root, const
 	memset(&tcb->operation, 0, sizeof (tcb->operation));
 	tcb->operation.cb_done = collective_operation_complete;
 	tcb->operation.cookie = tcb;
-	// TODO - figure out a better way to choose.  For now, the code just uses the first *known good* algorithm.
-	#ifdef DEBUG
-		if (role==root)
-		{
-			fprintf(stderr, "Broadcast algorithms are always %s", always_works_md[0].name);
-			for (size_t i=1; i<num_algorithms[0]; i++)
-				fprintf(stderr, ", %s", always_works_md[i].name);
-			if (num_algorithms[1] > 0)
-			{
-				fprintf(stderr, " and sometimes %s", must_query_md[0].name);
-				for (size_t i=1; i<num_algorithms[1]; i++)
-					fprintf(stderr, ", %s", must_query_md[i].name);
-			}
-			fprintf(stderr, ".\n");
-		}
-		fprintf(stderr, "Place %u, role %u executing broadcast (%i). cookie=%p\n", state.myPlaceId, role, state.collectiveAlgorithmSelection[BCAST], (void*)tcb);
-	#endif
-
-	if (state.collectiveAlgorithmSelection[BCAST] < num_algorithms[0])
-		tcb->operation.algorithm = always_works_alg[state.collectiveAlgorithmSelection[BCAST]];
-	else
-		tcb->operation.algorithm = must_query_alg[state.collectiveAlgorithmSelection[BCAST]-num_algorithms[0]];
+	tcb->operation.algorithm = state.teams[team].algorithm[PAMI_XFER_BROADCAST];
 	tcb->operation.cmd.xfer_broadcast.type = PAMI_TYPE_BYTE;
 	tcb->operation.cmd.xfer_broadcast.typecount = count*el;
 	if (team == 0)
@@ -1866,7 +1910,7 @@ void x10rt_net_bcast (x10rt_team team, x10rt_place role, x10rt_place root, const
 	if (!state.numParallelContexts)
 		PAMI_Context_unlock(context);
 
-	// copy the data for the root separately
+	// copy the data for the root separately.  PAMI does not do this for us.
 	if (role == root)
 		memcpy(dbuf, sbuf, count*el);
 }
@@ -1885,21 +1929,7 @@ void x10rt_net_scatter (x10rt_team team, x10rt_place role, x10rt_place root, con
 		if (status != PAMI_SUCCESS) error("Unable to lock the context to send a message");
 	}
 
-	// figure out how many different algorithms are available for the barrier
-	size_t num_algorithms[2]; // [0]=always works, and [1]=sometimes works lists
-	status = PAMI_Geometry_algorithms_num(state.teams[team].geometry, PAMI_XFER_SCATTER, num_algorithms);
-	if (status != PAMI_SUCCESS || num_algorithms[0]==0) error("Unable to query the algorithm counts for team %u", team);
-
-	// query what the different algorithms are
-	pami_algorithm_t *always_works_alg = (pami_algorithm_t*)alloca(sizeof(pami_algorithm_t)*num_algorithms[0]);
-	pami_metadata_t *always_works_md = (pami_metadata_t*)alloca(sizeof(pami_metadata_t)*num_algorithms[0]);
-	pami_algorithm_t *must_query_alg = (pami_algorithm_t*)alloca(sizeof(pami_algorithm_t)*num_algorithms[1]);
-	pami_metadata_t *must_query_md = (pami_metadata_t*)alloca(sizeof(pami_metadata_t)*num_algorithms[1]);
-	status = PAMI_Geometry_algorithms_query(state.teams[team].geometry, PAMI_XFER_SCATTER, always_works_alg,
-			always_works_md, num_algorithms[0], must_query_alg, must_query_md, num_algorithms[1]);
-	if (status != PAMI_SUCCESS) error("Unable to query the supported algorithms for team %u", team);
-
-	// select a algorithm, and issue the collective
+	// Issue the collective
 	x10rt_pami_team_callback *tcb = (x10rt_pami_team_callback *)malloc(sizeof(x10rt_pami_team_callback));
 	if (tcb == NULL) error("Unable to allocate memory for a scatter callback header");
 	tcb->tcb = ch;
@@ -1907,11 +1937,7 @@ void x10rt_net_scatter (x10rt_team team, x10rt_place role, x10rt_place root, con
 	memset(&tcb->operation, 0, sizeof (tcb->operation));
 	tcb->operation.cb_done = collective_operation_complete;
 	tcb->operation.cookie = tcb;
-	// TODO - figure out a better way to choose.  For now, the code just uses the first *known good* algorithm.
-	if (state.collectiveAlgorithmSelection[SCATTER] < num_algorithms[0])
-		tcb->operation.algorithm = always_works_alg[state.collectiveAlgorithmSelection[SCATTER]];
-	else
-		tcb->operation.algorithm = must_query_alg[state.collectiveAlgorithmSelection[SCATTER]-num_algorithms[0]];
+	tcb->operation.algorithm = state.teams[team].algorithm[PAMI_XFER_SCATTER];
 	tcb->operation.cmd.xfer_scatter.rcvbuf = (char*)dbuf;
 	if (team == 0)
 		tcb->operation.cmd.xfer_scatter.root = root;
@@ -1924,19 +1950,21 @@ void x10rt_net_scatter (x10rt_team team, x10rt_place role, x10rt_place root, con
 	tcb->operation.cmd.xfer_scatter.stypecount = el*count;
 
 	#ifdef DEBUG
-		fprintf(stderr, "Place %u executing scatter (%i): role=%u, root=%u\n", state.myPlaceId, state.collectiveAlgorithmSelection[SCATTER], role, root);
+		fprintf(stderr, "Place %u executing scatter: role=%u, root=%u\n", state.myPlaceId, role, root);
 	#endif
 	status = PAMI_Collective(context, &tcb->operation);
 	if (status != PAMI_SUCCESS) error("Unable to issue a scatter on team %u", team);
 	if (!state.numParallelContexts)
 		PAMI_Context_unlock(context);
 
-	// copy the root data from src to dst locally
+/*  The local copy is not needed.  PAMI handles this for us.
 	if (role == root)
 	{
+		// copy the root data from src to dst locally
 		int blockSize = el*count;
 		memcpy(((char*)dbuf)+(blockSize*role), ((char*)sbuf)+(blockSize*role), blockSize);
 	}
+*/
 }
 
 void x10rt_net_alltoall (x10rt_team team, x10rt_place role, const void *sbuf, void *dbuf,
@@ -1953,21 +1981,7 @@ void x10rt_net_alltoall (x10rt_team team, x10rt_place role, const void *sbuf, vo
 		if (status != PAMI_SUCCESS) error("Unable to lock the context to send a message");
 	}
 
-	// figure out how many different algorithms are available for the barrier
-	size_t num_algorithms[2]; // [0]=always works, and [1]=sometimes works lists
-	status = PAMI_Geometry_algorithms_num(state.teams[team].geometry, PAMI_XFER_ALLTOALL, num_algorithms);
-	if (status != PAMI_SUCCESS || num_algorithms[0]==0) error("Unable to query the algorithm counts for team %u", team);
-
-	// query what the different algorithms are
-	pami_algorithm_t *always_works_alg = (pami_algorithm_t*)alloca(sizeof(pami_algorithm_t)*num_algorithms[0]);
-	pami_metadata_t *always_works_md = (pami_metadata_t*)alloca(sizeof(pami_metadata_t)*num_algorithms[0]);
-	pami_algorithm_t *must_query_alg = (pami_algorithm_t*)alloca(sizeof(pami_algorithm_t)*num_algorithms[1]);
-	pami_metadata_t *must_query_md = (pami_metadata_t*)alloca(sizeof(pami_metadata_t)*num_algorithms[1]);
-	status = PAMI_Geometry_algorithms_query(state.teams[team].geometry, PAMI_XFER_ALLTOALL, always_works_alg,
-			always_works_md, num_algorithms[0], must_query_alg, must_query_md, num_algorithms[1]);
-	if (status != PAMI_SUCCESS) error("Unable to query the supported algorithms for team %u", team);
-
-	// select a algorithm, and issue the collective
+	// Issue the collective
 	x10rt_pami_team_callback *tcb = (x10rt_pami_team_callback *)malloc(sizeof(x10rt_pami_team_callback));
 	if (tcb == NULL) error("Unable to allocate memory for the all-to-all cookie");
 	tcb->tcb = ch;
@@ -1975,11 +1989,7 @@ void x10rt_net_alltoall (x10rt_team team, x10rt_place role, const void *sbuf, vo
 	memset(&tcb->operation, 0, sizeof (tcb->operation));
 	tcb->operation.cb_done = collective_operation_complete;
 	tcb->operation.cookie = tcb;
-	// NOTE: I've had lots of issues with these algorithms, bouncing between "I0:Pairwise:P2P:P2P" (alg[0]) and I0:M2MComposite:P2P:P2P (alg[1])
-	if (state.collectiveAlgorithmSelection[ALLTOALL] < num_algorithms[0])
-		tcb->operation.algorithm = always_works_alg[state.collectiveAlgorithmSelection[ALLTOALL]];
-	else
-		tcb->operation.algorithm = must_query_alg[state.collectiveAlgorithmSelection[ALLTOALL]-num_algorithms[0]];
+	tcb->operation.algorithm = state.teams[team].algorithm[PAMI_XFER_ALLTOALL];
 	tcb->operation.cmd.xfer_alltoall.rcvbuf = (char*)dbuf;
 	tcb->operation.cmd.xfer_alltoall.rtype = PAMI_TYPE_BYTE;
 	tcb->operation.cmd.xfer_alltoall.rtypecount = el*count;
@@ -1988,29 +1998,18 @@ void x10rt_net_alltoall (x10rt_team team, x10rt_place role, const void *sbuf, vo
 	tcb->operation.cmd.xfer_alltoall.stypecount = el*count;
 
 	#ifdef DEBUG
-		if (role==0)
-		{
-			fprintf(stderr, "AllToAll algorithms are always %s", always_works_md[0].name);
-			for (size_t i=1; i<num_algorithms[0]; i++)
-				fprintf(stderr, ", %s", always_works_md[i].name);
-			if (num_algorithms[1] > 0)
-			{
-				fprintf(stderr, " and sometimes %s", must_query_md[0].name);
-				for (size_t i=1; i<num_algorithms[1]; i++)
-					fprintf(stderr, ", %s", must_query_md[i].name);
-			}
-			fprintf(stderr, ".\n");
-		}
-		fprintf(stderr, "Place %u, role %u executing AllToAll (%i) with team %u. cookie=%p\n", state.myPlaceId, role, state.collectiveAlgorithmSelection[ALLTOALL], team, (void*)tcb);
+		fprintf(stderr, "Place %u, role %u executing AllToAll with team %u. cookie=%p\n", state.myPlaceId, role, team, (void*)tcb);
 	#endif
 	status = PAMI_Collective(context, &tcb->operation);
 	if (status != PAMI_SUCCESS) error("Unable to issue an all-to-all on team %u", team);
 	if (!state.numParallelContexts)
 		PAMI_Context_unlock(context);
 
+/*  The local copy is not needed.  PAMI handles this for us.
 	// copy the local section of data from src to dst
 	int blockSize = el*count;
 	memcpy(((char*)dbuf)+(blockSize*role), ((char*)sbuf)+(blockSize*role), blockSize);
+*/
 }
 
 void x10rt_net_allreduce (x10rt_team team, x10rt_place role, const void *sbuf, void *dbuf,
@@ -2027,21 +2026,7 @@ void x10rt_net_allreduce (x10rt_team team, x10rt_place role, const void *sbuf, v
 		if (status != PAMI_SUCCESS) error("Unable to lock the context to send a message");
 	}
 
-	// figure out how many different algorithms are available for the barrier
-	size_t num_algorithms[2]; // [0]=always works, and [1]=sometimes works lists
-	status = PAMI_Geometry_algorithms_num(state.teams[team].geometry, PAMI_XFER_ALLREDUCE, num_algorithms);
-	if (status != PAMI_SUCCESS || num_algorithms[0]==0) error("Unable to query the algorithm counts for team %u", team);
-
-	// query what the different algorithms are
-	pami_algorithm_t *always_works_alg = (pami_algorithm_t*)alloca(sizeof(pami_algorithm_t)*num_algorithms[0]);
-	pami_metadata_t *always_works_md = (pami_metadata_t*)alloca(sizeof(pami_metadata_t)*num_algorithms[0]);
-	pami_algorithm_t *must_query_alg = (pami_algorithm_t*)alloca(sizeof(pami_algorithm_t)*num_algorithms[1]);
-	pami_metadata_t *must_query_md = (pami_metadata_t*)alloca(sizeof(pami_metadata_t)*num_algorithms[1]);
-	status = PAMI_Geometry_algorithms_query(state.teams[team].geometry, PAMI_XFER_ALLREDUCE, always_works_alg,
-			always_works_md, num_algorithms[0], must_query_alg, must_query_md, num_algorithms[1]);
-	if (status != PAMI_SUCCESS) error("Unable to query the supported algorithms for team %u", team);
-
-	// select a algorithm, and issue the collective
+	// Issue the collective
 	x10rt_pami_team_callback *tcb = (x10rt_pami_team_callback *)malloc(sizeof(x10rt_pami_team_callback));
 	if (tcb == NULL) error("Unable to allocate memory for a allreduce callback header");
 	tcb->tcb = ch;
@@ -2049,11 +2034,7 @@ void x10rt_net_allreduce (x10rt_team team, x10rt_place role, const void *sbuf, v
 	memset(&tcb->operation, 0, sizeof (tcb->operation));
 	tcb->operation.cb_done = collective_operation_complete;
 	tcb->operation.cookie = tcb;
-	// TODO - figure out a better way to choose.  For now, the code just uses the first *known good* algorithm.
-	if (state.collectiveAlgorithmSelection[ALLREDUCE] < num_algorithms[0])
-		tcb->operation.algorithm = always_works_alg[state.collectiveAlgorithmSelection[ALLREDUCE]];
-	else
-		tcb->operation.algorithm = must_query_alg[state.collectiveAlgorithmSelection[ALLREDUCE]-num_algorithms[0]];
+	tcb->operation.algorithm = state.teams[team].algorithm[PAMI_XFER_ALLREDUCE];
 	tcb->operation.cmd.xfer_allreduce.sndbuf = (char*)sbuf;
 	tcb->operation.cmd.xfer_allreduce.stype = DATATYPE_CONVERSION_TABLE[dtype];
 	tcb->operation.cmd.xfer_allreduce.stypecount = count;
@@ -2074,7 +2055,7 @@ void x10rt_net_allreduce (x10rt_team team, x10rt_place role, const void *sbuf, v
 	tcb->operation.cmd.xfer_allreduce.data_cookie = NULL;
 	tcb->operation.cmd.xfer_allreduce.commutative = 1;
 	#ifdef DEBUG
-		fprintf(stderr, "Place %u executing allreduce (%i), with type=%u and op=%u\n", state.myPlaceId, state.collectiveAlgorithmSelection[ALLREDUCE], dtype, op);
+		fprintf(stderr, "Place %u executing allreduce, with type=%u and op=%u\n", state.myPlaceId, dtype, op);
 	#endif
 	status = PAMI_Collective(context, &tcb->operation);
 	if (status != PAMI_SUCCESS) error("Unable to issue an allreduce on team %u", team);

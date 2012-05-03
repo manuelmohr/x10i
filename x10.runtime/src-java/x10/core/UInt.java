@@ -11,6 +11,7 @@
 
 package x10.core;
 
+import x10.rtt.RuntimeType;
 import x10.rtt.Type;
 import x10.rtt.Types;
 import x10.x10rt.X10JavaDeserializer;
@@ -29,9 +30,9 @@ final public class UInt extends Number implements StructI, java.lang.Comparable<
     private static final long serialVersionUID = 1L;
     private static final short _serialization_id = x10.x10rt.DeserializationDispatcher.addDispatcher(x10.x10rt.DeserializationDispatcher.ClosureKind.CLOSURE_KIND_NOT_ASYNC, UInt.class);
     
-    public static final x10.rtt.RuntimeType<?> $RTT = Types.UINT;
-    public x10.rtt.RuntimeType<?> $getRTT() {return $RTT;}
-    public x10.rtt.Type<?> $getParam(int i) {return null;}
+    public static final RuntimeType<?> $RTT = Types.UINT;
+    public RuntimeType<?> $getRTT() {return $RTT;}
+    public Type<?> $getParam(int i) {return null;}
 
     final int $value;
 
@@ -49,14 +50,12 @@ final public class UInt extends Number implements StructI, java.lang.Comparable<
             int h = 255;
             java.lang.String highPropValue = System.getProperty("x10.lang.UInt.Cache.high");
             if (highPropValue != null) {
-                // Use Long.decode here to avoid invoking methods that
-                // require Integer's autoboxing cache to be initialized
-                int i = java.lang.Long.decode(highPropValue).intValue();
+                int i = java.lang.Integer.parseInt(highPropValue);
                 i = Math.max(i, h);
                 // Maximum array size is Integer.MAX_VALUE
                 h = Math.min(i, Integer.MAX_VALUE + low);
             }
-            high = enabled ? h : low; // disable caching
+            high = enabled ? h : (low - 1); // disable caching
 
             cache = new UInt[high - low + 1];
             for (int i = 0; i < cache.length; ++i) {
@@ -79,7 +78,8 @@ final public class UInt extends Number implements StructI, java.lang.Comparable<
     }
     
     public static int $unbox(Object obj) {
-        return ((UInt)obj).$value;
+        if (obj instanceof UInt) return ((UInt)obj).$value;
+        else return ((java.lang.Integer)obj).intValue();
     }
     
     // make $box/$unbox idempotent
@@ -146,26 +146,31 @@ final public class UInt extends Number implements StructI, java.lang.Comparable<
     // implements Arithmetic<UInt>
     public UInt $plus$G() { return this; }
     public UInt $minus$G() { return UInt.$box(-$value); }
-    public UInt $plus(UInt a, Type t) { return UInt.$box($value + a.$value); }
-    public UInt $minus(UInt a, Type t) { return UInt.$box($value - a.$value); }
-    public UInt $times(UInt a, Type t) { return UInt.$box($value * a.$value); }
-    public UInt $over(UInt a, Type t) { return UInt.$box(Unsigned.div($value,a.$value)); }
+    public UInt $plus(java.lang.Object a, Type t) { return UInt.$box($value + ((UInt)a).$value); }
+    public UInt $minus(java.lang.Object a, Type t) { return UInt.$box($value - ((UInt)a).$value); }
+    public UInt $times(java.lang.Object a, Type t) { return UInt.$box($value * ((UInt)a).$value); }
+    public UInt $over(java.lang.Object a, Type t) { return UInt.$box(Unsigned.div($value,((UInt)a).$value)); }
     
     // implements Bitwise<UInt>
     public UInt $tilde$G() { return UInt.$box(~$value); }
-    public UInt $ampersand(UInt a, Type t) { return UInt.$box($value & a.$value); }
-    public UInt $bar(UInt a, Type t) { return UInt.$box($value | a.$value); }
-    public UInt $caret(UInt a, Type t) { return UInt.$box($value ^ a.$value); }
+    public UInt $ampersand(java.lang.Object a, Type t) { return UInt.$box($value & ((UInt)a).$value); }
+    public UInt $bar(java.lang.Object a, Type t) { return UInt.$box($value | ((UInt)a).$value); }
+    public UInt $caret(java.lang.Object a, Type t) { return UInt.$box($value ^ ((UInt)a).$value); }
     public UInt $left$G(final int count) { return UInt.$box($value << count); }
     public UInt $right$G(final int count) { return UInt.$box($value >>> count); } // UInt is always unsigned
     public UInt $unsigned_right$G(final int count) { return UInt.$box($value >>> count); }
     
-    // implements Ordered<UInt>. Rely on autoboxing of booleans
-    public Object $lt(UInt a, Type t) { return Unsigned.lt($value,a.$value); }
-    public Object $gt(UInt a, Type t) { return Unsigned.gt($value,a.$value); }
-    public Object $le(UInt a, Type t) { return Unsigned.le($value,a.$value); }
-    public Object $ge(UInt a, Type t) { return Unsigned.ge($value,a.$value); }
-    
+    // implements Ordered<UInt>
+    public java.lang.Object $lt(java.lang.Object a, Type t) { return x10.core.Boolean.$box(Unsigned.lt($value,((UInt)a).$value)); }
+    public java.lang.Object $gt(java.lang.Object a, Type t) { return x10.core.Boolean.$box(Unsigned.gt($value,((UInt)a).$value)); }
+    public java.lang.Object $le(java.lang.Object a, Type t) { return x10.core.Boolean.$box(Unsigned.le($value,((UInt)a).$value)); }
+    public java.lang.Object $ge(java.lang.Object a, Type t) { return x10.core.Boolean.$box(Unsigned.ge($value,((UInt)a).$value)); }
+    // for X10PrettyPrinterVisitor.returnSpecialTypeFromDispatcher
+    public boolean $lt$O(java.lang.Object a, Type t) { return Unsigned.lt($value,((UInt)a).$value); }
+    public boolean $gt$O(java.lang.Object a, Type t) { return Unsigned.gt($value,((UInt)a).$value); }
+    public boolean $le$O(java.lang.Object a, Type t) { return Unsigned.le($value,((UInt)a).$value); }
+    public boolean $ge$O(java.lang.Object a, Type t) { return Unsigned.ge($value,((UInt)a).$value); }
+
     // extends abstract class java.lang.Number
     @Override
     public int intValue() {

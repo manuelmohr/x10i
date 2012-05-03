@@ -184,6 +184,7 @@ public class X10CPPTranslator extends Translator {
 		}
 		
 		X10CPPCompilerOptions opts = (X10CPPCompilerOptions) job.extensionInfo().getOptions();
+/* 		Statement hooks are no longer needed in the current debugger.  They were used by the "small scale" debugger, based on gdb.
 		if (opts.x10_config.DEBUG && n instanceof Stmt && !(n instanceof Assert) && !(n instanceof Block) && !(n instanceof Catch) && !(parent instanceof If) && !(n instanceof For))
 		{
 			w.write("_X10_STATEMENT_HOOK()");
@@ -192,6 +193,7 @@ public class X10CPPTranslator extends Translator {
 			else
 				w.write(", ");
 		}
+*/		
 		
 		final int startLine = w.currentStream().getStreamLineNumber(); // for debug info
 
@@ -228,6 +230,7 @@ public class X10CPPTranslator extends Translator {
 		                final int adjustedEndLine = adjustELNForNode(endLine, n);
 		                final int fixedEndLine = adjustedEndLine < adjustedStartLine ? adjustedStartLine : adjustedEndLine;
 		                //final boolean generated = n.position().isCompilerGenerated(); // || ((parent instanceof Closure) && (!(n instanceof ProcedureDecl) || (n instanceof ProcedureDecl && ((ProcedureDecl)n).reachable())));
+		                final boolean isBlock = (n instanceof polyglot.ast.Block_c);
 		                final boolean addLastLine = ((n instanceof ConstructorDecl) || (n instanceof Block && !((Block)n).statements().isEmpty() && 
 		                		((Block)n).position().endLine() != ((Block)n).statements().get(((Block)n).statements().size()-1).position().endLine()));
 		                w.currentStream().registerCommitListener(new ClassifiedStream.CommitListener() {
@@ -241,7 +244,7 @@ public class X10CPPTranslator extends Translator {
 		                            if (addLastLine)
 		                        		lineNumberMap.put(cppFile, cppEndLine, cppEndLine, file, lastX10Line, column);
 		                        }
-		                        else //if (!generated)
+		                        else if (!isBlock)
 		                        {
 		                        	lineNumberMap.put(cppFile, cppStartLine, cppEndLine, file, line, column);
 		                        	if (addLastLine)
@@ -259,7 +262,10 @@ public class X10CPPTranslator extends Translator {
 		            if (n instanceof FieldDecl && !c.inTemplate() && !((FieldDecl)n).flags().flags().isStatic() && !n.position().isCompilerGenerated()) // the c.inTemplate() skips mappings for templates, which don't have a fixed size.
 		            	lineNumberMap.addClassMemberVariable(((FieldDecl)n).name().toString(), ((FieldDecl)n).type().toString(), Emitter.mangled_non_method_name(context.currentClass().toString()), context.currentClass().isX10Struct(), false, false);
 		            else if (n instanceof LocalDecl && !((LocalDecl)n).position().isCompilerGenerated())
-		            	lineNumberMap.addLocalVariableMapping(((LocalDecl)n).name().toString(), ((LocalDecl)n).type().toString(), line, lastX10Line, file, false, -1, false);
+		            {
+		            	X10ClassType t = ((LocalDecl)n).type().type().toClass();
+		            	lineNumberMap.addLocalVariableMapping(((LocalDecl)n).name().toString(), ((LocalDecl)n).type().toString(), line, lastX10Line, file, false, -1, (t==null?false:t.isX10Struct()));
+		            }
 		            else if (def != null)
 		            {
 		            	// include method arguments in the local variable tables
@@ -281,7 +287,10 @@ public class X10CPPTranslator extends Translator {
 					            	{
 					            		Formal arg = args.get(0);
 					            		if (arg.type().toString().equals(parentClass))
-					            			lineNumberMap.addClassMemberVariable(arg.name().toString(), parentClass, Emitter.mangled_non_method_name(thisClass), false, true, false);
+					            		{
+					            			X10ClassType t = arg.type().type().toClass();
+					            			lineNumberMap.addClassMemberVariable(arg.name().toString(), parentClass, Emitter.mangled_non_method_name(thisClass), (t==null?false:t.isX10Struct()), true, false);
+					            		}
 					            	}
 			            		}
 		            			if (cd.body().statements().size() > 0)
@@ -291,7 +300,7 @@ public class X10CPPTranslator extends Translator {
 			            			{
 			            				String superClass = ((X10ConstructorCall)s).constructorInstance().returnType().toString();
 			            				if (!"x10.lang.Object".equals(superClass)) // don't bother pointing out an extension of x10.lang.Object in the debug maps
-			            					lineNumberMap.addClassMemberVariable(superClass, superClass, Emitter.mangled_non_method_name(thisClass), false, false, true);
+			            					lineNumberMap.addClassMemberVariable(superClass, superClass, Emitter.mangled_non_method_name(thisClass), ((X10ConstructorCall)s).constructorInstance().returnType().toClass().isX10Struct(), false, true);
 			            			}
 		            			}
 		            		}
@@ -303,7 +312,10 @@ public class X10CPPTranslator extends Translator {
 		            	{
 		            		Formal arg = args.get(i);
 		            		if (!arg.position().isCompilerGenerated())
-		            			lineNumberMap.addLocalVariableMapping(arg.name().toString(), arg.type().toString(), line, lastX10Line, file, false, -1, false);
+		            		{
+		            		    X10ClassType t = arg.type().type().toClass();
+		            			lineNumberMap.addLocalVariableMapping(arg.name().toString(), arg.type().toString(), line, lastX10Line, file, false, -1, (t==null?false:t.isX10Struct()));
+		            		}
 		            	}
 		            	// include "this" for non-static methods
 		            	if (!def.flags().isStatic() && defSource.reachable() != null && defSource.reachable() && !c.inTemplate())
@@ -767,7 +779,6 @@ public class X10CPPTranslator extends Translator {
         	}
         }
         catch(Exception e) {
-        	e.printStackTrace();
         	eq.enqueue(noError?ErrorInfo.WARNING:ErrorInfo.POST_COMPILER_ERROR, e.getMessage() != null ? e.getMessage() : e.toString());
         	return false;
         }

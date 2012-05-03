@@ -11,10 +11,18 @@
 
 package x10.runtime.impl.java;
 
-import java.io.*;
-import java.lang.*;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
@@ -95,12 +103,34 @@ public class PreLoader {
 	 * @param c the class to pre-load
 	 * @param intern whether to intern string constants
 	 */
-	public static void preLoad(Class<?> c, boolean intern) {
-		if (isSystemClass(c)) return;
-        // We need to load all X10 classes so that all statics can be initialized at boot time
-        loadX10Classes();
-		preLoad(getClassFile(c), c, intern);
-	}
+        public static void preLoad(Class<?> c, boolean intern) {
+            preLoad(c, null, intern);
+        }
+        /**
+         * Recursively pre-load the given class and all the classes it statically
+         * references, optionally interning string constants.
+         * @param c the class to pre-load
+         * @param extraClasses the extra classes to pre-load
+         * @param intern whether to intern string constants
+         */
+        public static void preLoad(Class<?> c, List<String> extraClasses, boolean intern) {
+            if (c != null && isSystemClass(c)) return;
+            // We need to load all X10 classes so that all statics can be initialized at boot time
+            loadX10Classes();
+            if (c != null) {
+            	preLoad(getClassFile(c), c, intern);
+            }
+            if (extraClasses != null) {
+                // preload extra classes to make static initialization work properly with reflection
+                for (String name : extraClasses) {
+                    try {
+                        Class<?> extraClass = Class.forName(name);
+                        preLoad(getClassFile(extraClass), extraClass, intern);
+                    } catch (ClassNotFoundException e) {
+                    }
+                }
+            }
+        }
 	private static void preLoad(String name, Class<?> c) {
 		preLoad(name, c, true);
 	}
@@ -164,11 +194,13 @@ public class PreLoader {
     private static void findClasses(File directory, String packageName) throws ClassNotFoundException {
         if (directory.exists()) {
             File[] files = directory.listFiles();
-            for (File file : files) {
-                if (file.isDirectory()) {
-                    findClasses(file, packageName + "." + file.getName());
-                } else if (file.getName().endsWith(".class")) {
-                    Class.forName(packageName + '.' + file.getName().substring(0, file.getName().length() - 6));
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isDirectory()) {
+                        findClasses(file, packageName + "." + file.getName());
+                    } else if (file.getName().endsWith(".class")) {
+                        Class.forName(packageName + '.' + file.getName().substring(0, file.getName().length() - 6));
+                    }
                 }
             }
         }

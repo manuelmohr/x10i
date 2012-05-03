@@ -10,7 +10,7 @@
 #
 
 #X10_VERSION=svn head
-X10_VERSION=2.2.1
+X10_VERSION=2.2.2
 VERSION=20110513
 
 #WPLATFORM is the string used to identify the platform in the web tarballs
@@ -168,9 +168,10 @@ ifeq ($(X10RT_PLATFORM), sunos)
   MOV_LDLIBS_PGAS_SOCKETS += -lresolv -lnsl -lsocket -lrt
 endif
 
-#disable PGAS_SOCKETS
-PLATFORM_SUPPORTS_PGAS_SOCKETS    := no
-
+#disable building all PGAS transports except PGAS_BGP
+PLATFORM_SUPPORTS_PGAS_SOCKETS := no
+PLATFORM_SUPPORTS_PGAS_PANE := no
+PLATFORM_SUPPORTS_PGAS_LAPI := no
 
 #{{{ Deciding what underlying PGAS builds are available
 ifdef CUSTOM_PGAS
@@ -258,6 +259,7 @@ endif
 etc/x10rt_pgas_sockets.properties:
 	@echo "X10LIB_PLATFORM=$(X10RT_PLATFORM)" > $@
 	@echo "X10LIB_CXX=$(CXX)" >> $@
+	@echo "X10LIB_CXXFLAGS=$(X10RT_PROPS_CXXFLAGS)" >> $@
 	@echo "X10LIB_LDFLAGS=$(APP_LDFLAGS_PGAS_SOCKETS)" >> $@
 	@echo "X10LIB_LDLIBS=$(APP_LDLIBS_PGAS_SOCKETS)" >> $@
 
@@ -299,6 +301,7 @@ endif
 etc/x10rt_pgas_pane.properties:
 	@echo "X10LIB_PLATFORM=$(X10RT_PLATFORM)" > $@
 	@echo "X10LIB_CXX=$(CXX)" >> $@
+	@echo "X10LIB_CXXFLAGS=$(X10RT_PROPS_CXXFLAGS)" >> $@
 	@echo "X10LIB_LDFLAGS=$(APP_LDFLAGS_PGAS_PANE)" >> $@
 	@echo "X10LIB_LDLIBS=$(APP_LDLIBS_PGAS_PANE)" >> $@
 
@@ -355,6 +358,7 @@ endif
 etc/x10rt_pgas_lapi.properties:
 	@echo "X10LIB_PLATFORM=$(X10RT_PLATFORM)" > $@
 	@echo "X10LIB_CXX=$(CXX)" >> $@
+	@echo "X10LIB_CXXFLAGS=$(X10RT_PROPS_CXXFLAGS)" >> $@
 	@echo "X10LIB_LDFLAGS=$(APP_LDFLAGS_PGAS_LAPI)" >> $@
 	@echo "X10LIB_LDLIBS=$(APP_LDLIBS_PGAS_LAPI)" >> $@
 
@@ -397,6 +401,7 @@ lib/libx10rt_pgas_bgp.a: $(COMMON_OBJS) lib/libxlpgas_bgp.a
 etc/x10rt_pgas_bgp.properties:
 	@echo "X10LIB_PLATFORM=$(X10RT_PLATFORM)" > $@
 	@echo "X10LIB_CXX=$(CXX)" >> $@
+	@echo "X10LIB_CXXFLAGS=$(X10RT_PROPS_CXXFLAGS)" >> $@
 	@echo "X10LIB_LDFLAGS=$(APP_LDFLAGS_PGAS_BGP)" >> $@
 	@echo "X10LIB_LDLIBS=$(APP_LDLIBS_PGAS_BGP)" >> $@
 

@@ -13,11 +13,13 @@ package x10c;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.Set;
 
 import polyglot.frontend.ExtensionInfo;
 import polyglot.main.UsageError;
 import polyglot.main.Main.TerminationException;
+import x10cpp.postcompiler.PrecompiledLibrary;
 
 public class X10CCompilerOptions extends x10.X10CompilerOptions {
 
@@ -78,8 +80,23 @@ public class X10CCompilerOptions extends x10.X10CompilerOptions {
     }
 
     @Override
+    public String constructFullClasspath() {
+        StringBuilder sb = new StringBuilder(super.constructFullClasspath());
+        for (PrecompiledLibrary pcl : x10libs) {
+            sb.append(File.pathSeparator);
+            sb.append(pcl.absolutePathToRoot + File.separator + pcl.sourceJar);
+        }
+        return sb.toString();
+    }
+
+    @Override
     public String constructPostCompilerClasspath() {
-        return output_directory + File.pathSeparator + "." + File.pathSeparator + output_classpath;
+        StringBuilder sb = new StringBuilder(super.constructPostCompilerClasspath());
+        for (PrecompiledLibrary pcl : x10libs) {
+            sb.append(File.pathSeparator);
+            sb.append(pcl.absolutePathToRoot + File.separator + pcl.sourceJar);
+        }
+        return sb.toString();
     }
 
     @Override
@@ -102,7 +119,9 @@ public class X10CCompilerOptions extends x10.X10CompilerOptions {
             if (executable_path != null) {
                 // set a new temporary directory to output_directory for creating a jar file
                 try {
-                    output_directory = createTempDir("x10c.output_directory.", null);
+                    String prefix = "x10c-" + System.getProperty("user.name") + ".";
+                    String suffix = "";
+                    output_directory = createTempDir(prefix, suffix);
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
@@ -112,6 +131,14 @@ public class X10CCompilerOptions extends x10.X10CompilerOptions {
                 output_directory = new File(current_dir);
             }
         }
+    }
+    
+    @Override
+    public void usage(PrintStream out) {
+        super.usage(out);
+        usageForFlag(out, "-c", "compile only to .java");
+        usageForFlag(out, "-post <compiler>", 
+                          "use <compiler> to generate .class files from generated .java");
     }
 
 }

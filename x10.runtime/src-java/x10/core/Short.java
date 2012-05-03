@@ -11,6 +11,7 @@
 
 package x10.core;
 
+import x10.rtt.RuntimeType;
 import x10.rtt.Type;
 import x10.rtt.Types;
 import x10.x10rt.X10JavaDeserializer;
@@ -30,9 +31,9 @@ final public class Short extends Number implements StructI, java.lang.Comparable
     private static final long serialVersionUID = 1L;
     private static final short _serialization_id = x10.x10rt.DeserializationDispatcher.addDispatcher(x10.x10rt.DeserializationDispatcher.ClosureKind.CLOSURE_KIND_NOT_ASYNC, Short.class);
     
-    public static final x10.rtt.RuntimeType<?> $RTT = Types.SHORT;
-    public x10.rtt.RuntimeType<?> $getRTT() {return $RTT;}
-    public x10.rtt.Type<?> $getParam(int i) {return null;}
+    public static final RuntimeType<?> $RTT = Types.SHORT;
+    public RuntimeType<?> $getRTT() {return $RTT;}
+    public Type<?> $getParam(int i) {return null;}
 
     final short $value;
 
@@ -43,7 +44,7 @@ final public class Short extends Number implements StructI, java.lang.Comparable
     private abstract static class Cache {
         static final boolean enabled = java.lang.Boolean.parseBoolean(System.getProperty("x10.lang.Short.Cache.enabled", "false"));
         static final int low = -128;
-        static final int high = enabled ? 127 : low; // disable caching
+        static final int high = enabled ? 127 : (low - 1); // disable caching
         static final Short cache[] = new Short[high - low + 1];
         static {
             for (int i = 0; i < cache.length; ++i) {
@@ -80,6 +81,10 @@ final public class Short extends Number implements StructI, java.lang.Comparable
         return obj;
     }
 
+    public static short $unbox(short value) {
+        return value;
+    }
+    
     public static short $unbox(int value) {
         return (short)value;
     }
@@ -120,26 +125,31 @@ final public class Short extends Number implements StructI, java.lang.Comparable
     // implements Arithmetic<Short>
     public Short $plus$G() { return this; }
     public Short $minus$G() { return Short.$box(-$value); }
-    public Short $plus(Short b, Type t) { return Short.$box($value + b.$value); }
-    public Short $minus(Short b, Type t) { return Short.$box($value - b.$value); }
-    public Short $times(Short b, Type t) { return Short.$box($value * b.$value); }
-    public Short $over(Short b, Type t) { return Short.$box($value / b.$value); }
+    public Short $plus(java.lang.Object b, Type t) { return Short.$box($value + ((Short)b).$value); }
+    public Short $minus(java.lang.Object b, Type t) { return Short.$box($value - ((Short)b).$value); }
+    public Short $times(java.lang.Object b, Type t) { return Short.$box($value * ((Short)b).$value); }
+    public Short $over(java.lang.Object b, Type t) { return Short.$box($value / ((Short)b).$value); }
     
     // implements Bitwise<Short>
     public Short $tilde$G() { return Short.$box(~$value); }
-    public Short $ampersand(Short b, Type t) { return Short.$box($value & b.$value); }
-    public Short $bar(Short b, Type t) { return Short.$box($value | b.$value); }
-    public Short $caret(Short b, Type t) { return Short.$box($value ^ b.$value); }
+    public Short $ampersand(java.lang.Object b, Type t) { return Short.$box($value & ((Short)b).$value); }
+    public Short $bar(java.lang.Object b, Type t) { return Short.$box($value | ((Short)b).$value); }
+    public Short $caret(java.lang.Object b, Type t) { return Short.$box($value ^ ((Short)b).$value); }
     public Short $left$G(final int count) { return Short.$box($value << count); }
     public Short $right$G(final int count) { return Short.$box($value >> count); }
     public Short $unsigned_right$G(final int count) { return Short.$box($value >>> count); }
     
-    // implements Ordered<Short>. Rely on autoboxing of booleans
-    public Object $lt(Short b, Type t) { return ($value < b.$value); }
-    public Object $gt(Short b, Type t) { return ($value > b.$value); }
-    public Object $le(Short b, Type t) { return ($value <= b.$value); }
-    public Object $ge(Short b, Type t) { return ($value >= b.$value); }
-    
+    // implements Ordered<Short>
+    public java.lang.Object $lt(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value < ((Short)b).$value); }
+    public java.lang.Object $gt(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value > ((Short)b).$value); }
+    public java.lang.Object $le(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value <= ((Short)b).$value); }
+    public java.lang.Object $ge(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value >= ((Short)b).$value); }
+    // for X10PrettyPrinterVisitor.returnSpecialTypeFromDispatcher
+    public boolean $lt$O(java.lang.Object b, Type t) { return $value < ((Short)b).$value; }
+    public boolean $gt$O(java.lang.Object b, Type t) { return $value > ((Short)b).$value; }
+    public boolean $le$O(java.lang.Object b, Type t) { return $value <= ((Short)b).$value; }
+    public boolean $ge$O(java.lang.Object b, Type t) { return $value >= ((Short)b).$value; }
+
     // extends abstract class java.lang.Number
     @Override
     public int intValue() {

@@ -59,11 +59,11 @@ public abstract class ParsedClassType_c extends ClassType_c implements ParsedCla
     }
     
     public ParsedClassType_c(X10ClassDef def) {
-        this(def.typeSystem(), def.position(), Types.ref(def));
+        this(def.typeSystem(), def.position(), def.position(), Types.ref(def));
     }
 
-    public ParsedClassType_c(TypeSystem ts, Position pos, Ref<? extends X10ClassDef> def) {
-        super(ts, pos, def);
+    public ParsedClassType_c(TypeSystem ts, Position pos, Position errorPos, Ref<? extends X10ClassDef> def) {
+        super(ts, pos, errorPos, def);
     }
     
     public Source fromSource() {
@@ -84,10 +84,20 @@ public abstract class ParsedClassType_c extends ClassType_c implements ParsedCla
         return outer.asType();
     }
 
+    private Name name;
     public Name name() {
-        return def().name();
+        if (name == null || def.known()) {
+            name = def().name();
+        }
+        return name;
     }
 
+    public ClassType name(Name name) {
+        ParsedClassType_c t = (ParsedClassType_c) copy();
+        t.name = name;
+        return t;
+    }
+    
     /** Get the class's super type. */
     public Type superClass() {
         return Types.get(def().superType());
