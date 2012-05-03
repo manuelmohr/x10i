@@ -304,15 +304,12 @@ public abstract class DummyDelegatingVisitor extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(final If_c n) {
-		visitAppropriate(n.consequent());
-		if (n.alternative() != null) {
-			Stmt alternative = n.alternative();
-			if (alternative instanceof Block_c) {
-				final Block_c block = (Block_c) alternative;
-				if (block.statements().size() == 1 && block.statements().get(0) instanceof If_c) {
-					alternative = block.statements().get(0);
-				}
-			}
+		final Expr condition = n.cond();
+		visitAppropriate(condition);
+		final Stmt consequent = n.consequent();
+		visitAppropriate(consequent);
+		final Stmt alternative = n.alternative();
+		if (alternative != null) {
 			visitAppropriate(alternative);
 		}
 	}
@@ -330,8 +327,8 @@ public abstract class DummyDelegatingVisitor extends X10DelegatingVisitor {
 	@Override
 	public void visit(final X10Call_c n) {
 		visitAppropriate(n.target());
-		for (final Expr e : n.arguments()) {
-			visitAppropriate(e);
+		for (final Expr argument : n.arguments()) {
+			visitAppropriate(argument);
 		}
 	}
 
