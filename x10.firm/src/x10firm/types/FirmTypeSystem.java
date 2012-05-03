@@ -238,7 +238,7 @@ public class FirmTypeSystem {
 			final TypeParamSubst subst = iface.subst();
 
 			for (final MethodDef mDef : interfaceDef.methods()) {
-				final X10MethodDef md = x10TypeSystem.methodDef(pos,
+				final X10MethodDef md = x10TypeSystem.methodDef(pos, pos,
 						boxedClassRef, Flags.PUBLIC, mDef.returnType(),
 						mDef.name(), mDef.formalTypes());
 				md.setThisDef(thisDef);

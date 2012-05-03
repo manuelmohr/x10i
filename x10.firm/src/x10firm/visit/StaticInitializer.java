@@ -215,7 +215,7 @@ public class StaticInitializer extends ContextVisitor {
 
 		for (final StaticFieldInfo sfi : initFields) {
 			// register in the table for x10-level static initialization later
-			initStmts.add(makeAddInitializer(pos, sfi, classDef));
+			initStmts.add(makeAddInitializer(pos, pos, sfi, classDef));
 		}
 
 		if (!initStmts.isEmpty()) {
@@ -291,7 +291,8 @@ public class StaticInitializer extends ContextVisitor {
 						final StaticFieldInfo fieldInfo = checkFieldDeclRHS(fd, cd);
 						if (fieldInfo.right != null) {
 							final FlagsNode fn = xnf.FlagsNode(fd.position(), flags.clearFinal());
-							final Expr init = getDefaultValue(fd.position(), fd.init().type());
+							final Position errorPos = fd.position(); // TODO can we get actual error position?
+							final Expr init = getDefaultValue(fd.position(), errorPos, fd.init().type());
 							final FieldDecl newDecl = xnf.FieldDecl(fd.position(), fn, fd.type(), fd.name(), init)
 									.fieldDef(fd.fieldDef());
 							if (cd.flags().isInterface()) {
@@ -323,7 +324,8 @@ public class StaticInitializer extends ContextVisitor {
 							}
 
 							final X10ClassType receiver = (X10ClassType) targetType;
-							return makeStaticCall(n.position(), receiver, f.name(), f.type());
+							final Position errorPos = n.position(); // TODO can we get actual error position?
+							return makeStaticCall(n.position(), errorPos, receiver, f.name(), f.type());
 						}
 					}
 				}
@@ -417,7 +419,7 @@ public class StaticInitializer extends ContextVisitor {
 		return fieldInfo;
 	}
 
-	private Call makeStaticCall(final Position pos, final X10ClassType receiver, final Id id, final Type returnType) {
+	private Call makeStaticCall(final Position pos, final Position errorPos, final X10ClassType receiver, final Id id, final Type returnType) {
 		// create MethodDef
 		final Name name = Name.make(INITIALIZER_PREFIX + id);
 		final StaticFieldInfo fieldInfo = getFieldEntry(receiver, id.id());
@@ -430,7 +432,7 @@ public class StaticInitializer extends ContextVisitor {
 		// create static call for initialization
 		final List<TypeNode> typeArgsN = Collections.<TypeNode>emptyList();
 		final List<Expr> args = Collections.<Expr>emptyList();
-		final MethodInstance mi = xts.createMethodInstance(pos, Types.ref(md));
+		final MethodInstance mi = xts.createMethodInstance(pos, errorPos, Types.ref(md));
 		final Call result = (Call) xnf
 				.X10Call(pos, xnf.CanonicalTypeNode(pos, receiver), xnf.Id(pos, name), typeArgsN, args)
 				.methodInstance(mi).type(returnType);
@@ -440,7 +442,7 @@ public class StaticInitializer extends ContextVisitor {
 	private MethodDef makeMethodDef(final X10ClassType receiver, final Name name, final Type returnType) {
 		final Position pos = Position.compilerGenerated(null);
 		final List<Ref<? extends Type>> argTypes = Collections.<Ref<? extends Type>>emptyList();
-		final MethodDef md = xts.methodDef(pos, Types.ref(receiver), Flags.STATIC, Types.ref(returnType), name,
+		final MethodDef md = xts.methodDef(pos, pos, Types.ref(receiver), Flags.STATIC, Types.ref(returnType), name,
 				argTypes);
 		return md;
 	}
@@ -463,7 +465,7 @@ public class StaticInitializer extends ContextVisitor {
 		return result;
 	}
 
-	private Expr getDefaultValue(final Position pos, final Type type) {
+	private Expr getDefaultValue(final Position pos, final Position errorPos, final Type type) {
 		if (type.isBoolean()) {
 			return xnf.BooleanLit(pos, false).type(type);
 		} else if (type.isChar()) {
@@ -480,8 +482,8 @@ public class StaticInitializer extends ContextVisitor {
 			return xnf.NullLit(pos).type(type);
 		} else if (xts.isSubtype(type, xts.UByte()) || xts.isSubtype(type, xts.UShort())
 				|| xts.isSubtype(type, xts.UInt()) || xts.isSubtype(type, xts.ULong())) {
-			final ConstructorDef cd = xts.defaultConstructor(pos, Types.ref((ClassType) type));
-			final ConstructorInstance ci = xts.createConstructorInstance(pos, Types.ref(cd));
+			final ConstructorDef cd = xts.defaultConstructor(pos, errorPos, Types.ref((ClassType) type));
+			final ConstructorInstance ci = xts.createConstructorInstance(pos, errorPos, Types.ref(cd));
 			final List<Expr> args = new ArrayList<Expr>();
 			args.add(xnf.IntLit(pos, IntLit.INT, 0).type(type));
 			return xnf.New(pos, xnf.X10CanonicalTypeNode(pos, type), args).constructorInstance(ci).type(type);
@@ -762,7 +764,7 @@ public class StaticInitializer extends ContextVisitor {
 		return result;
 	}
 
-	private Stmt makeAddInitializer(final Position pos, final StaticFieldInfo fieldInfo, final X10ClassDef classDef) {
+	private Stmt makeAddInitializer(final Position pos, final Position errorPos, final StaticFieldInfo fieldInfo, final X10ClassDef classDef) {
 		final FieldDef def = fieldInfo.fieldDef;
 		final Id id = xnf.Id(pos, def.name());
 		// replace with a static method call
@@ -777,7 +779,7 @@ public class StaticInitializer extends ContextVisitor {
 
 		final X10ClassType receiver = (X10ClassType) targetType;
 		final Type retType = def.type().get();
-		return xnf.Eval(pos, makeStaticCall(pos, receiver, id, retType));
+		return xnf.Eval(pos, makeStaticCall(pos, errorPos, receiver, id, retType));
 	}
 
 	private StaticFieldInfo getFieldEntry(final Type target, final Name name) {
