@@ -835,6 +835,7 @@ public class FirmTypeSystem {
 						instance.position());
 
 			/* fix up stuff, which was impossible to do during the import */
+			cEntity.setIdent(shortName);
 			cEntity.setOwner(ownerFirm);
 
 			entity = cEntity;
