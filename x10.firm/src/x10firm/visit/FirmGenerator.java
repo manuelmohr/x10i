@@ -1028,12 +1028,6 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			visitAppropriate(elem);
 		}
 
-		con.breakBlock = oldBreak;
-		assert con.switchNode == switchNode;
-		con.switchNode = oldSwitch;
-		assert con.casePNs == casePNs;
-		con.casePNs = oldCasePNs;
-
 		if (!hasDefaultCase) {
 			con.setCurrentBlock(curBlock);
 			final Node proj = con.newProj(switchNode, Mode.getX(), Switch.pnDefault);
@@ -1051,6 +1045,12 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		} else {
 			con.setUnreachable();
 		}
+
+		con.breakBlock = oldBreak;
+		assert con.switchNode == switchNode;
+		con.switchNode = oldSwitch;
+		assert con.casePNs == casePNs;
+		con.casePNs = oldCasePNs;
 	}
 
 	@Override
