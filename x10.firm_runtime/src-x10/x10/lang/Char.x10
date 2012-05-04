@@ -68,7 +68,7 @@ public struct Char implements Comparable[Char], Ordered[Char] {
      * @param y the specified distance
      * @return the Char whose ordinal value is the sum of the given Char's ordinal value and the given distance.
      */
-    public native operator this + (y:Int): Char;
+    public native static operator (x:Char) + (y:Int): Char;
 
     /**
      * Translate a given Char's ordinal value forward by the specified distance.
@@ -84,7 +84,7 @@ public struct Char implements Comparable[Char], Ordered[Char] {
      * @param y the specified distance
      * @return the Char whose ordinal value is the difference of the given Char's ordinal value and the given distance.
      */
-    public native operator this - (y:Int): Char;
+    public native static operator (x:Char) - (y:Int): Char;
 
     /**
      * Compute the distance between two Chars.
@@ -92,7 +92,8 @@ public struct Char implements Comparable[Char], Ordered[Char] {
      * @param y the source Char
      * @return the distance between the source Char and the target Char.
      */
-    public native operator this - (y:Char): Int;
+    public native static operator (x:Char) - (y:Char): Int;
+
 
     // FIXME: Locale sensitivity
     /**

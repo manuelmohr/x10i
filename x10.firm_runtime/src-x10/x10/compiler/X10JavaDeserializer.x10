@@ -9,9 +9,16 @@
  *  (C) Copyright IBM Corporation 2006-2010.
  */
 
-package x10.lang;
+package x10.compiler;
 
-public class NullPointerException extends Exception {
-    public def this() { super(); }
-    public def this(message: String) { super(message); }
+import x10.compiler.NativeRep;
+
+/**
+ * Used for generating static initialization code in Java backend.
+ * 
+ */
+@NativeRep("java", "x10.x10rt.X10JavaDeserializer", null, null)
+class X10JavaDeserializer {
 }
+
+// vim:shiftwidth=4:tabstop=4:expandtab

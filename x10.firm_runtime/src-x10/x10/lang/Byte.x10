@@ -301,20 +301,35 @@ public struct Byte implements Comparable[Byte], Arithmetic[Byte], Bitwise[Byte],
     public native def toString(radix:Int): String;
 
     /**
-     * Returns a String representation of this Byte as a hexadecimal number.
-     * @return a String representation of this Byte as a hexadecimal number.
+     * Returns a String representation of this Byte in base 16.
+     * This method is simply a synonym for toString(16).
+     * In particular toHexString(-20) will print -14; to print
+     * the 8 bit two's complement hexadecimal representation of a Byte v
+     * use (v as UByte).toHexString().
+     *
+     * @return a String representation of this Byte in base 16.
      */
     public def toHexString(): String = toString(16);
 
     /**
-     * Returns a String representation of this Byte as an octal number.
-     * @return a String representation of this Byte as an octal number.
+     * Returns a String representation of this Byte in base 8.
+     * This method is simply a synonym for toString(8).
+     * In particular toOctalString(-20) will print -24; to print
+     * the 8 bit two's complement octal representation of a Byte v
+     * use (v as UByte).toOctalString().
+     *
+     * @return a String representation of this Byte in base 8.
      */
     public def toOctalString(): String = toString(8);
 
     /**
-     * Returns a String representation of this Byte as a binary number.
-     * @return a String representation of this Byte as a binary number.
+     * Returns a String representation of this Byte in base 2.
+     * This method is simply a synonym for toString(2).
+     * In particular toBinaryString(-20) will print -10100; to print
+     * the 8 bit two's complement binary representation of a Byte v
+     * use (v as UByte).toBinaryString().
+     *
+     * @return a String representation of this Byte in base 2.
      */
     public def toBinaryString(): String = toString(2);
 
@@ -343,7 +358,7 @@ public struct Byte implements Comparable[Byte], Arithmetic[Byte], Bitwise[Byte],
      */
     @Native("java", "java.lang.Byte.parseByte(#s, #radix)")
     @Native("c++", "x10aux::byte_utils::parseByte(#1, #2)")
-    public native static def parse(s:String, radix:Int): Byte;
+    public native static def parse(s:String, radix:Int): Byte ; //throwsNumberFormatException;
 
     /**
      * Parses the String argument as a decimal Byte.

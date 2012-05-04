@@ -19,7 +19,6 @@ import x10.compiler.NativeRep;
  */
 @NativeRep("java", "x10.runtime.impl.java.InitDispatcher", null, null)
 class InitDispatcher {
-
     public static val UNINITIALIZED = 0;
     public static val INITIALIZED = 1;
     public static val INITIALIZING = 2;

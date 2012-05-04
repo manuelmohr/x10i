@@ -100,7 +100,7 @@ abstract class FinishState {
         }
         public def waitForFinish() {
             notifyActivityTermination();
-            if (!Runtime.STRICT_FINISH) Runtime.worker().join(latch);
+            if ((!Runtime.STRICT_FINISH) && Runtime.STATIC_THREADS) Runtime.worker().join(latch);
             latch.await();
             val t = MultipleExceptions.make(exceptions);
             if (null != t) throw t;
@@ -135,7 +135,7 @@ abstract class FinishState {
                         deref[FinishState](ref).notifyActivityTermination();
                     };
                 }
-                Runtime.runClosureAt(ref.home.id, closure);
+                Runtime.x10rtSendMessage(ref.home.id, closure);
                 Runtime.dealloc(closure);
             }
         }
@@ -176,7 +176,6 @@ abstract class FinishState {
             exception = t;
         }
         public def waitForFinish():void {
-            if (!Runtime.STRICT_FINISH) Runtime.worker().join(latch);
             latch.await();
             val t = MultipleExceptions.make(exception);
             if (null != t) throw t;
@@ -208,7 +207,7 @@ abstract class FinishState {
                     deref[FinishState](ref).notifyActivityTermination();
                 };
             }
-            Runtime.runClosureAt(ref.home.id, closure);
+            Runtime.x10rtSendMessage(ref.home.id, closure);
             Runtime.dealloc(closure);
         }
     }
@@ -391,14 +390,16 @@ abstract class FinishState {
         }
         public def waitForFinish():void {
             notifyActivityTermination();
-            if (!Runtime.STRICT_FINISH) Runtime.worker().join(latch);
+            if ((!Runtime.STRICT_FINISH) && (Runtime.STATIC_THREADS || (counts.length() == 0))) {
+                Runtime.worker().join(latch);
+            }
             latch.await();
             if (counts.length() != 0) {
                 val root = ref();
                 val closure = ()=>@RemoteInvocation { Runtime.finishStates.remove(root); };
                 seen(Runtime.hereInt()) = false;
                 for(var i:Int=0; i<Place.MAX_PLACES; i++) {
-                    if (seen(i)) Runtime.runClosureAt(i, closure);
+                    if (seen(i)) Runtime.x10rtSendMessage(i, closure);
                 }
                 Runtime.dealloc(closure);
             }
@@ -546,7 +547,7 @@ abstract class FinishState {
             count = 0;
             exceptions = null;
             lock.unlock();
-            Runtime.runClosureAt(ref.home.id, closure);
+            Runtime.x10rtSendMessage(ref.home.id, closure);
             Runtime.dealloc(closure);
         }
     }
@@ -701,7 +702,7 @@ abstract class FinishState {
             count = 0;
             exceptions = null;
             lock.unlock();
-            Runtime.runClosureAt(ref.home.id, closure);
+            Runtime.x10rtSendMessage(ref.home.id, closure);
             Runtime.dealloc(closure);
         }
     }

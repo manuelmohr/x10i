@@ -287,22 +287,22 @@ x10_boolean {{method(op, xtype)}}({{ctype}} self, {{ctype}} other)
 {%- if type.movableBy != None %}
 	{%- set movable = type.movableBy %}
 
-/* {{xtype}}.operator +({{movable.name}}):{{xtype}} */
-{{ctype}} {{method(" + ", movable.name)}}({{ctype}} self, {{movable.ctype}} x)
+/* static {{xtype}}.operator ({{xtype}})+({{movable.name}}):{{xtype}} */
+{{ctype}} {{method(" + ", xtype, movable.name)}}({{ctype}} a, {{movable.ctype}} b)
 {
-	return self + x;
+	return a + b;
 }
 
-/* {{ctype}}.operator -({{movable.name}}):{{xtype}} */
-{{ctype}} {{method(" - ", movable.name)}}({{ctype}} self, {{movable.ctype}} x)
+/* static {{ctype}}.operator ({{xtype}})-({{movable.name}}):{{xtype}} */
+{{ctype}} {{method(" - ", xtype, movable.name)}}({{ctype}} a, {{movable.ctype}} b)
 {
-	return self - x;
+	return a - b;
 }
 
-/* {{ctype}}.operator -({{xtype}}):{{movable.name}} */
-{{movable.ctype}} {{method(" - ", xtype)}}({{ctype}} self, {{ctype}} y)
+/* static {{ctype}}.operator ({{xtype}})-({{xtype}}):{{movable.name}} */
+{{movable.ctype}} {{method(" - ", xtype, xtype)}}({{ctype}} a, {{ctype}} b)
 {
-	return self - y;
+	return a - b;
 }
 {%- endif %}
 
