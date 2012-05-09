@@ -105,11 +105,10 @@ public class ClosureRemover extends ContextVisitor {
         if (n instanceof ClassDecl) {
             ClassDecl cd = (ClassDecl) n;
             final X10ClassDef def = (X10ClassDef) cd.classDef();
-            final ClassType ct = def.asType();
             final List<ClassMember> nmembers = new ArrayList<ClassMember>();
 
             // closure -> static method
-            cd = (ClassDecl) cd.visitChildren(createClosureToStaticMethodVisitor(ct, nmembers));
+            cd = (ClassDecl) cd.visitChildren(createClosureToStaticMethodVisitor(def, nmembers));
 
             // closure -> static nested class
             cd = (ClassDecl) cd.visitChildren(createClosureToStaticNestedClassVisitor(def, nmembers));
@@ -122,7 +121,7 @@ public class ClosureRemover extends ContextVisitor {
         return n;
     }
 
-    private ContextVisitor createClosureToStaticMethodVisitor(final ClassType ct, final List<ClassMember> nmembers) {
+    private ContextVisitor createClosureToStaticMethodVisitor(final X10ClassDef def, final List<ClassMember> nmembers) {
         return new ContextVisitor(job,ts,nf){
             protected Node leaveCall(Node parent, Node old, Node n, NodeVisitor v) throws SemanticException {
                 if (n instanceof ClosureCall) {
@@ -160,11 +159,21 @@ public class ClosureRemover extends ContextVisitor {
                         
                         for (VarInstance<? extends VarDef> vi : capturedEnv) {
                             if (vi instanceof ThisInstance) {
-                                arguments.add(xnf.Special(pos, Kind.THIS).type(vi.type()));
-                                argTypes.add(Types.ref(vi.type()));
-                                
-                                X10LocalDef li = xts.localDef(pos, Flags.FINAL, Types.ref(vi.type()), OUTER_NAME);
-                                formals.add(xnf.Formal(pos, xnf.FlagsNode(pos, Flags.FINAL), xnf.CanonicalTypeNode(pos, Types.ref(vi.type())), xnf.Id(pos, OUTER_NAME)).localDef(li));
+                                // copy type parameters of def to type as a workaround for missing type arguments in the type of ThisInstance. 
+                                Type viType = null;
+//                                viType = vi.type();
+                                X10ClassType defType = def.asType();
+                                List<ParameterType> defTypeParameters = def.typeParameters();
+                                if (defTypeParameters != null && defTypeParameters.size() > 0) {
+                                    defType = defType.typeArguments(new ArrayList<Type>(defTypeParameters));
+                                }
+                                viType = defType;
+
+                                arguments.add(xnf.This(pos).type(viType));
+                                argTypes.add(Types.ref(viType));
+
+                                X10LocalDef li = xts.localDef(pos, Flags.FINAL, Types.ref(viType), OUTER_NAME);
+                                formals.add(xnf.Formal(pos, xnf.FlagsNode(pos, Flags.FINAL), xnf.CanonicalTypeNode(pos, Types.ref(viType)), xnf.Id(pos, OUTER_NAME)).localDef(li));
                             }
                         }
                         
@@ -216,7 +225,9 @@ public class ClosureRemover extends ContextVisitor {
                             }
                         }
                         
-                        X10MethodDef md = (X10MethodDef) xts.methodDef(pos, Types.ref(ct), flags, cld.returnType(), name, rts, argTypes, ((X10ClassDef)ct.def()).thisDef(), cld.formalNames(), cld.guard(), cld.typeGuard(), cld.offerType(), null);
+                        ClassType ct = def.asType();
+
+                        X10MethodDef md = (X10MethodDef) xts.methodDef(pos, pos, Types.ref(ct), flags, cld.returnType(), name, rts, argTypes, ct.def().thisDef(), cld.formalNames(), cld.guard(), cld.typeGuard(), cld.offerType(), null);
                         
                         X10MethodDecl mdcl = xnf.X10MethodDecl(pos, xnf.FlagsNode(pos, flags), cl.returnType(), xnf.Id(pos, name), tps, formals, null, null, body);
     
@@ -243,6 +254,10 @@ public class ClosureRemover extends ContextVisitor {
                     protected Node leaveCall(Node parent, Node old, Node n, NodeVisitor v) throws SemanticException {
                         if (n instanceof Field) {
                             Field field = (Field) n;
+                            // XTENLANG-2927: Only fields of this, which is captured as out$, are captured and translated.  
+                            if (!(field.target() instanceof Field && ((Field) field.target()).name().id().equals(OUTER_NAME))) {
+                                return n;
+                            }
                             for (VarInstance<? extends VarDef> var : capturedEnv) {
                                 if (!var.flags().isFinal()) {
                                     continue;
@@ -361,7 +376,7 @@ public class ClosureRemover extends ContextVisitor {
                     }
                     
                     // TODO handle "this" in type constraints
-                    X10MethodDef closureMethodDef = xts.methodDef(pos, Types.ref(staticNestedClassDef.asType()), Flags.PUBLIC, cld.returnType(), ClosureCall.APPLY, Collections.<ParameterType>emptyList(), cld.formalTypes(), staticNestedClassDef.thisDef(), cld.formalNames(), cld.guard(), cld.typeGuard(), cld.offerType(), null);
+                    X10MethodDef closureMethodDef = xts.methodDef(pos, pos, Types.ref(staticNestedClassDef.asType()), Flags.PUBLIC, cld.returnType(), ClosureCall.APPLY, Collections.<ParameterType>emptyList(), cld.formalTypes(), staticNestedClassDef.thisDef(), cld.formalNames(), cld.guard(), cld.typeGuard(), cld.offerType(), null);
                     
                     staticNestedClassDef.setMethods(Collections.singletonList(closureMethodDef));
                     // create class decl
@@ -385,7 +400,7 @@ public class ClosureRemover extends ContextVisitor {
                     staticNestedClassDecl = staticNestedClassDecl.typeParameters(tpns);
                     
                     final List<NamedVariable> capturedVarsExThis = new ArrayList<NamedVariable>();
-                    Map<Name, X10FieldDef> nameToLocalDef = CollectionFactory.newHashMap();
+                    Map<VarDef, X10FieldDef> nameToLocalDef = CollectionFactory.newHashMap();
                     
                     // rewrite closure method body
                     closureBody = rewriteClosureBody(closureBody, staticNestedClassDef, capturedEnv, capturedVarsExThis, nameToLocalDef, cl.formals());
@@ -416,24 +431,37 @@ public class ClosureRemover extends ContextVisitor {
                         if (vi instanceof ThisInstance || (vi instanceof FieldInstance && !vi.flags().isFinal())) { // the latter means the receiver fo vi should be this
                             Name name = OUTER_NAME;
                             
-                            X10FieldDef fi = nameToLocalDef.get(name);
+                            X10FieldDef fi = nameToLocalDef.get(vi.def());
                             if (fi == null) { // "this" or a field of "this" is "captured", but never accessed -- skip
                                 continue;
                             }
                             
-                            X10LocalDef li = xts.localDef(pos, Flags.FINAL, Types.ref(vi.type()), name);
-                            X10Formal formal = xnf.Formal(pos, xnf.FlagsNode(pos, Flags.FINAL), xnf.X10CanonicalTypeNode(pos, Types.baseType(vi.type())), xnf.Id(pos, name)).localDef(li);
+                            // copy type parameters of def to type as a workaround for missing type arguments in the type of ThisInstance. 
+                            Type viType = null;
+                            if (vi instanceof ThisInstance) {
+                                X10ClassType defType = def.asType();
+                                List<ParameterType> defTypeParameters = def.typeParameters();
+                                if (defTypeParameters != null && defTypeParameters.size() > 0) {
+                                    defType = defType.typeArguments(new ArrayList<Type>(defTypeParameters));
+                                }
+                                viType = defType;
+                            } else {
+                                viType = vi.type();
+                            }
+                            
+                            X10LocalDef li = xts.localDef(pos, Flags.FINAL, Types.ref(viType), name);
+                            X10Formal formal = xnf.Formal(pos, xnf.FlagsNode(pos, Flags.FINAL), xnf.X10CanonicalTypeNode(pos, Types.baseType(viType)), xnf.Id(pos, name)).localDef(li);
                             formals.add(formal);
                             formalNames.add(li);
-                            argTypes.add(vi.def().type());
+                            argTypes.add(Types.ref(viType));
                             args.add(createExpr(pos, vi));
                             
                             staticNestedClassDef.addField(fi);
                             
-                            FieldDecl fdcl = xnf.FieldDecl(pos, xnf.FlagsNode(pos, Flags.FINAL.Private()), xnf.X10CanonicalTypeNode(pos, vi.type()), xnf.Id(pos, name));
+                            FieldDecl fdcl = xnf.FieldDecl(pos, xnf.FlagsNode(pos, Flags.FINAL.Private()), xnf.X10CanonicalTypeNode(pos, viType), xnf.Id(pos, name));
                             cm.add(fdcl.fieldDef(fi));
                             
-                            Expr fa = xnf.FieldAssign(pos, xnf.Special(pos, Kind.THIS).type(staticNestedClassDef.asType()), xnf.Id(pos, name), Assign.ASSIGN, xnf.Local(pos, xnf.Id(pos, name)).localInstance(li.asInstance()).type(vi.type())).fieldInstance(fi.asInstance()).type(Types.get(fi.type()));
+                            Expr fa = xnf.FieldAssign(pos, xnf.This(pos).type(staticNestedClassDef.asType()), xnf.Id(pos, name), Assign.ASSIGN, xnf.Local(pos, xnf.Id(pos, name)).localInstance(li.asInstance()).type(viType)).fieldInstance(fi.asInstance()).type(Types.get(fi.type()));
                             body2 = body2.append(xnf.Eval(pos, fa));
                             break;
                         }
@@ -447,14 +475,14 @@ public class ClosureRemover extends ContextVisitor {
                         argTypes.add(li.type());
                         args.add(vn);
                         
-                        X10FieldDef fd = nameToLocalDef.get(vn.name().id());
+                        X10FieldDef fd = nameToLocalDef.get(vn.varInstance().def());
                         assert (fd != null);
                         
                         staticNestedClassDef.addField(fd);
                         FieldDecl fdcl = xnf.FieldDecl(pos, xnf.FlagsNode(pos, fd.flags()), xnf.X10CanonicalTypeNode(pos, vn.type()), xnf.Id(pos, name));
                         cm.add(fdcl.fieldDef(fd));
                         
-                        Expr fa = xnf.FieldAssign(pos, xnf.Special(pos, Kind.THIS).type(staticNestedClassDef.asType()), xnf.Id(pos, name), Assign.ASSIGN, xnf.Local(pos, xnf.Id(pos, name)).localInstance(li.asInstance()).type(vn.type())).fieldInstance(fd.asInstance()).type(Types.get(fd.type()));
+                        Expr fa = xnf.FieldAssign(pos, xnf.This(pos).type(staticNestedClassDef.asType()), xnf.Id(pos, name), Assign.ASSIGN, xnf.Local(pos, xnf.Id(pos, name)).localInstance(li.asInstance()).type(vn.type())).fieldInstance(fd.asInstance()).type(Types.get(fd.type()));
                         body2 = body2.append(xnf.Eval(pos, fa));
                     }
                     
@@ -466,7 +494,7 @@ public class ClosureRemover extends ContextVisitor {
                     List<Type> typeArgs = new ArrayList<Type>(staticNestedClassDef.typeParameters());
                     X10ClassType staticNestedClassType = staticNestedClassDef.asType().typeArguments(typeArgs);
                     
-                    X10ConstructorDef consd = xts.constructorDef(pos,
+                    X10ConstructorDef consd = xts.constructorDef(pos, pos,
                                                               Types.ref(staticNestedClassType),
                                                               Flags.PRIVATE,
                                                               Types.ref(staticNestedClassType),
@@ -497,7 +525,7 @@ public class ClosureRemover extends ContextVisitor {
                                              final X10ClassDef staticNestedClassDef,
                                              final List<VarInstance<? extends VarDef>> capturedEnv,
                                              final List<NamedVariable> capturedVarsExThis,
-                                             final Map<Name, X10FieldDef> nameToFieldDef,
+                                             final Map<VarDef, X10FieldDef> nameToFieldDef,
                                              final List<Formal> formals
             ) {
                 final Position pos = Position.COMPILER_GENERATED;
@@ -505,6 +533,10 @@ public class ClosureRemover extends ContextVisitor {
                     protected Node leaveCall(Node parent, Node old, Node n, NodeVisitor v) throws SemanticException {
                         if (n instanceof Field) {
                             Field field = (Field) n;
+                            // XTENLANG-2927: Only fields of this, which is captured as out$, are captured and translated.  
+                            if (!(field.target() instanceof Field && ((Field) field.target()).name().id().equals(OUTER_NAME))) {
+                                return n;
+                            }
                             for (VarInstance<? extends VarDef> var : capturedEnv) {
                                 if (!var.flags().isFinal()) {
                                     continue;
@@ -528,9 +560,9 @@ public class ClosureRemover extends ContextVisitor {
                                             ff = ff.Transient();
                                         }
                                         fd = xts.fieldDef(pos, Types.ref(staticNestedClassDef.asType()), ff, Types.ref(field.type()), field.name().id());
-                                        nameToFieldDef.put(var.name(), fd);
+                                        nameToFieldDef.put(var.def(), fd);
                                     } else {
-                                        fd = nameToFieldDef.get(var.name());
+                                        fd = nameToFieldDef.get(var.def());
                                     }
                                     return xnf.Field(pos, xnf.This(pos).type(staticNestedClassDef.asType()), xnf.Id(pos, fd.name())).fieldInstance(fd.asInstance()).type(var.type());
                                 }
@@ -549,9 +581,9 @@ public class ClosureRemover extends ContextVisitor {
                                             ff = ff.Transient();
                                         }
                                         fd = xts.fieldDef(pos, Types.ref(staticNestedClassDef.asType()), ff, Types.ref(local.type()), local.name().id());
-                                        nameToFieldDef.put(var.name(), fd);
+                                        nameToFieldDef.put(var.def(), fd);
                                     } else {
-                                        fd = nameToFieldDef.get(var.name());
+                                        fd = nameToFieldDef.get(var.def());
                                     }
                                     return xnf.Field(pos, xnf.This(pos).type(staticNestedClassDef.asType()), xnf.Id(pos, fd.name())).fieldInstance(fd.asInstance()).type(var.type());
                                 }
@@ -564,13 +596,12 @@ public class ClosureRemover extends ContextVisitor {
                             Special special = (Special) n;
                             if (special.kind() == Special.THIS) {
                                 Type type = Types.baseType(special.type());
-                                X10FieldDef fi = nameToFieldDef.get(OUTER_NAME);
+                                X10FieldDef fi = nameToFieldDef.get(special.type().toClass().def().thisDef());
                                 if (fi == null) {
                                     fi = xts.fieldDef(pos, Types.ref(staticNestedClassDef.asType()), Flags.PRIVATE.Final(), Types.ref(type), OUTER_NAME);
-                                    nameToFieldDef.put(OUTER_NAME, fi);
+                                    nameToFieldDef.put(special.type().toClass().def().thisDef(), fi);
                                 }
-                                Special thiz = (Special) xnf.Special(pos, Kind.THIS).type(staticNestedClassDef.asType());
-                                return xnf.Field(pos, thiz, xnf.Id(pos, OUTER_NAME)).fieldInstance(fi.asInstance()).type(type);
+                                return xnf.Field(pos, xnf.This(pos).type(staticNestedClassDef.asType()), xnf.Id(pos, OUTER_NAME)).fieldInstance(fi.asInstance()).type(type);
                             }
                         }
                         return n;
@@ -601,9 +632,9 @@ public class ClosureRemover extends ContextVisitor {
         if (vi instanceof X10LocalInstance) {
             return xnf.Local(pos, xnf.Id(pos, vi.name())).localInstance((LocalInstance) vi.def().asInstance()).type(vi.type());
         } else if (vi instanceof X10FieldInstance) {
-            return xnf.Field(pos, xnf.Special(pos, Kind.THIS).type(((X10FieldInstance) vi).container()), xnf.Id(pos, vi.name())).fieldInstance((FieldInstance) vi.def().asInstance()).type(vi.type());
+            return xnf.Field(pos, xnf.This(pos).type(((X10FieldInstance) vi).container()), xnf.Id(pos, vi.name())).fieldInstance((FieldInstance) vi.def().asInstance()).type(vi.type());
         } else if (vi instanceof ThisInstance) {
-            return xnf.Special(pos, Kind.THIS).type(vi.type());
+            return xnf.This(pos).type(vi.type());
         }
         throw new InternalCompilerError("");//TODO
     }

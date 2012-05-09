@@ -28,18 +28,26 @@ import java.io.IOException;
  * @author Raj Barik, Vivek Sarkar
  * @author tardieu
  */
-public class Thread extends java.lang.Thread implements x10.core.RefI {
+public class Thread implements x10.core.RefI {
     private static final long serialVersionUID = 1L;
-    public static final RuntimeType<Thread> $RTT = new NamedType<Thread>("x10.lang.Thread", Thread.class, new Type<?>[] { Types.OBJECT });
+    public static final RuntimeType<Thread> $RTT = NamedType.<Thread> make("x10.lang.Thread", Thread.class, new Type<?>[] { Types.OBJECT });
     public RuntimeType<?> $getRTT() { return $RTT; }
     public Type<?> $getParam(int i) { return null; }
 
+    private java.lang.Thread jthread;
+
+    static final ThreadLocal<Thread> context = new ThreadLocal<Thread>() {
+        protected Thread initialValue() {
+            return x10.lang.Runtime.wrapNativeThread();
+        }
+    };
+
     public static Thread currentThread() {
-        return (Thread) java.lang.Thread.currentThread();
+        return context.get();
     }
 
     private Place home;    // the current place
-	
+
     public x10.core.fun.VoidFun_0_0 body;
 
     // constructor just for allocation
@@ -49,33 +57,43 @@ public class Thread extends java.lang.Thread implements x10.core.RefI {
     }
 
     public Thread $init(String name) {
-        setName(name);
-        if (!(java.lang.Thread.currentThread() instanceof Thread)) {
-            home = Place.place(X10RT.here());
-        } else {
-            home = currentThread().home();
-        }
+        jthread = new java.lang.Thread(name) {
+            public void run() {
+                context.set(Thread.this);
+                if (null != body) {
+                    body.$apply();
+                } else {
+                    $apply();
+                }
+            }
+        };
+        home = Place.place(X10RT.here());
         return this;
     }
-	
+
     public Thread(String name) {
-        super(name);
-        if (!(java.lang.Thread.currentThread() instanceof Thread)) {
-            home = Place.place(X10RT.here());
-        } else {
-            home = currentThread().home();
-        }
+        $init(name);
     }
 
-    public void run() {
-        if (null != body) {
-            body.$apply();
-        } else {
-            $apply();
-        }
+    public Thread $init() {
+        jthread = java.lang.Thread.currentThread();
+        home = Place.place(X10RT.here());
+        return this;
+    }
+
+    public Thread() {
+        $init();
     }
 
     public void $apply() {}
+
+    public void start() {
+        jthread.start();
+    }
+    
+    public void join() throws InterruptedException {
+        jthread.join();
+    }
 
     /**
      * Return current place
@@ -85,11 +103,11 @@ public class Thread extends java.lang.Thread implements x10.core.RefI {
     }
 
     public String name() {
-        return getName();
+        return jthread.getName();
     }
 
     public void name(String name) {
-        setName(name);
+        jthread.setName(name);
     }
 
     public static void park() {
@@ -97,7 +115,7 @@ public class Thread extends java.lang.Thread implements x10.core.RefI {
     }
 
     public void unpark() {
-        java.util.concurrent.locks.LockSupport.unpark(this);
+        java.util.concurrent.locks.LockSupport.unpark(jthread);
     }
 
     public static void parkNanos(Long nanos) {
@@ -105,7 +123,7 @@ public class Thread extends java.lang.Thread implements x10.core.RefI {
     }
 
     public static long getTid() {
-        return Thread.currentThread().getId();
+        return java.lang.Thread.currentThread().getId();
     }
 
     public static void sleep(long time) {

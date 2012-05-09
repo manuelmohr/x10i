@@ -57,7 +57,7 @@ import x10.types.constraints.TypeConstraint;
  */
 public interface TypeSystem {
     public static final boolean SERIALIZE_MEMBERS_WITH_CONTAINER = false;
-    public static final String CONSTRUCTOR_NAME="this";
+    public static final String CONSTRUCTOR_NAME = "this";
 
     /**
      * Initialize the type system with the compiler.  This method must be
@@ -137,7 +137,7 @@ public interface TypeSystem {
      * @param argTypes The constructor's formal parameter types.
      * @param excTypes The constructor's exception throw types.
      */
-    ConstructorDef constructorDef(Position pos, Ref<? extends ClassType> container,
+    ConstructorDef constructorDef(Position pos, Position errorPos, Ref<? extends ClassType> container,
                                             Flags flags, List<Ref<? extends Type>> argTypes);
 
     /** Create a method instance.
@@ -149,7 +149,7 @@ public interface TypeSystem {
      * @param argTypes The method's formal parameter types.
      * @param excTypes The method's exception throw types.
      */
-    MethodDef methodDef(Position pos, Ref<? extends ContainerType> container,
+    MethodDef methodDef(Position pos, Position errorPos, Ref<? extends ContainerType> container,
                                   Flags flags, Ref<? extends Type> returnType, Name name,
                                   List<Ref<? extends Type>> argTypes);
 
@@ -157,7 +157,7 @@ public interface TypeSystem {
      * @param pos Position of the constructor.
      * @param container Containing class of the constructor.
      */
-    ConstructorDef defaultConstructor(Position pos, Ref<? extends ClassType> container);
+    ConstructorDef defaultConstructor(Position pos, Position errorPos, Ref<? extends ClassType> container);
 
     /** Get an unknown class def. */
     X10ClassDef unknownClassDef();
@@ -439,11 +439,6 @@ public interface TypeSystem {
      * <code>java.lang.Exception</code>
      */
     Type Exception();
-
-    /**
-     * <code>java.lang.RuntimeException</code>
-     */
-    Type RuntimeException();
 
     /**
      * <code>java.lang.Cloneable</code>
@@ -879,16 +874,16 @@ public interface TypeSystem {
 
     X10ClassDef createClassDef(Source fromSource);
 
-    X10ParsedClassType createClassType(Position pos, Ref<? extends X10ClassDef> def);
-    X10ConstructorInstance createConstructorInstance(Position pos, Ref<? extends ConstructorDef> def);
-    MethodInstance createMethodInstance(Position pos, Ref<? extends MethodDef> def);
+    X10ParsedClassType createClassType(Position pos, Position errorPos, Ref<? extends X10ClassDef> def);
+    X10ConstructorInstance createConstructorInstance(Position pos, Position errorPos, Ref<? extends ConstructorDef> def);
+    MethodInstance createMethodInstance(Position pos, Position errorPos, Ref<? extends MethodDef> def);
     X10FieldInstance createFieldInstance(Position pos, Ref<? extends FieldDef> def);
     X10LocalInstance createLocalInstance(Position pos, Ref<? extends LocalDef> def);
 
     /**
      * Create a <code>ClosureType</code> with the given signature.
      */
-    ClosureInstance createClosureInstance(Position pos, Ref<? extends ClosureDef> def);
+    ClosureInstance createClosureInstance(Position pos, Position errorPos, Ref<? extends ClosureDef> def);
 
     ThisInstance createThisInstance(Position pos, Ref<? extends ThisDef> def);
     
@@ -946,6 +941,7 @@ public interface TypeSystem {
     X10ClassType Uninitialized();
     X10ClassType SuppressTransientError();
     X10ClassType Embed();
+    X10ClassType Throws();
 
     //Type Value();
 
@@ -1023,19 +1019,19 @@ public interface TypeSystem {
                     Ref<? extends Type> offerType);
 
 
-    X10ConstructorDef constructorDef(Position pos, Ref<? extends ClassType> container,
+    X10ConstructorDef constructorDef(Position pos, Position errorPos, Ref<? extends ClassType> container,
             Flags flags, List<Ref<? extends Type>> argTypes,
             Ref<? extends Type> offerType);
 
-    X10ConstructorDef constructorDef(Position pos, Ref<? extends ContainerType> container, Flags flags, Ref<? extends Type> returnType,
+    X10ConstructorDef constructorDef(Position pos, Position errorPos, Ref<? extends ContainerType> container, Flags flags, Ref<? extends Type> returnType,
             List<Ref<? extends Type>> argTypes, ThisDef thisDef, List<LocalDef> formalNames, Ref<CConstraint> guard,
             Ref<TypeConstraint> typeGuard, Ref<? extends Type> offerType);
 
-    X10MethodDef methodDef(Position pos, Ref<? extends ContainerType> container,
+    X10MethodDef methodDef(Position pos, Position errorPos, Ref<? extends ContainerType> container,
             Flags flags, Ref<? extends Type> returnType, Name name,
             List<Ref<? extends Type>> argTypes,  Ref<? extends Type> offerType);
 
-    X10MethodDef methodDef(Position pos, Ref<? extends ContainerType> container, Flags flags, Ref<? extends Type> returnType, Name name,
+    X10MethodDef methodDef(Position pos, Position errorPos, Ref<? extends ContainerType> container, Flags flags, Ref<? extends Type> returnType, Name name,
             List<ParameterType> typeParams, List<Ref<? extends Type>> argTypes, ThisDef thisDef, List<LocalDef> formalNames,
             Ref<CConstraint> guard, Ref<TypeConstraint> typeGuard, Ref<? extends Type> offerType, Ref<XTerm> body);
 
@@ -1081,6 +1077,14 @@ public interface TypeSystem {
     boolean isAny(Type me);
 
     boolean isStruct(Type me);
+
+    boolean isObject(Type me);
+
+    boolean isString(Type me);
+
+    boolean isIndexedMemoryChunk(Type me);
+
+    boolean isRuntime(Type me);
 
     boolean isClock(Type me);
 
@@ -1201,10 +1205,6 @@ public interface TypeSystem {
 
     X10ClassType Iterator(Type formalType);
 
-    boolean isUnsigned(Type r);
-
-    boolean isSigned(Type l);
-
     boolean numericConversionValid(Type toType, Type fromType, Object constantValue, Context context);
 
     public Long size(Type t);
@@ -1264,4 +1264,18 @@ public interface TypeSystem {
     Boolean structHaszero(X10ClassDef z);
     Map<X10ClassDef_c, Boolean> structHaszero();
     X10ClassType AtomicBoolean();
+
+    /**
+     * Constructs a new ClassFileLazyClassInitializer for the given class file.
+     */
+    ClassFileLazyClassInitializer classFileLazyClassInitializer(ClassFile clazz);
+
+    X10ClassType JavaInterop();
+    X10ClassType JavaArray();
+    boolean isJavaArray(Type me);
+    boolean isPrimitiveJavaArray(Type type);
+    X10ClassType JavaThrowable();
+    boolean isJavaThrowable(Type me);
+    X10ClassType JavaException();
+    X10ClassType JavaRuntimeException();
 }

@@ -453,7 +453,7 @@ public class VarsBoxer extends ContextVisitor {
         
         X10ParsedClassType lvt = createLocalVarType(lilocal);
         
-        MethodDef md = xts.methodDef(pos, Types.ref(lvt), Flags.FINAL, Types.ref(localVarType.x10Def().typeParameters().get(0)), mname, Collections.<Ref<? extends Type>>emptyList());
+        MethodDef md = xts.methodDef(pos, pos, Types.ref(lvt), Flags.FINAL, Types.ref(localVarType.x10Def().typeParameters().get(0)), mname, Collections.<Ref<? extends Type>>emptyList());
         MethodInstance mi = md.asInstance();
         
         Local local = (Local) xnf.Local(pos, xnf.Id(pos, lilocal.name().toString() + POSTFIX_BOXED_VAR)).type(libox.type());
@@ -464,11 +464,11 @@ public class VarsBoxer extends ContextVisitor {
         Name mname = SET;
         
         List<Ref<? extends Type>> argTypes = new ArrayList<Ref<? extends Type>>();
-        argTypes.add(Types.ref(arg.type()));
+        argTypes.add(Types.ref(localVarType.x10Def().typeParameters().get(0)));
 
         X10ParsedClassType lvt = createLocalVarType(lilocal);
         
-        MethodDef md = xts.methodDef(pos, Types.ref(lvt), Flags.FINAL, Types.ref(localVarType.x10Def().typeParameters().get(0)), mname, argTypes);
+        MethodDef md = xts.methodDef(pos, pos, Types.ref(lvt), Flags.FINAL, Types.ref(localVarType.x10Def().typeParameters().get(0)), mname, argTypes);
         MethodInstance mi = md.asInstance();
         
         Local local = (Local) xnf.Local(pos, xnf.Id(pos, lilocal.name().toString() + POSTFIX_BOXED_VAR)).localInstance(libox).type(libox.type());
@@ -481,7 +481,7 @@ public class VarsBoxer extends ContextVisitor {
         
         X10ParsedClassType lvt = createLocalVarType(lilocal);
         
-        MethodDef md = xts.methodDef(pos, Types.ref(lvt), Flags.FINAL, Types.ref(localVarType.x10Def().typeParameters().get(0)), mname, Collections.<Ref<? extends Type>>emptyList());
+        MethodDef md = xts.methodDef(pos, pos, Types.ref(lvt), Flags.FINAL, Types.ref(localVarType.x10Def().typeParameters().get(0)), mname, Collections.<Ref<? extends Type>>emptyList());
         MethodInstance mi = md.asInstance();
         
         Local local = (Local) xnf.Local(pos, xnf.Id(pos, lilocal.name().toString() + POSTFIX_BOXED_VAR)).type(libox.type());

@@ -19,8 +19,8 @@ import x10.x10rt.X10JavaSerializer;
 
 import java.io.IOException;
 // XTENLANG-2686: Now x10.core.Throwable is a superclass of x10.lang.Throwable (mapped to x10.core.X10Throwable),
-//                and also a superclass of x10.runtime.impl.java.WrappedThrowable and UnknownJavaThrowable.
-public class Throwable extends java.lang.RuntimeException {
+//                and also a superclass of x10.runtime.impl.java.UnknownJavaThrowable.
+abstract public class Throwable extends java.lang.RuntimeException {
 
     private static final long serialVersionUID = 1L;
     public java.lang.String message = null;
@@ -109,7 +109,7 @@ public class Throwable extends java.lang.RuntimeException {
         for (int i=0 ; i<elements.length ; ++i) {
             str[i] = elements[i].toString();
         }
-        return x10.core.ArrayFactory.<java.lang.String>makeArrayFromJavaArray(x10.rtt.Types.STRING, str);
+        return x10.core.ArrayFactory.<java.lang.String>makeArrayFromJavaArray(Types.STRING, str);
     }
 
     // XTENLANG-2680
@@ -132,7 +132,7 @@ public class Throwable extends java.lang.RuntimeException {
     public static final RuntimeType<Throwable> $RTT = new NamedType<Throwable>(
         "x10.lang.Throwable",
         Throwable.class,
-        new Type[] { x10.rtt.Types.OBJECT }
+        new Type[] { Types.OBJECT }
     );
     public RuntimeType<?> $getRTT() {
         return $RTT;

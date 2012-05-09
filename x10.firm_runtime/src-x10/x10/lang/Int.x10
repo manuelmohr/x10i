@@ -28,7 +28,7 @@ import x10.util.Ordered;
 //                 v-- when used
 //@NativeRep("c++", "x10_int", "x10_int", null)
 //                            ^ when constructed
-public struct Int implements Comparable[Int] /*TODO implements Arithmetic[Int], Bitwise[Int], Ordered[Int]*/ {
+public struct Int implements Comparable[Int], Arithmetic[Int], Bitwise[Int], Ordered[Int] {
 
 
     /**
@@ -306,20 +306,35 @@ public struct Int implements Comparable[Int] /*TODO implements Arithmetic[Int], 
     public native def toString(radix:Int): String;
 
     /**
-     * Returns a String representation of this Int as a hexadecimal number.
-     * @return a String representation of this Int as a hexadecimal number.
+     * Returns a String representation of this Int in base 16.
+     * This method is simply a synonym for toString(16).
+     * In particular toHexString(-20) will print -14; to print
+     * the 32 bit two's complement hexadecimal representation of an Int v
+     * use (v as UInt).toHexString().
+     *
+     * @return a String representation of this Int in base 16.
      */
     public def toHexString(): String = toString(16);
 
     /**
-     * Returns a String representation of this Int as an octal number.
-     * @return a String representation of this Int as an octal number.
+     * Returns a String representation of this Int in base 8.
+     * This method is simply a synonym for toString(8).
+     * In particular toOctalString(-20) will print -24; to print
+     * the 32 bit two's complement octal representation of an Int v
+     * use (v as UInt).toHexString().
+     *
+     * @return a String representation of this Int in base 8.
      */
     public def toOctalString(): String = toString(8);
 
     /**
-     * Returns a String representation of this Int as a binary number.
-     * @return a String representation of this Int as a binary number.
+     * Returns a String representation of this Int in base 2.
+     * This method is simply a synonym for toString(2).
+     * In particular toBinaryString(-20) will print -10100; to print
+     * the 32 bit two's complement binary representation of an Int v
+     * use (v as UInt).toBinaryString().
+     *
+     * @return a String representation of this Int in base 2.
      */
     public def toBinaryString(): String = toString(2);
 

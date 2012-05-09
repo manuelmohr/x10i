@@ -11,6 +11,7 @@
 
 package x10.core;
 
+import x10.rtt.RuntimeType;
 import x10.rtt.Type;
 import x10.rtt.Types;
 import x10.x10rt.X10JavaDeserializer;
@@ -30,9 +31,9 @@ final public class Byte extends Number implements StructI, java.lang.Comparable<
     private static final long serialVersionUID = 1L;
     private static final short _serialization_id = x10.x10rt.DeserializationDispatcher.addDispatcher(x10.x10rt.DeserializationDispatcher.ClosureKind.CLOSURE_KIND_NOT_ASYNC, Byte.class);
     
-    public static final x10.rtt.RuntimeType<?> $RTT = Types.BYTE;
-    public x10.rtt.RuntimeType<?> $getRTT() {return $RTT;}
-    public x10.rtt.Type<?> $getParam(int i) {return null;}
+    public static final RuntimeType<?> $RTT = Types.BYTE;
+    public RuntimeType<?> $getRTT() {return $RTT;}
+    public Type<?> $getParam(int i) {return null;}
 
     final byte $value;
 
@@ -43,7 +44,7 @@ final public class Byte extends Number implements StructI, java.lang.Comparable<
     private abstract static class Cache {
         static final boolean enabled = java.lang.Boolean.parseBoolean(System.getProperty("x10.lang.Byte.Cache.enabled", "false"));
         static final int low = -128;
-        static final int high = enabled ? 127 : low; // disable caching
+        static final int high = enabled ? 127 : (low - 1); // disable caching
         static final Byte cache[] = new Byte[high - low + 1];
         static {
             for (int i = 0; i < cache.length; ++i) {
@@ -78,6 +79,10 @@ final public class Byte extends Number implements StructI, java.lang.Comparable<
         return obj;
     }
 
+    public static byte $unbox(byte value) {
+        return value;
+    }
+    
     public static byte $unbox(int value) {
         return (byte)value;
     }
@@ -118,25 +123,30 @@ final public class Byte extends Number implements StructI, java.lang.Comparable<
     // implements Arithmetic<Byte>
     public Byte $plus$G() { return this; }
     public Byte $minus$G() { return Byte.$box(-$value); }
-    public Byte $plus(Byte b, Type t) { return Byte.$box($value + b.$value); }
-    public Byte $minus(Byte b, Type t) { return Byte.$box($value - b.$value); }
-    public Byte $times(Byte b, Type t) { return Byte.$box($value * b.$value); }
-    public Byte $over(Byte b, Type t) { return Byte.$box($value / b.$value); }
+    public Byte $plus(java.lang.Object b, Type t) { return Byte.$box($value + ((Byte)b).$value); }
+    public Byte $minus(java.lang.Object b, Type t) { return Byte.$box($value - ((Byte)b).$value); }
+    public Byte $times(java.lang.Object b, Type t) { return Byte.$box($value * ((Byte)b).$value); }
+    public Byte $over(java.lang.Object b, Type t) { return Byte.$box($value / ((Byte)b).$value); }
     
     // implements Bitwise<Byte>
     public Byte $tilde$G() { return Byte.$box(~$value); }
-    public Byte $ampersand(Byte b, Type t) { return Byte.$box($value & b.$value); }
-    public Byte $bar(Byte b, Type t) { return Byte.$box($value | b.$value); }
-    public Byte $caret(Byte b, Type t) { return Byte.$box($value ^ b.$value); }
+    public Byte $ampersand(java.lang.Object b, Type t) { return Byte.$box($value & ((Byte)b).$value); }
+    public Byte $bar(java.lang.Object b, Type t) { return Byte.$box($value | ((Byte)b).$value); }
+    public Byte $caret(java.lang.Object b, Type t) { return Byte.$box($value ^ ((Byte)b).$value); }
     public Byte $left$G(final int count) { return Byte.$box($value << count); }
     public Byte $right$G(final int count) { return Byte.$box($value >> count); }
     public Byte $unsigned_right$G(final int count) { return Byte.$box($value >>> count); }
     
-    // implements Ordered<Byte>. Rely on autoboxing of booleans
-    public Object $lt(Byte b, Type t) { return ($value < b.$value); }
-    public Object $gt(Byte b, Type t) { return ($value > b.$value); }
-    public Object $le(Byte b, Type t) { return ($value <= b.$value); }
-    public Object $ge(Byte b, Type t) { return ($value >= b.$value); }
+    // implements Ordered<Byte>
+    public java.lang.Object $lt(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value < ((Byte)b).$value); }
+    public java.lang.Object $gt(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value > ((Byte)b).$value); }
+    public java.lang.Object $le(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value <= ((Byte)b).$value); }
+    public java.lang.Object $ge(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value >= ((Byte)b).$value); }
+    // for X10PrettyPrinterVisitor.returnSpecialTypeFromDispatcher
+    public boolean $lt$O(java.lang.Object b, Type t) { return $value < ((Byte)b).$value; }
+    public boolean $gt$O(java.lang.Object b, Type t) { return $value > ((Byte)b).$value; }
+    public boolean $le$O(java.lang.Object b, Type t) { return $value <= ((Byte)b).$value; }
+    public boolean $ge$O(java.lang.Object b, Type t) { return $value >= ((Byte)b).$value; }
     
     // extends abstract class java.lang.Number
 //    @Override

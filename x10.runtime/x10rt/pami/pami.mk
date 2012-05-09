@@ -31,11 +31,11 @@ ifeq ($(X10RT_PLATFORM), aix_xlc)
   APP_LDFLAGS_PAMI   += -Wl,-binitfini:poe_remote_main 
 endif
 ifeq ($(X10RT_PLATFORM), linux_x86_64)
-  MOV_LDFLAGS_PAMI    += -L/opt/ibmhpc/ppe.poe/lib
+  MOV_LDFLAGS_PAMI    += -L/opt/ibmhpc/pe1200/pempi/gnu/lib64
   MOV_LDLIBS_PAMI    += -lpoe -lmpi_ibm -lpami
 endif
 ifeq ($(X10RT_PLATFORM), linux_x86_32)
-  MOV_LDFLAGS_PAMI    += -L/opt/ibmhpc/ppe.poe/lib
+  MOV_LDFLAGS_PAMI    += -L/opt/ibmhpc/pe1200/pempi/gnu/lib
   MOV_LDLIBS_PAMI    += -lpoe -lmpi_ibm -lpami
 endif
 ifeq ($(X10RT_PLATFORM), aix_gcc)
@@ -44,11 +44,11 @@ ifeq ($(X10RT_PLATFORM), aix_gcc)
   APP_LDFLAGS_PAMI   += -Wl,-binitfini:poe_remote_main 
 endif
 ifeq ($(X10RT_PLATFORM), linux_ppc_64_gcc)
-  MOV_LDFLAGS_PAMI    += -L/opt/ibmhpc/ppe.poe/lib
+  MOV_LDFLAGS_PAMI    += -L/opt/ibmhpc/pe1200/pempi/gnu/lib64
   MOV_LDLIBS_PAMI    += -lpoe -lmpi_ibm -lpami
 endif
 ifeq ($(X10RT_PLATFORM), linux_ppc_64_xlc)
-  MOV_LDFLAGS_PAMI    += -L/opt/ibmhpc/ppe.poe/lib
+  MOV_LDFLAGS_PAMI    += -L/opt/ibmhpc/pe1200/pempi/gnu/lib64
   MOV_LDLIBS_PAMI    += -lpoe -lmpi_ibm -lpami
 endif
 
@@ -74,7 +74,7 @@ endif
 etc/x10rt_pami.properties:
 	@echo "X10LIB_PLATFORM=$(X10RT_PLATFORM)" > $@
 	@echo "X10LIB_CXX=$(CXX)" >> $@
-	@echo "X10LIB_CXXFLAGS=" >> $@
+	@echo "X10LIB_CXXFLAGS=$(X10RT_PROPS_CXXFLAGS)" >> $@
 	@echo "X10LIB_LDFLAGS=$(APP_LDFLAGS_PAMI)" >> $@
 	@echo "X10LIB_LDLIBS=$(APP_LDLIBS_PAMI)" >> $@
 

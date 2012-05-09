@@ -11,6 +11,7 @@
 
 package x10.core;
 
+import x10.rtt.RuntimeType;
 import x10.rtt.Type;
 import x10.rtt.Types;
 import x10.x10rt.X10JavaDeserializer;
@@ -29,9 +30,9 @@ final public class Char extends Struct implements java.lang.Comparable<Char>, x1
     private static final long serialVersionUID = 1L;
     private static final short _serialization_id = x10.x10rt.DeserializationDispatcher.addDispatcher(x10.x10rt.DeserializationDispatcher.ClosureKind.CLOSURE_KIND_NOT_ASYNC, Char.class);
     
-    public static final x10.rtt.RuntimeType<?> $RTT = Types.CHAR;
-    public x10.rtt.RuntimeType<?> $getRTT() {return $RTT;}
-    public x10.rtt.Type<?> $getParam(int i) {return null;}
+    public static final RuntimeType<?> $RTT = Types.CHAR;
+    public RuntimeType<?> $getRTT() {return $RTT;}
+    public Type<?> $getParam(int i) {return null;}
 
     final char $value;
 
@@ -128,10 +129,15 @@ final public class Char extends Struct implements java.lang.Comparable<Char>, x1
         return c;
     }
     
-    // implements Ordered<Char>. Rely on autoboxing of booleans
-    public Object $lt(Char b, Type t) { return ($value < b.$value); }
-    public Object $gt(Char b, Type t) { return ($value > b.$value); }
-    public Object $le(Char b, Type t) { return ($value <= b.$value); }
-    public Object $ge(Char b, Type t) { return ($value >= b.$value); }
-    
+    // implements Ordered<Char>
+    public java.lang.Object $lt(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value < ((Char)b).$value); }
+    public java.lang.Object $gt(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value > ((Char)b).$value); }
+    public java.lang.Object $le(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value <= ((Char)b).$value); }
+    public java.lang.Object $ge(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value >= ((Char)b).$value); }
+    // for X10PrettyPrinterVisitor.returnSpecialTypeFromDispatcher
+    public boolean $lt$O(java.lang.Object b, Type t) { return $value < ((Char)b).$value; }
+    public boolean $gt$O(java.lang.Object b, Type t) { return $value > ((Char)b).$value; }
+    public boolean $le$O(java.lang.Object b, Type t) { return $value <= ((Char)b).$value; }
+    public boolean $ge$O(java.lang.Object b, Type t) { return $value >= ((Char)b).$value; }
+
 }

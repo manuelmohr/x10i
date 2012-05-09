@@ -83,7 +83,7 @@ interface Ops {
 		public static val `<=` = (x:x10.lang.UShort,y:x10.lang.UShort) => x<=y;
 		public static val `>` = (x:x10.lang.UShort,y:x10.lang.UShort) => x>y;
 		public static val `>=` = (x:x10.lang.UShort,y:x10.lang.UShort) => x>=y;
-		public static val `~` = (x:x10.lang.UShort) => ~x;   
+		public static val `~` = (x:x10.lang.UShort) => ~x;
 	}
 	interface Int {
 		public static val `+` = (x:x10.lang.Int,y:x10.lang.Int) => x+y;
@@ -101,7 +101,7 @@ interface Ops {
 		public static val `<=` = (x:x10.lang.Int,y:x10.lang.Int) => x<=y;
 		public static val `>` = (x:x10.lang.Int,y:x10.lang.Int) => x>y;
 		public static val `>=` = (x:x10.lang.Int,y:x10.lang.Int) => x>=y;
-		public static val `~` = (x:x10.lang.Int) => ~x;   
+		public static val `~` = (x:x10.lang.Int) => ~x;
 	}
 	interface UInt {
 		public static val `+` = (x:x10.lang.UInt,y:x10.lang.UInt) => x+y;
@@ -211,14 +211,14 @@ interface Ops {
 		public static val `>` = (x:x10.array.Point,y:x10.array.Point(x.rank)) => x>y;
 		public static val `>=` = (x:x10.array.Point,y:x10.array.Point(x.rank)) => x>=y;
 	}
-	interface Region {	
+	interface Region {
 		public static val `+` = (x:x10.array.Region,y:x10.array.Point(x.rank)) => x+y;
 		public static val `-` = (x:x10.array.Region,y:x10.array.Point(x.rank)) => x-y;
 		public static val `*` = (x:x10.array.Region,y:x10.array.Region) => x*y;
 		public static val `&&` = (x:x10.array.Region,y:x10.array.Region(x.rank)) => x&&y;
 		public static val `->` = (x:x10.array.Region,y:x10.lang.Place) => x->y;
 	}
-	interface Complex {	
+	interface Complex {
 		public static val `+` = (x:x10.lang.Complex,y:x10.lang.Complex) => x+y;
 		public static val `-` = (x:x10.lang.Complex,y:x10.lang.Complex) => x-y;
 		public static val `*` = (x:x10.lang.Complex,y:x10.lang.Complex) => x*y;

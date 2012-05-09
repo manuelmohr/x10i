@@ -444,7 +444,7 @@ public class LineNumberMap extends StringTable {
 				}
 			}
 			int comma = cm._sizeOfArg.indexOf(',');
-			if (comma > -1)
+			if (comma > -1) // multiple arguments
 			{
 				// this has template arguments.  Add in the TPMGL stuff
 				int start = cm._sizeOfArg.indexOf('<');
@@ -456,10 +456,10 @@ public class LineNumberMap extends StringTable {
 					else
 						break;
 				}
-				String temp = cm._sizeOfArg.substring(start+1).replace(",", "), TPMGL(").replaceFirst(">", ")>");
-				cm._sizeOfArg = cm._sizeOfArg.substring(0, start+1).concat("TPMGL(").concat(temp);
+				String temp = cm._sizeOfArg.substring(start+1).replace(",", "), class TPMGL(").replaceFirst(">", ")>");
+				cm._sizeOfArg = cm._sizeOfArg.substring(0, start+1).concat("class TPMGL(").concat(temp);
 			}
-			else
+			else // single argument
 			{
 				int argstart = cm._sizeOfArg.lastIndexOf('<');
 				if (argstart > 0)					
@@ -690,7 +690,7 @@ public class LineNumberMap extends StringTable {
 		}
 		else
 			v._cppMemberName = stringId("x10__"+Emitter.mangled_non_method_name(name));
-		v._cppClass = stringId(containingClass);
+		v._cppClass = stringId(Emitter.translateFQN(containingClass));
 		cm._members.add(v);
 	}
 	
@@ -1050,27 +1050,25 @@ public class LineNumberMap extends StringTable {
 		    }
 		    Collections.sort(x10toCPPlist, CPPLineInfo.byX10info());
 		    
-		    // remove itens that have duplicate lines, leaving only the one with the earlier column
-		    int previousLine=-1, previousColumn=-1;
-		    for (int i=0; i<x10toCPPlist.size();)
+		    // remove items that have duplicate lines, leaving only the one with the earlier column
+		    CPPLineInfo previousCppDebugInfo = x10toCPPlist.get(0);
+		    for (int i=1; i<x10toCPPlist.size();)
 		    {
 		    	CPPLineInfo cppDebugInfo = x10toCPPlist.get(i);
-		    	if (cppDebugInfo.x10line == previousLine)
+		    	if (cppDebugInfo.x10line == previousCppDebugInfo.x10line)
 		    	{
-		    		if (cppDebugInfo.x10column > previousColumn)
+		    		if (cppDebugInfo.x10column > previousCppDebugInfo.x10column)
 			    		x10toCPPlist.remove(i); // keep the previous one, delete this one
 		    		else
 		    		{
 		    			// keep this one, delete the previous one
 		    			x10toCPPlist.remove(i-1);
-		    			previousLine = 	cppDebugInfo.x10line;
-				    	previousColumn = cppDebugInfo.x10column;
+		    			previousCppDebugInfo = cppDebugInfo;
 		    		}
 		    	}
 		    	else
 		    	{
-			    	previousLine = cppDebugInfo.x10line;
-			    	previousColumn = cppDebugInfo.x10column;
+		    		previousCppDebugInfo = cppDebugInfo;
 			    	i++;
 		    	}
 		    }	
@@ -1255,7 +1253,8 @@ public class LineNumberMap extends StringTable {
 	        	{
 	        		String classname = m.lookupString(classId);
 			        w.writeln("static const struct _X10TypeMember _X10"+classname.substring(classname.lastIndexOf('.')+1)+"Members[] __attribute__((used)) "+debugDataSectionAttr+" = {");
-			        ClassMapInfo cmi = memberVariables.get(classId);
+	        		ClassMapInfo cmi = memberVariables.get(classId);
+			        boolean someMembersWritten = false;
 			        for (int j=0; j<cmi._members.size();)
 			        {
 			        	MemberVariableMapInfo v = cmi._members.get(j);
@@ -1283,11 +1282,15 @@ public class LineNumberMap extends StringTable {
 			        	}
 			        	if (!skip)
 			        	{
+			        		someMembersWritten = true;
 			        		w.writeln("    { "+v._x10type+", "+v._x10typeIndex+", "+offsets[v._x10memberName]+", "+offsets[v._cppMemberName]+", "+offsets[v._cppClass]+" }, // "+m.lookupString(v._x10memberName));
 			        		j++;
 			        	}
 			        }
-				    w.writeln("};");
+			        if (!someMembersWritten)
+			        	w.writeln("NULL };");
+			        else
+			        	w.writeln("};");
 				    w.forceNewline();
 	        	}
 	        	w.writeln("static const struct _X10ClassMap _X10ClassMapList[] __attribute__((used)) = {");
@@ -1342,14 +1345,21 @@ public class LineNumberMap extends StringTable {
 		    		}
 	        	}	    	
 			    w.writeln("static const struct _X10ClosureMap _X10ClosureMapList[] __attribute__((used)) = {"); // inclusion of debugDataSectionAttr causes issues on Macos.  See XTENLANG-2318.
+			    boolean closureMembersWritten = false;
 			    for (Integer classId : closureMembers.keySet())
 			    {
 			    	String classname = m.lookupString(classId);
 			    	ClassMapInfo cmi = closureMembers.get(classId);
 			    	if (cmi._x10endLine != cmi._x10startLine)
+			    	{
+			    		closureMembersWritten = true;
 			    		w.writeln("    { "+cmi._type+", "+offsets[classId]+", sizeof("+cmi._sizeOfArg.replace(".", "::")+"), "+cmi._members.size()+", "+findFile(cmi._file, files)+", "+cmi._x10startLine +", "+cmi._x10endLine+", _X10"+classname.substring(classname.lastIndexOf('.')+1)+"Members },");
+			    	}
 			    }
-			    w.writeln("};");
+			    if (!closureMembersWritten)
+			    	w.writeln("NULL };");
+			    else
+			    	w.writeln("};");
 			    w.forceNewline();
 		    }
         }
@@ -1419,7 +1429,7 @@ public class LineNumberMap extends StringTable {
         w.newline(4); w.begin(0);
         w.writeln("sizeof(struct _MetaDebugInfo_t),");
         w.writeln("X10_META_LANG,");
-        w.writeln("0x0B08170C, // 2011-08-23, 12:00"); // Format: "YYMMDDHH". One byte for year, month, day, hour.
+        w.writeln("0x0C030C10, // 2012-03-12, 16:00"); // Format: "YYMMDDHH". One byte for year, month, day, hour.
         w.writeln("sizeof(_X10strings),");
         if (!m.isEmpty()) {
             w.writeln("sizeof(_X10sourceList),");

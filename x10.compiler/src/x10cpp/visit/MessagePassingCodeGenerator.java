@@ -207,6 +207,7 @@ import x10.types.ClosureInstance;
 import x10.types.ParameterType;
 
 import x10.types.FunctionType;
+import x10.types.ThisDef;
 import x10.types.X10ClassDef;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
@@ -510,6 +511,11 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
         t = xts.expandMacros(t);
 		if (!t.isClass())
 			return;
+		if (t instanceof X10ClassType && ((X10ClassType)t).isJavaType()) {
+		    // ignore Java types.  If they are actually needed in the generated code, 
+		    // it is a programming error that we will "report" via a post-compilation error.
+		    return; 
+		}
 		X10ClassType ct = (X10ClassType) t.toClass();
 		if (!dupes.contains(ct)) {
 		    dupes.add(ct);
@@ -944,6 +950,7 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
                     extractAllClassTypes(((Allocation_c) tn).type(), types, dupes);
 		        } else if (tn instanceof X10Call_c) {
                     extractAllClassTypes(((X10Call_c) tn).methodInstance().container(), types, dupes);
+                    extractAllClassTypes(((X10Call_c) tn).methodInstance().returnType(), types, dupes);
 		        } else if (tn instanceof Field_c) {
 		            Field_c f = (Field_c)tn;
 		            if (!f.flags().isStatic()) {
@@ -1375,9 +1382,8 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
 
 	public static String createMainStub(String container, X10CPPCompilerOptions options) {
 		StringBuilder sb = new StringBuilder();
-        sb.append("#include <x10/lang/Runtime.h>\n");
         sb.append("#include <x10aux/bootstrap.h>\n");
-		String mainTypeArgs = "x10::lang::Runtime," + container;
+		String mainTypeArgs = container;
         sb.append("extern \"C\" { int main(int ac, char **av) { return x10aux::template_main"+chevrons(mainTypeArgs)+"(ac,av); } }\n");
         if (options.x10_config.DEBUG)
 		{
@@ -1424,8 +1430,8 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
 		    sw.pushCurrentStream(context.genericFunctions);
 		    context.closures = context.genericFunctionClosures;
 		    String guard = getHeaderGuard(getHeader(mi.container().toClass()));
-		    sw.write("#ifndef "+guard+"_"+mi.name().toString()+"_"+mid); sw.newline();
-		    sw.write("#define "+guard+"_"+mi.name().toString()+"_"+mid); sw.newline();
+		    sw.write("#ifndef "+guard+"_"+Emitter.mangled_method_name(mi.name().toString())+"_"+mid); sw.newline();
+		    sw.write("#define "+guard+"_"+Emitter.mangled_method_name(mi.name().toString())+"_"+mid); sw.newline();
 		}
 
 		// we sometimes need to use a more general return type as c++ does not support covariant smartptr return types
@@ -1525,7 +1531,7 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
 		if (def.typeParameters().size() != 0) {
 		    sw.popCurrentStream();
 		    String guard = getHeaderGuard(getHeader(mi.container().toClass()));
-		    context.genericFunctions.writeln("#endif // "+guard+"_"+mi.name().toString()+"_"+mid);
+		    context.genericFunctions.writeln("#endif // "+guard+"_"+Emitter.mangled_method_name(mi.name().toString())+"_"+mid);
 		}
 		context.closures = saved_closure_stream;
 	}
@@ -2898,7 +2904,7 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
 		    assert var.name() == n.name().id();
 		}
 		if (c.isInsideClosure())
-			c.saveEnvVariableInfo(var.name().toString());
+			c.saveEnvVariableInfo(var.name().toString(), var.lval());
 		sw.write(mangled_non_method_name(var.name().toString()));
 	}
 
@@ -3426,6 +3432,14 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
                 Warnings.issue(tr.job(), msg, n.position());
             }
         }
+        List<VarInstance<? extends VarDef>> prunned = new ArrayList<VarInstance<? extends VarDef>>(env.size());
+        for (VarInstance<?> vi : env) {
+            VarDef def = vi.def();
+            if ((def instanceof X10LocalDef) || def instanceof ThisDef) {
+                prunned.add(vi);
+            }
+        }
+        env = prunned;
         
 		if (((X10CPPCompilerOptions)tr.job().extensionInfo().getOptions()).x10_config.DEBUG && !in_template_closure)
 		{
@@ -3436,10 +3450,10 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
 		        final LineNumberMap lineNumberMap = fileToLineNumberMap.get(key);
 		        if (lineNumberMap != null)
 		        {
-		        	int numMembers = c.variables.size();
+		        	int numMembers = env.size();
 		        	for (int i = 0; i < numMembers; i++) 
 		        	{
-		        		VarInstance<?> var = c.variables.get(i);
+		        		VarInstance<?> var = env.get(i);
 		        		String name = var.name().toString();
 		        		if (name.equals(THIS)) 
 		    				name = SAVED_THIS;
@@ -3450,14 +3464,15 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
 			        	for (int i=0; i< n.formals().size(); i++)
 			        	{
 			        		Formal f = n.formals().get(i);
-			        		lineNumberMap.addLocalVariableMapping(f.name().toString(), f.type().toString(), c.currentCode().position().line(), c.currentCode().position().endLine(), c.currentCode().position().file(), true, -2, false);
+			        		X10ClassType t = f.type().type().toClass();
+			        		lineNumberMap.addLocalVariableMapping(f.name().toString(), f.type().toString(), c.currentCode().position().line(), c.currentCode().position().endLine(), c.currentCode().position().file(), true, -2, (t==null?false:t.isX10Struct()));
 			        	}
 		        	}
 		        }
 		    }
 		}
 
-        emitter.printDeclarationList(sw, c, c.variables, refs);
+        emitter.printDeclarationList(sw, c, env, refs);
         sw.forceNewline();
 
         sw.write("x10aux::serialization_id_t "+SERIALIZE_ID_METHOD+"() {");
@@ -3465,12 +3480,12 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
         sw.write("return "+SERIALIZATION_ID_FIELD+";"); sw.end(); sw.newline();
         sw.write("}"); sw.newline(); sw.forceNewline();
 
-        generateClosureSerializationFunctions(c, cnamet, sw, n.body(), refs);
+        generateClosureSerializationFunctions(c, cnamet, sw, n.body(), env, refs);
 
         sw.write(cname+"(");
-        for (int i = 0; i < c.variables.size(); i++) {
+        for (int i = 0; i < env.size(); i++) {
             if (i > 0) sw.write(", ");
-            VarInstance<?> var = (VarInstance<?>) c.variables.get(i);
+            VarInstance<?> var = (VarInstance<?>) env.get(i);
             String name = var.name().toString();
             if (name.equals(THIS))
                 name = SAVED_THIS;
@@ -3484,8 +3499,8 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
         sw.write(")");
         sw.begin(0);
         // FIXME: factor out this loop
-        for (int i = 0 ; i < c.variables.size() ; i++) {
-            VarInstance<?> var = (VarInstance<?>) c.variables.get(i);
+        for (int i = 0 ; i < env.size() ; i++) {
+            VarInstance<?> var = (VarInstance<?>) env.get(i);
             String name = var.name().toString();
             if (name.equals(THIS))
                 name = SAVED_THIS;
@@ -3588,9 +3603,9 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
             sw.write("(new (x10aux::alloc"+chevrons(superType)+"(sizeof("+cname+templateArgs+")))");
         }
         sw.write(cname+templateArgs+"(");
-        for (int i = 0; i < c.variables.size(); i++) {
+        for (int i = 0; i < env.size(); i++) {
             if (i > 0) sw.write(", ");
-            VarInstance<?> var = (VarInstance<?>) c.variables.get(i);
+            VarInstance<?> var = (VarInstance<?>) env.get(i);
             String name = var.name().toString();
             if (name.equals(THIS)) {
                 // FIXME: Hack upon hack...
@@ -3627,17 +3642,12 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
             }
         }
         
-        for (VarInstance<?> var : c.variables) {
+        for (VarInstance<?> var : closureDef.capturedEnvironment()) {
             VarDef def = var.def();
             if ((def instanceof X10LocalDef)) {
                 X10LocalDef ld = ((X10LocalDef)def);
-                if (!ld.flags().isFinal()) {
+                if (!ld.flags().isFinal() || var.lval()) {
                     refs.add(var);
-                } else if (ld.isAsyncInit()) {
-                    Set<LocalDef> currentAsyncInits = c.findData(SharedVarsMethods.ASYNC_INIT_VALS_KEY);
-                    if (currentAsyncInits != null && currentAsyncInits.contains(ld)) {
-                        refs.add(var);
-                    }
                 }
             }
         }
@@ -3645,13 +3655,13 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
     }
 
     protected void generateClosureSerializationFunctions(X10CPPContext_c c, String cnamet, StreamWrapper inc, 
-                                                         Block block, List<VarInstance<?>> refs) {
+                                                         Block block, List<VarInstance<?>> env, List<VarInstance<?>> refs) {
         inc.write("void "+SERIALIZE_BODY_METHOD+"("+SERIALIZATION_BUFFER+" &buf) {");
         inc.newline(4); inc.begin(0);
         // FIXME: factor out this loop
-        for (int i = 0; i < c.variables.size(); i++) {
+        for (int i = 0; i < env.size(); i++) {
             if (i > 0) inc.newline();
-            VarInstance<?> var = (VarInstance<?>) c.variables.get(i);
+            VarInstance<?> var = (VarInstance<?>) env.get(i);
             String name = var.name().toString();
             if (name.equals(THIS)) {
                 name = SAVED_THIS;
@@ -3669,8 +3679,8 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
         inc.writeln("buf.record_reference("+make_ref(cnamet)+"(storage));");
         
         // FIXME: factor out this loop
-        for (int i = 0; i < c.variables.size(); i++) {
-            VarInstance<?> var = (VarInstance<?>) c.variables.get(i);
+        for (int i = 0; i < env.size(); i++) {
+            VarInstance<?> var = (VarInstance<?>) env.get(i);
             Type t = var.type();
             String type;
             if (refs.contains(var)) {
@@ -3689,8 +3699,8 @@ public class MessagePassingCodeGenerator extends X10DelegatingVisitor {
         }
         inc.write(make_ref(cnamet)+" this_ = new (storage) "+cnamet+"(");
         // FIXME: factor out this loop
-        for (int i = 0; i < c.variables.size(); i++) {
-            VarInstance<?> var = (VarInstance<?>) c.variables.get(i);
+        for (int i = 0; i < env.size(); i++) {
+            VarInstance<?> var = (VarInstance<?>) env.get(i);
             String name = var.name().toString();
             if (name.equals(THIS))
                 name = SAVED_THIS;

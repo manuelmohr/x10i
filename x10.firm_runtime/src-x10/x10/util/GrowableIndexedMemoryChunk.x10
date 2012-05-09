@@ -76,7 +76,7 @@ public final class GrowableIndexedMemoryChunk[T] /*implements CustomSerializatio
      * Store v as the length element, growing the backing store if needed.
      */
     public def add(v:T):void {
-        if (length+1 > imc.length()) grow(length+1);
+        if (length+1 > capacity()) grow(length+1);
         imc(length++) = v;
     }
 
@@ -89,15 +89,16 @@ public final class GrowableIndexedMemoryChunk[T] /*implements CustomSerializatio
      * If p==length, then insert is equivalent to calling add for
      * each element of items in turn.
      */
-    public def insert(p:Int, items:IndexedMemoryChunk[T], numItems:Int):void {
-        val newLen = length + numItems;
+    public def insert(p:Int, items:IndexedMemoryChunk[T]):void {
+        val addLen = items.length();
+        val newLen = length + addLen;
         val movLen = length - p;
         if (CompilerFlags.checkBounds() && movLen < 0) illegalGap(p, length);
-        if (newLen > imc.length()) grow(newLen);
+        if (newLen > capacity()) grow(newLen);
         if (movLen > 0) {
-            IndexedMemoryChunk.copy(imc, p, imc, p+numItems, movLen);
+            IndexedMemoryChunk.copy(imc, p, imc, p+addLen, movLen);
         }
-        IndexedMemoryChunk.copy(items, 0, imc, p, numItems);
+        IndexedMemoryChunk.copy(items, 0, imc, p, items.length());
         length = newLen;
     }
 
@@ -188,23 +189,31 @@ public final class GrowableIndexedMemoryChunk[T] /*implements CustomSerializatio
     */
 
     public def grow(var newCapacity:int):void {
-        val oldCapacity = capacity();
+        var oldCapacity:int = capacity();
         if (newCapacity < oldCapacity*2) {
             newCapacity = oldCapacity*2;
         }
         if (newCapacity < 8) {
             newCapacity = 8;
         }
-        imc = IndexedMemoryChunk.resizeZeroed[T](imc, newCapacity);
+
+        val tmp = IndexedMemoryChunk.allocateUninitialized[T](newCapacity);
+        IndexedMemoryChunk.copy(imc, 0, tmp, 0, length);
+        tmp.clear(length, newCapacity-length);
+        imc.deallocate();
+        imc = tmp;
     }
 
     public def shrink(var newCapacity:int):void {
-        val oldCapacity = capacity();
-        if (newCapacity > oldCapacity/4 || newCapacity < 8)
+        if (newCapacity > capacity()/4 || newCapacity < 8)
             return;
         newCapacity = x10.lang.Math.max(newCapacity, length);
         newCapacity = x10.lang.Math.max(newCapacity, 8);
-        imc = IndexedMemoryChunk.resize[T](imc, newCapacity);
+        val tmp = IndexedMemoryChunk.allocateUninitialized[T](newCapacity);
+        IndexedMemoryChunk.copy(imc, 0, tmp, 0, length);
+        tmp.clear(length, newCapacity-length);
+        imc.deallocate();
+        imc = tmp;
     }
 
     private static @NoInline @NoReturn def raiseIndexOutOfBounds(idx:int, length:int) {

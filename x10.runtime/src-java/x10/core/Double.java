@@ -11,6 +11,7 @@
 
 package x10.core;
 
+import x10.rtt.RuntimeType;
 import x10.rtt.Type;
 import x10.rtt.Types;
 import x10.x10rt.X10JavaDeserializer;
@@ -30,9 +31,9 @@ final public class Double extends Number implements StructI,
     private static final long serialVersionUID = 1L;
     private static final short _serialization_id = x10.x10rt.DeserializationDispatcher.addDispatcher(x10.x10rt.DeserializationDispatcher.ClosureKind.CLOSURE_KIND_NOT_ASYNC, Double.class);
     
-    public static final x10.rtt.RuntimeType<?> $RTT = Types.DOUBLE;
-    public x10.rtt.RuntimeType<?> $getRTT() {return $RTT;}
-    public x10.rtt.Type<?> $getParam(int i) {return null;}
+    public static final RuntimeType<?> $RTT = Types.DOUBLE;
+    public RuntimeType<?> $getRTT() {return $RTT;}
+    public Type<?> $getParam(int i) {return null;}
 
     final double $value;
 
@@ -98,17 +99,22 @@ final public class Double extends Number implements StructI,
     // implements Arithmetic<Double>
     public Double $plus$G() { return this; }
     public Double $minus$G() { return Double.$box(-$value); }
-    public Double $plus(Double b, Type t) { return Double.$box($value + b.$value); }
-    public Double $minus(Double b, Type t) { return Double.$box($value - b.$value); }
-    public Double $times(Double b, Type t) { return Double.$box($value * b.$value); }
-    public Double $over(Double b, Type t) { return Double.$box($value / b.$value); }
+    public Double $plus(java.lang.Object b, Type t) { return Double.$box($value + ((Double)b).$value); }
+    public Double $minus(java.lang.Object b, Type t) { return Double.$box($value - ((Double)b).$value); }
+    public Double $times(java.lang.Object b, Type t) { return Double.$box($value * ((Double)b).$value); }
+    public Double $over(java.lang.Object b, Type t) { return Double.$box($value / ((Double)b).$value); }
     
-    // implements Ordered<Double>. Rely on autoboxing of booleans
-    public Object $lt(Double b, Type t) { return ($value < b.$value); }
-    public Object $gt(Double b, Type t) { return ($value > b.$value); }
-    public Object $le(Double b, Type t) { return ($value <= b.$value); }
-    public Object $ge(Double b, Type t) { return ($value >= b.$value); }
-    
+    // implements Ordered<Double>
+    public java.lang.Object $lt(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value < ((Double)b).$value); }
+    public java.lang.Object $gt(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value > ((Double)b).$value); }
+    public java.lang.Object $le(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value <= ((Double)b).$value); }
+    public java.lang.Object $ge(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value >= ((Double)b).$value); }
+    // for X10PrettyPrinterVisitor.returnSpecialTypeFromDispatcher
+    public boolean $lt$O(java.lang.Object b, Type t) { return $value < ((Double)b).$value; }
+    public boolean $gt$O(java.lang.Object b, Type t) { return $value > ((Double)b).$value; }
+    public boolean $le$O(java.lang.Object b, Type t) { return $value <= ((Double)b).$value; }
+    public boolean $ge$O(java.lang.Object b, Type t) { return $value >= ((Double)b).$value; }
+
     // extends abstract class java.lang.Number
     @Override
     public int intValue() {

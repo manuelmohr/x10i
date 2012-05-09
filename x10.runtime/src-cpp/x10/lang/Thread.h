@@ -63,6 +63,12 @@ namespace x10 {
                 return this;
             }
 
+            static x10aux::ref<Thread> _make();
+
+            x10aux::ref<Thread> _constructor() {
+                return NULL;
+            }
+
             static const x10aux::serialization_id_t _serialization_id;
 
             virtual x10aux::serialization_id_t _get_serialization_id() { return _serialization_id; };
@@ -209,6 +215,8 @@ namespace x10 {
             static pthread_key_t __thread_mapper;
             static x10_boolean __thread_mapper_inited;
 
+            static void initAttributes(pthread_attr_t*);
+            
         protected:
             // Helper method to initialize a Thread object.
             void thread_init(const x10aux::ref<x10::lang::String> name);

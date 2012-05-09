@@ -36,10 +36,12 @@ public class DeserializationDispatcher {
     public static final short SHORT_ID = 7;
     public static final short LONG_ID = 8;
     public static final short CHARACTER_ID = 9;
+    public static final short MAX_ID_FOR_PRIMITIVE = 9;
     public static final String NULL_VALUE = "__NULL__";
 
     public static final short refValue = Short.MAX_VALUE;
     public static final short javaClassID = refValue - 1;
+    public static final short javaArrayID = refValue - 2;
 
     // Should start issuing id's from 1 cause the id 0 is used to indicate a null value.
     // We first increment i before issuing the id hence initialize to NULL_ID
@@ -73,6 +75,7 @@ public class DeserializationDispatcher {
                 add(ClosureKind.CLOSURE_KIND_NOT_ASYNC, Class.forName("java.lang.Boolean"), false);
                 add(ClosureKind.CLOSURE_KIND_NOT_ASYNC, Class.forName("java.lang.Byte"), false);
                 add(ClosureKind.CLOSURE_KIND_NOT_ASYNC, Class.forName("java.lang.Short"), false);
+                add(ClosureKind.CLOSURE_KIND_NOT_ASYNC, Class.forName("java.lang.Long"), false);
                 add(ClosureKind.CLOSURE_KIND_NOT_ASYNC, Class.forName("java.lang.Character"), false);
             } catch (ClassNotFoundException e) {
                 // This will never happen
@@ -110,7 +113,7 @@ public class DeserializationDispatcher {
             return deserializer.getObjectAtPosition(deserializer.readInt());
         } else if (i == NULL_ID) {
             if (Runtime.TRACE_SER) {
-                System.out.println("Deserialized a null reference");
+                Runtime.printTraceMessage("Deserialized a null reference");
             }
             return null;
         } else if (i <=8) {
@@ -118,7 +121,7 @@ public class DeserializationDispatcher {
         }
 
         if (Runtime.TRACE_SER) {
-            System.out.println("Deserializing non-null value with id " + i);
+            Runtime.printTraceMessage("Deserializing non-null value with id " + i);
         }
         try {
             Method method = idToDeserializermethod.get(i);
@@ -148,7 +151,7 @@ public class DeserializationDispatcher {
 
     public static Object deserializePrimitive(short i, X10JavaDeserializer deserializer) throws IOException {
         if (Runtime.TRACE_SER) {
-            System.out.println("Deserializing non-null value with id " + i);
+            Runtime.printTraceMessage("Deserializing non-null value with id " + i);
         }
         Object obj = null;
         switch(i) {
@@ -256,11 +259,23 @@ public class DeserializationDispatcher {
         return idToDeserializationInfo.get(sid).closureKind;
     }
 
+    public static void setStaticInitializer(short sid) {
+        idToDeserializationInfo.get(sid).isStaticInitializer = true;
+    }
+
+    public static boolean isStaticInitializer(short sid) {
+        return idToDeserializationInfo.get(sid).isStaticInitializer;
+    }
+
     private static class DeserializationInfo {
         public ClosureKind closureKind;
         public Class clazz;
         public int msgType;
         public short sid;
+
+        // We need to deserialize static initializers using custom serialization, this is a marker to know whether
+        // this is a static serialization
+        public boolean isStaticInitializer = false;
 
         private DeserializationInfo(ClosureKind closureKind, Class clazz, short sid) {
             this.closureKind = closureKind;

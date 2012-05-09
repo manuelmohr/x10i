@@ -11,6 +11,7 @@
 
 package x10.core;
 
+import x10.rtt.RuntimeType;
 import x10.rtt.Type;
 import x10.rtt.Types;
 import x10.x10rt.X10JavaDeserializer;
@@ -30,9 +31,9 @@ final public class Int extends Number implements StructI, java.lang.Comparable<I
     private static final long serialVersionUID = 1L;
     private static final short _serialization_id = x10.x10rt.DeserializationDispatcher.addDispatcher(x10.x10rt.DeserializationDispatcher.ClosureKind.CLOSURE_KIND_NOT_ASYNC, Int.class);
     
-    public static final x10.rtt.RuntimeType<?> $RTT = Types.INT;
-    public x10.rtt.RuntimeType<?> $getRTT() {return $RTT;}
-    public x10.rtt.Type<?> $getParam(int i) {return null;}
+    public static final RuntimeType<?> $RTT = Types.INT;
+    public RuntimeType<?> $getRTT() {return $RTT;}
+    public Type<?> $getParam(int i) {return null;}
 
     final int $value;
 
@@ -41,7 +42,8 @@ final public class Int extends Number implements StructI, java.lang.Comparable<I
     }
     
     private abstract static class Cache {
-        static final boolean enabled = java.lang.Boolean.parseBoolean(System.getProperty("x10.lang.Int.Cache.enabled", "false"));
+        // N.B. enabled by default to avoid boxing of return value from Comparator.compare
+        static final boolean enabled = java.lang.Boolean.parseBoolean(System.getProperty("x10.lang.Int.Cache.enabled", "true"));
         static final int low = -128;
         static final int high;
         static final Int cache[];
@@ -50,14 +52,12 @@ final public class Int extends Number implements StructI, java.lang.Comparable<I
             int h = 127;
             java.lang.String highPropValue = System.getProperty("x10.lang.Int.Cache.high");
             if (highPropValue != null) {
-                // Use Long.decode here to avoid invoking methods that
-                // require Integer's autoboxing cache to be initialized
-                int i = java.lang.Long.decode(highPropValue).intValue();
+            	int i = java.lang.Integer.parseInt(highPropValue);
                 i = Math.max(i, h);
                 // Maximum array size is Integer.MAX_VALUE
                 h = Math.min(i, Integer.MAX_VALUE + low);
             }
-            high = enabled ? h : low; // disable caching
+            high = enabled ? h : (low - 1); // disable caching
 
             cache = new Int[high - low + 1];
             for (int i = 0; i < cache.length; ++i) {
@@ -81,7 +81,7 @@ final public class Int extends Number implements StructI, java.lang.Comparable<I
     
     public static int $unbox(Object obj) {
         if (obj instanceof Int) return ((Int)obj).$value;
-        else return ((Integer)obj).intValue();
+        else return ((java.lang.Integer)obj).intValue();
     }
     
     // make $box/$unbox idempotent
@@ -129,26 +129,31 @@ final public class Int extends Number implements StructI, java.lang.Comparable<I
     // implements Arithmetic<Int>
     public Int $plus$G() { return this; }
     public Int $minus$G() { return Int.$box(-$value); }
-    public Int $plus(Int b, Type t) { return Int.$box($value + b.$value); }
-    public Int $minus(Int b, Type t) { return Int.$box($value - b.$value); }
-    public Int $times(Int b, Type t) { return Int.$box($value * b.$value); }
-    public Int $over(Int b, Type t) { return Int.$box($value / b.$value); }
+    public Int $plus(java.lang.Object b, Type t) { return Int.$box($value + ((Int)b).$value); }
+    public Int $minus(java.lang.Object b, Type t) { return Int.$box($value - ((Int)b).$value); }
+    public Int $times(java.lang.Object b, Type t) { return Int.$box($value * ((Int)b).$value); }
+    public Int $over(java.lang.Object b, Type t) { return Int.$box($value / ((Int)b).$value); }
     
     // implements Bitwise<Int>
     public Int $tilde$G() { return Int.$box(~$value); }
-    public Int $ampersand(Int b, Type t) { return Int.$box($value & b.$value); }
-    public Int $bar(Int b, Type t) { return Int.$box($value | b.$value); }
-    public Int $caret(Int b, Type t) { return Int.$box($value ^ b.$value); }
+    public Int $ampersand(java.lang.Object b, Type t) { return Int.$box($value & ((Int)b).$value); }
+    public Int $bar(java.lang.Object b, Type t) { return Int.$box($value | ((Int)b).$value); }
+    public Int $caret(java.lang.Object b, Type t) { return Int.$box($value ^ ((Int)b).$value); }
     public Int $left$G(final int count) { return Int.$box($value << count); }
     public Int $right$G(final int count) { return Int.$box($value >> count); }
     public Int $unsigned_right$G(final int count) { return Int.$box($value >>> count); }
     
-    // implements Ordered<Int>. Rely on autoboxing of booleans
-    public Object $lt(Int b, Type t) { return ($value < b.$value); }
-    public Object $gt(Int b, Type t) { return ($value > b.$value); }
-    public Object $le(Int b, Type t) { return ($value <= b.$value); }
-    public Object $ge(Int b, Type t) { return ($value >= b.$value); }
-    
+    // implements Ordered<Int>
+    public java.lang.Object $lt(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value < ((Int)b).$value); }
+    public java.lang.Object $gt(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value > ((Int)b).$value); }
+    public java.lang.Object $le(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value <= ((Int)b).$value); }
+    public java.lang.Object $ge(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value >= ((Int)b).$value); }
+    // for X10PrettyPrinterVisitor.returnSpecialTypeFromDispatcher
+    public boolean $lt$O(java.lang.Object b, Type t) { return $value < ((Int)b).$value; }
+    public boolean $gt$O(java.lang.Object b, Type t) { return $value > ((Int)b).$value; }
+    public boolean $le$O(java.lang.Object b, Type t) { return $value <= ((Int)b).$value; }
+    public boolean $ge$O(java.lang.Object b, Type t) { return $value >= ((Int)b).$value; }
+
     // extends abstract class java.lang.Number
     @Override
     public int intValue() {

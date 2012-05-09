@@ -530,8 +530,6 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param y the given entity
      * @return the resulting String
      */
-    @Native("java", "((#x) + (#y))")
-    @Native("c++",  "((#x) + (#y))")
     public static operator[T] (x:String) + (y:T):String = x + y.toString();
 
     /**
@@ -542,8 +540,6 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param y the given String
      * @return the resulting String
      */
-    @Native("java", "((#x) + (#y))")
-    @Native("c++",  "((#x) + (#y))")
     public static operator[T] (x:T) + (y:String):String = x.toString() + y;
 
     /**
@@ -553,9 +549,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param y the second String
      * @return the resulting String
      */
-    @Native("java", "((#this) + (#x))")
-    @Native("c++",  "((#this) + (#x))")
-    public native operator this + (x:String): String;
+    public native operator this + (y:String): String;
 
     /**
      * Returns a pointer to the string data.

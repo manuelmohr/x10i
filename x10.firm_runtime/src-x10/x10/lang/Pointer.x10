@@ -20,10 +20,10 @@ public struct Pointer implements Comparable[Pointer] {
         return equals(other as Pointer);
     }
 
-    public native operator this + (x:Int): Pointer;
+    public static native operator (p:Pointer) + (x:Int): Pointer;
     public static operator (x:Int) + (y:Pointer): Pointer = y + x;
-    public native operator this - (x:Int): Pointer;
-    public native operator this - (x:Pointer): Int;
+    public static native operator (p:Pointer) - (x:Int): Pointer;
+    public static native operator (p:Pointer) - (x:Pointer): Int;
     public native operator this <(x:Pointer): Boolean;
     public native operator this >(x:Pointer): Boolean;
     public native operator this <=(x:Pointer): Boolean;

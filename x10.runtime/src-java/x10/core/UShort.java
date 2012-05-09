@@ -11,9 +11,9 @@
 
 package x10.core;
 
+import x10.rtt.RuntimeType;
 import x10.rtt.Type;
 import x10.rtt.Types;
-import x10.x10rt.DeserializationDispatcher;
 import x10.x10rt.X10JavaDeserializer;
 import x10.x10rt.X10JavaSerializable;
 import x10.x10rt.X10JavaSerializer;
@@ -30,9 +30,9 @@ final public class UShort extends Number implements StructI, java.lang.Comparabl
     private static final long serialVersionUID = 1L;
     private static final short _serialization_id = x10.x10rt.DeserializationDispatcher.addDispatcher(x10.x10rt.DeserializationDispatcher.ClosureKind.CLOSURE_KIND_NOT_ASYNC, UShort.class);
 
-    public static final x10.rtt.RuntimeType<?> $RTT = Types.USHORT;
-    public x10.rtt.RuntimeType<?> $getRTT() {return $RTT;}
-    public x10.rtt.Type<?> $getParam(int i) {return null;}
+    public static final RuntimeType<?> $RTT = Types.USHORT;
+    public RuntimeType<?> $getRTT() {return $RTT;}
+    public Type<?> $getParam(int i) {return null;}
 
     final short $value;
 
@@ -43,7 +43,7 @@ final public class UShort extends Number implements StructI, java.lang.Comparabl
     private abstract static class Cache {
         static final boolean enabled = java.lang.Boolean.parseBoolean(System.getProperty("x10.lang.UShort.Cache.enabled", "false"));
         static final int low = 0;
-        static final int high = enabled ? 255 : low; // disable caching
+        static final int high = enabled ? 255 : (low - 1); // disable caching
         static final UShort cache[] = new UShort[high - low + 1];
         static {
             for (int i = 0; i < cache.length; ++i) {
@@ -71,7 +71,8 @@ final public class UShort extends Number implements StructI, java.lang.Comparabl
     }
     
     public static short $unbox(Object obj) {
-        return ((UShort)obj).$value;
+        if (obj instanceof UShort) return ((UShort)obj).$value;
+        else return ((java.lang.Short)obj).shortValue();
     }
     
     // make $box/$unbox idempotent
@@ -119,25 +120,30 @@ final public class UShort extends Number implements StructI, java.lang.Comparabl
     // implements Arithmetic<UShort>
     public UShort $plus$G() { return this; }
     public UShort $minus$G() { return UShort.$box(-$value); }
-    public UShort $plus(UShort a, Type t) { return UShort.$box($value + a.$value); }
-    public UShort $minus(UShort a, Type t) { return UShort.$box($value - a.$value); }
-    public UShort $times(UShort a, Type t) { return UShort.$box($value * a.$value); }
-    public UShort $over(UShort a, Type t) { return UShort.$box((short)((0xffff & $value) / (0xffff & a.$value))); }
+    public UShort $plus(java.lang.Object a, Type t) { return UShort.$box($value + ((UShort)a).$value); }
+    public UShort $minus(java.lang.Object a, Type t) { return UShort.$box($value - ((UShort)a).$value); }
+    public UShort $times(java.lang.Object a, Type t) { return UShort.$box($value * ((UShort)a).$value); }
+    public UShort $over(java.lang.Object a, Type t) { return UShort.$box((short)((0xffff & $value) / (0xffff & ((UShort)a).$value))); }
     
     // implements Bitwise<UShort>
     public UShort $tilde$G() { return UShort.$box(~$value); }
-    public UShort $ampersand(UShort a, Type t) { return UShort.$box($value & a.$value); }
-    public UShort $bar(UShort a, Type t) { return UShort.$box($value | a.$value); }
-    public UShort $caret(UShort a, Type t) { return UShort.$box($value ^ a.$value); }
+    public UShort $ampersand(java.lang.Object a, Type t) { return UShort.$box($value & ((UShort)a).$value); }
+    public UShort $bar(java.lang.Object a, Type t) { return UShort.$box($value | ((UShort)a).$value); }
+    public UShort $caret(java.lang.Object a, Type t) { return UShort.$box($value ^ ((UShort)a).$value); }
     public UShort $left$G(final int count) { return UShort.$box($value << count); }
     public UShort $right$G(final int count) { return UShort.$box((0xffff & $value) >>> count); } // UShort is always unsigned
     public UShort $unsigned_right$G(final int count) { return UShort.$box((0xffff & $value) >>> count); }
     
-    // implements Ordered<UShort>. Rely on autoboxing of booleans
-    public Object $lt(UShort a, Type t) { return Unsigned.lt($value,a.$value); }
-    public Object $gt(UShort a, Type t) { return Unsigned.gt($value,a.$value); }
-    public Object $le(UShort a, Type t) { return Unsigned.le($value,a.$value); }
-    public Object $ge(UShort a, Type t) { return Unsigned.ge($value,a.$value); }
+    // implements Ordered<UShort>
+    public java.lang.Object $lt(java.lang.Object a, Type t) { return x10.core.Boolean.$box(Unsigned.lt($value,((UShort)a).$value)); }
+    public java.lang.Object $gt(java.lang.Object a, Type t) { return x10.core.Boolean.$box(Unsigned.gt($value,((UShort)a).$value)); }
+    public java.lang.Object $le(java.lang.Object a, Type t) { return x10.core.Boolean.$box(Unsigned.le($value,((UShort)a).$value)); }
+    public java.lang.Object $ge(java.lang.Object a, Type t) { return x10.core.Boolean.$box(Unsigned.ge($value,((UShort)a).$value)); }
+    // for X10PrettyPrinterVisitor.returnSpecialTypeFromDispatcher
+    public boolean $lt$O(java.lang.Object a, Type t) { return Unsigned.lt($value,((UShort)a).$value); }
+    public boolean $gt$O(java.lang.Object a, Type t) { return Unsigned.gt($value,((UShort)a).$value); }
+    public boolean $le$O(java.lang.Object a, Type t) { return Unsigned.le($value,((UShort)a).$value); }
+    public boolean $ge$O(java.lang.Object a, Type t) { return Unsigned.ge($value,((UShort)a).$value); }
 
     public void $_serialize(X10JavaSerializer serializer) throws IOException {
         serializer.write($value);

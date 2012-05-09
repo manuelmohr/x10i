@@ -223,8 +223,9 @@ public class TypeParamSubst {
 	}
 
     private TypeParamSubst reinstantiateTPS(TypeParamSubst t) {
-        List<? extends Type> tas = reinstantiate(t.typeArguments);
-        return new TypeParamSubst(ts, tas, t.typeParameters, t.eager);
+        //List<? extends Type> tas = reinstantiate(t.typeArguments);
+        List<ParameterType> tps = reinstantiate(t.typeParameters);
+        return new TypeParamSubst(ts, t.typeArguments, tps, t.eager);
     }
 
 	private X10LocalInstance reinstantiateLI(X10LocalInstance t) {
@@ -244,7 +245,7 @@ public class TypeParamSubst {
 	private ClosureInstance reinstantiateClosure(ClosureInstance t) {
 		if (eager) {
 		    final ClosureInstance fi = t;
-		    ClosureInstance res = new ClosureInstance_c(fi.typeSystem(), fi.position(), Types.ref(fi.def()));
+		    ClosureInstance res = new ClosureInstance_c(fi.typeSystem(), fi.position(), fi.errorPosition(), Types.ref(fi.def()));
 		    res = (ClosureInstance) res.returnType(reinstantiate(fi.returnType()));
 		    res = (ClosureInstance) res.formalNames(reinstantiate(fi.formalNames()));
 		    res = (ClosureInstance) res.formalTypes(reinstantiate(fi.formalTypes()));

@@ -18,14 +18,15 @@ import x10.compiler.NativeRep;
 
 /**
  * A low-level abstraction of a chunk of memory that
- * contains a dense, indexed from 0 collection of values of type T.<p>
+ * contains a dense, indexed from 0 collection of
+ * values of type T.<p>
  *
  * This abstraction is provide to enable other higher-level
  * abstractions (such as Array) to be implemented efficiently
  * and to allow low-level programming of memory regions at the
  * X10 level when absolutely required for performance. Most of the API
- * of this class is safe, but there are some loopholes that can be used
- * when absolutely necessary for performance.<p>
+ * of this class is safe, but there are some loopholes that can be
+ * used when absolutely necessary for performance..<p>
  */
 public struct IndexedMemoryChunk[T] {
     // Pointer to the allocated memory
@@ -75,8 +76,10 @@ public struct IndexedMemoryChunk[T] {
     }
 
     /**
-     * Resizes the indexed memory chunk. Returns a new IndexedMemoryChunk
-     * the old one is not valid anymore after this call.
+     * Operator that allows access of IndexedMemoryChunk elements by index.
+     *
+     * @param i The index to retreive.
+     * @return The value at that index.
      */
     public static def resize[T](old: IndexedMemoryChunk[T], newLength: Int): IndexedMemoryChunk[T] {
         val prevSize = calculateSize[T](old.length);
@@ -131,7 +134,10 @@ public struct IndexedMemoryChunk[T] {
     }
 
     /**
-     * Return the size of the IndexedMemoryChunk (in elements)
+     * Operator that allows UNSAFE access of IndexedMemoryChunk elements by index.
+     *
+     * @param i The index to retreive.
+     * @return The value at that index.
      */
     public def length(): Int = length;
 
@@ -226,3 +232,5 @@ public struct IndexedMemoryChunk[T] {
     }
     public def hashCode(): Int = ptr.hashCode();
 }
+
+// vim:shiftwidth=4:tabstop=4:expandtab

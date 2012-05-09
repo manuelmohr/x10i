@@ -22,10 +22,10 @@ package x10.util;
  *   static store = new x10.util.WorkerLocalStorage[String,String]();
  * 
  *   public static def main(Array[String]) {
- *     finish async at (here.next()) {
+ *     finish at (here.next()) async {
  *       store.put("salutation", "Hello");
  *     }
- *     finish async at (here.next()) {
+ *     finish at (here.next()) async {
  *       Console.OUT.println(store.getOrElse("salutation", "Bye"));
  *     }
  *   }
@@ -35,7 +35,7 @@ package x10.util;
  * 
  */
 public class WorkerLocalStorage[Key,Value] {
-    private val store = PlaceLocalHandle.make(Dist.makeUnique(),
+    private val store = PlaceLocalHandle.make(PlaceGroup.WORLD,
             ()=>new Array[HashMap[Key,Value]](Runtime.MAX_THREADS, null as HashMap[Key,Value]));
 
     public def get(key:Key):Box[Value] {

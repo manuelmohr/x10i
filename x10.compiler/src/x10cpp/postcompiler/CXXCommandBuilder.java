@@ -127,6 +127,9 @@ public class CXXCommandBuilder {
         
         // header files for all prebuilt-libraries
         for (PrecompiledLibrary pcl:options.x10libs) {
+            if (options.x10_config.DEBUG) {
+                cxxCmd.add("-I"+pcl.absolutePathToRoot+"/include-dbg");
+            }
             cxxCmd.add("-I"+pcl.absolutePathToRoot+"/include");
         }
 
@@ -164,6 +167,10 @@ public class CXXCommandBuilder {
         if (options.pg) {
             cxxCmd.add("-pg");
         }
+        
+        if (options.gpt) {
+            cxxCmd.add("-g");
+        }
 
         cxxCmd.addAll(x10rt.cxxFlags);
         for (PrecompiledLibrary pcl:options.x10libs) {
@@ -187,7 +194,12 @@ public class CXXCommandBuilder {
      */
     public void addPostArgs(ArrayList<String> cxxCmd) {
         for (PrecompiledLibrary pcl:options.x10libs) {
-            cxxCmd.add("-L"+pcl.absolutePathToRoot+"/lib");
+            
+            if (options.x10_config.DEBUG && !options.x10_config.DEBUG_APP_ONLY) {
+                cxxCmd.add("-L"+pcl.absolutePathToRoot+"/lib-dbg");
+            }
+            cxxCmd.add("-L"+pcl.absolutePathToRoot+"/lib");                
+            
             cxxCmd.addAll(pcl.ldFlags);
             cxxCmd.addAll(pcl.libs);
         }
@@ -368,7 +380,7 @@ public class CXXCommandBuilder {
     	ans.add("sm_13");
     	ans.add("sm_20");
     	ans.add("sm_21");
-    	ans.add("sm_30");
+    	//ans.add("sm_30");
     	return ans;
     }
 

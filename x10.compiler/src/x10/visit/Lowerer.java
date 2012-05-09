@@ -95,7 +95,6 @@ import x10.ast.X10Special;
 import x10.ast.X10Unary_c;
 import x10.constraint.XFailure;
 import x10.constraint.XVar;
-import x10.emitter.Emitter;
 import x10.extension.X10Ext;
 import x10.extension.X10Ext_c;
 import x10.optimizations.ForLoopOptimizer;
@@ -117,6 +116,7 @@ import x10.types.constants.StringValue;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.XConstrainedTerm;
 import x10.util.AltSynthesizer;
+import x10.util.AnnotationUtils;
 import x10.util.ClosureSynthesizer;
 import x10.util.Synthesizer;
 import x10.util.synthesizer.InstanceCallSynth;
@@ -140,13 +140,13 @@ public class Lowerer extends ContextVisitor {
         altsynth = new AltSynthesizer(ts, nf);
     }
 
-    private static int count;
+    private int count;
     //Collecting Finish Use: store reducer
-    private static Stack<FinishExpr> reducerS = new Stack<FinishExpr>();
-    private static Stack<Local> clockStack = new Stack<Local>();
-    private static int flag = 0;
+    private Stack<FinishExpr> reducerS = new Stack<FinishExpr>();
+    private Stack<Local> clockStack = new Stack<Local>();
+    private int flag = 0;
 
-    private static Name getTmp() {
+    private Name getTmp() {
         return Name.make("__lowerer__var__" + (count++) + "__");
     }
 
@@ -244,7 +244,40 @@ public class Lowerer extends ContextVisitor {
 				return result;
 			} catch (SemanticException z) {
 				return null;
+			} finally {
+			    clockStack.pop();
 			}
+    	}
+    	
+        // handle at(p) async S and treat it as the old async(p) S.
+    	if (n instanceof AtStmt) {
+    	    AtStmt atStm = (AtStmt) n;
+    	    Stmt body = atStm.body();
+    	    Async async = toAsync(body);
+    	    if (async==null)
+    	        return null;
+    	    Expr place = atStm.place();
+            if (ts.hasSameClassDef(Types.baseType(place.type()), ts.GlobalRef())) {
+                try {
+                    place = synth.makeFieldAccess(async.position(),place, ts.homeName(), context());
+                } catch (SemanticException e) {
+                }
+            }
+            List<Expr> clocks = async.clocks();
+            place = (Expr) visitEdgeNoOverride(atStm, place);
+            body = (Stmt) visitEdgeNoOverride(async, async.body());
+            if (clocks != null && ! clocks.isEmpty()) {
+                List<Expr> nclocks = new ArrayList<Expr>();
+                for (Expr c : clocks) {
+                    nclocks.add((Expr) visitEdgeNoOverride(async, c));
+                }
+                clocks =nclocks;
+            }
+            try {
+                return visitAsyncPlace(async, place, body, atStm.atDef().capturedEnvironment());
+            } catch (SemanticException z) {
+                return null;
+            }
     	}
     	// handle async at(p) S and treat it as the old async(p) S.
     	if (n instanceof Async) {
@@ -260,6 +293,7 @@ public class Lowerer extends ContextVisitor {
     			} catch (SemanticException e) {
     			}
     		}
+            if (!ExpressionFlattener.isPrimary(place)) return null;
     		List<Expr> clocks = async.clocks();
     		place = (Expr) visitEdgeNoOverride(atStm, place);
     		body = (Stmt) visitEdgeNoOverride(atStm, atStm.body());
@@ -367,15 +401,15 @@ public class Lowerer extends ContextVisitor {
         List<TypeNode> typeArgs = Arrays.asList(new TypeNode[] { c.returnType() });
         Position bPos = c.body().position();
         ClosureDef cDef = c.closureDef().position(bPos);
+        // If in a clocked context, must capture implicit clock variable 
+        // being added by the lowering phase.
+        if (!clockStack.isEmpty()) {
+            cDef.addCapturedVariable(clockStack.peek().localInstance());
+        }
         Expr closure = nf.Closure(c, bPos)
             .closureDef(cDef)
         	.type(cDef.classDef().asType());
         List<Expr> args = new ArrayList<Expr>(Arrays.asList(new Expr[] { place, closure }));
-        List<Type> mArgs = new ArrayList<Type>(Arrays.asList(new Type[] {
-            ts.Place(), cDef.asType()
-        }));
-       // List<Type> tArgs = Arrays.asList(new Type[] { fDef.returnType().get() });
-
         Expr result = synth.makeStaticCall(pos, ts.Runtime(), implName,
         		typeArgs, args, c.type(), context());
         return result;
@@ -434,19 +468,44 @@ public class Lowerer extends ContextVisitor {
 
     private Stmt visitAtStmt(AtStmt a) throws SemanticException {
         Position pos = a.position();
-        return atStmt(pos, a.body(), a.place(), a.atDef().capturedEnvironment(), a.atDef());
+
+        // If in a clocked context, must capture implicit clock variable 
+        // being added by the lowering phase.
+        List<VarInstance<? extends VarDef>> env = a.atDef().capturedEnvironment();
+        if (!clockStack.isEmpty()) {
+            env = new ArrayList<VarInstance<? extends VarDef>>(env);
+            env.add(clockStack.peek().localInstance());
+        }
+        
+        return atStmt(pos, a.body(), a.place(), env, a.atDef());
     }
 
     private AtStmt toAtStmt(Stmt body) {
-    	if ((body instanceof AtStmt)) {
-    		return (AtStmt) body;
+        if ((body instanceof AtStmt)) {
+            return (AtStmt) body;
+        }
+        if (body instanceof Block) {
+            Block block = (Block) body;
+            if (block.statements().size()==1) {
+                body = block.statements().get(0);
+                if ((body instanceof AtStmt)) {
+                    return (AtStmt) body;
+                }
+            }
+        }
+        return null;
+    }
+
+    private Async toAsync(Stmt body) {
+    	if ((body instanceof Async)) {
+    		return (Async) body;
     	}
     	if (body instanceof Block) {
     		Block block = (Block) body;
     		if (block.statements().size()==1) {
     			body = block.statements().get(0);
-    			if ((body instanceof AtStmt)) {
-    				return (AtStmt) body;
+    			if ((body instanceof Async)) {
+    				return (Async) body;
     			}
     		}
     	}
@@ -467,7 +526,7 @@ public class Lowerer extends ContextVisitor {
     	List<Expr> clocks = clocks(a.clocked(), a.clocks());
         Position pos = a.position();
         X10Ext ext = (X10Ext) a.ext();
-        List<X10ClassType> refs = Emitter.annotationsNamed(ts, a, REF);
+        List<X10ClassType> refs = AnnotationUtils.annotationsNamed(a, REF);
         List<VarInstance<? extends VarDef>> env = a.asyncDef().capturedEnvironment();
         if (a.clocked()) {
             env = new ArrayList<VarInstance<? extends VarDef>>(env);
@@ -489,7 +548,7 @@ public class Lowerer extends ContextVisitor {
     private Stmt visitAsyncPlace(Async a, Expr place, Stmt body, List<VarInstance<? extends VarDef>> env) throws SemanticException {
         List<Expr> clocks = clocks(a.clocked(), a.clocks());
         Position pos = a.position();
-        List<X10ClassType> refs = Emitter.annotationsNamed(ts, a, REF);
+        List<X10ClassType> refs = AnnotationUtils.annotationsNamed(a, REF);
         if (a.clocked()) {
             env = new ArrayList<VarInstance<? extends VarDef>>(env);
             env.add(clockStack.peek().localInstance());
@@ -511,7 +570,7 @@ public class Lowerer extends ContextVisitor {
     }
 
     public static boolean isUncountedAsync(TypeSystem ts, Async a) {
-        return Emitter.hasAnnotation(ts, a, UNCOUNTED);
+        return AnnotationUtils.hasAnnotation(ts, a, UNCOUNTED);
     }
 
     /**
@@ -529,7 +588,7 @@ public class Lowerer extends ContextVisitor {
      * TODO: move into a separate pass!
      */
     private Stmt specializeAsync(Async a, Expr p, Stmt body) throws SemanticException {
-        if (!Emitter.hasAnnotation(ts, a, IMMEDIATE))
+        if (!AnnotationUtils.hasAnnotation(ts, a, IMMEDIATE))
             return null;
         if (a.clocks().size() != 0)
             return null;
@@ -780,7 +839,7 @@ public class Lowerer extends ContextVisitor {
      * TODO: move into a separate pass!
      */
     private Stmt specializeFinish(Finish f) throws SemanticException {
-        if (!Emitter.hasAnnotation(ts, f, IMMEDIATE))
+        if (!AnnotationUtils.hasAnnotation(ts, f, IMMEDIATE))
             return null;
         Position pos = f.position();
         ClassType target = (ClassType) ts.forName(REMOTE_OPERATION);
@@ -861,7 +920,7 @@ public class Lowerer extends ContextVisitor {
     //    Runtime.ensureNotInAtomic();
     //    val fresh = Runtime.startFinish();
     //    try { S; }
-    //    catch (t:Throwable) { Runtime.pushException(t); throw new RuntimeException(); }
+    //    catch (t:Throwable) { Runtime.pushException(t); throw new Exception(); }
     //    finally { Runtime.stopFinish(fresh); }
     //    }
     private Stmt visitFinish(Finish f) throws SemanticException {
@@ -882,7 +941,7 @@ public class Lowerer extends ContextVisitor {
         Expr call = nf.X10Call(pos, nf.CanonicalTypeNode(pos, ts.Runtime()),
                 nf.Id(pos, PUSH_EXCEPTION), Collections.<TypeNode>emptyList(),
                 Collections.singletonList(local)).methodInstance(mi).type(ts.Void());
-        Throw thr = throwRuntimeException(pos);
+        Throw thr = throwException(pos);
         Expr startCall = specializedFinish2(f);
 
         Context xc = context();
@@ -911,9 +970,9 @@ public class Lowerer extends ContextVisitor {
         		tcfBlock);
     }
 
-    // Generates a throw of a new RuntimeException().
-    private Throw throwRuntimeException(Position pos) throws SemanticException {
-        Type re = ts.RuntimeException();
+    // Generates a throw of a new Exception().
+    private Throw throwException(Position pos) throws SemanticException {
+        Type re = ts.Exception();
         X10ConstructorInstance ci = ts.findConstructor(re, ts.ConstructorMatcher(re, Collections.<Type>emptyList(), context()));
         Expr newRE = nf.New(pos, nf.CanonicalTypeNode(pos, re), Collections.<Expr>emptyList()).constructorInstance(ci).type(re);
         return nf.Throw(pos, newRE);
@@ -923,7 +982,7 @@ public class Lowerer extends ContextVisitor {
     //    {
     //    val fresh = Runtime.startCollectingFinish(R);
     //    try { S; }
-    //    catch (t:Throwable) { Runtime.pushException(t); throw new RuntimeException(); }
+    //    catch (t:Throwable) { Runtime.pushException(t); throw new Exception(); }
     //    finally { x = Runtime.stopCollectingFinish(fresh); }
     //    }
     private Stmt visitFinishExpr(Assign n, LocalDecl l, Return r) throws SemanticException {
@@ -976,7 +1035,7 @@ public class Lowerer extends ContextVisitor {
         Expr call = nf.X10Call(pos, nf.CanonicalTypeNode(pos, ts.Runtime()),
                 nf.Id(pos, PUSH_EXCEPTION), Collections.<TypeNode>emptyList(),
                 Collections.singletonList(local)).methodInstance(mi).type(ts.Void());
-        Throw thr = throwRuntimeException(pos);
+        Throw thr = throwException(pos);
         Catch catchBlock = nf.Catch(pos, formal, nf.Block(pos, nf.Eval(pos, call), thr));
         
         // Begin finally block

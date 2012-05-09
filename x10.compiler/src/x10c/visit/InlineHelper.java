@@ -125,7 +125,7 @@ public class InlineHelper extends ContextVisitor {
                                                 for (Type ft : smi.formalTypes()) {
                                                     formalTypes.add(Types.ref(ft));
                                                 }
-                                                X10MethodDef nmd = xts.methodDef(smi.position(), Types.ref(cd.asType()),
+                                                X10MethodDef nmd = xts.methodDef(smi.position(), smi.errorPosition(), Types.ref(cd.asType()),
                                                         Flags.PUBLIC, Types.ref(smi.returnType()),
                                                         makeSuperBridgeName(ct.def(), smi.name()), md.typeParameters(),
                                                         formalTypes, cd.thisDef(), Types.toLocalDefList(smi.formalNames()), Types.ref(smi.guard()),
@@ -186,7 +186,7 @@ public class InlineHelper extends ContextVisitor {
             argTypes.add(Types.ref(ct));
         }
         
-        X10MethodDef nmd = (X10MethodDef) xts.methodDef(md.position(), Types.ref(cd.asType()),
+        X10MethodDef nmd = (X10MethodDef) xts.methodDef(md.position(), md.errorPosition(), Types.ref(cd.asType()),
                 md.flags().clearPrivate().clearProtected().clearNative().Public().Static(),
                 Types.ref(md.returnType().get()), pmn, argTypes);
         // check
@@ -401,7 +401,7 @@ public class InlineHelper extends ContextVisitor {
     }
 
     public static Name makeSuperBridgeName(final ClassDef cd, Name name) {
-        return Name.make(Emitter.mangleAndFlattenQName(cd.asType().fullName()) + "$" + Emitter.mangleToJava(name) + BRIDGE_TO_SUPER_SUFFIX);
+        return Name.make(Emitter.mangleAndFlattenQName(cd.asType()) + "$" + Emitter.mangleToJava(name) + BRIDGE_TO_SUPER_SUFFIX);
     }
 
     public static Name makePrivateBridgeName(Name name) {

@@ -15,6 +15,7 @@ import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -78,6 +79,7 @@ import polyglot.ast.Unary;
 import polyglot.ast.Unary_c;
 import polyglot.frontend.Source;
 import polyglot.types.ClassDef;
+import polyglot.types.ClassType;
 import polyglot.types.ConstructorDef;
 import polyglot.types.ContainerType;
 import polyglot.types.Context;
@@ -163,6 +165,7 @@ import x10.types.X10ConstructorInstance;
 import x10.types.X10FieldInstance;
 import x10.types.X10ParsedClassType_c;
 import x10.types.constraints.SubtypeConstraint;
+import x10.util.AnnotationUtils;
 import x10.util.CollectionFactory;
 import x10.util.HierarchyUtils;
 import x10c.ast.X10CBackingArrayAccessAssign_c;
@@ -187,12 +190,13 @@ import x10cpp.visit.ASTQuery;
 public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
 
     public static final String JAVA_LANG_OBJECT = "java.lang.Object";
-    public static final String JAVA_LANG_CLASS = "java.lang.Class";
     public static final String JAVA_IO_SERIALIZABLE = "java.io.Serializable";
-    public static final String JAVA_LANG_SYSTEM = "java.lang.System";
     public static final String X10_CORE_REF = "x10.core.Ref";
     public static final String X10_CORE_STRUCT = "x10.core.Struct";
     public static final String X10_CORE_ANY = "x10.core.Any";
+    public static final String X10_CORE_X10GENERATED = "x10.core.X10Generated";
+
+    public static final String DUMMY_PARAM_TYPE1 = "java.lang.System";
 
     public static final int PRINT_TYPE_PARAMS = 1;
     public static final int BOX_PRIMITIVES = 2;
@@ -200,9 +204,20 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
     public static final int NO_QUALIFIER = 8;
 
     public static final boolean isSelfDispatch = true;
+    // WIP XTENLANG-2993
+//    public static final boolean returnSpecialTypeFromDispatcher = true;
+    public static final boolean returnSpecialTypeFromDispatcher = false;
     public static final boolean isGenericOverloading = true;
     public static final boolean supportConstructorSplitting = true;
     public static final boolean supportConstructorInlining = true;
+    public static final boolean generateFactoryMethod = false;
+    public static final boolean generateOnePhaseConstructor = true;
+    // XTENLANG-2871
+    public static final boolean supportJavaThrowables = true;
+    public static final boolean useRethrowBlock = true;
+
+    // N.B. should be as short as file name length which is valid on all supported platforms.
+    public static final int longestTypeName = 255; // use hash code if type name becomes longer than some threshold.
 
     public static final String X10_FUN_PACKAGE = "x10.core.fun";
     public static final String X10_FUN_CLASS_NAME_PREFIX = "Fun";
@@ -212,8 +227,16 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
     public static final String X10_CORE_STRING = "x10.core.String";
     public static final String X10_RUNTIME_TYPE_CLASS = "x10.rtt.Type";
     public static final String X10_RTT_TYPES = "x10.rtt.Types";
-    public static final String X10_RUNTIME_CLASS = "x10.runtime.impl.java.Runtime";
     public static final String X10_RUNTIME_UTIL_UTIL = "x10.runtime.util.Util";
+
+    public static final String X10_CORE_THROWABLE_UTILITIES = "x10.core.ThrowableUtilities";
+    public static final String X10_CORE_THROWABLE = "x10.core.Throwable";
+    public static final String X10_CORE_X10THROWABLE = "x10.core.X10Throwable";
+    public static final String X10_IMPL_UNKNOWN_JAVA_THROWABLE = "x10.runtime.impl.java.UnknownJavaThrowable";
+    public static final String JAVA_LANG_THROWABLE = "java.lang.Throwable";
+    public static final String JAVA_LANG_EXCEPTION = "java.lang.Exception";
+    public static final String JAVA_LANG_RUNTIME_EXCEPTION = "java.lang.RuntimeException";
+    public static final String JAVA_LANG_ERROR = "java.lang.Error";
 
     public static final String MAIN_CLASS = "$Main";
     public static final String RTT_NAME = "$RTT";
@@ -334,7 +357,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         w.write(n.operator().toString());
 
         boolean closeParen = false;
-        if (Emitter.isPrimitive(n.type()) && Emitter.isBoxedType(n.right().type())) {
+        if (isPrimitive(n.type()) && isBoxedType(n.right().type())) {
             closeParen = er.printUnboxConversion(n.type());
         }
         er.prettyPrint(n.right(), tr);
@@ -427,6 +450,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         Flags flags = n.flags().flags();
 
         w.begin(0);
+        w.write("@"+X10_CORE_X10GENERATED+" ");
         if (flags.isInterface()) {
             w.write(flags.clearInterface().clearAbstract().translateJava());
         } else {
@@ -456,7 +480,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                 assert superClassNode != null;
                 Type superType = superClassNode.type();
                 // N.B. HACK! If a class extends x10.lang.Object, swipe in x10.core.Ref
-                if (xts.typeEquals(superType, xts.Object(), context))
+                if (superType.isObject())
                     w.write(X10_CORE_REF);
                 else
                     er.printType(superType, PRINT_TYPE_PARAMS | BOX_PRIMITIVES | NO_VARIANCE);
@@ -490,7 +514,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
             List<Type> alreadyPrintedTypes = new ArrayList<Type>();
             for (Iterator<TypeNode> i = interfaces.iterator(); i.hasNext();) {
                 TypeNode tn = i.next();
-                if (!isSelfDispatch || (isSelfDispatch && !er.alreadyPrinted(alreadyPrintedTypes, tn.type()))) {
+                if (!isSelfDispatch || (isSelfDispatch && !Emitter.alreadyPrinted(alreadyPrintedTypes, tn.type()))) {
                     if (alreadyPrintedTypes.size() != 0) {
                         w.write(", ");
                     }
@@ -592,6 +616,59 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         // print the custom serializer
         if (subtypeOfCustomSerializer(def)) {
             er.generateCustomSerializer(def, n);
+        } else if(subtypeOfHadoopWritable(def)){
+        	w.write("public static x10.x10rt.X10JavaSerializable " + Emitter.DESERIALIZE_BODY_METHOD + "(");
+            w.writeln(Emitter.mangleToJava(def.name()) + " $_obj , x10.x10rt.X10JavaDeserializer $deserializer) throws java.io.IOException { ");
+            w.newline(4);
+            w.begin(0);
+            
+            if (!config.NO_TRACES && !config.OPTIMIZE) {
+                w.write("if (x10.runtime.impl.java.Runtime.TRACE_SER) { ");
+                w.write("x10.runtime.impl.java.Runtime.printTraceMessage(\"X10JavaSerializable for Hadoop Writable: " + Emitter.DESERIALIZE_BODY_METHOD + "() of \" + "  + Emitter.mangleToJava(def.name()) + ".class + \" calling\"); ");
+                w.writeln("} ");
+            }
+            
+            //_deserialize_body method
+            w.writeln("$_obj.readFields($deserializer.getInpForHadoop());");
+            w.writeln("$deserializer.record_reference($_obj);");
+            w.writeln("return $_obj;");
+            w.end();
+            w.newline();
+            w.writeln("}");
+            w.newline();
+
+            // _deserializer  method
+            w.writeln("public static x10.x10rt.X10JavaSerializable " + Emitter.DESERIALIZER_METHOD + "(x10.x10rt.X10JavaDeserializer $deserializer) throws java.io.IOException { ");
+            w.newline(4);
+            w.begin(0);
+            w.write(Emitter.mangleToJava(def.name()) + " $_obj = (" + Emitter.mangleToJava(def.name()) + ") ");
+            w.writeln("new " + Emitter.mangleToJava(def.name()) + "();");
+            w.writeln("return " + Emitter.DESERIALIZE_BODY_METHOD + "($_obj, $deserializer);");
+            w.end();
+            w.newline();
+            w.writeln("}");
+            w.newline();
+            
+            // _serialize_id()
+            w.writeln("public short " + Emitter.SERIALIZE_ID_METHOD + "() {");
+            w.newline(4);
+            w.begin(0);
+            w.writeln(" return " + Emitter.SERIALIZATION_ID_FIELD + ";");
+            w.end();
+            w.newline();
+            w.writeln("}");
+            w.newline();
+            
+         // _serialize()
+            w.writeln("public void " + Emitter.SERIALIZE_METHOD + "(x10.x10rt.X10JavaSerializer $serializer) throws java.io.IOException {");
+            w.newline(4);
+            w.begin(0);
+            w.writeln("this.write($serializer.getOutForHadoop());");
+            w.end();
+            w.newline();
+            w.writeln("}");
+            w.newline();
+            
         } else {
             if (!def.flags().isInterface()) {
 
@@ -618,7 +695,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
 
                 if (!config.NO_TRACES && !config.OPTIMIZE) {
                     w.write("if (x10.runtime.impl.java.Runtime.TRACE_SER) { ");
-                    w.write("java.lang.System.out.println(\"X10JavaSerializable: " + Emitter.DESERIALIZE_BODY_METHOD + "() of \" + "  + Emitter.mangleToJava(def.name()) + ".class + \" calling\"); ");
+                    w.write("x10.runtime.impl.java.Runtime.printTraceMessage(\"X10JavaSerializable: " + Emitter.DESERIALIZE_BODY_METHOD + "() of \" + "  + Emitter.mangleToJava(def.name()) + ".class + \" calling\"); ");
                     w.writeln("} ");
                 }
 
@@ -637,6 +714,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
 
                 // Deserialize the public variables of this class , we do not serialize transient or static variables
                 String str;
+                QName fullName;
                     for (int i = 0; i < ct.fields().size(); i++) {
                         FieldInstance f = ct.fields().get(i);
                         if (f instanceof X10FieldInstance && !query.ifdef(((X10FieldInstance) f).x10Def())) continue;
@@ -647,11 +725,29 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                         if (f.type().isParameterType()) {
                             w.writeln("$_obj." + Emitter.mangleToJava(f.name()) + " = $deserializer.readRef();");
                         } else if ((str = needsCasting(f.type())) != null) {
-                            // Want these to be readInteger and so on.....  These do not need a explicit case cause we are calling soecial methods
+                            // Want these to be readInteger and so on.....  These do not need a explicit case cause we are calling special methods
                             w.writeln("$_obj." + Emitter.mangleToJava(f.name()) + " = $deserializer.read" + str + "();");
+                        } else if (xts.isPrimitiveJavaArray(f.type())) {
+                            String type = f.type().toClass().typeArguments().get(0).toString();
+                            String primitiveType = type.substring(type.lastIndexOf(".") + 1);
+                            w.write("$_obj." + Emitter.mangleToJava(f.name()) + " = ");
+                            w.writeln("$deserializer.read" + primitiveType + "Array();");
+                        } else if (xts.isJavaArray(f.type())) {
+                            er.printType(f.type(), BOX_PRIMITIVES);
+                            w.write(" " + Emitter.mangleToJava(f.name()) + " = (");
+                            er.printType(f.type(), BOX_PRIMITIVES);
+                            w.writeln(") $deserializer.readArrayUsingReflection(" + f.type().toClass().typeArguments().get(0).toString() + ".class);");
+                            w.writeln("$_obj." + Emitter.mangleToJava(f.name()) + " = " + Emitter.mangleToJava(f.name()) + ";");
                         } else if(f.type().isArray() && f.type() instanceof JavaArrayType_c && ((JavaArrayType_c)f.type()).base().isParameterType()) {
                             // This is to get the test case XTENLANG_2299 to compile. Hope its a generic fix
                             w.write("java.lang.Object[] " + Emitter.mangleToJava(f.name()) + " = (java.lang.Object[]) $deserializer.readRef();");
+                            w.writeln("$_obj." + Emitter.mangleToJava(f.name()) + " = " + Emitter.mangleToJava(f.name()) + ";");
+                        } else if (f.type().toClass() != null && f.type().toClass().isJavaType()) {
+                            // deserialize the variable using reflection and cast it back to the correct type
+                            er.printType(f.type(), BOX_PRIMITIVES);
+                            w.write(" " + Emitter.mangleToJava(f.name()) + " = (");
+                            er.printType(f.type(), BOX_PRIMITIVES);
+                            w.writeln(") $deserializer.readRefUsingReflection();");
                             w.writeln("$_obj." + Emitter.mangleToJava(f.name()) + " = " + Emitter.mangleToJava(f.name()) + ";");
                         } else {
                             // deserialize the variable and cast it back to the correct type
@@ -674,13 +770,13 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                 w.newline(4);
                 w.begin(0);
 
-                if (def.constructors().size() == 0) {
+                if (def.constructors().size() == 0 || def.flags().isAbstract()) {
                     w.writeln("return null;");
                 } else {
                     if (def.isStruct()) {
                         //TODO Keith get rid of this
                         if (!Emitter.mangleToJava(def.name()).equals("PlaceLocalHandle")) {
-                            w.write(Emitter.mangleToJava(def.name()) + " $_obj = new " + Emitter.mangleToJava(def.name()) + "((" + JAVA_LANG_SYSTEM + "[]) null");
+                            w.write(Emitter.mangleToJava(def.name()) + " $_obj = new " + Emitter.mangleToJava(def.name()) + "((" + DUMMY_PARAM_TYPE1 + "[]) null");
                             // N.B. in custom deserializer, initialize type params with null
                             for (ParameterType typeParam : def.typeParameters()) {
                                 w.write(", (" + X10_RUNTIME_TYPE_CLASS + ") null");
@@ -688,18 +784,25 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                             w.write(");");
                             w.newline();
                         } else {
-                            w.writeln(Emitter.mangleToJava(def.name()) + " $_obj = new " + Emitter.mangleToJava(def.name()) + "(null, (" + JAVA_LANG_SYSTEM + ") null);");
+                            w.writeln(Emitter.mangleToJava(def.name()) + " $_obj = new " + Emitter.mangleToJava(def.name()) + "(null, (" + DUMMY_PARAM_TYPE1 + ") null);");
                         }
                     } else {
                         if (def.flags().isAbstract()) {
-                            w.writeln(Emitter.mangleToJava(def.name()) + " $_obj = (" + Emitter.mangleToJava(def.name()) + ")" + Emitter.mangleToJava(def.name()) + "." + CREATION_METHOD_NAME + "();");
+                            w.write(Emitter.mangleToJava(def.name()) + " $_obj = (" + Emitter.mangleToJava(def.name()) + ") ");
+                            if (generateFactoryMethod) {
+                                w.write(Emitter.mangleToJava(def.name()) + "." + CREATION_METHOD_NAME);
+                            } else {
+                                assert generateOnePhaseConstructor;
+                                w.write("new " + Emitter.mangleToJava(def.name()));
+                            }
+                            w.writeln("();");
                         } else {
                             w.write(Emitter.mangleToJava(def.name()) + " $_obj = new " + Emitter.mangleToJava(def.name()) + "(");
                             if (supportConstructorSplitting
                                 // XTENLANG-2830
                                 /*&& !ConstructorSplitterVisitor.isUnsplittable(Types.baseType(def.asType()))*/
                                 && !def.flags().isInterface()) {
-                                w.write("(" + JAVA_LANG_SYSTEM + "[]) null");
+                                w.write("(" + DUMMY_PARAM_TYPE1 + "[]) null");
                                 // N.B. in custom deserializer, initialize type params with null
                                 for (ParameterType typeParam : def.typeParameters()) {
                                     w.write(", (" + X10_RUNTIME_TYPE_CLASS + ") null");
@@ -755,9 +858,8 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                         continue;
                     String fieldName = Emitter.mangleToJava(f.name());
                     if (f.type().isArray()) {
-
-                        // If this is an array and not a java primitive we need to cast it into an array
-                        if (f.type() instanceof JavaArrayType_c && isPrimitiveRepedJava(((JavaArrayType_c)f.type()).base())) {
+                        if (f.type() instanceof JavaArrayType_c && isPrimitive(((JavaArrayType_c)f.type()).base())) {
+                            // If this is an array and not a java primitive we need to cast it into an array
                             w.writeln("$serializer.write(this." + fieldName + ");");
                         } else {
                             w.writeln("if (" + fieldName + " instanceof x10.x10rt.X10JavaSerializable []) {");
@@ -767,8 +869,12 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                             w.writeln("}");
                         }
                     } else {
-                        if (isPrimitiveRepedJava(f.type()) || isString(f.type(), context)) {
+                        if (isPrimitive(f.type()) || isString(f.type()) || xts.isPrimitiveJavaArray(f.type())) {
                             w.writeln("$serializer.write(this." + fieldName + ");");
+                        } else if (f.type().toClass() != null && f.type().toClass().isJavaType()) {
+                            w.writeln("$serializer.writeObjectUsingReflection(this." + fieldName + ");");
+                        } else if (xts.isJavaArray(f.type())) {
+                            w.writeln("$serializer.writeArrayUsingReflection(this." + fieldName + ");");
                         } else {
                             w.writeln("if (" + fieldName + " instanceof x10.x10rt.X10JavaSerializable) {");
                             w.writeln("$serializer.write( (x10.x10rt.X10JavaSerializable) this." + fieldName + ");");
@@ -798,7 +904,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
             && !def.flags().isInterface()) {
             w.write("// constructor just for allocation");
             w.newline();
-            w.write("public " + Emitter.mangleToJava(def.name()) + "(final " + JAVA_LANG_SYSTEM + "[] $dummy");
+            w.write("public " + Emitter.mangleToJava(def.name()) + "(final " + DUMMY_PARAM_TYPE1 + "[] $dummy");
             List<String> params = new ArrayList<String>();
             for (ParameterType p : def.typeParameters()) {
                 String param = Emitter.mangleParameterType(p);
@@ -807,7 +913,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
             }
             w.write(") { ");
             w.newline();
-            if (!(superClassNode != null && Emitter.isNativeRepedToJava(superClassNode.type()))) {
+            if (!(superClassNode != null && (Emitter.isNativeRepedToJava(superClassNode.type()) || superClassNode.type().toClass().isJavaType()))) {
                 w.write("super($dummy");
                 if (def.superType() != null) {
                     printArgumentsForTypeParamsPreComma(def.superType().get().toClass().typeArguments(), false);
@@ -903,52 +1009,45 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         // print the original body
         n.print(n.body(), w, tr);
 
+        // print synthetic types for parameter mangling
+        printExtraTypes(def);
+
         w.end();
         w.newline();
         w.write("}");
         w.newline(0);
     }
 
+    // used by custom serializer
     public static String needsCasting(Type type) {
-
-        // is this a java primitive
-        if(type.isInt() || type.isDouble() || type.isFloat() || type.isByte() || type.isChar() || type.isShort() || type.isLong() || type.isBoolean()) {
-            String str = type.name().toString();
-            return str.substring(str.lastIndexOf(".") + 1);
-        }
-        if (type instanceof X10ClassType) {
-			X10ClassDef cd = ((X10ClassType) type).x10Def();
-			String pat = Emitter.getJavaRep(cd, false);
-            if (pat !=null) {
-                if (pat.equals("int")) {
-                    return "Int";
-                } if (pat.equals("double")) {
-                    return "Double";
-                } if (pat.equals("float")) {
-                    return "Float";
-                } if (pat.equals("byte")) {
-                    return "Byte";
-                } if (pat.equals("char")) {
-                    return "Char";
-                } if (pat.equals("short")) {
-                    return "Short";
-                } if (pat.equals("long")) {
-                    return "Long";
-                } if (pat.equals("boolean")) {
-                    return "Boolean";
-                }
+        type = Types.baseType(type);
+        if (isPrimitive(type)) {
+            String name = type.name().toString();
+            if (type.isUnsignedNumeric()) {
+                return name.substring(name.lastIndexOf(".") + 1 + 1); // x10.lang.UInt -> Int
+            } else {
+                return name.substring(name.lastIndexOf(".") + 1); // x10.lang.Int -> Int
             }
         }
-
         return null;
     }
 
     private static final String CUSTOM_SERIALIZATION = "x10.io.CustomSerialization";
-    private static final String SERIAL_DATA = "x10.io.SerialData";
+    public static final String SERIAL_DATA = "x10.io.SerialData";
+    public static final String SERIAL_DATA_FIELD_NAME = "$$serialdata";
 
     private static boolean subtypeOfCustomSerializer(X10ClassDef def) {
+        return subtypeOfInterface(def, CUSTOM_SERIALIZATION);
+    }
+
+    private static final String HADOOP_WRITABLE = "org.apache.hadoop.io.Writable";
+    private static boolean subtypeOfHadoopWritable(X10ClassDef def) {
+        return subtypeOfInterface(def, HADOOP_WRITABLE);
+    }
+
+    private static boolean subtypeOfInterface(X10ClassDef def, String interfaceName) {
         for (Ref<? extends Type> ref : def.interfaces()) {
-            if (CUSTOM_SERIALIZATION.equals(ref.get().toString())) {
+            if (interfaceName.equals(ref.get().toString())) {
                 return true;
             }
         }
@@ -958,8 +1057,8 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         if (type instanceof ConstrainedType) {
             type = ((ConstrainedType) type).baseType().get();
         }
-        X10ClassDef superDef = (X10ClassDef) ((X10ParsedClassType_c) type).def();
-        return subtypeOfCustomSerializer(superDef);
+        X10ClassDef superDef = ((X10ParsedClassType_c) type).def();
+        return subtypeOfInterface(superDef, interfaceName);
     }
 
     // TODO haszero
@@ -970,22 +1069,12 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
      * ULong, UInt, Float, Double, Boolean, Char) user defined structs without a
      * constraint and without a class invariant where all fields haszero.
      */
-    private static boolean isPrimitiveStruct(Type type, TypeSystem xts) {
-        return xts.isNumeric(type) || xts.isChar(type) || xts.isBoolean(type);
-    }
-
-    private static boolean isPrimitiveStruct(X10ClassDef def) {
-        TypeSystem xts = def.typeSystem();
-        X10ClassType type = def.asType();
-        return isPrimitiveStruct(type, xts);
-    }
-
     private static boolean needZeroValueConstructor(X10ClassDef def) {
         if (def.flags().isInterface()) return false;
         if (!def.flags().isStruct()) return false;
         // Note: we don't need zero value constructor for primitive structs
         // because they are cached in x10.rtt.Types class.
-        if (isPrimitiveStruct(def)) return false;
+        if (isPrimitive(def.asType())) return false;
         // TODO stop generating useless zero value constructor for user-defined
         // struct that does not have zero value
         // user-defined struct does not have zero value if it have a field of
@@ -999,110 +1088,114 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         return true;
     }
 
-    private static boolean needZeroValueConstructor2(X10ClassDef def) {
-        if (!def.flags().isStruct()) return false;
-        return hasZeroValue(def.asType(), def.typeSystem());
-    }
+    // not used
+//    private static boolean needZeroValueConstructor2(X10ClassDef def) {
+//        if (!def.flags().isStruct()) return false;
+//        return hasZeroValue(def.asType());
+//    }
+//
+//    private static boolean hasZeroValue(Type type) {
+//        X10ClassType classType = (X10ClassType) type;
+//        if (classType.flags().isInterface()) return false;
+//        // if (!classType.flags().isStruct()) return false;
+//        // Note: we don't need zero value constructor for primitive structs
+//        // because they are cached in x10.rtt.Types class.
+//        if (isPrimitive(type)) return false;
+//        
+//        X10ClassDef def = classType.x10Def();
+//
+//        // TODO
+//        if (false) {
+//            // if (true) {
+//
+//            // user-defined struct type, parameter type or reference type
+//
+//            // TODO stop generating useless zero value constructor for
+//            // user-defined struct that does not have zero value
+//            // user-defined struct does not have zero value if it have a field
+//            // of type of either
+//            // 1) type parameter T that does not have haszero constraint
+//            // 2) any reference (i.e. non-struct) type that has {self != null}
+//            // consttaint
+//            // 3) any struct type (including primitive structs) that has any
+//            // constraint (e.g. Int{self != 0})
+//            // 4) any user-defined struct that does not have zero value
+//
+//            if (type instanceof ConstrainedType) {
+//                ConstrainedType constrainedType = (ConstrainedType) type;
+//                type = constrainedType.baseType().get();
+//
+//                if (type.isParameterType()) {
+//                    // parameter type T
+//                    ParameterType paramType = (ParameterType) type;
+//                    // TODO
+//                    // if (T doesn't have haszero constrait) return false;
+//                    List<SubtypeConstraint> terms = def.typeBounds().get().terms();
+//                    for (SubtypeConstraint sc : terms) {
+//                        if (sc.isHaszero()) {
+//                            Type superType = sc.supertype();
+//                            Type subType = sc.subtype();
+//                            System.out.println(superType);
+//                            System.out.println(subType);
+//                            // if (superType.equals(type)) return true;
+//                        }
+//                    }
+//                    return false;
+//                } else if (def.isStruct()) {
+//                    // user-defined struct type
+//                    return false;
+//                } else {
+//                    // reference (i.e. non-struct) type
+//                    // TODO
+//                    // if (type has {self != null} constraint) return false;
+//                    x10.types.constraints.CConstraint constraint = constrainedType.constraint().get();
+//                    Set<x10.constraint.XTerm> terms = constraint.rootTerms();
+//                    for (x10.constraint.XTerm term : terms) {
+//                        System.out.println(term);
+//                    }
+//                }
+//
+//            } else {
+//                if (type.isParameterType()) {
+//                    // parameter type T
+//                    ParameterType paramType = (ParameterType) type;
+//                    // TODO
+//                    // if (T doesn't have haszero constrait) return false;
+//                    List<SubtypeConstraint> terms = def.typeBounds().get().terms();
+//                    for (SubtypeConstraint sc : terms) {
+//                        if (sc.isHaszero()) {
+//                            Type superType = sc.supertype();
+//                            Type subType = sc.subtype();
+//                            System.out.println(superType);
+//                            System.out.println(subType);
+//                            // if (superType.equals(type)) return true;
+//                        }
+//                    }
+//                    return false;
+//                } else if (def.isStruct()) {
+//                    // user-defined struct type
+//                    // OK
+//                    // check instance fields
+//                } else {
+//                    // reference (i.e. non-struct) type
+//                    // OK
+//                    // check instance fields
+//                }
+//
+//                // check instance fields recursively
+//                for (polyglot.types.FieldInstance field : classType.fields()) {
+//                    if (field.flags().isStatic()) continue;
+//                    Type fieldType = field.type();
+//                    if (!hasZeroValue(fieldType)) return false;
+//                }
+//            }
+//
+//        }
+//
+//        return true;
+//    }
 
-    private static boolean hasZeroValue(Type type, TypeSystem xts) {
-        X10ClassType classType = (X10ClassType) type;
-        if (classType.flags().isInterface()) return false;
-        // if (!classType.flags().isStruct()) return false;
-        // Note: we don't need zero value constructor for primitive structs
-        // because they are cached in x10.rtt.Types class.
-        if (isPrimitiveStruct(type, xts)) return false;
-
-        // TODO
-        if (false) {
-            // if (true) {
-
-            // user-defined struct type, parameter type or reference type
-
-            // TODO stop generating useless zero value constructor for
-            // user-defined struct that does not have zero value
-            // user-defined struct does not have zero value if it have a field
-            // of type of either
-            // 1) type parameter T that does not have haszero constraint
-            // 2) any reference (i.e. non-struct) type that has {self != null}
-            // consttaint
-            // 3) any struct type (including primitive structs) that has any
-            // constraint (e.g. Int{self != 0})
-            // 4) any user-defined struct that does not have zero value
-
-            if (type instanceof ConstrainedType) {
-                ConstrainedType constrainedType = (ConstrainedType) type;
-                type = constrainedType.baseType().get();
-
-                if (xts.isParameterType(type)) {
-                    // parameter type T
-                    ParameterType paramType = (ParameterType) type;
-                    // TODO
-                    // if (T doesn't have haszero constrait) return false;
-                    List<SubtypeConstraint> terms = classType.x10Def().typeBounds().get().terms();
-                    for (SubtypeConstraint sc : terms) {
-                        if (sc.isHaszero()) {
-                            Type superType = sc.supertype();
-                            Type subType = sc.subtype();
-                            System.out.println(superType);
-                            System.out.println(subType);
-                            // if (superType.equals(type)) return true;
-                        }
-                    }
-                    return false;
-                } else if (xts.isStruct(type)) {
-                    // user-defined struct type
-                    return false;
-                } else {
-                    // reference (i.e. non-struct) type
-                    // TODO
-                    // if (type has {self != null} constraint) return false;
-                    x10.types.constraints.CConstraint constraint = constrainedType.constraint().get();
-                    Set<x10.constraint.XTerm> terms = constraint.rootTerms();
-                    for (x10.constraint.XTerm term : terms) {
-                        System.out.println(term);
-                    }
-                }
-
-            } else {
-                if (xts.isParameterType(type)) {
-                    // parameter type T
-                    ParameterType paramType = (ParameterType) type;
-                    // TODO
-                    // if (T doesn't have haszero constrait) return false;
-                    List<SubtypeConstraint> terms = classType.x10Def().typeBounds().get().terms();
-                    for (SubtypeConstraint sc : terms) {
-                        if (sc.isHaszero()) {
-                            Type superType = sc.supertype();
-                            Type subType = sc.subtype();
-                            System.out.println(superType);
-                            System.out.println(subType);
-                            // if (superType.equals(type)) return true;
-                        }
-                    }
-                    return false;
-                } else if (xts.isStruct(type)) {
-                    // user-defined struct type
-                    // OK
-                    // check instance fields
-                } else {
-                    // reference (i.e. non-struct) type
-                    // OK
-                    // check instance fields
-                }
-
-                // check instance fields recursively
-                for (polyglot.types.FieldInstance field : classType.fields()) {
-                    if (field.flags().isStatic()) continue;
-                    if (!hasZeroValue(type, xts)) return false;
-                }
-            }
-
-        }
-
-        return true;
-    }
-
-    private void setConstructorIds(X10ClassDef def) {
+    private static void setConstructorIds(X10ClassDef def) {
         List<ConstructorDef> cds = def.constructors();
         int constructorId = 0;
         for (ConstructorDef cd : cds) {
@@ -1133,7 +1226,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         }
     }
 
-    private boolean hasConstructorIdAnnotation(X10ConstructorDef condef) {
+    private static boolean hasConstructorIdAnnotation(X10ConstructorDef condef) {
         List<Type> annotations = condef.annotations();
         for (Type an : annotations) {
             if (an instanceof ConstructorIdTypeForAnnotation) {
@@ -1144,11 +1237,11 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
     }
 
     // if it isn't set id or don't have an annotation, return -1
-    private int getConstructorId(X10ConstructorDef condef) {
+    private static int getConstructorId(X10ConstructorDef condef) {
         if (!hasConstructorIdAnnotation(condef)) {
             ContainerType st = condef.container().get();
-            if (st instanceof X10ClassType) {
-                X10ClassDef def = (X10ClassDef) ((X10ClassType) st).def();
+            if (st.isClass()) {
+                X10ClassDef def = st.toClass().def();
                 setConstructorIds(def);
             }
         }
@@ -1169,7 +1262,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         TypeSystem ts = tr.typeSystem();
         t = Types.baseType(ts.expandMacros(t));
         if (t.isClass()) {
-            X10ClassType ct = (X10ClassType) t;
+            X10ClassType ct = t.toClass();
             try {
                 if (ct.isX10Struct()) {
                     X10ClassDef cd = (X10ClassDef) ct.def();
@@ -1183,6 +1276,12 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         return false;
     }
 
+    public static boolean isSplittable(Type type) {
+        return supportConstructorSplitting
+        && !type.name().toString().startsWith(ClosureRemover.STATIC_NESTED_CLASS_BASE_NAME)
+        && !ConstructorSplitterVisitor.isUnsplittable(Types.baseType(type));
+    }
+
     @Override
     public void visit(X10ConstructorDecl_c n) {
 
@@ -1193,11 +1292,8 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         }
         printCreationMethodDecl(n);
 
-        X10ClassType type = (X10ClassType) Types.get(n.constructorDef().container());
-        if (supportConstructorSplitting
-                && !n.name().toString().startsWith(ClosureRemover.STATIC_NESTED_CLASS_BASE_NAME)
-                && !ConstructorSplitterVisitor.isUnsplittable(type)) {
-
+        X10ClassType type = Types.get(n.constructorDef().container()).toClass();
+        if (isSplittable(type)) {
             printConstructorMethodDecl(n, isCustomSerializable);
             return;
         }
@@ -1248,20 +1344,27 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
     }
 
     private void printCreationMethodDecl(X10ConstructorDecl_c n) {
-        X10ClassType type = (X10ClassType) Types.get(n.constructorDef().container());
+        X10ClassType type = Types.get(n.constructorDef().container()).toClass();
 
         if (type.flags().isAbstract()) {
             return;
         }
 
-        w.write("// creation method for java code");
+
+        List<ParameterType> typeParameters = type.x10Def().typeParameters();
+
+        boolean isSplittable = isSplittable(type);
+
+        List<Formal> formals = n.formals();
+
+        if (generateFactoryMethod) {
+
+        w.write("// creation method for java code (factory method)");
         w.newline();
 
         tr.print(n,
                  tr.nodeFactory().FlagsNode(n.flags().position(),
                                             n.flags().flags().clearPrivate().clearProtected().Public().Static()), w);
-
-        List<ParameterType> typeParameters = type.x10Def().typeParameters();
 
         // TODO check without type bounds
         er.printMethodParams(typeParameters);
@@ -1274,28 +1377,33 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
 
         printConstructorFormals(n, true);
 
+        boolean isFirst = true;
+        for (Type _throws : AnnotationUtils.getThrowsTypes(n)) {
+            if (isFirst) {
+                w.write(" throws ");
+                isFirst = false;
+            } else {
+                w.write(", ");                
+            }
+            er.printType(_throws, 0);
+        }
+
         w.write("{");
         w.begin(4);
 
         w.write("return ");
 
-        boolean passParamsToConstructor = false;
-        if (supportConstructorSplitting
-                && !n.name().toString().startsWith(ClosureRemover.STATIC_NESTED_CLASS_BASE_NAME)
-                && !ConstructorSplitterVisitor.isUnsplittable(Types.baseType(type))) {
+        if (isSplittable) {
             printAllocationCall(type, typeParameters);                
             w.write(".");
             w.write(CONSTRUCTOR_METHOD_NAME);
         } else {
             w.write("new ");
             w.write(n.name().toString());
-            passParamsToConstructor = true;
         }
         w.write("(");
 
-        List<Formal> formals = n.formals();
-
-        if (passParamsToConstructor) {
+        if (!isSplittable) {
             printArgumentsForTypeParams(typeParameters, formals.size() == 0);
         }
 
@@ -1316,6 +1424,76 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         w.end();
         w.write("}");
         w.newline();
+
+        }
+        
+        // N.B. we don't generate 1-phase constructor here, since it will be generated as a normal compilation result of X10 constructor. 
+        if (generateOnePhaseConstructor && isSplittable) {
+
+        w.write("// creation method for java code (1-phase java constructor)");
+        w.newline();
+
+        tr.print(n,
+                 tr.nodeFactory().FlagsNode(n.flags().position(),
+                                            n.flags().flags().clearPrivate().clearProtected().Public()), w);
+
+        // N.B. printing type parameters causes post compilation error for XTENLANG_423 and GenericInstanceof16
+        er.printType(type, NO_QUALIFIER);
+
+        printConstructorFormals(n, true);
+
+        boolean isFirst = true;
+        for (Type _throws : AnnotationUtils.getThrowsTypes(n)) {
+            if (isFirst) {
+                w.write(" throws ");
+                isFirst = false;
+            } else {
+                w.write(", ");                
+            }
+            er.printType(_throws, 0);
+        }
+
+
+        w.write("{");
+        w.begin(4);
+
+        if (isSplittable) {
+            w.write("this");
+            w.write("((" + DUMMY_PARAM_TYPE1 + "[]) null");
+            printArgumentsForTypeParamsPreComma(typeParameters, false);
+            w.write(")");
+            
+            w.write(";"); w.newline();
+            
+            w.write(CONSTRUCTOR_METHOD_NAME);
+        } else {
+            w.write("this");
+        }
+        w.write("(");
+
+        if (!isSplittable) {
+            printArgumentsForTypeParams(typeParameters, formals.size() == 0);
+        }
+
+        for (int i = 0; i < formals.size(); i++) {
+            Formal formal = formals.get(i);
+            if (i != 0) {
+                w.write(",");
+            }
+            tr.print(n, formal.name(), w);
+        }
+
+        printExtraArgments((X10ConstructorInstance) n.constructorDef().asInstance());
+
+        w.write(")");
+
+        w.write(";");
+
+        w.end();
+        w.write("}");
+        w.newline();
+
+        }
     }
 
     private Stmt getFirstStatement(X10ConstructorDecl_c n) {
@@ -1366,6 +1544,17 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         w.write(ctorName);
 
         List<String> params = printConstructorFormals(n, false);
+
+        boolean isFirst = true;
+        for (Type _throws : AnnotationUtils.getThrowsTypes(n)) {
+            if (isFirst) {
+                w.write(" throws ");
+                isFirst = false;
+            } else {
+                w.write(", ");                
+            }
+            er.printType(_throws, 0);
+        }
 
         Block body = n.body();
         if (body != null) {
@@ -1422,7 +1611,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         // Refractored  method that can be called by reflection
         if (isCustomSerializable) {
             w.begin(4);
-            w.writeln("public void  " + methodName + "(" + SERIAL_DATA +  " " + n.formals().get(0).name() + ") {");
+            w.writeln("public void " + methodName + "(" + SERIAL_DATA +  " " + n.formals().get(0).name() + ") {");
             n.printSubStmt(body, w, tr);
             w.writeln("}");
             w.end();
@@ -1440,6 +1629,17 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
 
             printConstructorFormals(n, false);
        
+            isFirst = true;
+            for (Type _throws : AnnotationUtils.getThrowsTypes(n)) {
+                if (isFirst) {
+                    w.write(" throws ");
+                    isFirst = false;
+                } else {
+                    w.write(", ");                
+                }
+                er.printType(_throws, 0);
+            }
+
             w.write("{");
             
             w.write("return ");
@@ -1470,7 +1670,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         w.begin(0);
 
         X10ConstructorDef ci = n.constructorDef();
-        X10ClassType ct = (X10ClassType) Types.get(ci.container());
+        X10ClassType ct = Types.get(ci.container()).toClass();
         List<String> params = new ArrayList<String>();
 
         if (forceParams) {
@@ -1522,20 +1722,52 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         String dummy = "$dummy";
         int cid = getConstructorId(n.constructorDef());
         if (cid != -1) {
-            w.write(",");
-            int narg = 0;
-            for (int i = 0; i < cid + 1; i++) {
-                if (i % 256 == 0) {
-                    if (i != 0) {
-                        w.write(" " + dummy + narg++);
-                        w.write(",");
+            String extraTypeName = getExtraTypeName(n.constructorDef());
+            w.write(", " + extraTypeName + " " + dummy);
+        }
+    }
+
+    private static String getMangledMethodSuffix(X10ConstructorDef md) {
+        ClassType ct = (ClassType) md.container().get();
+        List<Ref<? extends Type>> formalTypes = md.formalTypes();
+        String methodSuffix = Emitter.getMangledMethodSuffix(ct, formalTypes, true);
+        assert methodSuffix.length() > 0;
+        return methodSuffix;
+    }
+    private static String asTypeName(Type containerType, String methodSuffix) {
+        if (containerType.fullName().toString().length() + 1/*$*/ + methodSuffix.length() + 6/*.class*/> longestTypeName) {
+            // use hashcode to avoid too long class (=file) name
+            // DEBUG
+//            System.out.println("asTypeName: " + containerType.fullName().toString() + " " + methodSuffix);
+            return "$_" + Integer.toHexString(methodSuffix.hashCode());            
+        } else {
+            return methodSuffix;            
+        }
+    }
+    private static String getExtraTypeName(X10ConstructorDef md) {
+        assert getConstructorId(md) != -1;
+        return asTypeName(md.container().get(), getMangledMethodSuffix(md));
+    }
+    // should be called after setConstructorIds(def)
+    private void printExtraTypes(X10ClassDef def) {
+        HashSet<String> extraTypeNames = new HashSet<String>();
+        List<ConstructorDef> cds = def.constructors();
+        for (ConstructorDef cd : cds) {
+            X10ConstructorDef xcd = (X10ConstructorDef) cd;
+            int cid = getConstructorId(xcd);
+            if (cid != -1) {
+                String methodSuffix = getMangledMethodSuffix(xcd);
+                String extraTypeName = asTypeName(cd.container().get(), methodSuffix);
+                if (!extraTypeNames.contains(extraTypeName)) {
+                    extraTypeNames.add(extraTypeName);
+                    if (!extraTypeName.equals(methodSuffix)) {
+                        w.writeln("// synthetic type for parameter mangling for " + methodSuffix);
+                    } else {
+                        w.writeln("// synthetic type for parameter mangling");
                     }
-                    w.write(JAVA_LANG_CLASS + "<?>");
-                } else {
-                    w.write("[]");
+                    w.writeln("public abstract static class " + extraTypeName + " {}");
                 }
             }
-            w.write(" " + dummy + narg);
         }
     }
 
@@ -1545,7 +1777,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         w.begin(0);
 
         X10ConstructorDef ci = n.constructorDef();
-        X10ClassType ct = (X10ClassType) Types.get(ci.container());
+        X10ClassType ct = Types.get(ci.container()).toClass();
 
         for (Iterator<Formal> i = n.formals().iterator(); i.hasNext();) {
             Formal f = i.next();
@@ -1576,17 +1808,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         String dummy = "$dummy";
         int cid = getConstructorId(n.constructorDef());
         if (cid != -1) {
-            w.write(",");
-            int narg = 0;
-            for (int i = 0; i < cid + 1; i++) {
-                if (i % 256 == 0) {
-                    if (i != 0) {
-                        w.write(" " + dummy + narg++);
-                        w.write(",");
-                    }
-                }
-            }
-            w.write(" " + dummy + narg);
+            w.write(", " + dummy);
         }
     }
 
@@ -1601,13 +1823,12 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
 
     private void printAllocationCall(Type type, List<? extends Type> typeParams) {
         w.write("new ");
-        TypeSystem ts = tr.typeSystem();
         // N.B. HACK! for x10.lang.Object, allocate x10.core.Ref instead of x10.core.RefI
-        if (ts.typeEquals(Types.baseType(type), ts.Object(), tr.context()))
+        if (isObject(type))
                 w.write(X10_CORE_REF);
         else
                 er.printType(type, PRINT_TYPE_PARAMS | NO_VARIANCE);
-        w.write("((" + JAVA_LANG_SYSTEM + "[]) null");
+        w.write("((" + DUMMY_PARAM_TYPE1 + "[]) null");
         printArgumentsForTypeParamsPreComma(typeParams, false);
         w.write(")");
     }
@@ -1616,8 +1837,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
     public void visit(LocalAssign_c n) {
         Local l = n.local();
         TypeSystem ts = tr.typeSystem();
-        if (n.operator() == Assign.ASSIGN || l.type().isNumeric() || l.type().isBoolean()
-                || l.type().isSubtype(ts.String(), tr.context())) {
+        if (n.operator() == Assign.ASSIGN || isPrimitive(l.type()) || l.type().isString()) {
             tr.print(n, l, w);
             w.write(" ");
             w.write(n.operator().toString());
@@ -1645,7 +1865,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         Type t = n.fieldInstance().type();
 
         TypeSystem ts = tr.typeSystem();
-        if (n.operator() == Assign.ASSIGN || t.isNumeric() || t.isBoolean() || t.isSubtype(ts.String(), tr.context())) {
+        if (n.operator() == Assign.ASSIGN || isPrimitive(t) || t.isString()) {
             if (n.target() instanceof TypeNode)
                 er.printType(n.target().type(), 0);
             else
@@ -1730,7 +1950,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         Type t = n.leftType();
 
         boolean nativeop = false;
-        if (t.isNumeric() || t.isBoolean() || t.isChar() || t.isSubtype(ts.String(), context)) {
+        if (isPrimitive(t) || t.isString()) {
             nativeop = true;
         }
 
@@ -1768,7 +1988,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
             Binary.Operator op = n.operator().binaryOperator();
             Name methodName = X10Binary_c.binaryMethodName(op);
             TypeSystem xts = ts;
-            if (isPrimitiveRepedJava(t) && (er.isIMC(array.type()))) {
+            if (isPrimitive(t) && isIndexedMemoryChunk(array.type())) {
                 w.write("(");
                 w.write("(");
                 er.printType(t, 0);
@@ -1814,7 +2034,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
             Binary.Operator op = n.operator().binaryOperator();
             Name methodName = X10Binary_c.binaryMethodName(op);
             TypeSystem xts = ts;
-            if (isPrimitiveRepedJava(t) && (er.isIMC(array.type()))) {
+            if (isPrimitive(t) && isIndexedMemoryChunk(array.type())) {
                 w.write("(");
                 w.write("(");
                 er.printType(t, 0);
@@ -1927,14 +2147,14 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
             } else {
                 // x10.rtt.Equality.equalsequals(#0,#1)
                 w.write("x10.rtt.Equality.equalsequals(");
-                if (Emitter.needExplicitBoxing(l)) {
+                if (needExplicitBoxing(l)) {
                     er.printBoxConversion(l);
                 }
                 w.write("("); // required for printBoxConversion
                 er.prettyPrint(left, tr);
                 w.write(")");
                 w.write(",");
-                if (Emitter.needExplicitBoxing(r)) {
+                if (needExplicitBoxing(r)) {
                     er.printBoxConversion(r);
                 }
                 w.write("("); // required for printBoxConversion
@@ -1957,14 +2177,14 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
             } else {
             	// (!x10.rtt.Equality.equalsequals(#0,#1))
             	w.write("(!x10.rtt.Equality.equalsequals(");
-                if (Emitter.needExplicitBoxing(l)) {
+                if (needExplicitBoxing(l)) {
                     er.printBoxConversion(l);
                 }
                 w.write("(");
                 er.prettyPrint(left, tr);
                 w.write(")");
             	w.write(",");
-                if (Emitter.needExplicitBoxing(r)) {
+                if (needExplicitBoxing(r)) {
                     er.printBoxConversion(r);
                 }
                 w.write("(");
@@ -1974,7 +2194,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
             return;
         }
 
-        if (op == Binary.ADD && (l.isSubtype(xts.String(), tr.context()) || r.isSubtype(xts.String(), tr.context()))) {
+        if (op == Binary.ADD && (l.isString() || r.isString())) {
             prettyPrint(n);
             return;
         }
@@ -2048,12 +2268,12 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
     	return allMethodsFinal(def) || doesNotHaveMethodBody(def);
     }
     
+    public static boolean needExplicitBoxing(Type t) {
+        return isPrimitive(t);
+    }
     public static boolean isBoxedType(Type t) {
         // void is included here, because synthetic methods have no definition and are reported as having type (void)
-        if (isPrimitiveRepedJava(t) || t.isVoid())
-            return false;
-        else
-            return true;
+        return !(isPrimitive(t) || t.isVoid());
     }
 
     @Override
@@ -2064,7 +2284,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
 
         if (c.isConstant()) {
             Type t = Types.baseType(c.type());
-            if (isPrimitiveRepedJava(t) || t.isNull() || isString(t, tr.context())) {
+            if (isPrimitive(t) || t.isNull() || isString(t)) {
                 er.prettyPrint(c.constantValue().toLit(tr.nodeFactory(), tr.typeSystem(), t, Position.COMPILER_GENERATED), tr);
                 return;
             }
@@ -2161,14 +2381,14 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         }
 
         // print method name
-        if (isMainMethod(mi)) {
+        if (isMainMethod(mi) || mi.container().toClass().isJavaType()) {
             w.write(Emitter.mangleToJava(c.name().id()));
         } else {
             boolean invokeInterface = false;
             ContainerType st = mi.def().container().get();
             Type bst = Types.baseType(st);
-            if (bst instanceof X10ClassType) {
-                if (xts.isInterfaceType(bst) || (xts.isFunctionType(bst) && ((X10ClassType) bst).isAnonymous())) {
+            if (bst.isClass()) {
+                if (xts.isInterfaceType(bst) || (xts.isFunctionType(bst) && bst.toClass().isAnonymous())) {
                     invokeInterface = true;
                 }
             }
@@ -2176,7 +2396,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
             boolean isDispatchMethod = false;
             if (isSelfDispatch) {
                 Type tt = Types.baseType(containerType);
-                if (tt instanceof X10ClassType && ((X10ClassType) tt).flags().isInterface()) {
+                if (tt.isClass() && tt.toClass().flags().isInterface()) {
                 	// XTENLANG-2723 (revert r21635)
 //                	// N.B. stop passing rtt to java raw class's methods
 //                	if (containsTypeParam(mi.def().formalTypes()) && !Emitter.isNativeRepedToJava(tt)) {
@@ -2204,7 +2424,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
             boolean isParamReturnType = Types.baseType(md.returnType().get()) instanceof ParameterType
                     || instantiatesReturnType;
 
-            boolean isSpecialReturnType = er.isSpecialType(md.returnType().get());
+            boolean isSpecialReturnType = isSpecialType(md.returnType().get());
 
             if (c.nonVirtual()) {
                 Name name = InlineHelper.makeSuperBridgeName(mi.container().toClass().def(), mi.name());
@@ -2216,7 +2436,9 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
             }
 
             // call
-            er.printMethodName(md, invokeInterface, isDispatchMethod, isSpecialReturnType, isParamReturnType);
+            // WIP XTENLANG-2993
+//            er.printMethodName(md, invokeInterface, isDispatchMethod, isSpecialReturnType, isParamReturnType);
+            er.printMethodName(md, invokeInterface, isDispatchMethod && !(returnSpecialTypeFromDispatcher && isSpecialReturnType), isSpecialReturnType, isParamReturnType);
         }
 
         // print the argument list
@@ -2228,8 +2450,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         printArgumentsForTypeParams(typeParameters, argumentSize == 0);
 
         boolean runAsync = false;
-        if (containerType.isClass()
-                && ((X10ClassType) containerType.toClass()).fullName().toString().equals("x10.lang.Runtime")) {
+        if (Types.baseType(containerType).isRuntime()) {
             if (mi.signature().startsWith("runAsync")) {
                 runAsync = true;
             }
@@ -2248,9 +2469,9 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
             // BOX_PRIMITIVES).expand();
             // }
             else {
-                if (isPrimitiveRepedJava(e.type())) {
+                if (isPrimitive(e.type())) {
                     boolean forceBoxing = false;
-                    if (!er.canMangleMethodName(def)) {
+                    if (!Emitter.canMangleMethodName(def)) {
                         // for methods with non-manglable names, we box argument
                         // if any of the implemented methods has argument of generic type
                         // in corresponding position
@@ -2309,7 +2530,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                     er.printType(castType, 0);
                     w.write(")");
 
-                    if (isString(e.type(), tr.context()) && !isString(castType, tr.context())) {
+                    if (isString(e.type()) && !isString(castType)) {
                         if (xts.isParameterType(castType)) {
                             w.write(X10_RTT_TYPES);
                             w.write(".conversion(");
@@ -2317,7 +2538,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                             w.write(",");
                         } else {
                             // box only if converting to function type or to x10.lang.Object
-                            if (xts.isFunctionType(castType) || isObject(castType, tr.context())) {
+                            if (xts.isFunctionType(castType) || isObject(castType)) {
                                 er.printBoxConversion(e.type());
                             }
                         }
@@ -2337,10 +2558,10 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
             // formal of method instance
             // i.m(a) => i.m(a,t)
             X10ClassType ct = null;
-            if (isSelfDispatch && Types.baseType(targetType) instanceof X10ClassType) {
-                ct = (X10ClassType) Types.baseType(targetType);
+            if (isSelfDispatch && Types.baseType(targetType).isClass()) {
+                ct = Types.baseType(targetType).toClass();
             } else if (isSelfDispatch && xts.isParameterType(targetType)) {
-                ct = (X10ClassType) Types.baseType(containerType);
+                ct = Types.baseType(containerType).toClass();
             }
             boolean passRTT = 
 //            	// XTENLANG-2723 stop passing rtt to java raw class's methods (reverted in r21635)
@@ -2414,7 +2635,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
 
                 // e.g. any as Int (any:Any), t as Int (t:T)
                 if (isBoxedType(exprType) && xts.isStruct(castType)) {
-                	// N.B. castType.isUnsignedNumeric() must be before isPrimitiveRepedJava(castType)
+                	// N.B. castType.isUnsignedNumeric() must be before isPrimitive(castType)
                 	// since Int and UInt are @NativeRep'ed to the same Java primive int.
                 	if (castType.isUnsignedNumeric()) {
                         w.write(X10_RTT_TYPES + ".as" + castType.name().toString());
@@ -2424,7 +2645,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                     	exprRE.expand();
                         w.write(")");
                     }
-                    else if (isPrimitiveRepedJava(castType)) {
+                    else if (isPrimitive(castType)) {
                         w.write(X10_RTT_TYPES + ".as");
                         er.printType(castType, NO_QUALIFIER);
                         w.write("(");
@@ -2445,7 +2666,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                         w.write(")");
                         w.write(")");
                     }
-                } else if (isPrimitiveRepedJava(castType)) {
+                } else if (isPrimitive(castType)) {
                     w.begin(0);
                     // for the case the method is a dispatch method and that
                     // returns Object.
@@ -2470,7 +2691,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                         castTE.expand(tr);
                         w.write(")");
                         // e.g. d as Int (d:Double) -> (int)(double)(Double) d
-                        if (isPrimitiveRepedJava(exprType)) {
+                        if (isPrimitive(exprType)) {
                             w.write(" ");
                             w.write("(");
                             er.printType(exprType, 0);
@@ -2502,8 +2723,8 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                     castTE.expand(tr);
                     w.write(")");
 
-                    if (castType instanceof X10ClassType) {
-                        X10ClassType ct = (X10ClassType) castType;
+                    if (castType.isClass()) {
+                        X10ClassType ct = castType.toClass();
                         if (ct.hasParams()) {
                             boolean castToRawType = false;
                             for (Variance variance : ct.x10Def().variances()) {
@@ -2528,7 +2749,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                     w.allowBreak(2, " ");
 
                     boolean closeParen = false; // provide extra closing parenthesis
-                    if (isString(exprType, tr.context()) && !isString(castType, tr.context())) {
+                    if (isString(exprType) && !isString(castType)) {
                         if (xts.isParameterType(castType)) {
                             w.write(X10_RTT_TYPES);
                             w.write(".conversion(");
@@ -2536,13 +2757,13 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                             w.write(",");
                         } else {
                             // box only if converting to function type or to x10.lang.Object
-                            if (xts.isFunctionType(castType) || isObject(castType,tr.context())) {
+                            if (xts.isFunctionType(castType) || isObject(castType)) {
                             	er.printBoxConversion(exprType);
                             }
                             w.write("(");
                         }
                         closeParen = true;
-                    } else if (Emitter.needExplicitBoxing(exprType) && isBoxedType(castType)) {
+                    } else if (needExplicitBoxing(exprType) && isBoxedType(castType)) {
                     	er.printBoxConversion(exprType);
                     	w.write("(");
                         closeParen = true;
@@ -2566,10 +2787,10 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                     //  -> Types.<#0>castConversion(#1,#2)   #0=type #1=expr #2=runtime type
                     w.write(X10_RTT_TYPES + ".<");
                     er.prettyPrint(castTE, tr);
-                    boolean convert = xts.isParameterType(exprType) || !xts.isAny(Types.baseType(exprType)) && xts.isParameterType(castType) || isString(castType, tr.context());
+                    boolean convert = xts.isParameterType(exprType) || !xts.isAny(Types.baseType(exprType)) && xts.isParameterType(castType) || isString(castType);
                     w.write("> cast" + (convert ? "Conversion" : "") + "(");
                     boolean closeParen = false;
-                    if (Emitter.needExplicitBoxing(exprType) && isBoxedType(castType)) {
+                    if (needExplicitBoxing(exprType) && isBoxedType(castType)) {
                         er.printBoxConversion(exprType);
                         w.write("(");
                         closeParen = true;
@@ -2688,26 +2909,9 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
 
         Type t = c.compareType().type();
 
-        // Now x10.lang.Object is @NativeRep'ed to x10.core.RefI.
-        // Therefore x10.rtt.Types.OBJECT.instanceOf(o) works as designed.
-//        // Fix for XTENLANG-1099
-//        TypeSystem xts = tr.typeSystem();
-//        if (xts.typeEquals(xts.Object(), t, tr.context())) {
-//            /*
-//             * Because @NativeRep of x10.lang.Object is java.lang.Object, we
-//             * cannot compile "instanceof x10.lang.Object" as
-//             * "instanceof @NativeRep".
-//             */
-//            w.write(X10_RTT_TYPES);
-//            w.write(".instanceofObject(");
-//            tr.print(c, c.expr(), w);
-//            w.write(")");
-//            return;
-//        }
-
         // XTENLANG-1102
-        if (t instanceof X10ClassType) {
-            X10ClassType ct = (X10ClassType) t;
+        if (t.isClass()) {
+            X10ClassType ct = t.toClass();
             X10ClassDef cd = ct.x10Def();
             String pat = Emitter.getJavaRTTRep(cd);
 
@@ -2723,7 +2927,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                 w.write("_" + ft.typeParameters().size());
                 w.write("_" + args.size());
                 w.write("." + X10PrettyPrinterVisitor.RTT_NAME);
-            } else if (pat == null && Emitter.getJavaRep(cd) == null && ct.isGloballyAccessible()
+            } else if (pat == null && !ct.isJavaType() && Emitter.getJavaRep(cd) == null && ct.isGloballyAccessible()
                     && cd.typeParameters().size() != 0) {
             	String rttString = RuntimeTypeExpander.getRTT(Emitter.mangleQName(cd.fullName()).toString(), RuntimeTypeExpander.hasConflictingField(ct, tr));
             	w.write(rttString);
@@ -2735,11 +2939,11 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         }
 
         w.write(".");
-        w.write("instanceOf(");
+        w.write("isInstance(");
 
         Type exprType = Types.baseType(c.expr().type());
         boolean needParen = false;
-        if (Emitter.needExplicitBoxing(exprType)) {
+        if (needExplicitBoxing(exprType)) {
         	er.printBoxConversion(exprType);
         	w.write("(");
         	needParen = true;
@@ -2751,8 +2955,8 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         	w.write(")");
         }
 
-        if (t instanceof X10ClassType) {
-            X10ClassType ct = (X10ClassType) t;
+        if (t.isClass()) {
+            X10ClassType ct = t.toClass();
             X10ClassDef cd = ct.x10Def();
             String pat = Emitter.getJavaRTTRep(cd);
 
@@ -2841,10 +3045,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
 
         if (er.printNativeNew(c, mi)) return;
         
-        if (supportConstructorSplitting
-                && !type.name().toString().startsWith(ClosureRemover.STATIC_NESTED_CLASS_BASE_NAME)
-                && !ConstructorSplitterVisitor.isUnsplittable(Types.baseType(type))
-                && !type.fullName().toString().startsWith("java.")) {
+        if (isSplittable(type) && !type.fullName().toString().startsWith("java.")) {
 
             printAllocationCall(type, mi.container().toClass().typeArguments());
 
@@ -2883,16 +3084,11 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         if (md instanceof X10ConstructorDef) {
             int cid = getConstructorId((X10ConstructorDef) md);
             if (cid != -1) {
-                w.write(",");
-                for (int i = 0; i < cid + 1; i++) {
-                    if (i % 256 == 0) {
-                        if (i != 0) w.write(") null,");
-                        w.write("(" + JAVA_LANG_CLASS + "<?>");
-                    } else {
-                        w.write("[]");
-                    }
-                }
-                w.write(") null");
+                String extraTypeName = getExtraTypeName((X10ConstructorDef) md);
+                w.write(", (");
+                // print as qualified name
+                er.printType(md.container().get(), 0); w.write(".");
+                w.write(extraTypeName + ") null");
             }
         }
     }
@@ -2934,7 +3130,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         if (n.equals()) {
             w.write(".equals(");
         } else {
-            w.write(".isSubtype(");
+            w.write(".isAssignableTo(");
         }
         new RuntimeTypeExpander(er, sup.type()).expand(tr);
         w.write("))");
@@ -3149,7 +3345,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         boolean runAsync = false;
         MethodInstance_c mi = (MethodInstance_c) n.methodContainer();
         if (mi != null && mi.container().isClass()
-                && ((X10ClassType) mi.container().toClass()).fullName().toString().equals("x10.lang.Runtime")
+                && mi.container().toClass().fullName().toString().equals("x10.lang.Runtime")
                 && mi.signature().startsWith("runAsync")) {
             runAsync = true;
         }
@@ -3210,7 +3406,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
             for (Formal f : formals) {
                 w.write(delim);
                 delim = ",";
-                if (isPrimitiveRepedJava(f.type().type())) {
+                if (isPrimitive(f.type().type())) {
                     // TODO:CAST
                     w.write("(");
                     er.printType(f.type().type(), 0);
@@ -3277,7 +3473,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
 
         TryCatchExpander tryCatchExpander = new TryCatchExpander(w, er, n.body(), null);
         if (runAsync) {
-            tryCatchExpander.addCatchBlock("x10.runtime.impl.java.WrappedThrowable", "ex", new Expander(er) {
+            tryCatchExpander.addCatchBlock(X10_IMPL_UNKNOWN_JAVA_THROWABLE, TryCatchExpander.NO_CONVERSION, "ex", new Expander(er) {
                 public void expand(Translator tr) {
                     w.write("x10.lang.Runtime.pushException(ex);");
                 }
@@ -3300,14 +3496,14 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         // tryCatchExpander.addCatchBlock("java.lang.Throwable", "t", new
         // Expander(er) {
         // public void expand(Translator tr) {
-        // w.write("x10.lang.Runtime.pushException(new x10.runtime.impl.java.WrappedThrowable(t));");
+        // w.write("x10.lang.Runtime.pushException(new " + X10_IMPL_UNKNOWN_JAVA_THROWABLE + "(t));");
         // }
         // });
         // } else {
         // tryCatchExpander.addCatchBlock("java.lang.Throwable", "t", new
         // Expander(er) {
         // public void expand(Translator tr) {
-        // w.write("throw new x10.runtime.impl.java.WrappedThrowable(t);");
+        // w.write("throw new " + X10_IMPL_UNKNOWN_JAVA_THROWABLE + "(t);");
         // }
         // });
         // }
@@ -3326,14 +3522,14 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         // tryCatchExpander.addCatchBlock("java.lang.Exception", "ex", new
         // Expander(er) {
         // public void expand(Translator tr) {
-        // w.write("x10.lang.Runtime.pushException(new x10.runtime.impl.java.WrappedThrowable(ex));");
+        // w.write("x10.lang.Runtime.pushException(new " + X10_IMPL_UNKNOWN_JAVA_THROWABLE + "(ex));");
         // }
         // });
         // } else {
         // tryCatchExpander.addCatchBlock("java.lang.Exception", "ex", new
         // Expander(er) {
         // public void expand(Translator tr) {
-        // w.write("throw new x10.runtime.impl.java.WrappedThrowable(ex);");
+        // w.write("throw new " + X10_IMPL_UNKNOWN_JAVA_THROWABLE + "(ex);");
         // }
         // });
         // }
@@ -3355,8 +3551,8 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
 
         Type type = n.type();
         type = Types.baseType(type);
-        if (type instanceof X10ClassType) {
-            X10ClassType ct = (X10ClassType) type;
+        if (type.isClass()) {
+            X10ClassType ct = type.toClass();
             X10ClassDef def = ct.x10Def();
 
             // XTENLANG-1102
@@ -3373,8 +3569,8 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                 }
                 while (!worklist.isEmpty()) {
                     Type it = worklist.removeFirst();
-                    if (it instanceof X10ClassType) {
-                        X10ClassType ct2 = (X10ClassType) it;
+                    if (it.isClass()) {
+                        X10ClassType ct2 = it.toClass();
                         X10ClassDef idef = ct2.x10Def();
 
                         if (visited.contains(idef)) continue;
@@ -3463,12 +3659,12 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
 
     private boolean containsPrimitive(Closure_c n) {
         Type t = n.returnType().type();
-        if (isPrimitiveRepedJava(t)) {
+        if (isPrimitive(t)) {
             return true;
         }
         for (Formal f : n.formals()) {
             Type type = f.type().type();
-            if (isPrimitiveRepedJava(type)) {
+            if (isPrimitive(type)) {
                 return true;
             }
         }
@@ -3538,7 +3734,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
             Type defType = mi.def().formalTypes().get(i).get();
 
             boolean closeParen = false;
-            if (isString(e.type(), tr.context()) && !isString(castType, tr.context())) {
+            if (isString(e.type()) && !isString(castType)) {
 
                 w.write("(");
                 er.printType(castType, 0);
@@ -3552,7 +3748,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                     closeParen = true;
                 } else {
                     // need to box string only if it is cast to function type or to x10.lang.Object
-                    if (xts.isFunctionType(castType) || isObject(castType, tr.context())) {
+                    if (xts.isFunctionType(castType) || isObject(castType)) {
                         er.printBoxConversion(e.type());
                         w.write("(");
                         closeParen = true;
@@ -3786,7 +3982,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         if (s != null) {
             w.write("try {"); // XTENLANG-2686: handle Java exceptions inside @Native block
             w.write(s);
-            w.write("} catch (java.lang.Throwable $exc$) { throw x10.core.ThrowableUtilities.convertJavaThrowable($exc$); }"); // XTENLANG-2686
+            w.write("} catch (" + JAVA_LANG_THROWABLE + " $exc$) { throw " + X10_CORE_THROWABLE_UTILITIES + ".convertJavaThrowable($exc$); }"); // XTENLANG-2686
         } else {
             n.translate(w, tr);
         }
@@ -3837,22 +4033,48 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         n.translate(w, tr);
     }
 
+    // N.B. true for Java throwables that are supertype of x.l.Throwable at implementation level
+    private boolean isJavaThrowableAssignableFromX10Throwable(Type catchType) {
+        TypeSystem ts = tr.typeSystem();
+        Context context = tr.context();
+        return ts.typeEquals(catchType, ts.JavaThrowable(), context) ||
+            ts.typeEquals(catchType, ts.JavaException(), context) ||
+            ts.typeEquals(catchType, ts.JavaRuntimeException(), context);
+    }
+
     @Override
     public void visit(Catch_c n) {
-        n.translate(w, tr);
+        w.write("catch (");
+        n.printBlock(n.formal(), w, tr);
+        w.write(")");
+        
+        boolean rethrowX10Throwable = supportJavaThrowables && !useRethrowBlock && isJavaThrowableAssignableFromX10Throwable(n.catchType());
+        if (rethrowX10Throwable) {
+            w.writeln("{");
+            String formalName = n.formal().name().toString();
+            w.writeln("if (" + formalName + " instanceof " + X10_CORE_THROWABLE + ") { throw (" + X10_CORE_THROWABLE + ") " + formalName + "; }");
+        }
+        
+        n.printSubStmt(n.body(), w, tr);
+        
+        if (rethrowX10Throwable) {
+            w.writeln("}");
+        }
     }
 
     @Override
     public void visit(X10ConstructorCall_c c) {
         ContainerType ct = c.constructorInstance().container();
-        if (supportConstructorSplitting && !ConstructorSplitterVisitor.isUnsplittable(Types.baseType(ct))) {
+        if (isSplittable(ct)
+            || ct.name().toString().startsWith(ClosureRemover.STATIC_NESTED_CLASS_BASE_NAME) // is this needed?
+            ) {
             TypeSystem ts = tr.typeSystem();
-            boolean isObject = isObject(ct, tr.context());
+            boolean isObject = isObject(ct);
 //            if (isObject) return;  // TODO stop calling constructor of x10.lang.Object for optimization (it should be safe)
             Expr target = c.target();
             if (target == null || target instanceof Special) {
                 if (c.kind() == ConstructorCall.SUPER) {
-                    if (isObject || Emitter.isNativeRepedToJava(ct) || er.isNativeClassToJava(ct)) {
+                    if (isObject || Emitter.isNativeRepedToJava(ct) || Emitter.isNativeClassToJava(ct)) {
                         return;
                     }
                     w.write("super");
@@ -3899,7 +4121,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         w.begin(0);
 
         if (forceParams) {
-        X10ClassType ct = (X10ClassType) mi.container();
+        X10ClassType ct = mi.container().toClass();
         List<Type> ta = ct.typeArguments();
         boolean isJavaNative = type != null ? Emitter.isNativeRepedToJava(type) : false;
         if (ta != null && ta.size() > 0 && !isJavaNative) {
@@ -3914,7 +4136,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                 Type castType = mi.formalTypes().get(i);
                 Type defType = mi.def().formalTypes().get(i).get();
                 TypeSystem xts = tr.typeSystem();
-                if (isString(e.type(), tr.context()) && !isString(castType, tr.context())) {
+                if (isString(e.type()) && !isString(castType)) {
 
                     w.write("(");
                     er.printType(castType, 0);
@@ -3927,7 +4149,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                         w.write(",");
                     } else {
                         // need to box string only if it is cast to function type or to x10.lang.Object
-                        if (xts.isFunctionType(castType) || isObject(castType, tr.context())) {
+                        if (xts.isFunctionType(castType) || isObject(castType)) {
                         	er.printBoxConversion(e.type());
                         }
                         w.write("(");
@@ -3936,7 +4158,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                     w.write(")");
                 } else if (isSelfDispatch && !castType.typeEquals(e.type(), tr.context())) {
                     w.write("(");
-                    if (Emitter.needExplicitBoxing(e.type()) && isBoxedType(defType)) {
+                    if (needExplicitBoxing(e.type()) && isBoxedType(defType)) {
                         er.printBoxConversion(e.type());
                     } else {
                         // TODO:CAST
@@ -3950,7 +4172,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                     w.write(")");
                     w.write(")");
                 } else {
-                    if (Emitter.needExplicitBoxing(castType) && defType.isParameterType()) {
+                    if (needExplicitBoxing(castType) && defType.isParameterType()) {
                         er.printBoxConversion(castType);
                         w.write("(");
                         c.print(e, w, tr);
@@ -4246,48 +4468,80 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         n.translate(w, tr);
     }
 
+    private Try_c reorderCatchBlocks(Try_c c) {
+        TypeSystem ts = tr.typeSystem();
+        Context context = tr.context();
+        List<Catch> catchBlocks = c.catchBlocks();
+        List<Catch> newCatchBlocks = new ArrayList<Catch>();
+        boolean hasJavaThrowable = false;
+        for (Catch catchBlock : catchBlocks) {
+            Type catchType = catchBlock.catchType();
+            if (!ts.isJavaThrowable(catchType)) {
+                newCatchBlocks.add(catchBlock);
+            }
+        }
+        for (Catch catchBlock : catchBlocks) {
+            Type catchType = catchBlock.catchType();
+            if (ts.isJavaThrowable(catchType)) {
+                newCatchBlocks.add(catchBlock);
+                hasJavaThrowable = true;
+            }
+        }
+        if (hasJavaThrowable) {
+            c = (Try_c) c.catchBlocks(newCatchBlocks);
+        }
+        return c;
+    }
+    private static boolean isUnknownJavaThrowable(Type catchType) {
+        // return true for types that will be wrapped to UnknownJavaThrowable
+        return !catchType.isThrowable() && !TryCatchExpander.isKnownJavaThrowable(catchType);
+    }
     @Override
     public void visit(Try_c c) {
+        if (supportJavaThrowables) {
+            c = reorderCatchBlocks(c);
+        }
         TryCatchExpander expander = new TryCatchExpander(w, er, c.tryBlock(), c.finallyBlock());
         final List<Catch> catchBlocks = c.catchBlocks();
 
-        boolean isJavaCheckedExceptionCaught = false;
-        boolean isConstrainedExceptionCaught = false; // XTENLANG-2384
+        boolean isUnknownJavaThrowableCaught = false;
+        boolean isConstrainedThrowableCaught = false; // XTENLANG-2384
         for (int i = 0; i < catchBlocks.size(); ++i) {
             Type type = catchBlocks.get(i).catchType();
-            if (type.toString().startsWith("java") && !type.isUncheckedException()) {
+            if (isUnknownJavaThrowable(type)) {
                 // found Java checked exceptions caught here!!
-                isJavaCheckedExceptionCaught = true;
+                isUnknownJavaThrowableCaught = true;
             }
             if (type instanceof ConstrainedType) // XTENLANG-2384: Check if there is a constained type in catchBlocks
-                isConstrainedExceptionCaught = true;
+                isConstrainedThrowableCaught = true;
         }
-        if (isJavaCheckedExceptionCaught) {
+
+        // unwrap and handle Java throwable
+        if (isUnknownJavaThrowableCaught) {
             final String temp = "$ex";
-            expander.addCatchBlock("x10.runtime.impl.java.WrappedThrowable", temp, new Expander(er) {
+            expander.addCatchBlock(X10_IMPL_UNKNOWN_JAVA_THROWABLE, TryCatchExpander.NO_CONVERSION, temp, new Expander(er) {
                 public void expand(Translator tr) {
                     w.newline();
 
+                    boolean needElse = false;
                     for (int i = 0; i < catchBlocks.size(); ++i) {
                         Catch cb = catchBlocks.get(i);
                         Type type = cb.catchType();
-                        if (!type.toString().startsWith("java") || type.isUncheckedException())
-                        // if (type.isSubtype(tr.typeSystem().Error(),
-                        // tr.context()) ||
-                        // type.isSubtype(tr.typeSystem().RuntimeException(),
-                        // tr.context()))
-                        // nothing to do, since WrappedThrowable wrap only Java
-                        // checked exceptions
+                        if (!isUnknownJavaThrowable(type))
                             continue;
 
-                        if (i > 0) {
+                        if (needElse) {
                             w.write("else ");
+                        } else {
+                            needElse = true;
                         }
                         w.write("if (" + temp + ".getCause() instanceof ");
                         er.printType(cb.catchType(), 0);
                         w.write(") {");
                         w.newline();
 
+                        // stop generating redundant code for empty block
+                        if (!cb.body().statements().isEmpty()) {
                         cb.formal().translate(w, tr);
                         w.write(" = ");
                         // TODO:CAST
@@ -4298,6 +4552,7 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
 
                         cb.body().translate(w, tr);
                         w.newline();
+                        }
 
                         w.write("}");
                         w.newline();
@@ -4313,14 +4568,25 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         }
 
         // XTENLANG-2384: If there is a constrained type, generate if sequence instead of catch sequence
-        if (isConstrainedExceptionCaught) {
+        if (isConstrainedThrowableCaught) {
             final String temp = "$ex";
-            expander.addCatchBlock("x10.core.X10Throwable", temp, new Expander(er) {
+            int convRequired = 0;
+            for (int i = 0; i < catchBlocks.size(); ++i) {
+                convRequired |= TryCatchExpander.conversionRequired(catchBlocks.get(i).catchType());
+            }
+            expander.addCatchBlock(JAVA_LANG_THROWABLE, convRequired, temp, new Expander(er) {
                 public void expand(Translator tr) {
+                    boolean generateRethrowBlock = true;
                     w.newline();
                     for (int i = 0; i < catchBlocks.size(); ++i) {
                         Catch cb = catchBlocks.get(i);
                         Type type = cb.catchType();
+                        if (supportJavaThrowables && useRethrowBlock && generateRethrowBlock && isJavaThrowableAssignableFromX10Throwable(type)) {
+                            generateRethrowBlock = false;
+                            w.write("if (" + temp + " instanceof " + X10_CORE_THROWABLE + ") {"); w.newline();
+                            w.write("throw (" + X10_CORE_THROWABLE + ") " + temp + ";"); w.newline();
+                            w.write("} else "); w.newline();
+                        }
                         w.write("if (" + temp + " instanceof ");
                         er.printType(type, 0);
                         if (type instanceof ConstrainedType) {
@@ -4331,12 +4597,26 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
                         cb.body().translate(w, tr);
                         w.write("else "); w.newline();
                     }
-                    w.write("{ throw "+ temp + "; }"); w.newline();
+                    // should not come here
+                    w.write("{ "+ temp + ".printStackTrace(); assert false; }"); w.newline();
                 }
             });
         } else { // XTENLANG-2384: Normal case, no constrained type in catchBlocks
+            final String temp = "$ex";
+            boolean generateRethrowBlock = true;
             for (int i = 0; i < catchBlocks.size(); ++i) {
-                expander.addCatchBlock(catchBlocks.get(i));
+                Catch catchBlock = catchBlocks.get(i);
+                if (supportJavaThrowables && useRethrowBlock && generateRethrowBlock && isJavaThrowableAssignableFromX10Throwable(catchBlock.catchType())) {
+                    generateRethrowBlock = false;
+                    expander.addCatchBlock(X10_CORE_THROWABLE, TryCatchExpander.NO_CONVERSION, temp, new Expander(er) {
+                        public void expand(Translator tr) {
+                            w.newline();
+                            w.write("throw " + temp + ";"); 
+                            w.newline();
+                        }
+                    });
+                }
+                expander.addCatchBlock(catchBlock);
             }
         }
         expander.expand(tr);
@@ -4368,22 +4648,31 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         w.write(Emitter.mangleToJava(n.id()));
     }
 
-    public static boolean isString(Type type, Context context) {
-        return Types.baseType(type).typeEquals(type.typeSystem().String(), context);
+    public static boolean isString(Type type) {
+        return Types.baseType(type).isString();
     }
     
-    public static boolean isObject(Type type, Context context) {
-        return Types.baseType(type).typeEquals(type.typeSystem().Object(), context);
+    public static boolean isObject(Type type) {
+        return Types.baseType(type).isObject();
     }
 
-    // TODO consolidate X10PrettyPrinterVisitor.isPrimitiveRepedJava(Type), Emitter.isPrimitive(Type) and Emitter.needExplicitBoxing(Type).
-    public static boolean isPrimitiveRepedJava(Type t) {
+    public static boolean isIndexedMemoryChunk(Type type) {
+        return Types.baseType(type).isIndexedMemoryChunk();
+    }
+
+    // TODO consolidate X10PrettyPrinterVisitor.isPrimitive(Type), Emitter.isPrimitive(Type) and Emitter.needExplicitBoxing(Type).
+    public static boolean isPrimitive(Type t) {
         return t.isBoolean() || t.isChar()  || t.isNumeric();
+    }
+
+    public static boolean isSpecialType(Type type) {
+        return isPrimitive(Types.baseType(type)) || isString(type);
     }
 
     public static boolean hasParams(Type t) {
         Type bt = Types.baseType(t);
-        return (bt instanceof X10ClassType && ((X10ClassType) bt).hasParams());
+        TypeSystem ts = bt.typeSystem();
+        return (bt.isClass() && !ts.isJavaArray(bt) && bt.toClass().hasParams());
     }
 
     public static boolean containsTypeParam(List<Ref<? extends Type>> list) {
@@ -4395,54 +4684,53 @@ public class X10PrettyPrinterVisitor extends X10DelegatingVisitor {
         return false;
     }
 
-    /**
-     * A list of one object that has an infinite circular iterator.
-     */
-    private static class CircularList<T> extends AbstractList<T> {
-        private T o;
+    // not used
+//    /**
+//     * A list of one object that has an infinite circular iterator.
+//     */
+//    private static class CircularList<T> extends AbstractList<T> {
+//        private T o;
+//
+//        public CircularList(T o) {
+//            this.o = o;
+//        }
+//
+//        public Iterator<T> iterator() {
+//            return new Iterator<T>() {
+//                public boolean hasNext() {
+//                    return true;
+//                }
+//
+//                public T next() {
+//                    return o;
+//                }
+//
+//                public void remove() {
+//                    return;
+//                }
+//            };
+//        }
+//
+//        public T get(int i) {
+//            return o;
+//        }
+//
+//        public int size() {
+//            return -1;
+//        }
+//    }
 
-        public CircularList(T o) {
-            this.o = o;
-        }
-
-        public Iterator<T> iterator() {
-            return new Iterator<T>() {
-                public boolean hasNext() {
-                    return true;
-                }
-
-                public T next() {
-                    return o;
-                }
-
-                public void remove() {
-                    return;
-                }
-            };
-        }
-
-        public T get(int i) {
-            return o;
-        }
-
-        public int size() {
-            return -1;
-        }
-    }
-
-    private static class ConstructorIdTypeForAnnotation extends X10ParsedClassType_c {
+    private final static class ConstructorIdTypeForAnnotation extends X10ParsedClassType_c {
+        private static final long serialVersionUID = 1L;
         private int i = -1;
-
-        public ConstructorIdTypeForAnnotation(X10ClassDef def) {
+        private ConstructorIdTypeForAnnotation(X10ClassDef def) {
             super(def);
         }
-
         private ConstructorIdTypeForAnnotation setIndex(int i) {
             assert i > -1;
             this.i = i;
             return this;
         }
-
         private int getIndex() {
             return i;
         }

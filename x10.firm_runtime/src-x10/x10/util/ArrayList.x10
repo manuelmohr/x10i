@@ -30,6 +30,10 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
         return false;
     }
 
+    public def clear(): void {
+        a.clear();
+    }
+
     public def clone() {
         val a = new ArrayList[T]();
         a.addAll(this);
@@ -83,7 +87,9 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
 
     public def isEmpty(): Boolean = size() == 0;
 
-    //public def toArray() = a.toArray();
+    /*
+    public def toArray():Array = a.toArray();
+    */
     public def toIndexedMemoryChunk() = a.toIndexedMemoryChunk();
 
     public def this() {
@@ -139,7 +145,9 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
         return -1;
     }
 
-    //public def moveSectionToArray(i:Int, j:Int) = a.moveSectionToArray(i,j);
+    /*
+    public def moveSectionToArray(i:Int, j:Int):Array[T] = a.moveSectionToArray(i,j);
+    */
 
     //
     // iterator

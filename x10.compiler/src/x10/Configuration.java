@@ -44,6 +44,9 @@ public final class Configuration extends x10.config.Configuration {
 
     public boolean DEBUG = false;
     private static final String DEBUG_desc = "Generate debug information";
+    
+    public boolean DEBUG_APP_ONLY = false;
+    private static final String DEBUG_APP_ONLY_desc = "Only generate debug information for the user application; still link with non-debug version of libraries";
 
     public boolean NO_TRACES = false;
     private static final String NO_TRACES_desc = "Disable traces";
@@ -112,9 +115,15 @@ public final class Configuration extends x10.config.Configuration {
 
     public boolean STATICS_PER_PLACE_ANALYSIS = false;
     private static final String STATICS_PER_PLACE_ANALYSIS_desc = "Enable deep analysis for converting place-0 static initializers to per-place initializers";
+    
+    public boolean COPY_PROPAGATION = false;
+    private static final String COPY_PROPAGATION_desc = "Enable copy propagation pass after optimizer. Use together with -O -EXPERIMENTAL -ELIMINATE_DEAD_VARIABLES";
 
 //    public final boolean MULTI_NODE = true;
 //    private static final String MULTI_NODE_desc = "(Managed X10) each place is hosted by different Java VM";
+
+    public boolean OPTIMIZE_COMMUNICATIONS = false;
+    private static final String OPTIMIZE_COMMUNICATIONS_desc = "Communication optimizations, i.e. scalar replacement";
 
     /**
      * Parses one argument from the command line.  This allows the user
