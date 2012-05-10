@@ -95,7 +95,7 @@ public final class Array[T] (
      * The backing storage for the array's elements
      */
     private val raw:IndexedMemoryChunk[T];
-    
+
     /**
      * Return the IndexedMemoryChunk[T] that is providing the backing storage for the array.
      * This method is primarily intended to be used to interface with native libraries
@@ -167,14 +167,14 @@ public final class Array[T] (
     /**
      * Construct an Array over the region reg whose
      * values are initialized to be init.
-     * 
+     *
      * @param reg The region over which to construct the array.
      * @param init The function to use to initialize the array.
-     */    
+     */
     public @Inline def this(reg:Region, init:T)
     {
         property(reg as Region{self!=null}, reg.rank, reg.rect, reg.zeroBased, reg.rail, reg.size());
-        
+
         val crh = new LayoutHelper(reg);
         layout_min0 = crh.min0;
         layout_stride1 = crh.stride1;
@@ -210,7 +210,7 @@ public final class Array[T] (
     public @Inline def this(reg:Region, backingStore:IndexedMemoryChunk[T])
     {
         property(reg as Region{self!=null}, reg.rank, reg.rect, reg.zeroBased, reg.rail, reg.size());
-        
+
         val crh = new LayoutHelper(reg);
         layout_min0 = crh.min0;
         layout_stride1 = crh.stride1;
@@ -285,7 +285,7 @@ public final class Array[T] (
     {
         val myReg = new RectRegion1D(0, size-1) as Region{self.zeroBased, self.rail,self.rank==1,self.rect, self!=null};
         property(myReg, 1, true, true, true, size);
-        
+
 	layout_min0 = layout_stride1 = layout_min1 = 0;
         layout = null;
         val r  = IndexedMemoryChunk.allocateUninitialized[T](size);
@@ -308,7 +308,7 @@ public final class Array[T] (
         val myReg = new RectRegion1D(0, size-1)
            as Region{self.rank==1,self.zeroBased,self.rect,self.rail,self!=null};
         property(myReg, 1, true, true, true, size);
-        
+
 	layout_min0 = layout_stride1 = layout_min1 = 0;
         layout = null;
         val r  = IndexedMemoryChunk.allocateUninitialized[T](size);
@@ -897,8 +897,8 @@ public final class Array[T] (
         if (src.raw.length() != dst.rawData.length()) throw new IllegalArgumentException("source and destination do not have equal size");
         IndexedMemoryChunk.asyncCopy(src.raw, 0, dst.rawData, 0, src.raw.length());
     }
-    
-    
+
+
     /**
      * Asynchronously copy the specified values from the source Array to the
      * specified portion of the Array referenced by the destination RemoteArray.
@@ -925,15 +925,15 @@ public final class Array[T] (
      * @throws IllegalArgumentException if the specified copy regions would
      *         result in an ArrayIndexOutOfBoundsException.
      */
-    public static def asyncCopy[T](src:Array[T], srcPoint:Point, 
-            dst:RemoteArray[T], dstPoint:Point, 
+    public static def asyncCopy[T](src:Array[T], srcPoint:Point,
+            dst:RemoteArray[T], dstPoint:Point,
             numElems:int) {
         val gra = dst.array;
         val dstIndex = at (gra) gra().region.indexOf(dstPoint);
         asyncCopy(src, src.region.indexOf(srcPoint), dst, dstIndex, numElems);
     }
-    
-    
+
+
     /**
      * Asynchronously copy the specified values from the source Array to the
      * specified portion of the Array referenced by the destination RemoteArray.
@@ -980,8 +980,8 @@ public final class Array[T] (
         }
         IndexedMemoryChunk.asyncCopy(src.raw, srcIndex, dst.rawData, dstIndex, numElems);
     }
-    
-    
+
+
     /**
      * Asynchronously copy all of the values from the source Array
      * referenced by the RemoteArray to the destination Array.
@@ -1007,8 +1007,8 @@ public final class Array[T] (
         if (src.rawData.length() != dst.raw.length()) throw new IllegalArgumentException("source and destination do not have equal size");
         IndexedMemoryChunk.asyncCopy(src.rawData, 0, dst.raw, 0, dst.raw.length());
     }
-    
-    
+
+
     /**
      * Asynchronously copy the specified values from the Array referenced by
      * the source RemoteArray to the specified portion of the destination Array.
@@ -1090,8 +1090,8 @@ public final class Array[T] (
         }
         IndexedMemoryChunk.asyncCopy(src.rawData, srcIndex, dst.raw, dstIndex, numElems);
     }
-    
-    
+
+
     /**
      * Copy all of the values from the source Array to the destination Array.
      * The two arrays must be defined over Regions with equal size
