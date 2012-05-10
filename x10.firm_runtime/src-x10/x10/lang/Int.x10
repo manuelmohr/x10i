@@ -537,7 +537,9 @@ public struct Int implements Comparable[Int], Arithmetic[Int], Bitwise[Int], Ord
      * @param upper the upper bound
      * @return a range from lower to upper, inclusive.
      */
+    /*
     public static operator (x:Int) .. (y:Int):IntRange{min==x,max==y}
         = new IntRange(x, y);
+    */
 }
 public type Int(b:Int) = Int{self==b};
