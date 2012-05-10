@@ -70,6 +70,7 @@ public final class GoalGraphDumper {
 				+ "title: \"goal graph\"\n"
 				+ "layoutalgorithm: mindepth //$ \"hierarchic\"\n"
 				+ "manhattan_edges: yes\n"
+				+ "orientation: bottom_to_top\n"
 				+ "classname 1: \"Goals\"\n"
 				+ "classname 2: \"JobLinks\"\n"
 				+ "colorentry 100: 153 153 255");
