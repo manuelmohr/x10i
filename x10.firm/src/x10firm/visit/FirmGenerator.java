@@ -758,7 +758,6 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		name = NameMangler.mangleKnownName(name);
 		final Entity entity = new Entity(global, name, mainType);
 		entity.setLdIdent(name);
-		entity.setVisibility(ir_visibility.ir_visibility_default);
 		entity.addLinkage(ir_linkage.IR_LINKAGE_HIDDEN_USER);
 
 		final Graph graph = new Graph(entity, 0);

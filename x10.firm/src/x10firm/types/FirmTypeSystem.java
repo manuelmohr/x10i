@@ -37,6 +37,7 @@ import x10firm.visit.GenericCodeInstantiationQueue;
 import firm.ClassType;
 import firm.CompoundType;
 import firm.Entity;
+import firm.Initializer;
 import firm.MethodType;
 import firm.Mode;
 import firm.Mode.Arithmetic;
@@ -48,7 +49,6 @@ import firm.Type;
 import firm.bindings.binding_oo.ddispatch_binding;
 import firm.bindings.binding_typerep.ir_linkage;
 import firm.bindings.binding_typerep.ir_type_state;
-import firm.bindings.binding_typerep.ir_visibility;
 
 /**
  * Includes everything to map X10 types to Firm types.
@@ -123,7 +123,7 @@ public class FirmTypeSystem {
 	private void findExistingEntities() {
 		final ClassType glob = Program.getGlobalType();
 		for (final Entity ent : glob.getMembers()) {
-			if (ent.getVisibility() != ir_visibility.ir_visibility_default)
+			if (!ent.hasDefinition())
 				continue;
 			this.cStdlibEntities.put(ent.getLdName(), ent);
 			/*
@@ -473,6 +473,8 @@ public class FirmTypeSystem {
 		entity.setLdIdent(name);
 		OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 		entities.put(name, entity);
+		if (owner.equals(Program.getGlobalType()))
+			entity.setInitializer(Initializer.getNull());
 		return entity;
 	}
 
@@ -545,14 +547,12 @@ public class FirmTypeSystem {
 			} else {
 				vtable = new Entity(global, vtableName, pointerType);
 			}
-			vtable.setVisibility(ir_visibility.ir_visibility_default);
 			vtable.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
 			OO.setClassVTableEntity(result, vtable);
 		}
 
 		final String rttiName = NameMangler.mangleTypeinfo(classType);
 		final Entity classInfoEntity = new Entity(global, rttiName, pointerType);
-		classInfoEntity.setVisibility(ir_visibility.ir_visibility_local);
 		classInfoEntity.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
 		OO.setClassRTTIEntity(result, classInfoEntity);
 
@@ -724,10 +724,6 @@ public class FirmTypeSystem {
 				OO.setMethodAbstract(entity, true);
 			}
 
-			if (flags.isNative()) {
-				entity.setVisibility(ir_visibility.ir_visibility_external);
-			}
-
 			OO.setMethodExcludeFromVTable(entity, true);
 			/* the binding of a constructor is static as we will not use the
 			 * vtable to determine which method to call.
@@ -862,9 +858,6 @@ public class FirmTypeSystem {
 
 		if (flags.isAbstract()) {
 			OO.setMethodAbstract(entity, true);
-		}
-		if (flags.isNative()) {
-			entity.setVisibility(ir_visibility.ir_visibility_external);
 		}
 
 		final MethodInstance m = getOverriddenMethod(instance);
