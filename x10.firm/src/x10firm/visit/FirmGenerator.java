@@ -1858,12 +1858,12 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		ent.setVisibility(ir_visibility.ir_visibility_private);
 		ent.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
 
-		type.setBounds(0, 0, value.length() - 1);
-		type.setSizeBytes(value.length() * elemType.getSizeBytes());
+		final byte[] bytes = value.getBytes(UTF8);
+		type.setBounds(0, 0, bytes.length - 1);
+		type.setSizeBytes(bytes.length * elemType.getSizeBytes());
 		type.setTypeState(ir_type_state.layout_fixed);
 
-		final Initializer init = new Initializer(value.length());
-		final byte[] bytes = value.getBytes(UTF8);
+		final Initializer init = new Initializer(bytes.length);
 		final Mode mode = elemType.getMode();
 		for (int i = 0; i < bytes.length; ++i) {
 			final TargetValue tv = new TargetValue(bytes[i], mode);
