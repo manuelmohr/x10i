@@ -77,6 +77,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		allowedFiles.add("x10/lang/Double.x10");
 		allowedFiles.add("x10/lang/Float.x10");
 		allowedFiles.add("x10/lang/Indexable.x10");
+		allowedFiles.add("x10/lang/IntRange.x10");
 		allowedFiles.add("x10/lang/Int.x10");
 		allowedFiles.add("x10/lang/Iterable.x10");
 		allowedFiles.add("x10/lang/Iterable.x10");

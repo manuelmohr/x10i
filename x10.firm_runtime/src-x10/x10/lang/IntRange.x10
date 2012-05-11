@@ -45,9 +45,11 @@ public struct IntRange(
      * The product of two int ranges is interpreted as if the IntRanges
      * were first converted to Region(1) and then the * operator applied.
      */
+    /*
     public operator this * (that:IntRange):Region(2){rect} {
         return Region.makeRectangular([min, that.min], [max, that.max]);
     }
+    */
 
     /**
      * Return a new IntRange of the same size of this, but
@@ -59,9 +61,13 @@ public struct IntRange(
      * Return a new IntRange of the same size of this, but
      * with min/max shifted by p(0).
      */
+    /*
     public def translate(p:Point(1)) = new IntRange(min+p(0), max+p(0));
+    */
 
+    /*
     public operator this && (that:Region(1)): Region(1) = (this as Region(1)) && that;
+    */
 
     /*
     public operator this -> (p:Place) = Dist.makeConstant(this as Region(1), p);
