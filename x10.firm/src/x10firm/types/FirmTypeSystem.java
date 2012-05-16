@@ -318,7 +318,16 @@ public class FirmTypeSystem {
 
 		int p = 0;
 		if (!isStatic) {
-			final Type thisType = asType(owner);
+			Type thisType = asType(owner);
+
+			/* Special handling for field initializers in structs:
+			 * Field initializers are methods that *do* change the struct,
+			 * therefore the struct must *not* be passed by value but by
+			 * reference.  See also FirmGenerator.initConstruction().
+			 */
+			if (owner.isX10Struct() && methodInstance.name().toString().startsWith("__fieldInitializer"))
+				thisType = new PointerType(thisType);
+
 			parameterTypes[p++] = thisType;
 		}
 

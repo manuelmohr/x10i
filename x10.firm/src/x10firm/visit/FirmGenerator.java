@@ -154,6 +154,7 @@ import com.sun.jna.Pointer;
 
 import firm.ArrayType;
 import firm.ClassType;
+import firm.CompoundType;
 import firm.Construction;
 import firm.DebugInfo;
 import firm.Entity;
@@ -624,8 +625,14 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			final X10LocalDef_c thisDef = new X10LocalDef_c(x10TypeSystem, pos, thisFlags, type, name);
 			final LocalInstance_c thisInstance = new LocalInstance_c(x10TypeSystem, pos, new Ref_c<LocalDef>(thisDef));
 
-			if (firmTypeSystem.isFirmStructType(thisType)) {
-				final firm.Type firmType = firmTypeSystem.asType(thisType);
+			/* Look at the firm type instead of the X10 type:
+			 * FirmTypeSystem contains a hack that passes this by
+			 * reference for some special struct methods and in this
+			 * case the firm type differs from the X10 type.
+			 */
+			final firm.MethodType methodType = (MethodType) entity.getType();
+			final firm.Type firmType = methodType.getParamType(0);
+			if (firmType instanceof CompoundType) {
 				final Entity paramEntity = Entity.createParameterEntity(frameType, idx, firmType);
 				final Node node = getEntityFromCurrentFrame(paramEntity);
 				con.setVariable(idx, node);
