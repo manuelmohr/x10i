@@ -1437,83 +1437,72 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	@Override
 	public void visit(final Conditional_c n) {
-
+		Expr cond = n.cond();
 		// check if we have a constant condition
-		if (n.cond().isConstant()) {
-			@SuppressWarnings("boxing")
-			final boolean cond = (Boolean)n.cond().constantValue().toJavaObject();
-			if (cond) {
+		if (cond.isConstant()) {
+			final boolean value = ((BooleanValue)n.cond().constantValue()).value();
+			if (value) {
 				visitExpression(n.consequent());
-				// return node is automatically set.
-				return;
+			} else {
+				visitExpression(n.alternative());
 			}
-
-			visitExpression(n.alternative());
 			return;
 		}
 
-		final Conditional_c c = n;
-		final CondTemplate cond = new CondTemplate() {
-			@Override
-			public void genCode(final Block trueBlock, final Block falseBlock) {
-				evaluateCondition(c.cond(), trueBlock, falseBlock);
-			}
-		};
+		final Block trueBlock = con.newBlock();
+		final Block falseBlock = con.newBlock();
+		evaluateCondition(cond, trueBlock, falseBlock);
+		trueBlock.mature();
+		falseBlock.mature();
 
-		final ExprTemplate trueExpr = new ExprTemplate() {
-			@Override
-			public Node genCode() {
-				return visitExpression(c.consequent());
-			}
-		};
+		con.setCurrentBlock(trueBlock);
+		Node trueNode = visitExpression(n.consequent());
+		final Node trueJmp = con.newJmp();
 
-		final ExprTemplate falseExpr = new ExprTemplate() {
-			@Override
-			public Node genCode() {
-				return visitExpression(c.alternative());
-			}
-		};
+		con.setCurrentBlock(falseBlock);
+		Node falseNode = visitExpression(n.alternative());
+		final Node falseJmp = con.newJmp();
 
-		final Node ret = FirmCodeTemplate.genConditional(con, cond, trueExpr, falseExpr);
-		setReturnNode(ret);
+		final Block block = (Block)con.newBlock(new Node[] { trueJmp, falseJmp });
+		con.setCurrentBlock(block);
+		final Mode mode = firmTypeSystem.getFirmMode(n.type());
+		final Node phi = con.newPhi(new Node[] {trueNode, falseNode}, mode);
+		setReturnNode(phi);
 	}
 
 	@Override
 	public void visit(final If_c n) {
+		final Block trueBlock = con.newBlock();
+		final Block falseBlock = con.newBlock();
 
-		final If_c ifAst = n;
-		final CondTemplate cond = new CondTemplate() {
-			@Override
-			public void genCode(final Block trueBlock, final Block falseBlock) {
-				evaluateCondition(ifAst.cond(), trueBlock, falseBlock);
-			}
-		};
+		evaluateCondition(n.cond(), trueBlock, falseBlock);
+		trueBlock.mature();
+		falseBlock.mature();
 
-		final StmtTemplate ifStmt = new StmtTemplate() {
-			@Override
-			public void genCode() {
-				visitAppropriate(ifAst.consequent());
-			}
-		};
-
-		StmtTemplate elseStmt = null;
-		if (n.alternative() != null) {
-			Stmt alternative = n.alternative();
-			if (alternative instanceof Block_c) {
-				final Block_c block = (Block_c) alternative;
-				if (block.statements().size() == 1 && block.statements().get(0) instanceof If_c)
-					alternative = block.statements().get(0);
-			}
-			final Stmt elseBlock = alternative;
-			elseStmt = new StmtTemplate() {
-				@Override
-				public void genCode() {
-					visitAppropriate(elseBlock);
-				}
-			};
+		con.setCurrentBlock(trueBlock);
+		visitAppropriate(n.consequent());
+		Block fallthrough = null;
+		if (!con.isUnreachable()) {
+			fallthrough = con.getCurrentBlock();
 		}
 
-		FirmCodeTemplate.genIfStatement(con, cond, ifStmt, elseStmt);
+		con.setCurrentBlock(falseBlock);
+		Stmt elseS = n.alternative();
+		if (elseS != null) {
+			visitAppropriate(elseS);
+		}
+
+		/* reuse then/else block if the other one is unreachable
+		 * (happens for example if it ended with return) */
+		if (fallthrough != null) {
+			if (!con.isUnreachable()) {
+				final Node falseJmp = con.newJmp();
+				con.setCurrentBlock(fallthrough);
+				final Node trueJmp = con.newJmp();
+				fallthrough = (Block) con.newBlock(new Node[] { trueJmp, falseJmp });
+			}
+			con.setCurrentBlock(fallthrough);
+		}
 	}
 
 	@Override
