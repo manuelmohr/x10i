@@ -401,8 +401,12 @@
 			<ant antfile="${liboo.location}/build.xml" target="dist" inheritAll="false" dir="${liboo.location}"/>
 		</target>
 
-		<target name="x10firm-jar" depends="init,jfirm-jar,liboo-jar">
+		<target name="x10firm-jar" depends="init,jfirm-jar,liboo-jar,lpg-jar,compiler-jar">
 			<ant antfile="${x10.firm.location}/build.xml" target="jar" inheritAll="false" dir="${x10.firm.location}"/>
+		</target>
+
+		<target name="checkstyle" depends="x10firm-jar">
+			<ant antfile="${x10.firm.location}/build.xml" target="checkstyle" inheritAll="false" dir="${x10.firm.location}"/>
 		</target>
 
     <target name="bin"

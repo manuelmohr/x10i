@@ -66,9 +66,9 @@
 	</target>
 
 	<taskdef resource="checkstyletask.properties"
-	         classpath="lib/checkstyle-5.5-all.jar"/>
+	         classpath="${basedir}/lib/checkstyle-5.5-all.jar"/>
 	<target name="checkstyle">
-		<checkstyle config="support/checkstyle.xml">
+		<checkstyle config="${basedir}/support/checkstyle.xml">
 			<fileset dir="${src}"/>
 			<classpath refid="project.classpath"/>
 		</checkstyle>

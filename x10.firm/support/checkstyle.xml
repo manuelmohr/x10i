@@ -9,7 +9,7 @@
 	<property name="localeLanguage" value="en"/>
 
 	<module name="SuppressionFilter">
-		<property name="file" value="support/checkstyle_suppressions.xml"/>
+		<property name="file" value="${basedir}/support/checkstyle_suppressions.xml"/>
 	</module>
 
 	<!-- Checks whether files end with a new line.                        -->
