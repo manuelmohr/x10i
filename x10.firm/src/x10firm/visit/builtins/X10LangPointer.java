@@ -46,12 +46,10 @@ abstract class X10LangPointer {
 			final Mode parMode = firmTypeSystem.getFirmMode(typeParameter);
 			final Node result;
 			final firm.Type firmType = firmTypeSystem.asType(typeParameter);
+			final Node addr = con.getVariable(0, parMode);
 			if (firmTypeSystem.isFirmStructType(typeParameter)) {
-				final firm.Type frameType = entity.getGraph().getFrameType();
-				final Entity paramEntity = Entity.createParameterEntity(frameType, 0, firmType);
-				result = codeGenerator.getEntityFromCurrentFrame(paramEntity);
+				result = addr;
 			} else {
-				final Node addr = con.getVariable(0, parMode);
 				final Node mem = con.getCurrentMem();
 				final Mode loadMode = firmType.getMode();
 				final Node load = con.newLoad(mem, addr, loadMode);
