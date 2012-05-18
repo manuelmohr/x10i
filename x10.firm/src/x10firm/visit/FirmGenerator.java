@@ -1444,7 +1444,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	@Override
 	public void visit(final Conditional_c n) {
-		Expr cond = n.cond();
+		final Expr cond = n.cond();
 		// check if we have a constant condition
 		if (cond.isConstant()) {
 			final boolean value = ((BooleanValue)n.cond().constantValue()).value();
@@ -1463,14 +1463,14 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		falseBlock.mature();
 
 		con.setCurrentBlock(trueBlock);
-		Node trueNode = visitExpression(n.consequent());
+		final Node trueNode = visitExpression(n.consequent());
 		final Node trueJmp = con.newJmp();
 
 		con.setCurrentBlock(falseBlock);
-		Node falseNode = visitExpression(n.alternative());
+		final Node falseNode = visitExpression(n.alternative());
 		final Node falseJmp = con.newJmp();
 
-		final Block block = (Block)con.newBlock(new Node[] { trueJmp, falseJmp });
+		final Block block = (Block)con.newBlock(new Node[] {trueJmp, falseJmp});
 		con.setCurrentBlock(block);
 		final Mode mode = firmTypeSystem.getFirmMode(n.type());
 		final Node phi = con.newPhi(new Node[] {trueNode, falseNode}, mode);
@@ -1494,7 +1494,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		}
 
 		con.setCurrentBlock(falseBlock);
-		Stmt elseS = n.alternative();
+		final Stmt elseS = n.alternative();
 		if (elseS != null) {
 			visitAppropriate(elseS);
 		}
@@ -1506,7 +1506,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 				final Node falseJmp = con.newJmp();
 				con.setCurrentBlock(fallthrough);
 				final Node trueJmp = con.newJmp();
-				fallthrough = (Block) con.newBlock(new Node[] { trueJmp, falseJmp });
+				fallthrough = (Block) con.newBlock(new Node[] {trueJmp, falseJmp});
 			}
 			con.setCurrentBlock(fallthrough);
 		}

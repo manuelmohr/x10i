@@ -419,7 +419,9 @@ public class StaticInitializer extends ContextVisitor {
 		return fieldInfo;
 	}
 
-	private Call makeStaticCall(final Position pos, final Position errorPos, final X10ClassType receiver, final Id id, final Type returnType) {
+	private Call makeStaticCall(final Position pos, final Position errorPos,
+	                            final X10ClassType receiver, final Id id,
+	                            final Type returnType) {
 		// create MethodDef
 		final Name name = Name.make(INITIALIZER_PREFIX + id);
 		final StaticFieldInfo fieldInfo = getFieldEntry(receiver, id.id());
@@ -764,7 +766,9 @@ public class StaticInitializer extends ContextVisitor {
 		return result;
 	}
 
-	private Stmt makeAddInitializer(final Position pos, final Position errorPos, final StaticFieldInfo fieldInfo, final X10ClassDef classDef) {
+	private Stmt makeAddInitializer(final Position pos, final Position errorPos,
+	                                final StaticFieldInfo fieldInfo,
+	                                final X10ClassDef classDef) {
 		final FieldDef def = fieldInfo.fieldDef;
 		final Id id = xnf.Id(pos, def.name());
 		// replace with a static method call
