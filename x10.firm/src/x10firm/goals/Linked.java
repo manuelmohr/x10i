@@ -113,6 +113,10 @@ public class Linked extends AbstractGoal_c {
 			cmd.add("-static");
 
 		cmd.add(asmFile.getAbsolutePath());
+		for (String flag : options.getLinkerFlags()) {
+			cmd.add(flag);
+		}
+
 		if (options.useSoftFloat())
 			cmd.add("-msoft-float");
 		if (linkStatically) {

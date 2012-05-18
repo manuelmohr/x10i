@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import polyglot.frontend.ExtensionInfo;
@@ -27,6 +29,7 @@ public class CompilerOptions extends X10CompilerOptions {
 	private boolean linkStatically = false;
 	private boolean printCommandline = false;
 	private boolean dumpGoalGraph = false;
+	private List<String> linkerFlags = new ArrayList<String>();
 
 	/** Constructs new CompilerOptions. */
 	public CompilerOptions(final ExtensionInfo extension) {
@@ -107,6 +110,11 @@ public class CompilerOptions extends X10CompilerOptions {
 		return dumpGoalGraph;
 	}
 
+	/** Returns list of additional linker flags. */
+	public List<String> getLinkerFlags() {
+		return linkerFlags;
+	}
+
 	private static void backendOption(final String option) {
 		FirmState.initializeFirm();
 		Backend.option(option);
@@ -115,47 +123,54 @@ public class CompilerOptions extends X10CompilerOptions {
 	@Override
 	protected int parseCommand(final String[] args, final int index,
 			final Set<String> source) throws UsageError {
+		final String arg0 = args[index];
+		if (!arg0.startsWith("-") && (arg0.endsWith(".o") || arg0.endsWith(".a"))) {
+			linkerFlags.add(arg0);
+			return index + 1;
+		}
+
 		final int i = super.parseCommand(args, index, source);
 		if (i != index)
 			return i;
 
-		if (args[i].startsWith("-b")) {
+		final String arg = args[index];
+		if (arg.startsWith("-b")) {
 			try {
-				backendOption(args[i].substring(2));
+				backendOption(arg.substring(2));
 			} catch (IllegalArgumentException e) {
 				throw new UsageError(String.format(
-						"Invalid backend argument '%s'", args[i]));
+						"Invalid backend argument '%s'", arg));
 			}
 			return index + 1;
-		} else if (args[i].startsWith("-target=") || args[i].startsWith("-mtarget=")) {
-			target = new MachineTriple(args[i].substring(args[i].indexOf('=') + 1));
+		} else if (arg.startsWith("-target=") || arg.startsWith("-mtarget=")) {
+			target = new MachineTriple(arg.substring(arg.indexOf('=') + 1));
 			backendOption("isa=" + target.getIsa());
 			if (target.getIsa().equals("ia32"))
 				backendOption("ia32-arch=" + target.getCpu());
 			return index + 1;
-		} else if (args[i].equals("-soft-float") || args[i].equals("-msoft-float")) {
+		} else if (arg.equals("-soft-float") || arg.equals("-msoft-float")) {
 			useSoftFloat = true;
 			backendOption(target.getIsa() + "-fpunit=softfloat");
 			return index + 1;
-		} else if (args[i].equals("-dumpgraphs")) {
+		} else if (arg.equals("-dumpgraphs")) {
 			dumpFirmGraphs = true;
 			return index + 1;
-		} else if (args[i].equals("-dumpgoalgraph")) {
+		} else if (arg.equals("-dumpgoalgraph")) {
 			dumpGoalGraph = true;
 			return index + 1;
-		} else if (args[i].equals("-nativeTypesConfigPath")) {
+		} else if (arg.equals("-nativeTypesConfigPath")) {
 			nativeTypesConfigPath = args[i + 1];
 			return index + 2;
-		} else if (args[i].equals("-S")) {
+		} else if (arg.equals("-S")) {
 			assembleAndLink = false;
 			return index + 1;
-		} else if (args[i].equals("-static")) {
+		} else if (arg.equals("-static")) {
 			linkStatically = true;
 			return index + 1;
-		} else if (args[i].equals("-noUseFirmLibraries")) {
+		} else if (arg.equals("-noUseFirmLibraries")) {
 			useFirmLibraries = false;
 			return index + 1;
-		} else if (args[i].equals("-showCommandline")) {
+		} else if (arg.equals("-showCommandline")) {
 			printCommandline = true;
 			return index + 1;
 		}
