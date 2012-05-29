@@ -122,6 +122,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/lang/Comparable.x10");
 			allowedFiles.add("x10/lang/Complex.x10");
 			allowedFiles.add("x10/lang/Double.x10");
+			allowedFiles.add("x10/lang/FinishState.x10");
 			allowedFiles.add("x10/lang/Float.x10");
 			allowedFiles.add("x10/lang/Indexable.x10");
 			allowedFiles.add("x10/lang/IntRange.x10");
@@ -137,6 +138,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/lang/Object.x10");
 			allowedFiles.add("x10/lang/Pointer.x10");
 			allowedFiles.add("x10/lang/Rail.x10");
+			allowedFiles.add("x10/lang/Runtime.x10");
 			allowedFiles.add("x10/lang/Sequence.x10");
 			allowedFiles.add("x10/lang/Settable.x10");
 			allowedFiles.add("x10/lang/Short.x10");
