@@ -14,6 +14,7 @@ PLATFORM   ?= posix
 # The ugly part... Collection of hacks for certain architectures
 ifeq ($(findstring x86_64, $(TARGET)), x86_64)
 	CFLAGS += -m32
+	APP_CFLAGS += -m32
 	CPARSER_TARGET=
 endif
 ifeq ($(findstring sparc, $(TARGET)), sparc)
@@ -25,6 +26,7 @@ endif
 ifeq ($(findstring darwin11, $(TARGET)), darwin11)
 	CFLAGS += -m32
 	LFLAGS += -m32
+	APP_CFLAGS += -m32
 endif
 ifeq ($(TARGET), i686-invasic-octopos)
 	OCTOPOS_BASE=../octopos-app/releases/current/x86guest/default
