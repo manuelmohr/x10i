@@ -29,6 +29,7 @@ public class CompilerOptions extends X10CompilerOptions {
 	private boolean linkStatically = false;
 	private boolean printCommandline = false;
 	private boolean dumpGoalGraph = false;
+	private String whiteList = null;
 	private List<String> linkerFlags = new ArrayList<String>();
 
 	/** Constructs new CompilerOptions. */
@@ -64,6 +65,13 @@ public class CompilerOptions extends X10CompilerOptions {
 	public String getFirmNativeTypesFilename() {
 		assert nativeTypesConfigPath != null : "Path to native types config not initialized";
 		return nativeTypesConfigPath + "/" + target + "/" + FIRM_NATIVE_TYPES_FILENAME;
+	}
+
+	/**
+	 * Returns filename of a file containing class whitelist entries
+	 */
+	public String getWhiteListFile() {
+		return whiteList;
 	}
 
 	/**
@@ -151,6 +159,9 @@ public class CompilerOptions extends X10CompilerOptions {
 		} else if (arg.equals("-soft-float") || arg.equals("-msoft-float")) {
 			useSoftFloat = true;
 			backendOption(target.getIsa() + "-fpunit=softfloat");
+			return index + 1;
+		} else if (arg.startsWith("-whitelist=")) {
+			whiteList = arg.substring(arg.indexOf('=')+1);
 			return index + 1;
 		} else if (arg.equals("-dumpgraphs")) {
 			dumpFirmGraphs = true;
