@@ -26,7 +26,7 @@ cfile += "\";\nconst char *_ZN9ImageData7getDataEv()\n{\n\treturn data;\n}"
 call(["rm", "-f", "pic.rgb"])
 with open("image_data.c", "w") as f:
 	f.write(cfile)
-call(["gcc", "-c", "image_data.c"]) 
+call(["gcc", "-m32", "-c", "image_data.c"])
 
 x10file = "public class ImageData {\n\tpublic static val width = %d;\n\tpublic static val height = %d;\n\tpublic static native def getData(): Pointer;\n}" % (width, height)
 with open("ImageData.x10", "w") as f:
