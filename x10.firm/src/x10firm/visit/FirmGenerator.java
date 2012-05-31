@@ -1786,6 +1786,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 		// Find the method declaration.
 		final X10MethodDecl decl = DeclFetcher.getDecl(def);
+		if (decl == null)
+			return;
 
 		// Remember the parameter type configuration to generate code later.
 		addToWorklist(new GenericNodeInstance(decl, subst));
