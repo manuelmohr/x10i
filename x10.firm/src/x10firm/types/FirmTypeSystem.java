@@ -23,6 +23,7 @@ import polyglot.types.Ref;
 import polyglot.types.TypeSystem_c;
 import polyglot.types.Types;
 import polyglot.util.Position;
+import x10.ast.X10StringLit_c;
 import x10.types.MethodInstance;
 import x10.types.ThisDef;
 import x10.types.TypeParamSubst;
@@ -31,6 +32,7 @@ import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10MethodDef;
 import x10.types.X10ParsedClassType;
+import x10.types.X10Use;
 import x10firm.CompilerOptions;
 import x10firm.visit.CodeGenError;
 import x10firm.visit.GenericCodeInstantiationQueue;
@@ -719,7 +721,9 @@ public class FirmTypeSystem {
 	 * @return a Firm entity corresponding to the constructor
 	 */
 	public Entity getConstructorEntity(final X10ConstructorInstance instance) {
-		final String name = NameMangler.mangleConstructor(instance);
+		String name = getAnnotatedLinkName(instance);
+		if (name == null)
+			name = NameMangler.mangleConstructor(instance);
 		Entity entity = entities.get(name);
 
 		if (entity == null) {
@@ -794,13 +798,29 @@ public class FirmTypeSystem {
 	 * Returns entity for an X10 method.
 	 */
 	public Entity getMethodEntity(final MethodInstance instance) {
-		final String name = NameMangler.mangleMethod(instance);
+		String name = getAnnotatedLinkName(instance);
+		if (name == null)
+			name = NameMangler.mangleMethod(instance);
 		final Entity entity = entities.get(name);
 
 		if (entity != null)
 			return entity;
 
 		return createMethodEntity(name, instance);
+	}
+
+	/** Return name annotated via LinkSymbol or null */
+	private static String getAnnotatedLinkName(final X10Use<?> instance) {
+		//assert instance.flags().isNative() : "Only for native methods";
+		for (polyglot.types.Type annotation : instance.annotations()) {
+			if (! annotation.name().toString().equals("LinkSymbol"))
+				continue;
+			final X10ParsedClassType cls = (X10ParsedClassType) annotation;
+			assert cls.definedProperties().size() == 1 : "exactly one property in LinkSymbol";
+			final X10StringLit_c literal = (X10StringLit_c) cls.propertyInitializer(0);
+			return literal.value();
+		}
+		return null;
 	}
 
 	private Entity createMethodEntity(final String name, final MethodInstance instance) {
