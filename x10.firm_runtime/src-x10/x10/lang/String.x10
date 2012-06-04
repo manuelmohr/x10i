@@ -13,6 +13,7 @@ package x10.lang;
 
 import x10.compiler.Native;
 import x10.compiler.NativeRep;
+import x10.compiler.LinkSymbol;
 import x10.util.Ordered;
 import x10.util.ArrayList;
 
@@ -36,11 +37,13 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
     /**
      * Default constructor.
      */
+    @LinkSymbol("x10_string_create_empty")
     public native def this(): String;
 
     /**
      * Copy constructor.
      */
+    @LinkSymbol("x10_string_create_duplicate")
     public native def this(String): String;
 
     /**
@@ -48,6 +51,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * string object. This is mainly intended for internal use by the compiler
      * to construct objects for string literals
      */
+    @LinkSymbol("x10_string_create_from_pointer")
     public native def this(length:Int, chars:Pointer): String;
 
     /**
@@ -75,6 +79,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
         return false;
     }
 
+	@LinkSymbol("x10_string_equals")
     public native def equals(other:String): boolean;
 
     /**
@@ -82,8 +87,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param x the given String
      * @return true if this String is equal to the given String ignoring case.
      */
-    @Native("java", "(#this).equalsIgnoreCase(#that)")
-    @Native("c++", "(#this)->equalsIgnoreCase(#that)")
+    @LinkSymbol("x10_string_equals_ignore_case")
     public native def equalsIgnoreCase(that:String): boolean;
 
     /**
@@ -97,8 +101,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * (The hash value of the empty string is zero.)
      * @return a hash code value for this String.
      */
-    @Native("java", "(#this).hashCode()")
-    @Native("c++", "x10aux::hash_code(#this)")
+    @LinkSymbol("x10_string_hash_code")
     public native def hashCode(): int;
 
 
@@ -117,8 +120,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * Returns the length of this String.
      * @return the length of this String.
      */
-    @Native("java", "(#this).length()")
-    @Native("c++", "(#this)->length()")
+    @LinkSymbol("x10_string_length")
     public native def length(): Int;
 
     /**
@@ -128,8 +130,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @return the Char at the specified (0-based) index of this String.
      * @see #charAt(Int)
      */
-    @Native("java", "(#this).charAt(#index)")
-    @Native("c++", "(#this)->charAt(#index)")
+    @LinkSymbol("x10_string_char_at")
     public native operator this(index: Int): Char;
 
     /**
@@ -139,8 +140,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @return the Char at the specified (0-based) index of this String.
      * @see #operator(Int)
      */
-    @Native("java", "(#this).charAt(#index)")
-    @Native("c++", "(#this)->charAt(#index)")
+    @LinkSymbol("x10_string_char_at")
     public native def charAt(index: Int): Char;
 
     /**
@@ -170,8 +170,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param toIndex the ending index, exclusive
      * @return the specified substring.
      */
-    @Native("java", "(#this).substring(#fromIndex, #toIndex)")
-    @Native("c++", "(#this)->substring(#fromIndex, #toIndex)")
+    @LinkSymbol("x10_string_substring_from_to")
     public native def substring(fromIndex: Int, toIndex: Int): String;
 
     /**
@@ -181,8 +180,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param fromIndex the starting index, inclusive
      * @return the specified substring.
      */
-    @Native("java", "(#this).substring(#fromIndex)")
-    @Native("c++", "(#this)->substring(#fromIndex)")
+    @LinkSymbol("x10_string_substring_from")
     public native def substring(fromIndex: Int): String;
 
     /**
@@ -200,8 +198,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @see #indexOf(String)
      * @see #lastIndexOf(Char)
      */
-    @Native("java", "(#this).indexOf(#ch)")
-    @Native("c++", "(#this)->indexOf(#ch)")
+    @LinkSymbol("x10_string_index_of_char")
     public native def indexOf(ch: Char): Int;
 
     /**
@@ -222,8 +219,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @see #indexOf(String,Int)
      * @see #lastIndexOf(Char,Int)
      */
-    @Native("java", "(#this).indexOf(#ch, #i)")
-    @Native("c++", "(#this)->indexOf(#ch, #i)")
+    @LinkSymbol("x10_string_index_of_char_from")
     public native def indexOf(ch: Char, i: Int): Int;
 
     /**
@@ -241,8 +237,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @see #indexOf(Char)
      * @see #lastIndexOf(String)
      */
-    @Native("java", "(#this).indexOf(#str)")
-    @Native("c++", "(#this)->indexOf(#str)")
+    @LinkSymbol("x10_string_index_of_string")
     public native def indexOf(str: String): Int;
 
     /**
@@ -262,8 +257,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @see #indexOf(Char,Int)
      * @see #lastIndexOf(String,Int)
      */
-    @Native("java", "(#this).indexOf(#str, #i)")
-    @Native("c++", "(#this)->indexOf(#str, #i)")
+    @LinkSymbol("x10_string_index_of_string_from")
     public native def indexOf(str: String, i: Int): Int;
 
     /**
@@ -282,8 +276,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @see #lastIndexOf(String)
      * @see #indexOf(Char)
      */
-    @Native("java", "(#this).lastIndexOf(#ch)")
-    @Native("c++", "(#this)->lastIndexOf(#ch)")
+    @LinkSymbol("x10_string_last_index_of_char")
     public native def lastIndexOf(ch: Char): Int;
 
     /**
@@ -305,8 +298,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @see #lastIndexOf(String,Int)
      * @see #indexOf(Char,Int)
      */
-    @Native("java", "(#this).lastIndexOf(#ch, #i)")
-    @Native("c++", "(#this)->lastIndexOf(#ch, #i)")
+    @LinkSymbol("x10_string_last_index_of_char_from")
     public native def lastIndexOf(ch: Char, i: Int): Int;
 
     /**
@@ -326,8 +318,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @see #lastIndexOf(Char)
      * @see #indexOf(String)
      */
-    @Native("java", "(#this).lastIndexOf(#str)")
-    @Native("c++", "(#this)->lastIndexOf(#str)")
+    @LinkSymbol("x10_string_last_index_of_string")
     public native def lastIndexOf(str: String): Int;
 
     /**
@@ -349,8 +340,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @see #lastIndexOf(Char,Int)
      * @see #indexOf(String,Int)
      */
-    @Native("java", "(#this).lastIndexOf(#str, #i)")
-    @Native("c++", "(#this)->lastIndexOf(#str, #i)")
+    @LinkSymbol("x10_string_last_index_of_string_from")
     public native def lastIndexOf(str: String, i: Int): Int;
 
 
@@ -371,8 +361,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * Returns a copy of the string with leading and trailing whitespace removed.
      * @return The new string with no leading/trailing whitespace.
      */
-    @Native("java", "(#this).trim()")
-    @Native("c++", "(#this)->trim()")
+    @LinkSymbol("x10_string_trim")
     public native def trim(): String;
 
 
@@ -395,8 +384,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param args the arguments referenced by the format specifiers in the format string.
      * @return a formatted string.
      */
-    @Native("java", "x10.core.String.format(#fmt,(Object[]) (#args).raw().value)")
-    @Native("c++", "x10::lang::String::format(#fmt,#args)")
+    @LinkSymbol("x10_string_trim")
     public native static def format(fmt: String, args:Array[Any]): String;
 
 
@@ -405,8 +393,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * Converts all of the Chars in this String to lower case.
      * @return this String, converted to lowercase.
      */
-    @Native("java", "(#this).toLowerCase()")
-    @Native("c++", "(#this)->toLowerCase()")
+    @LinkSymbol("x10_string_to_lowercase")
     public native def toLowerCase(): String;
 
     // FIXME: Locale sensitivity
@@ -414,8 +401,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * Converts all of the Chars in this String to upper case.
      * @return this String, converted to uppercase.
      */
-    @Native("java", "(#this).toUpperCase()")
-    @Native("c++", "(#this)->toUpperCase()")
+    @LinkSymbol("x10_string_to_uppercase")
     public native def toUpperCase(): String;
 
 
@@ -437,8 +423,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param arg the argument String
      * @return 0 if the argument String is equal to this String; a negative Int if this String is lexicographically less than the argument String; and a positive Int if this String is lexicographically greater than the argument String.
      */
-    @Native("java", "(#this).compareTo(#arg)")
-    @Native("c++", "(#this)->compareTo(#arg)")
+    @LinkSymbol("x10_string_compare")
     public native def compareTo(arg: String): Int;
 
     // FIXME: Locale sensitivity
@@ -450,8 +435,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param arg the argument String
      * @return a negative Int, zero, or a positive Int as the argument String is greater than, equal to, or less than this String, ignoring case considerations.
      */
-    @Native("java", "(#this).compareToIgnoreCase(#arg)")
-    @Native("c++", "(#this)->compareToIgnoreCase(#arg)")
+    @LinkSymbol("x10_string_compare_ignoring_case")
     public native def compareToIgnoreCase(arg: String): Int;
 
     /**
@@ -460,8 +444,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @return true if the argument string appears at the head of this String.
      *         The method returns false otherwise.
      */
-    @Native("java", "(#this).startsWith(#arg)")
-    @Native("c++", "(#this)->startsWith(#arg)")
+    @LinkSymbol("x10_string_starts_with")
     public native def startsWith(arg: String): Boolean;
 
     /**
@@ -470,8 +453,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @return true if the argument string appears at the tail of this String.
      *         The method returns false otherwise.
      */
-    @Native("java", "(#this).endsWith(#arg)")
-    @Native("c++", "(#this)->endsWith(#arg)")
+    @LinkSymbol("x10_string_ends_with")
     public native def endsWith(arg: String): Boolean;
 
     // FIXME: Locale sensitivity
@@ -549,12 +531,14 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param y the second String
      * @return the resulting String
      */
+    @LinkSymbol("x10_string_concat")
     public native operator this + (y:String): String;
 
     /**
      * Returns a pointer to the string data.
      * This is an internal function to be used by the runtime only.
      */
+    @LinkSymbol("x10_string_get_pointer")
     public native def getPointer(): Pointer;
 }
 

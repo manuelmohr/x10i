@@ -45,21 +45,21 @@ x10_string *x10_string_from_cstring(const char *string)
 }
 
 /* String.this(): String */
-void _ZN3x104lang6StringC1Ev(x10_string *str)
+void x10_string_create_empty(x10_string *str)
 {
 	str->len   = 0;
 	str->chars = NULL;
 }
 
 /* String.this(Int,Pointer): String */
-void _ZN3x104lang6StringC1EiPv(x10_string *str, x10_int len, const void *data)
+void x10_string_create_from_pointer(x10_string *str, x10_int len, const void *data)
 {
 	str->len   = len;
 	str->chars = (const x10_char*)data;
 }
 
 /* String.this(String): String */
-void _ZN3x104lang6StringC1EPN3x104lang6StringE(x10_string *str, const x10_string *other)
+void x10_string_create_duplicate(x10_string *str, const x10_string *other)
 {
 	str->len   = other->len;
 	str->chars = other->chars;
@@ -73,7 +73,7 @@ static inline bool equals(const x10_char *chars0, const x10_char *chars1,
 }
 
 // String.equals(String other)
-x10_boolean _ZN3x104lang6String6equalsEPN3x104lang6StringE(
+x10_boolean x10_string_equals(
 		const x10_string *self, const x10_string *other)
 {
 	if (other == X10_NULL)
@@ -87,7 +87,7 @@ x10_boolean _ZN3x104lang6String6equalsEPN3x104lang6StringE(
 }
 
 // String.equalsIgnoreCase(String other)
-x10_boolean _ZN3x104lang6String16equalsIgnoreCaseEPN3x104lang6StringE(
+x10_boolean x10_string_equals_ignore_case(
 		const x10_string *self, const x10_string *other)
 {
 	if(other == X10_NULL)
@@ -107,7 +107,7 @@ x10_boolean _ZN3x104lang6String16equalsIgnoreCaseEPN3x104lang6StringE(
 }
 
 // String.hashCode()
-x10_int _ZN3x104lang6String8hashCodeEv(const x10_string *self)
+x10_int x10_string_hash_code(const x10_string *self)
 {
 	x10_int hash = 0;
 	x10_int l    = self->len;
@@ -119,26 +119,20 @@ x10_int _ZN3x104lang6String8hashCodeEv(const x10_string *self)
 }
 
 // String.length()
-x10_int _ZN3x104lang6String6lengthEv(const x10_string *self)
+x10_int x10_string_length(const x10_string *self)
 {
 	return self->len;
 }
 
 // String.charAt(int)
-x10_char _ZN3x104lang6String6charAtEi(const x10_string *self, x10_int idx)
+x10_char x10_string_char_at(const x10_string *self, x10_int idx)
 {
 	check_string_bounds(self, idx);
 	return self->chars[idx];
 }
 
-// String.operator(int): Char
-x10_char _ZN3x104lang6StringixEi(const x10_string *self, x10_int idx)
-{
-	return _ZN3x104lang6String6charAtEi(self, idx);
-}
-
 // String.indexOf(char, int)
-x10_int _ZN3x104lang6String7indexOfEci(const x10_string *self, x10_char needle, x10_int idx)
+x10_int x10_string_index_of_char_from(const x10_string *self, x10_char needle, x10_int idx)
 {
 	if (idx < 0)
 		idx = 0;
@@ -151,13 +145,13 @@ x10_int _ZN3x104lang6String7indexOfEci(const x10_string *self, x10_char needle, 
 }
 
 // String.indexOf(char)
-x10_int _ZN3x104lang6String7indexOfEc(const x10_string *self, x10_char c)
+x10_int x10_string_index_of_char(const x10_string *self, x10_char c)
 {
-	return _ZN3x104lang6String7indexOfEci(self, c, 0);
+	return x10_string_index_of_char_from(self, c, 0);
 }
 
 // String.indexOf(String, int)
-x10_int _ZN3x104lang6String7indexOfEPN3x104lang6StringEi(const x10_string *self, const x10_string *other, x10_int idx)
+x10_int x10_string_index_of_string_from(const x10_string *self, const x10_string *other, x10_int idx)
 {
 	x10_null_check(other);
 	if (idx < 0)
@@ -176,13 +170,13 @@ x10_int _ZN3x104lang6String7indexOfEPN3x104lang6StringEi(const x10_string *self,
 }
 
 // String.indexOf(String)
-x10_int _ZN3x104lang6String7indexOfEPN3x104lang6StringE(const x10_string *self, const x10_string *other)
+x10_int x10_string_index_of_string(const x10_string *self, const x10_string *other)
 {
-	return _ZN3x104lang6String7indexOfEPN3x104lang6StringEi(self, other, 0);
+	return x10_string_index_of_string_from(self, other, 0);
 }
 
 // String.lastIndexOf(char, int)
-x10_int _ZN3x104lang6String11lastIndexOfEci(const x10_string *self, x10_char needle, x10_int idx)
+x10_int x10_string_last_index_of_char_from(const x10_string *self, x10_char needle, x10_int idx)
 {
 	const x10_int len = self->len;
 	if (idx >= len)
@@ -196,74 +190,74 @@ x10_int _ZN3x104lang6String11lastIndexOfEci(const x10_string *self, x10_char nee
 }
 
 // String.lastIndexOf(char)
-x10_int _ZN3x104lang6String11lastIndexOfEc(const x10_string *self, x10_char c)
+x10_int x10_string_last_index_of_char(const x10_string *self, x10_char c)
 {
-	return _ZN3x104lang6String11lastIndexOfEci(self, c, self->len-1);
+	return x10_string_last_index_of_char_from(self, c, self->len-1);
 }
 
 // String.lastIndexOf(String, idx)
-x10_int _ZN3x104lang6String11lastIndexOfEPN3x104lang6StringEi(const x10_string *self, const x10_string *other, x10_int idx)
+x10_int x10_string_last_index_of_string_from(const x10_string *self, const x10_string *other, x10_int idx)
 {
-	x10_null_check(other);
-	const x10_int len        = self->len;
-	const x10_int needle_len = other->len;
-	if (idx >= len-needle_len+1)
-		idx = len-needle_len;
+x10_null_check(other);
+const x10_int len        = self->len;
+const x10_int needle_len = other->len;
+if (idx >= len-needle_len+1)
+	idx = len-needle_len;
 
-	/* TODO: use a less naive implementation */
-	idx -= needle_len-1;
-	const x10_char *needle = other->chars;
-	for ( ; idx >= 0; --idx) {
-		const x10_char *haystack = &self->chars[idx];
-		if (equals(haystack, needle, needle_len))
-			return idx;
-	}
-	return -1;
+/* TODO: use a less naive implementation */
+idx -= needle_len-1;
+const x10_char *needle = other->chars;
+for ( ; idx >= 0; --idx) {
+	const x10_char *haystack = &self->chars[idx];
+	if (equals(haystack, needle, needle_len))
+		return idx;
+}
+return -1;
 }
 
 // String.lastIndexOf(String)
-x10_int _ZN3x104lang6String11lastIndexOfEPN3x104lang6StringE(const x10_string *self, const x10_string *other)
+x10_int x10_string_last_index_of_string(const x10_string *self, const x10_string *other)
 {
-	return _ZN3x104lang6String11lastIndexOfEPN3x104lang6StringEi(self, other, self->len - other->len);
+	return x10_string_last_index_of_string_from(self, other, self->len - other->len);
 }
 
 // String.substring(String, int): String
-x10_string *_ZN3x104lang6String9substringEi(const x10_string *self, x10_int start_idx)
+x10_string *x10_string_substring_from(const x10_string *self, x10_int start_idx)
 {
-	check_string_bounds(self, start_idx);
-	const x10_int len = self->len - start_idx;
-	return x10_string_copy_from(len, &self->chars[start_idx]);
+check_string_bounds(self, start_idx);
+const x10_int len = self->len - start_idx;
+return x10_string_copy_from(len, &self->chars[start_idx]);
 }
 
 // String.substring(String, int, int)
-x10_string *_ZN3x104lang6String9substringEii(const x10_string *self, x10_int start_idx, x10_int to_idx)
+x10_string *x10_string_substring_from_to(const x10_string *self, x10_int start_idx, x10_int to_idx)
 {
-	check_string_bounds(self, start_idx);
-	check_string_bounds(self, to_idx);
-	if (start_idx > to_idx)
-		x10_throw_exception(X10_INDEX_OUT_OF_BOUNDS_EXCEPTION, T_("In substring"));
+check_string_bounds(self, start_idx);
+check_string_bounds(self, to_idx);
+if (start_idx > to_idx)
+	x10_throw_exception(X10_INDEX_OUT_OF_BOUNDS_EXCEPTION, T_("In substring"));
 
-	const x10_int len = to_idx - start_idx;
-	return x10_string_copy_from(len, &self->chars[start_idx]);
+const x10_int len = to_idx - start_idx;
+return x10_string_copy_from(len, &self->chars[start_idx]);
 }
 
 // String.endsWith(String): Boolean
-x10_boolean _ZN3x104lang6String8endsWithEPN3x104lang6StringE(const x10_string *self, const x10_string *other)
+x10_boolean x10_string_ends_with(const x10_string *self, const x10_string *other)
 {
-	if (other == X10_NULL)
-		return X10_FALSE;
+if (other == X10_NULL)
+	return X10_FALSE;
 
-	const x10_int other_len = other->len;
-	const x10_int self_len  = self->len;
-	const x10_int start     = self_len - other_len;
-	if (start < 0)
-		return X10_FALSE;
-	const x10_char *haystack = &self->chars[start];
-	return equals(haystack, other->chars, other_len);
+const x10_int other_len = other->len;
+const x10_int self_len  = self->len;
+const x10_int start     = self_len - other_len;
+if (start < 0)
+	return X10_FALSE;
+const x10_char *haystack = &self->chars[start];
+return equals(haystack, other->chars, other_len);
 }
 
 // String.startsWith(String): Boolean
-x10_boolean _ZN3x104lang6String10startsWithEPN3x104lang6StringE(const x10_string *self, const x10_string *other)
+x10_boolean x10_string_starts_with(const x10_string *self, const x10_string *other)
 {
 	if (other == X10_NULL)
 		return X10_FALSE;
@@ -277,7 +271,7 @@ x10_boolean _ZN3x104lang6String10startsWithEPN3x104lang6StringE(const x10_string
 }
 
 // String.trim(): String
-x10_string *_ZN3x104lang6String4trimEv(const x10_string *self)
+x10_string *x10_string_trim(const x10_string *self)
 {
 	const x10_int   len   = self->len;
 	const x10_char *chars = self->chars;
@@ -296,7 +290,7 @@ x10_string *_ZN3x104lang6String4trimEv(const x10_string *self)
 }
 
 // String.toLowerCase(): String
-x10_string *_ZN3x104lang6String11toLowerCaseEv(const x10_string *self)
+x10_string *x10_string_to_lowercase(const x10_string *self)
 {
 	const x10_int   self_len   = self->len;
 	const x10_char *self_chars = self->chars;
@@ -308,7 +302,7 @@ x10_string *_ZN3x104lang6String11toLowerCaseEv(const x10_string *self)
 }
 
 // String.toUpperCase(): String
-x10_string *_ZN3x104lang6String11toUpperCaseEv(const x10_string *self)
+x10_string *x10_string_to_uppercase(const x10_string *self)
 {
 	const x10_int   self_len   = self->len;
 	const x10_char *self_chars = self->chars;
@@ -320,7 +314,7 @@ x10_string *_ZN3x104lang6String11toUpperCaseEv(const x10_string *self)
 }
 
 // String.compareTo(String): Int
-x10_int _ZN3x104lang6String9compareToEPN3x104lang6StringE(const x10_string *self, const x10_string *other)
+x10_int x10_string_compare(const x10_string *self, const x10_string *other)
 {
 	x10_null_check(other);
 	const x10_int   self_len    = self->len;
@@ -338,7 +332,7 @@ x10_int _ZN3x104lang6String9compareToEPN3x104lang6StringE(const x10_string *self
 }
 
 // String.compareToIgnoreCase(String): Int
-x10_int _ZN3x104lang6String19compareToIgnoreCaseEPN3x104lang6StringE(
+x10_int x10_string_compare_ignoring_case(
 		const x10_string *self, const x10_string *other)
 {
 	x10_null_check(other);
@@ -359,14 +353,14 @@ x10_int _ZN3x104lang6String19compareToIgnoreCaseEPN3x104lang6StringE(
 }
 
 // String.typeName(): String
-x10_string *_ZN3x104lang6String8typeNameEv(const x10_string *self)
+x10_string *x10_string_type_name(const x10_string *self)
 {
 	X10_UNUSED(self);
 	return X10_STRING_FROM_CLITERAL("x10.lang.String");
 }
 
 // operator+(String): String
-x10_string *_ZN3x104lang6StringplEPN3x104lang6StringE(const x10_string *self, const x10_string *x)
+x10_string *x10_string_concat(const x10_string *self, const x10_string *x)
 {
 	const x10_int self_len  = self->len;
 	const x10_int x_len     = x->len;
@@ -378,7 +372,7 @@ x10_string *_ZN3x104lang6StringplEPN3x104lang6StringE(const x10_string *self, co
 }
 
 // String.getPointer(): Pointer
-x10_pointer _ZN3x104lang6String10getPointerEv(const x10_string *self)
+x10_pointer x10_string_get_pointer(const x10_string *self)
 {
 	return (x10_pointer)self->chars;
 }
