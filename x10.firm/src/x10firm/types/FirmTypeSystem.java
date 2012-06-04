@@ -809,11 +809,11 @@ public class FirmTypeSystem {
 		return createMethodEntity(name, instance);
 	}
 
-	/** Return name annotated via LinkSymbol or null */
+	/** Returns name annotated via LinkSymbol or null. */
 	private static String getAnnotatedLinkName(final X10Use<?> instance) {
 		//assert instance.flags().isNative() : "Only for native methods";
 		for (polyglot.types.Type annotation : instance.annotations()) {
-			if (! annotation.name().toString().equals("LinkSymbol"))
+			if (!annotation.name().toString().equals("LinkSymbol"))
 				continue;
 			final X10ParsedClassType cls = (X10ParsedClassType) annotation;
 			assert cls.definedProperties().size() == 1 : "exactly one property in LinkSymbol";
