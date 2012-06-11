@@ -28,6 +28,9 @@ public class LoweringFirm extends AllBarrierGoal {
 		final ExtensionInfo info = scheduler.extensionInfo();
 		final CompilerOptions options = (CompilerOptions)info.getOptions();
 
+		if (options.x10_config.ONLY_TYPE_CHECKING)
+			return true;
+
 		OO.lowerProgram();
 		Util.lowerSels();
 		Backend.lowerForTarget();

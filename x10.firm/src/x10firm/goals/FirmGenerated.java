@@ -40,6 +40,9 @@ public class FirmGenerated extends AllBarrierGoal {
 
 	@Override
 	public boolean runTask() {
+		if (options.x10_config.ONLY_TYPE_CHECKING)
+			return true;
+
 		FirmState.initializeCodeGen();
 		if (options.useFirmLibraries()) {
 			final String libName = "x10";

@@ -64,6 +64,9 @@ public class FirmScheduler extends X10Scheduler {
 	protected Goal PostCompiled() {
 		final Goal loweringFirm = new LoweringFirm(this).intern(this);
 
+		if (options.x10_config.ONLY_TYPE_CHECKING)
+			return loweringFirm;
+
 		final Goal optimized;
 		if (options.x10_config.OPTIMIZE) {
 			optimized = new OptimizeFirm().intern(this);
