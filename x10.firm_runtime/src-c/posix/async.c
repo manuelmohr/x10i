@@ -100,7 +100,8 @@ success:
 extern void* _ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(void *body);
 
 /** Top-level thread function, initializes activity and cleans up afterwards */
-static void execute(async_closure *ac) {
+static void *execute(void *ptr) {
+	async_closure *ac = (async_closure *) ptr;
 	finish_state *fs = ac->enclosing;
 	void *body = ac->body;
 	free(ac);
@@ -109,7 +110,7 @@ static void execute(async_closure *ac) {
 		panic("Could not set thread-local key");
 	/* run the closure */
 	_ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(body);
-	pthread_exit(0);
+	pthread_exit(NULL);
 }
 
 /**
