@@ -65,10 +65,15 @@ static void __attribute__((constructor)) init_finish_state(void) {
 	finish_state *master = malloc(sizeof(finish_state));
 	if (master == NULL) panic("malloc returned NULL");
 	finish_state_init(master, NULL);
-	if (pthread_key_create(&enclosing_finish_state, finish_state_free))
+	if (pthread_key_create(&enclosing_finish_state, NULL))
 		panic("Could not create thread-local key");
 	if (pthread_setspecific(enclosing_finish_state, master))
 		panic("Could not set thread-local key");
+}
+
+static void __attribute__((destructor)) exit_finish_state(void) {
+	finish_state *state = pthread_getspecific(enclosing_finish_state);
+	free(state);
 }
 
 static finish_state* finish_state_get_current(void) {
