@@ -100,8 +100,6 @@ static void execute(async_closure *ac) {
 	void *body = ac->body;
 	free(ac);
 	/* store enclosing finish state in thread-local data */
-	if (pthread_key_create(&enclosing_finish_state, NULL))
-		panic("Could not create thread-local key");
 	if (pthread_setspecific(enclosing_finish_state, fs))
 		panic("Could not set thread-local key");
 	/* run the closure */
