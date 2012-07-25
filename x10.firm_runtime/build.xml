@@ -15,17 +15,25 @@
 		<mkdir dir="${build}"/>
 		<mkdir dir="${gen}"/>
 	</target>
-    
+
 	<target name="distclean" depends="clean"/>
-	<target name="clean">
+	<target name="clean" depends="clean-default, clean-target">
 		<delete dir="${build}" failonerror="false"/>
 		<delete failonerror="false"> <!-- keep the gen directory itself because Eclipse needs it -->
 			<fileset dir="${gen}">
 				<include name="**"/>
 			</fileset>
 		</delete>
+	</target>
+	<!-- Clean the correct directory -->
+	<target name="clean-default" unless="TARGET">
 		<exec executable="${make.exe}" failonerror="false">
 			<arg value="clean"/>
+		</exec>
+	</target>
+	<target name="clean-target" if="TARGET">
+		<exec executable="${make.exe}" failonerror="false">
+			<arg line="TARGET=${TARGET} clean"/>
 		</exec>
 	</target>
 
@@ -45,8 +53,16 @@
 		</copy>
 	</target>
 
-	<target name="build" depends="init">
+	<!-- If TARGET is set, build for TARGET.  Otherwise do a default build.
+	     We expect SIMULATOR to be set if TARGET is set. -->
+	<target name="build" depends="build-default, build-target"/>
+	<target name="build-default" depends="init" unless="TARGET">
 		<exec executable="${make.exe}" failonerror="true"/>
 	</target>
-
+	<target name="build-target" depends="init" if="TARGET">
+		<exec executable="${make.exe}" failonerror="true">
+			<arg value="TARGET=${TARGET}"/>
+			<arg value="SIMULATOR=${SIMULATOR}"/>
+		</exec>
+	</target>
 </project>

@@ -2,6 +2,7 @@
 
 guessed_target := $(shell $(CC) -dumpmachine)
 TARGET         ?= $(guessed_target)
+CC              = $(TARGET)-gcc
 
 CPARSER_TARGET ?= -mtarget=$(TARGET)
 CFLAGS         ?= -g
