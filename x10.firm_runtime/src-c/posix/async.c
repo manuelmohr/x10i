@@ -60,22 +60,6 @@ typedef struct async_closure {
 
 static pthread_key_t enclosing_finish_state;
 
-static void __attribute__((constructor)) init_finish_state(void) {
-	/* initialize main thread's finish state */
-	finish_state *master = malloc(sizeof(finish_state));
-	if (master == NULL) panic("malloc returned NULL");
-	finish_state_init(master, NULL);
-	if (pthread_key_create(&enclosing_finish_state, NULL))
-		panic("Could not create thread-local key");
-	if (pthread_setspecific(enclosing_finish_state, master))
-		panic("Could not set thread-local key");
-}
-
-static void __attribute__((destructor)) exit_finish_state(void) {
-	finish_state *state = pthread_getspecific(enclosing_finish_state);
-	free(state);
-}
-
 static finish_state* finish_state_get_current(void) {
 	return pthread_getspecific(enclosing_finish_state);
 }
@@ -140,6 +124,17 @@ void _ZN3x104lang7Runtime16finishBlockBeginEv(void) {
 		panic("Could not set thread-local key");
 }
 
+static void __attribute__((constructor)) init_finish_state(void) {
+	/* initialize main thread's finish state */
+	if (pthread_key_create(&enclosing_finish_state, NULL))
+		panic("Could not create thread-local key");
+	if (pthread_setspecific(enclosing_finish_state, NULL))
+		panic("Could not set thread-local key");
+
+	/* begin main thread's finish block */
+	_ZN3x104lang7Runtime16finishBlockBeginEv();
+}
+
 /* x10.lang.Runtime.executeParallel(body:()=>void) */
 void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(void *body) {
 	// TODO ensure not in atomic
@@ -171,4 +166,9 @@ void _ZN3x104lang7Runtime14finishBlockEndEv(void) {
 	/* restore enclosing finish state */
 	if (pthread_setspecific(enclosing_finish_state, parent))
 		panic("Could not set thread-local key");
+}
+
+static void __attribute__((destructor)) exit_finish_state(void) {
+	/* end main thread's finish block */
+	_ZN3x104lang7Runtime14finishBlockEndEv();
 }
