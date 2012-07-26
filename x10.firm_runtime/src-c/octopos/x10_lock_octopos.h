@@ -5,7 +5,7 @@
 #include "x10.h"
 #include "x10_lock.h"
 
-struct x10_lock {
+struct X10_TYPE("x10.util.concurrent.Lock") x10_lock {
 	x10_object      base;
 	simple_spinlock lock;
 };

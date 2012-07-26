@@ -18,7 +18,7 @@ typedef struct permit_t {
 	x10_boolean permit;
 } permit_t;
 
-struct x10_thread {
+struct X10_TYPE("x10.lang.Thread") x10_thread {
 	x10_object base;
 	// thread id
 	x10_long __thread_id;
@@ -42,7 +42,7 @@ struct x10_place {
 	x10_int id;
 };
 
-struct x10_lock {
+struct X10_TYPE("x10.util.concurrent.Lock") x10_lock {
 	x10_object base;
 	// lock id
 	pthread_mutex_t __lock;

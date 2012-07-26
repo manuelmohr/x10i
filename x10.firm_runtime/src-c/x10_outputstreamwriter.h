@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "x10.h"
 
-typedef struct x10_outputstreamwriter {
+typedef struct X10_TYPE("x10.io.OutputStreamWriter") x10_outputstreamwriter {
 	x10_object  base;
 	FILE       *out;
 } x10_outputstreamwriter;

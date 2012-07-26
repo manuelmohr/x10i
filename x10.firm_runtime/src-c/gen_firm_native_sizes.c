@@ -1,14 +1,13 @@
 #include <stdio.h>
+/* make sure all X10_TYPE headers are included */
+
+/* this is the definition used by the cparser --print-compound-sizes flag
+ * which then prints the size of all dllexported types and uses "x" as
+ * description */
+#define X10_TYPE(x)  __attribute__((dllexport, deprecated(x)))
+
 #include "x10.h"
 #include "x10_string.h"
 #include "x10_outputstreamwriter.h"
+#include "platform_native_sizes.c"
 
-extern void gen_platform_native_sizes(void);
-
-int main(void)
-{
-	gen_platform_native_sizes();
-	printf("x10.lang.String %zu\n", sizeof(x10_string));
-	printf("x10.io.OutputStreamWriter %zu\n", sizeof(x10_outputstreamwriter));
-	return 0;
-}

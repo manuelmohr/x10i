@@ -4,7 +4,7 @@
 #include "x10.h"
 #include "x10_object.h"
 
-typedef struct {
+typedef struct X10_TYPE("x10.lang.String") {
 	x10_object      base;
 	x10_int         len;
 	const x10_char *chars;

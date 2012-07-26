@@ -45,4 +45,8 @@ typedef char       *x10_pointer;
 
 #define X10_UNIMPLEMENTED() printf("%s not implemented yet", __FUNCTION__); abort();
 
+#ifndef X10_TYPE
+#define X10_TYPE(x)
+#endif
+
 #endif

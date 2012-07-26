@@ -8,7 +8,6 @@ CPARSER_TARGET ?= -mtarget=$(TARGET)
 CFLAGS         ?= -g
 CPPFLAGS       ?=
 
-SIMULATOR  ?=
 APP_CFLAGS ?=
 PLATFORM   ?= posix
 
@@ -72,10 +71,8 @@ all: $(A_FILE) $(FIRM_NATIVE_TYPES_CONF) $(IR_FILE)
 $(A_FILE): $(O_FILE)
 	ar rucs $@ $?
 
-$(FIRM_NATIVE_TYPES_CONF): $(GEN_FIRM_NATIVE_SIZES) $(wildcard $(PLATFORMDIR)/*.h)
-	$(CC) $(CPPFLAGS) $(APP_CFLAGS) -o $(BUILDDIR)/gen_firm_native_sizes $(GEN_FIRM_NATIVE_SIZES)
-	$(SIMULATOR) $(BUILDDIR)/gen_firm_native_sizes > $@
-	rm -f gen_firm_native_sizes
+$(FIRM_NATIVE_TYPES_CONF): $(GEN_FIRM_NATIVE_SIZES) $(wildcard $(PLATFORMDIR)/*.h) $(wildcard $(SRCDIR)/*.h) $(CPARSER)
+	$(CPARSER) --print-compound-sizes $(CPPFLAGS) $(APP_CFLAGS) -o $@ $(SRCDIR)/gen_firm_native_sizes.c
 
 $(GEN_PRIMITIVE_TYPES): $(GENERATORSDIR)/create_types.py
 	mkdir -p $(BUILDDIR)
