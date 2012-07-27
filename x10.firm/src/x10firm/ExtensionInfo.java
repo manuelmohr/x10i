@@ -60,14 +60,14 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 	private static Set<String> allowedFiles = new HashSet<String>();
 	private static boolean whiteListInitialized;
 
-	private static void initWhitelist(CompilerOptions options) {
+	private static void initWhitelist(final CompilerOptions options) {
 		if (whiteListInitialized)
 			return;
 
 		final String whiteListFile = options.getWhiteListFile();
 		if (whiteListFile != null) {
 			try {
-				BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(whiteListFile)));
+				final BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(whiteListFile)));
 				String line;
 				while ((line = reader.readLine()) != null) {
 					line = line.trim();
@@ -77,7 +77,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 						continue;
 					allowedFiles.add(line);
 				}
-			} catch(IOException e) {
+			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
 		} else {

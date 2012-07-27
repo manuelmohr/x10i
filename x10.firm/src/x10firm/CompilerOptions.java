@@ -68,7 +68,7 @@ public class CompilerOptions extends X10CompilerOptions {
 	}
 
 	/**
-	 * Returns filename of a file containing class whitelist entries
+	 * Returns filename of a file containing class whitelist entries.
 	 */
 	public String getWhiteListFile() {
 		return whiteList;
@@ -161,7 +161,7 @@ public class CompilerOptions extends X10CompilerOptions {
 			backendOption(target.getIsa() + "-fpunit=softfloat");
 			return index + 1;
 		} else if (arg.startsWith("-whitelist=")) {
-			whiteList = arg.substring(arg.indexOf('=')+1);
+			whiteList = arg.substring(arg.indexOf('=') + 1);
 			return index + 1;
 		} else if (arg.equals("-dumpgraphs")) {
 			dumpFirmGraphs = true;
