@@ -38,6 +38,7 @@ DATA1DIR="/data1/`whoami`"
 if test -w $DATA1DIR; then
 	BUILDBASE="$DATA1DIR/builds/x10i"
 	mkdir -p "$BUILDBASE/libfirm"
+	rm -rf "$BUILDBASE/libfirm/"*
 	rm -rf libfirm/build
 	ln -s "$BUILDBASE/libfirm" libfirm/build
 
