@@ -67,7 +67,8 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 		final String whiteListFile = options.getWhiteListFile();
 		if (whiteListFile != null) {
 			try {
-				final BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(whiteListFile)));
+				final BufferedReader reader
+					= new BufferedReader(new InputStreamReader(new FileInputStream(whiteListFile)));
 				String line;
 				while ((line = reader.readLine()) != null) {
 					line = line.trim();
