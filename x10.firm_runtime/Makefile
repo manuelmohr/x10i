@@ -19,6 +19,7 @@ ifeq ($(findstring x86_64, $(TARGET)), x86_64)
 endif
 ifeq ($(findstring sparc, $(TARGET)), sparc)
 	APP_CFLAGS += -static
+	CFLAGS += -msoft-float
 endif
 ifeq ($(findstring darwin, $(TARGET)), darwin)
 	CPARSER_TARGET=
@@ -36,10 +37,19 @@ ifeq ($(TARGET), i686-invasic-octopos)
 	LFLAGS += -m32 -nostdlib -Wl,-T,$(OCTOPOS_BASE)/lib/sections.x $(OCTOPOS_BASE)/lib/liboctopos.a $(OCTOPOS_BASE)/lib/libcsubset.a
 	PLATFORM = octopos
 	CPARSER_TARGET =
-else
+endif
+ifeq ($(TARGET), sparc-invasic-octopos)
+	# For now, always build for soft float
+	OCTOPOS_BASE=../octopos-app/releases/current/leon/softfloat
+	GCC_INCLUDE:=$(shell $(CC) --print-file-name=include)
+	CFLAGS += -fno-stack-protector
+	CPPFLAGS += -nostdinc -D__OCTOPOS__ -I $(OCTOPOS_BASE)/include -isystem $(GCC_INCLUDE)
+	PLATFORM = octopos
+	# Use the normal SPARC target to avoid having to adapt cparser
+	CPARSER_TARGET = -mtarget=sparc-leon-linux-gnu
+endif
 ifeq ($(findstring linux, $(TARGET)), linux)
 	CFLAGS += -D_XOPEN_SOURCE=500
-endif
 endif
 
 CPARSER_BASE ?= ../cparser

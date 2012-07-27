@@ -47,7 +47,11 @@ public class Linked extends AbstractGoal_c {
 		/* darwin11 doesn't have a proper target-gcc installed, just used
 		 * "gcc" */
 		final String os = target.getOS();
-		if (os.equals("darwin11") || os.equals("octopos")) {
+		if (os.equals("darwin11")) {
+			return "gcc";
+		} else if (os.equals("octopos") && !target.getCpu().equals("sparc")) {
+			// For the lazy: don't expect an i686-invasic-octopos-gcc
+			// to be available, just use the normal gcc.
 			return "gcc";
 		}
 
@@ -78,8 +82,15 @@ public class Linked extends AbstractGoal_c {
 		return System.getProperty("x10.dist", ".");
 	}
 
-	private static String octoposPrefix() {
+	private static String x86OctoposPrefix() {
 		return distPath() + "/../octopos-app/releases/current/x86guest/default/";
+	}
+
+	private static String sparcOctoposPrefix(final boolean softfloat) {
+		if (softfloat)
+			return distPath() + "/../octopos-app/releases/current/leon/softfloat/";
+
+		return distPath() + "/../octopos-app/releases/current/leon/default/";
 	}
 
 	@Override
@@ -92,18 +103,30 @@ public class Linked extends AbstractGoal_c {
 		final String libooPath = x10DistPath + "/../liboo/build/" + target;
 		final String gcc = getGCC();
 		final boolean usesElf = target.isUnixishOS();
+		final String cpu = target.getCpu();
+		final String os = target.getOS();
 		boolean linkStatically = options.linkStatically();
 
 		final List<String> cmd = new ArrayList<String>();
 		cmd.add(gcc);
-		final String  os = target.getOS();
-		// Produce a 32-bit binary when running on a 64-bit x86 host
-		if (target.getCpu().equals("x86_64") || os.equals("darwin11")) {
+		if (cpu.equals("x86_64") || os.equals("darwin11")) {
+			// Produce a 32-bit binary when running on a 64-bit x86 host
 			cmd.add("-m32");
 		} else if (os.equals("octopos")) {
-			cmd.add("-m32");
-			cmd.add("-nostdlib");
-			cmd.add("-Wl,-T" + octoposPrefix() + "lib/sections.x");
+			if (cpu.equals("sparc")) {
+				final boolean sf = options.useSoftFloat();
+				cmd.add("-mcpu=v8");
+				cmd.add("-L" + sparcOctoposPrefix(sf) + "lib");
+				cmd.add("-nostdlib");
+				// Must be first object
+				cmd.add(sparcOctoposPrefix(sf) + "lib/traptable.S.o");
+			} else {
+				cmd.add("-m32");
+				cmd.add("-L" + x86OctoposPrefix() + "lib");
+				cmd.add("-nostdlib");
+				cmd.add("-Wl,-T" + x86OctoposPrefix() + "lib/sections.x");
+			}
+
 			cmd.add(queryGccPath("crti.o"));
 			cmd.add(queryGccPath("crtbegin.o"));
 			/* octopos only supports static linking */
@@ -132,8 +155,8 @@ public class Linked extends AbstractGoal_c {
 			cmd.add(stdlibPath + "/libx10.a");
 		}
 		if (os.equals("octopos")) {
-			cmd.add(octoposPrefix() + "lib/liboctopos.a");
-			cmd.add(octoposPrefix() + "lib/libcsubset.a");
+			cmd.add("-loctopos");
+			cmd.add("-lcsubset");
 			cmd.add("-lgcc");
 			cmd.add(queryGccPath("crtend.o"));
 			cmd.add(queryGccPath("crtn.o"));
