@@ -53,8 +53,7 @@
 		</copy>
 	</target>
 
-	<!-- If TARGET is set, build for TARGET.  Otherwise do a default build.
-	     We expect SIMULATOR to be set if TARGET is set. -->
+	<!-- If TARGET is set, build for TARGET.  Otherwise do a default build. -->
 	<target name="build" depends="build-default, build-target"/>
 	<target name="build-default" depends="init" unless="TARGET">
 		<exec executable="${make.exe}" failonerror="true"/>
@@ -62,7 +61,6 @@
 	<target name="build-target" depends="init" if="TARGET">
 		<exec executable="${make.exe}" failonerror="true">
 			<arg value="TARGET=${TARGET}"/>
-			<arg value="SIMULATOR=${SIMULATOR}"/>
 		</exec>
 	</target>
 </project>
