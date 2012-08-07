@@ -4,10 +4,22 @@ extern int main(int argc, char **argv);
 
 void main_ilet(claim_t claim)
 {
-	(void) claim;
-
 	/* We want to use uart redirection through grmon -u */
 	leon_set_uart_debug_mode(1);
 
+	finish_state fs;
+	fs.claim = claim;
+
+	/* initialize main i-let's finish state */
+	finish_state_set_current(&fs);
+
+	/* begin main i-let's finish block */
+	_ZN3x104lang7Runtime16finishBlockBeginEv();
+
 	main(0, NULL);
+
+	/* end main i-let's finish block */
+	_ZN3x104lang7Runtime14finishBlockEndEv();
+
+	guest_shutdown();
 }
