@@ -145,6 +145,8 @@ env=Environment()
 template = env.from_string(
 '''/* Warning: automatically generated code */
 #include "x10.h"
+#include "util.h"
+#include "x10_util.h"
 #include "x10_string.h"
 
 static x10_char numerals[] = {

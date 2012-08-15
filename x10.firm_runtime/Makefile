@@ -88,10 +88,9 @@ $(GEN_PRIMITIVE_TYPES): $(GENERATORSDIR)/create_types.py
 	mkdir -p $(BUILDDIR)
 	$< > $@
 
-$(MASTER): $(C_FILES) $(H_FILES) Makefile
+$(MASTER): $(GENERATORSDIR)/mkincludes.py $(C_FILES) $(H_FILES) Makefile
 	mkdir -p $(BUILDDIR)
-	echo "$(foreach file,$(H_FILES),#include \"../../$(file)\"\n)"  >$(MASTER)
-	echo "$(foreach file,$(C_FILES),#include \"../../$(file)\"\n)" >>$(MASTER)
+	$< ../../ $(C_FILES) > $(MASTER)
 
 $(O_FILE): $(MASTER)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< -c -o $@
