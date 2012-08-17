@@ -1383,9 +1383,10 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			}
 		}
 
-		final Block bCond  = con.newBlock();
-		final Block bTrue  = con.newBlock();
-		final Block bFalse = con.newBlock();
+		final Block bCond   = con.newBlock();
+		final Block bTrue   = con.newBlock();
+		final Block bFalse  = con.newBlock();
+		final Block bUpdate = con.newBlock();
 
 		bCond.addPred(con.newJmp());
 		con.setCurrentBlock(bCond);
@@ -1407,10 +1408,10 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Block oldBreak = con.breakBlock;
 		con.breakBlock = bFalse;
 		final Block oldContinue = con.continueBlock;
-		con.continueBlock = bCond;
+		con.continueBlock = bUpdate;
 		if (label != null && con.labeledStmt == n) {
 			con.labeledBreaks.put(label.toString(), bFalse);
-			con.labeledContinues.put(label.toString(), bCond);
+			con.labeledContinues.put(label.toString(), bUpdate);
 		}
 
 		final Stmt body = n.body();
@@ -1418,10 +1419,13 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 		assert con.breakBlock == bFalse;
 		con.breakBlock = oldBreak;
-		assert con.continueBlock == bCond;
+		assert con.continueBlock == bUpdate;
 		con.continueBlock = oldContinue;
 
 		bFalse.mature();
+
+		bUpdate.addPred(con.newJmp());
+		con.setCurrentBlock(bUpdate);
 
 		if (n.iters() != null) {
 			for (ForUpdate f: n.iters()) {
@@ -1432,6 +1436,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		if (!con.isUnreachable())
 			bCond.addPred(con.newJmp());
 
+		bUpdate.mature();
 		bCond.mature();
 
 		/* more fixup for X10 endless loop detection */
