@@ -171,6 +171,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/util/ListIterator.x10");
 			allowedFiles.add("x10/util/Ordered.x10");
 			allowedFiles.add("x10/util/StringBuilder.x10");
+			allowedFiles.add("x10/util/Timer.x10");
 		}
 		whiteListInitialized = true;
 	}
