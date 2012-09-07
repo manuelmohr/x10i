@@ -87,7 +87,7 @@ static void execute(void *ptr) {
 	/* run the closure */
 	_ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(body);
 	/* send signal to finish state */
-        simple_signal_signal(&fs->signal);
+	simple_signal_signal(&fs->signal);
 	free(ilet);
 }
 
