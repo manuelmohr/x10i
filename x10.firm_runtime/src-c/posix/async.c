@@ -26,8 +26,10 @@ typedef struct finish_state finish_state;
 struct finish_state {
 	/* a mutex for parallel activity creation */
 	pthread_mutex_t     mutex;
-	/* a list of all child activities */
-	pthread_t           children[MAX_ACTIVITIES_PER_FINISH];
+	/* Condition variable to wait at the end of finish statements */
+	pthread_cond_t      condition;
+	/* Number of spawned activities */
+	int                 number_of_activities;
 	/* enclosing finish (maybe NULL for root) */
 	finish_state        *parent;
 };
@@ -35,13 +37,17 @@ struct finish_state {
 static void finish_state_init(finish_state *fs, finish_state *parent) {
 	if (pthread_mutex_init(& fs->mutex, NULL))
 		panic("Could not init mutex");
-	memset(fs->children, 0, sizeof(pthread_t)*MAX_ACTIVITIES_PER_FINISH);
-	fs->parent = parent;
+	if (pthread_cond_init(& fs->condition, NULL))
+		panic("Could not init condition variable");
+	fs->number_of_activities = 0;
+	fs->parent               = parent;
 }
 
 static void finish_state_free(finish_state *fs) {
 	if (pthread_mutex_destroy(& fs->mutex))
 		panic("Could not destroy mutex");
+	if (pthread_cond_destroy(& fs->condition))
+		panic("Could not destroy condition variable");
 	free(fs);
 }
 
@@ -64,18 +70,12 @@ static finish_state* finish_state_get_current(void) {
 	return pthread_getspecific(enclosing_finish_state);
 }
 
-static void register_at_finish_state(pthread_t child, finish_state *fs) {
+static void register_at_finish_state(finish_state *fs) {
 	if (pthread_mutex_lock(& fs->mutex))
 		panic("Could not lock mutex");
-	for (int i=0; i<MAX_ACTIVITIES_PER_FINISH; i++) {
-		// FIXME a zero pthread_t might be valid
-		if (fs->children[i] == 0) {
-			fs->children[i] = child;
-			goto success;
-		}
-	}
-	panic("Too many activities for this finish state");
-success:
+
+	fs->number_of_activities++;
+
 	if (pthread_mutex_unlock(& fs->mutex))
 		panic("Could not unlock mutex");
 }
@@ -94,6 +94,15 @@ static void *execute(void *ptr) {
 		panic("Could not set thread-local key");
 	/* run the closure */
 	_ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(body);
+
+	if (pthread_mutex_lock(& fs->mutex))
+		panic("Could not lock mutex");
+
+	fs->number_of_activities--;
+	pthread_cond_signal(& fs->condition);
+
+	if (pthread_mutex_unlock(& fs->mutex))
+		panic("Could not unlock mutex");
 	pthread_exit(NULL);
 }
 
@@ -146,20 +155,24 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(void *body
 	pthread_t child;
 	if (pthread_create(&child, NULL, execute, ac))
 		panic("Could not create thread");
-	register_at_finish_state(child, enclosing);
+	register_at_finish_state(enclosing);
 }
 
 /* x10.lang.Runtime.finishBlockEnd() */
 void _ZN3x104lang7Runtime14finishBlockEndEv(void) {
 	/* wait for all child threads */
 	finish_state *enclosing = finish_state_get_current();
-	for (int i=0; i<MAX_ACTIVITIES_PER_FINISH; i++) {
-		// FIXME a zero pthread_t might be valid
-		if (enclosing->children[i] != 0) {
-			if (pthread_join(enclosing->children[i], NULL))
-				panic("Could not join thread");
-		}
+	if (pthread_mutex_lock(& enclosing->mutex))
+		panic("Could not lock mutex");
+
+	while (enclosing->number_of_activities > 0) {
+		if (pthread_cond_wait(& enclosing->condition, & enclosing->mutex))
+			panic("Could not wait on condition variable");
 	}
+
+	if (pthread_mutex_unlock(& enclosing->mutex))
+		panic("Could not unlock mutex");
+
 	/* clear the finish state */
 	finish_state *parent = enclosing->parent;
 	finish_state_free(enclosing);
