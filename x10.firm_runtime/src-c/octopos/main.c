@@ -7,6 +7,14 @@ void main_ilet(claim_t claim)
 	/* We want to use uart redirection through grmon -u */
 	leon_set_uart_debug_mode(1);
 
+	/*
+	 * Get as many cpus as possible.
+	 * Remove this once invading is exposed as an API call to the user.
+	 */
+	uint32_t num = 64;
+	while (num > 0 && invade_simple(claim, num) != 0)
+		--num;
+
 	finish_state fs;
 	fs.claim = claim;
 
