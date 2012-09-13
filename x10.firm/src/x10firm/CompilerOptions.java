@@ -30,7 +30,8 @@ public class CompilerOptions extends X10CompilerOptions {
 	private boolean printCommandline = false;
 	private boolean dumpGoalGraph = false;
 	private String whiteList = null;
-	private List<String> linkerFlags = new ArrayList<String>();
+	private String linkerScriptPath = null;
+	private List<String> linkerObjects = new ArrayList<String>();
 
 	/** Constructs new CompilerOptions. */
 	public CompilerOptions(final ExtensionInfo extension) {
@@ -118,9 +119,14 @@ public class CompilerOptions extends X10CompilerOptions {
 		return dumpGoalGraph;
 	}
 
-	/** Returns list of additional linker flags. */
-	public List<String> getLinkerFlags() {
-		return linkerFlags;
+	/** Returns path to custom linker script, if specified, or null. */
+	public String getLinkerScriptPath() {
+		return linkerScriptPath;
+	}
+
+	/** Returns list of additional linker objects. */
+	public List<String> getLinkerObjects() {
+		return linkerObjects;
 	}
 
 	private static void backendOption(final String option) {
@@ -133,7 +139,7 @@ public class CompilerOptions extends X10CompilerOptions {
 			final Set<String> source) throws UsageError {
 		final String arg0 = args[index];
 		if (!arg0.startsWith("-") && (arg0.endsWith(".o") || arg0.endsWith(".a"))) {
-			linkerFlags.add(arg0);
+			linkerObjects.add(arg0);
 			return index + 1;
 		}
 
@@ -184,6 +190,9 @@ public class CompilerOptions extends X10CompilerOptions {
 		} else if (arg.equals("-showCommandline")) {
 			printCommandline = true;
 			return index + 1;
+		} else if (arg.equals("-linkerScript")) {
+			linkerScriptPath = args[i + 1];
+			return index + 2;
 		}
 
 		return index;
@@ -215,5 +224,7 @@ public class CompilerOptions extends X10CompilerOptions {
 				"Do not load libraries as firm-ir files");
 		usageForFlag(out, "-static",
 				"link external libraries statically");
+		usageForFlag(out, "-linkerScript",
+				"Use custom linker script");
 	}
 }

@@ -106,13 +106,16 @@ public class Linked extends AbstractGoal_c {
 		final String cpu = target.getCpu();
 		final String os = target.getOS();
 		boolean linkStatically = options.linkStatically();
+		String linkerScript = options.getLinkerScriptPath();
 
 		final List<String> cmd = new ArrayList<String>();
 		cmd.add(gcc);
 		if (cpu.equals("x86_64") || os.equals("darwin11")) {
 			// Produce a 32-bit binary when running on a 64-bit x86 host
 			cmd.add("-m32");
-		} else if (os.equals("octopos")) {
+		}
+
+		if (os.equals("octopos")) {
 			if (cpu.equals("sparc")) {
 				final boolean sf = options.useSoftFloat();
 				cmd.add("-mcpu=v8");
@@ -124,7 +127,9 @@ public class Linked extends AbstractGoal_c {
 				cmd.add("-m32");
 				cmd.add("-L" + x86OctoposPrefix() + "lib");
 				cmd.add("-nostdlib");
-				cmd.add("-Wl,-T" + x86OctoposPrefix() + "lib/sections.x");
+				if (linkerScript != null)
+					System.err.println("Warning: Ignoring specified linker script.");
+				linkerScript = x86OctoposPrefix() + "lib/sections.x";
 			}
 
 			cmd.add(queryGccPath("crti.o"));
@@ -132,11 +137,14 @@ public class Linked extends AbstractGoal_c {
 			/* octopos only supports static linking */
 			linkStatically = true;
 		}
+
+		if (linkerScript != null)
+			cmd.add("-Wl,-T" + linkerScript);
 		if (linkStatically)
 			cmd.add("-static");
 
 		cmd.add(asmFile.getAbsolutePath());
-		for (String flag : options.getLinkerFlags()) {
+		for (String flag : options.getLinkerObjects()) {
 			cmd.add(flag);
 		}
 
