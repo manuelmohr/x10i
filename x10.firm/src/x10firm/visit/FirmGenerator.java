@@ -117,6 +117,7 @@ import x10.ast.X10Instanceof_c;
 import x10.ast.X10MethodDecl;
 import x10.ast.X10NodeFactory_c;
 import x10.ast.X10SourceFile_c;
+import x10.ast.X10Special;
 import x10.ast.X10Special_c;
 import x10.ast.X10Unary_c;
 import x10.types.MethodInstance;
@@ -163,6 +164,7 @@ import firm.Ident;
 import firm.Initializer;
 import firm.MethodType;
 import firm.Mode;
+import firm.OO;
 import firm.PointerType;
 import firm.Program;
 import firm.Relation;
@@ -1953,14 +1955,11 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	@Override
 	public void visit(final X10Special_c n) {
-		if (n.kind() == Special.THIS) {
-			final Node thisPointer = getThis();
-			setReturnNode(thisPointer);
-		} else if (n.kind() == Special.SUPER) {
+		if (n.kind() == Special.THIS || n.kind() == Special.SUPER) {
 			final Node thisPointer = getThis();
 			setReturnNode(thisPointer);
 		} else {
-			throw new CodeGenError("Special not implemented yet", n);
+			throw new CodeGenError("Special.kind() not implemented yet", n);
 		}
 	}
 
@@ -2025,7 +2024,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	 * @return The return node or null if the call doesn`t have a return value
 	 */
 	private Node genX10Call(final Position pos, final MethodInstance mi,
-	                        final List<Expr> args, final Receiver target) {
+	                         final List<Expr> args, final Receiver target) {
 		final Flags flags = mi.flags();
 		final boolean isStatic = flags.isStatic();
 		final boolean isFinal  = flags.isFinal();
@@ -2064,6 +2063,11 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		con.setCurrentMem(newMem);
 
 		setDebugInfo(call, pos);
+
+		// Calls via super are always statically bound.
+		if (target instanceof X10Special && ((X10Special) target).kind() == Special.SUPER) {
+			OO.setCallIsStaticallyBound(call, true);
+		}
 
 		if (type.getNRess() == 0) {
 			return null; /* no return value, we're done */
