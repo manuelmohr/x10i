@@ -19,6 +19,7 @@ import x10.visit.X10DelegatingVisitor;
 import x10cpp.visit.SharedVarsMethods;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
+import firm.Backend;
 import firm.Entity;
 import firm.MethodType;
 import firm.Mode;
@@ -153,8 +154,8 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		final Expr     left      = b.left();
 		final Expr     right     = b.right();
 		final Relation relation  = (op == Binary.EQ) ? Relation.Equal : Relation.LessGreater;
-		final Node     retLeft   = codeGenerator.visitExpression(left);
-		final Node     retRight  = codeGenerator.visitExpression(right);
+		Node           retLeft   = codeGenerator.visitExpression(left);
+		Node           retRight  = codeGenerator.visitExpression(right);
 		final Type     leftType  = left.type();
 		final Type     rightType = right.type();
 
@@ -186,6 +187,14 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 				return;
 			}
 
+			final Mode mode = retLeft.getMode();
+			if (mode.isFloat()) {
+				final Mode floatArithMode = Backend.getFloatArithmeticMode();
+				if (floatArithMode != null) {
+					retLeft = con.newConv(retLeft, floatArithMode);
+					retRight = con.newConv(retRight, floatArithMode);
+				}
+			}
 			final Node cmp = con.newCmp(retLeft, retRight, relation);
 			makeJumps(cmp, trueBlock, falseBlock, con);
 		}
