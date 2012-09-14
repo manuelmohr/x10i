@@ -699,7 +699,7 @@ public class FirmTypeSystem {
 
 		final Mode modeDouble = Mode.createFloatMode("Double", Arithmetic.IEE754, 11, 52);
 		final Type typeDouble = new PrimitiveType(modeDouble);
-		typeLong.setAlignmentBytes(maxAlign);
+		typeDouble.setAlignmentBytes(maxAlign);
 		recordPrimitiveType(x10TypeSystem.Double(), typeDouble, "d");
 
 		/* Note that the mode_b in firm can't be used here, since it is an
