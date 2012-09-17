@@ -34,6 +34,7 @@ import x10.types.X10MethodDef;
 import x10.types.X10ParsedClassType;
 import x10.types.X10Use;
 import x10firm.CompilerOptions;
+import x10firm.MachineTriple;
 import x10firm.visit.CodeGenError;
 import x10firm.visit.GenericCodeInstantiationQueue;
 import firm.ClassType;
@@ -111,6 +112,9 @@ public class FirmTypeSystem {
 	/** Reference to the generic type system. */
 	private final GenericTypeSystem typeSystem;
 
+	/** Reference to the compiler options. */
+	private final CompilerOptions compilerOptions;
+
 	/**
 	 * Construct a firm type system object.
 	 * @param typeSystem The X10 type system
@@ -118,8 +122,9 @@ public class FirmTypeSystem {
 	public FirmTypeSystem(final GenericTypeSystem typeSystem, final CompilerOptions options,
 	                      final GenericCodeInstantiationQueue instantiationQueue) {
 		this.typeSystem = typeSystem;
+		this.compilerOptions = options;
 		this.instantiationQueue = instantiationQueue;
-		init(options);
+		init();
 	}
 
 	private void findExistingEntities() {
@@ -154,15 +159,15 @@ public class FirmTypeSystem {
 	private boolean inited = false;
 
 	/** Initializes the firm type system. */
-	private void init(final CompilerOptions options) {
+	private void init() {
 		if (inited)
 			return;
-		final String nativeTypesConfig = options.getFirmNativeTypesFilename();
+		final String nativeTypesConfig = compilerOptions.getFirmNativeTypesFilename();
 		inited = true;
 		findExistingEntities();
 		readFirmNativeTypesConfig(nativeTypesConfig);
 		initFirmTypes();
-		NameMangler.setup(typeSystem, options);
+		NameMangler.setup(typeSystem, compilerOptions);
 	}
 
 	private void readFirmNativeTypesConfig(final String firmNativeTypesFilename) {
@@ -637,6 +642,23 @@ public class FirmTypeSystem {
 		NameMangler.addPrimitiveMangling(x10Type, mangled);
 	}
 
+	private void initIA32DataTypeAlignment(final Type type) {
+		final MachineTriple target = compilerOptions.getTargetTriple();
+
+		if ((target.getCpu().equals("i686") || target.getCpu().equals("x86_64"))
+			&& (target.isUnixishOS() || target.isDarwin())) {
+
+			/* The System V ABI for IA32 specifies a 4-byte alignment for doubles/long longs.
+			 * While this is actually only true for doubles/long longs within structs, and not for global
+			 * variables, we don't make that distinction in X10 and always use a 4-byte alignment.
+			 *
+			 * We also use 4 bytes on x86_64 because we never actually generate 64-bit x86 code, but still use our
+			 * IA32 backend.  Technically, this is a cross compilation and the target cpu should be "i686".
+			 * However, to simplify running x10firm on 64-bit hosts, this is handled as a special case. */
+			type.setAlignmentBytes(4);
+		}
+	}
+
 	/**
 	 * Should be called before the firm-graph is constructed. This extra step
 	 * is necessary because at the time the type-system Object is created in
@@ -651,16 +673,14 @@ public class FirmTypeSystem {
 		final Type typePointer = new PrimitiveType(modePointer);
 		recordPrimitiveType(typeSystem.pointer(), typePointer, "Pv");
 
-		final int maxAlign = 4;
-
 		final Mode modeLong = Mode.createIntMode("Long", Arithmetic.TwosComplement, 64, true, 64);
 		final Type typeLong = new PrimitiveType(modeLong);
-		typeLong.setAlignmentBytes(maxAlign);
+		initIA32DataTypeAlignment(typeLong);
 		recordPrimitiveType(x10TypeSystem.Long(), typeLong, "x");
 
 		final Mode modeULong = Mode.createIntMode("ULong", Arithmetic.TwosComplement, 64, false, 64);
 		final Type typeULong = new PrimitiveType(modeULong);
-		typeULong.setAlignmentBytes(maxAlign);
+		initIA32DataTypeAlignment(typeULong);
 		recordPrimitiveType(x10TypeSystem.ULong(), typeULong, "y");
 
 		final Mode modeInt = Mode.createIntMode("Int", Arithmetic.TwosComplement, 32, true, 32);
@@ -699,7 +719,7 @@ public class FirmTypeSystem {
 
 		final Mode modeDouble = Mode.createFloatMode("Double", Arithmetic.IEE754, 11, 52);
 		final Type typeDouble = new PrimitiveType(modeDouble);
-		typeDouble.setAlignmentBytes(maxAlign);
+		initIA32DataTypeAlignment(typeDouble);
 		recordPrimitiveType(x10TypeSystem.Double(), typeDouble, "d");
 
 		/* Note that the mode_b in firm can't be used here, since it is an
