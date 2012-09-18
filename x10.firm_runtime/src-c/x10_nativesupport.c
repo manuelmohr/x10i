@@ -34,7 +34,7 @@ x10_pointer _ZN3x104lang13NativeSupport5allocEi(x10_int numBytes)
 }
 
 /* static x10.lang.NativeSupport.allocZeroed(Uint): Pointer */
-x10_pointer _ZN3x104lang13NativeSupport11alocZeroedEi(x10_int numBytes)
+x10_pointer _ZN3x104lang13NativeSupport11allocZeroedEi(x10_int numBytes)
 {
 	void *ret = malloc(numBytes);
 	assert(ret != NULL);

@@ -59,7 +59,7 @@ public struct IndexedMemoryChunk[T] {
 
     public static def allocateZeroed[T](length: Int): IndexedMemoryChunk[T]{T haszero} {
         val size   = calculateSize[T](length);
-        val memory = NativeSupport.alloc(size);
+        val memory = NativeSupport.allocZeroed(size);
         return IndexedMemoryChunk[T](memory, length);
     }
 
