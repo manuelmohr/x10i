@@ -119,6 +119,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/lang/Boolean.x10");
 			allowedFiles.add("x10/lang/Byte.x10");
 			allowedFiles.add("x10/lang/Char.x10");
+			allowedFiles.add("x10/lang/Cell.x10");
 			allowedFiles.add("x10/lang/Comparable.x10");
 			allowedFiles.add("x10/lang/Complex.x10");
 			allowedFiles.add("x10/lang/Double.x10");
@@ -168,6 +169,9 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/util/List.x10");
 			allowedFiles.add("x10/util/ListIterator.x10");
 			allowedFiles.add("x10/util/Ordered.x10");
+			allowedFiles.add("x10/util/Pair.x10");
+			allowedFiles.add("x10/util/Random.x10");
+			allowedFiles.add("x10/util/Stack.x10");
 			allowedFiles.add("x10/util/StringBuilder.x10");
 			allowedFiles.add("x10/util/Timer.x10");
 		}
