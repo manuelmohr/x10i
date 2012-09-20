@@ -71,6 +71,7 @@ import polyglot.ast.TypeNode;
 import polyglot.ast.Unary_c;
 import polyglot.ast.While_c;
 import polyglot.types.ConstructorInstance;
+import polyglot.types.ContainerType;
 import polyglot.types.Context;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
@@ -903,7 +904,9 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	}
 
 	private Node getFieldAddress(final Node objectPointer, final FieldInstance instance) {
-		final Entity entity = firmTypeSystem.getFieldEntity(instance);
+		final FieldInstance reinstantiated
+			= instance.flags().isStatic() ? instance : typeSystem.getSubst().reinstantiate(instance);
+		final Entity entity = firmTypeSystem.getFieldEntity(reinstantiated);
 		if (objectPointer != null) {
 			return con.newSel(objectPointer, entity);
 		}
@@ -1781,14 +1784,27 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		if (typeArguments.isEmpty())
 			return;
 
+		final MethodDef def = instance.def();
+		final List<ParameterType> typeParameters = def.typeParameters();
+
 		TypeParamSubst addSubst = null;
 		if (instance instanceof ReinstantiatedMethodInstance) {
 			final ReinstantiatedMethodInstance reinstantiated
 				= (ReinstantiatedMethodInstance) instance;
 			addSubst = reinstantiated.typeParamSubst();
+		} else if (!instance.flags().isStatic()) {
+			final ContainerType ct = instance.container();
+			if (ct != null && ct.isClass()) {
+				final List<ParameterType> containerParams = ct.toClass().def().typeParameters();
+				if (containerParams != null && !containerParams.isEmpty()) {
+					final List<Type> containerArguments = new ArrayList<Type>();
+					for (ParameterType pt : containerParams) {
+						containerArguments.add(typeSystem.getSubst().reinstantiate(pt));
+					}
+					addSubst = new TypeParamSubst(typeSystem.getTypeSystem(), containerArguments, containerParams);
+				}
+			}
 		}
-		final MethodDef def = instance.def();
-		final List<ParameterType> typeParameters = def.typeParameters();
 		final TypeParamSubst subst = createSubst(addSubst, typeParameters, typeArguments);
 
 		// Find the method declaration.
