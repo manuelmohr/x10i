@@ -56,7 +56,14 @@ public final class FirmState {
 		firmInitialized = true;
 
 		Firm.init();
+	}
+	
+	private static void initializeImplicitOptimizations() {
 		Firm.enableOptimisations();
+		firm.bindings.binding_irflag.set_opt_constant_folding(FirmOptions.constFolding ? 1 : 0);
+		firm.bindings.binding_irflag.set_opt_algebraic_simplification(FirmOptions.constFolding ? 1 : 0);
+		firm.bindings.binding_irflag.set_opt_cse(FirmOptions.cse ? 1 : 0);
+		firm.bindings.binding_irflag.set_opt_global_cse(0);
 	}
 
 	private static boolean codegenInitialized = false;
@@ -68,6 +75,7 @@ public final class FirmState {
 		codegenInitialized = true;
 
 		initializeFirm();
+		initializeImplicitOptimizations();
 
 		setPointerSize(PointerSize.Size32);
 		OO.init();

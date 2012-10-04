@@ -11,6 +11,8 @@ import java.util.Set;
 import polyglot.frontend.ExtensionInfo;
 import polyglot.main.UsageError;
 import x10.X10CompilerOptions;
+import x10firm.FirmOptimizations.FirmOptimization;
+import x10firm.FirmOptions.FirmOption;
 import firm.Backend;
 
 /**
@@ -156,6 +158,23 @@ public class CompilerOptions extends X10CompilerOptions {
 						"Invalid backend argument '%s'", arg));
 			}
 			return index + 1;
+		} else if (arg.startsWith("-f")) {
+			if (arg.length() == 2) {
+				if (!FirmOptions.setOption(args[index + 1]))
+					throw new UsageError(String.format(
+							"Invalid firm option '%s'", args[index + 1]));
+				return index + 2;
+			}
+			
+			if (!FirmOptions.setOption(arg.substring(2)))
+				throw new UsageError(String.format(
+						"Invalid firm option '%s'", arg));
+			return index + 1;
+		} else if (arg.startsWith("-O")) {
+			String optLevel = arg.substring(2);
+			System.err.println("Setting O" + optLevel);
+			FirmOptions.chooseOptimizationPack(Integer.parseInt(optLevel));
+			return index + 1;
 		} else if (arg.startsWith("-target=") || arg.startsWith("-mtarget=")) {
 			target = new MachineTriple(arg.substring(arg.indexOf('=') + 1));
 			backendOption("isa=" + target.getIsa());
@@ -210,6 +229,10 @@ public class CompilerOptions extends X10CompilerOptions {
 				"Use soft float.");
 		usageForFlag(out, "-b<flag>",
 				"Set firm backend options (use -bhelp for additional help)");
+		usageForFlag(out, "-O<n>",
+				"Set optimization level");
+		usageForFlag(out, "-f<flag>",
+				"Set firm options");
 		usageForFlag(out, "-dumpgoalgraph",
 				"Dump compiler scheduler job graph");
 		usageForFlag(out, "-dumpgraphs",
@@ -226,5 +249,16 @@ public class CompilerOptions extends X10CompilerOptions {
 				"link external libraries statically");
 		usageForFlag(out, "-linkerScript",
 				"Use custom linker script");
+		
+		for (FirmOption option : FirmOptions.getKnownOptions().values()) {
+			usageForFlag(out, "-f " + option.getName(), option.getDescription());
+		}
+		for (FirmOptimization opt : FirmOptimizations.getOptimizations().values()) {
+			if (! opt.isHidden())
+				continue;
+
+			usageForFlag(out, "-f " + opt.getName(), "enable " + opt.getDescription());
+			usageForFlag(out, "-f no-" + opt.getName(), "disable " + opt.getDescription());
+		}
 	}
 }

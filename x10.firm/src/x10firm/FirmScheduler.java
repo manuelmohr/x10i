@@ -68,12 +68,8 @@ public class FirmScheduler extends X10Scheduler {
 			return loweringFirm;
 
 		final Goal optimized;
-		if (options.x10_config.OPTIMIZE) {
-			optimized = new OptimizeFirm().intern(this);
-			optimized.addPrereq(loweringFirm);
-		} else {
-			optimized = loweringFirm;
-		}
+		optimized = new OptimizeFirm().intern(this);
+		optimized.addPrereq(loweringFirm);
 
 		try {
 			if (options.assembleAndLink()) {
