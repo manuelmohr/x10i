@@ -112,7 +112,7 @@ public class OptimizeFirm extends AbstractGoal_c {
 			optimize(irg, "control-flow");
 			optimize(irg, "opt-load-store");
 			optimize(irg, "fp-vrp");
-			// optimize(irg, "lower"); // the highlevel lowering was already done.
+			optimize(irg, "lower"); // the highlevel lowering was already done.
 			optimize(irg, "deconv");
 			optimize(irg, "thread-jumps");
 			optimize(irg, "remove-confirms");

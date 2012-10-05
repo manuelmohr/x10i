@@ -172,7 +172,6 @@ public class CompilerOptions extends X10CompilerOptions {
 			return index + 1;
 		} else if (arg.startsWith("-O")) {
 			String optLevel = arg.substring(2);
-			System.err.println("Setting O" + optLevel);
 			FirmOptions.chooseOptimizationPack(Integer.parseInt(optLevel));
 			return index + 1;
 		} else if (arg.startsWith("-target=") || arg.startsWith("-mtarget=")) {

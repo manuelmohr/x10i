@@ -41,9 +41,11 @@ public class FirmOptimizations {
 		
 		public void enable() {
 			flags |= ENABLED;
+			System.out.println("FirmOptimizations: enabling " + name);
 		}
 		public void disable() {
 			flags &= ~ENABLED;
+			System.out.println("FirmOptimizations: disabling " + name);
 		}
 		public boolean isEnabled() {
 			return (flags & ENABLED) != 0;
@@ -322,11 +324,11 @@ public class FirmOptimizations {
 		getOptimization("scalar-replace").enable();
 		getOptimization("place").enable();
 		getOptimization("gcse").enable();
-		getOptimization("confirm").enable();
+//		getOptimization("confirm").enable();
 		getOptimization("opt-load-store").enable();
 		getOptimization("lower").enable();
 		getOptimization("deconv").enable();
-		getOptimization("remove-confirms").enable();
+//		getOptimization("remove-confirms").enable();
 		getOptimization("ivopts").enable();
 		getOptimization("dead").enable();
 		getOptimization("remove-phi-cycles").enable();
