@@ -39,36 +39,24 @@ public class OptimizeFirm extends AbstractGoal_c {
 
 		return true;
 	}
-	
-	private static boolean optimize(final Pointer irg, String name) {
+
+	private static boolean optimize(final Pointer irg, final String name) {
 		return FirmOptimizations.getOptimization(name).perform(irg);
 	}
-	private static boolean optimize(String name) {
+
+	private static boolean optimize(final String name) {
 		return optimize(Pointer.NULL, name);
 	}
-	
-	private static void performFirmOptimizations() {
 
-		binding_irflag.set_opt_alias_analysis(FirmOptions.aliasAnalysis ? 1 : 0);
-		
-		// XXX: missing bindings for changing the alias model.
-//		int aa_opt = ???.ir_disambuigator_options.aa_opt_no_opt.val;
-//		if (FirmOptions.strictAlias)
-//			aa_opt |= ???.ir_disambuigator_options.aa_opt_type_based.val 
-//			       |  ???.ir_disambuigator_options.aa_opt_byte_type_may_alias.val;
-//		if (FirmOptions.noAlias)
-//			aa_opt = ???.ir_disambuigator_options.aa_opt_no_alias.val;
-//		
-//		???.set_irp_memory_disambiguator_options(aa_opt);
-		
+	private static void performFirmOptimizations() {
+		binding_irflag.set_opt_alias_analysis(FirmOptions.isAliasAnalysis() ? 1 : 0);
+
 		if (FirmOptimizations.getOptimization("confirm").isEnabled())
-			FirmOptimizations.getOptimization("remove-confirms").enable(); 
+			FirmOptimizations.getOptimization("remove-confirms").enable();
 
 		/* osr supersedes remove_phi_cycles */
 		if (FirmOptimizations.getOptimization("ivopts").isEnabled())
 			FirmOptimizations.getOptimization("remove-phi-cycles").disable();
-
-		// doOpt("rts"); // optimization NYI
 
 		/* first step: kill dead code */
 		for (final Graph graph : Program.getGraphs()) {
@@ -105,14 +93,13 @@ public class OptimizeFirm extends AbstractGoal_c {
 				 */
 				optimize(irg, "control-flow");
 				optimize(irg, "confirm");
-				// optimize(irg, "vrp"); // optimization NYI.
 				optimize(irg, "local");
 			}
 
 			optimize(irg, "control-flow");
 			optimize(irg, "opt-load-store");
 			optimize(irg, "fp-vrp");
-			optimize(irg, "lower"); // the highlevel lowering was already done.
+			optimize(irg, "lower");
 			optimize(irg, "deconv");
 			optimize(irg, "thread-jumps");
 			optimize(irg, "remove-confirms");
@@ -145,14 +132,6 @@ public class OptimizeFirm extends AbstractGoal_c {
 			optimize(irg, "thread-jumps");
 			optimize(irg, "local");
 			optimize(irg, "control-flow");
-
-			// vrp optimization NYI.
-//			if( optimize(irg, "vrp") ) { // if vrp is enabled
-//				optimize(irg, "local");
-//				optimize(irg, "vrp");
-//				optimize(irg, "local");
-//				optimize(irg, "vrp");
-//			}
 		}
 		// XXX: stats and dumping missing
 		// XXX: cparser: a function called do_firm_lower is called afterwards, where some additonal opts are run.

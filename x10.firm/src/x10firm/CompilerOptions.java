@@ -165,13 +165,13 @@ public class CompilerOptions extends X10CompilerOptions {
 							"Invalid firm option '%s'", args[index + 1]));
 				return index + 2;
 			}
-			
+
 			if (!FirmOptions.setOption(arg.substring(2)))
 				throw new UsageError(String.format(
 						"Invalid firm option '%s'", arg));
 			return index + 1;
 		} else if (arg.startsWith("-O")) {
-			String optLevel = arg.substring(2);
+			final String optLevel = arg.substring(2);
 			FirmOptions.chooseOptimizationPack(Integer.parseInt(optLevel));
 			return index + 1;
 		} else if (arg.startsWith("-target=") || arg.startsWith("-mtarget=")) {
@@ -248,12 +248,12 @@ public class CompilerOptions extends X10CompilerOptions {
 				"link external libraries statically");
 		usageForFlag(out, "-linkerScript",
 				"Use custom linker script");
-		
+
 		for (FirmOption option : FirmOptions.getKnownOptions().values()) {
 			usageForFlag(out, "-f " + option.getName(), option.getDescription());
 		}
 		for (FirmOptimization opt : FirmOptimizations.getOptimizations().values()) {
-			if (! opt.isHidden())
+			if (!opt.isHidden())
 				continue;
 
 			usageForFlag(out, "-f " + opt.getName(), "enable " + opt.getDescription());

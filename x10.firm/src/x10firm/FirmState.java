@@ -57,12 +57,12 @@ public final class FirmState {
 
 		Firm.init();
 	}
-	
+
 	private static void initializeImplicitOptimizations() {
 		Firm.enableOptimisations();
-		firm.bindings.binding_irflag.set_opt_constant_folding(FirmOptions.constFolding ? 1 : 0);
-		firm.bindings.binding_irflag.set_opt_algebraic_simplification(FirmOptions.constFolding ? 1 : 0);
-		firm.bindings.binding_irflag.set_opt_cse(FirmOptions.cse ? 1 : 0);
+		firm.bindings.binding_irflag.set_opt_constant_folding(FirmOptions.isConstFolding() ? 1 : 0);
+		firm.bindings.binding_irflag.set_opt_algebraic_simplification(FirmOptions.isConstFolding() ? 1 : 0);
+		firm.bindings.binding_irflag.set_opt_cse(FirmOptions.isCse() ? 1 : 0);
 		firm.bindings.binding_irflag.set_opt_global_cse(0);
 	}
 
