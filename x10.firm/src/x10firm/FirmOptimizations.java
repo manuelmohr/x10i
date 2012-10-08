@@ -356,24 +356,14 @@ public final class FirmOptimizations {
 		getOptimization("remove-unused").enable();
 		getOptimization("opt-tail-rec").enable();
 		getOptimization("opt-func-call").enable();
-		getOptimization("reassociation").enable();
 		getOptimization("control-flow").enable();
 		getOptimization("local").enable();
 		getOptimization("lower-const").enable();
 		getOptimization("scalar-replace").enable();
-		getOptimization("place").enable();
-		getOptimization("gcse").enable();
-		getOptimization("opt-load-store").enable();
-		getOptimization("lower").enable();
-		getOptimization("deconv").enable();
-		getOptimization("ivopts").enable();
 		getOptimization("dead").enable();
 		getOptimization("remove-phi-cycles").enable();
 		getOptimization("frame").enable();
-		getOptimization("combo").enable();
 		getOptimization("invert-loops").enable();
-		getOptimization("target-lowering").enable();
-		getOptimization("parallelize-mem").enable();
 	}
 
 	/**
