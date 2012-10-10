@@ -5,7 +5,6 @@ import java.util.Map;
 
 import com.sun.jna.Pointer;
 
-import firm.Backend;
 import firm.bindings.binding_ircons;
 import firm.bindings.binding_irconsconfirm;
 import firm.bindings.binding_irflag;
@@ -127,7 +126,7 @@ public final class FirmOptimizations {
 			} else {
 				performOptimization(null);
 			}
-			
+
 			return true;
 		}
 	}
@@ -217,12 +216,6 @@ public final class FirmOptimizations {
 			@Override
 			protected void performOptimization(final Pointer irg) {
 				binding_irgopt.local_opts(irg);
-			}
-		});
-		OPTIMIZATIONS.put("lower", new FirmOptimization("lower", "lowering", HIDE_OPTIONS | ESSENTIAL | IRG_OPT) {
-			@Override
-			protected void performOptimization(final Pointer irg) {
-				binding_lowering.lower_highlevel_graph(irg);
 			}
 		});
 		OPTIMIZATIONS.put("lower-mux", new FirmOptimization("lower-mux", "mux lowering", NONE | IRG_OPT) {
@@ -329,13 +322,6 @@ public final class FirmOptimizations {
 				binding_lowering.lower_const_code();
 			}
 		});
-		OPTIMIZATIONS.put("target-lowering", new FirmOptimization("target-lowering",
-				"lowering necessary for target architecture", HIDE_OPTIONS | ESSENTIAL | IRP_OPT) {
-			@Override
-			protected void performOptimization(final Pointer irg) {
-				Backend.lowerForTarget();
-			}
-		});
 		OPTIMIZATIONS.put("opt-func-call", new FirmOptimization("opt-func-call", "function call optimization",
 				NONE | IRP_OPT) {
 			@Override
@@ -364,7 +350,6 @@ public final class FirmOptimizations {
 	private static void enableSafeDefaults() {
 		getOptimization("remove-unused").enable();
 		getOptimization("opt-tail-rec").enable();
-		getOptimization("opt-func-call").enable();
 		getOptimization("control-flow").enable();
 		getOptimization("local").enable();
 		getOptimization("lower-const").enable();

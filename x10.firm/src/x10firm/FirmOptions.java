@@ -4,7 +4,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import x10firm.FirmOptimizations.FirmOptimization;
-import firm.Backend;
 
 /**
  * Firm options, just like cparser's "-f" switches.
@@ -185,28 +184,22 @@ public final class FirmOptions {
 		case 0:
 			setOption("no-opt");
 			break;
+
 		case 1:
-			setOption("no-inline");
+			// -> FirmOptimizations.enableSafeDefaults()
 			break;
+
 		default:
-		case 3:
-			setOption("thread-jumps");
-			setOption("if-conversion");
-			setOption("inline");
-			setOption("fp-vrp");
-			setOption("deconv");
-
-			FirmState.initializeFirm();
-			Backend.option("omitfp");
-			break;
 		case 2:
+			setOption("invert-loops");
+			setOption("unroll-loops");
+			setOption("reassociation");
+			setOption("place");
+			setOption("opt-load-store");
+			setOption("fixpoint-vrp");
+			setOption("parallelize-mem");
+			setOption("if-conv");
 			setOption("inline");
-			setOption("fp-vrp");
-			setOption("deconv");
-
-			FirmState.initializeFirm();
-			Backend.option("omitfp");
-			break;
 		}
 	}
 

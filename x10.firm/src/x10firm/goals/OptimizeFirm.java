@@ -99,7 +99,6 @@ public class OptimizeFirm extends AbstractGoal_c {
 			optimize(irg, "control-flow");
 			optimize(irg, "opt-load-store");
 			optimize(irg, "fp-vrp");
-			optimize(irg, "lower");
 			optimize(irg, "deconv");
 			optimize(irg, "thread-jumps");
 			optimize(irg, "remove-confirms");
@@ -132,7 +131,11 @@ public class OptimizeFirm extends AbstractGoal_c {
 			optimize(irg, "thread-jumps");
 			optimize(irg, "local");
 			optimize(irg, "control-flow");
+			optimize(irg, "parallelize-mem");
 		}
+
+		optimize("remove-unused");
+
 		// XXX: stats and dumping missing
 		// XXX: cparser: a function called do_firm_lower is called afterwards, where some additonal opts are run.
 	}
