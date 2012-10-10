@@ -6,6 +6,7 @@ import java.util.Map;
 import com.sun.jna.Pointer;
 
 import firm.Backend;
+import firm.bindings.binding_ircons;
 import firm.bindings.binding_irconsconfirm;
 import firm.bindings.binding_irflag;
 import firm.bindings.binding_irgopt;
@@ -117,8 +118,16 @@ public final class FirmOptimizations {
 			if (!isEnabled())
 				return false;
 
-			performOptimization(irg);
-
+			final Pointer oldIrg;
+			if ((flags & IRG_OPT) != 0) {
+				oldIrg = binding_ircons.get_current_ir_graph();
+				binding_ircons.set_current_ir_graph(irg);
+				performOptimization(irg);
+				binding_ircons.set_current_ir_graph(oldIrg);
+			} else {
+				performOptimization(null);
+			}
+			
 			return true;
 		}
 	}
@@ -363,7 +372,6 @@ public final class FirmOptimizations {
 		getOptimization("dead").enable();
 		getOptimization("remove-phi-cycles").enable();
 		getOptimization("frame").enable();
-		getOptimization("invert-loops").enable();
 	}
 
 	/**
