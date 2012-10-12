@@ -82,6 +82,8 @@ public class FirmTypeSystem {
 
 	private final GenericCodeInstantiationQueue instantiationQueue;
 
+	private final SerializationSupport serializationSupport = new SerializationSupport();
+
 	/** All class instances share the same location for the vptr (the pointer to the vtable). */
 	private Entity vptrEntity;
 
@@ -381,6 +383,7 @@ public class FirmTypeSystem {
 		for (final Type type : firmCoreTypes.values()) {
 			layoutType(type);
 		}
+		serializationSupport.generateSerializationMethods(firmCoreTypes.values());
 	}
 
 	/**
@@ -461,6 +464,7 @@ public class FirmTypeSystem {
 		if (vptrEntity == null) {
 			final firm.Type pointerType = Mode.getP().getType();
 			vptrEntity = new Entity(Program.getGlobalType(), "$vptr", pointerType);
+			OO.setFieldIsTransient(vptrEntity, true);
 		}
 		return vptrEntity;
 	}
@@ -488,6 +492,7 @@ public class FirmTypeSystem {
 		final Entity entity = new Entity(owner, name, type);
 		entity.setLdIdent(name);
 		OO.setEntityBinding(entity, ddispatch_binding.bind_static);
+		OO.setFieldIsTransient(entity, field.flags().isTransient());
 		entities.put(name, entity);
 		if (owner.equals(Program.getGlobalType()))
 			entity.setInitializer(Initializer.getNull());
@@ -571,6 +576,9 @@ public class FirmTypeSystem {
 		final Entity classInfoEntity = new Entity(global, rttiName, pointerType);
 		classInfoEntity.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
 		OO.setClassRTTIEntity(result, classInfoEntity);
+
+		if (!flags.isInterface())
+			serializationSupport.setupSerialization(classType, result);
 
 		// Layouting of classes must be done explicitly by finishTypes
 

@@ -486,4 +486,24 @@ public final class NameMangler {
 		buf.append(name);
 		return buf.toString();
 	}
+
+	/**
+	 * Mangle a classname and append the given method name
+	 * and signature.
+	 */
+	public static String mangleGeneratedMethodName(final X10ClassType clazz,
+			final String methodName, final String methodSignature) {
+		final StringBuilder buf = new StringBuilder();
+
+		buf.append(platformPrefix);
+		buf.append(MANGLE_PREFIX);
+		buf.append(QUAL_START);
+
+		mangleClass(buf, clazz);
+		mangleIdentifier(buf, methodName);
+		buf.append(QUAL_END);
+		buf.append(methodSignature);
+
+		return buf.toString();
+	}
 }

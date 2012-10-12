@@ -12,10 +12,15 @@
 package x10.lang;
 
 public final class Runtime {
+
+    static native def deepCopyAny(o : Any) : Any;
+	
     /**
      * Return a deep copy of the parameter.
      */
-    //static native def deepCopy[T](o:T):T;
+    public static def deepCopy[T](o:T):T {
+    	return deepCopyAny(o) as T;
+    }
 
     /**
      * Return the current activity
