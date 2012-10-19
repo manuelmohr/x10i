@@ -9,9 +9,6 @@
 #define X10_SERIALIZATION_NULL_TYPE_UID 0
 #define X10_SERIALIZATION_KNOWN_OBJECT_TYPE_ID ((uint32_t)-1)
 
-typedef void (serialize_method)(serialization_buffer_t *buf, x10_object *objPtr);
-typedef void (deserialize_method)(deserialization_buffer_t *buf, void *objPtr);
-
 struct deserialize_methods_entry_t {
 	deserialize_method *deserializer;
 	x10_vtable         *vtable;
@@ -20,7 +17,7 @@ typedef struct deserialize_methods_entry_t dm_entry_t;
 
 extern dm_entry_t __deserialize_methods[];
 
-static inline int find_object(x10_object **arr, x10_object *key)
+static inline int find_object(const x10_object **arr, const x10_object *key)
 {
 	int i;
 	for (i = ARR_LEN(arr)-1; i >= 0; i--) {
@@ -35,11 +32,11 @@ serialization_buffer_t *x10_serialization_init(void)
 	serialization_buffer_t *buf = calloc(1, sizeof(serialization_buffer_t));
 	obstack_init(&buf->obst);
 	buf->bytes_written = 0;
-	buf->serialized_objects = NEW_ARR_F(x10_object *, 0);
+	buf->serialized_objects = NEW_ARR_F(const x10_object *, 0);
 	return buf;
 }
 
-void x10_serialization_write_primitive(serialization_buffer_t *buf, void *data, size_t nbytes)
+void x10_serialization_write_primitive(serialization_buffer_t *buf, const void *data, size_t nbytes)
 {
 	assert (nbytes > 0);
 
@@ -52,7 +49,7 @@ void x10_serialization_write_primitive(serialization_buffer_t *buf, void *data, 
 
 }
 
-void x10_serialization_write_object(serialization_buffer_t *buf, x10_object *objPtr)
+void x10_serialization_write_object(serialization_buffer_t *buf, const x10_object *objPtr)
 {
 	uint32_t uid;
 
@@ -82,7 +79,7 @@ void x10_serialization_write_object(serialization_buffer_t *buf, x10_object *obj
 		return;
 	}
 
-	ARR_APP1(x10_object *, buf->serialized_objects, objPtr);
+	ARR_APP1(const x10_object *, buf->serialized_objects, objPtr);
 
 	uid = objPtr->vptr->runtime_type_info->uid;
 
@@ -129,7 +126,7 @@ static inline uint32_t get_u32(deserialization_buffer_t *buf)
 	return (b4 << 24) | (b3 << 16) | (b2 << 8) | b1;
 }
 
-deserialization_buffer_t *x10_deserialization_init(char *data, size_t length)
+deserialization_buffer_t *x10_deserialization_init(const char *data, size_t length)
 {
 	deserialization_buffer_t *buf = calloc(1, sizeof(deserialization_buffer_t));
 	buf->data = data;
@@ -143,7 +140,7 @@ void x10_deserialization_restore_primitive(deserialization_buffer_t *buf, void *
 {
 	/* TODO: think about endianess conversions */
 #ifdef X10_SERIALIZATION_DEBUG
-	printf("X10_DESERIALIZATION: restoring %d bytes to %x)\n", nbytes, (unsigned) addr);
+	printf("X10_DESERIALIZATION: restoring %d bytes to %x\n", nbytes, (unsigned) addr);
 #endif
 
 	assert (buf->cursor + nbytes <= buf->length);

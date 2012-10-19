@@ -34,7 +34,7 @@ import firm.nodes.OOConstruction;
 public final class SerializationSupport {
 
 	private static final String SERIALIZE_METHOD_NAME = "__serialize";
-	private static final String SERIALIZE_METHOD_SIGNATURE = "PN3x104lang3AnyEPN3x104lang3AnyE";
+	private static final String SERIALIZE_METHOD_SIGNATURE = "PvPv";
 	private MethodType serializeMethodType;
 
 	private static final String DESERIALIZE_METHOD_NAME = "__deserialize";
@@ -62,6 +62,7 @@ public final class SerializationSupport {
 	 */
 	public void setupSerialization(final X10ClassType astType, final ClassType firmType) {
 		assert !astType.flags().isInterface();
+
 		if (!astType.flags().isStruct()) {
 			OO.setClassUID(firmType, maxClassUid++);
 		}
@@ -215,48 +216,59 @@ public final class SerializationSupport {
 		final Node bufPtr = con.newProj(args, Mode.getP(), 0);
 		final Node objPtr = con.newProj(args, Mode.getP(), 1);
 
-		for (Entity member : klass.getMembers()) {
-			final Type memberType = member.getType();
-			if (memberType instanceof MethodType)
-				continue;
-			if (OO.getFieldIsTransient(member))
-				continue;
+		if (klass.getName().equals("x10.lang.String")) {
+			final String stringSerializeName = NameMangler.mangleKnownName("x10_string_serialize");
+			final Entity stringSerializeEntity = new Entity(klass, stringSerializeName, serializeMethodType);
+			final Node stringSerializeSymc = con.newSymConst(stringSerializeEntity);
 
 			Node mem = con.getCurrentMem();
-			final Node sel = con.newSel(objPtr, member);
+			final Node call = con.newCall(mem, stringSerializeSymc, new Node[] {bufPtr, objPtr}, serializeMethodType);
+			mem = con.newProj(call, Mode.getM(), Call.pnM);
+			con.setCurrentMem(mem);
+		} else {
+			for (Entity member : klass.getMembers()) {
+				final Type memberType = member.getType();
+				if (memberType instanceof MethodType)
+					continue;
+				if (OO.getFieldIsTransient(member))
+					continue;
 
-			if (memberType instanceof ClassType) {
-				/* this has to be a Struct or the $super / $__value__ entity,
-				 * because otherwise we'd have a PointerType.
-				 * in any case, we know exactly which serializer we need to call. */
+				Node mem = con.getCurrentMem();
+				final Node sel = con.newSel(objPtr, member);
 
-				final Entity structSerializer = serializeMethods.get(memberType);
-				assert structSerializer != null;
-				final Node symc = con.newSymConst(structSerializer);
-				final Node call = con.newCall(mem, symc,
-						new Node[] {bufPtr, sel}, structSerializer.getType());
-				mem = con.newProj(call, Mode.getM(), Call.pnM);
-				con.setCurrentMem(mem);
-			} else if (memberType instanceof PointerType) {
-				/* this is an object reference */
+				if (memberType instanceof ClassType) {
+					/* this has to be a Struct or the $super / $__value__ entity,
+					 * because otherwise we'd have a PointerType.
+					 * in any case, we know exactly which serializer we need to call. */
 
-				final Node load = con.newLoad(mem, sel, Mode.getP());
-				mem = con.newProj(load, Mode.getM(), Load.pnM);
-				con.setCurrentMem(mem);
-				final Node newObjPtr = con.newProj(load, Mode.getP(), Load.pnRes);
+					final Entity structSerializer = serializeMethods.get(memberType);
+					assert structSerializer != null;
+					final Node symc = con.newSymConst(structSerializer);
+					final Node call = con.newCall(mem, symc,
+							new Node[] {bufPtr, sel}, structSerializer.getType());
+					mem = con.newProj(call, Mode.getM(), Call.pnM);
+					con.setCurrentMem(mem);
+				} else if (memberType instanceof PointerType) {
+					/* this is an object reference */
 
-				final Node call = con.newCall(mem, swoSymConst,
-						new Node[] {bufPtr, newObjPtr}, serializationWriteObjectEntity.getType());
-				mem = con.newProj(call, Mode.getM(), Call.pnM);
-				con.setCurrentMem(mem);
-			} else {
-				/* primitives */
+					final Node load = con.newLoad(mem, sel, Mode.getP());
+					mem = con.newProj(load, Mode.getM(), Load.pnM);
+					con.setCurrentMem(mem);
+					final Node newObjPtr = con.newProj(load, Mode.getP(), Load.pnRes);
 
-				final Node call = con.newCall(mem, swpSymConst,
-						new Node[] {bufPtr, sel, con.newSymConstTypeSize(memberType, Mode.getIu())},
-						serializationWritePrimitiveEntity.getType());
-				mem = con.newProj(call, Mode.getM(), Call.pnM);
-				con.setCurrentMem(mem);
+					final Node call = con.newCall(mem, swoSymConst,
+							new Node[] {bufPtr, newObjPtr}, serializationWriteObjectEntity.getType());
+					mem = con.newProj(call, Mode.getM(), Call.pnM);
+					con.setCurrentMem(mem);
+				} else {
+					/* primitives */
+
+					final Node call = con.newCall(mem, swpSymConst,
+							new Node[] {bufPtr, sel, con.newSymConstTypeSize(memberType, Mode.getIu())},
+							serializationWritePrimitiveEntity.getType());
+					mem = con.newProj(call, Mode.getM(), Call.pnM);
+					con.setCurrentMem(mem);
+				}
 			}
 		}
 
@@ -284,39 +296,51 @@ public final class SerializationSupport {
 		final Node bufPtr = con.newProj(args, Mode.getP(), 0);
 		final Node objPtr = con.newProj(args, Mode.getP(), 1);
 
-		for (Entity member : klass.getMembers()) {
-			final Type memberType = member.getType();
-			if (memberType instanceof MethodType)
-				continue;
-			if (OO.getFieldIsTransient(member))
-				continue;
+		if (klass.getName().equals("x10.lang.String")) {
+			final String stringDeserializeName = NameMangler.mangleKnownName("x10_string_deserialize");
+			final Entity stringDeserializeEntity = new Entity(klass, stringDeserializeName, deserializeMethodType);
+			final Node stringDeserializeSymc = con.newSymConst(stringDeserializeEntity);
 
 			Node mem = con.getCurrentMem();
-			final Node sel = con.newSel(objPtr, member);
+			final Node call = con.newCall(mem, stringDeserializeSymc, new Node[] {bufPtr, objPtr},
+					deserializeMethodType);
+			mem = con.newProj(call, Mode.getM(), Call.pnM);
+			con.setCurrentMem(mem);
+		} else {
+			for (Entity member : klass.getMembers()) {
+				final Type memberType = member.getType();
+				if (memberType instanceof MethodType)
+					continue;
+				if (OO.getFieldIsTransient(member))
+					continue;
 
-			if (memberType instanceof ClassType) {
-				/* structs and superclass subobjects */
-				final Entity structDeserializer = deserializeMethods.get(memberType);
-				assert structDeserializer != null;
-				final Node symc = con.newSymConst(structDeserializer);
-				final Node call = con.newCall(mem, symc,
-						new Node[] {bufPtr, sel}, deserializeMethodType);
-				mem = con.newProj(call, Mode.getM(), Call.pnM);
-				con.setCurrentMem(mem);
-			} else if (memberType instanceof PointerType) {
-				/* object references */
-				final Node call = con.newCall(mem, droSymc,
-						new Node[] {bufPtr, sel},
-						deserializationRestoreObjectEntity.getType());
-				mem = con.newProj(call, Mode.getM(), Call.pnM);
-				con.setCurrentMem(mem);
-			} else {
-				/* primitives */
-				final Node call = con.newCall(mem, drpSymc,
-						new Node[] {bufPtr, sel, con.newSymConstTypeSize(memberType, Mode.getIu())},
-						deserializationRestorePrimitiveEntity.getType());
-				mem = con.newProj(call, Mode.getM(), Call.pnM);
-				con.setCurrentMem(mem);
+				Node mem = con.getCurrentMem();
+				final Node sel = con.newSel(objPtr, member);
+
+				if (memberType instanceof ClassType) {
+					/* structs and superclass subobjects */
+					final Entity structDeserializer = deserializeMethods.get(memberType);
+					assert structDeserializer != null;
+					final Node symc = con.newSymConst(structDeserializer);
+					final Node call = con.newCall(mem, symc,
+							new Node[] {bufPtr, sel}, deserializeMethodType);
+					mem = con.newProj(call, Mode.getM(), Call.pnM);
+					con.setCurrentMem(mem);
+				} else if (memberType instanceof PointerType) {
+					/* object references */
+					final Node call = con.newCall(mem, droSymc,
+							new Node[] {bufPtr, sel},
+							deserializationRestoreObjectEntity.getType());
+					mem = con.newProj(call, Mode.getM(), Call.pnM);
+					con.setCurrentMem(mem);
+				} else {
+					/* primitives */
+					final Node call = con.newCall(mem, drpSymc,
+							new Node[] {bufPtr, sel, con.newSymConstTypeSize(memberType, Mode.getIu())},
+							deserializationRestorePrimitiveEntity.getType());
+					mem = con.newProj(call, Mode.getM(), Call.pnM);
+					con.setCurrentMem(mem);
+				}
 			}
 		}
 
