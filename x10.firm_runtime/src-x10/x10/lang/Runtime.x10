@@ -78,17 +78,13 @@ public final class Runtime {
 
     // atomic and when
 
-    public static def enterAtomic() {
-    }
+    public static native def enterAtomic(): void;
 
-    public static def ensureNotInAtomic() {
-    }
+    public static native def ensureNotInAtomic(): void;
 
-    public static def exitAtomic() {
-    }
+    public static native def exitAtomic(): void;
 
-    public static def awaitAtomic():void {
-    }
+    public static native def awaitAtomic(): void;
 
     // finish
     private static native def finishBlockBegin():void;

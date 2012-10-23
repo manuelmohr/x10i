@@ -1,6 +1,8 @@
 #include <pthread.h>
 #include <stdio.h>
 
+#include "async.h"
+
 #define MAX_ACTIVITIES_PER_FINISH 64
 
 /**
@@ -65,6 +67,7 @@ typedef struct async_closure {
 } async_closure;
 
 static pthread_key_t enclosing_finish_state;
+static pthread_key_t activity_atomic_depth;
 
 static finish_state* finish_state_get_current(void) {
 	return pthread_getspecific(enclosing_finish_state);
@@ -80,6 +83,20 @@ static void register_at_finish_state(finish_state *fs) {
 		panic("Could not unlock mutex");
 }
 
+unsigned activity_get_atomic_depth(void) {
+	return (unsigned) pthread_getspecific(activity_atomic_depth);
+}
+
+void activity_inc_atomic_depth(void) {
+	const unsigned new_depth = activity_get_atomic_depth() + 1;
+	pthread_setspecific(activity_atomic_depth, (void*) new_depth);
+}
+
+void activity_dec_atomic_depth(void) {
+	const unsigned new_depth = activity_get_atomic_depth() - 1;
+	pthread_setspecific(activity_atomic_depth, (void*) new_depth);
+}
+
 /* X10 function to execute ()=>void closures */
 extern void* _ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(void *body);
 
@@ -91,6 +108,9 @@ static void *execute(void *ptr) {
 	free(ac);
 	/* store enclosing finish state in thread-local data */
 	if (pthread_setspecific(enclosing_finish_state, fs))
+		panic("Could not set thread-local key");
+	/* Initialize atomic depth. */
+	if (pthread_setspecific(activity_atomic_depth, NULL))
 		panic("Could not set thread-local key");
 	/* run the closure */
 	_ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(body);
@@ -138,6 +158,11 @@ static void __attribute__((constructor)) init_finish_state(void) {
 	if (pthread_key_create(&enclosing_finish_state, NULL))
 		panic("Could not create thread-local key");
 	if (pthread_setspecific(enclosing_finish_state, NULL))
+		panic("Could not set thread-local key");
+	/* initialize main thread's atomic depth */
+	if (pthread_key_create(&activity_atomic_depth, NULL))
+		panic("Could not create thread-local key");
+	if (pthread_setspecific(activity_atomic_depth, NULL))
 		panic("Could not set thread-local key");
 
 	/* begin main thread's finish block */

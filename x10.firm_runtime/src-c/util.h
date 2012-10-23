@@ -6,6 +6,7 @@
 
 #include "x10.h"
 #include "x10_object.h"
+#include "x10_throw.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
@@ -21,6 +22,7 @@ static const bool X10_FALSE = false;
 #define X10_NUMBER_FORMAT_EXCEPTION T_("NumberFormatException")
 #define X10_INDEX_OUT_OF_BOUNDS_EXCEPTION T_("IndexOutOfBoundsException")
 #define X10_ILLEGAL_MONITOR_STATE_EXCEPTION T_("IllegalMonitorStateException")
+#define X10_ILLEGAL_OPERATION_EXCEPTION T_("IllegalOperationException")
 
 static inline x10_object *x10_new_exception_object(const x10_char *name, const x10_char *msg)
 {
@@ -34,6 +36,7 @@ static inline void x10_throw_exception_object(x10_object *obj)
 {
 	// TODO: Implement me
 	X10_UNUSED(obj);
+	x10_throw_stub();
 }
 
 static inline void x10_throw_exception(const x10_char *name, const x10_char *msg)
