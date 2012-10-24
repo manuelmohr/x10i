@@ -111,6 +111,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/io/Printer.x10");
 			allowedFiles.add("x10/io/Reader.x10");
 			allowedFiles.add("x10/io/ReaderIterator.x10");
+			allowedFiles.add("x10/io/SerialData.x10");
 			allowedFiles.add("x10/io/StringWriter.x10");
 			allowedFiles.add("x10/io/Writer.x10");
 			allowedFiles.add("x10/lang/Any.x10");

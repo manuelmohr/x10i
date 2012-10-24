@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.StringTokenizer;
 
 import polyglot.types.ClassDef;
+import polyglot.types.ContainerType;
 import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
@@ -579,6 +580,8 @@ public class FirmTypeSystem {
 
 		if (!flags.isInterface())
 			serializationSupport.setupSerialization(classType, result);
+		else if (classType.toString().equals("x10.io.CustomSerialization"))
+			serializationSupport.setCustomSerializationInterface(classType);
 
 		// Layouting of classes must be done explicitly by finishTypes
 
@@ -770,6 +773,12 @@ public class FirmTypeSystem {
 			 * vtable to determine which method to call.
 			 * (Note that we still have a "this" pointer anyway) */
 			OO.setEntityBinding(entity, ddispatch_binding.bind_static);
+
+			final ContainerType owner = instance.container();
+			final Type ownerFirm = asClass(owner);
+			assert ownerFirm instanceof ClassType;
+			serializationSupport.setCustomDeserializeConstructor(instance, (ClassType) ownerFirm, entity);
+
 			entities.put(name, entity);
 		}
 		return entity;
@@ -922,6 +931,9 @@ public class FirmTypeSystem {
 			final Entity ent = getMethodEntity(m);
 			entity.addEntityOverwrites(ent);
 		}
+
+		assert ownerFirm instanceof ClassType;
+		serializationSupport.setCustomSerializeMethod(instance, (ClassType) ownerFirm, entity);
 
 		entities.put(name, entity);
 		return entity;

@@ -2,9 +2,13 @@ package x10firm.types;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import polyglot.util.InternalCompilerError;
+import x10.types.MethodInstance;
 import x10.types.X10ClassType;
+import x10.types.X10ConstructorInstance;
 import firm.ArrayType;
 import firm.ClassType;
 import firm.Construction;
@@ -17,8 +21,10 @@ import firm.OO;
 import firm.PointerType;
 import firm.Program;
 import firm.Type;
+import firm.bindings.binding_ircons.ir_where_alloc;
 import firm.bindings.binding_oo.ddispatch_binding;
 import firm.bindings.binding_typerep.ir_type_state;
+import firm.nodes.Alloc;
 import firm.nodes.Call;
 import firm.nodes.Load;
 import firm.nodes.Node;
@@ -32,6 +38,8 @@ import firm.nodes.OOConstruction;
  * @author julian
  */
 public final class SerializationSupport {
+
+	private int maxClassUid = 1;
 
 	private static final String SERIALIZE_METHOD_NAME = "__serialize";
 	private static final String SERIALIZE_METHOD_SIGNATURE = "PvPv";
@@ -52,7 +60,17 @@ public final class SerializationSupport {
 	private final Map<Type, Entity> serializeMethods = new HashMap<Type, Entity>();
 	private final Map<Type, Entity> deserializeMethods = new HashMap<Type, Entity>();
 
-	private int maxClassUid = 1;
+	/** used to determine whether a class wants to implement the custom serialization protocol. */
+	private X10ClassType customSerializationInterface;
+
+	/** record of the method / constructor used in the custom serialization protocol. */
+	private static class CustomSerializationMethods {
+		Entity serializeMethod;
+		Entity deserializeConstructor;
+	}
+
+	private final Map<Type, CustomSerializationMethods> customSerializationMethods
+		= new HashMap<Type, CustomSerializationMethods>();
 
 	/**
 	 * Create the __serialize and __deserialize method entities for the given type.
@@ -66,6 +84,10 @@ public final class SerializationSupport {
 		if (!astType.flags().isStruct()) {
 			OO.setClassUID(firmType, maxClassUid++);
 		}
+
+		if (customSerializationInterface != null
+				&& astType.isSubtype(customSerializationInterface, astType.typeSystem().emptyContext()))
+			customSerializationMethods.put(firmType, new CustomSerializationMethods());
 
 		final ClassType global = Program.getGlobalType();
 
@@ -111,6 +133,57 @@ public final class SerializationSupport {
 		OO.setEntityBinding(deserEntity, ddispatch_binding.bind_static);
 		OO.setMethodExcludeFromVTable(deserEntity, true);
 		deserializeMethods.put(firmType, deserEntity);
+	}
+
+	/**
+	 * Record the X10ClassType of the custom serialization interface when it is encountered.
+	 * @param iface the type representing x10.io.CustomSerialization
+	 */
+	public void setCustomSerializationInterface(final X10ClassType iface) {
+		customSerializationInterface = iface;
+	}
+
+	/**
+	 * Remembers the given method if the owner implements x10.io.CustomSerialization
+	 * and its signature is serialize() : x10.io.SerialData.
+	 *
+	 * @param method the method to remember
+	 * @param ownerFirm firm type representing the owner
+	 * @param methodFirm firm entity representing the method
+	 */
+	public void setCustomSerializeMethod(final MethodInstance method,
+			final ClassType ownerFirm, final Entity methodFirm) {
+		if (!customSerializationMethods.containsKey(ownerFirm))
+			return;
+		if (!(method.name().toString().equals("serialize")
+			&& method.formalTypes().size() == 0
+			&& method.returnType().toString().equals("x10.io.SerialData"))) {
+			return;
+		}
+
+		final CustomSerializationMethods csm = customSerializationMethods.get(ownerFirm);
+		csm.serializeMethod = methodFirm;
+	}
+
+	/**
+	 * Remembers the given constructor if it belongs to a class implementing
+	 * x10.io.CustomSerialization and its signature is this(x10.io.SerialData).
+	 *
+	 * @param ctor the constructor to remember
+	 * @param ownerFirm firm type representing the owner
+	 * @param ctorFirm firm entity representig the constructor
+	 */
+	public void setCustomDeserializeConstructor(final X10ConstructorInstance ctor,
+			final ClassType ownerFirm, final Entity ctorFirm) {
+		if (!customSerializationMethods.containsKey(ownerFirm))
+			return;
+
+		final List<polyglot.types.Type> formals = ctor.formalTypes();
+		if (!(formals.size() == 1 && formals.get(0).toString().equals("x10.io.SerialData")))
+			return;
+
+		final CustomSerializationMethods csm = customSerializationMethods.get(ownerFirm);
+		csm.deserializeConstructor = ctorFirm;
 	}
 
 	/**
@@ -201,6 +274,31 @@ public final class SerializationSupport {
 		deserializeMethodTable.setInitializer(init);
 	}
 
+	private Entity lookupCustomSerializeMethod(final ClassType klass) {
+		if (customSerializationMethods.containsKey(klass)) {
+			final CustomSerializationMethods csm = customSerializationMethods.get(klass);
+			if (csm.serializeMethod != null)
+				return csm.serializeMethod;
+
+			if (klass.getNSuperTypes() > 0) {
+				final Type superType = klass.getSuperType(0);
+				assert superType instanceof ClassType;
+				return lookupCustomSerializeMethod((ClassType) superType);
+			}
+		}
+
+		return null;
+	}
+
+	private Entity lookupCustomDeserializeConstructor(final ClassType klass) {
+		if (customSerializationMethods.containsKey(klass)) {
+			final CustomSerializationMethods csm = customSerializationMethods.get(klass);
+			return csm.deserializeConstructor;
+		}
+
+		return null;
+	}
+
 	private void generateSerializationMethod(final ClassType klass) {
 		if (!serializeMethods.containsKey(klass))
 			return;
@@ -224,6 +322,22 @@ public final class SerializationSupport {
 			Node mem = con.getCurrentMem();
 			final Node call = con.newCall(mem, stringSerializeSymc, new Node[] {bufPtr, objPtr}, serializeMethodType);
 			mem = con.newProj(call, Mode.getM(), Call.pnM);
+			con.setCurrentMem(mem);
+		} else if (customSerializationMethods.containsKey(klass)) {
+			final Entity customSerializeMethod = lookupCustomSerializeMethod(klass);
+			assert customSerializeMethod != null;
+
+			final Node customSymc = con.newSymConst(customSerializeMethod);
+			Node mem = con.getCurrentMem();
+
+			final Node customCall = con.newCall(mem, customSymc, new Node[] {objPtr}, customSerializeMethod.getType());
+			mem = con.newProj(customCall, Mode.getM(), Call.pnM);
+			final Node customRes = con.newProj(customCall, Mode.getT(), Call.pnTResult);
+			final Node serialData = con.newProj(customRes, Mode.getP(), 0);
+
+			final Node writeCall = con.newCall(mem, swoSymConst, new Node[] {bufPtr, serialData},
+					serializationWriteObjectEntity.getType());
+			mem = con.newProj(writeCall, Mode.getM(), Call.pnM);
 			con.setCurrentMem(mem);
 		} else {
 			for (Entity member : klass.getMembers()) {
@@ -305,6 +419,34 @@ public final class SerializationSupport {
 			final Node call = con.newCall(mem, stringDeserializeSymc, new Node[] {bufPtr, objPtr},
 					deserializeMethodType);
 			mem = con.newProj(call, Mode.getM(), Call.pnM);
+			con.setCurrentMem(mem);
+		} else if (customSerializationMethods.containsKey(klass)) {
+			final Entity customDeserializeConstructor = lookupCustomDeserializeConstructor(klass);
+			if (customDeserializeConstructor == null)
+				throw new InternalCompilerError(String.format(
+						"no constructor 'this(x10.io.SerialData)' for custom deserialization protocol found in %s",
+						klass.getName()));
+
+			Node mem = con.getCurrentMem();
+			final Node customSymc = con.newSymConst(customDeserializeConstructor);
+
+			final Node serialDataAlloc = con.newAlloc(mem, con.newConst(1, Mode.getIu()),
+					new PointerType(Mode.getP().getType()), ir_where_alloc.stack_alloc);
+			mem = con.newProj(serialDataAlloc, Mode.getM(), Alloc.pnM);
+			final Node serialDataPtr = con.newProj(serialDataAlloc, Mode.getP(), Alloc.pnRes);
+
+			final Node restoreCall = con.newCall(mem, droSymc, new Node[] {bufPtr,  serialDataPtr},
+					deserializationRestoreObjectEntity.getType());
+			mem = con.newProj(restoreCall, Mode.getM(), Call.pnM);
+
+			final Node load = con.newLoad(mem, serialDataPtr, Mode.getP());
+			mem = con.newProj(load, Mode.getM(), Load.pnM);
+			final Node serialData = con.newProj(load, Mode.getP(), Load.pnRes);
+
+			final Node ctorCall = con.newCall(mem, customSymc, new Node[] {objPtr, serialData},
+					customDeserializeConstructor.getType());
+			mem = con.newProj(ctorCall, Mode.getM(), Call.pnM);
+
 			con.setCurrentMem(mem);
 		} else {
 			for (Entity member : klass.getMembers()) {
