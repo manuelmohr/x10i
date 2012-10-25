@@ -144,17 +144,25 @@ public class FirmTypeSystem {
 		}
 	}
 
-	private static String getUniqueBoxingName(final X10ClassType clazz) {
-		final StringBuffer buf = new StringBuffer();
-		buf.append(clazz.name().toString());
-		// handle type arguments
-		if (clazz.typeArguments() != null && !clazz.typeArguments().isEmpty()) {
+	private static void flattenType(final StringBuffer buf, final polyglot.types.Type type) {
+		buf.append(type.name().toString());
+
+		if (!(type instanceof X10ClassType))
+			return;
+
+		final X10ClassType klass = (X10ClassType) type;
+		if (klass.typeArguments() != null && !klass.typeArguments().isEmpty()) {
 			buf.append("_");
-			for (final polyglot.types.Type typeArg : clazz.typeArguments()) {
-				buf.append(typeArg.name().toString());
+			for (final polyglot.types.Type typeArg : klass.typeArguments()) {
+				flattenType(buf, typeArg);
 			}
 			buf.append("_");
 		}
+	}
+
+	private static String getUniqueBoxingName(final X10ClassType clazz) {
+		final StringBuffer buf = new StringBuffer();
+		flattenType(buf, clazz);
 		buf.append("_FirmBox_");
 		return buf.toString();
 	}
