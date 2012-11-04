@@ -7,7 +7,7 @@
 //#define X10_SERIALIZATION_DEBUG
 
 #define X10_SERIALIZATION_NULL_TYPE_UID 0
-#define X10_SERIALIZATION_KNOWN_OBJECT_TYPE_ID ((uint32_t)-1)
+#define X10_SERIALIZATION_KNOWN_OBJECT_TYPE_UID ((uint32_t)-1)
 
 struct deserialize_methods_entry_t {
 	deserialize_method *deserializer;
@@ -66,13 +66,13 @@ void x10_serialization_write_object(serialization_buffer_t *buf, const x10_objec
 	}
 
 	int idx = find_object(buf->serialized_objects, objPtr);
-	if (idx > -1) {
+	if (idx >= 0) {
 
 #ifdef X10_SERIALIZATION_DEBUG
 		printf("X10_SERIALIZATION: found previously serialized object %x at %d\n", (unsigned) objPtr, idx);
 #endif
 
-		uid = X10_SERIALIZATION_KNOWN_OBJECT_TYPE_ID;
+		uid = X10_SERIALIZATION_KNOWN_OBJECT_TYPE_UID;
 		obstack_grow(&buf->obst, &uid, sizeof(uint32_t));
 		obstack_grow(&buf->obst, &idx, sizeof(uint32_t));
 		buf->bytes_written += (2 * sizeof(uint32_t));
@@ -90,6 +90,7 @@ void x10_serialization_write_object(serialization_buffer_t *buf, const x10_objec
 	obstack_grow(&buf->obst, &uid, sizeof(uint32_t));
 	buf->bytes_written += sizeof(uint32_t);
 
+	/* frontend assures that T::__serialize is in the first vtable slot */
 	serialize_method *serializer = objPtr->vptr->fptrs[0];
 	serializer(buf, objPtr);
 }
@@ -162,7 +163,7 @@ void x10_deserialization_restore_object(deserialization_buffer_t *buf, x10_objec
 		return;
 	}
 
-	if (class_id == X10_SERIALIZATION_KNOWN_OBJECT_TYPE_ID) {
+	if (class_id == X10_SERIALIZATION_KNOWN_OBJECT_TYPE_UID) {
 		uint32_t object_num = get_u32(buf);
 		assert (ARR_LEN(buf->deserialized_objects) > object_num);
 		*addr = buf->deserialized_objects[object_num];

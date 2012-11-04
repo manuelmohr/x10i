@@ -35,6 +35,8 @@ import firm.nodes.OOConstruction;
  * and deserialization of values and objects, based on ideas from the
  * C++ backend.
  *
+ * @see x10.firm_runtime/src-c/x10_serialization.h
+ *
  * @author julian
  */
 public final class SerializationSupport {
@@ -203,6 +205,7 @@ public final class SerializationSupport {
 		final firm.Type typeIu = Mode.getIu().getType();
 		final firm.Type[] retTypeVoid = new firm.Type[] {};
 
+		// first step: create the entities representing the runtime methods in x10_serialization.c
 		final firm.Type[] swpParameterTypes = new firm.Type[] {typeP, typeP, typeIu};
 		final MethodType swpType = new MethodType(swpParameterTypes, retTypeVoid);
 		final String swpName = NameMangler.mangleKnownName("x10_serialization_write_primitive");
@@ -227,6 +230,7 @@ public final class SerializationSupport {
 		deserializationRestoreObjectEntity = new Entity(global, droName, droType);
 		deserializationRestoreObjectEntity.setLdIdent(droName);
 
+		// second step: generate the (de)serialize methods for all Firm classtypes.
 		for (final Type type : firmTypes) {
 			if (!(type instanceof ClassType))
 				continue;
@@ -236,6 +240,8 @@ public final class SerializationSupport {
 			generateDeserializationMethod(classType);
 		}
 
+		// third step: emit the table used to lookup the __deserialize method and vtable address
+		// of a class. It is indexed by the class' type uid.
 		final String dmtName = NameMangler.mangleKnownName(DESERIALIZE_METHOD_TABLE_NAME);
 		final int nEntries = maxClassUid * 2;
 		final ArrayType dmtType = new ArrayType(typeP);
@@ -295,6 +301,7 @@ public final class SerializationSupport {
 			final CustomSerializationMethods csm = customSerializationMethods.get(klass);
 			return csm.deserializeConstructor;
 		}
+		// don't recurse to the superclass, as constructors are not inherited.
 
 		return null;
 	}
