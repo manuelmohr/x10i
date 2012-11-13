@@ -1,6 +1,7 @@
-
 #include <pthread.h>
 #include "x10_rt.h"
+
+//#define X10_RUNTIME_POSIX_DEBUG
 
 typedef struct {
 	x10_int here;
@@ -10,7 +11,9 @@ pthread_key_t rt_state_key;
 
 void x10_rt_init()
 {
+#ifdef X10_RUNTIME_POSIX_DEBUG
 	printf("X10 runtime [posix]: Hello.\n");
+#endif
 
 	assert (! pthread_key_create(&rt_state_key, NULL));
 
