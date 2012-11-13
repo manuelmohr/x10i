@@ -13,8 +13,11 @@ package x10.lang;
 
 public final class Runtime {
 
-    static native def deepCopyAny(o : Any) : Any;
-	
+    private static native def deepCopyAny(o : Any) : Any;
+    private static native def runAtOtherPlace(placeId : Int, o: Any) : void;
+    private static native def evalAtOtherPlace(placeId : Int, o: Any) : Any;
+    private static native def getHereId() : Int;
+
     /**
      * Return a deep copy of the parameter.
      */
@@ -30,7 +33,7 @@ public final class Runtime {
     /**
      * Return the current place
      */
-    //public static def home():Place = null as Place;
+    public static def home():Place = Place(getHereId());
 
     // asyncat, async, at statement, and at expression implementation
     // at is implemented using asyncat
@@ -61,6 +64,9 @@ public final class Runtime {
     private static def execute(body:()=>void):void {
     	body();
     }
+    private static def evaluate(eval:()=>Any):Any {
+    	return eval();
+    }
 
 	public static def runFinish(body:()=>void):void {
 	    finish body();
@@ -69,12 +75,55 @@ public final class Runtime {
     /**
      * Run at statement
      */
-    //public static def runAt(place:Place, body:()=>void):void { }
+    public static def runAt(place:Place, body:()=>void):void {
+    	Runtime.ensureNotInAtomic();
+    	
+    	if (place == here) {
+	    	try {
+	    		val bodyCopy = deepCopy(body);
+	    		bodyCopy();
+	    	} catch (t : Throwable) {
+	    		throw deepCopy(t);
+	    	}
+	    } else {
+	    	try {
+		    	runAtOtherPlace(place.id(), body);
+		    } catch (t : Throwable) {
+		    	throw deepCopy(t);
+		    }
+	    }
+    }
 
     /**
      * Eval at expression
      */
-    //public static def evalAt[T](place:Place, eval:()=>T):T { }
+    public static def evalAt[T](place:Place, eval:()=>T):T {
+    	Runtime.ensureNotInAtomic();
+    	
+    	var res : T;
+    	if (place == here) {
+	    	try {
+	    		val evalCopy = deepCopy(eval);
+	    		res = evalCopy();
+	    		res = deepCopy(res);
+	    	} catch (t : Throwable) {
+	    		throw deepCopy(t);
+	    	}
+	    } else {
+	    	try {
+	    		if (eval instanceof () => Object)
+	    			res = evalAtOtherPlace(place.id(), eval) as T;
+	    		else {
+	    			/* enforce boxing of return value by wrapping eval
+	    			   in a closure of type "() => Any" */
+	    			res = evalAtOtherPlace(place.id(), () => eval() as Any) as T;
+	    		}
+	    	} catch (t : Throwable) {
+	    		throw deepCopy(t);
+	    	}
+	    }
+	    return res;
+    }
 
     // atomic and when
 

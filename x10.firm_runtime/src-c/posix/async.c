@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "async.h"
+#include "x10_rt.h"
 
 #define MAX_ACTIVITIES_PER_FINISH 64
 
@@ -22,19 +23,6 @@ static void panic(const char * msg) {
 	printf("%s\n", msg);
 	abort();
 }
-
-typedef struct finish_state finish_state;
-
-struct finish_state {
-	/* a mutex for parallel activity creation */
-	pthread_mutex_t     mutex;
-	/* Condition variable to wait at the end of finish statements */
-	pthread_cond_t      condition;
-	/* Number of spawned activities */
-	int                 number_of_activities;
-	/* enclosing finish (maybe NULL for root) */
-	finish_state        *parent;
-};
 
 static void finish_state_init(finish_state *fs, finish_state *parent) {
 	if (pthread_mutex_init(& fs->mutex, NULL))
@@ -64,20 +52,36 @@ typedef struct async_closure {
 	void           *body;
 	/* enclosing finish state */
 	finish_state   *enclosing;
+	x10_int         here_id;
 } async_closure;
 
 static pthread_key_t enclosing_finish_state;
 static pthread_key_t activity_atomic_depth;
 
-static finish_state* finish_state_get_current(void) {
+finish_state* finish_state_get_current(void) {
 	return pthread_getspecific(enclosing_finish_state);
 }
 
-static void register_at_finish_state(finish_state *fs) {
+int finish_state_set_current(finish_state *fs) {
+	return pthread_setspecific(enclosing_finish_state, fs);
+}
+
+void register_at_finish_state(finish_state *fs) {
 	if (pthread_mutex_lock(& fs->mutex))
 		panic("Could not lock mutex");
 
 	fs->number_of_activities++;
+
+	if (pthread_mutex_unlock(& fs->mutex))
+		panic("Could not unlock mutex");
+}
+
+void unregister_from_finish_state(finish_state *fs) {
+	if (pthread_mutex_lock(& fs->mutex))
+		panic("Could not lock mutex");
+
+	fs->number_of_activities--;
+	pthread_cond_signal(& fs->condition);
 
 	if (pthread_mutex_unlock(& fs->mutex))
 		panic("Could not unlock mutex");
@@ -98,16 +102,17 @@ void activity_dec_atomic_depth(void) {
 }
 
 /* X10 function to execute ()=>void closures */
-extern void* _ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(void *body);
+extern void* _ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(x10_object *body);
 
 /** Top-level thread function, initializes activity and cleans up afterwards */
 static void *execute(void *ptr) {
 	async_closure *ac = (async_closure *) ptr;
 	finish_state *fs = ac->enclosing;
 	void *body = ac->body;
+	x10_rt_set_here_id(ac->here_id);
 	free(ac);
 	/* store enclosing finish state in thread-local data */
-	if (pthread_setspecific(enclosing_finish_state, fs))
+	if (finish_state_set_current(fs))
 		panic("Could not set thread-local key");
 	/* Initialize atomic depth. */
 	if (pthread_setspecific(activity_atomic_depth, NULL))
@@ -115,14 +120,7 @@ static void *execute(void *ptr) {
 	/* run the closure */
 	_ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(body);
 
-	if (pthread_mutex_lock(& fs->mutex))
-		panic("Could not lock mutex");
-
-	fs->number_of_activities--;
-	pthread_cond_signal(& fs->condition);
-
-	if (pthread_mutex_unlock(& fs->mutex))
-		panic("Could not unlock mutex");
+	unregister_from_finish_state(fs);
 	pthread_exit(NULL);
 }
 
@@ -149,7 +147,7 @@ void _ZN3x104lang7Runtime16finishBlockBeginEv(void) {
 	finish_state *nested = malloc(sizeof(finish_state));
 	if (nested == NULL) panic("malloc returned NULL");
 	finish_state_init(nested, enclosing);
-	if (pthread_setspecific(enclosing_finish_state, nested))
+	if (finish_state_set_current(nested))
 		panic("Could not set thread-local key");
 }
 
@@ -157,7 +155,7 @@ static void __attribute__((constructor)) init_finish_state(void) {
 	/* initialize main thread's finish state */
 	if (pthread_key_create(&enclosing_finish_state, NULL))
 		panic("Could not create thread-local key");
-	if (pthread_setspecific(enclosing_finish_state, NULL))
+	if (finish_state_set_current(NULL))
 		panic("Could not set thread-local key");
 	/* initialize main thread's atomic depth */
 	if (pthread_key_create(&activity_atomic_depth, NULL))
@@ -177,6 +175,7 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(void *body
 	if (ac == NULL) panic("malloc returned NULL");
 	ac->body = body;
 	ac->enclosing = enclosing;
+	ac->here_id = x10_rt_get_here_id();
 	pthread_t child;
 	if (pthread_create(&child, NULL, execute, ac))
 		panic("Could not create thread");
@@ -202,7 +201,7 @@ void _ZN3x104lang7Runtime14finishBlockEndEv(void) {
 	finish_state *parent = enclosing->parent;
 	finish_state_free(enclosing);
 	/* restore enclosing finish state */
-	if (pthread_setspecific(enclosing_finish_state, parent))
+	if (finish_state_set_current(parent))
 		panic("Could not set thread-local key");
 }
 

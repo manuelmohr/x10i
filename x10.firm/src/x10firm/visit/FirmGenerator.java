@@ -772,15 +772,24 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 		final Graph graph = new Graph(entity, 0);
 		final Construction construction = new OOConstruction(graph);
+
+		final Entity initEntity = new Entity(global,
+				NameMangler.mangleKnownName("x10_rt_init"),
+				new MethodType(new firm.Type[] {}, new firm.Type[] {}));
+		final Node initSymConst = construction.newSymConst(initEntity);
+
+		Node mem = construction.getCurrentMem();
+		final Node initCall = construction.newCall(mem, initSymConst, new Node[] {}, initEntity.getType());
+		mem = construction.newProj(initCall, Mode.getM(), Call.pnM);
+
 		final Node symConst = construction.newSymConst(mainEntity);
-		final Node mem = construction.getCurrentMem();
 		final firm.Type type = mainEntity.getType();
 		final firm.Type paramType = ((MethodType) type).getParamType(0);
 		/* TODO: convert the arguments passed to the Array[String] */
 		final Node args = construction.newConst(paramType.getMode().getNull());
 		final Node call = construction.newCall(mem, symConst, new Node[] {args}, type);
-		final Node newMem = construction.newProj(call, Mode.getM(), Call.pnM);
-		construction.setCurrentMem(newMem);
+		mem = construction.newProj(call, Mode.getM(), Call.pnM);
+		construction.setCurrentMem(mem);
 
 		final Node returnMem = construction.getCurrentMem();
 		final Node zero = construction.newConst(intType.getMode().getNull());

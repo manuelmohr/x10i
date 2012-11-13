@@ -136,6 +136,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/lang/Math.x10");
 			allowedFiles.add("x10/lang/NativeSupport.x10");
 			allowedFiles.add("x10/lang/Object.x10");
+			allowedFiles.add("x10/lang/Place.x10");
 			allowedFiles.add("x10/lang/Pointer.x10");
 			allowedFiles.add("x10/lang/Rail.x10");
 			allowedFiles.add("x10/lang/Runtime.x10");
