@@ -19,9 +19,6 @@ void main_ilet(claim_t claim)
 	finish_state fs;
 	fs.claim = claim;
 
-	void **ilocal = get_ilocal_data();
-	*ilocal = malloc(sizeof(ilocal_data_t));
-
 	/* initialize main i-let's finish state */
 	finish_state_set_current(&fs);
 
@@ -33,6 +30,5 @@ void main_ilet(claim_t claim)
 	/* end main i-let's finish block */
 	_ZN3x104lang7Runtime14finishBlockEndEv();
 
-	free(*ilocal);
 	guest_shutdown();
 }

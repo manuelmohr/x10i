@@ -9,13 +9,13 @@ void x10_rt_init()
 
 x10_int x10_rt_get_here_id()
 {
-	ilocal_data_t *ilocal = *(ilocal_data_t**) get_ilocal_data();
+	ilocal_data_t *ilocal = get_ilocal_data();
 	return ilocal->here_id;
 }
 
 void x10_rt_set_here_id(x10_int id)
 {
-	ilocal_data_t *ilocal = *(ilocal_data_t**) get_ilocal_data();
+	ilocal_data_t *ilocal = get_ilocal_data();
 	ilocal->here_id = id;
 }
 
@@ -28,12 +28,8 @@ static void octopos_place_execute(void *arg)
 {
 	octopos_place_execute_args *opea = arg;
 
-	void **ilocal = get_ilocal_data();
-	*ilocal = malloc(sizeof(ilocal_data_t));
-
 	x10_rt_place_execute(opea->other_args);
 
-	free(*ilocal);
 	simple_signal_signal(&opea->join_signal);
 }
 

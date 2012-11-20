@@ -60,15 +60,13 @@ typedef struct async_closure {
 
 finish_state* finish_state_get_current(void)
 {
-	void *ilocal_data = get_ilocal_data();
-	ilocal_data_t *ilocal = *(ilocal_data_t**)ilocal_data;
+	ilocal_data_t *ilocal = get_ilocal_data();
 	return ilocal->fs;
 }
 
 void finish_state_set_current(finish_state *fs)
 {
-	void *ilocal_data = get_ilocal_data();
-	ilocal_data_t *ilocal = *(ilocal_data_t**)ilocal_data;
+	ilocal_data_t *ilocal = get_ilocal_data();
 	ilocal->fs = fs;
 }
 
@@ -92,9 +90,6 @@ static void execute(void *ptr) {
 	x10_int        here_id = ac->here_id;
 	free(ac);
 
-	void **ilocal = get_ilocal_data();
-	*ilocal = malloc(sizeof(ilocal_data_t));
-
 	/* store enclosing finish state in i-let-local data */
 	finish_state_set_current(fs);
 	x10_rt_set_here_id(here_id);
@@ -105,7 +100,6 @@ static void execute(void *ptr) {
 	/* send signal to finish state */
 	unregister_from_finish_state(fs);
 
-	free(*ilocal);
 	free(ilet);
 }
 
