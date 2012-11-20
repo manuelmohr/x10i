@@ -37,7 +37,7 @@
 static void xnomem(void)
 {
 	/* Do not use panic() here, because it might try to allocate memory! */
-	fputs("out of memory", stderr);
+	fprintf(stderr, "out of memory");
 	abort();
 }
 

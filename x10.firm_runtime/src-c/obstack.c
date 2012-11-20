@@ -69,10 +69,6 @@ enum
 static void print_and_abort (void);
 void (*obstack_alloc_failed_handler) (void) = print_and_abort;
 
-/* Exit value used when `print_and_abort' is used.  */
-# include <stdlib.h>
-int obstack_exit_failure = EXIT_FAILURE;
-
 /* Define a macro that either calls functions with the traditional malloc/free
    calling interface, or calls functions with the mmalloc/mfree interface
    (that adds an extra first argument), based on the state of use_extra_arg.
@@ -341,5 +337,5 @@ static void __attribute__((noreturn)) print_and_abort(void)
      like this and the translation should be reused instead of creating
      a very similar string which requires a separate translation.  */
   fprintf (stderr, "%s\n", "memory exhausted");
-  exit (obstack_exit_failure);
+  abort();
 }

@@ -1,6 +1,10 @@
 #include <octopos.h>
 #include <stdio.h>
 
+#include "async.h"
+#include "x10_rt.h"
+#include "ilocal_data.h"
+
 /**
  * A finish_state holds all information for a finish statement.
  * All its child activities are tracked. Also, their children must register
@@ -18,8 +22,6 @@ static void panic(const char * msg) {
 	printf("%s\n", msg);
 	abort();
 }
-
-typedef struct finish_state finish_state;
 
 struct finish_state {
 	/* the common claim of all activities */
@@ -53,41 +55,57 @@ typedef struct async_closure {
 	finish_state *enclosing;
 	/* executing ilet */
 	simple_ilet  *ilet;
+	x10_int       here_id;
 } async_closure;
 
-static finish_state* finish_state_get_current(void)
+finish_state* finish_state_get_current(void)
 {
-	finish_state **ilocal_data = get_ilocal_data();
-	finish_state *res = *(finish_state **)ilocal_data;
-	return res;
+	void *ilocal_data = get_ilocal_data();
+	ilocal_data_t *ilocal = *(ilocal_data_t**)ilocal_data;
+	return ilocal->fs;
 }
 
 void finish_state_set_current(finish_state *fs)
 {
-	finish_state **ilocal_data = get_ilocal_data();
-	*ilocal_data = fs;
+	void *ilocal_data = get_ilocal_data();
+	ilocal_data_t *ilocal = *(ilocal_data_t**)ilocal_data;
+	ilocal->fs = fs;
 }
 
-static void register_at_finish_state(finish_state *fs) {
+void register_at_finish_state(finish_state *fs) {
 	simple_signal_add_signalers(&fs->signal, 1);
 }
 
+void unregister_from_finish_state(finish_state *fs) {
+	simple_signal_signal(&fs->signal);
+}
+
 /* X10 function to execute ()=>void closures */
-extern void* _ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(void *body);
+extern void* _ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(x10_object *body);
 
 /** Top-level i-let function, initializes activity and cleans up afterwards */
 static void execute(void *ptr) {
-	async_closure *ac   = (async_closure *)ptr;
-	void          *body = ac->body;
-	finish_state  *fs   = ac->enclosing;
-	simple_ilet   *ilet = ac->ilet;
+	async_closure *ac      = (async_closure *)ptr;
+	void          *body    = ac->body;
+	finish_state  *fs      = ac->enclosing;
+	simple_ilet   *ilet    = ac->ilet;
+	x10_int        here_id = ac->here_id;
 	free(ac);
+
+	void **ilocal = get_ilocal_data();
+	*ilocal = malloc(sizeof(ilocal_data_t));
+
 	/* store enclosing finish state in i-let-local data */
 	finish_state_set_current(fs);
+	x10_rt_set_here_id(here_id);
+
 	/* run the closure */
 	_ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(body);
+
 	/* send signal to finish state */
-	simple_signal_signal(&fs->signal);
+	unregister_from_finish_state(fs);
+
+	free(*ilocal);
 	free(ilet);
 }
 
@@ -127,6 +145,7 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(void *body
 	ac->body      = body;
 	ac->enclosing = enclosing;
 	ac->ilet      = child;
+	ac->here_id   = x10_rt_get_here_id();
 	simple_ilet_init(child, execute, ac);
 	if (infect(enclosing->claim, child, 1)) panic("infect failed");
 	register_at_finish_state(enclosing);

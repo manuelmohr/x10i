@@ -18,6 +18,16 @@
  * at the current finish state. Hence, we use thread-local data to store the
  * current finish state.
  */
+struct finish_state {
+	/* a mutex for parallel activity creation */
+	pthread_mutex_t     mutex;
+	/* Condition variable to wait at the end of finish statements */
+	pthread_cond_t      condition;
+	/* Number of spawned activities */
+	int                 number_of_activities;
+	/* enclosing finish (maybe NULL for root) */
+	finish_state        *parent;
+};
 
 static void panic(const char * msg) {
 	printf("%s\n", msg);
@@ -62,8 +72,9 @@ finish_state* finish_state_get_current(void) {
 	return pthread_getspecific(enclosing_finish_state);
 }
 
-int finish_state_set_current(finish_state *fs) {
-	return pthread_setspecific(enclosing_finish_state, fs);
+void finish_state_set_current(finish_state *fs) {
+	if (pthread_setspecific(enclosing_finish_state, fs))
+		panic("Could not set current finish state.");
 }
 
 void register_at_finish_state(finish_state *fs) {
@@ -112,8 +123,7 @@ static void *execute(void *ptr) {
 	x10_rt_set_here_id(ac->here_id);
 	free(ac);
 	/* store enclosing finish state in thread-local data */
-	if (finish_state_set_current(fs))
-		panic("Could not set thread-local key");
+	finish_state_set_current(fs);
 	/* Initialize atomic depth. */
 	if (pthread_setspecific(activity_atomic_depth, NULL))
 		panic("Could not set thread-local key");
@@ -147,16 +157,14 @@ void _ZN3x104lang7Runtime16finishBlockBeginEv(void) {
 	finish_state *nested = malloc(sizeof(finish_state));
 	if (nested == NULL) panic("malloc returned NULL");
 	finish_state_init(nested, enclosing);
-	if (finish_state_set_current(nested))
-		panic("Could not set thread-local key");
+	finish_state_set_current(nested);
 }
 
 static void __attribute__((constructor)) init_finish_state(void) {
 	/* initialize main thread's finish state */
 	if (pthread_key_create(&enclosing_finish_state, NULL))
 		panic("Could not create thread-local key");
-	if (finish_state_set_current(NULL))
-		panic("Could not set thread-local key");
+	finish_state_set_current(NULL);
 	/* initialize main thread's atomic depth */
 	if (pthread_key_create(&activity_atomic_depth, NULL))
 		panic("Could not create thread-local key");
@@ -201,8 +209,7 @@ void _ZN3x104lang7Runtime14finishBlockEndEv(void) {
 	finish_state *parent = enclosing->parent;
 	finish_state_free(enclosing);
 	/* restore enclosing finish state */
-	if (finish_state_set_current(parent))
-		panic("Could not set thread-local key");
+	finish_state_set_current(parent);
 }
 
 static void __attribute__((destructor)) exit_finish_state(void) {

@@ -31,14 +31,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Includes for alloca() */
-#ifdef _WIN32
-#include <malloc.h>
-#endif
-#if defined(__linux__) || defined(__APPLE__)
-#include <alloca.h>
-#endif
-
 #include "begin.h"
 
 /**
@@ -106,16 +98,6 @@ FIRM_API char *xstrdup(const char *str);
  * whole object
  */
 #define XMALLOCFZ(type, member, n) ((type*)memset(XMALLOCF(type, member, (n)), 0, offsetof(type, member) + sizeof(*((type*)0)->member) * (n)))
-
-/**
- * Allocate n objects of a certain type on the stack
- */
-#define ALLOCAN(type, n) ((type*)alloca(sizeof(type) * (n)))
-
-/**
- * Allocate n objects of a certain type on the stack and zero them
- */
-#define ALLOCANZ(type, n) ((type*)memset((type*)alloca(sizeof(type) * (n)), 0, sizeof(type) * (n)))
 
 /**
  * Allocate n objects of a certain type on the given obstack
