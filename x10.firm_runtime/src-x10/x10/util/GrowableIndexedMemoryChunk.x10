@@ -182,11 +182,9 @@ public final class GrowableIndexedMemoryChunk[T] /*implements CustomSerializatio
     /**
      * Copy current data into an Array.
      */
-    /*
     public def toArray():Rail[T] {
       return new Array[T](toIndexedMemoryChunk());
     }
-    */
 
     public def grow(var newCapacity:int):void {
         var oldCapacity:int = capacity();
