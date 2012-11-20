@@ -78,6 +78,26 @@ void unregister_from_finish_state(finish_state *fs) {
 	simple_signal_signal(&fs->signal);
 }
 
+void activity_inc_atomic_depth(void) {
+	ilocal_data_t *ilocal = get_ilocal_data();
+	++ilocal->atomic_depth;
+}
+
+void activity_dec_atomic_depth(void) {
+	ilocal_data_t *ilocal = get_ilocal_data();
+	--ilocal->atomic_depth;
+}
+
+unsigned activity_get_atomic_depth(void) {
+	ilocal_data_t *ilocal = get_ilocal_data();
+	return ilocal->atomic_depth;
+}
+
+static void activity_set_atomic_depth(unsigned depth) {
+	ilocal_data_t *ilocal = get_ilocal_data();
+	ilocal->atomic_depth = depth;
+}
+
 /* X10 function to execute ()=>void closures */
 extern void* _ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(x10_object *body);
 
@@ -93,6 +113,8 @@ static void execute(void *ptr) {
 	/* store enclosing finish state in i-let-local data */
 	finish_state_set_current(fs);
 	x10_rt_set_here_id(here_id);
+	/* initialize atomic depth */
+	activity_set_atomic_depth(0);
 
 	/* run the closure */
 	_ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(body);

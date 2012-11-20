@@ -56,7 +56,3 @@ void x10_rt_dma(void *dest, const void *src, size_t len)
 {
 	memcpy(dest, src, len);
 }
-
-void _ZN3x104lang7Runtime17ensureNotInAtomicEv(void) {
-	/* XXX: Remove me. */
-}
