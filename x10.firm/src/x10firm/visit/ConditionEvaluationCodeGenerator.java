@@ -10,7 +10,6 @@ import polyglot.ast.Expr_c;
 import polyglot.ast.NullLit;
 import polyglot.types.Name;
 import polyglot.types.Type;
-import polyglot.types.Types;
 import x10.ast.X10Binary_c;
 import x10.ast.X10Instanceof_c;
 import x10.types.MethodInstance;
@@ -110,7 +109,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 
 		// Find the correct _struct_equals to call.  We want S._struct_equals(S), not
 		// S._struct_equals(Any).
-		final X10ClassType ct = (X10ClassType) Types.baseType(left.type());
+		final X10ClassType ct = (X10ClassType) typeSystem.getConcreteType(left.type());
 		final List<MethodInstance> instances = ct.methodsNamed(Name.make(SharedVarsMethods.STRUCT_EQUALS_METHOD));
 		MethodInstance instance = null;
 		for (final MethodInstance mi : instances) {
