@@ -958,7 +958,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	}
 
 	private void genFieldAssign(final Field_c field, final Node value) {
-		final FieldInstance instance = field.fieldInstance().def().asInstance();
+		final FieldInstance instance = field.fieldInstance();
 		Node objectAddress = null;
 		if (!field.flags().isStatic())
 			objectAddress = visitExpression((Expr)field.target());
