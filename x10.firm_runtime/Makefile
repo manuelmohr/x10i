@@ -53,7 +53,7 @@ ifeq ($(findstring linux, $(TARGET)), linux)
 endif
 
 CPARSER_BASE ?= ../cparser
-CPARSER = $(CPARSER_BASE)/build/cparser
+CPARSER = $(CPARSER_BASE)/build/debug/cparser
 BUILDDIR?=build/$(TARGET)
 SRCDIR=src-c
 GENERATORSDIR=generators

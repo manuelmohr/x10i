@@ -889,7 +889,7 @@ public class FirmTypeSystem {
 			/* make weak entities non-weak and remove existing implementation */
 			if (cEntity.hasLinkage(ir_linkage.IR_LINKAGE_WEAK)) {
 				cEntity.removeLinkage(ir_linkage.IR_LINKAGE_WEAK);
-				Program.removeGraph(cEntity.getGraph());
+				cEntity.getGraph().free();
 			} else {
 				assert flags.isNative();
 			}
