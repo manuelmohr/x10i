@@ -2,6 +2,7 @@ package x10firm.types;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -182,8 +183,9 @@ public class FirmTypeSystem {
 	}
 
 	private void readFirmNativeTypesConfig(final String firmNativeTypesFilename) {
+		BufferedReader in = null;
 		try {
-			final BufferedReader in = new BufferedReader(new FileReader(firmNativeTypesFilename));
+			in = new BufferedReader(new FileReader(firmNativeTypesFilename));
 
 			String line = null;
 			while ((line = in.readLine()) != null) {
@@ -201,11 +203,17 @@ public class FirmTypeSystem {
 				final NativeClassInfo info = NativeClassInfo.newNativeClassInfo(size);
 				x10NativeTypes.put(qualifiedName, info);
 			}
-
-			in.close();
 		} catch (final Exception exc) {
 			System.err.println("Error in reading file" + firmNativeTypesFilename + " Exception: " + exc);
 			System.exit(-1);
+		} finally {
+			if (in != null) {
+				try {
+					in.close();
+				} catch (IOException e) {
+					/* we don't care */
+				}
+			}
 		}
 	}
 

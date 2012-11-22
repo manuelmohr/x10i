@@ -35,7 +35,7 @@ import firm.nodes.OOConstruction;
  * and deserialization of values and objects, based on ideas from the
  * C++ backend.
  *
- * @see x10.firm_runtime/src-c/x10_serialization.h
+ * @see "x10.firm_runtime/src-c/x10_serialization.h"
  *
  * @author julian
  */
@@ -248,7 +248,6 @@ public final class SerializationSupport {
 		dmtType.setBounds(0, 0, nEntries);
 		dmtType.setSizeBytes(typeP.getSizeBytes() * nEntries);
 		dmtType.setTypeState(ir_type_state.layout_fixed);
-		dmtType.setAlignmentBytes(32);
 		final Entity deserializeMethodTable = new Entity(global, dmtName, dmtType);
 
 		final Graph constCode = Program.getConstCodeGraph();

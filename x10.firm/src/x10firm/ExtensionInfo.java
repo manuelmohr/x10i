@@ -66,9 +66,9 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 
 		final String whiteListFile = options.getWhiteListFile();
 		if (whiteListFile != null) {
+			BufferedReader reader = null;
 			try {
-				final BufferedReader reader
-					= new BufferedReader(new InputStreamReader(new FileInputStream(whiteListFile)));
+				reader = new BufferedReader(new InputStreamReader(new FileInputStream(whiteListFile)));
 				String line;
 				while ((line = reader.readLine()) != null) {
 					line = line.trim();
@@ -80,6 +80,14 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 				}
 			} catch (IOException e) {
 				throw new RuntimeException(e);
+			} finally {
+				if (reader != null) {
+					try {
+						reader.close();
+					} catch (IOException e) {
+						/* we don't care */
+					}
+				}
 			}
 		} else {
 			allowedFiles.add("x10/array/Array.x10");
