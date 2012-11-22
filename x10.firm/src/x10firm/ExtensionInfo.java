@@ -174,13 +174,17 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/util/Container.x10");
 			allowedFiles.add("x10/util/CollectionIterator.x10");
 			allowedFiles.add("x10/util/GrowableIndexedMemoryChunk.x10");
+			allowedFiles.add("x10/util/HashMap.x10");
 			allowedFiles.add("x10/util/IndexedMemoryChunk.x10");
 			allowedFiles.add("x10/util/Indexed.x10");
 			allowedFiles.add("x10/util/List.x10");
 			allowedFiles.add("x10/util/ListIterator.x10");
+			allowedFiles.add("x10/util/Map.x10");
+			allowedFiles.add("x10/util/MapIterator.x10");
 			allowedFiles.add("x10/util/Ordered.x10");
 			allowedFiles.add("x10/util/Pair.x10");
 			allowedFiles.add("x10/util/Random.x10");
+			allowedFiles.add("x10/util/Set.x10");
 			allowedFiles.add("x10/util/Stack.x10");
 			allowedFiles.add("x10/util/StringBuilder.x10");
 			allowedFiles.add("x10/util/Timer.x10");
@@ -190,7 +194,6 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 
 	/** returns true if it is expected, that the given class compiles cleanly
 	 * with the current compiler.
-	 * TODO DELETE ME: Delete this method when library support is implemented.
 	 */
 	public static boolean shouldGenerateCodeFor(final Job job) {
 		initWhitelist((CompilerOptions)job.extensionInfo().getOptions());
