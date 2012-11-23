@@ -175,12 +175,14 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/util/CollectionIterator.x10");
 			allowedFiles.add("x10/util/GrowableIndexedMemoryChunk.x10");
 			allowedFiles.add("x10/util/HashMap.x10");
+			allowedFiles.add("x10/util/HashSet.x10");
 			allowedFiles.add("x10/util/IndexedMemoryChunk.x10");
 			allowedFiles.add("x10/util/Indexed.x10");
 			allowedFiles.add("x10/util/List.x10");
 			allowedFiles.add("x10/util/ListIterator.x10");
 			allowedFiles.add("x10/util/Map.x10");
 			allowedFiles.add("x10/util/MapIterator.x10");
+			allowedFiles.add("x10/util/MapSet.x10");
 			allowedFiles.add("x10/util/Ordered.x10");
 			allowedFiles.add("x10/util/Pair.x10");
 			allowedFiles.add("x10/util/Random.x10");
