@@ -86,6 +86,7 @@ public final class NameMangler {
 		binOpSubst.put("operator&",   "an");
 		binOpSubst.put("operator|",   "or");
 		binOpSubst.put("operator^",   "eo");
+		binOpSubst.put("operator~",   "co");
 		binOpSubst.put("operator=",   "aS");
 		binOpSubst.put("operator+=",  "pL");
 		binOpSubst.put("operator-=",  "mI");
@@ -112,15 +113,31 @@ public final class NameMangler {
 		binOpSubst.put("operator--",  "mm");
 		binOpSubst.put("operator->",  "pt");
 		binOpSubst.put("operator()",  "ix");
-		/* this are our own additions */
-		binOpSubst.put("operator>>>", "v3rbs");
-		binOpSubst.put("operator()=", "v3aps");
+		/* these are our own additions */
+		binOpSubst.put("operator>>>",  "v3rbs");
+		binOpSubst.put("operator>>>=", "v4rbse");
+		binOpSubst.put("operator()=",  "v3aps");
+		binOpSubst.put("operator<-",   "v2lm");
+		binOpSubst.put("operator=>",   "v2eg");
+		binOpSubst.put("operator<:",   "v2ld");
+		binOpSubst.put("operator:>",   "v2dg");
+		binOpSubst.put("operator@",    "v2at");
+		binOpSubst.put("operator..",   "v4dots");
+		binOpSubst.put("operator**",   "v2ss");
+		binOpSubst.put("operator!~",   "v2nc");
+		binOpSubst.put("operator-<",   "v2ml");
+		binOpSubst.put("operator>-",   "v2gm");
+		binOpSubst.put("operator<>",   "v2lg");
+		binOpSubst.put("operator><",   "v2gl");
 
 		/* inverse operators -> same as the upper operators with a 'v' <digit> 'i' prefix
 		 * our own additions
 		 */
 		final Map<String, String> invNameSubs = new HashMap<String, String>();
 		for (final String key : binOpSubst.keySet()) {
+			String value = binOpSubst.get(key);
+			if (value.startsWith("v"))
+				value = value.substring(2);
 			invNameSubs.put("inverse_" + key, "v" + (key.length() + 1) + "i" + binOpSubst.get(key));
 		}
 		binOpSubst.putAll(invNameSubs);
