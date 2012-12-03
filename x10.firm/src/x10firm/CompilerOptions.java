@@ -253,7 +253,7 @@ public class CompilerOptions extends X10CompilerOptions {
 			usageForFlag(out, "-f " + option.getName(), option.getDescription());
 		}
 		for (FirmOptimization opt : FirmOptimizations.getOptimizations().values()) {
-			if (!opt.isHidden())
+			if (opt.isHidden())
 				continue;
 
 			usageForFlag(out, "-f " + opt.getName(), "enable " + opt.getDescription());
