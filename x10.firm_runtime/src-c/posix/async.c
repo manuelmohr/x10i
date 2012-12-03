@@ -177,7 +177,9 @@ static void __attribute__((constructor)) init_finish_state(void) {
 
 /* x10.lang.Runtime.executeParallel(body:()=>void) */
 void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(void *body) {
-	// TODO ensure not in atomic
+	/* x10.lang.Runtime.ensureNotInAtomic() */
+	_ZN3x104lang7Runtime17ensureNotInAtomicEv();
+
 	finish_state *enclosing = finish_state_get_current();
 	async_closure *ac = malloc(sizeof(async_closure));
 	if (ac == NULL) panic("malloc returned NULL");
