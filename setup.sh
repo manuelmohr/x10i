@@ -68,7 +68,7 @@ fi
 rm -f cparser/config.mak
 echo "FIRM_HOME = ../libfirm" >> cparser/config.mak
 
-# Run "ant dist" once so we have all the required stuff
+# Run "ant dist-firm" once so we have all the required stuff
 pushd x10.dist > /dev/null
-ant dist "$@"
+ant dist-firm "$@"
 popd
