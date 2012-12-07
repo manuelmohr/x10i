@@ -55,10 +55,24 @@ public class Linked extends AbstractGoal_c {
 		return gcc;
 	}
 
+	private boolean generate32BitCode() {
+		final MachineTriple target = options.getTargetTriple();
+		final String os = target.getOS();
+		final String cpu = target.getCpu();
+
+		return (os.equals("octopos") && !cpu.equals("sparc"))
+		       || os.equals("darwin11") || cpu.equals("x86_64");
+	}
+
 	private String queryGccPath(final String path) {
 		final String gcc = getGCC();
 
-		final String[] cmdLine = new String[] {gcc, "--print-file-name=" + path};
+		final String[] cmdLine;
+		if (generate32BitCode())
+			cmdLine = new String[] {gcc, "-m32", "--print-file-name=" + path};
+		else
+			cmdLine = new String[] {gcc, "--print-file-name=" + path};
+
 		final String output;
 		try {
 			printCommandline(cmdLine);
@@ -106,7 +120,7 @@ public class Linked extends AbstractGoal_c {
 
 		final List<String> cmd = new ArrayList<String>();
 		cmd.add(gcc);
-		if (cpu.equals("x86_64") || os.equals("darwin11")) {
+		if (generate32BitCode()) {
 			// Produce a 32-bit binary when running on a 64-bit x86 host
 			cmd.add("-m32");
 		}
@@ -120,7 +134,6 @@ public class Linked extends AbstractGoal_c {
 				// Must be first object
 				cmd.add(sparcOctoposPrefix(sf) + "lib/traptable.S.o");
 			} else {
-				cmd.add("-m32");
 				cmd.add("-L" + x86OctoposPrefix() + "lib");
 				cmd.add("-nostdlib");
 				if (linkerScript != null)
