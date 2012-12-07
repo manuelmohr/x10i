@@ -49,10 +49,6 @@ public class Linked extends AbstractGoal_c {
 		final String os = target.getOS();
 		if (os.equals("darwin11")) {
 			return "gcc";
-		} else if (os.equals("octopos") && !target.getCpu().equals("sparc")) {
-			// For the lazy: don't expect an i686-invasic-octopos-gcc
-			// to be available, just use the normal gcc.
-			return "gcc";
 		}
 
 		final String gcc = target + "-gcc";
