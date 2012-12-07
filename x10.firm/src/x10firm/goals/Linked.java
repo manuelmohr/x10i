@@ -68,10 +68,11 @@ public class Linked extends AbstractGoal_c {
 		final String gcc = getGCC();
 
 		final String[] cmdLine;
-		if (generate32BitCode())
+		if (generate32BitCode()) {
 			cmdLine = new String[] {gcc, "-m32", "--print-file-name=" + path};
-		else
+		} else {
 			cmdLine = new String[] {gcc, "--print-file-name=" + path};
+		}
 
 		final String output;
 		try {
