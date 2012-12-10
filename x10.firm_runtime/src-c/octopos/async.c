@@ -5,6 +5,8 @@
 #include "x10_rt.h"
 #include "ilocal_data.h"
 
+extern void _ZN3x104lang7Runtime17ensureNotInAtomicEv(void);
+
 /**
  * A finish_state holds all information for a finish statement.
  * All its child activities are tracked. Also, their children must register

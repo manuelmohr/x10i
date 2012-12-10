@@ -6,6 +6,8 @@
 
 #define MAX_ACTIVITIES_PER_FINISH 64
 
+extern void _ZN3x104lang7Runtime17ensureNotInAtomicEv(void);
+
 /**
  * A finish_state holds all information for a finish statement.
  * All its child activities are tracked. Also, their children must register
