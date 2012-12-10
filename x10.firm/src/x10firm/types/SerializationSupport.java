@@ -208,7 +208,7 @@ public final class SerializationSupport {
 	 *
 	 * @param ctor the constructor to remember
 	 * @param ownerFirm firm type representing the owner
-	 * @param ctorFirm firm entity representig the constructor
+	 * @param ctorFirm firm entity representing the constructor
 	 */
 	public void setCustomDeserializeConstructor(final X10ConstructorInstance ctor,
 			final ClassType ownerFirm, final Entity ctorFirm) {
