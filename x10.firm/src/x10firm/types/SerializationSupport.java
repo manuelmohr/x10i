@@ -20,15 +20,19 @@ import firm.Mode;
 import firm.OO;
 import firm.PointerType;
 import firm.Program;
+import firm.Relation;
 import firm.Type;
 import firm.bindings.binding_ircons.ir_where_alloc;
 import firm.bindings.binding_oo.ddispatch_binding;
 import firm.bindings.binding_typerep.ir_type_state;
 import firm.nodes.Alloc;
+import firm.nodes.Block;
 import firm.nodes.Call;
+import firm.nodes.Cond;
 import firm.nodes.Load;
 import firm.nodes.Node;
 import firm.nodes.OOConstruction;
+import firm.nodes.Store;
 
 /**
  * Helper class to generate the methods required for the serialization
@@ -297,6 +301,116 @@ public final class SerializationSupport {
 		return null;
 	}
 
+	private void genCallToSerialize(final Type type, final Construction con, final Node bufPtr, final Node objPtr) {
+		final Node swpSymConst = con.newSymConst(serializationWritePrimitiveEntity);
+		final Node swoSymConst = con.newSymConst(serializationWriteObjectEntity);
+		Node mem = con.getCurrentMem();
+
+		if (type instanceof ClassType) {
+			/* this has to be a Struct or the $super / $__value__ entity,
+			 * because otherwise we'd have a PointerType.
+			 * in any case, we know exactly which serializer we need to call. */
+
+			final Entity structSerializer = serializeMethods.get(type);
+			assert structSerializer != null;
+			final Node symc = con.newSymConst(structSerializer);
+			final Node call = con.newCall(mem, symc,
+					new Node[] {bufPtr, objPtr}, structSerializer.getType());
+			mem = con.newProj(call, Mode.getM(), Call.pnM);
+			con.setCurrentMem(mem);
+		} else if (type instanceof PointerType) {
+			/* this is an object reference */
+
+			final Node load = con.newLoad(mem, objPtr, Mode.getP());
+			mem = con.newProj(load, Mode.getM(), Load.pnM);
+			con.setCurrentMem(mem);
+			final Node newObjPtr = con.newProj(load, Mode.getP(), Load.pnRes);
+
+			final Node call = con.newCall(mem, swoSymConst,
+					new Node[] {bufPtr, newObjPtr}, serializationWriteObjectEntity.getType());
+			mem = con.newProj(call, Mode.getM(), Call.pnM);
+			con.setCurrentMem(mem);
+		} else {
+			/* primitives */
+
+			final Node call = con.newCall(mem, swpSymConst,
+					new Node[] {bufPtr, objPtr, con.newSymConstTypeSize(type, Mode.getIu())},
+					serializationWritePrimitiveEntity.getType());
+			mem = con.newProj(call, Mode.getM(), Call.pnM);
+			con.setCurrentMem(mem);
+		}
+	}
+
+	private void generateIndexedMemoryChunkSerialize(final Construction con, final X10ClassType astType,
+	                                                     final ClassType klass, final Node bufPtr,
+	                                                     final Node objPtr, final FirmTypeSystem firmTypeSystem) {
+		Node ptr = null;
+		Node length = null;
+		Node lengthAddr = null;
+		Type lengthType = null;
+
+		for (Entity member : klass.getMembers()) {
+			final Type memberType = member.getType();
+			if (memberType instanceof MethodType)
+				continue;
+
+			// This is slightly ugly because it also depends on the name mangling.
+			if (member.getName().endsWith("ptrE")) {
+				final Node ptrAddr = con.newSel(objPtr, member);
+				final Node load = con.newLoad(con.getCurrentMem(), ptrAddr, Mode.getP());
+				con.setCurrentMem(con.newProj(load, Mode.getM(), Load.pnM));
+				ptr = con.newProj(load, Mode.getP(), Load.pnRes);
+			} else if (member.getName().endsWith("lengthE")) {
+				lengthType = memberType;
+				lengthAddr = con.newSel(objPtr, member);
+				final Node load = con.newLoad(con.getCurrentMem(), lengthAddr, Mode.getIs());
+				con.setCurrentMem(con.newProj(load, Mode.getM(), Load.pnM));
+				length = con.newProj(load, Mode.getIs(), Load.pnRes);
+			} else {
+				assert false : "IndexedMemoryChunk has extraneous members";
+			}
+		}
+		assert ptr != null && length != null;
+
+		// First, serialize length
+		genCallToSerialize(lengthType, con, bufPtr, lengthAddr);
+
+		assert astType.typeArguments().size() == 1;
+		final Type elementType = firmTypeSystem.asType(astType.typeArguments().get(0));
+
+		// Second, build a loop to serialize each element stores in the chunk
+		con.setVariable(0, con.newConst(0, Mode.getIs()));
+		con.setVariable(1, ptr);
+		final Node jmpToCond = con.newJmp();
+
+		final Block condBlock = con.newBlock();
+		condBlock.addPred(jmpToCond);
+		con.setCurrentBlock(condBlock);
+		final Node cmp = con.newCmp(con.getVariable(0, Mode.getIs()), length, Relation.Less);
+		final Node cond = con.newCond(cmp);
+		final Node projTrue = con.newProj(cond, Mode.getX(), Cond.pnTrue);
+		final Node projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
+
+		final Block bodyBlock = con.newBlock();
+		bodyBlock.addPred(projTrue);
+		con.setCurrentBlock(bodyBlock);
+		final Node currentIndex = con.getVariable(0, Mode.getIs());
+		final Node currentAddr = con.getVariable(1, Mode.getP());
+		genCallToSerialize(elementType, con, bufPtr, currentAddr);
+		final Node nextIndex = con.newAdd(currentIndex, con.newConst(1, Mode.getIs()), Mode.getIs());
+		final Node elementSize = con.newSymConstTypeSize(elementType, Mode.getP());
+		final Node nextAddr = con.newAdd(currentAddr, elementSize, Mode.getP());
+		con.setVariable(0, nextIndex);
+		con.setVariable(1, nextAddr);
+		final Node backJmp = con.newJmp();
+		condBlock.addPred(backJmp);
+		condBlock.mature();
+
+		final Block returnBlock = con.newBlock();
+		returnBlock.addPred(projFalse);
+		con.setCurrentBlock(returnBlock);
+	}
+
 	/**
 	 * Generate the serialization function for the given type.
 	 * @param astType The X10 type.
@@ -310,9 +424,8 @@ public final class SerializationSupport {
 
 		final Entity serEntity = serializeMethods.get(klass);
 
-		final Graph graph = new Graph(serEntity, 0);
+		final Graph graph = new Graph(serEntity, 2);
 		final Construction con = new OOConstruction(graph);
-		final Node swpSymConst = con.newSymConst(serializationWritePrimitiveEntity);
 		final Node swoSymConst = con.newSymConst(serializationWriteObjectEntity);
 
 		final Node args = graph.getArgs();
@@ -328,6 +441,8 @@ public final class SerializationSupport {
 			final Node call = con.newCall(mem, stringSerializeSymc, new Node[] {bufPtr, objPtr}, serializeMethodType);
 			mem = con.newProj(call, Mode.getM(), Call.pnM);
 			con.setCurrentMem(mem);
+		} else if (astType.isIndexedMemoryChunk()) {
+			generateIndexedMemoryChunkSerialize(con, astType, klass, bufPtr, objPtr, firmTypeSystem);
 		} else if (customSerializationMethods.containsKey(klass)) {
 			final Entity customSerializeMethod = lookupCustomSerializeMethod(klass);
 			assert customSerializeMethod != null;
@@ -352,42 +467,8 @@ public final class SerializationSupport {
 				if (OO.getFieldIsTransient(member))
 					continue;
 
-				Node mem = con.getCurrentMem();
 				final Node sel = con.newSel(objPtr, member);
-
-				if (memberType instanceof ClassType) {
-					/* this has to be a Struct or the $super / $__value__ entity,
-					 * because otherwise we'd have a PointerType.
-					 * in any case, we know exactly which serializer we need to call. */
-
-					final Entity structSerializer = serializeMethods.get(memberType);
-					assert structSerializer != null;
-					final Node symc = con.newSymConst(structSerializer);
-					final Node call = con.newCall(mem, symc,
-							new Node[] {bufPtr, sel}, structSerializer.getType());
-					mem = con.newProj(call, Mode.getM(), Call.pnM);
-					con.setCurrentMem(mem);
-				} else if (memberType instanceof PointerType) {
-					/* this is an object reference */
-
-					final Node load = con.newLoad(mem, sel, Mode.getP());
-					mem = con.newProj(load, Mode.getM(), Load.pnM);
-					con.setCurrentMem(mem);
-					final Node newObjPtr = con.newProj(load, Mode.getP(), Load.pnRes);
-
-					final Node call = con.newCall(mem, swoSymConst,
-							new Node[] {bufPtr, newObjPtr}, serializationWriteObjectEntity.getType());
-					mem = con.newProj(call, Mode.getM(), Call.pnM);
-					con.setCurrentMem(mem);
-				} else {
-					/* primitives */
-
-					final Node call = con.newCall(mem, swpSymConst,
-							new Node[] {bufPtr, sel, con.newSymConstTypeSize(memberType, Mode.getIu())},
-							serializationWritePrimitiveEntity.getType());
-					mem = con.newProj(call, Mode.getM(), Call.pnM);
-					con.setCurrentMem(mem);
-				}
+				genCallToSerialize(memberType, con, bufPtr, sel);
 			}
 		}
 
@@ -397,6 +478,128 @@ public final class SerializationSupport {
 		con.setUnreachable();
 
 		con.finish();
+	}
+
+	private void genCallToDeserialize(final Type type, final Construction con, final Node bufPtr, final Node objPtr) {
+		final Node drpSymc = con.newSymConst(deserializationRestorePrimitiveEntity);
+		final Node droSymc = con.newSymConst(deserializationRestoreObjectEntity);
+		Node mem = con.getCurrentMem();
+
+		if (type instanceof ClassType) {
+			/* structs and superclass subobjects */
+			final Entity structDeserializer = deserializeMethods.get(type);
+			assert structDeserializer != null;
+			final Node symc = con.newSymConst(structDeserializer);
+			final Node call = con.newCall(mem, symc,
+					new Node[] {bufPtr, objPtr}, deserializeMethodType);
+			mem = con.newProj(call, Mode.getM(), Call.pnM);
+			con.setCurrentMem(mem);
+		} else if (type instanceof PointerType) {
+			/* object references */
+			final Node call = con.newCall(mem, droSymc,
+					new Node[] {bufPtr, objPtr},
+					deserializationRestoreObjectEntity.getType());
+			mem = con.newProj(call, Mode.getM(), Call.pnM);
+			con.setCurrentMem(mem);
+		} else {
+			/* primitives */
+			final Node call = con.newCall(mem, drpSymc,
+					new Node[] {bufPtr, objPtr, con.newSymConstTypeSize(type, Mode.getIu())},
+					deserializationRestorePrimitiveEntity.getType());
+			mem = con.newProj(call, Mode.getM(), Call.pnM);
+			con.setCurrentMem(mem);
+		}
+	}
+
+	private static MethodType getMallocMethodType() {
+		final MethodType mallocType = new MethodType(1, 1);
+		mallocType.setParamType(0, Mode.getIs().getType());
+		mallocType.setResType(0, Mode.getP().getType());
+		return mallocType;
+	}
+
+	private static Node getMallocSymConst(final Construction con) {
+		final String mallocName = NameMangler.mangleKnownName("malloc");
+		final Type global = Program.getGlobalType();
+		final Entity ent = new Entity(global, mallocName, getMallocMethodType());
+		return con.newSymConst(ent);
+	}
+
+	private void generateIndexedMemoryChunkDeserialize(final Construction con, final X10ClassType astType,
+	                                                   final ClassType klass, final Node bufPtr,
+	                                                   final Node objPtr, final FirmTypeSystem firmTypeSystem) {
+		Node ptrPtr = null;
+		Node lengthPtr = null;
+		Type lengthType = null;
+
+		for (Entity member : klass.getMembers()) {
+			final Type memberType = member.getType();
+			if (memberType instanceof MethodType)
+				continue;
+
+			// This is slightly ugly because it also depends on the name mangling.
+			if (member.getName().endsWith("ptrE")) {
+				ptrPtr = con.newSel(objPtr, member);
+			} else if (member.getName().endsWith("lengthE")) {
+				lengthType = memberType;
+				lengthPtr = con.newSel(objPtr, member);
+			} else {
+				assert false : "IndexedMemoryChunk has extraneous members";
+			}
+		}
+		assert ptrPtr != null && lengthPtr != null;
+
+		// First, deserialize length
+		genCallToDeserialize(lengthType, con, bufPtr, lengthPtr);
+		final Node load = con.newLoad(con.getCurrentMem(), lengthPtr, Mode.getIs());
+		con.setCurrentMem(con.newProj(load, Mode.getM(), Load.pnM));
+		final Node length = con.newProj(load, Mode.getIs(), Load.pnRes);
+
+		// Second, allocate memory for the new backing storage
+		assert astType.typeArguments().size() == 1;
+		final Type elementType = firmTypeSystem.asType(astType.typeArguments().get(0));
+		final Node elemSize = con.newSymConstTypeSize(elementType, Mode.getIs());
+		final Node mallocSize = con.newMul(length, elemSize, Mode.getIs());
+		final Node mallocSymConst = getMallocSymConst(con);
+		final Node[] mallocArgs = new Node[] {mallocSize};
+		final Node mallocCall = con.newCall(con.getCurrentMem(), mallocSymConst, mallocArgs, getMallocMethodType());
+		con.setCurrentMem(con.newProj(mallocCall, Mode.getM(), Call.pnM));
+		final Node mallocResults = con.newProj(mallocCall, Mode.getT(), Call.pnTResult);
+		final Node newStorage = con.newProj(mallocResults, Mode.getP(), 0);
+		final Node storePtr = con.newStore(con.getCurrentMem(), ptrPtr, newStorage);
+		con.setCurrentMem(con.newProj(storePtr, Mode.getM(), Store.pnM));
+
+		// Third, build a loop to deserialize every element into our new backing storage
+		con.setVariable(0, con.newConst(0, Mode.getIs()));
+		con.setVariable(1, newStorage);
+		final Node jmpToCond = con.newJmp();
+
+		final Block condBlock = con.newBlock();
+		condBlock.addPred(jmpToCond);
+		con.setCurrentBlock(condBlock);
+		final Node cmp = con.newCmp(con.getVariable(0, Mode.getIs()), length, Relation.Less);
+		final Node cond = con.newCond(cmp);
+		final Node projTrue = con.newProj(cond, Mode.getX(), Cond.pnTrue);
+		final Node projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
+
+		final Block bodyBlock = con.newBlock();
+		bodyBlock.addPred(projTrue);
+		con.setCurrentBlock(bodyBlock);
+		final Node currentIndex = con.getVariable(0, Mode.getIs());
+		final Node currentAddr = con.getVariable(1, Mode.getP());
+		genCallToDeserialize(elementType, con, bufPtr, currentAddr);
+		final Node nextIndex = con.newAdd(currentIndex, con.newConst(1, Mode.getIs()), Mode.getIs());
+		final Node elementSize = con.newSymConstTypeSize(elementType, Mode.getP());
+		final Node nextAddr = con.newAdd(currentAddr, elementSize, Mode.getP());
+		con.setVariable(0, nextIndex);
+		con.setVariable(1, nextAddr);
+		final Node backJmp = con.newJmp();
+		condBlock.addPred(backJmp);
+		condBlock.mature();
+
+		final Block returnBlock = con.newBlock();
+		returnBlock.addPred(projFalse);
+		con.setCurrentBlock(returnBlock);
 	}
 
 	/**
@@ -412,10 +615,9 @@ public final class SerializationSupport {
 
 		final Entity deserEntity = deserializeMethods.get(klass);
 
-		final Graph graph = new Graph(deserEntity, 0);
+		final Graph graph = new Graph(deserEntity, 2);
 		final Construction con = new OOConstruction(graph);
 
-		final Node drpSymc = con.newSymConst(deserializationRestorePrimitiveEntity);
 		final Node droSymc = con.newSymConst(deserializationRestoreObjectEntity);
 
 		final Node args = graph.getArgs();
@@ -432,6 +634,8 @@ public final class SerializationSupport {
 					deserializeMethodType);
 			mem = con.newProj(call, Mode.getM(), Call.pnM);
 			con.setCurrentMem(mem);
+		} else if (astType.isIndexedMemoryChunk()) {
+			generateIndexedMemoryChunkDeserialize(con, astType, klass, bufPtr, objPtr, firmTypeSystem);
 		} else if (customSerializationMethods.containsKey(klass)) {
 			final Entity customDeserializeConstructor = lookupCustomDeserializeConstructor(klass);
 			if (customDeserializeConstructor == null)
@@ -468,33 +672,8 @@ public final class SerializationSupport {
 				if (OO.getFieldIsTransient(member))
 					continue;
 
-				Node mem = con.getCurrentMem();
 				final Node sel = con.newSel(objPtr, member);
-
-				if (memberType instanceof ClassType) {
-					/* structs and superclass subobjects */
-					final Entity structDeserializer = deserializeMethods.get(memberType);
-					assert structDeserializer != null;
-					final Node symc = con.newSymConst(structDeserializer);
-					final Node call = con.newCall(mem, symc,
-							new Node[] {bufPtr, sel}, deserializeMethodType);
-					mem = con.newProj(call, Mode.getM(), Call.pnM);
-					con.setCurrentMem(mem);
-				} else if (memberType instanceof PointerType) {
-					/* object references */
-					final Node call = con.newCall(mem, droSymc,
-							new Node[] {bufPtr, sel},
-							deserializationRestoreObjectEntity.getType());
-					mem = con.newProj(call, Mode.getM(), Call.pnM);
-					con.setCurrentMem(mem);
-				} else {
-					/* primitives */
-					final Node call = con.newCall(mem, drpSymc,
-							new Node[] {bufPtr, sel, con.newSymConstTypeSize(memberType, Mode.getIu())},
-							deserializationRestorePrimitiveEntity.getType());
-					mem = con.newProj(call, Mode.getM(), Call.pnM);
-					con.setCurrentMem(mem);
-				}
+				genCallToDeserialize(memberType, con, bufPtr, sel);
 			}
 		}
 
