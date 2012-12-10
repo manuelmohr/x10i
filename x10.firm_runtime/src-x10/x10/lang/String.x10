@@ -384,7 +384,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param args the arguments referenced by the format specifiers in the format string.
      * @return a formatted string.
      */
-    @LinkSymbol("x10_string_trim")
+    @LinkSymbol("x10_string_format")
     public native static def format(fmt: String, args:Array[Any]): String;
 
 

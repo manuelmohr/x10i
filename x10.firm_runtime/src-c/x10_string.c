@@ -290,6 +290,13 @@ x10_string *x10_string_trim(const x10_string *self)
 	return x10_string_copy_from(end-begin+1, &chars[begin]);
 }
 
+x10_string *x10_string_format(const x10_string *format, const void *args)
+{
+	X10_UNUSED(format);
+	X10_UNUSED(args);
+	X10_UNIMPLEMENTED();
+}
+
 // String.toLowerCase(): String
 x10_string *x10_string_to_lowercase(const x10_string *self)
 {
