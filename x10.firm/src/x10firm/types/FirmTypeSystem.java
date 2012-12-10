@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.StringTokenizer;
 
 import polyglot.types.ClassDef;
-import polyglot.types.ContainerType;
+import polyglot.types.ConstructorInstance;
 import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
@@ -129,6 +129,7 @@ public class FirmTypeSystem {
 		this.compilerOptions = options;
 		this.instantiationQueue = instantiationQueue;
 		init();
+		serializationSupport.init();
 	}
 
 	private void findExistingEntities() {
@@ -400,7 +401,7 @@ public class FirmTypeSystem {
 		for (final Type type : firmCoreTypes.values()) {
 			layoutType(type);
 		}
-		serializationSupport.generateSerializationMethods(firmCoreTypes.values());
+		serializationSupport.finishSerialization(firmCoreTypes.values());
 	}
 
 	/**
@@ -554,15 +555,42 @@ public class FirmTypeSystem {
 
 		/* create interfaces */
 		final Set<polyglot.types.Type> interfaces = new LinkedHashSet<polyglot.types.Type>(classType.interfaces());
+		boolean implementsCustomSerializable = false;
 		for (final polyglot.types.Type iface : interfaces) {
 			final Type firmIface = asClass(iface);
 			result.addSuperType(firmIface);
+
+			if (iface.toString().equals("x10.io.CustomSerialization")) {
+				serializationSupport.markAsCustomSerialized(result);
+				implementsCustomSerializable = true;
+			}
+		}
+
+		if (!flags.isInterface()) {
+			serializationSupport.setupSerialization(classType, result);
 		}
 
 		/* create fields */
 		for (final FieldInstance field : classType.fields()) {
 			final Type owner = field.flags().isStatic() ? Program.getGlobalType() : result;
 			getFieldEntity(field, owner);
+		}
+
+		if (implementsCustomSerializable) {
+			/* create non-generic methods */
+			for (final MethodInstance method : classType.methods()) {
+				if (method.typeParameters().isEmpty()) {
+					final Entity methodEntity = getMethodEntity(method);
+					serializationSupport.setCustomSerializeMethod(method, result, methodEntity);
+				}
+			}
+
+			/* create constructors */
+			for (final ConstructorInstance ctor : classType.constructors()) {
+				final X10ConstructorInstance x10Ctor = (X10ConstructorInstance) ctor;
+				final Entity ctorEntity = getConstructorEntity(x10Ctor);
+				serializationSupport.setCustomDeserializeConstructor(x10Ctor, result, ctorEntity);
+			}
 		}
 
 		final Type global = Program.getGlobalType();
@@ -594,10 +622,10 @@ public class FirmTypeSystem {
 		classInfoEntity.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
 		OO.setClassRTTIEntity(result, classInfoEntity);
 
-		if (!flags.isInterface())
-			serializationSupport.setupSerialization(classType, result);
-		else if (classType.toString().equals("x10.io.CustomSerialization"))
-			serializationSupport.setCustomSerializationInterface(classType);
+		if (!flags.isInterface()) {
+			serializationSupport.generateSerializationFunction(classType, result, this);
+			serializationSupport.generateDeserializationFunction(classType, result, this);
+		}
 
 		// Layouting of classes must be done explicitly by finishTypes
 
@@ -790,11 +818,6 @@ public class FirmTypeSystem {
 			 * (Note that we still have a "this" pointer anyway) */
 			OO.setEntityBinding(entity, ddispatch_binding.bind_static);
 
-			final ContainerType owner = instance.container();
-			final Type ownerFirm = asClass(owner);
-			assert ownerFirm instanceof ClassType;
-			serializationSupport.setCustomDeserializeConstructor(instance, (ClassType) ownerFirm, entity);
-
 			entities.put(name, entity);
 		}
 		return entity;
@@ -947,9 +970,6 @@ public class FirmTypeSystem {
 			final Entity ent = getMethodEntity(m);
 			entity.addEntityOverwrites(ent);
 		}
-
-		assert ownerFirm instanceof ClassType;
-		serializationSupport.setCustomSerializeMethod(instance, (ClassType) ownerFirm, entity);
 
 		entities.put(name, entity);
 		return entity;

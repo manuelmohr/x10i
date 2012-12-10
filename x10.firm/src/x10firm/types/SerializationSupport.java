@@ -62,9 +62,6 @@ public final class SerializationSupport {
 	private final Map<Type, Entity> serializeMethods = new HashMap<Type, Entity>();
 	private final Map<Type, Entity> deserializeMethods = new HashMap<Type, Entity>();
 
-	/** used to determine whether a class wants to implement the custom serialization protocol. */
-	private X10ClassType customSerializationInterface;
-
 	/** record of the method / constructor used in the custom serialization protocol. */
 	private static class CustomSerializationMethods {
 		Entity serializeMethod;
@@ -73,6 +70,48 @@ public final class SerializationSupport {
 
 	private final Map<Type, CustomSerializationMethods> customSerializationMethods
 		= new HashMap<Type, CustomSerializationMethods>();
+
+	/**
+	 * Initialize serialization support.
+	 *
+	 * This builds the entities for (de-)serializing primitives and objects.
+	 */
+	public void init() {
+		assert serializationWritePrimitiveEntity == null;
+		assert serializationWriteObjectEntity == null;
+		assert deserializationRestorePrimitiveEntity == null;
+		assert deserializationRestoreObjectEntity == null;
+
+		final firm.Type global = Program.getGlobalType();
+		final firm.Type typeP = Mode.getP().getType();
+		final firm.Type typeIu = Mode.getIu().getType();
+		final firm.Type[] retTypeVoid = new firm.Type[] {};
+
+		// first step: create the entities representing the runtime methods in x10_serialization.c
+		final firm.Type[] swpParameterTypes = new firm.Type[] {typeP, typeP, typeIu};
+		final MethodType swpType = new MethodType(swpParameterTypes, retTypeVoid);
+		final String swpName = NameMangler.mangleKnownName("x10_serialization_write_primitive");
+		serializationWritePrimitiveEntity = new Entity(global, swpName, swpType);
+		serializationWritePrimitiveEntity.setLdIdent(swpName);
+
+		final firm.Type[] swoParameterTypes = new firm.Type[] {typeP, typeP};
+		final MethodType swoType = new MethodType(swoParameterTypes, retTypeVoid);
+		final String swoName = NameMangler.mangleKnownName("x10_serialization_write_object");
+		serializationWriteObjectEntity = new Entity(global, swoName, swoType);
+		serializationWriteObjectEntity.setLdIdent(swoName);
+
+		final firm.Type[] drpParameterTypes = new firm.Type[] {typeP, typeP, typeIu};
+		final MethodType drpType = new MethodType(drpParameterTypes, retTypeVoid);
+		final String drpName = NameMangler.mangleKnownName("x10_deserialization_restore_primitive");
+		deserializationRestorePrimitiveEntity = new Entity(global, drpName, drpType);
+		deserializationRestorePrimitiveEntity.setLdIdent(drpName);
+
+		final firm.Type[] droParamTypes = new firm.Type[] {typeP, typeP};
+		final MethodType droType = new MethodType(droParamTypes, retTypeVoid);
+		final String droName = NameMangler.mangleKnownName("x10_deserialization_restore_object");
+		deserializationRestoreObjectEntity = new Entity(global, droName, droType);
+		deserializationRestoreObjectEntity.setLdIdent(droName);
+	}
 
 	/**
 	 * Create the __serialize and __deserialize method entities for the given type.
@@ -86,10 +125,6 @@ public final class SerializationSupport {
 		if (!astType.flags().isStruct()) {
 			OO.setClassUID(firmType, maxClassUid++);
 		}
-
-		if (customSerializationInterface != null
-				&& astType.isSubtype(customSerializationInterface, astType.typeSystem().emptyContext()))
-			customSerializationMethods.put(firmType, new CustomSerializationMethods());
 
 		final ClassType global = Program.getGlobalType();
 
@@ -138,11 +173,11 @@ public final class SerializationSupport {
 	}
 
 	/**
-	 * Record the X10ClassType of the custom serialization interface when it is encountered.
-	 * @param iface the type representing x10.io.CustomSerialization
+	 * Mark a type as custom serialized, i.e. a type implementing x10.io.CustomSerialization.
+	 * @param firmType The type to be marked.
 	 */
-	public void setCustomSerializationInterface(final X10ClassType iface) {
-		customSerializationInterface = iface;
+	public void markAsCustomSerialized(final ClassType firmType) {
+		customSerializationMethods.put(firmType, new CustomSerializationMethods());
 	}
 
 	/**
@@ -189,58 +224,15 @@ public final class SerializationSupport {
 	}
 
 	/**
-	 * Generate the (de)serialization methods based on the final layout of the type,
-	 * and generate the deserialization method table.
+	 * Generate the deserialization method table based on the final layout of the types.
 	 *
 	 * @param firmTypes a collection of all firm types. Only class types will be handled.
 	 */
-	public void generateSerializationMethods(final Collection<firm.Type> firmTypes) {
-		assert serializationWritePrimitiveEntity == null;
-		assert serializationWriteObjectEntity == null;
-		assert deserializationRestorePrimitiveEntity == null;
-		assert deserializationRestoreObjectEntity == null;
-
+	public void finishSerialization(final Collection<firm.Type> firmTypes) {
 		final firm.Type global = Program.getGlobalType();
 		final firm.Type typeP = Mode.getP().getType();
-		final firm.Type typeIu = Mode.getIu().getType();
-		final firm.Type[] retTypeVoid = new firm.Type[] {};
 
-		// first step: create the entities representing the runtime methods in x10_serialization.c
-		final firm.Type[] swpParameterTypes = new firm.Type[] {typeP, typeP, typeIu};
-		final MethodType swpType = new MethodType(swpParameterTypes, retTypeVoid);
-		final String swpName = NameMangler.mangleKnownName("x10_serialization_write_primitive");
-		serializationWritePrimitiveEntity = new Entity(global, swpName, swpType);
-		serializationWritePrimitiveEntity.setLdIdent(swpName);
-
-		final firm.Type[] swoParameterTypes = new firm.Type[] {typeP, typeP};
-		final MethodType swoType = new MethodType(swoParameterTypes, retTypeVoid);
-		final String swoName = NameMangler.mangleKnownName("x10_serialization_write_object");
-		serializationWriteObjectEntity = new Entity(global, swoName, swoType);
-		serializationWriteObjectEntity.setLdIdent(swoName);
-
-		final firm.Type[] drpParameterTypes = new firm.Type[] {typeP, typeP, typeIu};
-		final MethodType drpType = new MethodType(drpParameterTypes, retTypeVoid);
-		final String drpName = NameMangler.mangleKnownName("x10_deserialization_restore_primitive");
-		deserializationRestorePrimitiveEntity = new Entity(global, drpName, drpType);
-		deserializationRestorePrimitiveEntity.setLdIdent(drpName);
-
-		final firm.Type[] droParamTypes = new firm.Type[] {typeP, typeP};
-		final MethodType droType = new MethodType(droParamTypes, retTypeVoid);
-		final String droName = NameMangler.mangleKnownName("x10_deserialization_restore_object");
-		deserializationRestoreObjectEntity = new Entity(global, droName, droType);
-		deserializationRestoreObjectEntity.setLdIdent(droName);
-
-		// second step: generate the (de)serialize methods for all Firm classtypes.
-		for (final Type type : firmTypes) {
-			if (!(type instanceof ClassType))
-				continue;
-
-			final ClassType classType = (ClassType) type;
-			generateSerializationMethod(classType);
-			generateDeserializationMethod(classType);
-		}
-
-		// third step: emit the table used to lookup the __deserialize method and vtable address
+		// Emit the table used to lookup the __deserialize method and vtable address
 		// of a class. It is indexed by the class' type uid.
 		final String dmtName = NameMangler.mangleKnownName(DESERIALIZE_METHOD_TABLE_NAME);
 		final int nEntries = maxClassUid * 2;
@@ -305,7 +297,14 @@ public final class SerializationSupport {
 		return null;
 	}
 
-	private void generateSerializationMethod(final ClassType klass) {
+	/**
+	 * Generate the serialization function for the given type.
+	 * @param astType The X10 type.
+	 * @param klass The corresponding Firm type.
+	 * @param firmTypeSystem Reference to the Firm type system object.
+	 */
+	public void generateSerializationFunction(final X10ClassType astType, final ClassType klass,
+	                                          final FirmTypeSystem firmTypeSystem) {
 		if (!serializeMethods.containsKey(klass))
 			return;
 
@@ -320,7 +319,7 @@ public final class SerializationSupport {
 		final Node bufPtr = con.newProj(args, Mode.getP(), 0);
 		final Node objPtr = con.newProj(args, Mode.getP(), 1);
 
-		if (klass.getName().equals("x10.lang.String")) {
+		if (astType.isString()) {
 			final String stringSerializeName = NameMangler.mangleKnownName("x10_string_serialize");
 			final Entity stringSerializeEntity = new Entity(klass, stringSerializeName, serializeMethodType);
 			final Node stringSerializeSymc = con.newSymConst(stringSerializeEntity);
@@ -400,7 +399,14 @@ public final class SerializationSupport {
 		con.finish();
 	}
 
-	private void generateDeserializationMethod(final ClassType klass) {
+	/**
+	 * Generate the deserialization function for the given type.
+	 * @param astType The X10 type.
+	 * @param klass The corresponding Firm type.
+	 * @param firmTypeSystem Reference to the Firm type system object.
+	 */
+	public void generateDeserializationFunction(final X10ClassType astType, final ClassType klass,
+	                                            final FirmTypeSystem firmTypeSystem) {
 		if (!deserializeMethods.containsKey(klass))
 			return;
 
@@ -416,7 +422,7 @@ public final class SerializationSupport {
 		final Node bufPtr = con.newProj(args, Mode.getP(), 0);
 		final Node objPtr = con.newProj(args, Mode.getP(), 1);
 
-		if (klass.getName().equals("x10.lang.String")) {
+		if (astType.isString()) {
 			final String stringDeserializeName = NameMangler.mangleKnownName("x10_string_deserialize");
 			final Entity stringDeserializeEntity = new Entity(klass, stringDeserializeName, deserializeMethodType);
 			final Node stringDeserializeSymc = con.newSymConst(stringDeserializeEntity);
