@@ -29,6 +29,7 @@ import firm.nodes.Alloc;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Cond;
+import firm.nodes.CopyB;
 import firm.nodes.Load;
 import firm.nodes.Node;
 import firm.nodes.OOConstruction;
@@ -643,6 +644,7 @@ public final class SerializationSupport {
 						"no constructor 'this(x10.io.SerialData)' for custom deserialization protocol found in %s",
 						klass.getName()));
 
+			final boolean isStruct = astType.isX10Struct();
 			Node mem = con.getCurrentMem();
 			final Node customSymc = con.newSymConst(customDeserializeConstructor);
 
@@ -659,9 +661,22 @@ public final class SerializationSupport {
 			mem = con.newProj(load, Mode.getM(), Load.pnM);
 			final Node serialData = con.newProj(load, Mode.getP(), Load.pnRes);
 
-			final Node ctorCall = con.newCall(mem, customSymc, new Node[] {objPtr, serialData},
+			final Node[] ctorCallArgs = isStruct ? new Node[] {serialData} : new Node[] {objPtr, serialData};
+			final Node ctorCall = con.newCall(mem, customSymc, ctorCallArgs,
 					customDeserializeConstructor.getType());
 			mem = con.newProj(ctorCall, Mode.getM(), Call.pnM);
+
+			/* If we're dealing with a struct, the constructor does not take a hidden parameter (see above)
+			 * and returns the newly constructed struct by value.  We therefore have to copy the returned
+			 * value to the target destination.
+			 */
+			if (isStruct) {
+				final Node results = con.newProj(ctorCall, Mode.getT(), Call.pnTResult);
+				final Mode resultMode = firmTypeSystem.getFirmMode(astType);
+				final Node newObj = con.newProj(results, resultMode, 0);
+				final Node copyB = con.newCopyB(mem, objPtr, newObj, klass);
+				mem = con.newProj(copyB, Mode.getM(), CopyB.pnM);
+			}
 
 			con.setCurrentMem(mem);
 		} else {

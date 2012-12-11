@@ -254,6 +254,12 @@ public class FirmTypeSystem {
 			// interfaces() returns duplicates???
 			if (ifaceSet.contains(t))
 				continue;
+			/* If the struct implements CustomSerialization, the boxed type must *not*
+			 * implement it.  The struct contained in the box is custom serialized,
+			 * but the box itself is not.  We therefore skip the interface here.
+			 */
+			if (t.fullName().toString().equals("x10.io.CustomSerialization"))
+				continue;
 			ifaceSet.add(t);
 
 			final X10ParsedClassType iface = (X10ParsedClassType) t;
