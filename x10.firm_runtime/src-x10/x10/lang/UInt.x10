@@ -433,9 +433,7 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      * binary representation, that is, if it is equal to zero.
      * @return a UInt value with a single one-bit, in the position of the lowest-order one-bit in this UInt, or zero if this UInt is itself equal to zero.
      */
-    // @Native("java", "java.lang.Integer.lowestOneBit(#this)")
-    @Native("c++", "((x10_uint) x10aux::int_utils::lowestOneBit(#0))")
-    public native def lowestOneBit(): UInt;
+    public def lowestOneBit(): UInt = this & (-this);
 
     /**
      * Returns the number of zero bits preceding the highest-order ("leftmost")

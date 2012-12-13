@@ -375,9 +375,7 @@ public struct Long implements Comparable[Long], Arithmetic[Long], Bitwise[Long],
      * binary representation, that is, if it is equal to zero.
      * @return a Long value with a single one-bit, in the position of the highest-order one-bit in this Long, or zero if this Long is itself equal to zero.
      */
-    @Native("java", "java.lang.Long.highestOneBit(#this)")
-    @Native("c++", "x10aux::long_utils::highestOneBit(#0)")
-    public native def highestOneBit(): Long;
+    public def highestOneBit(): Long = (this as ULong).highestOneBit() as Long;
 
     /**
      * Returns a Long value with at most a single one-bit, in the position
@@ -386,9 +384,7 @@ public struct Long implements Comparable[Long], Arithmetic[Long], Bitwise[Long],
      * binary representation, that is, if it is equal to zero.
      * @return a Long value with a single one-bit, in the position of the lowest-order one-bit in this Long, or zero if this Long is itself equal to zero.
      */
-    @Native("java", "java.lang.Long.lowestOneBit(#this)")
-    @Native("c++", "x10aux::long_utils::lowestOneBit(#0)")
-    public native def lowestOneBit(): Long;
+    public def lowestOneBit(): Long = (this as ULong).lowestOneBit() as Long;
 
     /**
      * Returns the number of zero bits preceding the highest-order ("leftmost")
@@ -397,9 +393,7 @@ public struct Long implements Comparable[Long], Arithmetic[Long], Bitwise[Long],
      * representation, in other words if it is equal to zero.
      * @return the number of zero bits preceding the highest-order one-bit in the two's complement binary representation of this Long, or 64 if this Long is equal to zero.
      */
-    @Native("java", "java.lang.Long.numberOfLeadingZeros(#this)")
-    @Native("c++", "x10aux::long_utils::numberOfLeadingZeros(#0)")
-    public native def numberOfLeadingZeros(): Int;
+    public def numberOfLeadingZeros(): Int = (this as ULong).numberOfLeadingZeros();
 
     /**
      * Returns the number of zero bits following the lowest-order ("rightmost")
@@ -408,9 +402,7 @@ public struct Long implements Comparable[Long], Arithmetic[Long], Bitwise[Long],
      * representation, in other words if it is equal to zero.
      * @return the number of zero bits following the lowest-order one-bit in the two's complement binary representation of this Long, or 64 if this Long is equal to zero.
      */
-    @Native("java", "java.lang.Long.numberOfTrailingZeros(#this)")
-    @Native("c++", "x10aux::long_utils::numberOfTrailingZeros(#0)")
-    public native def numberOfTrailingZeros(): Int;
+    public def numberOfTrailingZeros(): Int = (this as ULong).numberOfTrailingZeros();
 
     /**
      * Returns the number of one-bits in the two's complement binary
@@ -418,9 +410,7 @@ public struct Long implements Comparable[Long], Arithmetic[Long], Bitwise[Long],
      * to as the <i>population count</i>.
      * @return the number of one-bits in the two's complement binary representation of this Long.
      */
-    @Native("java", "java.lang.Long.bitCount(#this)")
-    @Native("c++", "x10aux::long_utils::bitCount(#0)")
-    public native def bitCount(): Int;
+    public def bitCount(): Int = (this as ULong).bitCount();
 
     /**
      * Returns the value obtained by rotating the two's complement binary

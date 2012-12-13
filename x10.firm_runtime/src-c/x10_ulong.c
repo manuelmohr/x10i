@@ -1,32 +1,32 @@
 #include "x10.h"
 #include "x10_string.h"
 
-x10_int _ZN3x104lang5ULong8bitCountEv(x10_ulong self)
+x10_int _ZN3x104lang5ULong8bitCountEv(x10_ulong ux)
 {
-	extern x10_int _ZN3x104lang4Long8bitCountEv(x10_long);
-	return _ZN3x104lang4Long8bitCountEv((x10_long)self);
+	return __builtin_popcountll(ux);
 }
 
 x10_int _ZN3x104lang5ULong21numberOfTrailingZerosEv(x10_ulong self)
 {
-	extern x10_int _ZN3x104lang4Long21numberOfTrailingZerosEv(x10_long);
-	return _ZN3x104lang4Long21numberOfTrailingZerosEv((x10_long)self);
+	if (self == 0)
+		return sizeof(self)*8;
+	return __builtin_ctzll(self);
 }
 
 x10_int _ZN3x104lang5ULong20numberOfLeadingZerosEv(x10_ulong self)
 {
-	extern x10_int _ZN3x104lang4Long20numberOfLeadingZerosEv(x10_long);
-	return _ZN3x104lang5ULong20numberOfLeadingZerosEv((x10_long)self);
-}
-
-x10_ulong _ZN3x104lang5ULong12lowestOneBitEv(x10_ulong self)
-{
-	extern x10_long _ZN3x104lang4Long12lowestOneBitEv(x10_long);
-	return (x10_ulong)_ZN3x104lang4Long12lowestOneBitEv((x10_long)self);
+	if (self == 0)
+		return sizeof(self)*8;
+	return __builtin_clzll(self);
 }
 
 x10_ulong _ZN3x104lang5ULong13highestOneBitEv(x10_ulong self)
 {
-	extern x10_long _ZN3x104lang4Long13highestOneBitEv(x10_long);
-	return (x10_ulong)_ZN3x104lang4Long13highestOneBitEv((x10_long)self);
+	self |= (self >> 1);
+	self |= (self >> 2);
+	self |= (self >> 4);
+	self |= (self >> 8);
+	self |= (self >> 16);
+	self |= (self >> 32);
+	return self & ~(((x10_ulong)self) >> 1);
 }

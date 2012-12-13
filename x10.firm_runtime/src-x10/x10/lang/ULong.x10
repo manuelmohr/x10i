@@ -432,9 +432,7 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      * binary representation, that is, if it is equal to zero.
      * @return a ULong value with a single one-bit, in the position of the lowest-order one-bit in this ULong, or zero if this ULong is itself equal to zero.
      */
-    // @Native("java", "java.lang.Long.lowestOneBit(#this)")
-    @Native("c++", "((x10_ulong) x10aux::long_utils::lowestOneBit(#0))")
-    public native def lowestOneBit(): ULong;
+    public def lowestOneBit(): ULong = this & (-this);
 
     /**
      * Returns the number of zero bits preceding the highest-order ("leftmost")

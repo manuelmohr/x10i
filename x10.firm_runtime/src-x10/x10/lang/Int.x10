@@ -380,9 +380,7 @@ public struct Int implements Comparable[Int], Arithmetic[Int], Bitwise[Int], Ord
      * binary representation, that is, if it is equal to zero.
      * @return an Int value with a single one-bit, in the position of the highest-order one-bit in this Int, or zero if this Int is itself equal to zero.
      */
-    @Native("java", "java.lang.Integer.highestOneBit(#this)")
-    @Native("c++", "x10aux::int_utils::highestOneBit(#0)")
-    public native def highestOneBit(): Int;
+    public def highestOneBit(): Int = (this as UInt).highestOneBit() as Int;
 
     /**
      * Returns an Int value with at most a single one-bit, in the position
@@ -391,9 +389,7 @@ public struct Int implements Comparable[Int], Arithmetic[Int], Bitwise[Int], Ord
      * binary representation, that is, if it is equal to zero.
      * @return an Int value with a single one-bit, in the position of the lowest-order one-bit in this Int, or zero if this Int is itself equal to zero.
      */
-    @Native("java", "java.lang.Integer.lowestOneBit(#this)")
-    @Native("c++", "x10aux::int_utils::lowestOneBit(#0)")
-    public native def lowestOneBit(): Int;
+    public def lowestOneBit(): Int = (this as UInt).lowestOneBit() as Int;
 
     /**
      * Returns the number of zero bits preceding the highest-order ("leftmost")
@@ -402,9 +398,7 @@ public struct Int implements Comparable[Int], Arithmetic[Int], Bitwise[Int], Ord
      * representation, in other words if it is equal to zero.
      * @return the number of zero bits preceding the highest-order one-bit in the two's complement binary representation of this Int, or 32 if this Int is equal to zero.
      */
-    @Native("java", "java.lang.Integer.numberOfLeadingZeros(#this)")
-    @Native("c++", "x10aux::int_utils::numberOfLeadingZeros(#0)")
-    public native def numberOfLeadingZeros(): Int;
+    public def numberOfLeadingZeros(): Int = (this as UInt).numberOfLeadingZeros();
 
     /**
      * Returns the number of zero bits following the lowest-order ("rightmost")
@@ -413,9 +407,7 @@ public struct Int implements Comparable[Int], Arithmetic[Int], Bitwise[Int], Ord
      * representation, in other words if it is equal to zero.
      * @return the number of zero bits following the lowest-order one-bit in the two's complement binary representation of this Int, or 32 if this Int is equal to zero.
      */
-    @Native("java", "java.lang.Integer.numberOfTrailingZeros(#this)")
-    @Native("c++", "x10aux::int_utils::numberOfTrailingZeros(#0)")
-    public native def numberOfTrailingZeros(): Int;
+    public def numberOfTrailingZeros(): Int = (this as UInt).numberOfTrailingZeros();
 
     /**
      * Returns the number of one-bits in the two's complement binary
@@ -423,9 +415,7 @@ public struct Int implements Comparable[Int], Arithmetic[Int], Bitwise[Int], Ord
      * to as the <i>population count</i>.
      * @return the number of one-bits in the two's complement binary representation of this Int.
      */
-    @Native("java", "java.lang.Integer.bitCount(#this)")
-    @Native("c++", "x10aux::int_utils::bitCount(#0)")
-    public native def bitCount(): Int;
+    public def bitCount(): Int = (this as UInt).bitCount();
 
     /**
      * Returns the value obtained by rotating the two's complement binary
