@@ -22,7 +22,7 @@ void _ZN3x102io18OutputStreamWriter5writeEi(const x10_outputstreamwriter *self,
 
 /* OutputStreamWriter.write(p: Pointer, len: Int) */
 void _ZN3x102io18OutputStreamWriter5writeEPvi(const x10_outputstreamwriter *self,
-											  x10_pointer p, x10_int len)
+                                              x10_pointer p, x10_int len)
 {
 	size_t written = fwrite(p, len, 1, self->out);
 #ifndef __OCTOPOS__

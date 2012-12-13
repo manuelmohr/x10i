@@ -28,13 +28,13 @@
  */
 x10_int x10_atomic_ops_compareAndSet_32(volatile x10_int* address, x10_int oldValue, x10_int newValue) {
 #if defined(__i386__) || defined(__x86_64__)
-   __asm ("lock cmpxchgl %2, %3"
-          : "=a" (oldValue), "+m" (*address)
-          : "q" (newValue), "m" (*address), "0" (oldValue)
-          : "cc");
-   return oldValue;
+	__asm ("lock cmpxchgl %2, %3"
+	       : "=a" (oldValue), "+m" (*address)
+	       : "q" (newValue), "m" (*address), "0" (oldValue)
+	       : "cc");
+	return oldValue;
 #elif (defined(_ARCH_PPC) || defined(_ARCH_450) || defined(_ARCH_450d))
-   return ppc_compareAndSet32(oldValue, address, newValue);
+	return ppc_compareAndSet32(oldValue, address, newValue);
 #elif defined(__sparc__)
 	#if defined(__sparc_v9__)
 		/* FIXME: is the memory barrier needed? */
@@ -71,25 +71,25 @@ x10_int x10_atomic_ops_compareAndSet_32(volatile x10_int* address, x10_int oldVa
  */
 x10_long x10_atomic_ops_compareAndSet_64(volatile x10_long* address, x10_long oldValue, x10_long newValue) {
 #if !defined(_LP64)
-   /* TODO: in theory on i586 hardware we could do this with inline asm and cmpxchg8b instead of a mutex,
-    * but it isn't trivial to get the register constraints to work correctly.
-    */
-   x10_atomic_ops_lock();
-   x10_long curValue = *address;
-   if (curValue == oldValue) {
-       *address = newValue;
-   }
-   x10_atomic_ops_unlock();
-   return curValue;
+	/* TODO: in theory on i586 hardware we could do this with inline asm and cmpxchg8b instead of a mutex,
+	* but it isn't trivial to get the register constraints to work correctly.
+	*/
+	x10_atomic_ops_lock();
+	x10_long curValue = *address;
+	if (curValue == oldValue) {
+	   *address = newValue;
+	}
+	x10_atomic_ops_unlock();
+	return curValue;
 #else
 #if defined(__x86_64__)
-   __asm ("lock cmpxchgq %2, %3"
-          : "=a" (oldValue), "+m" (*address)
-          : "q" (newValue), "m" (*address), "0" (oldValue)
-          : "cc");
-   return oldValue;
+	__asm ("lock cmpxchgq %2, %3"
+	       : "=a" (oldValue), "+m" (*address)
+	       : "q" (newValue), "m" (*address), "0" (oldValue)
+	       : "cc");
+	return oldValue;
 #elif (defined(_ARCH_PPC) || defined(_ARCH_450) || defined(_ARCH_450d))
-   return ppc_compareAndSet64(oldValue, address, newValue);
+	return ppc_compareAndSet64(oldValue, address, newValue);
 #elif defined(__sparc__)
 	#if defined(__sparc_v9__)
 		/* FIXME: is the memory barrier needed? */
@@ -127,9 +127,9 @@ x10_long x10_atomic_ops_compareAndSet_64(volatile x10_long* address, x10_long ol
  */
 void* x10_atomic_ops_compareAndSet_ptr(volatile void** address, void* oldValue, void* newValue) {
 #if defined(_LP64)
-   return (void*)(x10_atomic_ops_compareAndSet_64((volatile x10_long*)address, (x10_long)oldValue, (x10_long)newValue));
+	return (void*)(x10_atomic_ops_compareAndSet_64((volatile x10_long*)address, (x10_long)oldValue, (x10_long)newValue));
 #else
-   return (void*)(x10_atomic_ops_compareAndSet_32((volatile x10_int*)address, (x10_int)oldValue, (x10_int)newValue));
+	return (void*)(x10_atomic_ops_compareAndSet_32((volatile x10_int*)address, (x10_int)oldValue, (x10_int)newValue));
 #endif
 }
 

@@ -199,21 +199,21 @@ x10_int x10_string_last_index_of_char(const x10_string *self, x10_char c)
 // String.lastIndexOf(String, idx)
 x10_int x10_string_last_index_of_string_from(const x10_string *self, const x10_string *other, x10_int idx)
 {
-x10_null_check(other);
-const x10_int len        = self->len;
-const x10_int needle_len = other->len;
-if (idx >= len-needle_len+1)
-	idx = len-needle_len;
+	x10_null_check(other);
+	const x10_int len        = self->len;
+	const x10_int needle_len = other->len;
+	if (idx >= len-needle_len+1)
+		idx = len-needle_len;
 
-/* TODO: use a less naive implementation */
-idx -= needle_len-1;
-const x10_char *needle = other->chars;
-for ( ; idx >= 0; --idx) {
-	const x10_char *haystack = &self->chars[idx];
-	if (equals(haystack, needle, needle_len))
-		return idx;
-}
-return -1;
+	/* TODO: use a less naive implementation */
+	idx -= needle_len-1;
+	const x10_char *needle = other->chars;
+	for ( ; idx >= 0; --idx) {
+		const x10_char *haystack = &self->chars[idx];
+		if (equals(haystack, needle, needle_len))
+			return idx;
+	}
+	return -1;
 }
 
 // String.lastIndexOf(String)
@@ -225,36 +225,36 @@ x10_int x10_string_last_index_of_string(const x10_string *self, const x10_string
 // String.substring(String, int): String
 x10_string *x10_string_substring_from(const x10_string *self, x10_int start_idx)
 {
-check_string_bounds(self, start_idx);
-const x10_int len = self->len - start_idx;
-return x10_string_copy_from(len, &self->chars[start_idx]);
+	check_string_bounds(self, start_idx);
+	const x10_int len = self->len - start_idx;
+	return x10_string_copy_from(len, &self->chars[start_idx]);
 }
 
 // String.substring(String, int, int)
 x10_string *x10_string_substring_from_to(const x10_string *self, x10_int start_idx, x10_int to_idx)
 {
-check_string_bounds(self, start_idx);
-check_string_bounds(self, to_idx);
-if (start_idx > to_idx)
-	x10_throw_exception(X10_INDEX_OUT_OF_BOUNDS_EXCEPTION, T_("In substring"));
+	check_string_bounds(self, start_idx);
+	check_string_bounds(self, to_idx);
+	if (start_idx > to_idx)
+		x10_throw_exception(X10_INDEX_OUT_OF_BOUNDS_EXCEPTION, T_("In substring"));
 
-const x10_int len = to_idx - start_idx;
-return x10_string_copy_from(len, &self->chars[start_idx]);
+	const x10_int len = to_idx - start_idx;
+	return x10_string_copy_from(len, &self->chars[start_idx]);
 }
 
 // String.endsWith(String): Boolean
 x10_boolean x10_string_ends_with(const x10_string *self, const x10_string *other)
 {
-if (other == X10_NULL)
-	return X10_FALSE;
+	if (other == X10_NULL)
+		return X10_FALSE;
 
-const x10_int other_len = other->len;
-const x10_int self_len  = self->len;
-const x10_int start     = self_len - other_len;
-if (start < 0)
-	return X10_FALSE;
-const x10_char *haystack = &self->chars[start];
-return equals(haystack, other->chars, other_len);
+	const x10_int other_len = other->len;
+	const x10_int self_len  = self->len;
+	const x10_int start     = self_len - other_len;
+	if (start < 0)
+		return X10_FALSE;
+	const x10_char *haystack = &self->chars[start];
+	return equals(haystack, other->chars, other_len);
 }
 
 // String.startsWith(String): Boolean
