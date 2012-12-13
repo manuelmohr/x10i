@@ -11,8 +11,8 @@
 
 package x10.lang;
 
-import x10.compiler.NativeRep;
-import x10.compiler.Native;
+import x10.lang.Pointer;
+
 /**
  * Create a global reference encapsulating a given object.  The ref has
  * the property home specifying the place at which it was
@@ -24,84 +24,61 @@ import x10.compiler.Native;
  * <p> At its home place, the value when applied to the empty list of
  * arguments returns its encapsulated value.
  */
-@NativeRep("java", "x10.core.GlobalRef<#T$box>", null, "new x10.rtt.ParameterizedType(x10.core.GlobalRef.$RTT, #T$rtt)")
-@NativeRep("c++", "x10::lang::GlobalRef<#T >", "x10::lang::GlobalRef<#T >", null)
-public struct GlobalRef[T](
-    @Native("java", "(#this).home")
-    @Native("c++", "x10::lang::Place::place((#this)->location)")
-    home:Place) {T <: Object} {
+public struct GlobalRef[T](home: Place) {T <: Object} {
+    public property home(): Place = home;
 
-    @Native("java", "(#this).home")
-    @Native("c++", "x10::lang::Place::place((#this)->location)")
-    public property home():Place = home;
+    private val ptr: Pointer;
 
     /**
      * Create a value encapsulating the given object of type T.
      */
-    @Native("c++", "x10::lang::GlobalRef(#this)")
-    public native def this(t:T):GlobalRef[T]{self.home==here};
+    public def this(t: T): GlobalRef[T]{self.home==here} {
+        property(here);
+        ptr = Pointer(t);
+    }
 
     /**
      * Can only be invoked at the place at which the value was
      * created. Returns the object encapsulated in the value.
      */
-    @Native("java", "(#this).$apply$G()")
-    @Native("c++", "(#this)->__apply()")
-    public native operator this(){here == this.home}:T;
+    public operator this(){here==this.home}: T {
+        return localApply();
+    }
 
     /**
-     * Unsafe native method to get value.
+     * Unsafe method to get value.
      * Assumes here == this.home; however this is not enforced
      * by a constraint because it would entail dynamic checks.
      * Must only be called at this.home !
      */
-    @Native("java", "(#this).$apply$G()")
-    @Native("c++", "(#this)->__apply()")
-    private native def localApply():T;
+    private def localApply(): T {
+        return ptr.castTo[T]();
+    }
 
     /**
      * Evaluates the given closure at (this.home), passing as a
      * parameter the object that is encapsulated by this GlobalRef.
-     * This is equivalent to the following idiom:
-     *   if (here == this.home) return eval(this());
-     *   else return at (this.home) eval(this());
-     * However, because it does not use a place constraint on the
-     * method, it avoids a dynamic place check on the first branch.
      */
-    @Native("java", "x10.core.GlobalRef.LocalEval.<#T$box,#U$box>evalAtHome(#T$rtt,#U$rtt,#this,#eval)")
-    @Native("c++", "x10::lang::GlobalRef__LocalEval::evalAtHome<#T,#U >(#this, #eval)")
-    public native def evalAtHome[U](eval:(T)=> U):U;
+    public def evalAtHome[U](eval: (T) => U): U {
+        if (here == this.home) {
+            return eval(localApply());
+        } else {
+            return at (this.home) eval(localApply());
+        }
+    }
 
     /**
      * If (this.home == here), returns the object that is
      * encapsulated by this GlobalRef.  If (this.home != here),
      * returns a copy at the current place.
-     * This is equivalent to the following idiom:
-     *   if (here == this.home) return this();
-     *   else return at (this.home) this();
-     * However, because it does not use a place constraint on the
-     * method, it avoids a dynamic place check on the first branch.
      */
-    @Native("java", "x10.core.GlobalRef.LocalEval.<#T$box>getLocalOrCopy(#T$rtt,#this)")
-    @Native("c++", "x10::lang::GlobalRef__LocalEval::getLocalOrCopy<#T >(#this)")
-    public native def getLocalOrCopy():T;
-
-    /*
-     * @Native methods from Any because the handwritten C++ code doesn't 100% match
-     * what the compiler would have generated.
-     */
-
-    @Native("java", "(#this).toString()")
-    @Native("c++", "(#this)->toString()")
-    public native def  toString():String;
-
-    @Native("java", "(#this).equals(#that)")
-    @Native("c++", "(#this)->equals(#that)")
-    public native def equals(that:Any):Boolean;
-
-    @Native("java", "(#this).hashCode()")
-    @Native("c++", "(#this)->hashCode()")
-    public native def hashCode():Int;
+    public def getLocalOrCopy(): T {
+        if (here == this.home) {
+            return localApply();
+        } else {
+            return at (this.home) localApply();
+        }
+    }
 
     private static class LocalEval {
         /**
@@ -109,8 +86,6 @@ public struct GlobalRef[T](
          * This is equivalent to the following idiom:
          *   if (here == ref.home) return eval(ref);
          *   else return at (ref.home) eval(ref);
-         * However, as it does not use a place constraint on the
-         * method, it avoids a dynamic place check on the first branch.
          */
         public static def evalAtHome[T,U](ref:GlobalRef[T], eval:(T)=> U){T <: Object}:U {
             if (here == ref.home) {
@@ -124,11 +99,6 @@ public struct GlobalRef[T](
          * If (ref.home == here), returns the object that is
          * encapsulated by ref.  If (ref.home != here),
          * returns a copy at the current place.
-         * This is equivalent to the following idiom:
-         *   if (here == ref.home) return ref();
-         *   else return at (ref.home) ref();
-         * However, as it does not use a place constraint on the
-         * method, it avoids a dynamic place check on the first branch.
          */
         public static def getLocalOrCopy[T](ref:GlobalRef[T]){T <: Object}:T {
             if (here == ref.home) {
@@ -138,6 +108,5 @@ public struct GlobalRef[T](
             }
         }
     }
-
 }
 public type GlobalRef[T](p:Place) {T<:Object} = GlobalRef[T]{self.home==p};
