@@ -20,5 +20,5 @@ int main(int argc, char **argv)
 	exit_finish_state();
 	destroy_locks();
 
-	return 0;
+	return exit_code;
 }

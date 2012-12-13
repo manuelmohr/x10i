@@ -11,4 +11,6 @@ void exit_finish_state(void);
 
 void x10_rt_init(void);
 
+extern int exit_code;
+
 #endif
