@@ -123,4 +123,38 @@ abstract class X10LangPointer {
 			codeGenerator.finishConstruction(entity, savedConstruction);
 		}
 	}
+
+	/**
+	 * Creates an instance of {@code x10.lang.Pointer.castTo[T](): T}.
+	 */
+	static class CastTo implements BuiltinMethodGenerator {
+		@Override
+		public void generate(final FirmGenerator codeGenerator, final MethodInstance meth,
+		                     final List<LocalInstance> formals) {
+			final FirmTypeSystem firmTypeSystem = codeGenerator.getFirmTypeSystem();
+			final X10ClassType owner = (X10ClassType) meth.container();
+			final Entity entity = firmTypeSystem.getMethodEntity(meth);
+
+			assert meth.typeParameters().size() == 1;
+			final Type typeParameter = meth.typeParameters().get(0);
+
+			assert formals.size() == 0;
+
+			final Type returnType = meth.returnType();
+			final MethodConstruction savedConstruction
+				= codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
+						returnType, owner);
+
+			final MethodConstruction con = codeGenerator.getFirmConstruction();
+			final Node ptr = con.getVariable(0, Mode.getP());
+			final Node result = con.newConv(ptr, firmTypeSystem.getFirmMode(typeParameter));
+			final Node mem = con.getCurrentMem();
+			final Node retNode = con.newReturn(mem, new Node[]{result});
+			assert retNode != null;
+			con.getGraph().getEndBlock().addPred(retNode);
+			con.setUnreachable();
+
+			codeGenerator.finishConstruction(entity, savedConstruction);
+		}
+	}
 }

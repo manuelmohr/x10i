@@ -18,3 +18,8 @@ x10_string *_ZN3x104lang7Pointer8toStringEv(x10_pointer ptr)
 	snprintf(buf, sizeof(buf), "%p", ptr);
 	return x10_string_from_cstring(buf);
 }
+
+x10_pointer _ZN3x104lang7PointerC1EPN3x104lang3AnyE(x10_any *any)
+{
+	return any;
+}

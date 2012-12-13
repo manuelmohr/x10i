@@ -5,6 +5,8 @@ import x10.util.Ordered;
 public struct Pointer implements Comparable[Pointer] {
     public static val NULL: Pointer = getNullPointer();
 
+    public native def this(any: Any);
+
     public native def read[T](): T;
     public native def write[T](val y:T): void;
 
@@ -32,4 +34,7 @@ public struct Pointer implements Comparable[Pointer] {
     public def compareTo(x:Pointer): Int = this == x ? 0 : this < x ? -1 : 1;
 
     private static native def getNullPointer(): Pointer;
+
+    /** Cast pointer to type T, i.e. (T) ptr in C. */
+    public native def castTo[T](): T;
 }
