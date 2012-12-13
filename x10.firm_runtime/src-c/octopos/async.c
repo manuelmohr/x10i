@@ -4,6 +4,7 @@
 #include "async.h"
 #include "remote_exec.h"
 #include "ilocal_data.h"
+#include "x10_runtime.h"
 
 /**
  * A finish_state holds all information for a finish statement.

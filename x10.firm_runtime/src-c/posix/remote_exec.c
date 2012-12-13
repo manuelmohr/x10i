@@ -1,5 +1,6 @@
 #include <pthread.h>
 #include "remote_exec.h"
+#include "init.h"
 
 //#define X10_RUNTIME_POSIX_DEBUG
 

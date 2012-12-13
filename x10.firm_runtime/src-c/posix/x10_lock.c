@@ -3,6 +3,7 @@
 
 #include "x10_lock.h"
 #include "util.h"
+#include "init.h"
 #include "posix_types.h"
 
 void _ZN3x104util10concurrent4LockC1Ev(x10_lock *self)
@@ -91,12 +92,12 @@ x10_int _ZN3x104util10concurrent4Lock12getHoldCountEv(x10_lock *self)
 
 pthread_mutex_t x10_op_lock;
 
-static void __attribute__((constructor)) init_locks(void)
+void init_locks(void)
 {
 	pthread_mutex_init(&x10_op_lock, NULL);
 }
 
-static void __attribute__((destructor)) destroy_locks(void)
+void destroy_locks(void)
 {
 	pthread_mutex_destroy(&x10_op_lock);
 }

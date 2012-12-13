@@ -1,6 +1,7 @@
 #include "remote_exec.h"
 #include "ilocal_data.h"
 #include "async.h"
+#include "init.h"
 
 void x10_rt_init()
 {

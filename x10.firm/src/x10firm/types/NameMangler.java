@@ -14,6 +14,8 @@ import x10.types.MethodInstance;
 import x10.types.ParameterType;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
+import x10.types.X10MethodDef;
+import x10.util.HierarchyUtils;
 import x10firm.CompilerOptions;
 import x10firm.MachineTriple;
 import x10firm.visit.CodeGenError;
@@ -62,6 +64,7 @@ public final class NameMangler {
 	private static final String MANGLED_CONSTRUCTOR = "C1";
 	private static final String MANGLED_VTABLE = "TV";
 	private static final String MANGLED_TYPEINFO = "TI";
+	private static final String X10_MAIN = "x10_main";
 
 	private static final String MANGLED_ANONYMOUS_CLASS_PREFIX = "$ANONYMOUS";
 
@@ -378,6 +381,10 @@ public final class NameMangler {
 
 	/** Mangles a complete method including container and formals. */
 	public static String mangleMethod(final MethodInstance method) {
+		if (HierarchyUtils.isMainMethod((X10MethodDef)method.def(), typeSystem.getTypeSystem().emptyContext())) {
+			return mangleKnownName(X10_MAIN);
+		}
+
 		final StringBuilder buf = new StringBuilder();
 
 		buf.append(platformPrefix);

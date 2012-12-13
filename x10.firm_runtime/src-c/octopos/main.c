@@ -1,7 +1,7 @@
 #include <octopos.h>
 #include "ilocal_data.h"
-
-extern int main(int argc, char **argv);
+#include "main.h"
+#include "init.h"
 
 void main_ilet(claim_t claim)
 {
@@ -25,7 +25,10 @@ void main_ilet(claim_t claim)
 	/* begin main i-let's finish block */
 	_ZN3x104lang7Runtime16finishBlockBeginEv();
 
-	main(0, NULL);
+	x10_rt_init();
+
+	x10_object *args = NULL;
+	x10_main(args);
 
 	/* end main i-let's finish block */
 	_ZN3x104lang7Runtime14finishBlockEndEv();

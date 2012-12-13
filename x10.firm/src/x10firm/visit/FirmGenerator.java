@@ -141,7 +141,6 @@ import x10.types.constants.ConstantValue;
 import x10.types.constants.DoubleValue;
 import x10.types.constants.FloatValue;
 import x10.types.constants.IntegralValue;
-import x10.util.HierarchyUtils;
 import x10.visit.X10DelegatingVisitor;
 import x10firm.CompilerOptions;
 import x10firm.types.FirmTypeSystem;
@@ -157,7 +156,6 @@ import com.sun.jna.Pointer;
 import firm.ArrayType;
 import firm.ClassType;
 import firm.CompoundType;
-import firm.Construction;
 import firm.DebugInfo;
 import firm.Entity;
 import firm.Graph;
@@ -182,7 +180,6 @@ import firm.nodes.Call;
 import firm.nodes.CopyB;
 import firm.nodes.Load;
 import firm.nodes.Node;
-import firm.nodes.OOConstruction;
 import firm.nodes.Store;
 import firm.nodes.Switch;
 
@@ -750,55 +747,6 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		visitAppropriate(dec.body());
 
 		finishConstruction(entity, savedConstruction);
-
-		if (HierarchyUtils.isMainMethod(def, typeSystem.getTypeSystem().emptyContext())) {
-			processMainMethod(entity);
-		}
-	}
-
-	private void processMainMethod(final Entity mainEntity) {
-		/* let's create a simple "main" function which just calls the other main */
-		final firm.Type global = Program.getGlobalType();
-		/* let's hope the X10 int type is compatible to the C int-type */
-		final firm.Type intType = firmTypeSystem.asType(typeSystem.getTypeSystem().Int());
-		final firm.Type[] returnTypes = new firm.Type[] {intType};
-		final firm.Type[] parameterTypes = new firm.Type[] {};
-		final MethodType mainType = new MethodType(parameterTypes, returnTypes);
-		String name = "main";
-		name = NameMangler.mangleKnownName(name);
-		final Entity entity = new Entity(global, name, mainType);
-		entity.setLdIdent(name);
-		entity.addLinkage(ir_linkage.IR_LINKAGE_HIDDEN_USER);
-
-		final Graph graph = new Graph(entity, 0);
-		final Construction construction = new OOConstruction(graph);
-
-		final Entity initEntity = new Entity(global,
-				NameMangler.mangleKnownName("x10_rt_init"),
-				new MethodType(new firm.Type[] {}, new firm.Type[] {}));
-		final Node initSymConst = construction.newSymConst(initEntity);
-
-		Node mem = construction.getCurrentMem();
-		final Node initCall = construction.newCall(mem, initSymConst, new Node[] {}, initEntity.getType());
-		mem = construction.newProj(initCall, Mode.getM(), Call.pnM);
-
-		final Node symConst = construction.newSymConst(mainEntity);
-		final firm.Type type = mainEntity.getType();
-		final firm.Type paramType = ((MethodType) type).getParamType(0);
-		/* TODO: convert the arguments passed to the Array[String] */
-		final Node args = construction.newConst(paramType.getMode().getNull());
-		final Node call = construction.newCall(mem, symConst, new Node[] {args}, type);
-		mem = construction.newProj(call, Mode.getM(), Call.pnM);
-		construction.setCurrentMem(mem);
-
-		final Node returnMem = construction.getCurrentMem();
-		final Node zero = construction.newConst(intType.getMode().getNull());
-		final Node returnn = construction.newReturn(returnMem, new Node[] {zero});
-		construction.getGraph().getEndBlock().addPred(returnn);
-		construction.setUnreachable();
-
-		construction.finish();
-		Program.setMainGraph(graph);
 	}
 
 	@Override

@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "async.h"
+#include "init.h"
 #include "remote_exec.h"
 #include "x10_runtime.h"
 
@@ -170,7 +171,7 @@ void _ZN3x104lang7Runtime16finishBlockBeginEv(void)
 	finish_state_set_current(nested);
 }
 
-static void __attribute__((constructor)) init_finish_state(void)
+void init_finish_state(void)
 {
 	/* initialize main thread's finish state */
 	if (pthread_key_create(&enclosing_finish_state, NULL))
@@ -224,7 +225,7 @@ void _ZN3x104lang7Runtime14finishBlockEndEv(void)
 	finish_state_set_current(parent);
 }
 
-static void __attribute__((destructor)) exit_finish_state(void)
+void exit_finish_state(void)
 {
 	/* end main thread's finish block */
 	_ZN3x104lang7Runtime14finishBlockEndEv();

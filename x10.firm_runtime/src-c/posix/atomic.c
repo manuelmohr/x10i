@@ -1,6 +1,7 @@
 #include <pthread.h>
 #include <stdio.h>
 
+#include "init.h"
 #include "util.h"
 #include "async.h"
 
@@ -8,7 +9,7 @@ static pthread_cond_t      x10_atomic_cond       = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t     x10_atomic_mutex;
 static pthread_mutexattr_t x10_atomic_mutex_attr;
 
-void __attribute__((constructor)) init_mutex(void)
+void init_mutex(void)
 {
 	pthread_mutexattr_init(&x10_atomic_mutex_attr);
 	pthread_mutexattr_settype(&x10_atomic_mutex_attr, PTHREAD_MUTEX_RECURSIVE);

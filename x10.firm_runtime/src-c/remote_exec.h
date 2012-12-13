@@ -10,8 +10,6 @@ enum x10_rt_message_types {
 
 typedef void (*place_execute_func)(void *);
 
-void        x10_rt_init();
-
 x10_int     x10_rt_get_here_id();
 void        x10_rt_set_here_id(x10_int id);
 
