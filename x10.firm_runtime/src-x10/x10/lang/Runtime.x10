@@ -54,6 +54,7 @@ public final class Runtime {
     //public static def runAsync(clocks:Rail[Clock], body:()=>void):void { }
 
     public static def runAsync(body:()=>void):void {
+        ensureNotInAtomic();
         executeParallel(body);
     }
 
@@ -76,7 +77,7 @@ public final class Runtime {
      * Run at statement
      */
     public static def runAt(place:Place, body:()=>void):void {
-        Runtime.ensureNotInAtomic();
+        ensureNotInAtomic();
 
         if (place == here) {
             try {
@@ -98,7 +99,7 @@ public final class Runtime {
      * Eval at expression
      */
     public static def evalAt[T](place:Place, eval:()=>T):T {
-        Runtime.ensureNotInAtomic();
+        ensureNotInAtomic();
 
         var res : T;
         if (place == here) {

@@ -5,8 +5,6 @@
 #include "remote_exec.h"
 #include "ilocal_data.h"
 
-extern void _ZN3x104lang7Runtime17ensureNotInAtomicEv(void);
-
 /**
  * A finish_state holds all information for a finish statement.
  * All its child activities are tracked. Also, their children must register
@@ -167,9 +165,6 @@ void _ZN3x104lang7Runtime16finishBlockBeginEv(void)
 /* x10.lang.Runtime.executeParallel(body:()=>void) */
 void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(void *body)
 {
-	/* x10.lang.Runtime.ensureNotInAtomic() */
-	_ZN3x104lang7Runtime17ensureNotInAtomicEv();
-
 	finish_state  *enclosing = finish_state_get_current();
 	async_closure *ac        = malloc(sizeof(async_closure));
 	simple_ilet   *child     = malloc(sizeof(simple_ilet));
