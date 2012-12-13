@@ -30,7 +30,6 @@ import x10.util.Ordered;
 public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt], Ordered[UInt] {
 
     /** The actual number with Int representation */
-    /* [FIRM_CHANGE] */
     /*
     public val intVal:Int;
     public def this(value:Int) {
@@ -47,7 +46,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "x10.core.Unsigned.lt(#this, #x)")
     @Native("c++",  "((#0) < (#1))")
-     /* [FIRM_CHANGE] */
     public native operator this < (x:UInt): Boolean;
 
     /**
@@ -59,7 +57,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "x10.core.Unsigned.gt(#this, #x)")
     @Native("c++",  "((#0) > (#1))")
-     /* [FIRM_CHANGE] */
     public native operator this > (x:UInt): Boolean;
 
     /**
@@ -71,7 +68,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "x10.core.Unsigned.le(#this, #x)")
     @Native("c++",  "((#0) <= (#1))")
-    /* [FIRM_CHANGE] */
     public native operator this <= (x:UInt): Boolean;
 
     /**
@@ -83,7 +79,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "x10.core.Unsigned.ge(#this, #x)")
     @Native("c++",  "((#0) >= (#1))")
-    /* [FIRM_CHANGE] */
     public native operator this >= (x:UInt): Boolean;
 
 
@@ -96,7 +91,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "((#this) + (#x))")
     @Native("c++",  "((x10_uint) ((#0) + (#1)))")
-    /* [FIRM_CHANGE] */
     public native operator this + (x:UInt): UInt;
 
     /**
@@ -108,7 +102,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "((#this) - (#x))")
     @Native("c++",  "((x10_uint) ((#0) - (#1)))")
-    /* [FIRM_CHANGE] */
     public native operator this - (x:UInt): UInt;
 
     /**
@@ -120,7 +113,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "((#this) * (#x))")
     @Native("c++",  "((x10_uint) ((#0) * (#1)))")
-    /* [FIRM_CHANGE] */
     public native operator this * (x:UInt): UInt;
 
     /**
@@ -131,7 +123,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "x10.core.Unsigned.div(#this, #x)")
     @Native("c++",  "((x10_uint) ((#0) / x10aux::zeroCheck(#1)))")
-    /* [FIRM_CHANGE] */
     public native operator this / (x:UInt): UInt;
 
     /**
@@ -142,7 +133,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "x10.core.Unsigned.rem(#this, #x)")
     @Native("c++",  "((x10_uint) ((#0) % x10aux::zeroCheck(#1)))")
-    /* [FIRM_CHANGE] */
     public native operator this % (x:UInt): UInt;
 
     /**
@@ -152,7 +142,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "((int) +(#this))")
     @Native("c++",  "((x10_uint) +(#0))")
-    /* [FIRM_CHANGE] */
     public native operator + this: UInt;
 
     /**
@@ -163,7 +152,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "((int) -(#this))")
     @Native("c++",  "((x10_int) -(#0))")
-    /* [FIRM_CHANGE] */
     public native operator - this: UInt;
 
 
@@ -230,7 +218,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "((#this) << (#count))")  // no mask. Java defines shift as masked.
     @Native("c++",  "((x10_uint) ((#0) << (0x1f & (#1))))")
-     /* [FIRM_CHANGE] */
     public native operator this << (count:Int): UInt;
 
     /**
@@ -243,7 +230,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "((#this) >>> (#count))")  // no mask. Java defines shift as masked.
     @Native("c++",  "((x10_uint) ((#0) >> (0x1f & (#1))))")
-     /* [FIRM_CHANGE] */
     public native operator this >> (count:Int): UInt;
 
     /**
@@ -257,7 +243,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "((#this) >>> (#count))")  // no mask. Java defines shift as masked.
     @Native("c++",  "((x10_uint) ((#0) >> (0x1f & (#1))))")
-     /* [FIRM_CHANGE] */
     public native operator this >>> (count:Int): UInt;
 
     /**
@@ -267,7 +252,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "((int) ~(#this))")
     @Native("c++",  "((x10_uint) ~(#0))")
-     /* [FIRM_CHANGE] */
     public native operator ~ this: UInt;
 
 
@@ -278,7 +262,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "((int) (((byte)(#x)) & 0xff))")
     @Native("c++",  "((x10_uint) (#1))")
-     /* [FIRM_CHANGE] */
     public native static operator (x:UByte): UInt;
 
     /**
@@ -288,7 +271,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "((int) (((short)(#x)) & 0xffff))")
     @Native("c++",  "((x10_uint) (#1))")
-     /* [FIRM_CHANGE] */
     public native static operator (x:UShort): UInt;
 
     /**
@@ -298,7 +280,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "((int)(long)(#x))")
     @Native("c++",  "((x10_uint) (#1))")
-     /* [FIRM_CHANGE] */
     public native static operator (x:ULong) as UInt;
 
 
@@ -309,7 +290,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "((int)(byte)(#x))")
     @Native("c++",  "((x10_uint) (#1))")
-     /* [FIRM_CHANGE] */
     public native static operator (x:Byte): UInt;
 
     /**
@@ -319,7 +299,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "((int)(short)(#x))")
     @Native("c++",  "((x10_uint) (#1))")
-     /* [FIRM_CHANGE] */
     public native static operator (x:Short): UInt;
 
     /**
@@ -329,7 +308,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "((int)(long)(#x))")
     @Native("c++",  "((x10_uint) (#1))")
-     /* [FIRM_CHANGE] */
     public native static operator (x:Long) as UInt;
 
     /**
@@ -339,7 +317,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "((int)(float)(#x))")
     @Native("c++",  "x10aux::float_utils::toUInt(#1)")
-    /* [FIRM_CHANGE] */
     public native static operator (x:Float) as UInt;
 
     /**
@@ -349,7 +326,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "((int)(double)(#x))")
     @Native("c++",  "x10aux::double_utils::toUInt(#1)")
-    /* [FIRM_CHANGE] */
     public native static operator (x:Double) as UInt;
 
     /**
@@ -359,7 +335,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "((int)(int)(#x))")
     @Native("c++",  "((x10_uint) (#1))")
-    /* [FIRM_CHANGE] */
     public native static operator (x:Int) as UInt;
 
 
@@ -429,7 +404,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "java.lang.Integer.parseInt(#s, #radix)")
     @Native("c++", "(x10aux::int_utils::parseUInt(#1, #2))")
-    /* [FIRM_CHANGE] */
     public native static def parse(s:String, radix:Int): UInt; //throwsNumberFormatException
 
     /**
@@ -450,7 +424,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "java.lang.Integer.highestOneBit(#this)")
     @Native("c++", "((x10_uint) x10aux::int_utils::highestOneBit(#0))")
-    /* [FIRM_CHANGE] */
     public native def highestOneBit(): UInt;
 
     /**
@@ -462,7 +435,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "java.lang.Integer.lowestOneBit(#this)")
     @Native("c++", "((x10_uint) x10aux::int_utils::lowestOneBit(#0))")
-    /* [FIRM_CHANGE] */
     public native def lowestOneBit(): UInt;
 
     /**
@@ -474,7 +446,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "java.lang.Integer.numberOfLeadingZeros(#this)")
     @Native("c++", "x10aux::int_utils::numberOfLeadingZeros(#0)")
-    /* [FIRM_CHANGE] */
     public native def numberOfLeadingZeros(): Int;
 
     /**
@@ -486,7 +457,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "java.lang.Integer.numberOfTrailingZeros(#this)")
     @Native("c++", "x10aux::int_utils::numberOfTrailingZeros(#0)")
-    /* [FIRM_CHANGE] */
     public native def numberOfTrailingZeros(): Int;
 
     /**
@@ -497,7 +467,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "java.lang.Integer.bitCount(#this)")
     @Native("c++", "x10aux::int_utils::bitCount(#0)")
-    /* [FIRM_CHANGE] */
     public native def bitCount(): Int;
 
     /**
@@ -574,7 +543,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
     @Native("c++", "x10aux::equals(#0,#1)")
-    /* [FIRM_CHANGE] */
     public def equals(x:Any):Boolean {
         if(x instanceof UInt) {
             return equals(x as UInt);
@@ -589,7 +557,6 @@ public struct UInt implements Comparable[UInt], Arithmetic[UInt], Bitwise[UInt],
      */
     // @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
     @Native("c++", "x10aux::equals(#0,#1)")
-    /* [FIRM_CHANGE] */
     public native def equals(x:UInt):Boolean;
 
     public native def hashCode(): Int;

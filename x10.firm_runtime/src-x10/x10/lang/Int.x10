@@ -23,7 +23,6 @@ import x10.util.Ordered;
  * that define conversions from other data types, including String,
  * as well as some Int constants.
  */
-/* [FIRM_CHANGE] */
 //@NativeRep("java", "int", null, "x10.rtt.Types.INT")
 //                 v-- when used
 //@NativeRep("c++", "x10_int", "x10_int", null)
@@ -503,7 +502,6 @@ public struct Int implements Comparable[Int], Arithmetic[Int], Bitwise[Int], Ord
      */
     @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
     @Native("c++", "x10aux::equals(#0,#1)")
-    /* [FIRM_CHANGE] */
     public def equals(x:Any): Boolean {
         if(x instanceof Int)
             return equals(x as Int);

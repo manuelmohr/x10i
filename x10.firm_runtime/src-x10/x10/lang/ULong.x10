@@ -29,7 +29,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
 
 
     /** The actual number with Long representation */
-    /* [FIRM_CHANGE] */
     /*
     public val longVal:Long;
     public def this(value:Long) {
@@ -46,7 +45,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "x10.core.Unsigned.lt(#this, #1)")
     @Native("c++",  "((#0) < (#1))")
-    /* [FIRM_CHANGE] */
     public native operator this < (x:ULong): Boolean;
 
     /**
@@ -58,7 +56,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "x10.core.Unsigned.gt(#this, #1)")
     @Native("c++",  "((#0) > (#1))")
-    /* [FIRM_CHANGE] */
     public native operator this > (x:ULong): Boolean;
 
     /**
@@ -70,7 +67,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "x10.core.Unsigned.le(#this, #1)")
     @Native("c++",  "((#0) <= (#1))")
-    /* [FIRM_CHANGE] */
     public native operator this <= (x:ULong): Boolean;
 
     /**
@@ -82,7 +78,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "x10.core.Unsigned.ge(#this, #1)")
     @Native("c++",  "((#0) >= (#1))")
-    /* [FIRM_CHANGE] */
     public native operator this >= (x:ULong): Boolean;
 
 
@@ -95,7 +90,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "((#this) + (#1))")
     @Native("c++",  "((x10_ulong) ((#0) + (#1)))")
-    /* [FIRM_CHANGE] */
     public native operator this + (x:ULong): ULong;
 
     /**
@@ -107,7 +101,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "((#this) - (#1))")
     @Native("c++",  "((x10_ulong) ((#0) - (#1)))")
-    /* [FIRM_CHANGE] */
     public native operator this - (x:ULong): ULong;
 
     /**
@@ -119,7 +112,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "((#this) * (#1))")
     @Native("c++",  "((x10_ulong) ((#0) * (#1)))")
-    /* [FIRM_CHANGE] */
     public native operator this * (x:ULong): ULong;
 
     /**
@@ -131,7 +123,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
     // @Native("java", "x10.core.Unsigned.div(#this, #x)")
     @Native("java", "x10.lang.ULong.$make(x10.core.Unsigned.div(#this.longVal, #x.longVal))")
     @Native("c++",  "((x10_ulong) ((#0) / x10aux::zeroCheck(#1)))")
-    /* [FIRM_CHANGE] */
     public native operator this / (x:ULong): ULong;
 
     /**
@@ -143,7 +134,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
     // @Native("java", "x10.core.Unsigned.rem(#this, #x)")
     @Native("java", "x10.lang.ULong.$make(x10.core.Unsigned.rem(#this.longVal, #x.longVal))")
     @Native("c++",  "((x10_ulong) ((#0) % x10aux::zeroCheck(#1)))")
-    /* [FIRM_CHANGE] */
     public native operator this % (x:ULong): ULong;
 
     /**
@@ -153,7 +143,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "((long) +(#this))")
     @Native("c++",  "((x10_ulong) +(#0))")
-    /* [FIRM_CHANGE] */
     public native operator + this: ULong;
 
     /**
@@ -164,7 +153,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "((long) -(#this))")
     @Native("c++",  "((x10_ulong) -(#0))")
-    /* [FIRM_CHANGE] */
     public native operator - this: ULong;
 
 
@@ -231,7 +219,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "((#this) << (#count))")  // no mask. Java defines shift as masked.
     @Native("c++",  "((x10_ulong) ((#0) << (0x3f & (#1))))")
-    /* [FIRM_CHANGE] */
     public native operator this << (count:Int): ULong;
 
     /**
@@ -244,7 +231,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "((#this) >>> (#count))")  // no mask. Java defines shift as masked.
     @Native("c++",  "((x10_ulong) ((#0) >> (0x3f & (#1))))")
-    /* [FIRM_CHANGE] */
     public native operator this >> (count:Int): ULong;
 
     /**
@@ -258,7 +244,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "((#this) >>> (#count))")  // no mask. Java defines shift as masked.
     @Native("c++",  "((x10_ulong) ((#0) >> (0x3f & (#1))))")
-    /* [FIRM_CHANGE] */
     public native operator this >>> (count:Int): ULong;
 
     /**
@@ -268,7 +253,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "((long) ~(#this))")
     @Native("c++",  "((x10_ulong) ~(#0))")
-    /* [FIRM_CHANGE] */
     public native operator ~ this: ULong;
 
 
@@ -279,7 +263,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "((long) ((#x) & 0xffL))")
     @Native("c++",  "((x10_ulong) (#1))")
-    /* [FIRM_CHANGE] */
     public native static operator (x:UByte): ULong;
     /**
      * Coerce a given UShort to a ULong.
@@ -288,7 +271,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "((long) ((#x) & 0xffffL))")
     @Native("c++",  "((x10_ulong) (#1))")
-    /* [FIRM_CHANGE] */
     public native static operator (x:UShort): ULong;
 
     /**
@@ -298,7 +280,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "((long) ((#x) & 0xffffffffL))")
     @Native("c++",  "((x10_ulong) (#1))")
-    /* [FIRM_CHANGE] */
     public native static operator (x:UInt): ULong;
 
 
@@ -309,7 +290,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "((long)(byte)(#x))")
     @Native("c++",  "((x10_ulong) (#1))")
-    /* [FIRM_CHANGE] */
     public native static operator (x:Byte): ULong;
 
     /**
@@ -319,7 +299,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "((long)(short)(#x))")
     @Native("c++",  "((x10_ulong) (#1))")
-    /* [FIRM_CHANGE] */
     public native static operator (x:Short): ULong;
 
     /**
@@ -329,7 +308,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "((long)(int)(#x))")
     @Native("c++",  "((x10_ulong) (#1))")
-    /* [FIRM_CHANGE] */
     public native static operator (x:Int): ULong;
 
     /**
@@ -339,7 +317,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "((long)(float)(#x))")
     @Native("c++",  "x10aux::float_utils::toULong(#1)")
-    /* [FIRM_CHANGE] */
     public native static operator (x:Float) as ULong;
 
     /**
@@ -349,7 +326,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "((long)(double)(#x))")
     @Native("c++",  "x10aux::double_utils::toULong(#1)")
-    /* [FIRM_CHANGE] */
     public native static operator (x:Double) as ULong;
 
     /**
@@ -359,7 +335,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "((long)(long)(#x))")
     @Native("c++",  "((x10_ulong) (#1))")
-    /* [FIRM_CHANGE] */
     public native static operator (x:Long) as ULong;
 
 
@@ -384,7 +359,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      * @return a String representation of this ULong in the specified radix.
      */
     @Native("c++", "x10aux::long_utils::toString(#0, #1)")
-    /* [FIRM_CHANGE] */
     public native def toString(radix:Int): String;
 
     /**
@@ -429,7 +403,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     @Native("java", "x10.lang.ULong.$make(x10.core.Unsigned.parseULong(#s, #radix))")
     @Native("c++", "x10aux::long_utils::parseULong(#1, #2)")
-    /* [FIRM_CHANGE] */
     public native static def parse(s:String, radix:Int): ULong; //throws NumberFormatException
 
     /**
@@ -450,7 +423,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "java.lang.Long.highestOneBit(#this)")
     @Native("c++", "((x10_ulong) x10aux::long_utils::highestOneBit(#0))")
-    /* [FIRM_CHANGE] */
     public native def highestOneBit(): ULong;
 
     /**
@@ -462,7 +434,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "java.lang.Long.lowestOneBit(#this)")
     @Native("c++", "((x10_ulong) x10aux::long_utils::lowestOneBit(#0))")
-    /* [FIRM_CHANGE] */
     public native def lowestOneBit(): ULong;
 
     /**
@@ -474,7 +445,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "java.lang.Long.numberOfLeadingZeros(#this)")
     @Native("c++", "x10aux::long_utils::numberOfLeadingZeros(#0)")
-    /* [FIRM_CHANGE] */
     public native def numberOfLeadingZeros(): Int;
 
     /**
@@ -486,7 +456,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "java.lang.Long.numberOfTrailingZeros(#this)")
     @Native("c++", "x10aux::long_utils::numberOfTrailingZeros(#0)")
-    /* [FIRM_CHANGE] */
     public native def numberOfTrailingZeros(): Int;
 
     /**
@@ -497,7 +466,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "java.lang.Long.bitCount(#this)")
     @Native("c++", "x10aux::long_utils::bitCount(#0)")
-    /* [FIRM_CHANGE] */
     public native def bitCount(): Int;
 
     /**
@@ -576,7 +544,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
     @Native("c++", "x10aux::equals(#0,#1)")
-    /* [FIRM_CHANGE] */
     public def equals(x:Any):Boolean {
         if(x instanceof ULong)
             return equals(x as ULong);
@@ -590,7 +557,6 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
      */
     // @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
     @Native("c++", "x10aux::equals(#0,#1)")
-    /* [FIRM_CHANGE] */
     public native def equals(x:ULong):Boolean;
 
     public native def hashCode(): Int;

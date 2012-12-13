@@ -408,7 +408,6 @@ public struct Short implements Comparable[Short], Arithmetic[Short], Bitwise[Sho
      */
     @Native("java", "x10.rtt.Equality.equalsequals(#this, #x)")
     @Native("c++", "x10aux::equals(#0,#1)")
-    /* [FIRM_CHANGE] */
     public def equals(x:Any):Boolean {
         if(x instanceof Short)
             return equals(x as Short);
