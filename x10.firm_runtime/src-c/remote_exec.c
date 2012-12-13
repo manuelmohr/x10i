@@ -1,8 +1,8 @@
 
 #include <stdio.h>
 
-#include "x10_rt.h"
-#include "x10_serialization.h"
+#include "remote_exec.h"
+#include "serialization.h"
 #include "async.h"
 
 extern void *_ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(x10_object *closure);

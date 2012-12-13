@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 #include "async.h"
-#include "x10_rt.h"
+#include "remote_exec.h"
 #include "ilocal_data.h"
 
 extern void _ZN3x104lang7Runtime17ensureNotInAtomicEv(void);

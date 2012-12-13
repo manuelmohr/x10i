@@ -1,7 +1,7 @@
 #include "x10_string.h"
 #include "util.h"
 #include "x10.h"
-#include "x10_serialization.h"
+#include "serialization.h"
 
 /* vtable for x10.lang.String */
 extern const x10_vtable _ZTVN3x104lang6StringE;

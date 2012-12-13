@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 #include "async.h"
-#include "x10_rt.h"
+#include "remote_exec.h"
 
 #define MAX_ACTIVITIES_PER_FINISH 64
 

@@ -1,8 +1,7 @@
 
 #include <stdio.h>
 
-#include "x10_rt.h"
-#include "x10_serialization.h"
+#include "remote_exec.h"
 
 void _ZN3x104lang7Runtime15runAtOtherPlaceEiPN3x104lang3AnyE(x10_int place_id, x10_object *closure)
 {

@@ -1,7 +1,7 @@
 
 #include <stdio.h>
 #include <assert.h>
-#include "x10_serialization.h"
+#include "serialization.h"
 #include "array.h"
 
 //#define X10_SERIALIZATION_DEBUG
