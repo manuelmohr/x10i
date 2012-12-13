@@ -303,7 +303,7 @@ x10_string *x10_string_to_lowercase(const x10_string *self)
 	const x10_int   self_len   = self->len;
 	const x10_char *self_chars = self->chars;
 	x10_char       *new_chars  = allocate_chars(self_len);
-	for(x10_int i = 0; i < self_len; i++) {
+	for (x10_int i = 0; i < self_len; i++) {
 		new_chars[i] = _ZN3x104lang4Char11toLowerCaseEv(self_chars[i]);
 	}
 	return x10_string_from_literal(self_len, new_chars);
@@ -315,7 +315,7 @@ x10_string *x10_string_to_uppercase(const x10_string *self)
 	const x10_int   self_len   = self->len;
 	const x10_char *self_chars = self->chars;
 	x10_char       *new_chars  = allocate_chars(self_len);
-	for(x10_int i = 0; i < self_len; i++) {
+	for (x10_int i = 0; i < self_len; i++) {
 		new_chars[i] = _ZN3x104lang4Char11toUpperCaseEv(self_chars[i]);
 	}
 	return x10_string_from_literal(self_len, new_chars);

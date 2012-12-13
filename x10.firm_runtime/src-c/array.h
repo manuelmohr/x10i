@@ -199,7 +199,7 @@
 #define ARR_EXTO(type, arr, n) \
 	do { \
 		if ((n) >= ARR_LEN(arr)) { ARR_RESIZE(type, arr, (n)+1); } \
-	} while(0)
+	} while (0)
 
 /**
  * Append one element to a flexible array.

@@ -94,7 +94,7 @@ x10_int x10_hashCode(const unsigned char *k, x10_int length) {
 
     /*------------------------------------- handle the last 11 bytes */
     c += length;
-    switch(len) {             /* all the case statements fall through */
+    switch (len) {             /* all the case statements fall through */
         case 11: c+=((x10_int)k[10]<<24);
         case 10: c+=((x10_int)k[9]<<16);
         case 9 : c+=((x10_int)k[8]<<8);

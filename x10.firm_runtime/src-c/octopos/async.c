@@ -20,7 +20,8 @@ extern void _ZN3x104lang7Runtime17ensureNotInAtomicEv(void);
  * current finish state.
  */
 
-static void panic(const char * msg) {
+static void panic(const char * msg)
+{
 	printf("%s\n", msg);
 	abort();
 }
@@ -34,13 +35,15 @@ struct finish_state {
 	finish_state  *parent;
 };
 
-static void finish_state_init(finish_state *fs, finish_state *parent) {
+static void finish_state_init(finish_state *fs, finish_state *parent)
+{
 	simple_signal_init(&fs->signal, 0);
 	fs->claim  = parent->claim;
 	fs->parent = parent;
 }
 
-static void finish_state_free(finish_state *fs) {
+static void finish_state_free(finish_state *fs)
+{
 	free(fs);
 }
 
@@ -72,30 +75,36 @@ void finish_state_set_current(finish_state *fs)
 	ilocal->fs = fs;
 }
 
-void register_at_finish_state(finish_state *fs) {
+void register_at_finish_state(finish_state *fs)
+{
 	simple_signal_add_signalers(&fs->signal, 1);
 }
 
-void unregister_from_finish_state(finish_state *fs) {
+void unregister_from_finish_state(finish_state *fs)
+{
 	simple_signal_signal(&fs->signal);
 }
 
-void activity_inc_atomic_depth(void) {
+void activity_inc_atomic_depth(void)
+{
 	ilocal_data_t *ilocal = get_ilocal_data();
 	++ilocal->atomic_depth;
 }
 
-void activity_dec_atomic_depth(void) {
+void activity_dec_atomic_depth(void)
+{
 	ilocal_data_t *ilocal = get_ilocal_data();
 	--ilocal->atomic_depth;
 }
 
-unsigned activity_get_atomic_depth(void) {
+unsigned activity_get_atomic_depth(void)
+{
 	ilocal_data_t *ilocal = get_ilocal_data();
 	return ilocal->atomic_depth;
 }
 
-static void activity_set_atomic_depth(unsigned depth) {
+static void activity_set_atomic_depth(unsigned depth)
+{
 	ilocal_data_t *ilocal = get_ilocal_data();
 	ilocal->atomic_depth = depth;
 }
@@ -104,7 +113,8 @@ static void activity_set_atomic_depth(unsigned depth) {
 extern void* _ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(x10_object *body);
 
 /** Top-level i-let function, initializes activity and cleans up afterwards */
-static void execute(void *ptr) {
+static void execute(void *ptr)
+{
 	async_closure *ac      = (async_closure *)ptr;
 	void          *body    = ac->body;
 	finish_state  *fs      = ac->enclosing;
@@ -145,7 +155,8 @@ static void execute(void *ptr) {
  */
 
 /* x10.lang.Runtime.finishBlockBegin() */
-void _ZN3x104lang7Runtime16finishBlockBeginEv(void) {
+void _ZN3x104lang7Runtime16finishBlockBeginEv(void)
+{
 	finish_state *enclosing = finish_state_get_current();
 	finish_state *nested = malloc(sizeof(finish_state));
 	if (nested == NULL) panic("malloc returned NULL");
@@ -154,7 +165,8 @@ void _ZN3x104lang7Runtime16finishBlockBeginEv(void) {
 }
 
 /* x10.lang.Runtime.executeParallel(body:()=>void) */
-void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(void *body) {
+void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(void *body)
+{
 	/* x10.lang.Runtime.ensureNotInAtomic() */
 	_ZN3x104lang7Runtime17ensureNotInAtomicEv();
 
@@ -172,7 +184,8 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(void *body
 }
 
 /* x10.lang.Runtime.finishBlockEnd() */
-void _ZN3x104lang7Runtime14finishBlockEndEv(void) {
+void _ZN3x104lang7Runtime14finishBlockEndEv(void)
+{
 	/* wait for all child i-lets */
 	finish_state *enclosing = finish_state_get_current();
 

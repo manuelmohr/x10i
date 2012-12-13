@@ -31,12 +31,14 @@ struct finish_state {
 	finish_state        *parent;
 };
 
-static void panic(const char * msg) {
+static void panic(const char * msg)
+{
 	printf("%s\n", msg);
 	abort();
 }
 
-static void finish_state_init(finish_state *fs, finish_state *parent) {
+static void finish_state_init(finish_state *fs, finish_state *parent)
+{
 	if (pthread_mutex_init(& fs->mutex, NULL))
 		panic("Could not init mutex");
 	if (pthread_cond_init(& fs->condition, NULL))
@@ -45,7 +47,8 @@ static void finish_state_init(finish_state *fs, finish_state *parent) {
 	fs->parent               = parent;
 }
 
-static void finish_state_free(finish_state *fs) {
+static void finish_state_free(finish_state *fs)
+{
 	if (pthread_mutex_destroy(& fs->mutex))
 		panic("Could not destroy mutex");
 	if (pthread_cond_destroy(& fs->condition))
@@ -70,16 +73,19 @@ typedef struct async_closure {
 static pthread_key_t enclosing_finish_state;
 static pthread_key_t activity_atomic_depth;
 
-finish_state* finish_state_get_current(void) {
+finish_state* finish_state_get_current(void)
+{
 	return pthread_getspecific(enclosing_finish_state);
 }
 
-void finish_state_set_current(finish_state *fs) {
+void finish_state_set_current(finish_state *fs)
+{
 	if (pthread_setspecific(enclosing_finish_state, fs))
 		panic("Could not set current finish state.");
 }
 
-void register_at_finish_state(finish_state *fs) {
+void register_at_finish_state(finish_state *fs)
+{
 	if (pthread_mutex_lock(& fs->mutex))
 		panic("Could not lock mutex");
 
@@ -89,7 +95,8 @@ void register_at_finish_state(finish_state *fs) {
 		panic("Could not unlock mutex");
 }
 
-void unregister_from_finish_state(finish_state *fs) {
+void unregister_from_finish_state(finish_state *fs)
+{
 	if (pthread_mutex_lock(& fs->mutex))
 		panic("Could not lock mutex");
 
@@ -100,16 +107,19 @@ void unregister_from_finish_state(finish_state *fs) {
 		panic("Could not unlock mutex");
 }
 
-unsigned activity_get_atomic_depth(void) {
+unsigned activity_get_atomic_depth(void)
+{
 	return (unsigned) pthread_getspecific(activity_atomic_depth);
 }
 
-void activity_inc_atomic_depth(void) {
+void activity_inc_atomic_depth(void)
+{
 	const unsigned new_depth = activity_get_atomic_depth() + 1;
 	pthread_setspecific(activity_atomic_depth, (void*) new_depth);
 }
 
-void activity_dec_atomic_depth(void) {
+void activity_dec_atomic_depth(void)
+{
 	const unsigned new_depth = activity_get_atomic_depth() - 1;
 	pthread_setspecific(activity_atomic_depth, (void*) new_depth);
 }
@@ -118,7 +128,8 @@ void activity_dec_atomic_depth(void) {
 extern void* _ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(x10_object *body);
 
 /** Top-level thread function, initializes activity and cleans up afterwards */
-static void *execute(void *ptr) {
+static void *execute(void *ptr)
+{
 	async_closure *ac = (async_closure *) ptr;
 	finish_state *fs = ac->enclosing;
 	void *body = ac->body;
@@ -154,7 +165,8 @@ static void *execute(void *ptr) {
  */
 
 /* x10.lang.Runtime.finishBlockBegin() */
-void _ZN3x104lang7Runtime16finishBlockBeginEv(void) {
+void _ZN3x104lang7Runtime16finishBlockBeginEv(void)
+{
 	finish_state *enclosing = finish_state_get_current();
 	finish_state *nested = malloc(sizeof(finish_state));
 	if (nested == NULL) panic("malloc returned NULL");
@@ -162,7 +174,8 @@ void _ZN3x104lang7Runtime16finishBlockBeginEv(void) {
 	finish_state_set_current(nested);
 }
 
-static void __attribute__((constructor)) init_finish_state(void) {
+static void __attribute__((constructor)) init_finish_state(void)
+{
 	/* initialize main thread's finish state */
 	if (pthread_key_create(&enclosing_finish_state, NULL))
 		panic("Could not create thread-local key");
@@ -178,7 +191,8 @@ static void __attribute__((constructor)) init_finish_state(void) {
 }
 
 /* x10.lang.Runtime.executeParallel(body:()=>void) */
-void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(void *body) {
+void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(void *body)
+{
 	/* x10.lang.Runtime.ensureNotInAtomic() */
 	_ZN3x104lang7Runtime17ensureNotInAtomicEv();
 
@@ -195,7 +209,8 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(void *body
 }
 
 /* x10.lang.Runtime.finishBlockEnd() */
-void _ZN3x104lang7Runtime14finishBlockEndEv(void) {
+void _ZN3x104lang7Runtime14finishBlockEndEv(void)
+{
 	/* wait for all child threads */
 	finish_state *enclosing = finish_state_get_current();
 	if (pthread_mutex_lock(& enclosing->mutex))
@@ -216,7 +231,8 @@ void _ZN3x104lang7Runtime14finishBlockEndEv(void) {
 	finish_state_set_current(parent);
 }
 
-static void __attribute__((destructor)) exit_finish_state(void) {
+static void __attribute__((destructor)) exit_finish_state(void)
+{
 	/* end main thread's finish block */
 	_ZN3x104lang7Runtime14finishBlockEndEv();
 }

@@ -58,7 +58,7 @@ static void thread_bind_cpu(x10_thread *self)
 		cpu_set_t mask;
 		CPU_ZERO(&mask); // disable all CPUs (all are enabled by default)
 		CPU_SET(processor, &mask); // enable the one CPU specified in the file
-		if( sched_setaffinity(0, sizeof(mask), &mask ) == -1 )
+		if (sched_setaffinity(0, sizeof(mask), &mask ) == -1)
 			fprintf(stderr, "Unable to bind place %u to CPU %i: %s. Continuing without cpu binding...\n", x10aux::here, processor, strerror(errno));
 		break;
 	}
@@ -273,7 +273,7 @@ x10_thread *_ZN3x104lang6Thread13currentThreadEv()
 
 void _ZN3x104lang6Thread5startEv(x10_thread *self)
 {
-	if(self->__thread_already_started) {
+	if (self->__thread_already_started) {
 		x10_throw_exception(T_("IllegalThreadStateException"), T_(""));
 	}
 
