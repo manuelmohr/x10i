@@ -248,6 +248,8 @@ public class CompilerOptions extends X10CompilerOptions {
 				"link external libraries statically");
 		usageForFlag(out, "-linkerScript",
 				"Use custom linker script");
+		usageForFlag(out, "-whitelist=<whitelistfile>",
+		        "Path to file with standard library class whitelist");
 
 		for (FirmOption option : FirmOptions.getKnownOptions().values()) {
 			usageForFlag(out, "-f " + option.getName(), option.getDescription());
