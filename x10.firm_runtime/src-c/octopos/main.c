@@ -27,7 +27,7 @@ void main_ilet(claim_t claim)
 
 	x10_rt_init();
 
-	x10_object *args = NULL;
+	x10_object *args = _ZN3x105array5Array15makeStringArrayEPvi(NULL, 0);
 	x10_main(args);
 
 	/* end main i-let's finish block */

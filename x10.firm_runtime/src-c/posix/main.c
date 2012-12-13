@@ -9,9 +9,13 @@ int main(int argc, char **argv)
 
 	x10_rt_init();
 
-	(void)argc;
-	(void)argv;
-	x10_main(NULL);
+	/* construct args array */
+	x10_string *arg_pointers[argc-1];
+	for (int i = 1; i < argc; ++i) {
+		arg_pointers[i-1] = x10_string_from_cstring(argv[i]);
+	}
+	x10_object *array = _ZN3x105array5Array15makeStringArrayEPvi((x10_pointer)&arg_pointers, argc-1);
+	x10_main(array);
 
 	exit_finish_state();
 	destroy_locks();

@@ -1303,6 +1303,10 @@ public final class Array[T] (
             }
         }
     }
+
+    /** used internally by the C runtime */
+    public static def makeStringArray(p: Pointer, n: Int): Array[String]
+        = new Array[String](p, n);
 }
 public type Array[T](r:Int) = Array[T]{self.rank==r};
 public type Array[T](r:Region) = Array[T]{self.region==r};
