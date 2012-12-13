@@ -46,6 +46,8 @@ typedef char       *x10_pointer;
 #define X10_UNIMPLEMENTED() printf("%s not implemented yet", __FUNCTION__); abort();
 
 #ifndef X10_TYPE
+/** used to mark structs which become true X10 classes. A separate code analysis
+ * step looks for these marked classes and creates nativesizes config. */
 #define X10_TYPE(x)
 #endif
 
