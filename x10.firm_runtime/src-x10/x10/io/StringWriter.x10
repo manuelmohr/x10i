@@ -17,7 +17,7 @@ public class StringWriter extends Writer {
     val b:StringBuilder;
 
     public def this() {
-    	this.b = new StringBuilder();
+        this.b = new StringBuilder();
     }
 
     public def write(x:Byte):void {

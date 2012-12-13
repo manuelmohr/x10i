@@ -480,10 +480,10 @@ public struct UShort implements Comparable[UShort], Arithmetic[UShort], Bitwise[
     @Native("c++", "x10aux::equals(#0, #1)")
     /* [FIRM_CHANGE] */
     public def equals(x:Any):Boolean {
-    	if(x instanceof UShort) {
-    		return equals(x as UShort);
-    	}
-    	return false;
+        if(x instanceof UShort) {
+            return equals(x as UShort);
+        }
+        return false;
     }
 
     /**

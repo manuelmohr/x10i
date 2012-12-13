@@ -12,7 +12,7 @@
 package x10.io;
 
 /**
- * Data container used 	in the CustomSerialization protocol.
+ * Data container used in the CustomSerialization protocol.
  *
  * @see CustomSerialization
  */

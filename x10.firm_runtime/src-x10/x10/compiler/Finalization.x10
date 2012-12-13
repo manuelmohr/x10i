@@ -86,7 +86,7 @@ public class Finalization extends x10.lang.Throwable implements CustomSerializat
      * @throws UnsupportedOperationException
      */
     public def serialize():SerialData {
-    	throw new UnsupportedOperationException("Cannot serialize "+typeName());
+        throw new UnsupportedOperationException("Cannot serialize "+typeName());
     }
 
     /**
@@ -94,7 +94,7 @@ public class Finalization extends x10.lang.Throwable implements CustomSerializat
      * @throws UnsupportedOperationException
      */
     public def this(SerialData) {
-    	throw new UnsupportedOperationException("Cannot deserialize "+typeName());
+        throw new UnsupportedOperationException("Cannot deserialize "+typeName());
     }
 
     public def this(){}

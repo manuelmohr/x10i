@@ -125,7 +125,7 @@ public abstract class Region(
      */
     public static def makeRectangular[S,T](minArg:Array[S](1), maxArg:Array[T](1)){S<:Int,T<:Int}:Region(minArg.size){self.rect} {
         if (minArg.size == 1) {
-        	// To remove the cast, the constraint solver should be able to handle arithmetic.
+            // To remove the cast, the constraint solver should be able to handle arithmetic.
             return new RectRegion1D(minArg(0), maxArg(0)) as Region(minArg.size){rect};
         } else {
             val minArray = new Array[int](minArg.size, (i:int)=>minArg(i));

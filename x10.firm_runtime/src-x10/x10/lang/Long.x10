@@ -501,9 +501,9 @@ public struct Long implements Comparable[Long], Arithmetic[Long], Bitwise[Long],
     @Native("c++", "x10aux::equals(#0,#1)")
     /* [FIRM_CHANGE] */
     public def equals(x:Any):Boolean {
-    	if(x instanceof Long)
-    		return equals(x as Long);
-    	return false;
+        if(x instanceof Long)
+            return equals(x as Long);
+        return false;
     }
 
     /**

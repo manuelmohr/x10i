@@ -33,13 +33,13 @@ class PolyRegion extends Region {
 
     var size:Int = -1; // uninitialized
     public def size():int {
-    	if (size < 0) {
-    	  var s:Int=0;
-          val it= iterator();
-          for (p:Point in this)
-        	 s++;
-          size=s;
-    	}
+        if (size < 0) {
+            var s:Int=0;
+            val it= iterator();
+            for (p:Point in this)
+                s++;
+            size=s;
+        }
         return size;
     }
 
@@ -77,9 +77,9 @@ class PolyRegion extends Region {
             return PolyRegion.make(pm);
 
         } else if (t instanceof RectRegion) {
-        	return intersection((t as RectRegion).toPolyRegion());
+            return intersection((t as RectRegion).toPolyRegion());
         } else if (t instanceof RectRegion1D) {
-                return intersection((t as RectRegion1D).toRectRegion().toPolyRegion() as Region(rank));
+            return intersection((t as RectRegion1D).toRectRegion().toPolyRegion() as Region(rank));
         }
         /*else if (t instanceof UnionRegion) {
 
@@ -92,7 +92,7 @@ class PolyRegion extends Region {
 
 
     public def contains(that: Region(rank)): boolean =
-    	computeBoundingBox().contains(that.computeBoundingBox());
+        computeBoundingBox().contains(that.computeBoundingBox());
 
     /**
      * Projection is computed by using FME to eliminate variables on

@@ -127,7 +127,7 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
     public def indexOf(index: Int, v: T): Int {
         for (var i: Int = index; i < a.length(); i++) {
             if (v==null ? a(i)==null : v.equals(a(i)))
-            	return i;
+                return i;
         }
         return -1;
     }
@@ -139,7 +139,7 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
     public def lastIndexOf(index: Int, v: T): Int {
         for (var i: Int = index; i >= 0; i--) {
             if (v==null ? a(i)==null : v.equals(a(i)))
-            	return i;
+                return i;
         }
         return -1;
     }

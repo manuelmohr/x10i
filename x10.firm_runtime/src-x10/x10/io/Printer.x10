@@ -42,11 +42,11 @@ public class Printer extends FilterWriter {
     }
     // this is needed to avoid extra boxing in Managed X10
     public final def println(s:String): void {
-    	print(s==null? "null\n" : s+"\n");
+        print(s==null? "null\n" : s+"\n");
     }
 
     public final def print(o:Any): void {
-    	print(o==null? "null" : o.toString());
+        print(o==null? "null" : o.toString());
     }
 
     public def print(s:String): void {

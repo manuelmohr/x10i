@@ -26,7 +26,6 @@ import x10.io.CustomSerialization;
 import x10.io.SerialData;
 
 abstract class FinishState {
-  
 }
 
 // vim:shiftwidth=4:tabstop=4:expandtab

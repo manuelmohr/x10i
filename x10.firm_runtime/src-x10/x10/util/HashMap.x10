@@ -289,7 +289,7 @@ import x10.io.SerialData;
 
         public def iterator(): Iterator[Map.Entry[Key,Value]] {
             return new MapIterator[HashEntry[Key,Value],Map.Entry[Key,Value]](map.entriesIterator(),
-            		(e: HashEntry[Key,Value]):Map.Entry[Key,Value] => e);
+                    (e: HashEntry[Key,Value]):Map.Entry[Key,Value] => e);
         }
 
         public def contains(k: Map.Entry[Key,Value]): Boolean { throw new UnsupportedOperationException(); }

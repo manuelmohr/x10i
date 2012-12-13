@@ -333,11 +333,11 @@ public final class Math {
     public static def max(a:Int, b:Int)= a<b?b:a;
     public static def min(a:Int, b:Int)= a<b?a:b;
     public static def max(a:UInt, b:UInt)= a<b?b:a;
- 	public static def min(a:UInt, b:UInt)= a<b?a:b;
+    public static def min(a:UInt, b:UInt)= a<b?a:b;
     public static def max(a:Long, b:Long)= a<b?b:a;
     public static def min(a:Long, b:Long)= a<b?a:b;
     public static def max(a:ULong, b:ULong)= a<b?b:a;
-  	public static def min(a:ULong, b:ULong)= a<b?a:b;
+    public static def min(a:ULong, b:ULong)= a<b?a:b;
     public static def max(a:Float, b:Float)= a<b?b:a;
     public static def min(a:Float, b:Float)= a<b?a:b;
     public static def max(a:Double, b:Double)= a<b?b:a;

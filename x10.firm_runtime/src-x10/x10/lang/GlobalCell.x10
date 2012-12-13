@@ -13,9 +13,9 @@ package x10.lang;
 
 public class GlobalCell[T] {
 
-	protected val root : GlobalRef[Cell[T]];
+    protected val root : GlobalRef[Cell[T]];
     def this(v:T) {
-    	root = GlobalRef[Cell[T]](new Cell[T](v));
+        root = GlobalRef[Cell[T]](new Cell[T](v));
     }
 
 
@@ -51,11 +51,11 @@ public class GlobalCell[T] {
      */
     public operator this()=(x:T) { set(x); }
     public def set(x:T) {
-    	at(root) {
-    		root().value = x;
+        at(root) {
+            root().value = x;
         }
-    	return x;
-   }
+        return x;
+    }
 
     /**
      * Create a new Cell with the given value stored in it.

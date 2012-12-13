@@ -310,10 +310,10 @@ final class RectRegion extends Region{rect} {
      * general algorithms for intersection, restriction etc to be applied to RectRegion's.
      */
     public def toPolyRegion() {
-    	if (polyRep==null) {
+        if (polyRep==null) {
             polyRep = Region.makeRectangularPoly(new Array[int](rank, min()), new Array[int](rank, max()));
-    	}
-    	return polyRep;
+        }
+        return polyRep;
     }
 
 
@@ -362,7 +362,7 @@ final class RectRegion extends Region{rect} {
             val newMax = new Array[int](k, (i:int)=>i<rank?max(i):thatMax);
             return new RectRegion(newMin, newMax);
         } else if (that instanceof FullRegion) {
-       	    val k = rank+that.rank;
+            val k = rank+that.rank;
             val newMin = new Array[int](k, (i:int)=>i<rank?min(i):Int.MIN_VALUE);
             val newMax = new Array[int](k, (i:int)=>i<rank?max(i):Int.MAX_VALUE);
 	    return new RectRegion(newMin,newMax);
@@ -382,7 +382,7 @@ final class RectRegion extends Region{rect} {
     }
 
     public def eliminate(axis:int):Region{self.rect} /*(rank-1)*/ {
-    	val k = rank-1;
+        val k = rank-1;
         val newMin = new Array[int](k, (i:int)=>i<axis?min(i):min(i+1));
         val newMax = new Array[int](k, (i:int)=>i<axis?max(i):max(i+1));
         return new RectRegion(newMin, newMax);

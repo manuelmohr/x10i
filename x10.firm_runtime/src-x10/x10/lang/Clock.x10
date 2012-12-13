@@ -27,13 +27,13 @@ import x10.util.Map;
  */
 public final class Clock(name:String) {
 
-	private val root = GlobalRef[Clock](this);
-	public def equals(a:Any) {
-		if (a == null || ! (a instanceof Clock))
-			return false;
-		return (a as Clock).root == this.root;
-	}
-	public def hashCode() = root.hashCode();
+    private val root = GlobalRef[Clock](this);
+    public def equals(a:Any) {
+        if (a == null || ! (a instanceof Clock))
+            return false;
+        return (a as Clock).root == this.root;
+    }
+    public def hashCode() = root.hashCode();
 
     public static def make(): Clock = make("");
     public static def make(name:String):Clock {
@@ -82,52 +82,52 @@ public final class Clock(name:String) {
         if (dropped()) clockUseException("async clocked");
         val ph = get();
         at (root) {
-        	val me = root();
-        	atomic {
-        		 ++ me.count;
-                 if (-ph != me.phase)
-                	 ++ me.alive;
-        	}
+            val me = root();
+            atomic {
+                ++ me.count;
+                if (-ph != me.phase)
+                    ++ me.alive;
+            }
         }
         return ph;
-     }
-     @Global def resumeUnsafe() {
+    }
+    @Global def resumeUnsafe() {
         Runtime.ensureNotInAtomic();
         val ph = get();
         if (ph < 0) return;
         at (root) {
-        	val me = root();
-        	me.resumeLocal();
+            val me = root();
+            me.resumeLocal();
         }
         put(-ph);
     }
-     @Global def resumeInternal(entry:Map.Entry[Clock,Int]) {
+    @Global def resumeInternal(entry:Map.Entry[Clock,Int]) {
         Runtime.ensureNotInAtomic();
         val ph = entry.getValue();
         if (ph < 0) return;
         at (root) {
-        	val me = root();
-        	me.resumeLocal();
+            val me = root();
+            me.resumeLocal();
         }
         entry.setValue(-ph);
     }
     @Global def advanceUnsafe() {
-    	Runtime.ensureNotInAtomic();
+        Runtime.ensureNotInAtomic();
         val ph = get();
         val abs = Math.abs(ph);
         at (root) {
-        	val me = root();
+            val me = root();
             if (ph > 0) me.resumeLocal();
             when (abs < me.phase);
         }
         put(abs + 1);
     }
     @Global def advanceInternal(entry:Map.Entry[Clock,Int]) {
-    	Runtime.ensureNotInAtomic();
+        Runtime.ensureNotInAtomic();
         val ph = entry.getValue();
         val abs = Math.abs(ph);
         at (root) {
-        	val me = root();
+            val me = root();
             if (ph > 0) me.resumeLocal();
             when (abs < me.phase);
         }
@@ -136,8 +136,8 @@ public final class Clock(name:String) {
     @Global def dropUnsafe() {
         val ph = remove();
         at(root) {
-        	val me = root();
-        	me.dropLocal(ph);
+            val me = root();
+            me.dropLocal(ph);
         }
     }
     @Global def dropInternal(entry:Map.Entry[Clock,Int]) {

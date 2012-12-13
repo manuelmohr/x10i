@@ -22,7 +22,7 @@ public final class Runtime {
      * Return a deep copy of the parameter.
      */
     public static def deepCopy[T](o:T):T {
-    	return deepCopyAny(o) as T;
+        return deepCopyAny(o) as T;
     }
 
     /**
@@ -54,75 +54,75 @@ public final class Runtime {
     //public static def runAsync(clocks:Rail[Clock], body:()=>void):void { }
 
     public static def runAsync(body:()=>void):void {
-    	executeParallel(body);
-    }
-    
-    /** Spawn of a thread/iLet to execute body() */
-    private static native def executeParallel(body:()=>void):void;
-    
-    /** This is called from our C runtime to execute activity closures */
-    private static def execute(body:()=>void):void {
-    	body();
-    }
-    private static def evaluate(eval:()=>Any):Any {
-    	return eval();
+        executeParallel(body);
     }
 
-	public static def runFinish(body:()=>void):void {
-	    finish body();
-	}
+    /** Spawn of a thread/iLet to execute body() */
+    private static native def executeParallel(body:()=>void):void;
+
+    /** This is called from our C runtime to execute activity closures */
+    private static def execute(body:()=>void):void {
+        body();
+    }
+    private static def evaluate(eval:()=>Any):Any {
+        return eval();
+    }
+
+    public static def runFinish(body:()=>void):void {
+        finish body();
+    }
 
     /**
      * Run at statement
      */
     public static def runAt(place:Place, body:()=>void):void {
-    	Runtime.ensureNotInAtomic();
-    	
-    	if (place == here) {
-	    	try {
-	    		val bodyCopy = deepCopy(body);
-	    		bodyCopy();
-	    	} catch (t : Throwable) {
-	    		throw deepCopy(t);
-	    	}
-	    } else {
-	    	try {
-		    	runAtOtherPlace(place.id(), body);
-		    } catch (t : Throwable) {
-		    	throw deepCopy(t);
-		    }
-	    }
+        Runtime.ensureNotInAtomic();
+
+        if (place == here) {
+            try {
+                val bodyCopy = deepCopy(body);
+                bodyCopy();
+            } catch (t : Throwable) {
+                throw deepCopy(t);
+            }
+        } else {
+            try {
+                runAtOtherPlace(place.id(), body);
+            } catch (t : Throwable) {
+                throw deepCopy(t);
+            }
+        }
     }
 
     /**
      * Eval at expression
      */
     public static def evalAt[T](place:Place, eval:()=>T):T {
-    	Runtime.ensureNotInAtomic();
-    	
-    	var res : T;
-    	if (place == here) {
-	    	try {
-	    		val evalCopy = deepCopy(eval);
-	    		res = evalCopy();
-	    		res = deepCopy(res);
-	    	} catch (t : Throwable) {
-	    		throw deepCopy(t);
-	    	}
-	    } else {
-	    	try {
-	    		if (eval instanceof () => Object)
-	    			res = evalAtOtherPlace(place.id(), eval) as T;
-	    		else {
-	    			/* enforce boxing of return value by wrapping eval
-	    			   in a closure of type "() => Any" */
-	    			res = evalAtOtherPlace(place.id(), () => eval() as Any) as T;
-	    		}
-	    	} catch (t : Throwable) {
-	    		throw deepCopy(t);
-	    	}
-	    }
-	    return res;
+        Runtime.ensureNotInAtomic();
+
+        var res : T;
+        if (place == here) {
+            try {
+                val evalCopy = deepCopy(eval);
+                res = evalCopy();
+                res = deepCopy(res);
+            } catch (t : Throwable) {
+                throw deepCopy(t);
+            }
+        } else {
+            try {
+                if (eval instanceof () => Object)
+                    res = evalAtOtherPlace(place.id(), eval) as T;
+                else {
+                    /* enforce boxing of return value by wrapping eval
+                       in a closure of type "() => Any" */
+                    res = evalAtOtherPlace(place.id(), () => eval() as Any) as T;
+                }
+            } catch (t : Throwable) {
+                throw deepCopy(t);
+            }
+        }
+        return res;
     }
 
     // atomic and when
@@ -144,8 +144,8 @@ public final class Runtime {
      * (i.e. within a finish statement).
      */
     public static def startFinish():FinishState {
-    	finishBlockBegin();
-    	return null as FinishState; // For compatability with X10c frontend
+        finishBlockBegin();
+        return null as FinishState; // For compatability with X10c frontend
     }
 
     /**
@@ -155,7 +155,7 @@ public final class Runtime {
      * Should only be called by the thread executing the current activity.
      */
     public static def stopFinish(f:FinishState):void {
-		finishBlockEnd();
+        finishBlockEnd();
     }
 
     /**

@@ -38,7 +38,7 @@ public class Throwable {
     public def this(cause: Throwable) = this("", cause);
     public def this(message: String, cause: Throwable): Throwable {
         super();
-        	this.cause = cause;
+        this.cause = cause;
         this.message = message;
     }
 

@@ -398,9 +398,9 @@ public struct Byte implements Comparable[Byte], Arithmetic[Byte], Bitwise[Byte],
      * @return true if this Byte is equal to the given entity.
      */
     public def equals(x:Any):Boolean {
-    	if(x instanceof Byte)
-    		return equals(x as Byte);
-    	return false;
+        if(x instanceof Byte)
+            return equals(x as Byte);
+        return false;
     }
 
     /**

@@ -55,7 +55,7 @@ class Thread implements CustomSerialization {
      * @throws UnsupportedOperationException
      */
     public def serialize():SerialData {
-    	throw new UnsupportedOperationException("Cannot serialize "+typeName());
+        throw new UnsupportedOperationException("Cannot serialize "+typeName());
     }
 
     /**
@@ -63,7 +63,7 @@ class Thread implements CustomSerialization {
      * @throws UnsupportedOperationException
      */
     public def this(SerialData) {
-    	throw new UnsupportedOperationException("Cannot deserialize "+typeName());
+        throw new UnsupportedOperationException("Cannot deserialize "+typeName());
     }
 }
 

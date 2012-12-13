@@ -730,8 +730,8 @@ public final class DistArray[T] (
      */
     public final def reduce[U](lop:(U,T)=>U, gop:(U,U)=>U, unit:U):U {
         val reducer = new Reducible[U]() {
-        	public def zero():U = unit;
-        	public operator this(a:U, b:U):U = gop(a,b);
+            public def zero():U = unit;
+            public operator this(a:U, b:U):U = gop(a,b);
         };
 
         val result = finish(reducer) {
