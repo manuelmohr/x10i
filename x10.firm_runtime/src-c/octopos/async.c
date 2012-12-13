@@ -107,9 +107,6 @@ static void activity_set_atomic_depth(unsigned depth)
 	ilocal->atomic_depth = depth;
 }
 
-/* X10 function to execute ()=>void closures */
-extern void* _ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(x10_object *body);
-
 /** Top-level i-let function, initializes activity and cleans up afterwards */
 static void execute(void *ptr)
 {

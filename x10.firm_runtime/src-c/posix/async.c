@@ -3,6 +3,7 @@
 
 #include "async.h"
 #include "remote_exec.h"
+#include "x10_runtime.h"
 
 #define MAX_ACTIVITIES_PER_FINISH 64
 
@@ -121,9 +122,6 @@ void activity_dec_atomic_depth(void)
 	const unsigned new_depth = activity_get_atomic_depth() - 1;
 	pthread_setspecific(activity_atomic_depth, (void*) new_depth);
 }
-
-/* X10 function to execute ()=>void closures */
-extern void* _ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(x10_object *body);
 
 /** Top-level thread function, initializes activity and cleans up afterwards */
 static void *execute(void *ptr)
