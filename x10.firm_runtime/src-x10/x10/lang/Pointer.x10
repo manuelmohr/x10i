@@ -2,10 +2,11 @@ package x10.lang;
 
 import x10.util.Ordered;
 
+/**
+ * Represent native pointers. This shoould only be used by internal library code!
+ */
 public struct Pointer implements Comparable[Pointer] {
     public static val NULL: Pointer = getNullPointer();
-
-    public native def this(any: Any);
 
     public native def read[T](): T;
     public native def write[T](val y:T): void;
@@ -37,4 +38,5 @@ public struct Pointer implements Comparable[Pointer] {
 
     /** Cast pointer to type T, i.e. (T) ptr in C. */
     public native def castTo[T](): T;
+    public static native operator (x:Any) as Pointer;
 }

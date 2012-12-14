@@ -34,7 +34,7 @@ public struct GlobalRef[T](home: Place) {T <: Object} {
      */
     public def this(t: T): GlobalRef[T]{self.home==here} {
         property(here);
-        ptr = Pointer(t);
+        ptr = t as Pointer;
     }
 
     /**
