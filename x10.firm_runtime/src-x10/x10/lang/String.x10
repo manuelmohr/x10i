@@ -79,7 +79,7 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
         return false;
     }
 
-	@LinkSymbol("x10_string_equals")
+    @LinkSymbol("x10_string_equals")
     public native def equals(other:String): boolean;
 
     /**
