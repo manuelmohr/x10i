@@ -1,5 +1,5 @@
-#ifndef __PLATFORM_ATOMIC_OPS_H__
-#define __PLATFORM_ATOMIC_OPS_H__
+#ifndef POSIX_PLATFORM_ATOMIC_OPS_H
+#define POSIX_PLATFORM_ATOMIC_OPS_H
 
 #include <pthread.h>
 

@@ -1,5 +1,5 @@
-#ifndef X10_ASSERT_H_
-#define X10_ASSERT_H_
+#ifndef X10_ASSERT_H
+#define X10_ASSERT_H
 
 #include "x10.h"
 #include "x10_string.h"

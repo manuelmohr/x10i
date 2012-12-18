@@ -1,5 +1,5 @@
-#ifndef X10_ATOMIC_OPS_H_
-#define X10_ATOMIC_OPS_H_
+#ifndef X10_ATOMIC_OPS_H
+#define X10_ATOMIC_OPS_H
 
 #include "x10.h"
 

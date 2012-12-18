@@ -1,5 +1,5 @@
-#ifndef X10_STRING_H_
-#define X10_STRING_H_
+#ifndef X10_STRING_H
+#define X10_STRING_H
 
 #include "x10.h"
 #include "x10_object.h"

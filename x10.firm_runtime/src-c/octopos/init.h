@@ -1,5 +1,5 @@
-#ifndef INIT_H
-#define INIT_H
+#ifndef OCTOPOS_INIT_H
+#define OCTOPOS_INIT_H
 
 void x10_rt_init(void);
 

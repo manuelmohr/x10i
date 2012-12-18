@@ -1,5 +1,5 @@
-#ifndef X10_SERIALIZATION_H_
-#define X10_SERIALIZATION_H_
+#ifndef SERIALIZATION_H
+#define SERIALIZATION_H
 
 #include "x10.h"
 #include "x10_object.h"

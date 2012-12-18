@@ -1,5 +1,5 @@
-#ifndef __PLATFORM_ATOMIC_OPS_H__
-#define __PLATFORM_ATOMIC_OPS_H__
+#ifndef OCTOPOS_PLATFORM_ATOMIC_OPS_H
+#define OCTOPOS_PLATFORM_ATOMIC_OPS_H
 
 #include <octopos.h>
 

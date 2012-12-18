@@ -1,5 +1,5 @@
-#ifndef X10_THREAD_H_
-#define X10_THREAD_H_
+#ifndef X10_THREAD_H
+#define X10_THREAD_H
 
 #include "x10_string.h"
 #include "x10.h"

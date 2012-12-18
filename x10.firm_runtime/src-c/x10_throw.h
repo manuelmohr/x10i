@@ -1,5 +1,5 @@
-#ifndef X10_THROW_H_
-#define X10_THROW_H_
+#ifndef X10_THROW_H
+#define X10_THROW_H
 
 #include "x10.h"
 

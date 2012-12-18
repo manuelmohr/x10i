@@ -1,5 +1,5 @@
-#ifndef X10_ATOMIC_BOOLEAN_H_
-#define X10_ATOMIC_BOOLEAN_H_
+#ifndef X10_ATOMIC_BOOLEAN_H
+#define X10_ATOMIC_BOOLEAN_H
 
 #include "x10.h"
 #include "x10_atomic_ops.h"

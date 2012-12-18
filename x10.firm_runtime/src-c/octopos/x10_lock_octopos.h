@@ -1,5 +1,5 @@
-#ifndef X10_LOCK_OCTOPOS_H
-#define X10_LOCK_OCTOPOS_H
+#ifndef OCTOPOS_X10_LOCK_OCTOPOS_H
+#define OCTOPOS_X10_LOCK_OCTOPOS_H
 
 #include <octopos.h>
 #include "x10.h"

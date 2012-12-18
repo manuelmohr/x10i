@@ -1,5 +1,5 @@
-#ifndef X10_INPUTSTREAMREADER_H
-#define X10_INPUTSTREAMREADER_H
+#ifndef POSIX_X10_INPUTSTREAMREADER_H
+#define POSIX_X10_INPUTSTREAMREADER_H
 
 #include <stdio.h>
 #include "x10.h"

@@ -1,5 +1,5 @@
-#ifndef ILOCAL_DATA_H_
-#define ILOCAL_DATA_H_
+#ifndef OCTOPOS_ILOCAL_DATA_H_
+#define OCTOPOS_ILOCAL_DATA_H_
 
 #include "async.h"
 

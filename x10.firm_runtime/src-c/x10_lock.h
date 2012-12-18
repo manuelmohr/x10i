@@ -1,5 +1,5 @@
-#ifndef X10_LOCK_H_
-#define X10_LOCK_H_
+#ifndef X10_LOCK_H
+#define X10_LOCK_H
 
 #include "x10.h"
 

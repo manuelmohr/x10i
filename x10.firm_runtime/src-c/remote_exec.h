@@ -1,5 +1,5 @@
-#ifndef X10_RT_H_
-#define X10_RT_H_
+#ifndef REMOTE_EXEC_H
+#define REMOTE_EXEC_H
 
 #include "x10.h"
 
