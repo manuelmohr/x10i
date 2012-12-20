@@ -222,6 +222,10 @@ public class Linked extends AbstractGoal_c {
 			return false;
 		}
 
+		if (options.keep_output_files) {
+			return true;
+		}
+
 		return asmFile.delete();
 	}
 }
