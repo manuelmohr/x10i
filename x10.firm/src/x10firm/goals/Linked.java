@@ -175,6 +175,8 @@ public class Linked extends AbstractGoal_c {
 		if (os.equals("octopos")) {
 			cmd.add("-loctopos");
 			cmd.add("-lcsubset");
+			// Workaround: Pass -loctopos again because of circular dependencies in OctoPOS
+			cmd.add("-loctopos");
 			cmd.add("-lgcc");
 			cmd.add(queryGccPath("crtend.o"));
 			cmd.add(queryGccPath("crtn.o"));
