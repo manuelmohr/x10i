@@ -46,7 +46,11 @@ public final class Runtime {
      */
     //public static def runAsync(place:Place, clocks:Rail[Clock], body:()=>void):void { }
 
-    //public static def runAsync(place:Place, body:()=>void):void { }
+    public static def runAsync(place:Place, body:()=>void):void {
+        executeParallel(() => {
+            runAt(place, body);
+        });
+    }
 
     /**
      * Run async
