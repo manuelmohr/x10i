@@ -91,10 +91,16 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			}
 		} else {
 			allowedFiles.add("x10/array/Array.x10");
+			allowedFiles.add("x10/array/BlockDist.x10");
+			allowedFiles.add("x10/array/BlockBlockDist.x10");
+			allowedFiles.add("x10/array/ConstantDist.x10");
+			allowedFiles.add("x10/array/Dist.x10");
+			allowedFiles.add("x10/array/DistArray.x10");
 			allowedFiles.add("x10/array/EmptyRegion.x10");
 			allowedFiles.add("x10/array/FullRegion.x10");
 			allowedFiles.add("x10/array/MatBuilder.x10");
 			allowedFiles.add("x10/array/Mat.x10");
+			allowedFiles.add("x10/array/PlaceGroup.x10");
 			allowedFiles.add("x10/array/Point.x10");
 			allowedFiles.add("x10/array/PolyMat.x10");
 			allowedFiles.add("x10/array/PolyMatBuilder.x10");
@@ -106,9 +112,13 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/array/RectLayout.x10");
 			allowedFiles.add("x10/array/Region.x10");
 			allowedFiles.add("x10/array/Row.x10");
+			allowedFiles.add("x10/array/SparsePlaceGroup.x10");
+			allowedFiles.add("x10/array/UniqueDist.x10");
 			allowedFiles.add("x10/array/VarMat.x10");
 			allowedFiles.add("x10/array/ValRow.x10");
 			allowedFiles.add("x10/array/VarRow.x10");
+			allowedFiles.add("x10/array/WrappedDistPlaceRestricted.x10");
+			allowedFiles.add("x10/array/WrappedDistRegionRestricted.x10");
 			allowedFiles.add("x10/compiler/CompilerFlags.x10");
 			allowedFiles.add("x10/compiler/InitDispatcher.x10");
 			allowedFiles.add("x10/io/Console.x10");
