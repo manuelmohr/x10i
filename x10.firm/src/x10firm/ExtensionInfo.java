@@ -153,6 +153,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/lang/Settable.x10");
 			allowedFiles.add("x10/lang/Short.x10");
 			allowedFiles.add("x10/lang/String.x10");
+			allowedFiles.add("x10/lang/System.x10");
 			allowedFiles.add("x10/lang/Thread.x10");
 			allowedFiles.add("x10/lang/UByte.x10");
 			allowedFiles.add("x10/lang/UInt.x10");
