@@ -18,8 +18,17 @@ import x10.compiler.Native;
  * negative numBytes values produce undefined behaviour.
  */
 public class NativeSupport {
-    /** equals sizeof(x) in C */
+    /**
+     * Returns the number of bytes occupied by an instance of type T.
+     * Does not include potential memory allocator overhead. Roughly
+     * equals sizeof(T) in C
+     */
     public static native def getSize[T](): Int;
+    /**
+     * Casts object to type T without type checking. If obj is not of type T,
+     * then the behaviour is undefined.
+     */
+    public static native def unsafeCast[T](obj: Object): T;
 
     /** memory compare */
     public static native def memcmp(pointer1: Pointer, pointer2: Pointer, numBytes: Int): Int;
