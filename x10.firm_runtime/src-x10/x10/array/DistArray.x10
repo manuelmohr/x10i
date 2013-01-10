@@ -734,23 +734,28 @@ public final class DistArray[T] (
             public operator this(a:U, b:U):U = gop(a,b);
         };
 
-        val result = finish(reducer) {
+        val result = new Cell[U](unit);
+        val home   = here;
+
+        finish {
             for (where in dist.places()) {
                 at (where) async {
                     val reg = dist.get(here);
-                    var localRes:U = unit;
+                    var localTmp:U = unit;
                     val imc = raw();
                     for (pt in reg) {
-                       localRes = lop(localRes, imc(dist.offset(pt)));
+                       localTmp = lop(localTmp, imc(dist.offset(pt)));
                     }
-                    offer(localRes);
+                    val localRes = localTmp;
+                    at (home) atomic {
+                        result.set(gop(result(), localRes));
+                    }
                 }
             }
         };
 
-        return result;
+        return result();
     }
-
 
     public def toString(): String {
         return "DistArray(" + dist + ")";
