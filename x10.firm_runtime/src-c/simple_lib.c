@@ -67,7 +67,7 @@ void _ZN9SimpleLib5printEd(x10_double v)
 
 void _ZN9SimpleLib5printEb(x10_boolean v)
 {
-	printf("%s\n", v != X10_FALSE ? "true" : "false");
+	printf("%s\n", v ? "true" : "false");
 }
 
 void _ZN9SimpleLib5printEPN3x104lang6StringE(x10_string *str)

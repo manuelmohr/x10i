@@ -21,7 +21,7 @@ x10_boolean _ZN3x104lang4Char11isTitleCaseEv(x10_char self)
 {
 	X10_UNUSED(self);
 	X10_UNIMPLEMENTED();
-	return X10_FALSE;
+	return false;
 }
 
 x10_boolean _ZN3x104lang4Char7isDigitEv(x10_char self)

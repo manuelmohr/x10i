@@ -78,11 +78,11 @@ x10_boolean x10_string_equals(
 		const x10_string *self, const x10_string *other)
 {
 	if (other == X10_NULL)
-		return X10_FALSE;
+		return false;
 
 	const x10_int len = self->len;
 	if (other->len != len)
-		return X10_FALSE;
+		return false;
 
 	return equals(self->chars, other->chars, len);
 }
@@ -92,19 +92,19 @@ x10_boolean x10_string_equals_ignore_case(
 		const x10_string *self, const x10_string *other)
 {
 	if(other == X10_NULL)
-		return X10_FALSE;
+		return false;
 
 	x10_int len = self->len;
 	if (other->len != len)
-		return X10_FALSE;
+		return false;
 
 	const x10_char *c0 = self->chars;
 	const x10_char *c1 = other->chars;
 	while (++c0, ++c1, len-- > 0) {
 		if (tolower(*c0) != tolower(*c1))
-			return X10_FALSE;
+			return false;
 	}
-	return X10_TRUE;
+	return true;
 }
 
 // String.hashCode()
@@ -246,13 +246,13 @@ x10_string *x10_string_substring_from_to(const x10_string *self, x10_int start_i
 x10_boolean x10_string_ends_with(const x10_string *self, const x10_string *other)
 {
 	if (other == X10_NULL)
-		return X10_FALSE;
+		return false;
 
 	const x10_int other_len = other->len;
 	const x10_int self_len  = self->len;
 	const x10_int start     = self_len - other_len;
 	if (start < 0)
-		return X10_FALSE;
+		return false;
 	const x10_char *haystack = &self->chars[start];
 	return equals(haystack, other->chars, other_len);
 }
@@ -261,12 +261,12 @@ x10_boolean x10_string_ends_with(const x10_string *self, const x10_string *other
 x10_boolean x10_string_starts_with(const x10_string *self, const x10_string *other)
 {
 	if (other == X10_NULL)
-		return X10_FALSE;
+		return false;
 
 	const x10_int self_len  = self->len;
 	const x10_int other_len = other->len;
 	if (other_len > self_len)
-		return X10_FALSE;
+		return false;
 
 	return equals(self->chars, other->chars, other_len);
 }

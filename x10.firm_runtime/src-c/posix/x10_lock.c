@@ -41,10 +41,7 @@ void _ZN3x104util10concurrent4Lock4lockEv(x10_lock *self)
 x10_boolean _ZN3x104util10concurrent4Lock7tryLockEv(x10_lock *self)
 {
 	// acquire the lock only if it is not held by another thread
-	if (pthread_mutex_trylock(&(self->__lock)) == 0) {
-		return X10_TRUE;
-	}
-	return X10_FALSE;
+	return pthread_mutex_trylock(&(self->__lock)) == 0;
 }
 
 void _ZN3x104util10concurrent4Lock6unlockEv(x10_lock *self)

@@ -32,13 +32,13 @@ x10_float _ZN3x104lang5Float5parseEPN3x104lang6StringE(x10_string *string)
 /* x10.lang.Float.isNaN(): Boolean */
 x10_boolean _ZN3x104lang5Float5isNaNEv(x10_float self)
 {
-	return isnan(self) ? X10_TRUE : X10_FALSE;
+	return isnan(self);
 }
 
 /* x10.lang.Double.isInfinite(): Boolean */
 x10_boolean _ZN3x104lang5Float10isInfiniteEv(x10_float self)
 {
-	return isinf(self) ? X10_TRUE : X10_FALSE;
+	return isinf(self);
 }
 
 /* x10.lang.Float.toRawIntBits(): Int */

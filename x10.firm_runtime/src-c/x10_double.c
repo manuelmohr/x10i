@@ -85,13 +85,13 @@ x10_double _ZN3x104lang6Double5parseEPN3x104lang6StringE(x10_string *string)
 /* x10.lang.Double.isNaN(): Boolean */
 x10_boolean _ZN3x104lang6Double5isNaNEv(x10_double self)
 {
-	return isnan(self) ? X10_TRUE : X10_FALSE;
+	return isnan(self);
 }
 
 /* x10.lang.Double.isInfinite(): Boolean */
 x10_boolean _ZN3x104lang6Double10isInfiniteEv(x10_double self)
 {
-	return isinf(self) ? X10_TRUE : X10_FALSE;
+	return isinf(self);
 }
 
 /* x10.lang.Double.toLongBits(): Long */

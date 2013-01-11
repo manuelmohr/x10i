@@ -15,9 +15,6 @@
 
 #define ARRAY_SIZE(array)  (sizeof(array)/sizeof(array[0]))
 
-static const bool X10_TRUE = true;
-static const bool X10_FALSE = false;
-
 #define X10_NULL_POINTER_EXCEPTION  T_("NullPointerException")
 #define X10_NUMBER_FORMAT_EXCEPTION T_("NumberFormatException")
 #define X10_INDEX_OUT_OF_BOUNDS_EXCEPTION T_("IndexOutOfBoundsException")
