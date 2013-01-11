@@ -1,4 +1,4 @@
-#include "x10.h"
+#include "types.h"
 #include "x10_inputstreamreader.h"
 
 /* octopos supports no input, so this is a dummy implementation */

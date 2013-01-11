@@ -1,5 +1,5 @@
 #include <ctype.h>
-#include "x10.h"
+#include "types.h"
 #include "x10_string.h"
 
 x10_string *_ZN3x104lang4Char8toStringEv(x10_char self)

@@ -1,7 +1,7 @@
 #ifndef SERIALIZATION_H
 #define SERIALIZATION_H
 
-#include "x10.h"
+#include "types.h"
 #include "x10_object.h"
 #include "obst.h"
 

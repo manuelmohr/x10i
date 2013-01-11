@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdio.h>
-#include "x10.h"
+#include <math.h>
+#include "types.h"
 #include "x10_string.h"
 
 /* x10.lang.Double.operator%(Double):Double */
@@ -66,7 +67,7 @@ x10_string *_ZN3x104lang6Double8toStringEv(x10_double v)
 		if (e < 0) {
 			p = (size_t) snprintf(buf, sizeof(buf), "%.1f", m);
 		} else {
-			p = (size_t) snprintf(buf, sizeof(buf), T_("%.16f"), m);
+			p = (size_t) snprintf(buf, sizeof(buf), "%.16f", m);
 		}
 		p = kill_excess_zeroes(buf, p);
 		snprintf(buf+p, sizeof(buf)+p, "E%d", e);

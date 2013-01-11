@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "x10.h"
+#include "types.h"
 #include "x10_string.h"
 
 void _ZN9SimpleLib5printEx(x10_long v)

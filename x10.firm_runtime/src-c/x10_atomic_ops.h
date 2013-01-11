@@ -1,7 +1,7 @@
 #ifndef X10_ATOMIC_OPS_H
 #define X10_ATOMIC_OPS_H
 
-#include "x10.h"
+#include "types.h"
 
 x10_int x10_atomic_ops_compareAndSet_32(volatile x10_int* address, x10_int oldValue, x10_int newValue);
 x10_long x10_atomic_ops_compareAndSet_64(volatile x10_long* address, x10_long oldValue, x10_long newValue);

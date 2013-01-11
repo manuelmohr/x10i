@@ -1,7 +1,7 @@
 #ifndef X10_OBJECT_H
 #define X10_OBJECT_H
 
-#include "x10.h"
+#include "types.h"
 #include <liboo/rts_types.h>
 
 typedef struct x10_vtable {

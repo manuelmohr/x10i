@@ -1,7 +1,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#include "x10.h"
+#include "types.h"
 
 /* main function as defined by x10 code. The runtime should make sure
  * it is called. */

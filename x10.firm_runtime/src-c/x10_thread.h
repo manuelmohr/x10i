@@ -2,7 +2,7 @@
 #define X10_THREAD_H
 
 #include "x10_string.h"
-#include "x10.h"
+#include "types.h"
 
 typedef struct x10_thread x10_thread;
 typedef struct x10_place  x10_place;

@@ -1,4 +1,4 @@
-#include "x10.h"
+#include "types.h"
 #include "x10_string.h"
 
 x10_int _ZN3x104lang5ULong8bitCountEv(x10_ulong ux)

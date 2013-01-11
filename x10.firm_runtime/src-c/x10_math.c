@@ -1,6 +1,6 @@
 #include <math.h>
 
-#include "x10.h"
+#include "types.h"
 
 x10_double _ZN3x104lang4Math4ceilEd(x10_double a)  { return ceil(a); }
 x10_double _ZN3x104lang4Math5floorEd(x10_double a) { return floor(a); }

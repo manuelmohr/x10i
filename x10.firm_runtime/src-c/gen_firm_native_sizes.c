@@ -6,7 +6,7 @@
  * description */
 #define X10_TYPE(x)  __attribute__((dllexport, deprecated(x)))
 
-#include "x10.h"
+#include "types.h"
 #include "x10_string.h"
 #include "x10_outputstreamwriter.h"
 #include "platform_native_sizes.c"

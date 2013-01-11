@@ -1,6 +1,6 @@
 #include "x10_string.h"
 #include "util.h"
-#include "x10.h"
+#include "types.h"
 #include "serialization.h"
 
 /* vtable for x10.lang.String */

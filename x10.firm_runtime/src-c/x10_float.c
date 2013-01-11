@@ -1,4 +1,4 @@
-#include "x10.h"
+#include "types.h"
 #include "x10_string.h"
 
 /* x10.lang.Float.operator%(Float): Float */

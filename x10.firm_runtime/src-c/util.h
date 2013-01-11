@@ -4,15 +4,20 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include "x10.h"
+#include "types.h"
 #include "x10_object.h"
 #include "x10_throw.h"
+
+#define X10_UNUSED(s) (void)(s)
+
+#define X10_UNIMPLEMENTED() printf("%s not implemented yet", __FUNCTION__); abort();
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 #define ARRAY_SIZE(array)  (sizeof(array)/sizeof(array[0]))
 
+#define T_(x) x
 #define X10_NULL_POINTER_EXCEPTION  T_("NullPointerException")
 #define X10_NUMBER_FORMAT_EXCEPTION T_("NumberFormatException")
 #define X10_INDEX_OUT_OF_BOUNDS_EXCEPTION T_("IndexOutOfBoundsException")

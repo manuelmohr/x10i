@@ -1,5 +1,5 @@
 #include <string.h>
-#include "x10.h"
+#include "types.h"
 
 /* static x10.lang.NativeSupport.memcmp(Pointer,Pointer,Int): Int */
 x10_int _ZN3x104lang13NativeSupport6memcmpEPvPvi(x10_pointer ptr1, x10_pointer ptr2, x10_int numBytes)

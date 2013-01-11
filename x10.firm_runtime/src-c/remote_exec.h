@@ -1,7 +1,7 @@
 #ifndef REMOTE_EXEC_H
 #define REMOTE_EXEC_H
 
-#include "x10.h"
+#include "types.h"
 
 enum x10_rt_message_types {
 	MSG_RUN_AT = 1,

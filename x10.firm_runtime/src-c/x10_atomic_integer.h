@@ -1,7 +1,7 @@
 #ifndef X10_ATOMIC_INTEGER_H
 #define X10_ATOMIC_INTEGER_H
 
-#include "x10.h"
+#include "types.h"
 #include "x10_atomic_ops.h"
 
 typedef struct {

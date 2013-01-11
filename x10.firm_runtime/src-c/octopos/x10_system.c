@@ -1,5 +1,5 @@
 #include <time.h>
-#include "x10.h"
+#include "types.h"
 
 x10_boolean _ZN3x104lang6System5sleepEx(x10_long millis)
 {

@@ -1,5 +1,5 @@
 #include <time.h>
-#include "x10.h"
+#include "types.h"
 
 int exit_code;
 

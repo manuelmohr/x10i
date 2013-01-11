@@ -1,7 +1,7 @@
 #ifndef X10_STRING_H
 #define X10_STRING_H
 
-#include "x10.h"
+#include "types.h"
 #include "x10_object.h"
 
 typedef struct X10_TYPE("x10.lang.String") {

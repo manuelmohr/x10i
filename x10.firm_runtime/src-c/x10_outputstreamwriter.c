@@ -1,4 +1,4 @@
-#include "x10.h"
+#include "types.h"
 #include "x10_outputstreamwriter.h"
 
 /* OutputStreamWriter.close() */

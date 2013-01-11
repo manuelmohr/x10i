@@ -1,4 +1,4 @@
-#include "x10.h"
+#include "types.h"
 
 x10_pointer _ZN3x104lang7Pointer14getNullPointerEv()
 {

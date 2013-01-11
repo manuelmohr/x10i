@@ -1,7 +1,7 @@
 #ifndef X10_LOCK_H
 #define X10_LOCK_H
 
-#include "x10.h"
+#include "types.h"
 
 typedef struct x10_lock x10_lock;
 

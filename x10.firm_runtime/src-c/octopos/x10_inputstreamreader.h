@@ -2,7 +2,7 @@
 #define OCTOPOS_X10_INPUTSTREAMREADER_H
 
 #include <stdio.h>
-#include "x10.h"
+#include "types.h"
 #include "x10_object.h"
 
 typedef struct X10_TYPE("x10.io.InputStreamReader") x10_inputstreamreader {
