@@ -26,20 +26,12 @@ import x10.compiler.CompilerFlags;
 public final struct Place(id: Int)  {
     public property id():Int = id;
 
-    /** The number of places including accelerators.
-     * Accelerator places have limitations on the kinds of code they can run.
-     */
-    @Native("java", "x10.runtime.impl.java.Runtime.MAX_PLACES")
-    @Native("c++", "x10aux::num_places")
-    public static ALL_PLACES: Int = 4;
+    private static native def getMaxPlaces(): Int;
 
     /** The number of places not including accelerators. */
-    @Native("java", "x10.runtime.impl.java.Runtime.MAX_PLACES")
-    @Native("c++", "x10aux::num_hosts")
-    public static MAX_PLACES: Int = 4;
+    public static MAX_PLACES: Int = getMaxPlaces();
 
-    /** The number of accelerators. */
-    public static NUM_ACCELS = ALL_PLACES - MAX_PLACES;
+    public static ALL_PLACES: Int = MAX_PLACES;
 
     /**
      * Find number of children under a place.

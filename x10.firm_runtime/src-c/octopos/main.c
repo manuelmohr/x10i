@@ -2,6 +2,9 @@
 #include "ilocal_data.h"
 #include "main.h"
 #include "init.h"
+#include "places.h"
+
+unsigned max_tile_id = 0;
 
 void main_ilet(claim_t claim)
 {
