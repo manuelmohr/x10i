@@ -557,7 +557,7 @@ public struct ULong implements Comparable[ULong], Arithmetic[ULong], Bitwise[ULo
     @Native("c++", "x10aux::equals(#0,#1)")
     public native def equals(x:ULong):Boolean;
 
-    public native def hashCode(): Int;
+    public def hashCode(): Int = ((this ^ this >>> 32) as Long) as Int;
 
     /**
     * Returns a negative Int, zero, or a positive Int if this ULong is less than, equal

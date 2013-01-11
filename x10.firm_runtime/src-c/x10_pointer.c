@@ -23,3 +23,8 @@ x10_pointer _ZN3x104lang7Pointerv4asPvEPN3x104lang3AnyE(x10_any *any)
 {
 	return any;
 }
+
+x10_int _ZN3x104lang7Pointer8hashCodeEv(x10_pointer ptr)
+{
+	return (x10_int)ptr;
+}

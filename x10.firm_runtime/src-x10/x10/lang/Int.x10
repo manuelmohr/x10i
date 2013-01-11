@@ -507,7 +507,7 @@ public struct Int implements Comparable[Int], Arithmetic[Int], Bitwise[Int], Ord
     @Native("c++", "x10aux::equals(#0,#1)")
     public native def equals(x:Int): Boolean;
 
-    public native def hashCode(): Int;
+    public def hashCode(): Int = this;
 
     /**
      * Returns a negative Int, zero, or a positive Int if this Int is less than, equal

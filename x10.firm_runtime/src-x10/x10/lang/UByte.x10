@@ -455,7 +455,7 @@ public struct UByte implements Comparable[UByte], Arithmetic[UByte], Bitwise[UBy
     @Native("c++", "x10aux::equals(#0,#1)")
     public native def equals(x:UByte):Boolean;
 
-    public native def hashCode(): Int;
+    public def hashCode(): Int = this as Byte;
 
     /**
     * Returns a negative Int, zero, or a positive Int if this UByte is less than, equal

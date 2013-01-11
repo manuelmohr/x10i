@@ -412,7 +412,7 @@ public struct Byte implements Comparable[Byte], Arithmetic[Byte], Bitwise[Byte],
     @Native("c++", "x10aux::equals(#0,#1)")
     public native def equals(x:Byte):Boolean;
 
-    public native def hashCode(): Int;
+    public def hashCode(): Int = this;
 
     /**
     * Returns a negative Int, zero, or a positive Int if this Byte is less than, equal

@@ -125,7 +125,7 @@ public struct Boolean implements Comparable[Boolean] {
      */
     public native def equals(x:Boolean):Boolean;
 
-    public native def hashCode():Int;
+    public def hashCode():Int = this ? 1 : 0;
 
     /**
     * Returns a negative Int, zero, or a positive Int if this Boolean is less than, equal

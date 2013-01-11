@@ -466,7 +466,7 @@ public struct UShort implements Comparable[UShort], Arithmetic[UShort], Bitwise[
     @Native("c++", "x10aux::equals(#0, #1)")
     public native def equals(x:UShort):Boolean;
 
-    public native def hashCode(): Int;
+    public def hashCode(): Int = this as Short;
 
     /**
     * Returns a negative Int, zero, or a positive Int if this UShort is less than, equal

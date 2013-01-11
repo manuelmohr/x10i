@@ -10,7 +10,7 @@ class Type(object):
 	def __init__(self, name, mangled, ctype, size, signed,
 	             binOps=intBinOps, unOps=["+", "-", "~"], cmpOps=cmpOps,
 	             shiftOps=shiftOps, needsToString=True, needsParse=True,
-	             movableBy=None, needsHashCode=True):
+	             movableBy=None):
 		self.name          = name
 		self.mangled       = mangled
 		self.ctype         = ctype
@@ -20,7 +20,6 @@ class Type(object):
 		self.binOps        = binOps
 		self.unOps         = unOps
 		self.shiftOps      = shiftOps
-		self.needsHashCode = needsHashCode
 		self.needsToString = needsToString
 		self.needsParse    = needsParse
 		self.movableBy     = movableBy
@@ -64,10 +63,10 @@ intTypes = [
 floatTypes = [
 	Type("x10.lang.Float",   "f",  "x10_float",  32, True,
 	     binOps=[" + ", " - ", "*", "/"], shiftOps=[], unOps=["+", "-"],
-	     needsToString=False, needsParse=False, needsHashCode=False),
+	     needsToString=False, needsParse=False),
 	Type("x10.lang.Double",  "d",  "x10_double", 64, True,
 	     binOps=[" + ", " - ", "*", "/"], shiftOps=[], unOps=["+", "-"],
-	     needsToString=False, needsParse=False, needsHashCode=False),
+	     needsToString=False, needsParse=False),
 ]
 types = intTypes + floatTypes + [
 	Type("x10.lang.Char",    "c",  "x10_char",    8, False,
@@ -146,7 +145,6 @@ template = env.from_string(
 '''/* Warning: automatically generated code */
 #include "x10.h"
 #include "util.h"
-#include "x10_util.h"
 #include "x10_string.h"
 
 static x10_char numerals[] = {
@@ -170,19 +168,6 @@ x10_boolean {{method("equals", xtype)}}({{ctype}} self, {{ctype}} other)
 {
 	return self == other;
 }
-
-{%- if type.needsHashCode %}
-
-/* {{xtype}}.hashCode():Int */
-x10_int {{method("hashCode")}}v({{ctype}} self)
-{
-	{%- if type.size <= typedict["x10.lang.Int"].size %}
-	return (x10_int)self;
-	{%- else %}
-	return x10_hashCode((const unsigned char*)&self, sizeof(self));
-	{%- endif %}
-}
-{%- endif %}
 
 {%- if type.needsToString %}
 
