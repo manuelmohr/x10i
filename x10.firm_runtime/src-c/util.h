@@ -11,8 +11,6 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
-#define X10_NULL NULL
-
 #define ARRAY_SIZE(array)  (sizeof(array)/sizeof(array[0]))
 
 #define X10_NULL_POINTER_EXCEPTION  T_("NullPointerException")
@@ -26,7 +24,7 @@ static inline x10_object *x10_new_exception_object(const x10_char *name, const x
 	X10_UNUSED(name);
 	X10_UNUSED(msg);
 	// TODO this is just a dummy!
-	return X10_NULL;
+	return NULL;
 }
 
 static inline void x10_throw_exception_object(x10_object *obj)
@@ -43,7 +41,7 @@ static inline void x10_throw_exception(const x10_char *name, const x10_char *msg
 
 static inline void x10_null_check(const void *obj)
 {
-	if (obj == X10_NULL)
+	if (obj == NULL)
 		x10_throw_exception(X10_NULL_POINTER_EXCEPTION, T_("null check"));
 }
 

@@ -12,7 +12,7 @@ x10_string *_ZN3x104lang5Float11toHexStringEv(x10_float self)
 {
 	X10_UNUSED(self);
 	X10_UNIMPLEMENTED();
-	return X10_NULL;
+	return NULL;
 }
 
 /* x10.lang.Float.toString(): String */

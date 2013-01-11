@@ -14,7 +14,7 @@ x10_string *_ZN3x104lang6Double11toHexStringEv(x10_double self)
 {
 	X10_UNUSED(self);
 	X10_UNIMPLEMENTED();
-	return X10_NULL;
+	return NULL;
 }
 
 /*

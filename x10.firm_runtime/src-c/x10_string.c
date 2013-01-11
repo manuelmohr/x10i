@@ -77,7 +77,7 @@ static inline bool equals(const x10_char *chars0, const x10_char *chars1,
 x10_boolean x10_string_equals(
 		const x10_string *self, const x10_string *other)
 {
-	if (other == X10_NULL)
+	if (other == NULL)
 		return false;
 
 	const x10_int len = self->len;
@@ -91,7 +91,7 @@ x10_boolean x10_string_equals(
 x10_boolean x10_string_equals_ignore_case(
 		const x10_string *self, const x10_string *other)
 {
-	if(other == X10_NULL)
+	if(other == NULL)
 		return false;
 
 	x10_int len = self->len;
@@ -245,7 +245,7 @@ x10_string *x10_string_substring_from_to(const x10_string *self, x10_int start_i
 // String.endsWith(String): Boolean
 x10_boolean x10_string_ends_with(const x10_string *self, const x10_string *other)
 {
-	if (other == X10_NULL)
+	if (other == NULL)
 		return false;
 
 	const x10_int other_len = other->len;
@@ -260,7 +260,7 @@ x10_boolean x10_string_ends_with(const x10_string *self, const x10_string *other
 // String.startsWith(String): Boolean
 x10_boolean x10_string_starts_with(const x10_string *self, const x10_string *other)
 {
-	if (other == X10_NULL)
+	if (other == NULL)
 		return false;
 
 	const x10_int self_len  = self->len;
