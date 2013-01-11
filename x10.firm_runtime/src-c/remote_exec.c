@@ -57,7 +57,7 @@ void x10_rt_place_execute(void *arg)
 
 x10_object *x10_rt_execute_at(x10_int place_id, x10_int msg_type, x10_object *closure)
 {
-	assert (msg_type == MSG_RUN_AT || msg_type == MSG_EVAL_AT);
+	assert(msg_type == MSG_RUN_AT || msg_type == MSG_EVAL_AT);
 
 	serialization_buffer_t* ser_buf = x10_serialization_init();
 	x10_serialization_write_object(ser_buf, closure);

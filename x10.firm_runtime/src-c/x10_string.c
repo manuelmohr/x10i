@@ -91,7 +91,7 @@ x10_boolean x10_string_equals(
 x10_boolean x10_string_equals_ignore_case(
 		const x10_string *self, const x10_string *other)
 {
-	if(other == NULL)
+	if (other == NULL)
 		return false;
 
 	x10_int len = self->len;

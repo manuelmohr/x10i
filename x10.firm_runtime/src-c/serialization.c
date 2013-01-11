@@ -38,7 +38,7 @@ serialization_buffer_t *x10_serialization_init(void)
 
 void x10_serialization_write_primitive(serialization_buffer_t *buf, const void *data, size_t nbytes)
 {
-	assert (nbytes > 0);
+	assert(nbytes > 0);
 
 #ifdef X10_SERIALIZATION_DEBUG
 	printf("X10_SERIALIZATION: writing primitive at %x (%d bytes)\n", (unsigned)data, nbytes);
@@ -144,7 +144,7 @@ void x10_deserialization_restore_primitive(deserialization_buffer_t *buf, void *
 	printf("X10_DESERIALIZATION: restoring %d bytes to %x\n", nbytes, (unsigned) addr);
 #endif
 
-	assert (buf->cursor + nbytes <= buf->length);
+	assert(buf->cursor + nbytes <= buf->length);
 	memcpy(addr, &buf->data[buf->cursor], nbytes);
 	buf->cursor += nbytes;
 }
@@ -165,7 +165,7 @@ void x10_deserialization_restore_object(deserialization_buffer_t *buf, x10_objec
 
 	if (class_id == X10_SERIALIZATION_KNOWN_OBJECT_TYPE_UID) {
 		uint32_t object_num = get_u32(buf);
-		assert (ARR_LEN(buf->deserialized_objects) > object_num);
+		assert(ARR_LEN(buf->deserialized_objects) > object_num);
 		*addr = buf->deserialized_objects[object_num];
 
 #ifdef X10_SERIALIZATION_DEBUG
@@ -187,12 +187,12 @@ void x10_deserialization_restore_object(deserialization_buffer_t *buf, x10_objec
 
 	entry->deserializer(buf, newObj);
 
-	assert (buf->cursor <= buf->length);
+	assert(buf->cursor <= buf->length);
 }
 
 void x10_deserialization_finish(deserialization_buffer_t *buf)
 {
-	assert (buf->cursor == buf->length);
+	assert(buf->cursor == buf->length);
 	DEL_ARR_F(buf->deserialized_objects);
 	free(buf);
 }

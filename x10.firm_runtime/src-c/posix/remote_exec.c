@@ -16,7 +16,7 @@ void x10_rt_init()
 	printf("X10 runtime [posix]: Hello.\n");
 #endif
 
-	assert (! pthread_key_create(&rt_state_key, NULL));
+	assert(!pthread_key_create(&rt_state_key, NULL));
 
 	x10_rt_set_here_id(0);
 }
