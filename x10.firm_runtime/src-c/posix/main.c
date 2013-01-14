@@ -9,6 +9,8 @@ int main(int argc, char **argv)
 
 	x10_rt_init();
 
+	x10_static_initializer();
+
 	/* construct args array */
 	x10_string *arg_pointers[argc-1];
 	for (int i = 1; i < argc; ++i) {

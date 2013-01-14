@@ -164,13 +164,11 @@ import firm.Initializer;
 import firm.MethodType;
 import firm.Mode;
 import firm.OO;
-import firm.PointerType;
 import firm.Program;
 import firm.Relation;
 import firm.SwitchTable;
 import firm.TargetValue;
 import firm.bindings.binding_ircons.ir_where_alloc;
-import firm.bindings.binding_irprog.ir_segment_t;
 import firm.bindings.binding_typerep.ir_linkage;
 import firm.bindings.binding_typerep.ir_type_state;
 import firm.bindings.binding_typerep.ir_visibility;
@@ -248,27 +246,9 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	/** Generates the static initialization constructor. */
 	private void genStaticInitializationSupportCode() {
-		// get the "constructor" segment and then put the static initialization code in the "constructor" segment.
-		final ClassType conSegment = Program.getSegmentType(ir_segment_t.IR_SEGMENT_CONSTRUCTORS.val);
-
-		final firm.Type[] parameterTypes = new firm.Type[0];
-		final firm.Type[] resultTypes = new firm.Type[0];
-
-		final firm.Type methodType = new MethodType(parameterTypes, resultTypes);
+		final firm.Type methodType = new MethodType(new firm.Type[] {}, new firm.Type[] {});
 		final String name = NameMangler.mangleKnownName(X10_STATIC_INITIALIZER);
 		final Entity methodEntity = new Entity(Program.getGlobalType(), name, methodType);
-		final firm.Type ptrMethodType = new PointerType(methodType);
-
-		final Entity conEntity = new Entity(conSegment, "$ctor", ptrMethodType);
-		final Graph graph = Program.getConstCodeGraph();
-		final Node val = graph.newSymConst(methodEntity);
-
-		conEntity.setLdIdent("");
-		conEntity.setCompilerGenerated(true);
-		conEntity.setVisibility(ir_visibility.ir_visibility_private);
-		conEntity.addLinkage(ir_linkage.IR_LINKAGE_HIDDEN_USER);
-		conEntity.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
-		conEntity.setAtomicValue(val);
 
 		final Type voidT = typeSystem.getTypeSystem().Void();
 		final MethodConstruction savedConstruction

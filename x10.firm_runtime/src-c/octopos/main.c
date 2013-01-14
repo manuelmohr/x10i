@@ -16,6 +16,8 @@ void main_ilet(claim_t claim)
 	while (num > 0 && invade_simple(claim, num) != 0)
 		--num;
 
+	x10_static_initializer();
+
 	finish_state fs;
 	fs.claim = claim;
 

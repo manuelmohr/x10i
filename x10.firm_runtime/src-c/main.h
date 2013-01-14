@@ -3,6 +3,9 @@
 
 #include "types.h"
 
+/** static initializer code as defined by x10 compiler */
+extern void x10_static_initializer(void);
+
 /* main function as defined by x10 code. The runtime should make sure
  * it is called. */
 extern void x10_main(x10_object *args);
