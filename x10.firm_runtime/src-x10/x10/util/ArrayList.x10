@@ -11,6 +11,10 @@
 
 package x10.util;
 
+import x10.compiler.CompilerFlags;
+import x10.compiler.NoInline;
+import x10.compiler.NoReturn;
+
 public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
 
     private val a: GrowableIndexedMemoryChunk[T];
@@ -63,14 +67,30 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
         a(i) = v;
     }
 
-    public operator this(i: int)=(v: T) : T = set(v,i);
-
-    public def set(v: T, i: int): T {
-        a(i) = v;
+    public operator this(i: int)=(v: T) : T {
+        val length = a.length() as UInt;
+        if (i as UInt >= length) {
+            if (CompilerFlags.checkBounds() && i as UInt > length)
+                illegalGap(i, length as Int);
+            a.add(v);
+        } else {
+            a(i) = v;
+        }
         return v;
     }
 
+    public def set(v: T, i: int): T {
+        return this(i) = v;
+    }
+
+    private static @NoInline @NoReturn def illegalGap(idx:int, length:int) {
+        throw new UnsupportedOperationException("Insert at "+idx+" would have created gap (length = "+length+")");
+    }
+
     public def removeAt(i: int): T {
+        if (CompilerFlags.checkBounds() && i as UInt >= a.length() as UInt)
+            raiseIndexOutOfBounds(i, a.length());
+
         val v = a(i);
         for (var j: int = i+1; j < a.length(); j++) {
             a(j-1) = a(j);
@@ -79,9 +99,17 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
         return v;
     }
 
-    public operator this(i: int) = a(i);
+    public operator this(i: int) {
+        if (CompilerFlags.checkBounds() && i as UInt >= a.length() as UInt)
+            raiseIndexOutOfBounds(i, a.length());
+        return a(i);
+    }
 
-    public def get(i: int): T = a(i);
+    private static @NoInline @NoReturn def raiseIndexOutOfBounds(idx:int, length:int) {
+        throw new ArrayIndexOutOfBoundsException("Index is "+idx+"; length is "+length);
+    }
+
+    public def get(i: int): T = this(i);
 
     public def size(): int = a.length();
 
@@ -113,8 +141,18 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
     }
 
     public def subList(begin: Int, end: Int): List[T] {
+        val length = a.length();
+        if (CompilerFlags.checkBounds()) {
+            if (begin as UInt >= length as UInt) {
+                raiseIndexOutOfBounds(begin, length);
+            }
+            if (end as UInt > length as UInt) {
+                raiseIndexOutOfBounds(end, length);
+            }
+        }
+
         val l = new ArrayList[T]();
-        for (var i: Int = begin; i < a.length() && i < end; i++) {
+        for (var i: Int = begin; i < length && i < end; i++) {
            l.add(a(i));
         }
         return l;
@@ -125,7 +163,8 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
     }
 
     public def indexOf(index: Int, v: T): Int {
-        for (var i: Int = index; i < a.length(); i++) {
+        val length = a.length();
+        for (var i: Int = index; i < length; i++) {
             if (v==null ? a(i)==null : v.equals(a(i)))
                 return i;
         }
@@ -137,6 +176,11 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
     }
 
     public def lastIndexOf(index: Int, v: T): Int {
+        val length = a.length();
+        if (CompilerFlags.checkBounds() && index as UInt >= length as UInt) {
+            raiseIndexOutOfBounds(index, length);
+        }
+
         for (var i: Int = index; i >= 0; i--) {
             if (v==null ? a(i)==null : v.equals(a(i)))
                 return i;
@@ -176,7 +220,7 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
         }
 
         public def next(): S {
-            return al.a(++i);
+            return al(++i);
         }
 
         public def hasPrevious(): boolean {
@@ -188,7 +232,7 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
         }
 
         public def previous(): S {
-            return al.a(--i);
+            return al(--i);
         }
 
         public def remove(): void {
@@ -244,6 +288,7 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
         qsort(a, l+1, hi, cmp);
     }
 
+    /** exchange 2 elements, no bounds checking is performed */
     private def exch(a: GrowableIndexedMemoryChunk[T], i: int, j: int): void {
         val temp = a(i);
         a(i) = a(j);
