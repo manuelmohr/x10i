@@ -14,7 +14,7 @@ import firm.Mode;
 import firm.nodes.Node;
 
 /**
- * compiler built-ins for x10.lang.NativeSupport
+ * compiler built-ins for x10.lang.NativeSupport.
  */
 public abstract class X10LangNativeSupport {
 	/**
@@ -37,7 +37,7 @@ public abstract class X10LangNativeSupport {
 			final Node args = con.getGraph().getArgs();
 			final Node arg = con.newProj(args, Mode.getP(), 0);
 			final Node mem = con.getCurrentMem();
-			final Node ret = con.newReturn(mem, new Node[] { arg });
+			final Node ret = con.newReturn(mem, new Node[] {arg});
 			con.getGraph().getEndBlock().addPred(ret);
 			con.setUnreachable();
 
