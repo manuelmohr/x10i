@@ -546,7 +546,7 @@ public class FirmTypeSystem {
 			result.addSuperType(firmSuperType);
 			final Entity superObject = new Entity(result, "$super", firmSuperType);
 			superObject.setOffset(0);
-		} else if (flags.isStruct() || classType.isAnonymous()) {
+		} else if (flags.isStruct()) {
 			final X10ClassType any = typeSystem.getTypeSystem().Any();
 			final Type firmAny = asClass(any);
 			result.addSuperType(firmAny);
