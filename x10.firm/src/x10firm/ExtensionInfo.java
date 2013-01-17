@@ -100,6 +100,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/array/FullRegion.x10");
 			allowedFiles.add("x10/array/MatBuilder.x10");
 			allowedFiles.add("x10/array/Mat.x10");
+			allowedFiles.add("x10/array/PeriodicDist.x10");
 			allowedFiles.add("x10/array/PlaceGroup.x10");
 			allowedFiles.add("x10/array/Point.x10");
 			allowedFiles.add("x10/array/PolyMat.x10");
@@ -107,10 +108,12 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/array/PolyRegion.x10");
 			allowedFiles.add("x10/array/PolyRow.x10");
 			allowedFiles.add("x10/array/PolyScanner.x10");
+			allowedFiles.add("x10/array/Range.x10");
 			allowedFiles.add("x10/array/RectRegion1D.x10");
 			allowedFiles.add("x10/array/RectRegion.x10");
 			allowedFiles.add("x10/array/RectLayout.x10");
 			allowedFiles.add("x10/array/Region.x10");
+			allowedFiles.add("x10/array/RemoteArray.x10");
 			allowedFiles.add("x10/array/Row.x10");
 			allowedFiles.add("x10/array/SparsePlaceGroup.x10");
 			allowedFiles.add("x10/array/UniqueDist.x10");
@@ -122,15 +125,20 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/compiler/CompilerFlags.x10");
 			allowedFiles.add("x10/compiler/InitDispatcher.x10");
 			allowedFiles.add("x10/io/Console.x10");
+			allowedFiles.add("x10/io/CustomSerialization.x10");
+			allowedFiles.add("x10/io/FilterReader.x10");
 			allowedFiles.add("x10/io/FilterWriter.x10");
 			allowedFiles.add("x10/io/InputStreamReader.x10");
 			allowedFiles.add("x10/io/Marshal.x10");
 			allowedFiles.add("x10/io/OutputStreamWriter.x10");
 			allowedFiles.add("x10/io/Printer.x10");
+			allowedFiles.add("x10/io/PutbackReader.x10");
+			allowedFiles.add("x10/io/Readable.x10");
 			allowedFiles.add("x10/io/Reader.x10");
 			allowedFiles.add("x10/io/ReaderIterator.x10");
 			allowedFiles.add("x10/io/SerialData.x10");
 			allowedFiles.add("x10/io/StringWriter.x10");
+			allowedFiles.add("x10/io/Writable.x10");
 			allowedFiles.add("x10/io/Writer.x10");
 			allowedFiles.add("x10/lang/Any.x10");
 			allowedFiles.add("x10/lang/Arithmetic.x10");
@@ -144,6 +152,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/lang/Double.x10");
 			allowedFiles.add("x10/lang/FinishState.x10");
 			allowedFiles.add("x10/lang/Float.x10");
+			allowedFiles.add("x10/lang/GlobalCell.x10");
 			allowedFiles.add("x10/lang/GlobalRef.x10");
 			allowedFiles.add("x10/lang/Indexable.x10");
 			allowedFiles.add("x10/lang/IntRange.x10");
@@ -158,6 +167,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/lang/Place.x10");
 			allowedFiles.add("x10/lang/Pointer.x10");
 			allowedFiles.add("x10/lang/Rail.x10");
+			allowedFiles.add("x10/lang/Reducible.x10");
 			allowedFiles.add("x10/lang/Runtime.x10");
 			allowedFiles.add("x10/lang/Sequence.x10");
 			allowedFiles.add("x10/lang/Settable.x10");
