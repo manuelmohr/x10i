@@ -478,9 +478,7 @@ public abstract class Region(
      * @param p the given place
      * @return a "constant" distribution over this region that maps to p.
      */
-    /*
     public operator this -> (p:Place) = Dist.makeConstant(this, p);
-    */
 }
 public type Region(r:Int) = Region{self.rank==r};
 public type Region(r:Region) = Region{self==r};
