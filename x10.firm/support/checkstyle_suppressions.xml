@@ -8,4 +8,6 @@
 	<!-- we are forced to override some bad names in base X10 -->
 	<suppress checks="MethodName" files="Version.java"/>
 	<suppress checks="MethodName" files="FirmScheduler.java"/>
+	<!-- the white list can get quite lengthy -->
+	<suppress checks="MethodLength" files="ExtensionInfo.java"/>
 </suppressions>
