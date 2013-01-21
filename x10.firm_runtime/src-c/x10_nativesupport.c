@@ -1,5 +1,6 @@
 #include <string.h>
 #include "types.h"
+#include "xmalloc.h"
 
 /* static x10.lang.NativeSupport.memcmp(Pointer,Pointer,Int): Int */
 x10_int _ZN3x104lang13NativeSupport6memcmpEPvPvi(x10_pointer ptr1, x10_pointer ptr2, x10_int numBytes)
@@ -28,16 +29,13 @@ void _ZN3x104lang13NativeSupport6memsetEPvii(x10_pointer dest, x10_int c, x10_in
 /* static x10.lang.NativeSupport.alloc(UInt): Pointer */
 x10_pointer _ZN3x104lang13NativeSupport5allocEi(x10_int numBytes)
 {
-	void *ret = malloc(numBytes);
-	assert(ret != NULL);
-	return ret;
+	return xmalloc(numBytes);
 }
 
 /* static x10.lang.NativeSupport.allocZeroed(Uint): Pointer */
 x10_pointer _ZN3x104lang13NativeSupport11allocZeroedEi(x10_int numBytes)
 {
-	void *ret = malloc(numBytes);
-	assert(ret != NULL);
+	void *ret = xmalloc(numBytes);
 	memset(ret, 0, numBytes);
 	return ret;
 }
@@ -47,15 +45,14 @@ x10_pointer _ZN3x104lang13NativeSupport7reallocEPvii(x10_pointer prev,
 	x10_int prev_bytes, x10_int num_bytes)
 {
 	(void) prev_bytes;
-	void *ret = realloc(prev, num_bytes);
-	return ret;
+	return xrealloc(prev, num_bytes);
 }
 
 /* static x10.lang.NativeSupport.reallocZeroed(Pointer, Int, Int): Pointer */
 x10_pointer _ZN3x104lang13NativeSupport13reallocZeroedEPvii(x10_pointer prev,
 	x10_int prev_bytes, x10_int num_bytes)
 {
-	void *ret = realloc(prev, num_bytes);
+	void *ret = xrealloc(prev, num_bytes);
 	if (num_bytes > prev_bytes) {
 		char *p = ((char*)ret) + prev_bytes;
 		memset(p, 0, num_bytes - prev_bytes);
