@@ -25,14 +25,12 @@
 
 /* @@@ ToDo: replace this file with the one from liberty.
    [reimplement xstrdup, ... ] */
-//#include "config.h"
 
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "xmalloc.h"
-//#include "error.h"
 
 static void xnomem(void)
 {
