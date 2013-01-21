@@ -205,7 +205,7 @@ public class CompilerOptions extends X10CompilerOptions {
 		} else if (arg.equals("-noUseFirmLibraries")) {
 			useFirmLibraries = false;
 			return index + 1;
-		} else if (arg.equals("-showCommandline")) {
+		} else if (arg.equals("-V")) {
 			printCommandline = true;
 			return index + 1;
 		} else if (arg.equals("-linkerScript")) {
