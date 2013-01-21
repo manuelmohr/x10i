@@ -43,7 +43,9 @@ void *xmalloc(size_t size)
 {
 	void *res = malloc(size);
 
-	if (!res) xnomem();
+	if (res == NULL && size != 0) {
+		xnomem();
+	}
 	return res;
 }
 
@@ -52,7 +54,9 @@ void *xrealloc(void *ptr, size_t size)
 	/* ANSI blesses realloc (0, x) but SunOS chokes on it */
 	void *res = ptr ? realloc (ptr, size) : malloc (size);
 
-	if (!res) xnomem();
+	if (res == NULL && size != 0) {
+		xnomem();
+	}
 	return res;
 }
 
