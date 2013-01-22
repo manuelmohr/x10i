@@ -30,12 +30,6 @@
 #include "array_t.h"
 #include "xmalloc.h"
 
-/* Undefine the macros to get the functions instead, cf tmalloc.c.  */
-#undef xmalloc
-#undef xrealloc
-#undef xstrdup
-#undef xfree
-
 #ifndef MAX
 # define MAX(a,b) ((a) > (b) ? (a) : (b))
 #endif

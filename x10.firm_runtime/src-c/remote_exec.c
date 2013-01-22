@@ -26,9 +26,8 @@ void x10_rt_place_execute(void *arg)
 	x10_rt_set_here_id(pea->place_id);
 	finish_state_set_current(pea->fs);
 
-	char *recv_buf = malloc(pea->closure_len);
-	if (! recv_buf)
-		panic("Could not allocate receive buffer.");
+	assert(pea->closure_len > 0);
+	char *recv_buf = xmalloc(pea->closure_len);
 
 	x10_rt_dma(recv_buf, pea->closure, pea->closure_len);
 
@@ -36,7 +35,7 @@ void x10_rt_place_execute(void *arg)
 	x10_object *closure;
 	x10_deserialization_restore_object(deser_buf, &closure);
 	x10_deserialization_finish(deser_buf);
-	free(recv_buf);
+	xfree(recv_buf);
 
 	if (pea->msg_type == MSG_RUN_AT) {
 		_ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(closure);
@@ -46,8 +45,8 @@ void x10_rt_place_execute(void *arg)
 		serialization_buffer_t *ser_buf = x10_serialization_init();
 		x10_serialization_write_object(ser_buf, ret);
 
-		pea->result_len  = ser_buf->bytes_written;
-		pea->result      = x10_serialization_finish(ser_buf);
+		pea->result_len = ser_buf->bytes_written;
+		pea->result     = x10_serialization_finish(ser_buf);
 	} else {
 		panic("Unhandled message type.");
 	}
@@ -62,7 +61,7 @@ x10_object *x10_rt_execute_at(x10_int place_id, x10_int msg_type, x10_object *cl
 	serialization_buffer_t* ser_buf = x10_serialization_init();
 	x10_serialization_write_object(ser_buf, closure);
 
-	place_execute_args *pea = malloc(sizeof(place_execute_args));
+	place_execute_args *pea = xmalloc(sizeof(place_execute_args));
 	pea->place_id    = place_id;
 	pea->msg_type    = msg_type;
 	pea->fs          = finish_state_get_current();
@@ -78,7 +77,8 @@ x10_object *x10_rt_execute_at(x10_int place_id, x10_int msg_type, x10_object *cl
 
 	x10_object *retVal = NULL;
 	if (msg_type == MSG_EVAL_AT) {
-		char *recv_buf = malloc(pea->result_len);
+		assert(pea->result_len > 0);
+		char *recv_buf = xmalloc(pea->result_len);
 		x10_rt_dma(recv_buf, pea->result, pea->result_len);
 
 		deserialization_buffer_t *deser_buf = x10_deserialization_init(recv_buf, pea->result_len);
@@ -86,13 +86,13 @@ x10_object *x10_rt_execute_at(x10_int place_id, x10_int msg_type, x10_object *cl
 		x10_deserialization_restore_object(deser_buf, &retVal);
 		x10_deserialization_finish(deser_buf);
 
-		free(recv_buf);
+		xfree(recv_buf);
 	}
 
-	free(pea->closure);
+	xfree(pea->closure);
 	if (pea->result)
-		free(pea->result);
-	free(pea);
+		xfree(pea->result);
+	xfree(pea);
 
 	return retVal;
 }

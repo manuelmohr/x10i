@@ -53,7 +53,7 @@ static void finish_state_free(finish_state *fs)
 		panic("Could not destroy mutex");
 	if (pthread_cond_destroy(& fs->condition))
 		panic("Could not destroy condition variable");
-	free(fs);
+	xfree(fs);
 }
 
 /**
@@ -131,7 +131,7 @@ static void *execute(void *ptr)
 	finish_state *fs = ac->enclosing;
 	void *body = ac->body;
 	x10_rt_set_here_id(ac->here_id);
-	free(ac);
+	xfree(ac);
 	/* store enclosing finish state in thread-local data */
 	finish_state_set_current(fs);
 	/* Initialize atomic depth. */
@@ -165,8 +165,7 @@ static void *execute(void *ptr)
 void _ZN3x104lang7Runtime16finishBlockBeginEv(void)
 {
 	finish_state *enclosing = finish_state_get_current();
-	finish_state *nested = malloc(sizeof(finish_state));
-	if (nested == NULL) panic("malloc returned NULL");
+	finish_state *nested    = xmalloc(sizeof(finish_state));
 	finish_state_init(nested, enclosing);
 	finish_state_set_current(nested);
 }
@@ -190,12 +189,11 @@ void init_finish_state(void)
 /* x10.lang.Runtime.executeParallel(body:()=>void) */
 void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(void *body)
 {
-	finish_state *enclosing = finish_state_get_current();
-	async_closure *ac = malloc(sizeof(async_closure));
-	if (ac == NULL) panic("malloc returned NULL");
-	ac->body = body;
+	finish_state  *enclosing = finish_state_get_current();
+	async_closure *ac        = xmalloc(sizeof(async_closure));
+	ac->body      = body;
 	ac->enclosing = enclosing;
-	ac->here_id = x10_rt_get_here_id();
+	ac->here_id   = x10_rt_get_here_id();
 	pthread_t child;
 	if (pthread_create(&child, NULL, execute, ac))
 		panic("Could not create thread");

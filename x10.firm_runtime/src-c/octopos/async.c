@@ -43,7 +43,7 @@ static void finish_state_init(finish_state *fs, finish_state *parent)
 
 static void finish_state_free(finish_state *fs)
 {
-	free(fs);
+	xfree(fs);
 }
 
 /**
@@ -116,7 +116,7 @@ static void execute(void *ptr)
 	finish_state  *fs      = ac->enclosing;
 	simple_ilet   *ilet    = ac->ilet;
 	x10_int        here_id = ac->here_id;
-	free(ac);
+	xfree(ac);
 
 	/* store enclosing finish state in i-let-local data */
 	finish_state_set_current(fs);
@@ -130,7 +130,7 @@ static void execute(void *ptr)
 	/* send signal to finish state */
 	unregister_from_finish_state(fs);
 
-	free(ilet);
+	xfree(ilet);
 }
 
 /**
@@ -154,8 +154,7 @@ static void execute(void *ptr)
 void _ZN3x104lang7Runtime16finishBlockBeginEv(void)
 {
 	finish_state *enclosing = finish_state_get_current();
-	finish_state *nested = malloc(sizeof(finish_state));
-	if (nested == NULL) panic("malloc returned NULL");
+	finish_state *nested    = xmalloc(sizeof(finish_state));
 	finish_state_init(nested, enclosing);
 	finish_state_set_current(nested);
 }
@@ -164,9 +163,8 @@ void _ZN3x104lang7Runtime16finishBlockBeginEv(void)
 void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(void *body)
 {
 	finish_state  *enclosing = finish_state_get_current();
-	async_closure *ac        = malloc(sizeof(async_closure));
-	simple_ilet   *child     = malloc(sizeof(simple_ilet));
-	if (ac == NULL) panic("malloc returned NULL");
+	async_closure *ac        = xmalloc(sizeof(async_closure));
+	simple_ilet   *child     = xmalloc(sizeof(simple_ilet));
 	ac->body      = body;
 	ac->enclosing = enclosing;
 	ac->ilet      = child;

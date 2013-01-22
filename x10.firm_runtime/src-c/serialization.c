@@ -98,7 +98,8 @@ void x10_serialization_write_object(serialization_buffer_t *buf, const x10_objec
 char *x10_serialization_finish(serialization_buffer_t *buf)
 {
 	char *obst_finished = obstack_finish(&buf->obst);
-	char *result = malloc(buf->bytes_written);
+	assert(buf->bytes_written > 0);
+	char *result        = xmalloc(buf->bytes_written);
 	memcpy(result, obst_finished, buf->bytes_written);
 
 #ifdef X10_SERIALIZATION_DEBUG
@@ -113,7 +114,7 @@ char *x10_serialization_finish(serialization_buffer_t *buf)
 	obstack_free(&buf->obst, NULL);
 	DEL_ARR_F(buf->serialized_objects);
 
-	free(buf);
+	xfree(buf);
 
 	return result;
 }
@@ -194,7 +195,7 @@ void x10_deserialization_finish(deserialization_buffer_t *buf)
 {
 	assert(buf->cursor == buf->length);
 	DEL_ARR_F(buf->deserialized_objects);
-	free(buf);
+	xfree(buf);
 }
 
 x10_object* _ZN3x104lang7Runtime11deepCopyAnyEPN3x104lang3AnyE(x10_object *obj)
@@ -208,6 +209,6 @@ x10_object* _ZN3x104lang7Runtime11deepCopyAnyEPN3x104lang3AnyE(x10_object *obj)
 	x10_deserialization_restore_object(debuf, &result);
 	x10_deserialization_finish(debuf);
 
-	free(serialized);
+	xfree(serialized);
 	return result;
 }
