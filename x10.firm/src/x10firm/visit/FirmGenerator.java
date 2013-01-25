@@ -976,15 +976,15 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			visitAppropriate(elem);
 		}
 
+		if (!con.isUnreachable()) {
+			final Node jmp = con.newJmp();
+			con.createBreakBlock().addPred(jmp);
+		}
+
 		if (!hasDefaultCase) {
 			con.setCurrentBlock(curBlock);
 			final Node proj = con.newProj(switchNode, Mode.getX(), Switch.pnDefault);
 			con.createBreakBlock().addPred(proj);
-		}
-
-		if (!con.isUnreachable()) {
-			final Node jmp = con.newJmp();
-			con.createBreakBlock().addPred(jmp);
 		}
 
 		if (con.breakBlock != null) {
