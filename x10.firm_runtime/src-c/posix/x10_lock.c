@@ -54,37 +54,8 @@ void _ZN3x104util10concurrent4Lock6unlockEv(x10_lock *self)
 
 x10_int _ZN3x104util10concurrent4Lock12getHoldCountEv(x10_lock *self)
 {
-	// hack, until we find someway to do this reliably
-#ifdef _AIX
-#ifdef __64BIT__
-	/**
-	 * typdef struct { long __mt_word[8]; } pthread_mutext_t;
-	 * 3rd element [index 2] contains basic lock status
-	 * 8th element [index 7] contains multiple of (UINT_MAX+1)
-	 * times number of additional recursive locks
-	 */
-	if (self->__lock.__mt_word[2]) {
-		long multiple = UINT_MAX;
-		multiple += 1;
-		int rlocks = (self->__lock.__mt_word[7])/multiple;
-		return (rlocks + 1);
-	}
-	return 0;
-#else /* !__64BIT__ */
-	/**
-	 * typedef struct { int __mt_word[13]; } pthread_mutex_t;
-	 * 5th element [index 4] contains basic lock status
-	 * 9th element [index 8] contains additional recursive locks
-	 */
-	if (self->__lock.__mt_word[4]) {
-		return (self->__lock.__mt_word[8] + 1);
-	}
-	return 0;
-#endif /* __64BIT__ */
-#else /* !_AIX */
 	X10_UNUSED(self);
 	return -1;
-#endif /* _AIX */
 }
 
 pthread_mutex_t x10_op_lock;
