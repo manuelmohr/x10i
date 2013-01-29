@@ -1,20 +1,6 @@
 /*
- * Copyright (C) 1995-2008 University of Karlsruhe.  All right reserved.
- *
  * This file is part of libFirm.
- *
- * This file may be distributed and/or modified under the terms of the
- * GNU General Public License version 2 as published by the Free Software
- * Foundation and appearing in the file LICENSE.GPL included in the
- * packaging of this file.
- *
- * Licensees holding valid libFirm Professional Edition licenses may use
- * this file in accordance with the libFirm Commercial License.
- * Agreement provided with the Software.
- *
- * This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
- * WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE.
+ * Copyright (C) 2012 University of Karlsruhe.
  */
 
 /**
@@ -30,8 +16,6 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "begin.h"
 
 /**
  * @ingroup adt
@@ -57,11 +41,6 @@ FIRM_API void *xrealloc(void *ptr, size_t size);
  * error handling is required for code using it.
  */
 FIRM_API char *xstrdup(const char *str);
-/**
- * Another name for the free function
- * @deprecated
- */
-#define xfree(ptr)      free(ptr)
 
 /**
  * Allocate n objects of a certain type
@@ -132,7 +111,5 @@ FIRM_API char *xstrdup(const char *str);
 #define OALLOCFZ(obst, type, member, n) ((type*)memset(OALLOCF((obst), type, member, (n)), 0, offsetof(type, member) + sizeof(*((type*)0)->member) * (n)))
 
 /** @} */
-
-#include "end.h"
 
 #endif

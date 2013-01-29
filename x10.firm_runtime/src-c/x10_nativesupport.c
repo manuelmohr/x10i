@@ -63,5 +63,5 @@ x10_pointer _ZN3x104lang13NativeSupport13reallocZeroedEPvii(x10_pointer prev,
 /* static x10.lang.NativeSupport.dealloc(Pointer) */
 void _ZN3x104lang13NativeSupport7deallocEPv(x10_pointer ptr)
 {
-	xfree(ptr);
+	free(ptr);
 }

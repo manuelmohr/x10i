@@ -129,7 +129,7 @@ static void execute(void *ptr)
 	/* send signal to finish state */
 	unregister_from_finish_state(fs);
 
-	xfree(ilet);
+	free(ilet);
 }
 
 /**

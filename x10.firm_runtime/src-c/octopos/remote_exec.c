@@ -41,18 +41,18 @@ static void x10_spawn(x10_int place_id, void *arg, size_t arg_len)
 	(void) place_id; /* TODO: associate the place (id) with a claim_t. */
 	(void) arg_len;
 
-	octopos_place_execute_args *opea = xmalloc(sizeof(octopos_place_execute_args));
+	octopos_place_execute_args *opea = XMALLOC(octopos_place_execute_args);
 	simple_signal_init(&opea->join_signal, 1);
 	opea->other_args = arg;
 
-	simple_ilet *ilet = xmalloc(sizeof(simple_ilet));
+	simple_ilet *ilet = XMALLOC(simple_ilet);
 	simple_ilet_init(ilet, octopos_place_execute, opea);
 
 	infect(finish_state_get_current()->claim, ilet, 1);
 	simple_signal_wait(&opea->join_signal);
 
-	xfree(opea);
-	xfree(ilet);
+	free(opea);
+	free(ilet);
 }
 
 static void x10_dma(void *dest, const void *src, size_t len)

@@ -15,7 +15,7 @@ static void check_string_bounds(const x10_string *str, x10_int idx)
 
 static x10_char *allocate_chars(x10_int len)
 {
-	return xmalloc(sizeof(x10_char) * len);
+	return XMALLOCN(x10_char, len);
 }
 
 x10_string *x10_string_from_literal(x10_int len, const x10_char *chars)

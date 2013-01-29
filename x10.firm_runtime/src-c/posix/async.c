@@ -128,7 +128,7 @@ static void *execute(void *ptr)
 	async_closure  *ac   = (async_closure *) ptr;
 	finish_state_t *fs   = ac->enclosing;
 	x10_object     *body = ac->body;
-	xfree(ac);
+	free(ac);
 	/* store enclosing finish state in thread-local data */
 	finish_state_set_current(fs);
 	/* Initialize atomic depth. */

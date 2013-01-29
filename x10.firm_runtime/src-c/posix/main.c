@@ -7,7 +7,6 @@
 #include "main.h"
 #include "init.h"
 #include "places.h"
-#include "xmalloc.h"
 
 long master_pid;
 /* maximum of 4 places by default */
