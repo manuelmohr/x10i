@@ -49,7 +49,7 @@ ifeq ($(TARGET), sparc-invasic-octopos)
 	CPARSER_TARGET = -mtarget=sparc-leon-linux-gnu
 endif
 ifeq ($(findstring linux, $(TARGET)), linux)
-	CFLAGS += -D_XOPEN_SOURCE=500
+	CFLAGS += -D_XOPEN_SOURCE=500 -D_SVID_SOURCE
 endif
 
 CPARSER_BASE ?= ../cparser

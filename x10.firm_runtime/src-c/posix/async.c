@@ -66,7 +66,6 @@ typedef struct async_closure {
 	x10_object     *body;
 	/* enclosing finish state */
 	finish_state_t *enclosing;
-	x10_int         here_id;
 } async_closure;
 
 static pthread_key_t enclosing_finish_state;
@@ -191,7 +190,6 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object
 	async_closure  *ac        = XMALLOC(async_closure);
 	ac->body = body;
 	ac->enclosing = enclosing;
-	ac->here_id   = x10_rt_get_here_id();
 	pthread_t child;
 	if (pthread_create(&child, NULL, execute, ac))
 		panic("Could not create thread");

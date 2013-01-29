@@ -182,6 +182,7 @@ public class Linked extends AbstractGoal_c {
 			cmd.add(queryGccPath("crtn.o"));
 		} else {
 			cmd.add("-lm");
+			cmd.add("-lrt");
 			cmd.add("-pthread");
 		}
 

@@ -5,6 +5,6 @@
 #include "types.h"
 
 /** the highest possible tile ID */
-extern unsigned max_tile_id;
+extern unsigned n_places;
 
 #endif

@@ -4,7 +4,8 @@
 #include "init.h"
 #include "places.h"
 
-unsigned max_tile_id = 0;
+/* single tile octopos only has place 0 */
+unsigned n_places = 1;
 
 void main_ilet(claim_t claim)
 {

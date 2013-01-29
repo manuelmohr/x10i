@@ -4,21 +4,21 @@
 #include "init.h"
 #include "serialization.h"
 
-void x10_rt_init()
-{
-	x10_rt_set_here_id(0);
-}
-
-x10_int x10_rt_get_here_id()
+static x10_int x10_get_here_id()
 {
 	ilocal_data_t *ilocal = get_ilocal_data();
 	return ilocal->here_id;
 }
 
-void x10_rt_set_here_id(x10_int id)
+static void x10_set_here_id(x10_int id)
 {
 	ilocal_data_t *ilocal = get_ilocal_data();
 	ilocal->here_id = id;
+}
+
+void x10_rt_init(void)
+{
+	x10_set_here_id(0);
 }
 
 typedef struct {
@@ -26,17 +26,17 @@ typedef struct {
 	void         *other_args;
 } octopos_place_execute_args;
 
-static void x10_rt_place_execute(void *arg);
+static void x10_place_execute(void *arg);
 static void octopos_place_execute(void *arg)
 {
 	octopos_place_execute_args *opea = arg;
 
-	x10_rt_place_execute(opea->other_args);
+	x10_place_execute(opea->other_args);
 
 	simple_signal_signal(&opea->join_signal);
 }
 
-static void x10_rt_spawn(x10_int place_id, void *arg, size_t arg_len)
+static void x10_spawn(x10_int place_id, void *arg, size_t arg_len)
 {
 	(void) place_id; /* TODO: associate the place (id) with a claim_t. */
 	(void) arg_len;
@@ -55,7 +55,7 @@ static void x10_rt_spawn(x10_int place_id, void *arg, size_t arg_len)
 	xfree(ilet);
 }
 
-static void x10_rt_dma(void *dest, const void *src, size_t len)
+static void x10_dma(void *dest, const void *src, size_t len)
 {
 	memcpy(dest, src, len);
 }
@@ -72,19 +72,19 @@ typedef struct {
 	char           *result;
 } place_execute_args;
 
-static void x10_rt_place_execute(void *arg)
+static void x10_place_execute(void *arg)
 {
 	place_execute_args *pea = arg;
 
 	/* set up state for the newly create thread. */
-	x10_rt_set_here_id(pea->place_id);
+	x10_set_here_id(pea->place_id);
 	finish_state_set_current(pea->fs);
 
 	char *recv_buf = malloc(pea->closure_len);
 	if (! recv_buf)
 		panic("Could not allocate receive buffer.");
 
-	x10_rt_dma(recv_buf, pea->closure, pea->closure_len);
+	x10_dma(recv_buf, pea->closure, pea->closure_len);
 
 	x10_object *closure = x10_deserialize_from(recv_buf, pea->closure_len);
 	free(recv_buf);
@@ -107,7 +107,7 @@ static void x10_rt_place_execute(void *arg)
 	unregister_from_finish_state(pea->fs);
 }
 
-x10_object *x10_rt_execute_at(x10_int place_id, x10_int msg_type, x10_object *closure)
+x10_object *x10_execute_at(x10_int place_id, x10_int msg_type, x10_object *closure)
 {
 	assert(msg_type == MSG_RUN_AT || msg_type == MSG_EVAL_AT);
 
@@ -127,12 +127,12 @@ x10_object *x10_rt_execute_at(x10_int place_id, x10_int msg_type, x10_object *cl
 
 	register_at_finish_state(pea->fs);
 
-	x10_rt_spawn(place_id, pea, sizeof(place_execute_args));
+	x10_spawn(place_id, pea, sizeof(place_execute_args));
 
 	x10_object *retVal = NULL;
 	if (msg_type == MSG_EVAL_AT) {
 		char *recv_buf = malloc(pea->result_len);
-		x10_rt_dma(recv_buf, pea->result, pea->result_len);
+		x10_dma(recv_buf, pea->result, pea->result_len);
 
 		retVal = x10_deserialize_from(recv_buf, pea->result_len);
 		free(recv_buf);
