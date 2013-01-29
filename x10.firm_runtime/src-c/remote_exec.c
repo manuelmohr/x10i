@@ -7,15 +7,15 @@
 #include "async.h"
 
 typedef struct {
-	x10_int       place_id;
-	x10_int       msg_type;
-	finish_state *fs;
+	x10_int         place_id;
+	x10_int         msg_type;
+	finish_state_t *fs;
 
-	size_t        closure_len;
-	void         *closure;
+	size_t          closure_len;
+	void           *closure;
 
-	size_t        result_len;
-	char         *result;
+	size_t          result_len;
+	char           *result;
 } place_execute_args;
 
 void x10_rt_place_execute(void *arg)

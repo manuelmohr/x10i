@@ -4,9 +4,9 @@
 #include "async.h"
 
 typedef struct {
-	finish_state *fs;
-	x10_int       here_id;
-	unsigned      atomic_depth;
+	finish_state_t *fs;
+	x10_int         here_id;
+	unsigned        atomic_depth;
 } ilocal_data_t;
 
 #endif

@@ -6,8 +6,14 @@
 #include "ilocal_data.h"
 #include "x10_runtime.h"
 
+static void panic(const char * msg)
+{
+	printf("%s\n", msg);
+	abort();
+}
+
 /**
- * A finish_state holds all information for a finish statement.
+ * A finish_state_t holds all information for a finish statement.
  * All its child activities are tracked. Also, their children must register
  * as well, which means finish state must be thread-safe.
  * Finish statements are nested, so whenever one finishes, the outer state
@@ -18,32 +24,25 @@
  * at the current finish state. Hence, we use i-let-local data to store the
  * current finish state.
  */
-
-static void panic(const char * msg)
-{
-	printf("%s\n", msg);
-	abort();
-}
-
-struct finish_state {
+struct finish_state_t {
 	/* the common claim of all activities */
-	claim_t        claim;
+	claim_t         claim;
 	/* a signal for parallel activity creation */
-	simple_signal  signal;
+	simple_signal   signal;
 	/* enclosing finish (maybe NULL for root) */
-	finish_state  *parent;
+	finish_state_t *parent;
 };
 
-static void finish_state_init(finish_state *fs, finish_state *parent)
+void finish_state_init(finish_state_t *fs, finish_state_t *parent)
 {
 	simple_signal_init(&fs->signal, 0);
 	fs->claim  = parent->claim;
 	fs->parent = parent;
 }
 
-static void finish_state_free(finish_state *fs)
+void finish_state_destroy(finish_state_t *fs)
 {
-	xfree(fs);
+	(void)fs;
 }
 
 /**
@@ -54,32 +53,32 @@ static void finish_state_free(finish_state *fs)
 
 typedef struct async_closure {
 	/* x10 closure pointer */
-	void         *body;
+	x10_object     *body;
 	/* enclosing finish state */
-	finish_state *enclosing;
+	finish_state_t *enclosing;
 	/* executing ilet */
-	simple_ilet  *ilet;
-	x10_int       here_id;
+	simple_ilet    *ilet;
+	x10_int         here_id;
 } async_closure;
 
-finish_state* finish_state_get_current(void)
+finish_state_t* finish_state_get_current(void)
 {
 	ilocal_data_t *ilocal = get_ilocal_data();
 	return ilocal->fs;
 }
 
-void finish_state_set_current(finish_state *fs)
+void finish_state_set_current(finish_state_t *fs)
 {
 	ilocal_data_t *ilocal = get_ilocal_data();
 	ilocal->fs = fs;
 }
 
-void register_at_finish_state(finish_state *fs)
+void register_at_finish_state(finish_state_t *fs)
 {
 	simple_signal_add_signalers(&fs->signal, 1);
 }
 
-void unregister_from_finish_state(finish_state *fs)
+void unregister_from_finish_state(finish_state_t *fs)
 {
 	simple_signal_signal(&fs->signal);
 }
@@ -111,12 +110,12 @@ static void activity_set_atomic_depth(unsigned depth)
 /** Top-level i-let function, initializes activity and cleans up afterwards */
 static void execute(void *ptr)
 {
-	async_closure *ac      = (async_closure *)ptr;
-	void          *body    = ac->body;
-	finish_state  *fs      = ac->enclosing;
-	simple_ilet   *ilet    = ac->ilet;
-	x10_int        here_id = ac->here_id;
-	xfree(ac);
+	async_closure  *ac      = (async_closure *)ptr;
+	x10_object     *body    = ac->body;
+	finish_state_t *fs      = ac->enclosing;
+	simple_ilet    *ilet    = ac->ilet;
+	x10_int         here_id = ac->here_id;
+	free(ac);
 
 	/* store enclosing finish state in i-let-local data */
 	finish_state_set_current(fs);
@@ -153,18 +152,18 @@ static void execute(void *ptr)
 /* x10.lang.Runtime.finishBlockBegin() */
 void _ZN3x104lang7Runtime16finishBlockBeginEv(void)
 {
-	finish_state *enclosing = finish_state_get_current();
-	finish_state *nested    = xmalloc(sizeof(finish_state));
+	finish_state_t *enclosing = finish_state_get_current();
+	finish_state_t *nested    = XMALLOC(finish_state_t);
 	finish_state_init(nested, enclosing);
 	finish_state_set_current(nested);
 }
 
 /* x10.lang.Runtime.executeParallel(body:()=>void) */
-void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(void *body)
+void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object *body)
 {
-	finish_state  *enclosing = finish_state_get_current();
-	async_closure *ac        = xmalloc(sizeof(async_closure));
-	simple_ilet   *child     = xmalloc(sizeof(simple_ilet));
+	finish_state_t *enclosing = finish_state_get_current();
+	async_closure  *ac        = XMALLOC(async_closure);
+	simple_ilet    *child     = XMALLOC(simple_ilet);
 	ac->body      = body;
 	ac->enclosing = enclosing;
 	ac->ilet      = child;
@@ -178,14 +177,15 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(void *body
 void _ZN3x104lang7Runtime14finishBlockEndEv(void)
 {
 	/* wait for all child i-lets */
-	finish_state *enclosing = finish_state_get_current();
+	finish_state_t *enclosing = finish_state_get_current();
 
 	/* wait for spawned activities */
 	simple_signal_wait(&enclosing->signal);
 
 	/* clear the finish state */
-	finish_state *parent = enclosing->parent;
-	finish_state_free(enclosing);
+	finish_state_t *parent = enclosing->parent;
+	finish_state_destroy(enclosing);
+	free(enclosing);
 	/* restore enclosing finish state */
 	finish_state_set_current(parent);
 }

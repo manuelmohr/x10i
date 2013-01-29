@@ -21,7 +21,7 @@ void main_ilet(claim_t claim)
 
 	x10_static_initializer();
 
-	finish_state fs;
+	finish_state_t fs;
 	fs.claim = claim;
 
 	/* initialize main i-let's finish state */
@@ -37,6 +37,7 @@ void main_ilet(claim_t claim)
 
 	/* end main i-let's finish block */
 	_ZN3x104lang7Runtime14finishBlockEndEv();
+	finish_state_destroy(&fs);
 
 	guest_shutdown();
 }

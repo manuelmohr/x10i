@@ -20,24 +20,24 @@
  * at the current finish state. Hence, we use thread-local data to store the
  * current finish state.
  */
-struct finish_state {
+struct finish_state_t {
 	/* a mutex for parallel activity creation */
-	pthread_mutex_t     mutex;
+	pthread_mutex_t mutex;
 	/* Condition variable to wait at the end of finish statements */
-	pthread_cond_t      condition;
+	pthread_cond_t  condition;
 	/* Number of spawned activities */
-	int                 number_of_activities;
+	int             number_of_activities;
 	/* enclosing finish (maybe NULL for root) */
-	finish_state        *parent;
+	finish_state_t *parent;
 };
 
 static void panic(const char * msg)
 {
-	printf("%s\n", msg);
+	fprintf(stderr, "%s\n", msg);
 	abort();
 }
 
-static void finish_state_init(finish_state *fs, finish_state *parent)
+void finish_state_init(finish_state_t *fs, finish_state_t *parent)
 {
 	if (pthread_mutex_init(& fs->mutex, NULL))
 		panic("Could not init mutex");
@@ -47,13 +47,12 @@ static void finish_state_init(finish_state *fs, finish_state *parent)
 	fs->parent               = parent;
 }
 
-static void finish_state_free(finish_state *fs)
+void finish_state_destroy(finish_state_t *fs)
 {
 	if (pthread_mutex_destroy(& fs->mutex))
 		panic("Could not destroy mutex");
 	if (pthread_cond_destroy(& fs->condition))
 		panic("Could not destroy condition variable");
-	xfree(fs);
 }
 
 /**
@@ -64,27 +63,27 @@ static void finish_state_free(finish_state *fs)
 
 typedef struct async_closure {
 	/* x10 closure pointer */
-	void           *body;
+	x10_object     *body;
 	/* enclosing finish state */
-	finish_state   *enclosing;
+	finish_state_t *enclosing;
 	x10_int         here_id;
 } async_closure;
 
 static pthread_key_t enclosing_finish_state;
 static pthread_key_t activity_atomic_depth;
 
-finish_state* finish_state_get_current(void)
+finish_state_t* finish_state_get_current(void)
 {
 	return pthread_getspecific(enclosing_finish_state);
 }
 
-void finish_state_set_current(finish_state *fs)
+void finish_state_set_current(finish_state_t *fs)
 {
 	if (pthread_setspecific(enclosing_finish_state, fs))
 		panic("Could not set current finish state.");
 }
 
-void register_at_finish_state(finish_state *fs)
+void register_at_finish_state(finish_state_t *fs)
 {
 	if (pthread_mutex_lock(& fs->mutex))
 		panic("Could not lock mutex");
@@ -95,7 +94,7 @@ void register_at_finish_state(finish_state *fs)
 		panic("Could not unlock mutex");
 }
 
-void unregister_from_finish_state(finish_state *fs)
+void unregister_from_finish_state(finish_state_t *fs)
 {
 	if (pthread_mutex_lock(& fs->mutex))
 		panic("Could not lock mutex");
@@ -127,10 +126,9 @@ void activity_dec_atomic_depth(void)
 /** Top-level thread function, initializes activity and cleans up afterwards */
 static void *execute(void *ptr)
 {
-	async_closure *ac = (async_closure *) ptr;
-	finish_state *fs = ac->enclosing;
-	void *body = ac->body;
-	x10_rt_set_here_id(ac->here_id);
+	async_closure  *ac   = (async_closure *) ptr;
+	finish_state_t *fs   = ac->enclosing;
+	x10_object     *body = ac->body;
 	xfree(ac);
 	/* store enclosing finish state in thread-local data */
 	finish_state_set_current(fs);
@@ -164,8 +162,8 @@ static void *execute(void *ptr)
 /* x10.lang.Runtime.finishBlockBegin() */
 void _ZN3x104lang7Runtime16finishBlockBeginEv(void)
 {
-	finish_state *enclosing = finish_state_get_current();
-	finish_state *nested    = xmalloc(sizeof(finish_state));
+	finish_state_t *enclosing = finish_state_get_current();
+	finish_state_t *nested    = XMALLOC(finish_state_t);
 	finish_state_init(nested, enclosing);
 	finish_state_set_current(nested);
 }
@@ -187,11 +185,11 @@ void init_finish_state(void)
 }
 
 /* x10.lang.Runtime.executeParallel(body:()=>void) */
-void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(void *body)
+void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object *body)
 {
-	finish_state  *enclosing = finish_state_get_current();
-	async_closure *ac        = xmalloc(sizeof(async_closure));
-	ac->body      = body;
+	finish_state_t *enclosing = finish_state_get_current();
+	async_closure  *ac        = XMALLOC(async_closure);
+	ac->body = body;
 	ac->enclosing = enclosing;
 	ac->here_id   = x10_rt_get_here_id();
 	pthread_t child;
@@ -200,25 +198,31 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(void *body
 	register_at_finish_state(enclosing);
 }
 
+void finish_state_wait(finish_state_t *state)
+{
+	/* wait for all child threads */
+	if (pthread_mutex_lock(&state->mutex))
+		panic("Could not lock mutex");
+
+	while (state->number_of_activities > 0) {
+		if (pthread_cond_wait(&state->condition, & state->mutex))
+			panic("Could not wait on condition variable");
+	}
+
+	if (pthread_mutex_unlock(&state->mutex))
+		panic("Could not unlock mutex");
+}
+
 /* x10.lang.Runtime.finishBlockEnd() */
 void _ZN3x104lang7Runtime14finishBlockEndEv(void)
 {
 	/* wait for all child threads */
-	finish_state *enclosing = finish_state_get_current();
-	if (pthread_mutex_lock(& enclosing->mutex))
-		panic("Could not lock mutex");
-
-	while (enclosing->number_of_activities > 0) {
-		if (pthread_cond_wait(& enclosing->condition, & enclosing->mutex))
-			panic("Could not wait on condition variable");
-	}
-
-	if (pthread_mutex_unlock(& enclosing->mutex))
-		panic("Could not unlock mutex");
-
+	finish_state_t *enclosing = finish_state_get_current();
+	finish_state_wait(enclosing);
 	/* clear the finish state */
-	finish_state *parent = enclosing->parent;
-	finish_state_free(enclosing);
+	finish_state_t *parent = enclosing->parent;
+	finish_state_destroy(enclosing);
+	free(enclosing);
 	/* restore enclosing finish state */
 	finish_state_set_current(parent);
 }
