@@ -27,13 +27,17 @@ static inline int find_object(const x10_object **arr, const x10_object *key)
 	return -1;
 }
 
-serialization_buffer_t *x10_serialization_init(void)
+void x10_init_serialization_buffer(serialization_buffer_t *buffer,
+                                   struct obstack *obst)
 {
-	serialization_buffer_t *buf = calloc(1, sizeof(serialization_buffer_t));
-	obstack_init(&buf->obst);
-	buf->bytes_written = 0;
-	buf->serialized_objects = NEW_ARR_F(const x10_object *, 0);
-	return buf;
+	memset(buffer, 0, sizeof(*buffer));
+	buffer->obst               = obst;
+	buffer->serialized_objects = NEW_ARR_F(const x10_object *, 0);
+}
+
+void x10_destroy_serialization_buffer(serialization_buffer_t *buffer)
+{
+	DEL_ARR_F(buffer->serialized_objects);
 }
 
 void x10_serialization_write_primitive(serialization_buffer_t *buf, const void *data, size_t nbytes)
@@ -44,24 +48,19 @@ void x10_serialization_write_primitive(serialization_buffer_t *buf, const void *
 	printf("X10_SERIALIZATION: writing primitive at %x (%d bytes)\n", (unsigned)data, nbytes);
 #endif
 
-	obstack_grow(&buf->obst, data, nbytes);
-	buf->bytes_written += nbytes;
-
+	obstack_grow(buf->obst, data, nbytes);
 }
 
 void x10_serialization_write_object(serialization_buffer_t *buf, const x10_object *objPtr)
 {
-	uint32_t uid;
-
 	if (objPtr == NULL) {
 
 #ifdef X10_SERIALIZATION_DEBUG
 		printf("X10_SERIALIZATION: writing NULL\n");
 #endif
 
-		uid = X10_SERIALIZATION_NULL_TYPE_UID;
-		obstack_grow(&buf->obst, &uid, sizeof(uint32_t));
-		buf->bytes_written += sizeof(uint32_t);
+		uint32_t uid = X10_SERIALIZATION_NULL_TYPE_UID;
+		obstack_grow(buf->obst, &uid, sizeof(uint32_t));
 		return;
 	}
 
@@ -72,52 +71,36 @@ void x10_serialization_write_object(serialization_buffer_t *buf, const x10_objec
 		printf("X10_SERIALIZATION: found previously serialized object %x at %d\n", (unsigned) objPtr, idx);
 #endif
 
-		uid = X10_SERIALIZATION_KNOWN_OBJECT_TYPE_UID;
-		obstack_grow(&buf->obst, &uid, sizeof(uint32_t));
-		obstack_grow(&buf->obst, &idx, sizeof(uint32_t));
-		buf->bytes_written += (2 * sizeof(uint32_t));
+		uint32_t uid = X10_SERIALIZATION_KNOWN_OBJECT_TYPE_UID;
+		obstack_grow(buf->obst, &uid, sizeof(uint32_t));
+		obstack_grow(buf->obst, &idx, sizeof(uint32_t));
 		return;
 	}
 
 	ARR_APP1(const x10_object *, buf->serialized_objects, objPtr);
 
-	uid = objPtr->vptr->runtime_type_info->uid;
+	uint32_t uid = objPtr->vptr->runtime_type_info->uid;
 
 #ifdef X10_SERIALIZATION_DEBUG
 	printf("X10_SERIALIZATION: writing object of type [%d]%s at %x\n", uid, objPtr->vptr->runtime_type_info->name->data, (unsigned) objPtr);
 #endif
 
-	obstack_grow(&buf->obst, &uid, sizeof(uint32_t));
-	buf->bytes_written += sizeof(uint32_t);
+	obstack_grow(buf->obst, &uid, sizeof(uint32_t));
 
 	/* frontend assures that T::__serialize is in the first vtable slot */
 	serialize_method *serializer = objPtr->vptr->fptrs[0];
 	serializer(buf, objPtr);
 }
 
-char *x10_serialization_finish(serialization_buffer_t *buf)
+void x10_serialize_to_obst(struct obstack *const obst,
+                           const x10_object *const object)
 {
-	char *obst_finished = obstack_finish(&buf->obst);
-	assert(buf->bytes_written > 0);
-	char *result        = xmalloc(buf->bytes_written);
-	memcpy(result, obst_finished, buf->bytes_written);
-
-#ifdef X10_SERIALIZATION_DEBUG
-	printf("X10_SERIALIZATION: wrote %d bytes: ", buf->bytes_written);
-	char *p = result;
-	size_t i;
-	for (i = 0; i < buf->bytes_written; i++)
-		printf("%02X ", (*p++) & 0xFF);
-	puts("\n");
-#endif
-
-	obstack_free(&buf->obst, NULL);
-	DEL_ARR_F(buf->serialized_objects);
-
-	xfree(buf);
-
-	return result;
+	serialization_buffer_t buffer;
+	x10_init_serialization_buffer(&buffer, obst);
+	x10_serialization_write_object(&buffer, object);
+	x10_destroy_serialization_buffer(&buffer);
 }
+
 
 static inline uint32_t get_u32(deserialization_buffer_t *buf)
 {
@@ -128,14 +111,20 @@ static inline uint32_t get_u32(deserialization_buffer_t *buf)
 	return (b4 << 24) | (b3 << 16) | (b2 << 8) | b1;
 }
 
-deserialization_buffer_t *x10_deserialization_init(const char *data, size_t length)
+void x10_init_deserialization_buffer(deserialization_buffer_t *buffer,
+                                     const char *const data, size_t const size)
 {
-	deserialization_buffer_t *buf = calloc(1, sizeof(deserialization_buffer_t));
-	buf->data = data;
-	buf->cursor = 0;
-	buf->length = length;
-	buf->deserialized_objects = NEW_ARR_F(x10_object *, 0);
-	return buf;
+	memset(buffer, 0, sizeof(*buffer));
+	buffer->data   = data;
+	buffer->cursor = 0;
+	buffer->length = size;
+	buffer->deserialized_objects = NEW_ARR_F(x10_object *, 0);
+}
+
+void x10_destroy_deserialization_buffer(deserialization_buffer_t *buffer)
+{
+	assert(buffer->cursor == buffer->length);
+	DEL_ARR_F(buffer->deserialized_objects);
 }
 
 void x10_deserialization_restore_primitive(deserialization_buffer_t *buf, void *addr, size_t nbytes)
@@ -155,11 +144,9 @@ void x10_deserialization_restore_object(deserialization_buffer_t *buf, x10_objec
 	uint32_t class_id = get_u32(buf);
 
 	if (class_id == X10_SERIALIZATION_NULL_TYPE_UID) {
-
 #ifdef X10_SERIALIZATION_DEBUG
 		printf("X10_DESERIALIZATION: restoring NULL\n");
 #endif
-
 		*addr = NULL;
 		return;
 	}
@@ -167,12 +154,12 @@ void x10_deserialization_restore_object(deserialization_buffer_t *buf, x10_objec
 	if (class_id == X10_SERIALIZATION_KNOWN_OBJECT_TYPE_UID) {
 		uint32_t object_num = get_u32(buf);
 		assert(ARR_LEN(buf->deserialized_objects) > object_num);
-		*addr = buf->deserialized_objects[object_num];
 
+		x10_object *result = buf->deserialized_objects[object_num];
 #ifdef X10_SERIALIZATION_DEBUG
-		printf("X10_DESERIALIZATION: restored previously deserialized object %x from slot %d\n", (unsigned) *addr, object_num);
+		printf("X10_DESERIALIZATION: restored previously deserialized object %p from slot %d\n", result, object_num);
 #endif
-
+		*addr = result;
 		return;
 	}
 
@@ -183,32 +170,36 @@ void x10_deserialization_restore_object(deserialization_buffer_t *buf, x10_objec
 	dm_entry_t *entry = &__deserialize_methods[class_id];
 	x10_object *newObj = calloc(1, entry->vtable->runtime_type_info->size);
 	newObj->vptr = entry->vtable;
-	*addr = newObj;
 	ARR_APP1(x10_object *, buf->deserialized_objects, newObj);
 
 	entry->deserializer(buf, newObj);
 
 	assert(buf->cursor <= buf->length);
+	*addr = newObj;
 }
 
-void x10_deserialization_finish(deserialization_buffer_t *buf)
+x10_object *x10_deserialize_from(const char *data, size_t data_size)
 {
-	assert(buf->cursor == buf->length);
-	DEL_ARR_F(buf->deserialized_objects);
-	xfree(buf);
-}
-
-x10_object* _ZN3x104lang7Runtime11deepCopyAnyEPN3x104lang3AnyE(x10_object *obj)
-{
-	serialization_buffer_t *buf = x10_serialization_init();
-	x10_serialization_write_object(buf, obj);
-	char *serialized = x10_serialization_finish(buf);
-
-	deserialization_buffer_t *debuf = x10_deserialization_init(serialized, buf->bytes_written);
+	deserialization_buffer_t debuf;
+	x10_init_deserialization_buffer(&debuf, data, data_size);
 	x10_object *result;
-	x10_deserialization_restore_object(debuf, &result);
-	x10_deserialization_finish(debuf);
+	x10_deserialization_restore_object(&debuf, &result);
+	x10_destroy_deserialization_buffer(&debuf);
+	return result;
+}
 
-	xfree(serialized);
+x10_object* _ZN3x104lang7Runtime11deepCopyAnyEPN3x104lang3AnyE(const x10_object *obj)
+{
+	struct obstack obst;
+	obstack_init(&obst);
+
+	x10_serialize_to_obst(&obst, obj);
+
+	size_t data_size = obstack_object_size(&obst);
+	char  *data      = obstack_finish(&obst);
+
+	x10_object *result = x10_deserialize_from(data, data_size);
+
+	obstack_free(&obst, NULL);
 	return result;
 }

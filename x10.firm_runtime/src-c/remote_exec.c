@@ -31,22 +31,20 @@ void x10_rt_place_execute(void *arg)
 
 	x10_rt_dma(recv_buf, pea->closure, pea->closure_len);
 
-	deserialization_buffer_t *deser_buf = x10_deserialization_init(recv_buf, pea->closure_len);
-	x10_object *closure;
-	x10_deserialization_restore_object(deser_buf, &closure);
-	x10_deserialization_finish(deser_buf);
-	xfree(recv_buf);
+	x10_object *closure = x10_deserialize_from(recv_buf, pea->closure_len);
+	free(recv_buf);
 
 	if (pea->msg_type == MSG_RUN_AT) {
 		_ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(closure);
 	} else if (pea->msg_type == MSG_EVAL_AT) {
 		x10_object *ret = _ZN3x104lang7Runtime8evaluateEPN3x104lang8$Fun_0_0IPN3x104lang3AnyEEE(closure);
 
-		serialization_buffer_t *ser_buf = x10_serialization_init();
-		x10_serialization_write_object(ser_buf, ret);
+		struct obstack obst;
+		obstack_init(&obst);
+		x10_serialize_to_obst(&obst, ret);
 
-		pea->result_len = ser_buf->bytes_written;
-		pea->result     = x10_serialization_finish(ser_buf);
+		pea->result_len = obstack_object_size(&obst);
+		pea->result     = obstack_finish(&obst);
 	} else {
 		panic("Unhandled message type.");
 	}
@@ -58,16 +56,17 @@ x10_object *x10_rt_execute_at(x10_int place_id, x10_int msg_type, x10_object *cl
 {
 	assert(msg_type == MSG_RUN_AT || msg_type == MSG_EVAL_AT);
 
-	serialization_buffer_t* ser_buf = x10_serialization_init();
-	x10_serialization_write_object(ser_buf, closure);
+	struct obstack obst;
+	obstack_init(&obst);
+	x10_serialize_to_obst(&obst, closure);
 
 	place_execute_args *pea = xmalloc(sizeof(place_execute_args));
 	pea->place_id    = place_id;
 	pea->msg_type    = msg_type;
 	pea->fs          = finish_state_get_current();
 
-	pea->closure_len = ser_buf->bytes_written;
-	pea->closure     = x10_serialization_finish(ser_buf);
+	pea->closure_len = obstack_object_size(&obst);
+	pea->closure     = obstack_finish(&obst);
 	pea->result_len  = 0;
 	pea->result      = NULL;
 
@@ -81,12 +80,8 @@ x10_object *x10_rt_execute_at(x10_int place_id, x10_int msg_type, x10_object *cl
 		char *recv_buf = xmalloc(pea->result_len);
 		x10_rt_dma(recv_buf, pea->result, pea->result_len);
 
-		deserialization_buffer_t *deser_buf = x10_deserialization_init(recv_buf, pea->result_len);
-
-		x10_deserialization_restore_object(deser_buf, &retVal);
-		x10_deserialization_finish(deser_buf);
-
-		xfree(recv_buf);
+		retVal = x10_deserialize_from(recv_buf, pea->result_len);
+		free(recv_buf);
 	}
 
 	xfree(pea->closure);
