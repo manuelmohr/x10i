@@ -15,7 +15,6 @@ import x10.types.ParameterType;
 import x10.types.X10ClassType;
 import x10.types.X10ConstructorInstance;
 import x10.types.X10MethodDef;
-import x10.util.HierarchyUtils;
 import x10firm.CompilerOptions;
 import x10firm.MachineTriple;
 import x10firm.visit.CodeGenError;
@@ -53,6 +52,11 @@ public final class NameMangler {
 	 * Mapping for anonymous class names.
 	 */
 	private static Map<X10ClassType, String> anonymousClassNames = new HashMap<X10ClassType, String>();
+
+	/**
+	 * The method def of the last seen real main method.
+	 */
+	private static X10MethodDef x10MainMethod = null;
 
 	private static String platformPrefix = "";
 	private static final String MANGLE_PREFIX = "_Z";
@@ -381,7 +385,15 @@ public final class NameMangler {
 
 	/** Mangles a complete method including container and formals. */
 	public static String mangleMethod(final MethodInstance method) {
-		if (HierarchyUtils.isMainMethod((X10MethodDef)method.def(), typeSystem.getTypeSystem().emptyContext())) {
+		if (typeSystem.isMainMethod(method)) {
+			final X10MethodDef methodDef = (X10MethodDef)method.def();
+
+			if (x10MainMethod != null && methodDef != x10MainMethod) {
+				throw new CodeGenError("Multiple main methods: " + x10MainMethod + " and " + methodDef,
+						methodDef.errorPosition());
+			}
+
+			x10MainMethod = methodDef;
 			return mangleKnownName(X10_MAIN);
 		}
 

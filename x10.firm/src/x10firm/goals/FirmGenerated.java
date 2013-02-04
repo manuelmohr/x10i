@@ -67,6 +67,9 @@ public class FirmGenerated extends AllBarrierGoal {
 			 * during the FirmGenerator run. This is not allowed! */
 			assert ((FirmScheduler)scheduler).codeGenPrereq(job).hasBeenReached();
 
+			final boolean isCommandLineJob = scheduler.commandLineJobs().contains(job);
+			generator.setIsCommandLineJob(isCommandLineJob);
+
 			System.out.println("FirmGenerated: " + ast);
 			generator.visitAppropriate(ast);
 		}

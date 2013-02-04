@@ -4,8 +4,11 @@ import polyglot.types.Context;
 import polyglot.types.Type;
 import polyglot.types.TypeSystem_c;
 import polyglot.types.Types;
+import x10.types.MethodInstance;
 import x10.types.TypeParamSubst;
 import x10.types.X10ClassType;
+import x10.types.X10MethodDef;
+import x10.util.HierarchyUtils;
 
 /**
  * Implements generic-aware versions of the methods provided by {@link TypeSystem_c}.
@@ -23,6 +26,8 @@ public class GenericTypeSystem {
 	private final Context emptyContext;
 	/** current type parameter substitution. */
 	private TypeParamSubst subst;
+	/** true if type system object is currently used while compiling a command line job. */
+	private boolean compilingCommandLineJob = false;
 
 	/**
 	 * Constructs a new GenericTypeSystem.
@@ -203,5 +208,23 @@ public class GenericTypeSystem {
 	/** Returns an empty Context. */
 	public Context emptyContext() {
 		return emptyContext;
+	}
+
+	/**
+	 * Checks if {@code method} is a real main method.
+	 * Only methods named "main" that have the right signature AND are defined in a file that was passed on the
+	 * command line are considered real main methods.
+	 * @param method The method instance to check.
+	 * @return true iff {@code method} is a real main method.
+	 */
+	public boolean isMainMethod(final MethodInstance method) {
+		return compilingCommandLineJob && HierarchyUtils.isMainMethod((X10MethodDef) method.def(), emptyContext());
+	}
+
+	/**
+	 * @param cmdLineJob true if type system object is currently used while compiling a command line job.
+	 */
+	public void setCompilingCommandLineJob(final boolean cmdLineJob) {
+		compilingCommandLineJob = cmdLineJob;
 	}
 }

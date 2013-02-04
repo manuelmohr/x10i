@@ -237,6 +237,11 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		DebugInfo.init();
 	}
 
+	/** Set info about whether we are currently compiling a command line job or not. */
+	public void setIsCommandLineJob(final boolean cmdLine) {
+		typeSystem.setCompilingCommandLineJob(cmdLine);
+	}
+
 	/** Performs all post compile tasks. */
 	public void genPostCompile() {
 		genGenericCode();
