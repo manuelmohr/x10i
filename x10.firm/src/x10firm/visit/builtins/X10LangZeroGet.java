@@ -89,8 +89,7 @@ class X10LangZeroGet implements BuiltinMethodGenerator {
 					binding_iroptimize.create_compilerlib_entity(memsetIdent.ptr, memsetType.ptr);
 			final Entity memsetEntity = new Entity(memsetEntPtr);
 			final Node memsetAddress = con.newSymConst(memsetEntity);
-			final Node structSizeP32 = con.newSymConstTypeSize(firmType, mode);
-			final Node structSize = con.newConv(structSizeP32, Mode.getIu());
+			final Node structSize = con.newSymConstTypeSize(firmType, getSizeTMode());
 			final Node zero = con.newConst(0, Mode.getIs());
 			final Node[] memsetArgs = new Node[]{tmpStruct, zero, structSize};
 			final Node call = con.newCall(con.getCurrentMem(), memsetAddress, memsetArgs, memsetType);
