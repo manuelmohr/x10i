@@ -7,9 +7,9 @@ import polyglot.types.LocalInstance;
 import polyglot.types.Type;
 import x10.types.MethodInstance;
 import x10firm.types.FirmTypeSystem;
-import x10firm.types.GenericTypeSystem;
 import x10firm.visit.FirmGenerator;
 import x10firm.visit.MethodConstruction;
+import firm.CompoundType;
 import firm.Entity;
 import firm.Mode;
 import firm.nodes.Node;
@@ -22,7 +22,6 @@ class X10LangZeroGet implements BuiltinMethodGenerator {
 	public void generate(final FirmGenerator codeGenerator, final MethodInstance meth,
 		                 final List<LocalInstance> formals) {
 		final FirmTypeSystem firmTypeSystem = codeGenerator.getFirmTypeSystem();
-		final GenericTypeSystem typeSystem = codeGenerator.getTypeSystem();
 		final Entity entity = firmTypeSystem.getMethodEntity(meth);
 
 		assert meth.typeParameters().size() == 1;
@@ -35,7 +34,8 @@ class X10LangZeroGet implements BuiltinMethodGenerator {
 		final MethodConstruction con = codeGenerator.getFirmConstruction();
 
 		final Node ret;
-		if (!typeSystem.isStructType(typeParameter)) {
+		final firm.Type firmType = firmTypeSystem.asType(typeParameter);
+		if (!(firmType instanceof CompoundType)) {
 			final Mode mode = firmTypeSystem.getFirmMode(typeParameter);
 			final Node node = con.newConst(mode.getNull());
 			final Node mem = con.getCurrentMem();
