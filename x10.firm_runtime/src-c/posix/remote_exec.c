@@ -10,12 +10,15 @@
 
 #define SHM_SIZE  (8*1024*1024)
 
-static mqd_t          *queues;
-static mqd_t           my_queue;
-static void          **shm_addrs;
-static pthread_mutex_t send_mutex;
-static pthread_mutex_t idle_lock;
-static pthread_cond_t  idle_cond;
+static mqd_t             *queues;
+static mqd_t              my_queue;
+static void             **shm_addrs;
+static pthread_mutex_t    send_mutex;
+static pthread_mutex_t    idle_lock;
+static pthread_cond_t     idle_cond;
+static pthread_mutex_t    start_lock;
+static pthread_cond_t     start_cond;
+static volatile unsigned  start_count;
 
 static volatile bool wait_for_dma_receive;
 
@@ -42,12 +45,18 @@ typedef struct completion_finish_message_t {
 	finish_state_t *finish_state;
 } completion_finish_message_t;
 
+typedef struct start_message_t {
+	message_base_t base;
+	unsigned       from_place;
+} start_message_t;
+
 union message_t {
-	message_handler             handler;
 	message_base_t              base;
-	dma_message_t               dma;
-	completion_simple_message_t completion_simple;
 	completion_finish_message_t completion_finish;
+	completion_simple_message_t completion_simple;
+	dma_message_t               dma;
+	message_handler             handler;
+	start_message_t             start;
 };
 
 typedef struct remote_exec_header_t {
@@ -254,6 +263,16 @@ static void handle_shutdown(const message_t *message)
 	pthread_cond_signal(&idle_cond);
 }
 
+static void handle_start(const message_t *message)
+{
+	(void)message;
+	pthread_mutex_lock(&start_lock);
+	if (--start_count == 0) {
+		pthread_cond_signal(&start_cond);
+	}
+	pthread_mutex_unlock(&start_lock);
+}
+
 static void create_queue_name(char *buf, size_t buf_size, unsigned place)
 {
 	snprintf(buf, buf_size, "/x10_%ld_%u", master_pid, place);
@@ -304,14 +323,30 @@ void init_ipc(void)
 	/* setup notification */
 	my_queue = queues[place_id];
 
-	register_notify_handler();
-
 	/* initialize send mutex */
 	pthread_mutex_init(&send_mutex, NULL);
 
 	if (place_id != 0) {
 		pthread_mutex_init(&idle_lock, NULL);
 		pthread_cond_init(&idle_cond, NULL);
+		register_notify_handler();
+
+		/* notify place 0 that we are ready */
+		start_message_t start;
+		start.base.handler = handle_start;
+		start.from_place   = place_id;
+		send_msg((const message_t*)&start, 0);
+	} else {
+		pthread_mutex_init(&start_lock, NULL);
+		pthread_cond_init(&start_cond, NULL);
+		/* wait for other places to become ready */
+		start_count = n_places-1;
+
+		pthread_mutex_lock(&start_lock);
+		register_notify_handler();
+		pthread_cond_wait(&start_cond, &start_lock);
+
+		pthread_mutex_unlock(&start_lock);
 	}
 }
 
