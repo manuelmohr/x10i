@@ -1,7 +1,9 @@
 #include <sys/mman.h>
 #include <pthread.h>
 #include <errno.h>
+#include <signal.h>
 #include <sys/stat.h>
+#include <sys/prctl.h>
 #include <fcntl.h>
 #include "remote_exec.h"
 #include "init.h"
@@ -17,7 +19,7 @@ static pthread_mutex_t    send_mutex;
 static pthread_mutex_t    idle_lock;
 static pthread_cond_t     idle_cond;
 static volatile unsigned  start_count;
-static long               master_pid;
+static pid_t              master_pid;
 
 /* maximum of 4 places by default */
 unsigned n_places = 4;
@@ -48,10 +50,10 @@ typedef struct completion_finish_message_t {
 	finish_state_t *finish_state;
 } completion_finish_message_t;
 
-typedef struct start_message_t {
+typedef struct init_complete_message_t {
 	message_base_t base;
 	unsigned       from_place;
-} start_message_t;
+} init_complete_message_t;
 
 union message_t {
 	message_base_t              base;
@@ -59,7 +61,7 @@ union message_t {
 	completion_simple_message_t completion_simple;
 	dma_message_t               dma;
 	message_handler             handler;
-	start_message_t             start;
+	init_complete_message_t     init_complete;
 };
 
 typedef struct remote_exec_header_t {
@@ -75,6 +77,20 @@ typedef struct completion_header_t {
 	pthread_cond_t *return_cond;
 	x10_object    **return_value_pointer;
 } completion_header_t;
+
+static void sigchld_handler(int signum)
+{
+	(void)signum;
+	fprintf(stderr, "x10 runtime: a child place has quit unexpectedly, aborting master\n");
+	abort();
+}
+
+static void sighup_handler(int signum)
+{
+	(void)signum;
+	fprintf(stderr, "x10 runtime: place %u received SIGHUP, abort\n", place_id);
+	abort();
+}
 
 static void send_msg(const message_t *const msg, unsigned const place)
 {
@@ -271,15 +287,15 @@ static void handle_shutdown(const message_t *message)
 	pthread_cond_signal(&idle_cond);
 }
 
-static void handle_start(const message_t *message)
+static void handle_init_complete(const message_t *message)
 {
-	const start_message_t *const start = &message->start;
-	(void)start;
+	const init_complete_message_t *const init_complete = &message->init_complete;
+	(void)init_complete;
 }
 
 static void create_queue_name(char *buf, size_t buf_size, unsigned place)
 {
-	snprintf(buf, buf_size, "/x10_%ld_%u", master_pid, place);
+	snprintf(buf, buf_size, "/x10_%ld_%u", (long)master_pid, place);
 }
 
 static void init_shared_memory(void)
@@ -365,6 +381,15 @@ static void init_master(void)
 
 static void init_child(void)
 {
+	/* use linux extension so all our childs get a SIGHUP delivered if the
+	 * master dies unexpectedly
+	 * (Note: that there is a slight chance for a race condition here if the
+	 *  master dies faster than the client reaches this. But as the master
+	 *  won't execute any X10 code until the init_complete messages sequence
+	 *  is complete this should be safe)
+	 */
+	prctl(PR_SET_PDEATHSIG, SIGHUP);
+
 	/* close the message queue we inherited from master */
 	mq_close(my_queue);
 	init_message_queues();
@@ -373,15 +398,16 @@ static void init_child(void)
 	pthread_cond_init(&idle_cond, NULL);
 
 	/* notify place 0 that we are ready */
-	start_message_t start;
-	start.base.handler = handle_start;
-	start.from_place   = place_id;
-	send_msg((const message_t*)&start, 0);
+	init_complete_message_t init_complete;
+	init_complete.base.handler = handle_init_complete;
+	init_complete.from_place   = place_id;
+	send_msg((const message_t*)&init_complete, 0);
 }
 
 void init_ipc(void)
 {
-	master_pid = (long) getpid();
+	master_pid = getpid();
+
 	char *nplaces = getenv("X10_NPLACES");
 	if (nplaces != NULL) {
 		int nplaces_int = atoi(nplaces);
@@ -394,6 +420,9 @@ void init_ipc(void)
 	/* initialize receive queue for master it has to be there before the fork
 	 * to avoid race conditions */
 	my_queue = setup_queue(0, O_CREAT | O_RDONLY);
+
+	signal(SIGCHLD, sigchld_handler);
+	signal(SIGHUP, sighup_handler);
 
 	/* let's fork until we have a process for each place */
 	for (unsigned i = 1; i < n_places; ++i) {
@@ -415,6 +444,8 @@ void shutdown_ipc(void)
 {
 	if (queues == NULL)
 		return;
+
+	signal(SIGCHLD, SIG_DFL);
 
 	/* send shutdown message to other places */
 	if (place_id == 0) {
