@@ -5,7 +5,7 @@ TARGET         ?= $(guessed_target)
 CC              = $(TARGET)-gcc
 
 CPARSER_TARGET ?= -mtarget=$(TARGET)
-CFLAGS         ?= -g
+CFLAGS         ?= -g3
 CPPFLAGS       ?=
 
 APP_CFLAGS ?=
