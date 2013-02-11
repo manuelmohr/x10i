@@ -88,8 +88,7 @@ static void sigchld_handler(int signum)
 static void sighup_handler(int signum)
 {
 	(void)signum;
-	fprintf(stderr, "x10 runtime: place %u received SIGHUP, abort\n", place_id);
-	abort();
+	pthread_cond_signal(&idle_cond);
 }
 
 static void send_msg(const message_t *const msg, unsigned const place)
@@ -281,12 +280,6 @@ static void handle_remote_exec(const message_t *message)
 	send_msg((const message_t*)&completion, header.from_place);
 }
 
-static void handle_shutdown(const message_t *message)
-{
-	(void)message;
-	pthread_cond_signal(&idle_cond);
-}
-
 static void handle_init_complete(const message_t *message)
 {
 	const init_complete_message_t *const init_complete = &message->init_complete;
@@ -348,6 +341,15 @@ static void set_queue_nonblocking(mqd_t queue)
 	}
 }
 
+static void unlink_queues(void)
+{
+	char buf[64];
+	for (unsigned p = 0; p < n_places; ++p) {
+		create_queue_name(buf, sizeof(buf), p);
+		mq_unlink(buf);
+	}
+}
+
 static void init_message_queues(void)
 {
 	queues = XMALLOCNZ(mqd_t, n_places);
@@ -377,6 +379,7 @@ static void init_master(void)
 	}
 
 	init_message_queues();
+	unlink_queues();
 }
 
 static void init_child(void)
@@ -446,26 +449,12 @@ void shutdown_ipc(void)
 
 	signal(SIGCHLD, SIG_DFL);
 
-	/* send shutdown message to other places */
-	if (place_id == 0) {
-		for (unsigned i = 1; i < n_places; ++i) {
-			message_base_t exitmessage;
-			exitmessage.handler = handle_shutdown;
-			send_msg((const message_t*)&exitmessage, i);
-		}
-	}
-
 	for (unsigned i = 0; i < n_places; ++i) {
 		mqd_t queue = queues[i];
 		if (queue != (mqd_t)-1)
 			mq_close(queues[i]);
 		queues[i] = (mqd_t)-1;
 	}
-	/* unlink our own queue */
-	char buf[64];
-	create_queue_name(buf, sizeof(buf), place_id);
-	mq_unlink(buf);
-
 	pthread_mutex_destroy(&send_mutex);
 }
 
