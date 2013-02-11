@@ -9,14 +9,11 @@ void init_mutex(void);
 void init_finish_state(void);
 void exit_finish_state(void);
 
-void create_ipc_shared_memory(void);
 void init_ipc(void);
 void shutdown_ipc(void);
 
 extern int exit_code;
 
 extern unsigned place_id;
-
-extern long master_pid;
 
 #endif

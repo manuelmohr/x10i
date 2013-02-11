@@ -16,11 +16,14 @@ static void             **shm_addrs;
 static pthread_mutex_t    send_mutex;
 static pthread_mutex_t    idle_lock;
 static pthread_cond_t     idle_cond;
-static pthread_mutex_t    start_lock;
-static pthread_cond_t     start_cond;
 static volatile unsigned  start_count;
+static long               master_pid;
 
-static volatile bool wait_for_dma_receive;
+/* maximum of 4 places by default */
+unsigned n_places = 4;
+
+/* current place */
+unsigned place_id;
 
 typedef union message_t message_t;
 typedef void (*message_handler)(const message_t *message);
@@ -101,18 +104,14 @@ static void register_notify_handler(void)
 	}
 }
 
-static void message_received(union sigval val)
+static bool receive_single_message(void)
 {
-	(void)val;
-
-	register_notify_handler();
-
 	message_t message;
 again:;
 	ssize_t sz = mq_receive(my_queue, (char*)&message, sizeof(message), NULL);
 	if (sz < 0) {
 		if (errno == EAGAIN)
-			return;
+			return false;
 		if (errno == EINTR)
 			goto again;
 		perror("x10 runtime: failure while receiving message");
@@ -125,7 +124,16 @@ again:;
 	}
 
 	message.base.handler(&message);
-	goto again;
+	return true;
+}
+
+static void message_received(union sigval val)
+{
+	(void)val;
+	register_notify_handler();
+	while (receive_single_message()) {
+		/* empty */
+	}
 }
 
 /** initiate dma transfer to remote tile and send an dma_message_t.
@@ -265,12 +273,8 @@ static void handle_shutdown(const message_t *message)
 
 static void handle_start(const message_t *message)
 {
-	(void)message;
-	pthread_mutex_lock(&start_lock);
-	if (--start_count == 0) {
-		pthread_cond_signal(&start_cond);
-	}
-	pthread_mutex_unlock(&start_lock);
+	const start_message_t *const start = &message->start;
+	(void)start;
 }
 
 static void create_queue_name(char *buf, size_t buf_size, unsigned place)
@@ -278,7 +282,7 @@ static void create_queue_name(char *buf, size_t buf_size, unsigned place)
 	snprintf(buf, buf_size, "/x10_%ld_%u", master_pid, place);
 }
 
-void create_ipc_shared_memory(void)
+static void init_shared_memory(void)
 {
 	shm_addrs = XMALLOCN(void*, n_places);
 	for (unsigned i = 0; i < n_places; ++i) {
@@ -292,11 +296,8 @@ void create_ipc_shared_memory(void)
 	}
 }
 
-void init_ipc(void)
+static mqd_t setup_queue(unsigned place, int flags)
 {
-	/* create message queues */
-	queues = XMALLOCNZ(mqd_t, n_places);
-
 	struct mq_attr attr;
 	memset(&attr, 0, sizeof(attr));
 	attr.mq_flags   = 0;
@@ -304,49 +305,109 @@ void init_ipc(void)
 	attr.mq_msgsize = sizeof(message_t);
 	attr.mq_curmsgs = 0;
 
-	/* open message queues for each place */
-	for (unsigned i = 0; i < n_places; ++i) {
-		int flags = O_CREAT;
-		flags |= i == place_id ? O_RDONLY|O_NONBLOCK : O_WRONLY;
-		char buf[64];
-		create_queue_name(buf, sizeof(buf), i);
-		mqd_t queue = mq_open(buf, flags, 0600, &attr);
-		if (queue == (mqd_t)-1) {
-			perror("x10 runtime: couldn't setup message queue");
-			fprintf(stderr, "Place %u, queueu '%s'\n", place_id, buf);
-			exit(1);
-		}
-
-		queues[i] = queue;
+	char buf[64];
+	create_queue_name(buf, sizeof(buf), place);
+	mqd_t queue = mq_open(buf, flags, 0600, &attr);
+	if (queue == (mqd_t)-1) {
+		perror("x10 runtime: couldn't setup message queue");
+		fprintf(stderr, "Place %u, queueu '%s'\n", place_id, buf);
+		exit(1);
 	}
 
-	/* setup notification */
+	return queue;
+}
+
+static void set_queue_nonblocking(mqd_t queue)
+{
+	struct mq_attr attr;
+	memset(&attr, 0, sizeof(attr));
+	if (mq_getattr(queue, &attr) != 0) {
+		perror("x10 runtime: couldn't get queue attributes");
+		exit(1);
+	}
+	attr.mq_flags |= O_NONBLOCK;
+	if (mq_setattr(queue, &attr, NULL) != 0) {
+		perror("x10 runtime: couldn't set queue attributes");
+		exit(1);
+	}
+}
+
+static void init_message_queues(void)
+{
+	queues = XMALLOCNZ(mqd_t, n_places);
+
+	/* open message queues for each place */
+	for (unsigned i = 0; i < n_places; ++i) {
+		if (place_id == 0 && i == 0) {
+			set_queue_nonblocking(my_queue);
+			queues[0] = my_queue;
+			continue;
+		}
+		int flags = O_CREAT;
+		flags |= i == place_id ? O_RDONLY|O_NONBLOCK : O_WRONLY;
+		queues[i] = setup_queue(i, flags);
+	}
+
 	my_queue = queues[place_id];
-
-	/* initialize send mutex */
 	pthread_mutex_init(&send_mutex, NULL);
+	register_notify_handler();
+}
 
-	if (place_id != 0) {
-		pthread_mutex_init(&idle_lock, NULL);
-		pthread_cond_init(&idle_cond, NULL);
-		register_notify_handler();
+static void init_master(void)
+{
+	/* wait for all childs to send their start message */
+	for (unsigned c = 1; c < n_places; ++c) {
+		receive_single_message();
+	}
 
-		/* notify place 0 that we are ready */
-		start_message_t start;
-		start.base.handler = handle_start;
-		start.from_place   = place_id;
-		send_msg((const message_t*)&start, 0);
-	} else {
-		pthread_mutex_init(&start_lock, NULL);
-		pthread_cond_init(&start_cond, NULL);
-		/* wait for other places to become ready */
-		start_count = n_places-1;
+	init_message_queues();
+}
 
-		pthread_mutex_lock(&start_lock);
-		register_notify_handler();
-		pthread_cond_wait(&start_cond, &start_lock);
+static void init_child(void)
+{
+	/* close the message queue we inherited from master */
+	mq_close(my_queue);
+	init_message_queues();
 
-		pthread_mutex_unlock(&start_lock);
+	pthread_mutex_init(&idle_lock, NULL);
+	pthread_cond_init(&idle_cond, NULL);
+
+	/* notify place 0 that we are ready */
+	start_message_t start;
+	start.base.handler = handle_start;
+	start.from_place   = place_id;
+	send_msg((const message_t*)&start, 0);
+}
+
+void init_ipc(void)
+{
+	master_pid = (long) getpid();
+	char *nplaces = getenv("X10_NPLACES");
+	if (nplaces != NULL) {
+		int nplaces_int = atoi(nplaces);
+		if (nplaces_int > 0)
+			n_places = (unsigned)nplaces_int;
+	}
+
+	init_shared_memory();
+
+	/* initialize receive queue for master it has to be there before the fork
+	 * to avoid race conditions */
+	my_queue = setup_queue(0, O_CREAT | O_RDONLY);
+
+	/* let's fork until we have a process for each place */
+	for (unsigned i = 1; i < n_places; ++i) {
+		pid_t new_pid = fork();
+		if (new_pid == 0) {
+			/* child process */
+			place_id = i;
+			init_child();
+			break;
+		}
+	}
+
+	if (place_id == 0) {
+		init_master();
 	}
 }
 

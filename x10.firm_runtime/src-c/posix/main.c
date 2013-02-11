@@ -8,38 +8,8 @@
 #include "init.h"
 #include "places.h"
 
-long master_pid;
-/* maximum of 4 places by default */
-unsigned n_places = 4;
-/* current place */
-unsigned place_id;
-
-static void init_places(void)
-{
-	char *nplaces = getenv("X10_NPLACES");
-	if (nplaces != NULL) {
-		int nplaces_int = atoi(nplaces);
-		if (nplaces_int > 0)
-			n_places = (unsigned)nplaces_int;
-	}
-}
-
 int main(int argc, char **argv)
 {
-	init_places();
-	create_ipc_shared_memory();
-
-	master_pid = (long) getpid();
-	/* let's fork until we have a process for each place */
-	for (unsigned i = 1; i < n_places; ++i) {
-		pid_t new_pid = fork();
-		if (new_pid == 0) {
-			/* child process */
-			place_id = i;
-			break;
-		}
-	}
-
 	init_ipc();
 	atexit(shutdown_ipc);
 
