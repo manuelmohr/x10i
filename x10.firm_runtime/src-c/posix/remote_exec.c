@@ -383,12 +383,11 @@ static void init_child(void)
 {
 	/* use linux extension so all our childs get a SIGHUP delivered if the
 	 * master dies unexpectedly
-	 * (Note: that there is a slight chance for a race condition here if the
-	 *  master dies faster than the client reaches this. But as the master
-	 *  won't execute any X10 code until the init_complete messages sequence
-	 *  is complete this should be safe)
 	 */
 	prctl(PR_SET_PDEATHSIG, SIGHUP);
+	/* fixup for possible race */
+	if (getppid() == 1)
+		kill(getpid(), SIGHUP);
 
 	/* close the message queue we inherited from master */
 	mq_close(my_queue);
