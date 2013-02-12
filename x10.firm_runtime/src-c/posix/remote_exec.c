@@ -16,9 +16,7 @@ static mqd_t             *queues;
 static mqd_t              my_queue;
 static void             **shm_addrs;
 static pthread_mutex_t    send_mutex;
-static pthread_mutex_t    idle_lock;
-static pthread_cond_t     idle_cond;
-static volatile unsigned  start_count;
+static volatile bool      idle_running = true;
 static pid_t              master_pid;
 
 /* maximum of 4 places by default */
@@ -88,7 +86,7 @@ static void sigchld_handler(int signum)
 static void sighup_handler(int signum)
 {
 	(void)signum;
-	pthread_cond_signal(&idle_cond);
+	idle_running = false;
 }
 
 static void send_msg(const message_t *const msg, unsigned const place)
@@ -385,25 +383,22 @@ static void init_master(void)
 static void init_child(void)
 {
 	/* use linux extension so all our childs get a SIGHUP delivered if the
-	 * master dies unexpectedly
-	 */
+	 * master dies unexpectedly */
 	prctl(PR_SET_PDEATHSIG, SIGHUP);
-	/* fixup for possible race */
-	if (getppid() == 1)
-		kill(getpid(), SIGHUP);
 
 	/* close the message queue we inherited from master */
 	mq_close(my_queue);
 	init_message_queues();
-
-	pthread_mutex_init(&idle_lock, NULL);
-	pthread_cond_init(&idle_cond, NULL);
 
 	/* notify place 0 that we are ready */
 	init_complete_message_t init_complete;
 	init_complete.base.handler = handle_init_complete;
 	init_complete.from_place   = place_id;
 	send_msg((const message_t*)&init_complete, 0);
+
+	/* fixup for possible race */
+	if (getppid() == 1)
+		kill(getpid(), SIGHUP);
 }
 
 void init_ipc(void)
@@ -460,11 +455,9 @@ void shutdown_ipc(void)
 
 void x10_idle(void)
 {
-	pthread_mutex_lock(&idle_lock);
-	pthread_cond_wait(&idle_cond, &idle_lock);
-	pthread_mutex_unlock(&idle_lock);
-	pthread_mutex_destroy(&idle_lock);
-	pthread_cond_destroy(&idle_cond);
+	while (idle_running) {
+		pause();
+	}
 }
 
 x10_object *x10_execute_at(x10_int remote_place, x10_int msg_type,
