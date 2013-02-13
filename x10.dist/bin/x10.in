@@ -2,6 +2,7 @@ MAIN_CLASS='$Main'
 
 help=""
 time=""
+timelimit=""
 verbose=""
 extra_cp=""
 extra_lib=""
@@ -22,6 +23,7 @@ while [ -n "$1" ]; do
         -h|-help|--help) help="1"; break;;
         -v|-verbose|--verbose) verbose="1";;
         -t|-time) time="time ";;
+        -timelimit) shift; timelimit="timeout --signal=9 $1 ";;
 #        -ms) shift; ms="$1";;
         -ms*) ms="${1##-ms}";;
         -Xms*) ms="${1##-Xms}";;
@@ -37,7 +39,14 @@ while [ -n "$1" ]; do
              fi
              # TODO: add tests for more system properties above
              defs="${defs} $1";;
-        -classpath|-cp) shift; extra_cp="$1";;
+        -classpath|-cp)
+            shift
+            if [ -z "$extra_cp" ] ; then
+                extra_cp="${1}"
+            else
+                extra_cp="${extra_cp}${PATH_SEP}${1}"
+            fi
+            ;;
         -libpath) shift; extra_lib="$1";;
         -config) shift; config="$1.cfg";;
         -nocompressedrefs) nocompressedrefs="true";;
@@ -63,6 +72,7 @@ if [ -n "$help" -o -z "${args[*]}" ]; then
 Usage: x10 [options] <main-class> [arg0 arg1 ...]
 where [options] includes:
     -t -time                 display execution time
+    -timelimit <limit>       force exit when the time limit is reached (suffix of s,m,h,d)
     -v -verbose --verbose    print verbose debugging information
     -h -help --help          print this message
     -ms<size>                set initial heap size to <size>, e.g. -ms256m
@@ -203,21 +213,20 @@ esac
 if [ -n "${ibmj9vm}" ]; then
     ibmj9vmjitopts=
 
-    # use default jit optlevel while preloading
-    if [ -n "${ibmj9vmjitopts}" ]; then
-        ibmj9vmjitopts="${ibmj9vmjitopts},"
-    fi
-    ibmj9vmjitopts="${ibmj9vmjitopts}classLoadPhaseThreshold=10000"
-
     if [ -n "${ibmj9vmr26}" ]; then
         # experimental support for java7
         if [ -n "${ibmj9vmjitopts}" ]; then
             ibmj9vmjitopts="${ibmj9vmjitopts},"
         fi
         ibmj9vmjitopts="${ibmj9vmjitopts}count=1000,bcount=250,milcount=1"
+        if [ -n "${ibmj9vm64bit}" ]; then
+            java_args=("-Xgcpolicy:balanced" "${java_args[@]}")
+        else
+            java_args=("-Xgcpolicy:gencon" "${java_args[@]}")
+        fi
+    else
+        java_args=("-Xgcpolicy:gencon" "${java_args[@]}")
     fi
-
-    java_args=("-Xgcpolicy:gencon" "${java_args[@]}")
 
     if [ -n "${ibmj9vm64bit}" ]; then
         if [ -z "${nocompressedrefs}" ]; then
@@ -234,9 +243,9 @@ fi
 command=("$JAVA" "${java_args[@]}" $config "${args[@]}")
 [ -n "$verbose" ] && echo "${command[*]}"
 if [[ "$UNAME" = CYGWIN* && -z "$ENABLE_CYGWIN_MULTIVM" ]]; then
-    $time "${command[@]}"
+    exec $time$timelimit "${command[@]}"
 else 
-    $time$launcher "${command[@]}"
+    exec $time$timelimit$launcher "${command[@]}"
 fi
 
 exit $?
