@@ -53,7 +53,7 @@ import polyglot.visit.NodeVisitor;
 import polyglot.visit.PrettyPrinter;
 import polyglot.visit.TypeBuilder;
 import polyglot.visit.TypeChecker;
-import x10.constraint.XTerms;
+import x10.types.constraints.ConstraintManager;
 import x10.constraint.XVar;
 import x10.errors.Errors;
 import x10.errors.Warnings;
@@ -80,7 +80,6 @@ import polyglot.types.NoMemberException;
 import x10.types.checker.Converter;
 import x10.types.checker.PlaceChecker;
 import x10.types.constraints.CConstraint;
-import x10.types.constraints.QualifiedVar;
 import x10.types.constraints.TypeConstraint;
 import x10.visit.X10TypeChecker;
 
@@ -191,11 +190,11 @@ public class X10New_c extends New_c implements X10New {
                 anonType.setInterfaces(Collections.<Ref<? extends Type>> singletonList(ct));
             }
             else */{
-                anonType.superType(Types.<Type> ref(ts.Object()));
+            	// [DC] null means it's a new root in the object hierarchy (no more x10.lang.Object)
+                anonType.superType(null);
                 anonType.setInterfaces(Collections.<Ref<? extends Type>> singletonList(ct));
             }
 
-            assert anonType.superType() != null;
             assert anonType.interfaces().size() <= 1;
         }
 
@@ -382,6 +381,7 @@ public class X10New_c extends New_c implements X10New {
             qualifier = (Expr) k.visitChild(k.qualifier(), childtc);
         }
 
+        /*  
         if (typeArguments.size() > 0) {
             List<Type> typeArgs = new ArrayList<Type>(typeArguments.size());
 
@@ -394,9 +394,10 @@ public class X10New_c extends New_c implements X10New {
                         new Errors.CannotInstantiateType(ct, n.position()));
                 // TODO: fake missing args or delete extra args
             }
-
+            // [DC] this is where the problem is!  XTENLANG-3133
             ct = ct.typeArguments(typeArgs);
         }
+        */
 
         t = Types.xclause(ct, xc);
 
@@ -713,7 +714,7 @@ public class X10New_c extends New_c implements X10New {
                 X10ClassType ct = (X10ClassType) baseType;
                 if (ct.isLocal()) {
                     Type outerT = ct.outer();
-                    CConstraint c = new CConstraint();
+                    CConstraint c = ConstraintManager.getConstraintSystem().makeCConstraint();
                     Type outerTB = Types.baseType(outerT);
                     if (outerTB instanceof X10ClassType) {
                         X10ClassType outerct = (X10ClassType) outerTB;
@@ -737,7 +738,7 @@ public class X10New_c extends New_c implements X10New {
         ConstrainedType type1 = Types.toConstrainedType(type);
         type1 = (ConstrainedType) PlaceChecker.AddIsHereClause(type1, tc.context());
         // Add self != null
-        type1 = (ConstrainedType) Types.addDisBinding(type1, Types.selfVar(type1), XTerms.NULL);
+        type1 = (ConstrainedType) Types.addDisBinding(type1, Types.selfVar(type1), ConstraintManager.getConstraintSystem().xnull());
         if (! Types.consistent(type1))
             Errors.issue(tc.job(), new Errors.InconsistentType(type1, xci.position()));
         xci = (X10ConstructorInstance) xci.returnType(type1);

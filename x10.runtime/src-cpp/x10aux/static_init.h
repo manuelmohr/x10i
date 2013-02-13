@@ -18,43 +18,33 @@
 #include <x10aux/serialization.h>
 #include <x10aux/network.h>
 
+namespace x10 {
+    namespace lang {
+        class CheckedThrowable;
+    }
+}
+
 namespace x10aux {
 
-    class StaticInitBroadcastDispatcher {
-        protected:
-        static DeserializationDispatcher *it;
-        static serialization_id_t const STATIC_BROADCAST_ID;
-        static void doBroadcast(serialization_id_t id, char* the_buf, x10_uint sz);
+    class StaticInitController {
+      public:
+        enum status {
+            UNINITIALIZED = 0,
+            INITIALIZING,
+            INITIALIZED,
+            EXCEPTION_RAISED
+        };
 
-        public:
-        static serialization_id_t addRoutine(Deserializer init);
-        static ref<x10::lang::Reference> dispatch(deserialization_buffer& buf);
-        template<class C> static void broadcastStaticField(C f, serialization_id_t id);
+        static void initField(volatile status* flag,
+                              void (*init_func)(void),
+                              x10::lang::CheckedThrowable**,
+                              const char* fname);
+
+      private:
         static void lock();
         static void await();
         static void unlock();
         static void notify();
-    };
-
-    template<class C>
-    void StaticInitBroadcastDispatcher::broadcastStaticField(C f, serialization_id_t id) {
-        if (num_hosts == 1) return;
-        serialization_buffer buf;
-        buf.write(id);
-        buf.write(f);
-        x10_uint sz = buf.length();
-        serialized_bytes += sz; asyncs_sent++;
-        doBroadcast(STATIC_BROADCAST_ID, buf.borrow(), sz);
-        // buffer cleaned up when buf destructed
-    }
-
-    template<> inline const char *typeName<StaticInitBroadcastDispatcher>()
-    { return "StaticInitBroadcastDispatcher"; }
-
-    enum status {
-        UNINITIALIZED = 0,
-        INITIALIZING,
-        INITIALIZED
     };
 }
 

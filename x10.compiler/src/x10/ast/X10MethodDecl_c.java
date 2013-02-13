@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import polyglot.ast.AmbExpr_c;
+import polyglot.ast.Binary;
 import polyglot.ast.Block;
 import polyglot.ast.Call;
 import polyglot.ast.CanonicalTypeNode;
@@ -40,6 +42,7 @@ import polyglot.ast.New;
 import polyglot.ast.Node;
 import polyglot.ast.NodeFactory;
 import polyglot.ast.Return;
+import polyglot.ast.Special;
 import polyglot.ast.Stmt;
 import polyglot.ast.TypeCheckFragmentGoal;
 import polyglot.ast.TypeNode;
@@ -91,7 +94,7 @@ import polyglot.visit.TypeChecker;
 import x10.constraint.XFailure;
 import x10.constraint.XVar;
 import x10.constraint.XTerm;
-import x10.constraint.XTerms;
+import x10.types.constraints.ConstraintManager;
 import x10.constraint.XVar;
 import x10.errors.Errors;
 import x10.errors.Errors.IllegalConstraint;
@@ -138,12 +141,13 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 	// The representation of the  guard on the method definition
 	DepParameterExpr guard;
 	List<TypeParamNode> typeParameters;
+	List<TypeNode> throwsTypes;
 
 	TypeNode offerType;
 	TypeNode hasType;
 	public X10MethodDecl_c(NodeFactory nf, Position pos, FlagsNode flags, 
 			TypeNode returnType, Id name,
-			List<TypeParamNode> typeParams, List<Formal> formals, DepParameterExpr guard,  TypeNode offerType, Block body) {
+			List<TypeParamNode> typeParams, List<Formal> formals, DepParameterExpr guard,  TypeNode offerType, List<TypeNode> throwsTypes, Block body) {
 		super(pos, flags, returnType instanceof HasTypeNode_c ? nf.UnknownTypeNode(returnType.position()) : returnType, 
 				name, formals,  body);
 		this.guard = guard;
@@ -151,7 +155,7 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 		if (returnType instanceof HasTypeNode_c) 
 			hasType = ((HasTypeNode_c) returnType).typeNode();
 		this.offerType = offerType;
-
+		this.throwsTypes = throwsTypes;
 	}
 
 	public TypeNode offerType() {
@@ -173,10 +177,22 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 		}
 		return this;
 	}
+	public List<TypeNode> throwsTypes() {
+		return throwsTypes;
+	}
+
+	public X10MethodDecl_c throwsTypes(List<TypeNode> throwsTypes) {
+		if (this.throwsTypes != throwsTypes)  {
+			X10MethodDecl_c n = (X10MethodDecl_c) copy();
+			n.throwsTypes = throwsTypes;
+			return n;
+		}
+		return this;
+	}
 
 	protected X10MethodDef createMethodDef(TypeSystem ts, X10ClassDef ct, Flags flags) {
 		X10MethodDef mi = (X10MethodDef) ts.methodDef(position(), name().position(), Types.ref(ct.asType()), flags, returnType.typeRef(), name.id(),
-				Collections.<Ref<? extends Type>>emptyList(), 
+				Collections.<Ref<? extends Type>>emptyList(), Collections.<Ref<? extends Type>>emptyList(), 
 				offerType == null ? null : offerType.typeRef());
 
 		mi.setThisDef(ct.thisDef());
@@ -201,17 +217,17 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 
 		X10MethodDecl_c n = this;
 
-		X10MethodDef mi = createMethodDef(ts, ct, flags);
-		ct.addMethod(mi);
+		X10MethodDef md = createMethodDef(ts, ct, flags);
+		ct.addMethod(md);
 
-		TypeBuilder tbChk = tb.pushCode(mi);
+		TypeBuilder tbChk = tb.pushCode(md);
 
 		final TypeBuilder tbx = tb;
-		final MethodDef mix = mi;
-
+		final MethodDef mdx = md;
 		n = (X10MethodDecl_c) n.visitSignature(new NodeVisitor() {
+			
 		    public Node override(Node n) {
-		        return X10MethodDecl_c.this.visitChild(n, tbx.pushCode(mix));
+		        return X10MethodDecl_c.this.visitChild(n, tbx.pushCode(mdx));
 		    }
 		});
 
@@ -220,48 +236,54 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 		    formalTypes.add(f1.type().typeRef());
 		}
 
-
-		mi.setReturnType(n.returnType().typeRef());
-		mi.setFormalTypes(formalTypes);
+		md.setReturnType(n.returnType().typeRef());
+		md.setFormalTypes(formalTypes);
+		
+        List<Ref<? extends Type>> throw_types = new ArrayList<Ref<? extends Type>>();
+        for (TypeNode t : n.throwsTypes()) {
+            throw_types.add(t.typeRef());
+        }
+        md.setThrowTypes(throw_types);
+		
 
 		n = (X10MethodDecl_c) X10Del_c.visitAnnotations(n, tb);
-
+				
 		List<AnnotationNode> as = ((X10Del) n.del()).annotations();
 		if (as != null) {
 			List<Ref<? extends Type>> ats = new ArrayList<Ref<? extends Type>>(as.size());
 			for (AnnotationNode an : as) {
 				ats.add(an.annotationType().typeRef());
 			}
-			mi.setDefAnnotations(ats);
+			md.setDefAnnotations(ats);
 		}
 
 		// Enable return type inference for this method declaration.
 		if (n.returnType() instanceof UnknownTypeNode) {
-			mi.inferReturnType(true);
+			md.inferReturnType(true);
 		}
 
 		if (n.guard() != null) {
-			mi.setGuard(n.guard().valueConstraint());
-			mi.setTypeGuard(n.guard().typeConstraint());
+			md.setGuard(n.guard().valueConstraint());
+			md.setTypeGuard(n.guard().typeConstraint());
 		}
 
 		List<ParameterType> typeParameters = new ArrayList<ParameterType>(n.typeParameters().size());
 		for (TypeParamNode tpn : n.typeParameters()) {
 			typeParameters.add(tpn.type());
 		}
-		mi.setTypeParameters(typeParameters);
+		md.setTypeParameters(typeParameters);
 
 		List<LocalDef> formalNames = new ArrayList<LocalDef>(n.formals().size());
 		for (Formal f : n.formals()) {
 			formalNames.add(f.localDef());
 		}
-		mi.setFormalNames(formalNames);
+		md.setFormalNames(formalNames);
 
-		Flags xf = mi.flags();
+		Flags xf = md.flags();
 		if (xf.isProperty()) {
 			final LazyRef<XTerm> bodyRef = Types.lazyRef(null);
 			bodyRef.setResolver(new SetResolverGoal(tb.job()).intern(tb.job().extensionInfo().scheduler()));
-			mi.body(bodyRef);
+			md.body(bodyRef);
 		}
 
 		// property implies public, final
@@ -271,15 +293,15 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 			else
 				xf = xf.Public().Final();
 
-			mi.setFlags(xf);
+			md.setFlags(xf);
 			n = (X10MethodDecl_c) n.flags(n.flags().flags(xf));
 		}
 
 		Block body = (Block) n.visitChild(n.body, tbChk);
 
-		n = (X10MethodDecl_c) n.body(body);
+        n = (X10MethodDecl_c) n.body(body);
 
-		return n.methodDef(mi);
+		return n.methodDef(md);
 	}
 
 	@Override
@@ -307,13 +329,15 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 		TypeNode ht = (TypeNode) visitChild(this.hasType, v);
 		TypeNode ot = (TypeNode) visitChild(this.offerType, v);
 		TypeNode returnType = (TypeNode) visitChild(this.returnType, v);
-		return reconstruct(flags, name, typeParams, formals, guard, ht, returnType, ot, this.body);
+		List<TypeNode> throwsTypes = visitList(this.throwsTypes, v);
+		return reconstruct(flags, name, typeParams, formals, guard, ht, returnType, ot, throwsTypes, this.body);
 	}
 
-	/** Reconstruct the method. */
-	protected X10MethodDecl_c reconstruct(FlagsNode flags, Id name, List<TypeParamNode> typeParameters, List<Formal> formals, DepParameterExpr guard, TypeNode hasType, TypeNode returnType, TypeNode offerType, Block body) {
+	/** Reconstruct the method. 
+	 * @param throwsTypes2 */
+	protected X10MethodDecl_c reconstruct(FlagsNode flags, Id name, List<TypeParamNode> typeParameters, List<Formal> formals, DepParameterExpr guard, TypeNode hasType, TypeNode returnType, TypeNode offerType, List<TypeNode> throwsTypes, Block body) {
 		X10MethodDecl_c n = (X10MethodDecl_c) super.reconstruct(flags, returnType, name, formals, body);
-		if (! CollectionUtil.allEqual(typeParameters, n.typeParameters) || guard != n.guard || hasType != n.hasType || offerType != n.offerType) {
+		if (! CollectionUtil.allEqual(typeParameters, n.typeParameters) || guard != n.guard || hasType != n.hasType || offerType != n.offerType || ! CollectionUtil.allEqual(throwsTypes, n.throwsTypes) ) {
 			if (n == this) {
 				n = (X10MethodDecl_c) n.copy();
 			}
@@ -321,6 +345,7 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 			n.guard = guard;
 			n.hasType = hasType;
 			n.offerType = offerType;
+			n.throwsTypes = throwsTypes;
 			return n;
 		}
 		return n;
@@ -399,7 +424,7 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 		// Ensure that the place constraint is set appropriately when
 		// entering the appropriate children
 		if (child == body || child == returnType || child == hasType || child == offerType || child == guard
-				|| (formals != null && formals.contains(child))) {
+				|| (formals != null && formals.contains(child))|| (throwsTypes != null && throwsTypes.contains(child))) {
 		    X10MethodDef md = methodDef();
 		    XConstrainedTerm placeTerm = md == null ? null : md.placeTerm();
 		    if (placeTerm == null) {
@@ -418,7 +443,8 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 
 		// Add the method guard into the environment.
 		if (guard != null) {
-		    if (child == body || child == offerType ||  child == hasType || child == returnType) {
+		    if (child == body || child == offerType ||  child == hasType || child == returnType
+		    		|| (formals != null && formals.contains(child))|| (throwsTypes != null && throwsTypes.contains(child))) {
 		        Ref<CConstraint> vc = guard.valueConstraint();
 		        Ref<TypeConstraint> tc = guard.typeConstraint();
 
@@ -504,9 +530,27 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 			Errors.issue(tc.job(),
 			        new Errors.NonAbstractPropertyMethodMustBeFinal(position()));
 		}
-		if (xf.isProperty() && xf.isStatic()) {
-			Errors.issue(tc.job(),
-			        new Errors.PropertyMethodCannotBeStatic(position()));
+		//if (xf.isProperty() && xf.isStatic()) {
+		//	Errors.issue(tc.job(),
+		//	        new Errors.PropertyMethodCannotBeStatic(position()));
+		//}
+	}
+	
+	private Type getType(ContextVisitor tc, String name) throws SemanticException {
+		return tc.typeSystem().systemResolver().findOne(QName.make(name));
+	}
+	private boolean nodeHasOneAnnotation(ContextVisitor tc, Node n, String ann_name) {
+		X10Ext ext = (X10Ext) n.ext();
+		try {
+			List<X10ClassType> anns = ext.annotationMatching(getType(tc, ann_name));
+			if (anns.size() == 0) return false;
+			if (anns.size() > 1) {
+				Errors.issue(tc.job(), new SemanticException("Cannot have more than one @Opaque annotation", n.position()));
+			}
+			return true;
+		} catch (SemanticException e) {
+			assert false : e;
+			return false; // in case asserts are off
 		}
 	}
 
@@ -533,7 +577,9 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 			if (xf.isAbstract() || xf.isNative()) {
 				ok = true;
 			}
-			if (n.body != null && n.body.statements().size() == 1) {
+			if (nodeHasOneAnnotation(tc,n,"x10.compiler.Opaque")) {
+				ok = true;
+			} else if (n.body != null && n.body.statements().size() == 1) {
 				Stmt s = n.body.statements().get(0);
 				if (s instanceof Return) {
 					Return r = (Return) s;
@@ -560,6 +606,7 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
                                 }
                             } catch (IllegalConstraint z) {
                             	Errors.issue(tc.job(),z);
+                            	ok = true;
                             }
                            
                         }
@@ -1027,6 +1074,10 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 			}
 		}
 
+		
+		List<TypeNode> processedThrowsTypes = nn.visitList(nn.throwsTypes(), childtc);
+		nn = (X10MethodDecl) nn.throwsTypes(processedThrowsTypes);
+
 	
 		// Step II. Check the return type. 
 		// Now visit the returntype to ensure that its depclause, if any is processed.
@@ -1110,22 +1161,7 @@ public class X10MethodDecl_c extends MethodDecl_c implements X10MethodDecl {
 			}
 			((Ref<Type>) nn.returnType().typeRef()).update(t);
 			nn = (X10MethodDecl) nn.returnType(nf.CanonicalTypeNode(nn.returnType().position(), t));
-		}
-
-		List<AnnotationNode> bodyAnnotations = AnnotationUtils.annotationNodesMatching(nn.body(), xts.Throws());
-		List<AnnotationNode> rtypeAnnotations = AnnotationUtils.annotationNodesMatching(nn.returnType(), xts.Throws());
-		if ((bodyAnnotations != null && !bodyAnnotations.isEmpty()) ||
-			(rtypeAnnotations != null && !rtypeAnnotations.isEmpty()))
-		{
-			List<Ref<? extends Type>> annotations = new ArrayList<Ref<? extends Type>>(nn.methodDef().defAnnotations());
-			for (AnnotationNode an : bodyAnnotations) {
-				annotations.add(an.annotationType().typeRef());
-			}
-			for (AnnotationNode an : rtypeAnnotations) {
-				annotations.add(an.annotationType().typeRef());
-			}
-			nn.methodDef().setDefAnnotations(annotations);
-		}
+		}		
 
 		return nn;
 	}

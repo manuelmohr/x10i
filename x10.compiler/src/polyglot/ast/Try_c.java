@@ -1,9 +1,15 @@
 /*
- * This file is part of the Polyglot extensible compiler framework.
+ *  This file is part of the X10 project (http://x10-lang.org).
  *
- * Copyright (c) 2000-2007 Polyglot project group, Cornell University
- * Copyright (c) 2006-2007 IBM Corporation
- * 
+ *  This file is licensed to You under the Eclipse Public License (EPL);
+ *  You may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *      http://www.opensource.org/licenses/eclipse-1.0.php
+ *
+ * This file was originally derived from the Polyglot extensible compiler framework.
+ *
+ *  (C) Copyright 2000-2007 Polyglot project group, Cornell University
+ *  (C) Copyright IBM Corporation 2007-2012.
  */
 
 package polyglot.ast;
@@ -95,7 +101,7 @@ public class Try_c extends Stmt_c implements Try
     @Override
     public Node typeCheck(ContextVisitor tc) {
         TypeSystem ts = tc.typeSystem();
-        SubtypeSet caught = new SubtypeSet(ts.Throwable());
+        SubtypeSet caught = new SubtypeSet(ts.CheckedThrowable());
 
         // Walk through our catch blocks, making sure that they each can
         // catch something.
@@ -120,7 +126,8 @@ public class Try_c extends Stmt_c implements Try
      * will handle visiting children.
      */
     public NodeVisitor exceptionCheckEnter(ExceptionChecker ec) {
-        ec = (ExceptionChecker) super.exceptionCheckEnter(ec);
+        //ec = (ExceptionChecker) super.exceptionCheckEnter(ec);
+        //System.out.println("pruning at "+this+" "+this.position());
         return new PruningVisitor();
     }
 
@@ -157,7 +164,7 @@ public class Try_c extends Stmt_c implements Try
         // Visit the try block.
         Block tryBlock = (Block) this.visitChild(this.tryBlock, newec);
         
-        SubtypeSet caught = new SubtypeSet(ts.Throwable());
+        SubtypeSet caught = new SubtypeSet(ts.CheckedThrowable());
         
         // Walk through our catch blocks, making sure that they each can 
         // catch something.

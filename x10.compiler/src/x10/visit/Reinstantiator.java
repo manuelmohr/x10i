@@ -46,7 +46,8 @@ import x10.types.X10FieldInstance;
 import x10.types.X10LocalDef;
 import x10.types.X10LocalInstance;
 import x10.types.X10MethodDef;
-import x10.types.constraints.CTerms;
+
+import x10.types.constraints.ConstraintManager;
 import x10.types.matcher.Subst;
 
 public class Reinstantiator extends TypeParamSubstTransformer {
@@ -61,8 +62,8 @@ public class Reinstantiator extends TypeParamSubstTransformer {
             XLocal[] Y = new XLocal[X.length];
             int i = 0;
             for (X10LocalDef ld : map.keySet()) {
-                X[i] = CTerms.makeLocal(ld);
-                Y[i] = CTerms.makeLocal(map.get(ld));
+                X[i] = ConstraintManager.getConstraintSystem().makeLocal(ld);
+                Y[i] = ConstraintManager.getConstraintSystem().makeLocal(map.get(ld));
                 i++;
             }
             return new Pair<XLocal[], XLocal[]>(X, Y);
@@ -257,7 +258,7 @@ public class Reinstantiator extends TypeParamSubstTransformer {
                     argTypes.add(p.type().typeRef());
                     formalNames.add(p.localDef());
                 }
-                return d.constructorDef(createConstructorDef(d, argTypes, formalNames));
+                return d.constructorDef(createConstructorDef(d, argTypes, excTypes, formalNames));
             }
             return d;
         }
@@ -289,7 +290,7 @@ public class Reinstantiator extends TypeParamSubstTransformer {
                     argTypes.add(p.type().typeRef());
                     formalNames.add(p.localDef());
                 }
-                return d.methodDef(createMethodDef(d, argTypes, formalNames));
+                return d.methodDef(createMethodDef(d, argTypes, excTypes, formalNames));
             }
             return d;
         }
@@ -300,7 +301,7 @@ public class Reinstantiator extends TypeParamSubstTransformer {
          * @param formalNames
          * @return
          */
-        private X10MethodDef createMethodDef(X10MethodDecl d, List<Ref<? extends Type>> argTypes, List<LocalDef> formalNames) {
+        private X10MethodDef createMethodDef(X10MethodDecl d, List<Ref<? extends Type>> argTypes, List<Ref<? extends Type>> throwTypes, List<LocalDef> formalNames) {
             X10MethodDef md = d.methodDef();
             DepParameterExpr g = d.guard();
             TypeNode ot = d.offerType();
@@ -311,6 +312,7 @@ public class Reinstantiator extends TypeParamSubstTransformer {
                                                      md.name(), 
                                                      md.typeParameters(), 
                                                      argTypes, 
+                                                     throwTypes,
                                                      md.thisDef(), 
                                                      formalNames, 
                                                      g == null ? null : g.valueConstraint(),
@@ -325,7 +327,7 @@ public class Reinstantiator extends TypeParamSubstTransformer {
          * @param formalNames
          * @return
          */
-        private X10ConstructorDef createConstructorDef(X10ConstructorDecl d, List<Ref<? extends Type>> argTypes, List<LocalDef> formalNames) {
+        private X10ConstructorDef createConstructorDef(X10ConstructorDecl d, List<Ref<? extends Type>> argTypes, List<Ref<? extends Type>> throwTypes, List<LocalDef> formalNames) {
             X10ConstructorDef cd = d.constructorDef();
             DepParameterExpr g = d.guard();
             TypeNode ot = d.offerType();
@@ -340,7 +342,8 @@ public class Reinstantiator extends TypeParamSubstTransformer {
                     cd.container(), 
                     cd.flags(), 
                     returnTypeRef, 
-                    argTypes, 
+                    argTypes,
+                    throwTypes,
                     cd.thisDef(), 
                     formalNames,
                     g == null ? null : g.valueConstraint(),

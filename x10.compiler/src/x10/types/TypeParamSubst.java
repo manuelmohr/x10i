@@ -29,7 +29,7 @@ import polyglot.util.TransformingList;
 import x10.constraint.XFailure;
 import x10.constraint.XVar;
 import x10.constraint.XTerm;
-import x10.constraint.XTerms;
+import x10.types.constraints.ConstraintManager;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.SubtypeConstraint;
@@ -130,6 +130,8 @@ public class TypeParamSubst {
 			if (typeArgs == null && forceTypeArguments && !tParams.isEmpty()) {
 			    typeArgs = new ArrayList<Type>(tParams);
 			}
+			// [DC] surely the following is an error in the compiler -- any pass that changes
+			// the def should also update the types to avoid such inconsistencies
 			if (typeArgs != null && typeArgs.size() < tParams.size()) {
 			    typeArgs = new ArrayList<Type>(typeArgs);
 			    // The def changed since the type was created; params were added
@@ -317,7 +319,7 @@ public class TypeParamSubst {
 				xs[i] = (XVar) p;
 			}
 			else {
-				xs[i] = XTerms.makeLit("error");
+				xs[i] = ConstraintManager.getConstraintSystem().makeLit("error");
 			}
 		}
 
@@ -327,7 +329,7 @@ public class TypeParamSubst {
 			result = c.substitute(ys, xs);
 		}
 		catch (XFailure e) {
-			result = new CConstraint();
+			result = ConstraintManager.getConstraintSystem().makeCConstraint();
 			result.setInconsistent();
 		}
 
@@ -340,7 +342,7 @@ public class TypeParamSubst {
 		List<SubtypeConstraint> terms = new ArrayList<SubtypeConstraint>(c.terms().size());
 		for (SubtypeConstraint s : c.terms()) {
 			Type sub = s.subtype();
-			Type sup = s.isHaszero() ? null : s.supertype();
+			Type sup = s.supertype();
 			Type sub1 = reinstantiate(sub);
 			Type sup1 = reinstantiate(sup);
 			if (sub != sub1 || sup != sup1) {
@@ -381,7 +383,7 @@ public class TypeParamSubst {
 		    ci = (X10ConstructorInstance) ci.returnType(reinstantiate(ci.returnType()));
 		    ci = (X10ConstructorInstance) ci.formalNames(reinstantiate(ci.formalNames()));
 		    ci = (X10ConstructorInstance) ci.formalTypes(reinstantiate(ci.formalTypes()));
-		    //ci = (X10ConstructorInstance) ci.throwTypes(reinstantiate(ci.throwTypes()));
+		    ci = (X10ConstructorInstance) ci.throwTypes(reinstantiate(ci.throwTypes()));
 		    ci = (X10ConstructorInstance) ci.typeParameters(reinstantiate(ci.typeParameters()));
 		    ci = (X10ConstructorInstance) ci.container(reinstantiate(ci.container()));
 		    ci = (X10ConstructorInstance) ci.guard(reinstantiate(ci.guard()));
@@ -398,7 +400,7 @@ public class TypeParamSubst {
 		    mi = (MethodInstance) mi.returnType(reinstantiate(mi.returnType()));
 		    mi = (MethodInstance) mi.formalNames(reinstantiate(mi.formalNames()));
 		    mi = (MethodInstance) mi.formalTypes(reinstantiate(mi.formalTypes()));
-		    //mi = (X10MethodInstance) mi.throwTypes(reinstantiate(mi.throwTypes()));
+		    mi = (MethodInstance) mi.throwTypes(reinstantiate(mi.throwTypes()));
 		    mi = (MethodInstance) mi.container(reinstantiate(mi.container()));
 		    mi = (MethodInstance) mi.guard(reinstantiate(mi.guard()));
 		    mi = (MethodInstance) mi.typeGuard(reinstantiate(mi.typeGuard()));

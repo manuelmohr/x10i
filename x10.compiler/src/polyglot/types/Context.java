@@ -1,21 +1,16 @@
 /*
- * This file is part of the Polyglot extensible compiler framework.
+ *  This file is part of the X10 project (http://x10-lang.org).
  *
- * Copyright (c) 2000-2006 Polyglot project group, Cornell University
- * 
+ *  This file is licensed to You under the Eclipse Public License (EPL);
+ *  You may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *      http://www.opensource.org/licenses/eclipse-1.0.php
+ *
+ * This file was originally derived from the Polyglot extensible compiler framework.
+ *
+ *  (C) Copyright 2000-2007 Polyglot project group, Cornell University
+ *  (C) Copyright IBM Corporation 2007-2012.
  */
-
-
-/**
- * A context represents a stack of scopes used for looking up types, methods,
- * and variables.  To push a new scope call one of the <code>push*</code>
- * methods to return a new context.  The old context may still be used
- * and may be accessed directly through a call to <code>pop()</code>.
- * While the stack of scopes is treated functionally, each individual
- * scope is updated in place.  Names added to the context are added
- * in the current scope.
- */
-
 
 package polyglot.types;
 
@@ -63,7 +58,8 @@ import x10.types.X10ProcedureDef;
 import x10.types.XTypeTranslator;
 import x10.types.checker.PlaceChecker;
 import x10.types.constraints.CConstraint;
-import x10.types.constraints.QualifiedVar;
+import x10.types.constraints.CQualifiedVar;
+import x10.types.constraints.ConstraintManager;
 import x10.types.constraints.SubtypeConstraint;
 import x10.types.constraints.TypeConstraint;
 import x10.types.constraints.XConstrainedTerm;
@@ -434,14 +430,15 @@ public class Context implements Resolver, Cloneable
     
 
     CConstraint outerThisEquivalences() {
-        CConstraint result = new CConstraint();
+        CConstraint result = ConstraintManager.getConstraintSystem().makeCConstraint();
         Type curr = currentClass();
         List<X10ClassDef> outers = Types.outerTypes(curr); 
         for (int i=0; i < outers.size(); i++) {
             XVar base = outers.get(i).thisVar();
             for (int j=i+1; j < outers.size(); j++ ) {
                 X10ClassDef y = outers.get(j);
-                result.addBinding(y.thisVar(), new QualifiedVar(y.asType(), base));
+                result.addBinding(y.thisVar(), 
+                			      ConstraintManager.getConstraintSystem().makeQualifiedVar(y.asType(), base));
         }
         }
         return result;
@@ -452,7 +449,7 @@ public class Context implements Resolver, Cloneable
     public CConstraint currentConstraint() {
         CConstraint result = currentConstraint;
         if (result == null) {
-            result = new CConstraint();
+            result = ConstraintManager.getConstraintSystem().makeCConstraint();
             if (! inStaticContext()) {
                 result.setThisVar(thisVar());
                 CConstraint d = outerThisEquivalences();
@@ -575,7 +572,7 @@ public class Context implements Resolver, Cloneable
                 return r;
         }
         if (r == null) 
-            r = new CConstraint();
+            r = ConstraintManager.getConstraintSystem().makeCConstraint();
         // fold in the current constraint
         r.addSigma(currentConstraint(), m);
         r.addSigma(currentPlaceTerm, m);
@@ -1205,7 +1202,7 @@ public class Context implements Resolver, Cloneable
     public void setAnnotation() { inAnnotation = true; }
     public void setAnonObjectScope() { inAnonObjectScope = true;}
     public void clearAnnotation() { inAnnotation = false; }
-    private void setCurrentTypeConstraint(Ref<TypeConstraint> c) {
+    public void setCurrentTypeConstraint(Ref<TypeConstraint> c) {
         currentTypeConstraint = c;
     }
     public void setTypeConstraintWithContextTerms(TypeConstraint c) {  

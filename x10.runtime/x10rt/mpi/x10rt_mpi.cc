@@ -1,20 +1,10 @@
 /*
  * (c) Copyright IBM Corporation 2009
  * 
- * $Id: x10rt_mpi.cc 22604 2011-07-29 10:35:40Z sparksparkspark $
+ * $Id: x10rt_mpi.cc 24644 2012-09-25 18:44:36Z dgrove-oss $
  *
  * This file is part of X10 Runtime on MPI layer implementation.
  */
-
-/*
- * C++ Style Guide:
- * http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml
- *
- * C++ Lint:
- * http://google-styleguide.googlecode.com/svn/trunk/cpplint/cpplint.py
- *
- */
-
 
 /* MPICH2 mpi.h wants to not have SEEK_SET etc defined for C++ bindings */
 #include <mpi.h>
@@ -1030,6 +1020,12 @@ void x10rt_register_thread (void) { }
 
 void x10rt_net_probe (void) {
     x10rt_net_probe_ex(false);
+}
+
+void x10rt_net_blocking_probe (void)
+{
+	// TODO: make this blocking.  For now, just call probe.
+	x10rt_net_probe_ex(false);
 }
 
 static void x10rt_net_probe_ex (bool network_only) {

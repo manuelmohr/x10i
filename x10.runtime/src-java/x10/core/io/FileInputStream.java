@@ -24,23 +24,24 @@ public class FileInputStream extends InputStream {
         super($dummy);
     }
 
-    public FileInputStream $init(String name) {
+    public final FileInputStream x10$io$FileReader$FileInputStream$$init$S(String name) {
         try {
-            super.$init(new java.io.FileInputStream(name));
+            super.x10$io$InputStreamReader$InputStream$$init$S(new java.io.FileInputStream(name));
             return this;
         } catch (java.io.FileNotFoundException e) {
-            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
+            throw new x10.io.FileNotFoundException(e.getMessage());
         }
     }
 
-    // creation method for java code (factory method)
-    public static FileInputStream $make(String name) {
-        return new FileInputStream((java.lang.System[]) null).$init(name);
-    }
+    // not used
+//    // creation method for java code (factory method)
+//    public static FileInputStream $make(String name) {
+//        return new FileInputStream((java.lang.System[]) null).$init(name);
+//    }
     // creation method for java code (1-phase java constructor)
     public FileInputStream(String name) {
         this((java.lang.System[]) null);
-        $init(name);
+        x10$io$FileReader$FileInputStream$$init$S(name);
     }
 
 

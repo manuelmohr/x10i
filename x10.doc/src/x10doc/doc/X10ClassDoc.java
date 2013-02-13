@@ -185,9 +185,12 @@ public class X10ClassDoc extends X10Doc implements ClassDoc {
 	// class
 	public void initializeRelatedEntities() {
 		// set package of class
-		this.containingPackage = rootDoc.getPackage(classDef.package_(),
-				classDef.position().file().replace(classDef.name().toString(),
-						"").replace(".x10", ""));
+	    
+	    String path = classDef.position().file().replace(".x10", "");
+	    if (classDef.name() != null) {
+	        path = path.replace(classDef.name().toString(), "");
+	    }
+		this.containingPackage = rootDoc.getPackage(classDef.package_(), path);
 		this.containingPackage.addClass(this);
 
 		// obtain ClassDoc and Type objects for superclass
@@ -858,7 +861,7 @@ public class X10ClassDoc extends X10Doc implements ClassDoc {
 			System.out.println("ClassDoc.name() called for "+classDef.name());
 		String contClassName = 
 			((containingClass == null) ? "" : (containingClass.name() + "."));
-		return (contClassName + classDef.name().toString());
+		return (contClassName + (classDef.isAnonymous() ? "<anonymous class>" : classDef.name().toString()));
 		// return (contClassName + classDef.name().toString() + 
 		// 		classDef.classInvariant().get() + classDef.typeBounds().get());		
 	}
@@ -909,21 +912,49 @@ public class X10ClassDoc extends X10Doc implements ClassDoc {
 	}
 
 	public ClassDoc superclass() {
-		if (X10RootDoc.printSwitch)
-			System.out.println("ClassDoc.superClass() called for "+name());
-		if (isInterface()) {
-			return null;
-		}
-		return superclass;
+	    if (X10RootDoc.printSwitch)
+	        System.out.println("ClassDoc.superClass() called for "+name());
+	    if (isInterface()) {
+	        return null;
+	    }
+	    // HACK:  Sidestep a bug in Javadoc 1.6 tool where the code in 
+	    // com.sun.tools.doclets.internal.toolkit.util.Util Util.getFirstVisibleSuperClass 
+	    // assumes that every class is either public or has a public ancestor
+	    // superclass.  This is not true in X10 and since it is not viable to fix
+	    // the bug in javadoc, we instead lie here and if all superclasses of this
+	    // class are not public, we lie are return null (indicating that this class
+	    // is the top of its hierarchy).
+	    if (superclass == null) return superclass;
+	    if (superclass.isPublic()) return superclass;
+	    X10ClassDoc sc = superclass;
+	    while (sc != null && !sc.isPublic()) {
+	        sc = sc.superclass;
+	    }
+	    return sc;
 	}
 
 	public Type superclassType() {
-		if (X10RootDoc.printSwitch)
-			System.out.println("ClassDoc.superClassType() called for "+name());
-		if (isInterface()) {
-			return null;
-		}
-		return superclassType;
+	    if (X10RootDoc.printSwitch)
+	        System.out.println("ClassDoc.superClassType() called for "+name());
+	    if (isInterface()) {
+	        return null;
+	    }
+	    // HACK:  Sidestep a bug in Javadoc 1.6 tool where the code in 
+	    // com.sun.tools.doclets.internal.toolkit.util.Util Util.getFirstVisibleSuperClass 
+	    // assumes that every class is either public or has a public ancestor
+	    // superclass.  This is not true in X10 and since it is not viable to fix
+	    // the bug in javadoc, we instead lie here and if all superclasses of this
+	    // class are not public, we lie are return null (indicating that this class
+	    // is the top of its hierarchy).
+	    if (superclassType == null) return superclassType;
+	    Type st = superclassType;
+	    while (st instanceof X10ClassDoc) {
+	        X10ClassDoc stdoc = (X10ClassDoc) st.asClassDoc();
+	        if (stdoc.isPublic()) return st;
+	        st = stdoc.superclassType;
+	    }
+
+	    return st;
 	}
 
 	public String typeName() {

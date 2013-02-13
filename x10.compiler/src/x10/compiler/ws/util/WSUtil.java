@@ -468,7 +468,7 @@ public class WSUtil {
                 methodDef.flags(), 
                 methodDef.returnType(), 
                 Name.make(WSUtil.getMethodFastPathName(methodDef)), 
-                formalTypes);
+                formalTypes, Collections.<Ref<? extends Type>>emptyList());
         mDef.setTypeParameters(methodDef.typeParameters());
 
         List<LocalDef> formalNames = new ArrayList<LocalDef>();
@@ -491,6 +491,7 @@ public class WSUtil {
     static public MethodInstance createWSMethodInstance(MethodInstance mi, TypeSystem ts) {
     	X10MethodDef mDef = createWSCallMethodDef(mi.def(), ts);
     	MethodInstance m = mDef.asInstance();
+    	m = (MethodInstance) m.container(mi.container());
 
     	List<Type> formalTypes = new ArrayList<Type>();
         formalTypes.add((ts.Worker()));

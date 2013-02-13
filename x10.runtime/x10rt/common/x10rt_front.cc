@@ -7,8 +7,26 @@
 
 #include <x10rt_front.h>
 #include <x10rt_logical.h>
+#include <x10rt_net.h>
 
 static x10rt_msg_type counter = 0;
+
+static bool run_as_library = false;
+
+char* x10rt_preinit() {
+	run_as_library = true;
+	// Because we don't want to break the old PGAS-BG/P implementation of x10rt_net.h, we
+	// can't add methods to lower API layers.  So instead, we set environment variables
+	// to pass & return values needed inside the regular x10rt_init method call of sockets.
+	// Yuck.
+	setenv("X10_LIBRARY_MODE", "preinit", 1);
+	x10rt_net_init(NULL, NULL, &counter);
+	char* connInfo = getenv("X10_LIBRARY_MODE");
+	return connInfo;
+}
+
+bool x10rt_run_as_library (void)
+{ return run_as_library; }
 
 void x10rt_init (int *argc, char ***argv)
 { x10rt_lgl_init(argc, argv, &counter); }
@@ -81,7 +99,7 @@ static uint32_t print_headers = getenv("X10RT_PRINT_MSG_HEADERS") != NULL
 void x10rt_send_msg (x10rt_msg_params *p)
 {
     if (p->len > print_headers) {
-        ::fprintf(stderr,"p%llu --%llu--> p%llu (%'llu bytes)\n",
+        ::fprintf(stderr,"p%llu --%llu--> p%llu (%llu bytes)\n",
                   (unsigned long long)x10rt_lgl_here(),
                   (unsigned long long)p->type,
                   (unsigned long long)p->dest_place,
@@ -121,6 +139,10 @@ void x10rt_blocks_threads (x10rt_place d, x10rt_msg_type type, int dyn_shm,
 
 void x10rt_probe (void)
 { x10rt_lgl_probe(); }
+
+void x10rt_blocking_probe (void)
+{ x10rt_lgl_blocking_probe(); }
+
 
 void x10rt_finalize (void)
 { x10rt_lgl_finalize(); }

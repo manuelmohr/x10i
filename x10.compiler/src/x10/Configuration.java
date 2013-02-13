@@ -72,9 +72,6 @@ public final class Configuration extends x10.config.Configuration {
     public int INLINE_SIZE = 1;
     private static final String INLINE_SIZE_desc = "Maximum number of calls in a method to be implicitly inlined (-1 turns off implicit inlining)";
     
-    public boolean STATEMENT_EXPR_GCC_WORKAROUND = false;
-    private static final String STATEMENT_EXPR_GCC_WORKAROUND_desc = "Modify codegeneration for statement expressions to attempt to avoid bug in gcc 4.1";
-
     public boolean FLATTEN_EXPRESSIONS = false;
     private static final String FLATTEN_EXPRESSIONS_desc = "Flatten all expressions";
     
@@ -119,8 +116,8 @@ public final class Configuration extends x10.config.Configuration {
     public boolean COPY_PROPAGATION = false;
     private static final String COPY_PROPAGATION_desc = "Enable copy propagation pass after optimizer. Use together with -O -EXPERIMENTAL -ELIMINATE_DEAD_VARIABLES";
 
-//    public final boolean MULTI_NODE = true;
-//    private static final String MULTI_NODE_desc = "(Managed X10) each place is hosted by different Java VM";
+    public boolean DEBUG_CODEGEN = false;
+    private static final String DEBUG_CODEGEN_desc = "Enable HTML version of the generated source code for codegen debugging";
 
     public boolean OPTIMIZE_COMMUNICATIONS = false;
     private static final String OPTIMIZE_COMMUNICATIONS_desc = "Communication optimizations, i.e. scalar replacement";

@@ -33,7 +33,7 @@ import x10.compiler.Incomplete;
  */
 public class File {
     @NativeRep("java", "x10.core.io.NativeFile", null, "x10.core.io.NativeFile.$RTT")
-    @NativeRep("c++", "x10aux::ref<x10::io::File__NativeFile>", "x10::io::File__NativeFile", null)
+    @NativeRep("c++", "x10::io::File__NativeFile*", "x10::io::File__NativeFile", null)
     protected final static class NativeFile {
         native def this(String);
 
@@ -87,22 +87,34 @@ public class File {
         @Native("java", "#this.setLastModified(#v)")
         @Native("c++", "(#this)->setLastModified(#v)")
         native def setLastModified(v:Long): Boolean;
+
+        // TODO currently Java backend only
+        @Native("java", "#this.delete()")
+        @Native("c++", "false")
+        native def delete(): Boolean;
+        @Native("java", "#this.listInternal()")
+        @Native("c++", "reinterpret_cast<x10::array::Array<x10::lang::String*>*>(X10_NULL)")
+        native def list(): Rail[String];
+        @Native("java", "#this.mkdir()")
+        @Native("c++", "false")
+        native def mkdir(): Boolean;
+        @Native("java", "#this.mkdirs()")
+        @Native("c++", "false")
+        native def mkdirs(): Boolean;
+        @Native("java", "#this.renameTo(#dest)")
+        @Native("c++", "false")
+        native def renameTo(dest:NativeFile): Boolean;
     }
 
 /*
 FileSystem operations
 
     public boolean createNewFile()       throws java.io.IOException;
-    public boolean delete();
     public void deleteOnExit();
-    public java.lang.String[] list();
     public java.lang.String[] list(java.io.FilenameFilter);
     public java.io.File[] listFiles();
     public java.io.File[] listFiles(java.io.FilenameFilter);
     public java.io.File[] listFiles(java.io.FileFilter);
-    public boolean mkdir();
-    public boolean mkdirs();
-    public boolean renameTo(java.io.File);
     public boolean setReadOnly();
     public static java.io.File[] listRoots();
     public static java.io.File createTempFile(java.lang.String, java.lang.String, java.io.File)       throws java.io.IOException;
@@ -154,10 +166,12 @@ FileSystem operations
     = openRead().bytes();
     public def openRead():FileReader //throws IOException 
     = new FileReader(this);
-    public def openWrite():FileWriter //throws IOException 
-    = new FileWriter(this);
-    public def printer():Printer //throws IOException 
-    = new Printer(openWrite());
+    public def openWrite() = openWrite(false);
+    public def openWrite(append:Boolean):FileWriter //throws IOException 
+    = new FileWriter(this, append);
+    public def printer() = printer(false);
+    public def printer(append:Boolean):Printer //throws IOException 
+    = new Printer(openWrite(append));
 
     public def getName(): String = name;
     public def getParentFile(): File = parent;
@@ -195,4 +209,10 @@ FileSystem operations
 
     public def canRead(): Boolean = nativeFile().canRead();
     public def canWrite(): Boolean = nativeFile().canWrite();
+
+    public def delete(): Boolean = nativeFile().delete();
+    public def list(): Rail[String] = nativeFile().list();
+    public def mkdir(): Boolean = nativeFile().mkdir();
+    public def mkdirs(): Boolean = nativeFile().mkdirs();
+    public def renameTo(dest:File): Boolean = nativeFile().renameTo(dest.nativeFile());
 }

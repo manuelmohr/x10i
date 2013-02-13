@@ -24,23 +24,24 @@ public class FileOutputStream extends OutputStream {
         super($dummy);
     }
 
-    public FileOutputStream $init(String name) {
+    public final FileOutputStream x10$io$FileReader$FileOutputStream$$init$S(String name, boolean append) {
         try {
-            super.$init(new java.io.FileOutputStream(name));
+            super.x10$io$OutputStreamWriter$OutputStream$$init$S(new java.io.FileOutputStream(name, append));
             return this;
         } catch (java.io.FileNotFoundException e) {
-            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
+            throw new x10.io.FileNotFoundException(e.getMessage());
         }
     }
 
-    // creation method for java code (factory method)
-    public static FileOutputStream $make(String name) {
-        return new FileOutputStream((java.lang.System[]) null).$init(name);
-    }
+    // not used
+//    // creation method for java code (factory method)
+//    public static FileOutputStream $make(String name, boolean append) {
+//        return new FileOutputStream((java.lang.System[]) null).$init(name, append);
+//    }
     // creation method for java code (1-phase java constructor)
-    public FileOutputStream(String name) {
+    public FileOutputStream(String name, boolean append) {
         this((java.lang.System[]) null);
-        $init(name);
+        x10$io$FileReader$FileOutputStream$$init$S(name, append);
     }
 
 

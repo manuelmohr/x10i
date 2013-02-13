@@ -1,9 +1,15 @@
 /*
- * This file is part of the Polyglot extensible compiler framework.
+ *  This file is part of the X10 project (http://x10-lang.org).
  *
- * Copyright (c) 2000-2007 Polyglot project group, Cornell University
- * Copyright (c) 2006-2007 IBM Corporation
- * 
+ *  This file is licensed to You under the Eclipse Public License (EPL);
+ *  You may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *      http://www.opensource.org/licenses/eclipse-1.0.php
+ *
+ * This file was originally derived from the Polyglot extensible compiler framework.
+ *
+ *  (C) Copyright 2000-2007 Polyglot project group, Cornell University
+ *  (C) Copyright IBM Corporation 2007-2012.
  */
 
 package polyglot.ast;
@@ -22,6 +28,7 @@ import x10.errors.Errors;
 import x10.errors.Errors.IllegalConstraint;
 import x10.types.constants.ConstantValue;
 import x10.types.constraints.CConstraint;
+import x10.types.constraints.ConstraintManager;
 import x10.constraint.XTerm;
 import x10.constraint.XFailure;
 
@@ -126,7 +133,7 @@ public class IntLit_c extends NumLit_c implements IntLit
         default:
             throw new InternalCompilerError("bad integer literal kind", position());
         }
-        CConstraint c = new CConstraint();
+        CConstraint c = ConstraintManager.getConstraintSystem().makeCConstraint();
         try {
          XTerm term = xts.xtypeTranslator().translate(c, this.type(Type), (Context) tc.context());
          c.addSelfBinding(term);

@@ -69,7 +69,7 @@ public class X10CCompilerOptions extends x10.X10CompilerOptions {
         String libdir = x10_dist + File.separator + "lib";        
         String stdlibdir = x10_dist + File.separator + "stdlib";
         String x10_jar = "x10.jar"; // FIXME: is this overridable?
-        String math_jar = System.getProperty("x10c.math.jar", "commons-math-2.2.jar");
+        String math_jar = System.getProperty("x10c.math.jar", "commons-math3-3.0.jar");
         default_output_classpath = stdlibdir + File.separator + x10_jar + File.pathSeparator +
             libdir + File.separator + math_jar;
         output_classpath = default_output_classpath;
@@ -114,6 +114,21 @@ public class X10CCompilerOptions extends x10.X10CompilerOptions {
     @Override
     public void parseCommandLine(String[] args, Set<String> source) throws UsageError {
         super.parseCommandLine(args, source);
+
+        // XTENLANG-2126
+        if (!keep_output_files) { // -nooutput was specified
+            // ignore -d output_directory if specified and
+            // set a new temporary directory to output_directory.
+            // after post-compile, the output_directory will be removed.
+            try {
+                String prefix = "x10c-" + System.getProperty("user.name") + ".";
+                String suffix = "";
+                output_directory = createTempDir(prefix, suffix);
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
 
         if (output_directory == null) { // -d output_directory was not specified
             if (executable_path != null) {

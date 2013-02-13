@@ -1,9 +1,15 @@
 /*
- * This file is part of the Polyglot extensible compiler framework.
+ *  This file is part of the X10 project (http://x10-lang.org).
  *
- * Copyright (c) 2000-2007 Polyglot project group, Cornell University
- * Copyright (c) 2006-2007 IBM Corporation
- * 
+ *  This file is licensed to You under the Eclipse Public License (EPL);
+ *  You may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *      http://www.opensource.org/licenses/eclipse-1.0.php
+ *
+ * This file was originally derived from the Polyglot extensible compiler framework.
+ *
+ *  (C) Copyright 2000-2007 Polyglot project group, Cornell University
+ *  (C) Copyright IBM Corporation 2007-2012.
  */
 
 package polyglot.ast;
@@ -218,8 +224,6 @@ public interface NodeFactory
 
     Switch Switch(Position pos, Expr expr, List<SwitchElement> elements);
 
-    Synchronized Synchronized(Position pos, Expr expr, Block body);
-
     Throw Throw(Position pos, Expr expr);
 
     Try Try(Position pos, Block tryBlock, List<Catch> catchBlocks);
@@ -271,7 +275,7 @@ public interface NodeFactory
     Async Async(Position pos, List<Expr> clocks, Stmt body);
     Async Async(Position pos, Stmt body, boolean clocked);
     Atomic Atomic(Position pos, Expr place, Stmt body);
-    Here Here(Position pos);
+    Here_c Here(Position pos);
 
     /**
      * Return an immutable representation of a 1-armed When.
@@ -307,7 +311,7 @@ public interface NodeFactory
             List<Formal> formals,  Block body);
     X10MethodDecl X10MethodDecl(Position pos, FlagsNode flags,
             TypeNode returnType, Id name, List<TypeParamNode> typeParams,
-            List<Formal> formals, DepParameterExpr guard,  TypeNode offerType, Block body);
+            List<Formal> formals, DepParameterExpr guard,  TypeNode offerType, List<TypeNode> throwsopt, Block body);
     SettableAssign SettableAssign(Position pos, Expr a, List<Expr> indices, Assign.Operator op, Expr rhs);
 
     Tuple Tuple(Position pos, List<Expr> args);
@@ -319,7 +323,7 @@ public interface NodeFactory
     
     X10ConstructorDecl X10ConstructorDecl(Position pos, FlagsNode flags, Id name,
             TypeNode returnType, List<TypeParamNode> typeParams, List<Formal> formals, 
-            DepParameterExpr guard,  TypeNode offerType, Block body);
+            DepParameterExpr guard,  TypeNode offerType, List<TypeNode> throwTypes, Block body);
     PropertyDecl PropertyDecl(Position pos, FlagsNode flags, TypeNode type, Id name);
     PropertyDecl PropertyDecl(Position pos, FlagsNode flags, TypeNode type, Id name, Expr init);
     X10Special Self(Position pos);
@@ -359,4 +363,6 @@ public interface NodeFactory
     FinishExpr FinishExpr(Position p, Expr e, Stmt s);
 
 	CUDAKernel CUDAKernel(Position position, List<Stmt> statements, Block body);
+
+	public IsRefTest IsRefTest(Position pos, TypeNode t1);
 }

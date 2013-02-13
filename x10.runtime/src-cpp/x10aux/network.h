@@ -13,14 +13,15 @@
 #define X10AUX_NETWORK_H
 
 #include <x10aux/config.h>
-#include <x10aux/network.h>
 
 #include <x10rt_front.h>
 #include <x10rt_cpp.h>
 
 namespace x10 { namespace lang { class VoidFun_0_0; } }
+namespace x10 { namespace lang { class FinishState; } }
 namespace x10 { namespace lang { class Reference; } }
 namespace x10 { namespace lang { class String; } }
+namespace x10 { namespace lang { class Runtime__Profile; } }
 namespace x10 { namespace util { template <class K, class V> class HashMap; } }
 
 namespace x10aux {
@@ -53,6 +54,7 @@ namespace x10aux {
     inline x10_boolean is_spe (place p)       { return x10rt_is_spe(p); }
     inline x10_boolean is_cuda (place p)      { return x10rt_is_cuda(p); }
     inline void event_probe (void)            { x10rt_probe(); }
+    inline void blocking_probe (void)         { x10rt_blocking_probe(); }
 
     extern const int cuda_cfgs[];
     void blocks_threads (place p, msg_type t, int shm, x10_ubyte &bs, x10_ubyte &ts, const int *cfgs=cuda_cfgs);
@@ -144,14 +146,12 @@ namespace x10aux {
 
 }
 
-#include <x10aux/ref.h>
-
 namespace x10aux {
 
-    x10aux::ref<x10::util::HashMap<x10aux::ref<x10::lang::String>,x10aux::ref<x10::lang::String> > > loadenv();
+    x10::util::HashMap<x10::lang::String*, x10::lang::String*>* loadenv();
 
-    void run_closure_at (place p, x10aux::ref<x10::lang::Reference> body, endpoint e=0);
-    void run_async_at (place p, x10aux::ref<x10::lang::Reference> body, x10aux::ref<x10::lang::Reference> fs, endpoint e=0);
+    void run_closure_at (place p, x10::lang::VoidFun_0_0* body, x10::lang::Runtime__Profile *prof=NULL, endpoint e=0);
+    void run_async_at (place p, x10::lang::VoidFun_0_0* body, x10::lang::FinishState* fs, x10::lang::Runtime__Profile *prof=NULL, endpoint e=0);
 
     class serialization_buffer;
 

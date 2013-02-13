@@ -133,6 +133,28 @@ public final class Array[T] (
     }   
 
 
+    /*
+     * Construct an Array over the region reg.
+     * 
+     * @param reg The region over which to construct the array.
+     */
+    private @Inline def this(zeroed:boolean, reg:Region) {T haszero}
+    {
+    	property(reg as Region{self != null}, reg.rank, reg.rect, reg.zeroBased, reg.rail, reg.size());
+    	val crh = new LayoutHelper(reg);
+    	layout_min0 = crh.min0;
+    	layout_stride1 = crh.stride1;
+    	layout_min1 = crh.min1;
+    	layout = crh.layout;
+    	val n = crh.size;
+    	if (zeroed) {
+    		raw = IndexedMemoryChunk.allocateZeroed[T](n);
+    	} else {
+    		raw = IndexedMemoryChunk.allocateUninitialized[T](n);    		
+    	}
+    }   
+
+
     /**
      * Construct an Array over the region reg whose
      * values are initialized as specified by the init function.
@@ -231,8 +253,7 @@ public final class Array[T] (
      */
     public @Inline def this(backingStore:IndexedMemoryChunk[T])
     {
-        val myReg = new RectRegion1D(0, backingStore.length()-1) 
-             as Region{self.rank==1,self.zeroBased,self.rect,self.rail,self!=null};
+        val myReg = new RectRegion1D(backingStore.length()-1);
         property(myReg, 1, true, true, true, backingStore.length());
 
 	layout_min0 = layout_stride1 = layout_min1 = 0;
@@ -246,8 +267,7 @@ public final class Array[T] (
      */
     public @Inline def this(size:int) {T haszero}
     {
-        val myReg = new RectRegion1D(0, size-1) 
-             as Region{self.rank==1,self.zeroBased,self.rect,self.rail,self!=null};
+        val myReg = new RectRegion1D(size-1);
         property(myReg, 1, true, true, true, size);
 
 	layout_min0 = layout_stride1 = layout_min1 = 0;
@@ -256,6 +276,24 @@ public final class Array[T] (
     }
     
     
+    /*
+     * Construct Array over the region 0..(size-1).
+     */
+    private @Inline def this(zeroed:boolean, size:int) {T haszero}
+    {
+    	val myReg = new RectRegion1D(size-1);
+    	property(myReg, 1, true, true, true, size);
+
+    	layout_min0 = layout_stride1 = layout_min1 = 0;
+    	layout = null;
+    	if (zeroed) {
+    		raw = IndexedMemoryChunk.allocateZeroed[T](size);
+    	} else {
+    		raw = IndexedMemoryChunk.allocateUninitialized[T](size);    		
+    	}
+    }
+
+
     /**
      * Construct Array over the region 0..(size-1) whose
      * values are initialized as specified by the init function.
@@ -274,7 +312,7 @@ public final class Array[T] (
      */    
     public @Inline def this(size:int, init:(int)=>T)
     {
-        val myReg = new RectRegion1D(0, size-1) as Region{self.zeroBased, self.rail,self.rank==1,self.rect, self!=null};
+        val myReg = new RectRegion1D(size-1);
         property(myReg, 1, true, true, true, size);
         
 	layout_min0 = layout_stride1 = layout_min1 = 0;
@@ -296,8 +334,7 @@ public final class Array[T] (
      */    
     public @Inline def this(size:int, init:T)
     {
-        val myReg = new RectRegion1D(0, size-1)
-           as Region{self.rank==1,self.zeroBased,self.rect,self.rail,self!=null};
+        val myReg = new RectRegion1D(size-1);
         property(myReg, 1, true, true, true, size);
         
 	layout_min0 = layout_stride1 = layout_min1 = 0;
@@ -834,7 +871,7 @@ public final class Array[T] (
      * @see #reduce((U,T)=>U,U)
      */
     public @Inline def scan[U](op:(U,T)=>U, unit:U) {U haszero}
-    = scan(new Array[U](region), op, unit); // TODO: private constructor to avoid useless zeroing
+    = scan(new Array[U](false,region), op, unit);
     
     
     /**
@@ -962,10 +999,10 @@ public final class Array[T] (
             dst:RemoteArray[T], dstIndex:int, 
             numElems:int) {
         if (srcIndex < 0 || ((srcIndex+numElems) > src.raw.length())) {
-            throw new IllegalArgumentException("Specified range is beyond bounds of source array");
+            throw new IllegalArgumentException("Specified range ("+srcIndex+" - "+srcIndex+numElems+") is beyond bounds of source array (length="+src.raw.length()+")");
         }
         if (dstIndex < 0 || ((dstIndex+numElems) > dst.rawData.length())) {
-            throw new IllegalArgumentException("Specified range is beyond bounds of destination array");
+            throw new IllegalArgumentException("Specified range ("+dstIndex+" - "+dstIndex+numElems+") is beyond bounds of destination array (length="+dst.rawData.length()+")");
         }
         IndexedMemoryChunk.asyncCopy(src.raw, srcIndex, dst.rawData, dstIndex, numElems);
     }

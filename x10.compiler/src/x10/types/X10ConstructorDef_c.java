@@ -29,9 +29,10 @@ import polyglot.util.Position;
 import polyglot.util.TypedList;
 import x10.constraint.XVar;
 import x10.types.constraints.CConstraint;
-import x10.types.constraints.CTerms;
+import x10.types.constraints.ConstraintManager;
 import x10.types.constraints.TypeConstraint;
 import x10.types.constraints.XConstrainedTerm;
+
 
 /**
  * An X10ConstructorDef_c varies from a ConstructorDef_c only in that it
@@ -57,11 +58,12 @@ public class X10ConstructorDef_c extends ConstructorDef_c implements X10Construc
             Flags flags,
             Ref<? extends Type> returnType,
             List<Ref<? extends Type>> formalTypes,
+            List<Ref<? extends Type>> throwTypes,
             ThisDef thisDef,
             List<LocalDef> formalNames, Ref<CConstraint> guard,
             Ref<TypeConstraint> typeGuard, 
             Ref<? extends Type> offerType) {
-        super(ts, pos, errorPos, container, flags, formalTypes);
+        super(ts, pos, errorPos, container, flags, formalTypes, throwTypes);
         this.returnType = returnType;
         this.formalNames = TypedList.copyAndCheck(formalNames, LocalDef.class, true);
         this.guard = guard;
@@ -118,7 +120,7 @@ public class X10ConstructorDef_c extends ConstructorDef_c implements X10Construc
     public XVar thisVar() {
         if (this.thisDef != null)
             return this.thisDef.thisVar();
-        return CTerms.makeThis(); // Why #this instead of this?
+        return ConstraintManager.getConstraintSystem().makeThis(); // Why #this instead of this?
     }
 
     ThisDef thisDef;

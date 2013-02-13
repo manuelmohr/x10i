@@ -11,26 +11,24 @@
 
 #include <x10aux/config.h>
 #include <x10aux/bootstrap.h>
+#include <x10aux/place_local.h>
+#include <x10aux/alloc.h>
 
 #include <pthread.h>
+#include <stdio.h>
+#include <unistd.h>
 
 #include <x10/lang/Place.h>
 #include <x10/lang/Runtime.h>
 #include <x10/io/Console.h>
 #include <x10/lang/Thread.h>
+#include <x10/array/Array.h>
+#include <x10/lang/String.h>
+#include <x10/lang/Runtime__Worker.h>
 
 using namespace x10aux;
 
 volatile x10_int x10aux::exitCode = 0;
-
-x10::lang::VoidFun_0_0::itable<StaticInitClosure> StaticInitClosure::_itable(&StaticInitClosure::equals, &StaticInitClosure::hashCode,
-                                                                             &StaticInitClosure::__apply,
-                                                                             &StaticInitClosure::toString, &StaticInitClosure::typeName);
-
-x10aux::itable_entry StaticInitClosure::_itables[2] = {
-    x10aux::itable_entry(&x10aux::getRTT<x10::lang::VoidFun_0_0>, &_itable),
-    x10aux::itable_entry(NULL, NULL)
-};
 
 x10::lang::VoidFun_0_0::itable<BootStrapClosure> BootStrapClosure::_itable(&BootStrapClosure::equals, &BootStrapClosure::hashCode,
                                                                            &BootStrapClosure::__apply,
@@ -42,8 +40,16 @@ x10aux::itable_entry BootStrapClosure::_itables[2] = {
 };
 
 void x10aux::initialize_xrx() {
-    x10::lang::Place::FMGL(places__do_init)();
-    x10::lang::Place::FMGL(FIRST_PLACE__do_init)();
+    x10::lang::Runtime::FMGL(staticMonitor__do_init)();
+//    x10::lang::Runtime::FMGL(env__do_init)();
+    x10::lang::Runtime::FMGL(STRICT_FINISH__do_init)();
+    x10::lang::Runtime::FMGL(NTHREADS__do_init)();
+    x10::lang::Runtime::FMGL(MAX_THREADS__do_init)();
+    x10::lang::Runtime::FMGL(STATIC_THREADS__do_init)();
+    x10::lang::Runtime::FMGL(WARN_ON_THREAD_CREATION__do_init)();
+    x10::lang::Runtime::FMGL(BUSY_WAITING__do_init)();
+//    x10::lang::Place::FMGL(places__do_init)();
+//    x10::lang::Place::FMGL(FIRST_PLACE__do_init)();
 }
 
 struct x10_main_args {
@@ -51,6 +57,17 @@ struct x10_main_args {
     char **av;
     ApplicationMainFunction mainFunc;    
 };
+
+static x10::array::Array<x10::lang::String*>* convert_args(int ac, char **av) {
+    assert(ac>=1);
+    x10_int x10_argc = ac  - 1;
+    x10::array::Array<x10::lang::String*>* arr(x10::array::Array<x10::lang::String*>::_make(x10_argc));
+    for (int i = 1; i < ac; i++) {
+        x10::lang::String* val = x10::lang::String::Lit(av[i]);
+        arr->__set(i-1, val);
+    }
+    return arr;
+}
 
 static void* real_x10_main_inner(void* args);
 
@@ -106,50 +123,37 @@ static void* real_x10_main_inner(void* _main_args) {
 #endif
         x10aux::place_local::initialize();
 
+        // Initialize a few key fields of XRX that must be set before any X10 code can execute
+        x10aux::initialize_xrx();
+
         // Initialise enough state to make this 'main' thread look like a normal x10 thread
         // (e.g. make Thread::CurrentThread work properly).
         x10::lang::Runtime__Worker::_make((x10_int)0);
 
-        // Initialize a few key fields of XRX that must be set before any X10 code can execute
-        x10aux::initialize_xrx();
-
         // Get the args into an X10 Array[String]
-        x10aux::ref<x10::array::Array<x10aux::ref<x10::lang::String> > > args = x10aux::convert_args(main_args->ac, main_args->av);
-
-        // Construct closure to invoke the static initialisers at place 0
-        x10aux::ref<x10::lang::VoidFun_0_0> init_closure =
-            x10aux::ref<StaticInitClosure>(new (x10aux::alloc<x10::lang::VoidFun_0_0>(sizeof(x10aux::StaticInitClosure)))
-                                           x10aux::StaticInitClosure());
+        x10::array::Array<x10::lang::String*>* args = convert_args(main_args->ac, main_args->av);
 
         // Construct closure to invoke the user's "public static def main(Array[String]) : void"
         // if at place 0 otherwise wait for asyncs.
-        x10aux::ref<x10::lang::VoidFun_0_0> main_closure =
-            x10aux::ref<BootStrapClosure>(new (x10aux::alloc<x10::lang::VoidFun_0_0>(sizeof(x10aux::BootStrapClosure)))
-                                          x10aux::BootStrapClosure(main_args->mainFunc, args));
+        x10::lang::VoidFun_0_0* main_closure =
+            reinterpret_cast<x10::lang::VoidFun_0_0*>(new (x10aux::alloc<x10::lang::VoidFun_0_0>(sizeof(x10aux::BootStrapClosure))) x10aux::BootStrapClosure(main_args->mainFunc, args));
 
         // Bootup the serialization/deserialization code
         x10aux::DeserializationDispatcher::registerHandlers();
 
         // Actually start up the runtime and execute the program.
         // When this function returns, the program will have exited.
-        x10::lang::Runtime::start(init_closure, main_closure);
+        x10::lang::Runtime::start(main_closure);
 
 #ifndef NO_EXCEPTIONS
     } catch(int exitCode) {
 
         x10aux::exitCode = exitCode;
 
-    } catch(x10aux::__ref& e) {
+    } catch(x10::lang::CheckedThrowable* e) {
+        fprintf(stderr, "Uncaught exception at place %ld: %s\n", (long)x10aux::here, e->toString()->c_str());
 
-        // Assume that only throwables can be thrown
-        // and things are never thrown by interface (always cast to a value/object class)
-        x10aux::ref<x10::lang::Throwable> &e_ =
-            static_cast<x10aux::ref<x10::lang::Throwable>&>(e);
-
-        fprintf(stderr, "Uncaught exception at place %ld: %s\n", (long)x10aux::here,
-                x10aux::string_utils::cstr(nullCheck(nullCheck(e_)->toString())));
-
-        e_->printStackTrace();
+        e->printStackTrace();
 
         x10aux::exitCode = 1;
 

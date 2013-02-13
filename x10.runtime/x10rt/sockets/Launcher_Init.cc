@@ -45,10 +45,16 @@ void Launcher::Setup(int argc, char ** argv)
 	assert (_singleton == NULL);
 
 	// check to see if we need to launch stuff, or if we need to execute the runtime.
+	if ((!getenv(X10_LAUNCHER_RUNLAUNCHER) && getenv(X10_LAUNCHER_PLACE))) return;
 	// we just skip the launcher and run the program if the user hasn't set X10LAUNCHER_NPROCS
-	if ((!getenv(X10_LAUNCHER_RUNLAUNCHER) && getenv(X10_LAUNCHER_PLACE)) || !getenv(X10_NPLACES) ||
-			(strcmp(getenv(X10_NPLACES), "1")==0 && !getenv(X10_HOSTFILE) && !getenv(X10_HOSTLIST)))
+    if (!getenv(X10_NPLACES) || (strcmp(getenv(X10_NPLACES), "1")==0 && !getenv(X10_HOSTFILE) && !getenv(X10_HOSTLIST))) {
+        if (checkBoolEnvVar(getenv(X10_SCRATCH_CWD))) {
+            Launcher::enterRandomScratchDir(0);
+        }
 		return;
+    }
+
+
 
 	_singleton = (Launcher *) malloc(sizeof(Launcher));
 	if (!_singleton) DIE("memory allocation failure in Initializer");
@@ -110,7 +116,12 @@ void Launcher::initialize(int argc, char ** argv)
 	if (!getenv(X10_LAUNCHER_PLACE))
 		_myproc = 0xFFFFFFFF;
 	else
+	{
 		_myproc = atoi(getenv(X10_LAUNCHER_PLACE));
+		char* host = getenv(X10_LAUNCHER_HOST);
+		if (host) strcpy(_runtimePort, host);
+		else strcpy(_runtimePort, "localhost");
+	}
 
 	/* -------------------------------------------- */
 	/*  decide who my children are                  */
@@ -324,6 +335,7 @@ void Launcher::DIE(const char * msg, ...)
 	fprintf(stderr, "%s\n", buffer);
 	if (errno != 0)
 		fprintf(stderr, "%s\n", strerror(errno));
+	fflush(stderr);
 	exit(9);
 }
 

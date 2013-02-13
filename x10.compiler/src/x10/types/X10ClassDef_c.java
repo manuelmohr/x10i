@@ -22,6 +22,7 @@ import polyglot.frontend.Source;
 import polyglot.types.ClassDef;
 import polyglot.types.ClassDef_c;
 import polyglot.types.ClassType;
+import polyglot.types.CodeInstance;
 import polyglot.types.ConstructorDef;
 import polyglot.types.ContainerType;
 import polyglot.types.Context;
@@ -49,8 +50,10 @@ import x10.constraint.XFailure;
 import x10.constraint.XTerm;
 import x10.constraint.XVar;
 import x10.types.constraints.CConstraint;
-import x10.types.constraints.CTerms;
+import x10.types.constraints.ConstraintManager;
 import x10.types.constraints.TypeConstraint;
+import x10.types.constraints.XConstrainedTerm;
+
 
 public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
     protected transient Source fromSource;
@@ -92,7 +95,7 @@ public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
     public XVar thisVar() {
         if (this.thisDef != null)
             return this.thisDef.thisVar();
-        return CTerms.makeThis(); // Why #this instead of this?
+        return ConstraintManager.getConstraintSystem().makeThis(); // Why #this instead of this?
     }
 
     ThisDef thisDef;
@@ -170,7 +173,7 @@ public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
     Ref<CConstraint> realClauseWithThis = setRealClauseWithThis();
     
     private Ref<CConstraint> setRealClauseWithThis() {
-        final LazyRef<CConstraint> ref = new LazyRef_c<CConstraint>(new CConstraint());
+        final LazyRef<CConstraint> ref = new LazyRef_c<CConstraint>(ConstraintManager.getConstraintSystem().makeCConstraint());
         final Runnable runnable = new Runnable() {
             public void run() {
                 CConstraint c = X10ClassDef_c.this.realClause.get();
@@ -196,7 +199,7 @@ public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
      * 
      */
     private Ref<CConstraint> setRealClause() {
-    	final LazyRef<CConstraint> ref = new LazyRef_c<CConstraint>(new CConstraint());
+    	final LazyRef<CConstraint> ref = new LazyRef_c<CConstraint>(ConstraintManager.getConstraintSystem().makeCConstraint());
     	Runnable runnable = new Runnable() {
     		boolean computing = false;
     		public void run() {
@@ -204,7 +207,7 @@ public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
     				return;
     		    }
     		    computing = true;
-    		    CConstraint result = new CConstraint();
+    		    CConstraint result = ConstraintManager.getConstraintSystem().makeCConstraint();
     		    try {
     			    List<X10FieldDef> properties = properties();
     			    XVar oldThis = thisVar(); // xts.xtypeTranslator().translateThisWithoutTypeConstraint();
@@ -302,7 +305,7 @@ public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
     			    }*/
     		    }
     		  /*  catch (XFailure e) {
-    		    	CConstraint result = new CConstraint();
+    		    	CConstraint result = ConstraintManager.getConstraintSystem().makeCConstraint();
     			    result.setInconsistent();
     			    this.rootClause = Types.ref(result);
     			    this.rootClauseInvalid = new SemanticException(e.getMessage(), position());
@@ -758,4 +761,39 @@ public class X10ClassDef_c extends ClassDef_c implements X10ClassDef {
     public void setWasInner(boolean v) {
         wasInner = v;
     }
+
+    
+    // [DC] the following 5 functions added to allow ClassDef to be a CodeDef
+    // which I wanted to do so that the code reference stored in a context can understand
+    // when an expression is within an inner class scope (e.g. invariant of a local class)
+	@Override
+	public CodeInstance<?> asInstance() {
+		return asType();
+	}
+
+	@Override
+	public void setTypeParameters(List<ParameterType> typeParameters) {
+		this.typeParameters = typeParameters;
+		
+	}
+
+	@Override
+	public boolean staticContext() {
+		// [DC] A class guard is never in a static context
+		return false;
+	}
+
+	// [DC] assuming this is the correct thing to do, have to implement the following methods so do it as a setter/getter...
+	XConstrainedTerm placeTerm;
+
+	@Override
+	public XConstrainedTerm placeTerm() {
+		return placeTerm;
+	}
+
+	@Override
+	public void setPlaceTerm(XConstrainedTerm xt) {
+		placeTerm = xt;
+		
+	}
 }

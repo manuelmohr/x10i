@@ -1,8 +1,15 @@
 /*
- * This file is part of the Polyglot extensible compiler framework.
+ *  This file is part of the X10 project (http://x10-lang.org).
  *
- * Copyright (c) 2000-2006 Polyglot project group, Cornell University
- * 
+ *  This file is licensed to You under the Eclipse Public License (EPL);
+ *  You may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *      http://www.opensource.org/licenses/eclipse-1.0.php
+ *
+ * This file was originally derived from the Polyglot extensible compiler framework.
+ *
+ *  (C) Copyright 2000-2007 Polyglot project group, Cornell University
+ *  (C) Copyright IBM Corporation 2007-2012.
  */
 
 package polyglot.main;
@@ -176,10 +183,8 @@ public class Options {
             StringBuffer sb = new StringBuffer();
             if (extension != null) {
                 sb.append(extension.compilerName() + 
-                          " version " + extension.version() + "\n");
+                          " version " + extension.version());
             }
-            sb.append("Polyglot compiler toolkit version " +
-                               new polyglot.frontend.JLVersion());
             throw new Main.TerminationException(sb.toString(), 0);
         }
         else if (args[i].equals("-d"))
@@ -191,10 +196,8 @@ public class Options {
         else if (args[i].equals("-classpath") ||
                  args[i].equals("-cp")) {
             i++;
-            classpath = args[i] + System.getProperty("path.separator") +
-                        default_classpath;
-            output_classpath = args[i] + System.getProperty("path.separator") +
-                        default_output_classpath;
+            classpath = args[i] + File.pathSeparator + default_classpath;
+            output_classpath = args[i] + File.pathSeparator + default_output_classpath;
             i++;
         }
         else if (args[i].equals("-bootclasspath")) {
@@ -546,6 +549,7 @@ public class Options {
       StringBuffer fullcp = new StringBuffer();
       if (bootclasspath != null) {
 	  fullcp.append(bootclasspath);
+	  fullcp.append(File.pathSeparator);
       }
       fullcp.append(classpath);
       return fullcp.toString();

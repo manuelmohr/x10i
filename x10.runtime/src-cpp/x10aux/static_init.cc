@@ -13,54 +13,95 @@
 #include <x10aux/static_init.h>
 #include <x10aux/alloc.h>
 #include <x10aux/network.h>
+#include <x10aux/atomic_ops.h>
 
 #include <x10/lang/Runtime.h>
+#include <x10/lang/ExceptionInInitializer.h>
 
 #include <assert.h>
-#include <time.h>
 
 using namespace x10aux;
 using namespace x10::lang;
 
-DeserializationDispatcher *StaticInitBroadcastDispatcher::it;
+void StaticInitController::initField(volatile status* flag,
+                                     void (*init_func)(void),
+                                     x10::lang::CheckedThrowable** exceptionHolder,
+                                     const char* fname) {
+    {
+        status __var1__ = (status)x10aux::atomic_ops::compareAndSet_32((volatile x10_int*)flag, (x10_int)UNINITIALIZED, (x10_int)INITIALIZING);
+        if (__var1__ != UNINITIALIZED) goto WAIT;
 
-serialization_id_t StaticInitBroadcastDispatcher::addRoutine(Deserializer init) {
-    if (NULL == it) {
-        it = new (system_alloc<DeserializationDispatcher>()) DeserializationDispatcher();
+        try {
+            // I changed *flag from UNINITIALIZED to INITIALIZING, so I call the init_func.
+            // init_func will evalute the field init expr, store the value in the field and set *flag to INITIALIZED.
+            (*init_func)();
+        } catch (x10::lang::CheckedThrowable* exceptObj) {
+            *exceptionHolder = exceptObj;
+
+            *flag = EXCEPTION_RAISED;
+            
+            // Notify all threads that are waiting on static fields to be initialized.
+            lock();
+            notify();
+
+            x10aux::throwException(x10::lang::ExceptionInInitializer::_make(*exceptionHolder));
+        }
+            
+        // Notify all threads that are waiting on static fields to be initialized.
+        lock();
+        notify();
     }
-    return it->addDeserializer_(init, x10aux::CLOSURE_KIND_GENERAL_ASYNC);
-}
 
-ref<Reference> StaticInitBroadcastDispatcher::dispatch(deserialization_buffer &buf) {
-    assert (NULL != it);
-    serialization_id_t init_id = buf.read<serialization_id_t>();
-    return it->create_(buf, init_id);
-}
+WAIT:
+    if (*flag != INITIALIZED) {
+        // Wait for the field to be initialized by some other thread
+        char buffer[256];
+        lock();
 
-serialization_id_t const StaticInitBroadcastDispatcher::STATIC_BROADCAST_ID =
-    DeserializationDispatcher::addDeserializer(StaticInitBroadcastDispatcher::dispatch, x10aux::CLOSURE_KIND_GENERAL_ASYNC);
+        if (x10aux::trace_static_init) {
+            snprintf(buffer, 255, "WAITING for field: %s to be initialized", fname);
+            _SI_(buffer);
+        }
 
-void StaticInitBroadcastDispatcher::doBroadcast(serialization_id_t id, char* the_buf, x10_uint sz) {
-    assert (the_buf != NULL);
-    for (x10aux::place place = 1; place < x10aux::num_hosts ; place++) {
-        x10rt_msg_params p = {place, DeserializationDispatcher::getMsgType(id), the_buf, sz, 0};
-        x10rt_send_msg(&p);
+        while (*flag != INITIALIZED) {
+            if (*flag == EXCEPTION_RAISED) {
+                if (x10aux::trace_static_init) {
+                    snprintf(buffer, 255, "Rethrowing ExceptionInInitializer for field: %s", fname);
+                    _SI_(buffer);
+                }
+                unlock();
+                if (NULL != exceptionHolder) {
+                    x10aux::throwException(x10::lang::ExceptionInInitializer::_make(*exceptionHolder));
+                } else {
+                    x10aux::throwException(x10::lang::ExceptionInInitializer::_make());
+                }
+            }
+            await();
+        }
+
+        if (x10aux::trace_static_init) {
+            snprintf(buffer, 255, "CONTINUING because field: %s has been initialized", fname);
+            _SI_(buffer);
+        }
+
+        unlock();
     }
 }
 
-void StaticInitBroadcastDispatcher::lock() {
+
+void StaticInitController::lock() {
     x10::lang::Runtime::StaticInitBroadcastDispatcherLock();
 }
 
-void StaticInitBroadcastDispatcher::await() {
+void  StaticInitController::await() {
     x10::lang::Runtime::StaticInitBroadcastDispatcherAwait();
 }
 
-void StaticInitBroadcastDispatcher::unlock() {
+void  StaticInitController::unlock() {
     x10::lang::Runtime::StaticInitBroadcastDispatcherUnlock();
 }
 
-void StaticInitBroadcastDispatcher::notify() {
+void  StaticInitController::notify() {
     x10::lang::Runtime::StaticInitBroadcastDispatcherNotify();
 }
 

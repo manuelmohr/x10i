@@ -101,7 +101,7 @@
  * of these implement the symbols in x10rt_net.h so they cannot currently be used simultaneously.
  * However one can link against whichever implementation is preferred for inter-host communication.
  * Details on the available implementations of the Core Networking Layer can be found <a
- * href=http://x10.codehaus.org/X10RT+Implementations>here</a>.
+ * href=http://x10-lang.org/documentation/practical-x10-programming/x10rt-implementations.html>here</a>.
  *
  * In addition to the Core Networking Layer x10rt_net.h there is a layer for CUDA, which is intended
  * to wrap the NVidia CUDA API in a way that provides an interface that is very similar to
@@ -152,6 +152,22 @@
  */
 
 /** \{ */
+
+
+/**
+ * This preinit method allows the runtime network code to be partially initialized ahead of the 
+ * rest of the runtime.  The return value is a connection string (likely hostname:port), which can 
+ * be used by other runtimes to find this one.  When this method is called ahead of the regular 
+ * x10rt_init(), it puts the runtime into a library mode, so that the runtime can be used more as 
+ * a library in other programs, by using less CPU, and not calling system exit when errors occur.
+ */
+X10RT_C char* x10rt_preinit();
+
+/** Whether or not X10 is running as library.
+ * \returns Whether or not X10 is running as library.
+ */
+X10RT_C bool x10rt_run_as_library (void);
+
 
 /** Initialize the X10RT API.
  *
@@ -497,6 +513,14 @@ X10RT_C void x10rt_blocks_threads (x10rt_place d, x10rt_msg_type type, int dyn_s
  * \see \ref callbacks
  */
 X10RT_C void x10rt_probe (void);
+
+
+/** Handle outstanding incoming messages, and block on the network if nothing is available.
+ * This method operates like x10rt_probe(), but this version will attempt to block if nothing was
+ * available from the network.  This mechanism allows an X10 program to go idle on the CPU.  The
+ * network probe will attempt to block if possible, but this is not guaranteed.
+ */
+X10RT_C void x10rt_blocking_probe (void);
 
 /** \} */
 

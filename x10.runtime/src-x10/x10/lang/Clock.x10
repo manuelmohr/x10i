@@ -17,8 +17,6 @@ import x10.compiler.Pinned;
 import x10.util.Map;
 
 /**
- * @author tardieu
- *
  * Ported from 2.0 to 2.1 via naive simulation of 
  *       2.0 style global object by injecting a root field
  *       that is a GlobalRef(this) and always accessing fields 
@@ -101,16 +99,6 @@ public final class Clock(name:String) {
         }
         put(-ph);
     }
-     @Global def resumeInternal(entry:Map.Entry[Clock,Int]) {
-        Runtime.ensureNotInAtomic();
-        val ph = entry.getValue();
-        if (ph < 0) return;
-        at (root) {
-        	val me = root();
-        	me.resumeLocal();
-        }
-        entry.setValue(-ph);
-    }
     @Global def advanceUnsafe() {
     	Runtime.ensureNotInAtomic();
         val ph = get();
@@ -122,17 +110,6 @@ public final class Clock(name:String) {
         }
         put(abs + 1);
     }
-    @Global def advanceInternal(entry:Map.Entry[Clock,Int]) {
-    	Runtime.ensureNotInAtomic();
-        val ph = entry.getValue();
-        val abs = Math.abs(ph);
-        at (root) {
-        	val me = root();
-            if (ph > 0) me.resumeLocal();
-            when (abs < me.phase);
-        }
-        entry.setValue(abs + 1);
-    }
     @Global def dropUnsafe() {
         val ph = remove();
         at(root) {
@@ -140,11 +117,11 @@ public final class Clock(name:String) {
         	me.dropLocal(ph);
         }
     }
-    @Global def dropInternal(entry:Map.Entry[Clock,Int]) {
-        val ph = entry.getValue();
-        at(root.home) async {
-	    val rcl:Clock = root();
-            rcl.dropLocal(ph);
+    @Global def dropInternal() {
+        val ph = get();
+        at(root) {
+            val me = root();
+            me.dropLocal(ph);
         }
     }
     public @Global def registered():Boolean = Runtime.activity().clockPhases().containsKey(this);
@@ -166,7 +143,7 @@ public final class Clock(name:String) {
         dropUnsafe();
     }
 
-    public def toString():String = name.equals("") ? super.toString() : name;
+    public def toString():String = name.equals("") ? System.identityToString(this) : name;
     
     private def clockUseException(method:String) {
         if (dropped()) throw new ClockUseException("invalid invocation of " + method + "() on clock " + toString() + "; calling activity is not clocked on this clock");

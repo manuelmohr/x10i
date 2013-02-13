@@ -21,6 +21,7 @@ import polyglot.types.Def_c;
 import polyglot.types.LocalDef;
 import polyglot.types.QName;
 import polyglot.types.Ref;
+import polyglot.types.SemanticException;
 import polyglot.types.Type;
 import polyglot.types.TypeSystem;
 import polyglot.types.Types;
@@ -32,13 +33,13 @@ import x10.util.CollectionFactory;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import polyglot.util.TypedList;
-import x10.constraint.XTerms;
+import x10.types.constraints.ConstraintManager;
 import x10.constraint.XVar;
 import x10.constraint.XTerm;
 import x10.types.constraints.CConstraint;
-import x10.types.constraints.CTerms;
 import x10.types.constraints.TypeConstraint;
 import x10.types.constraints.XConstrainedTerm;
+
 
 public class ClosureDef_c extends Def_c implements ClosureDef {
     private static final long serialVersionUID = -9082180217851254169L;
@@ -167,7 +168,7 @@ public class ClosureDef_c extends Def_c implements ClosureDef {
     public XVar thisVar() {
         if (this.thisDef != null)
             return this.thisDef.thisVar();
-        return CTerms.makeThis();
+        return ConstraintManager.getConstraintSystem().makeThis();
     }
 
     ThisDef thisDef;
@@ -335,4 +336,14 @@ public class ClosureDef_c extends Def_c implements ClosureDef {
      public String toString() {
          return designator() + " " + signature() + " => " + returnType();
      }
+
+    @Override
+    public List<Ref<? extends Type>> throwTypes() {
+        return Collections.<Ref<? extends Type>>emptyList();
+    }
+
+    @Override
+    public void setThrowTypes(List<Ref<? extends Type>> l) {
+        throw new Error("Internal compiler error: X10 closures do not throw java checked exceptions.");
+    }
 }

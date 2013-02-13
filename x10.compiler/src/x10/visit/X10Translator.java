@@ -44,6 +44,8 @@ import polyglot.util.Position;
 import polyglot.util.QuotedStringTokenizer;
 import polyglot.visit.Translator;
 import x10.X10CompilerOptions;
+import x10.ast.TypeDecl;
+import x10.emitter.Emitter;
 import x10.util.FileUtils;
 import x10c.X10CCompilerOptions;
 
@@ -107,55 +109,68 @@ public class X10Translator extends Translator {
     }
 
     public boolean inInnerClass() {
-		return inInnerClass;
-	}
+        return inInnerClass;
+    }
 
-	public X10Translator inInnerClass(boolean inInnerClass) {
-		if (inInnerClass == this.inInnerClass) return this;
-		X10Translator tr = (X10Translator) shallowCopy();
-		tr.inInnerClass = inInnerClass;
-		return tr;
-	}
-	
-	/** Override to not open a new file for each declaration. */
-	@Override
-	protected boolean translateSource(SourceFile sfn) {
-	    TypeSystem ts = typeSystem();
-	    NodeFactory nf = nodeFactory();
-	    TargetFactory tf = this.tf;
-	    int outputWidth = job.compiler().outputWidth();
-	    CodeWriter w= null;
+    public X10Translator inInnerClass(boolean inInnerClass) {
+        if (inInnerClass == this.inInnerClass) return this;
+        X10Translator tr = (X10Translator) shallowCopy();
+        tr.inInnerClass = inInnerClass;
+        return tr;
+    }
 
-	    try {
-	        File of;
+    private static boolean generateJavaFile(TopLevelDecl decl) {
+        if (decl instanceof TypeDecl) return false;  // public type Int(b:Int) = Int{self==b};
+//        assert decl instanceof ClassDecl;
+        if (!(decl instanceof ClassDecl)) return true; // for safety
+        if (Emitter.getJavaRep(((ClassDecl) decl).classDef()) == null) return true; // not @NativeRep'ed
+        return false;
+    }
+    private static boolean generateJavaFile(SourceFile sfn) {
+        for (TopLevelDecl decl : sfn.decls()) {
+            if (generateJavaFile(decl)) return true;
+        }
+        return false;
+    }
+    /** Override to not open a new file for each declaration. */
+    @Override
+    protected boolean translateSource(SourceFile sfn) {
+        TypeSystem ts = typeSystem();
+        NodeFactory nf = nodeFactory();
+        TargetFactory tf = this.tf;
+        int outputWidth = job.compiler().outputWidth();
+        CodeWriter w= null;
 
-	        QName pkg = null;
+        // if all toplevel decls are @NativeRep'ed, stop generating Java file
+        if (!generateJavaFile(sfn)) return true;
 
-	        if (sfn.package_() != null) {
-	            Package p = sfn.package_().package_().get();
-	            pkg = p.fullName();
-	        }
+        try {
+            QName pkg = null;
 
-	        // Use the source name to derive a default output file name.
-	        of = tf.outputFile(pkg, sfn.source());
+            if (sfn.package_() != null) {
+                Package p = sfn.package_().package_().get();
+                pkg = p.fullName();
+            }
 
-	        String opfPath = of.getPath();
-	        if (!opfPath.endsWith("$")) job.compiler().addOutputFile(sfn, of.getPath());
-	        w = tf.outputCodeWriter(of, outputWidth);
+            // Use the source name to derive a default output file name.
+            File of = tf.outputFile(pkg, sfn.source());
 
-	        writeHeader(sfn, w);
+            String opfPath = of.getPath();
+            if (!opfPath.endsWith("$")) job.compiler().addOutputFile(sfn, of.getPath());
+            w = tf.outputCodeWriter(of, outputWidth);
 
-	        for (Iterator<TopLevelDecl> i = sfn.decls().iterator(); i.hasNext(); ) {
-	            TopLevelDecl decl = i.next();
+            writeHeader(sfn, w);
 
-	            translateTopLevelDecl(w, sfn, decl);
+            for (TopLevelDecl decl : sfn.decls()) {
 
-	            if (i.hasNext()) {
-	                w.newline(0);
-	            }
-	        }
+                if (!generateJavaFile(decl)) continue;
 
-	        w.flush();
+                translateTopLevelDecl(w, sfn, decl);
+
+                w.newline(0);
+            }
+
+            w.flush();
 
             X10CompilerOptions options = (X10CompilerOptions) ts.extensionInfo().getOptions();
             if (options.post_compiler != null && !options.output_stdout && options.executable_path != null) {
@@ -182,23 +197,21 @@ public class X10Translator extends Translator {
                 }
             }
 
-	        return true;
-	    }
-	    catch (IOException e) {
-	        job.compiler().errorQueue().enqueue(ErrorInfo.IO_ERROR,
-	                "I/O error while translating: " + e.getMessage());
-	        return false;
-	    } finally {
-	        if (w != null) {
-	            try {
-	                w.close();
-	            } catch (IOException e) {
-	                job.compiler().errorQueue().enqueue(ErrorInfo.IO_ERROR,
-	                        "I/O error while closing output file: " + e.getMessage());
-	            }
-	        }
-	    }
-	}
+            return true;
+
+        } catch (IOException e) {
+            job.compiler().errorQueue().enqueue(ErrorInfo.IO_ERROR, "I/O error while translating: " + e.getMessage());
+            return false;
+        } finally {
+            if (w != null) {
+                try {
+                    w.close();
+                } catch (IOException e) {
+                    job.compiler().errorQueue().enqueue(ErrorInfo.IO_ERROR, "I/O error while closing output file: " + e.getMessage());
+                }
+            }
+        }
+    }
 
     public static final String postcompile = "postcompile";
 
@@ -307,7 +320,7 @@ public class X10Translator extends Translator {
                         out.println("Main-Class: " + main_class + "$" + X10PrettyPrinterVisitor.MAIN_CLASS);
                         // N.B. Following jar files should be same as the ones used in X10CCompilerOptions.setDefaultValues()
                         String x10_jar = "x10.jar";
-                        String math_jar = System.getProperty("x10c.math.jar", "commons-math-2.2.jar");
+                        String math_jar = System.getProperty("x10c.math.jar", "commons-math3-3.0.jar");
                         // XTENLANG-2722
                         // need a new preloading mechanism which does not use classloader to determine system classes
                         out.println("Class-Path: " + x10_jar + " " + math_jar);
@@ -364,6 +377,15 @@ public class X10Translator extends Translator {
                     	propFileWriter.println("X10LIB_SRC_JAR=" + jarFileName);
                     	propFileWriter.close();
                     }
+                }
+                // XTENLANG-2126
+                if (!options.keep_output_files) {
+                    java.util.ArrayList<String> rmCmd = new java.util.ArrayList<String>();
+                    rmCmd.add("rm");
+                    rmCmd.add("-rf");
+                    rmCmd.add(options.output_directory.getAbsolutePath()); // N.B. output_directory is a temporary directory
+//                    System.out.println(java.util.Arrays.toString(rmCmd.toArray(strarray)));
+                    runtime.exec(rmCmd.toArray(strarray));
                 }
             }
             catch(Exception e) {

@@ -43,12 +43,14 @@ import polyglot.types.Type;
 import polyglot.types.TypeSystem;
 import polyglot.types.Types;
 import polyglot.util.CodeWriter;
-import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
+import polyglot.util.CollectionUtil; import x10.util.AnnotationUtils;
+import x10.util.CollectionFactory;
 import polyglot.util.ErrorInfo;
 import polyglot.util.InternalCompilerError;
 import polyglot.util.Position;
 import polyglot.util.TypedList;
 import polyglot.visit.ContextVisitor;
+import polyglot.visit.ExceptionChecker;
 import polyglot.visit.NodeVisitor;
 import polyglot.visit.PrettyPrinter;
 import polyglot.visit.TypeBuilder;
@@ -57,7 +59,7 @@ import polyglot.visit.TypeChecker;
 import x10.constraint.XFailure;
 import x10.constraint.XVar;
 import x10.constraint.XTerm;
-import x10.constraint.XTerms;
+import x10.types.constraints.ConstraintManager;
 import x10.constraint.XVar;
 import x10.errors.Errors;
 import x10.extension.X10Del;
@@ -93,11 +95,12 @@ public class X10ConstructorDecl_c extends ConstructorDecl_c implements X10Constr
     protected List<TypeParamNode> typeParameters;
     protected TypeNode hasType;
     protected TypeNode offerType; 
+    protected List<TypeNode> throwsTypes;
     
     public X10ConstructorDecl_c(Position pos, FlagsNode flags, 
             Id name, TypeNode returnType, 
             List<TypeParamNode> typeParams, List<Formal> formals, 
-            DepParameterExpr guard,  TypeNode offerType, Block body) {
+            DepParameterExpr guard,  TypeNode offerType, List<TypeNode> throwsTypes, Block body) {
         super(pos, flags,  name, formals,  body);
         // null, not unknown. 
         this.returnType = returnType instanceof HasTypeNode_c ? null : returnType; 
@@ -106,6 +109,7 @@ public class X10ConstructorDecl_c extends ConstructorDecl_c implements X10Constr
         this.guard = guard;
         this.typeParameters = TypedList.copyAndCheck(typeParams, TypeParamNode.class, true);
         this.offerType = offerType;
+        this.throwsTypes = throwsTypes;
     }
     
     public TypeNode returnType() {
@@ -131,6 +135,17 @@ public class X10ConstructorDecl_c extends ConstructorDecl_c implements X10Constr
             return n;
         }
         return this;
+    }
+    public List<TypeNode> throwsTypes() {
+    	return throwsTypes;
+    }
+    public X10ConstructorDecl_c throwsTypes(List<TypeNode> throwsTypes) {
+    	if (this.throwsTypes != throwsTypes)  {
+    		X10ConstructorDecl_c n = (X10ConstructorDecl_c) copy();
+    		n.throwsTypes = throwsTypes;
+    		return n;
+    	}
+    	return this;
     }
     protected X10ConstructorDecl_c hasType(TypeNode hasType) {
     	if (this.hasType != hasType)  {
@@ -183,7 +198,7 @@ public class X10ConstructorDecl_c extends ConstructorDecl_c implements X10Constr
 
     protected ConstructorDef createConstructorDef(TypeSystem ts, ClassDef ct, Flags flags) {
     	X10ConstructorDef ci = (X10ConstructorDef) ((TypeSystem) ts).constructorDef(position(), name().position(), Types.ref(ct.asType()), flags,
-                Collections.<Ref<? extends Type>>emptyList(), 
+    	        Collections.<Ref<? extends Type>>emptyList(), Collections.<Ref<? extends Type>>emptyList(), 
                 offerType == null ? null : offerType.typeRef());
         
         ci.setThisDef(((X10ClassDef) ct).thisDef());
@@ -299,6 +314,12 @@ public class X10ConstructorDecl_c extends ConstructorDecl_c implements X10Constr
         }
         ci.setFormalNames(formalNames);
 
+        List<Ref<? extends Type>> throw_types = new ArrayList<Ref<? extends Type>>();
+        for (TypeNode tn : n.throwsTypes()) {
+            throw_types.add(tn.typeRef());
+        }
+        ci.setThrowTypes(throw_types);
+        
         // add sythetic super and property call to the body (if there isn't this(...) call)
         Block body = n.body();
         if (body!=null) {
@@ -443,6 +464,8 @@ public class X10ConstructorDecl_c extends ConstructorDecl_c implements X10Constr
     	result = (X10ConstructorDecl_c) result.guard(guard);
     	TypeNode htn = (TypeNode) result.visitChild(result.hasType, v);
     	result = (X10ConstructorDecl_c) result.hasType(htn);
+		List<TypeNode> throwsTypes = visitList(result.throwsTypes, v);
+    	result = (X10ConstructorDecl_c) result.throwsTypes(throwsTypes);
     	return result;
     }
 
@@ -577,7 +600,8 @@ public class X10ConstructorDecl_c extends ConstructorDecl_c implements X10Constr
         }
 
         // Step I.c. Check the throw types
-    
+        List<TypeNode> processedThrowsTypes = nn.visitList(nn.throwsTypes(), childtc);
+        nn = (X10ConstructorDecl) nn.throwsTypes(processedThrowsTypes);        
 
         X10ConstructorDef nnci = (X10ConstructorDef) nn.constructorDef();
 
@@ -640,8 +664,14 @@ public class X10ConstructorDecl_c extends ConstructorDecl_c implements X10Constr
                 }
             }
         }
+       
 
         return nn;
+    }
+
+    public NodeVisitor exceptionCheckEnter(ExceptionChecker ec) {
+        return ec.push(new ExceptionChecker.CodeTypeReporter("Constructor " + ci.signature()))
+                 .push(constructorDef().asInstance().throwTypes());
     }
     
     @Override

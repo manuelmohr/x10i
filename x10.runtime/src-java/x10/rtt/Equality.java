@@ -12,9 +12,6 @@
 package x10.rtt;
 
 
-import x10.core.RefI;
-import x10.core.StructI;
-
 public class Equality {
     public static boolean equalsequals(boolean a, boolean b) { return a == b; }
     public static boolean equalsequals(boolean a, Object b) { return equalsequals(x10.core.Boolean.$box(a), b); }
@@ -111,21 +108,21 @@ public class Equality {
         // Struct equality is value equality that implys non-null.
         if (a == null || b == null) return false;
 
-        // For boxed String object
-        if (a instanceof x10.core.String) a = x10.core.String.$unbox((x10.core.String) a);
-        if (b instanceof x10.core.String) b = x10.core.String.$unbox((x10.core.String) b);
-        if (a == b) return true;
-
-        if (a instanceof RefI || b instanceof RefI) return false;
+        // N.B. this is shortcut that can be removed safely
+        // if we need to know the referenceness of values at runtime in some other context,
+        // we may want to introduce isref() in RTT, which comes from Type.isReference(), and use it. 
+//        if (a instanceof x10.core.RefI || b instanceof x10.core.RefI) return false;
         
         // equality of structs are follows
-        if (a instanceof Boolean && b instanceof Boolean)
-            return (boolean) (Boolean) a == (boolean) (Boolean) b;
-        if (a instanceof Character && b instanceof Character)
-            return (char) (Character) a == (char) (Character) b;
+        // short cuts for primitives
+        if (a instanceof x10.core.Boolean && b instanceof x10.core.Boolean)
+            return x10.core.Boolean.$unbox((x10.core.Boolean) a) == x10.core.Boolean.$unbox((x10.core.Boolean) b);
+        if (a instanceof x10.core.Char && b instanceof x10.core.Char)
+            return x10.core.Char.$unbox((x10.core.Char) a) == x10.core.Char.$unbox((x10.core.Char) b);
         if (a instanceof Number && b instanceof Number)
             return equalsNumbers((Number) a, (Number) b);
-        if (a instanceof StructI) return ((StructI) a)._struct_equals$O(b);
+        // for general structs. it also works with primitives.
+        if (a instanceof x10.core.StructI) return ((x10.core.StructI) a)._struct_equals$O(b);
         
         return false;
     }

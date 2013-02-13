@@ -53,6 +53,7 @@ import x10.constraint.XTerm;
 import x10.errors.Errors;
 import x10.extension.X10Del;
 import x10.extension.X10Del_c;
+import x10.extension.X10Ext;
 import x10.types.AtDef;
 import x10.types.ClosureDef;
 import x10.types.ParameterType;
@@ -64,6 +65,7 @@ import x10.types.X10ProcedureDef;
 import x10.types.checker.Converter;
 import x10.types.checker.PlaceChecker;
 import x10.types.constraints.CConstraint;
+import x10.types.constraints.ConstraintManager;
 import x10.types.constraints.XConstrainedTerm;
 
 /**
@@ -161,7 +163,7 @@ public class AtStmt_c extends Stmt_c implements AtStmt {
         boolean isFinishPlace = false;
         AtDef def = atDef();
         if (null != def.finishPlaceTerm()) {
-            XConstraint constraint = new XConstraint();
+        	XConstraint constraint = ConstraintManager.getConstraintSystem().makeConstraint();;
             constraint.addBinding(def.finishPlaceTerm().term(),def.placeTerm().term());
             if (def.placeTerm().constraint().entails(constraint)) {
                 isFinishPlace = true;
@@ -242,7 +244,7 @@ public class AtStmt_c extends Stmt_c implements AtStmt {
     	if (def.placeTerm() == null) {
             XConstrainedTerm placeTerm;
             XConstrainedTerm finishPlaceTerm = c.currentFinishPlaceTerm();
-            CConstraint d = new CConstraint();
+            CConstraint d = ConstraintManager.getConstraintSystem().makeCConstraint();
             XTerm term = PlaceChecker.makePlace();
             try {
                 placeTerm = XConstrainedTerm.instantiate(d, term);
@@ -270,8 +272,17 @@ public class AtStmt_c extends Stmt_c implements AtStmt {
         }
         Stmt body = (Stmt) visitChild(this.body, childtc.context(c));
         AtStmt_c n = this.reconstruct(place, body);
+
+		List<AnnotationNode> oldAnnotations = ((X10Ext)n.ext()).annotations();
+		if (oldAnnotations != null && !oldAnnotations.isEmpty()) {
+			List<AnnotationNode> newAnnotations = visitList(oldAnnotations, v);
+			if (! CollectionUtil.allEqual(oldAnnotations, newAnnotations)) {
+				n = (AtStmt_c) ((X10Del) n.del()).annotations(newAnnotations);
+			}
+		}
+
         return tc.leave(parent, this, n, childtc);
-    }
+}
 
     @Override
     public Node typeCheck(ContextVisitor tc) {

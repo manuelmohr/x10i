@@ -12,8 +12,6 @@
 package x10.util;
 
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.*;
 
 import polyglot.ast.*;
@@ -31,15 +29,16 @@ import polyglot.util.CollectionUtil; import x10.util.CollectionFactory;
 import polyglot.visit.TypeBuilder;
 import x10.ast.*;
 import x10.constraint.XVar;
-import x10.constraint.XTerms;
+import x10.types.constraints.ConstraintManager;
 import x10.types.*;
-import x10.types.constraints.CTerms;
+
 import x10.extension.X10Ext;
 import x10cpp.visit.SharedVarsMethods;
 
 public class Struct {
     private final static java.util.Set<String> ignoreTypes = CollectionFactory.newHashSet();
 
+    // these are the structs that are @NativeRep to java
     static {
         ignoreTypes.add("Boolean");
         ignoreTypes.add("Byte");
@@ -47,13 +46,12 @@ public class Struct {
         ignoreTypes.add("Char");
         ignoreTypes.add("Short");
         ignoreTypes.add("UShort");
-        ignoreTypes.add("Int");
+        ignoreTypes.add("Int"); 
         ignoreTypes.add("UInt");
         ignoreTypes.add("Long");
         ignoreTypes.add("ULong");
         ignoreTypes.add("Float");
         ignoreTypes.add("Double");
-        ignoreTypes.add("Place");
     }
 
     public static X10ClassDecl_c addStructMethods(TypeBuilder tb, X10ClassDecl_c n) {
@@ -70,43 +68,27 @@ public class Struct {
         interfacesList.add(xts.lazyAny());
         cd.setInterfaces(interfacesList);
 
-       final Position pos = Position.compilerGenerated(n.body().position());
-
-       //String fullNameWithThis = fullName + "#this";
-       //String fullNameWithThis = "this";
-     //  XName thisName = new XNameWrapper<Object>(new Object(), fullNameWithThis);
-       XVar thisVar = CTerms.makeThis(ct); // CTerms.makeThis(fullNameWithThis); // XTerms.makeLocal(thisName);
+        final Position pos = Position.compilerGenerated(n.body().position());
 
 
-
-
-       final LazyRef<X10ParsedClassType> PLACE = Types.lazyRef(null);
-       PLACE.setResolver(new Runnable() {
-           public void run() {
-               PLACE.update((X10ParsedClassType) xts.Place());
-           }
-       });
-       final LazyRef<X10ParsedClassType> STRING = Types.lazyRef(null);
-       STRING.setResolver(new Runnable() {
-           public void run() {
-               STRING.update((X10ParsedClassType) xts.String());
-           }
-       });
-       final LazyRef<X10ParsedClassType> BOOLEAN = Types.lazyRef(null);
-       BOOLEAN.setResolver(new Runnable() {
-           public void run() {
-               BOOLEAN.update((X10ParsedClassType) xts.Boolean());
-           }
-       });
-       final LazyRef<X10ParsedClassType> OBJECT = Types.lazyRef(null);
-       OBJECT.setResolver(new Runnable() {
-           public void run() {
-               OBJECT.update((X10ParsedClassType) xts.Object());
-           }
-       });
-
-
-
+        final LazyRef<X10ParsedClassType> PLACE = Types.lazyRef(null);
+        PLACE.setResolver(new Runnable() {
+        	public void run() {
+        		PLACE.update((X10ParsedClassType) xts.Place());
+        	}
+        });
+        final LazyRef<X10ParsedClassType> STRING = Types.lazyRef(null);
+        STRING.setResolver(new Runnable() {
+        	public void run() {
+        		STRING.update((X10ParsedClassType) xts.String());
+        	}
+        });
+        final LazyRef<X10ParsedClassType> BOOLEAN = Types.lazyRef(null);
+        BOOLEAN.setResolver(new Runnable() {
+        	public void run() {
+        		BOOLEAN.update((X10ParsedClassType) xts.Boolean());
+        	}
+        });
 
 
 
@@ -149,6 +131,7 @@ public class Struct {
                     mdecl.formals().isEmpty()) {
                     seenHashCode = true;
                 }
+                // [DC] this code heavily broken... unsure how to fix it at this point
                 if (mdecl.name().id().toString().equals("equals") && mdecl.formals().size() == 1) {
                     seenEqualsAny = true; // XTENLANG-2441: Needs to be a test to see if the type of formal is Any.
                     seenEqualsSelf = true; // XTENLANG-2441: Needs to be a test to see if the type of the formal is the Struct ct 
@@ -175,7 +158,6 @@ public class Struct {
         final TypeNode intTypeNode = nf.CanonicalTypeNode(pos, ts.Int());
         final TypeNode boolTypeNode = nf.CanonicalTypeNode(pos, ts.Boolean());
         final TypeNode placeTypeNode = nf.CanonicalTypeNode(pos, ts.Place());
-        final TypeNode objectTypeNode = nf.CanonicalTypeNode(pos, ts.Object());
         final TypeNode stringTypeNode = nf.CanonicalTypeNode(pos, ts.String());
         final TypeNode anyTypeNode = nf.CanonicalTypeNode(pos, ts.Any());
         final List<TypeParamNode> typeParamNodeList = n.typeParameters();
@@ -210,10 +192,10 @@ public class Struct {
             // In the Java backend, some structs (like Int) are mapped to primitives (like int)
             // So I must add a native annotation on this method.
 
-            //@Native("java", "x10.rtt.Types.typeName(#0)")
+            //@Native("java", "x10.rtt.Types.typeName(#this)")
             //@Native("c++", "x10aux::type_name(#0)")
             //global safe def typeName():String;
-            natives = createNative(nf, pos, "x10.rtt.Types.typeName(#0)", "x10aux::type_name(#0)");
+            natives = createNative(nf, pos, "x10.rtt.Types.typeName(#this)", "x10aux::type_name(#0)");
             AnnotationNode nonEscaping = nf.AnnotationNode(pos, nf.AmbMacroTypeNode(pos, nf.PrefixFromQualifiedName(pos,QName.make("x10.compiler")), nf.Id(pos, "NonEscaping"), Collections.<TypeNode>emptyList(), Collections.<Expr>emptyList()));
             natives.add(nonEscaping);
             methodName = "typeName";

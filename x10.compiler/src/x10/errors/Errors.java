@@ -1634,7 +1634,7 @@ public class Errors {
 	public static class InconsistentType extends EqualByTypeAndPosException {
 		private static final long serialVersionUID = 3896496971389234633L;
 		public InconsistentType(Type t, Position p) {
-			super("Type is inconsistent." +
+			super("Inconsistent type." +
 					"\n\t Type: " + t, p);
         }
     }
@@ -2141,7 +2141,7 @@ public class Errors {
 
 		public InvariantNotEntailed(CConstraint known, CConstraint inv, Position p) {
             super("With information from super(...) and property(...) cannot establish the class invariant. " 
-            		+ "\n\t Known information: " + known 
+            		+ "\n\t Known information: " + known.toString() 
             		+ "\n\t Class invariant: " + known.residue(inv), p);
         }
     }

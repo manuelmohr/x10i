@@ -27,8 +27,8 @@ X10_HOME        = ${CURDIR}/../..
 
 COMMON_OBJS     = common/x10rt_front.o common/x10rt_logical.o common/x10rt_cuda.o common/x10rt_emu.o common/x10rt_emu_coll.o
 
-# Include JNI bindings in x10rt if we can find a JDK unless cross-compiling for BGP
-ifndef ENABLE_CROSS_COMPILE_BGP
+# Include JNI bindings in x10rt if we can find a JDK unless cross-compiling for BG
+ifndef CROSS_COMPILE_BLUEGENE
 ifdef JNI_INCLUDES
   COMMON_OBJS += jni/jni_x10rt.o jni/jni_message.o jni/jni_team.o jni/jni_helpers.o
 endif
@@ -74,7 +74,7 @@ ifndef DISABLE_X10RT_PGAS
   include pgas/pgas.mk
 endif
 
-ifndef ENABLE_CROSS_COMPILE_BGP
+ifndef CROSS_COMPILE_BLUEGENE
   include standalone/standalone.mk
   include sockets/sockets.mk
   ifdef JNI_INCLUDES
@@ -82,12 +82,14 @@ ifndef ENABLE_CROSS_COMPILE_BGP
   endif
 endif
 
-
 install: $(LIBS) $(PROPERTIES)
 	(test -n "$(LIBS)" && $(CP) $(LIBS) "$(X10_HOME)"/x10.dist/lib) || true
 	$(CP) $(PROPERTIES) "$(X10_HOME)"/x10.dist/etc
 	$(CP) include/*.h "$(X10_HOME)"/x10.dist/include
 	(test -n "$(EXECUTABLES)" && $(CP) $(EXECUTABLES) "$(X10_HOME)"/x10.dist/bin) || true
+
+headers:
+	$(CP) include/*.h "$(X10_HOME)"/x10.dist/include
 
 tests: $(TESTS)
 

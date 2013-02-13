@@ -59,7 +59,7 @@ import x10.types.X10MethodDef;
 import polyglot.types.TypeSystem;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.CLocal;
-import x10.types.constraints.CTerms;
+
 import x10.types.matcher.Subst;
 import x10.extension.X10Ext;
 
@@ -170,7 +170,8 @@ public class ClosureSynthesizer {
                 Flags.PUBLIC.Abstract(), def.returnType(),
                 ClosureCall.APPLY, 
                 def.typeParameters(), 
-                def.formalTypes(), 
+                def.formalTypes(),
+                Collections.<Ref<? extends Type>>emptyList(),
                 thisDef,
                 def.formalNames(), 
                 def.guard(),
@@ -282,7 +283,7 @@ public class ClosureSynthesizer {
         QName fullName = QName.make("x10.lang", name);
         Type n = SystemResolver.first(xts.systemResolver().check(fullName));
 
-        if (n instanceof X10ClassType) {
+        if (guard1 == null && n instanceof X10ClassType) {
             X10ClassType ct = (X10ClassType) n;
             return ct.x10Def();
         }
@@ -348,9 +349,9 @@ public class ClosureSynthesizer {
         // NOTE: don't call cd.asType() until after the type parameters are
         // added.
         FunctionType ct = (FunctionType) cd.asType();
-//        if (guard1 == null) {
+        if (guard1 == null) {
             xts.systemResolver().install(fullName, ct);
-//        }
+        }
 
         ThisDef thisDef = cd.thisDef();
 
@@ -368,6 +369,7 @@ public class ClosureSynthesizer {
         		ClosureCall.APPLY, 
         		typeParams, 
         		argTypes, 
+        		Collections.<Ref<? extends Type>>emptyList(),
         		thisDef,
         		formalNames, 
         		Types.ref(newGuard),

@@ -12,17 +12,17 @@
 package x10.rtt;
 
 import x10.core.Any;
-import x10.x10rt.X10JavaDeserializer;
-import x10.x10rt.X10JavaSerializable;
-import x10.x10rt.X10JavaSerializer;
+import x10.serialization.X10JavaDeserializer;
+import x10.serialization.X10JavaSerializable;
+import x10.serialization.X10JavaSerializer;
 
 import java.io.IOException;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public final class ParameterizedType<T> implements Type<T>, X10JavaSerializable {
 
     private static final long serialVersionUID = 1L;
-    private static final short _serialization_id = x10.x10rt.DeserializationDispatcher.addDispatcher(x10.x10rt.DeserializationDispatcher.ClosureKind.CLOSURE_KIND_NOT_ASYNC, ParameterizedType.class);
 
     public RuntimeType<T> rawType;
     public Type<?>[] actualTypeArguments;
@@ -39,6 +39,66 @@ public final class ParameterizedType<T> implements Type<T>, X10JavaSerializable 
         this.rawType = rawType;
         this.actualTypeArguments = actualTypeArguments;
     }
+    private static final boolean useCache = true;
+    private static final ConcurrentHashMap<RuntimeType<?>, ConcurrentHashMap<Type<?>, ParameterizedType<?>>> typeCache1 = new ConcurrentHashMap<RuntimeType<?>, ConcurrentHashMap<Type<?>, ParameterizedType<?>>>();
+    public static <T> ParameterizedType/*<T>*/ make(RuntimeType<T> rawType, Type<?> actualTypeArgument0) {
+        if (useCache && rawType != null && actualTypeArgument0 != null
+            // N.B. guard from NPE with recursive type. see XTENLANG_423.W[U], which extends Z[W[U]], causes NPE for hashCode.
+            && (!(actualTypeArgument0 instanceof ParameterizedType) || ((ParameterizedType<?>) actualTypeArgument0).rawType != null)
+            ) {
+            ConcurrentHashMap<Type<?>, ParameterizedType<?>> typeCache10 = typeCache1.get(rawType);
+            if (typeCache10 == null) {
+                ConcurrentHashMap<Type<?>, ParameterizedType<?>> typeCache10_;
+                typeCache10_ = new ConcurrentHashMap<Type<?>, ParameterizedType<?>>();
+                typeCache10 = typeCache1.putIfAbsent(rawType, typeCache10_);
+                if (typeCache10 == null) typeCache10 = typeCache10_;
+            }
+            ParameterizedType type = typeCache10.get(actualTypeArgument0);
+            if (type == null) {
+                ParameterizedType type_;
+                type_ = new ParameterizedType<T>(rawType, actualTypeArgument0);
+                type = typeCache10.putIfAbsent(actualTypeArgument0, type_);
+                if (type == null) type = type_;
+            }
+            return type;
+        } else {
+            return new ParameterizedType<T>(rawType, actualTypeArgument0);
+        }
+    }
+    private static final ConcurrentHashMap<RuntimeType<?>, ConcurrentHashMap<Type<?>, ConcurrentHashMap<Type<?>, ParameterizedType<?>>>> typeCache2 =
+        new ConcurrentHashMap<RuntimeType<?>, ConcurrentHashMap<Type<?>, ConcurrentHashMap<Type<?>, ParameterizedType<?>>>>();
+    public static <T> ParameterizedType/*<T>*/ make(RuntimeType<T> rawType, Type<?> actualTypeArgument0, Type<?> actualTypeArgument1) {
+        if (useCache && rawType != null && actualTypeArgument0 != null && actualTypeArgument1 != null
+            // N.B. guard from NPE with recursive type. see XTENLANG_423.W[U], which extends Z[W[U]], causes NPE for hashCode.
+            && (!(actualTypeArgument0 instanceof ParameterizedType) || ((ParameterizedType<?>) actualTypeArgument0).rawType != null)
+            && (!(actualTypeArgument1 instanceof ParameterizedType) || ((ParameterizedType<?>) actualTypeArgument1).rawType != null)
+            ) {
+            ConcurrentHashMap<Type<?>, ConcurrentHashMap<Type<?>, ParameterizedType<?>>> typeCache20 = typeCache2.get(rawType);
+            if (typeCache20 == null) {
+                ConcurrentHashMap<Type<?>, ConcurrentHashMap<Type<?>, ParameterizedType<?>>> typeCache20_;
+                typeCache20_ = new ConcurrentHashMap<Type<?>, ConcurrentHashMap<Type<?>, ParameterizedType<?>>>();
+                typeCache20 = typeCache2.putIfAbsent(rawType, typeCache20_);
+                if (typeCache20 == null) typeCache20 = typeCache20_;
+            }
+            ConcurrentHashMap<Type<?>, ParameterizedType<?>> typeCache21 = typeCache20.get(actualTypeArgument0);
+            if (typeCache21 == null) {
+                ConcurrentHashMap<Type<?>, ParameterizedType<?>> typeCache21_;
+                typeCache21_ = new ConcurrentHashMap<Type<?>, ParameterizedType<?>>();
+                typeCache21 = typeCache20.putIfAbsent(actualTypeArgument0, typeCache21_);
+                if (typeCache21 == null) typeCache21 = typeCache21_;
+            }
+            ParameterizedType type = typeCache21.get(actualTypeArgument1);
+            if (type == null) {
+                ParameterizedType type_;
+                type_ = new ParameterizedType<T>(rawType, actualTypeArgument0, actualTypeArgument1);
+                type = typeCache21.putIfAbsent(actualTypeArgument1, type_);
+                if (type == null) type = type_;
+            }
+            return type;
+        } else {
+            return new ParameterizedType<T>(rawType, actualTypeArgument0, actualTypeArgument1);
+        }
+    }
     public static <T> ParameterizedType/*<T>*/ make(RuntimeType<T> rawType, Type<?>... actualTypeArguments) {
         return new ParameterizedType<T>(rawType, actualTypeArguments);
     }
@@ -50,7 +110,6 @@ public final class ParameterizedType<T> implements Type<T>, X10JavaSerializable 
     public final boolean isAssignableTo(Type<?> superType) {
         if (this == superType) return true;
         if (superType == Types.ANY) return true;
-        if (superType == Types.OBJECT) return !Types.isStructType(this);
         if (!superType.getJavaClass().isAssignableFrom(rawType.getJavaClass())) {
             return false;
         }
@@ -66,6 +125,14 @@ public final class ParameterizedType<T> implements Type<T>, X10JavaSerializable 
             }
         }
         return false;
+    }
+
+    public boolean hasZero() {
+        return rawType.hasZero();
+    }
+
+    public boolean isref() {
+        return rawType.isref();
     }
 
     public final boolean isInstance(Object o) {
@@ -174,38 +241,41 @@ public final class ParameterizedType<T> implements Type<T>, X10JavaSerializable 
 
     // called from Static{Void}FunType.typeName(Object)
     public final String typeNameForFun(Object o) {
-        String str = "(";
+        StringBuilder sb = new StringBuilder();
+        sb.append("(");
         int i;
         for (i = 0; i < actualTypeArguments.length - 1; i++) {
-            if (i != 0) str += ",";
-            str += printType(actualTypeArguments[i], o);
+            if (i != 0) sb.append(",");
+            sb.append(printType(actualTypeArguments[i], o));
         }
-        str += ")=>";
-        str += printType(actualTypeArguments[i], o);
-        return str;
+        sb.append(")=>");
+        sb.append(printType(actualTypeArguments[i], o));
+        return sb.toString();
     }
 
     public final String typeNameForVoidFun(Object o) {
-        String str = "(";
+        StringBuilder sb = new StringBuilder();
+        sb.append("(");
         if (actualTypeArguments != null && actualTypeArguments.length > 0) {
             for (int i = 0; i < actualTypeArguments.length; i++) {
-                if (i != 0) str += ",";
-                str += printType(actualTypeArguments[i], o);
+                if (i != 0) sb.append(",");
+                sb.append(printType(actualTypeArguments[i], o));
             }
         }
-        str += ")=>void";
-        return str;
+        sb.append(")=>void");
+        return sb.toString();
     }
     
     public final String typeNameForOthers(Object o) {
-        String str = rawType.typeName();
-        str += "[";
+        StringBuilder sb = new StringBuilder();
+        sb.append(rawType.typeName());
+        sb.append("[");
         for (int i = 0; i < actualTypeArguments.length; i ++) {
-            if (i != 0) str += ",";
-            str += printType(actualTypeArguments[i], o);
+            if (i != 0) sb.append(",");
+            sb.append(printType(actualTypeArguments[i], o));
         }
-        str += "]";
-        return str;
+        sb.append("]");
+        return sb.toString();
     }
 
     public void $_serialize(X10JavaSerializer serializer) throws IOException {
@@ -227,9 +297,5 @@ public final class ParameterizedType<T> implements Type<T>, X10JavaSerializable 
         deserializer.readArray(actualTypeArguments);
         pt.actualTypeArguments = actualTypeArguments;
         return pt;
-    }
-
-    public short $_get_serialization_id() {
-        return _serialization_id;
     }
 }

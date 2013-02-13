@@ -1,8 +1,15 @@
 /*
- * This file is part of the Polyglot extensible compiler framework.
+ *  This file is part of the X10 project (http://x10-lang.org).
  *
- * Copyright (c) 2000-2006 Polyglot project group, Cornell University
+ *  This file is licensed to You under the Eclipse Public License (EPL);
+ *  You may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *      http://www.opensource.org/licenses/eclipse-1.0.php
  *
+ * This file was originally derived from the Polyglot extensible compiler framework.
+ *
+ *  (C) Copyright 2000-2007 Polyglot project group, Cornell University
+ *  (C) Copyright IBM Corporation 2007-2012.
  */
 
 package polyglot.types;
@@ -22,6 +29,8 @@ import x10.constraint.XFormula;
 import x10.constraint.XLit;
 import x10.constraint.XTerm;
 import x10.constraint.XVar;
+import x10.types.constraints.XTypeLit;
+
 import x10.errors.Errors;
 import x10.types.AsyncDef;
 import x10.types.AsyncDef_c;
@@ -72,13 +81,14 @@ import x10.types.X10TypeEnv_c;
 
 import x10.types.XTypeTranslator;
 import x10.types.X10ProcedureInstance;
-import x10.types.XTypeTranslator.XTypeLit;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.CField;
 import x10.types.constraints.CLocal;
-import x10.types.constraints.CTerms;
+import x10.types.constraints.ConstraintManager;
 import x10.types.constraints.SubtypeConstraint;
 import x10.types.constraints.TypeConstraint;
+import x10.types.constraints.xnative.CNativeLocal;
+
 import x10.types.matcher.*;
 import x10.util.ClosureSynthesizer;
 import x10.util.CollectionFactory;
@@ -386,38 +396,38 @@ public class TypeSystem_c implements TypeSystem
             access = access.Public();
         }
         return constructorDef(pos, errorPos, container,
-                              access, Collections.<Ref<? extends Type>>emptyList()
+                              access, Collections.<Ref<? extends Type>>emptyList(), Collections.<Ref<? extends Type>>emptyList()
                               );
         }
 
 
-    public X10ConstructorDef constructorDef(Position pos, Position errorPos, Ref<? extends ClassType> container, Flags flags, List<Ref<? extends Type>> argTypes) {
-        return constructorDef(pos, errorPos, container, flags, argTypes,  null);
+    public X10ConstructorDef constructorDef(Position pos, Position errorPos, Ref<? extends ClassType> container, Flags flags, List<Ref<? extends Type>> argTypes, List<Ref<? extends Type>> throwsTypes) {
+        return constructorDef(pos, errorPos, container, flags, argTypes, throwsTypes, null);
     }
     public X10ConstructorDef constructorDef(Position pos, Position errorPos, Ref<? extends ClassType> container, Flags flags, List<Ref<? extends Type>> argTypes,
-           Ref<? extends Type> offerType)
+           List<Ref<? extends Type>> throwsTypes, Ref<? extends Type> offerType)
     {
         assert_(container);
         assert_(argTypes);
 
         ThisDef thisDef = ((X10ClassType) Types.get(container)).x10Def().thisDef();
 
-        return constructorDef(pos, errorPos, container, flags, Types.ref(Types.get(container)), argTypes, thisDef, dummyLocalDefs(argTypes),
+        return constructorDef(pos, errorPos, container, flags, Types.ref(Types.get(container)), argTypes, throwsTypes, thisDef, dummyLocalDefs(argTypes),
                 null, null,  offerType);
     }
 
     public X10ConstructorDef constructorDef(Position pos, Position errorPos, Ref<? extends ContainerType> container, Flags flags, Ref<? extends Type> returnType,
-            List<Ref<? extends Type>> argTypes, ThisDef thisDef, List<LocalDef> formalNames, Ref<CConstraint> guard, Ref<TypeConstraint> typeGuard,
+            List<Ref<? extends Type>> argTypes, List<Ref<? extends Type>> throwsTypes, ThisDef thisDef, List<LocalDef> formalNames, Ref<CConstraint> guard, Ref<TypeConstraint> typeGuard,
             Ref<? extends Type> offerType)
     {
         assert_(container);
         assert_(argTypes);
-        return new X10ConstructorDef_c(this, pos, errorPos, container, flags, returnType, argTypes, thisDef, formalNames, guard, typeGuard,  offerType);
+        return new X10ConstructorDef_c(this, pos, errorPos, container, flags, returnType, argTypes, throwsTypes, thisDef, formalNames, guard, typeGuard,  offerType);
     }
     
     public X10InitializerDef initializerDef(Position pos, Ref<? extends ClassType> container, Flags flags) {
        // String fullNameWithThis = "<init>#this";
-        XVar thisVar = CTerms.makeThis(); // XTerms.makeLocal(thisName);
+        XVar thisVar = ConstraintManager.getConstraintSystem().makeThis(); // XTerms.makeLocal(thisName);
 
         return initializerDef(pos, container, flags, thisVar);
     }
@@ -445,23 +455,25 @@ public class TypeSystem_c implements TypeSystem
     
     public X10MethodDef methodDef(Position pos, Position errorPos, Ref<? extends ContainerType> container, Flags flags,
             Ref<? extends Type> returnType, Name name,
-            List<Ref<? extends Type>> argTypes) {
-        return methodDef(pos, errorPos, container, flags, returnType, name, argTypes, null);
+            List<Ref<? extends Type>> argTypes, List<Ref<? extends Type>> throwsTypes) {
+        return methodDef(pos, errorPos, container, flags, returnType, name, argTypes, throwsTypes, null);
     }
     public X10MethodDef methodDef(Position pos, Position errorPos, Ref<? extends ContainerType> container,
                                   Flags flags, Ref<? extends Type> returnType, Name name,
-                                  List<Ref<? extends Type>> argTypes,  Ref<? extends Type> offerType)
+                                  List<Ref<? extends Type>> argTypes, List<Ref<? extends Type>> throwsTypes, Ref<? extends Type> offerType)
     {
         ThisDef thisDef = ((X10ClassType) Types.get(container)).x10Def().thisDef();
         assert (!name.toString().contains(AtDef.DUMMY_AT_ASYNC));
         // set up null thisVar for method def's, so the outer contexts are searched for thisVar.
         return methodDef(pos, errorPos, container, flags, returnType, name, Collections.<ParameterType>emptyList(), argTypes,
-                         thisDef, dummyLocalDefs(argTypes), null, null, offerType, null);
+                         throwsTypes, thisDef, dummyLocalDefs(argTypes), null, null, offerType, null);
     }
 
     public X10MethodDef methodDef(Position pos, Position errorPos, Ref<? extends ContainerType> container,
                                   Flags flags, Ref<? extends Type> returnType, Name name,
-                                  List<ParameterType> typeParams, List<Ref<? extends Type>> argTypes,
+                                  List<ParameterType> typeParams,
+                                  List<Ref<? extends Type>> argTypes,
+                                  List<Ref<? extends Type>> throwsTypes,
                                   ThisDef thisDef, List<LocalDef> formalNames,
                                   Ref<CConstraint> guard,
                                   Ref<TypeConstraint> typeGuard,
@@ -472,7 +484,7 @@ public class TypeSystem_c implements TypeSystem
         assert_(returnType);
         assert_(typeParams);
         assert_(argTypes);
-        return new X10MethodDef_c(this, pos, errorPos, container, flags, returnType, name, typeParams, argTypes, thisDef, formalNames, guard, typeGuard, offerType, body);
+        return new X10MethodDef_c(this, pos, errorPos, container, flags, returnType, name, typeParams, argTypes, throwsTypes, thisDef, formalNames, guard, typeGuard, offerType, body);
     }
     public ClassDef classDefOf(Type t) {
         t = Types.baseType(t);
@@ -496,15 +508,6 @@ public class TypeSystem_c implements TypeSystem
 
         if (child == a)
             return false;
-
-        // XTENLANG-2118: this short-circuit is no longer valid for classes that don't extend x10.lang.Object
-        //ClassDef o = classDefOf(Object());
-        //
-        //if (ancestor == o)
-        //    return true;
-        //
-        //if (child == o)
-        //    return false;
 
         Type sup = Types.get(child.superType());
 
@@ -799,7 +802,15 @@ public class TypeSystem_c implements TypeSystem
      **/
     public boolean isThrowable(Type type) {
         assert_(type);
-        return emptyContextSubtype(type,Throwable());
+        return emptyContextSubtype(type,CheckedThrowable());
+    }
+    public boolean isException(Type type) {
+        assert_(type);
+        return emptyContextSubtype(type,Exception());
+    }
+    public boolean isError(Type type) {
+        assert_(type);
+        return emptyContextSubtype(type,Error());
     }
 
     
@@ -808,7 +819,7 @@ public class TypeSystem_c implements TypeSystem
      * uncheckedExceptions().
      */
     public boolean isUncheckedException(Type type) {
-        return isThrowable(type) || isJavaUncheckedException(type);
+        return isException(type) || isError(type);
     }
     /**
      * Returns a list of the Throwable types that need not be declared
@@ -816,9 +827,8 @@ public class TypeSystem_c implements TypeSystem
      */
     public Collection<Type> uncheckedExceptions() {
         List<Type> l = new ArrayList<Type>(1);
-        l.add(Throwable());
-        l.add(JavaRuntimeException());
-        l.add(JavaError());
+        l.add(Exception());
+        l.add(Error());
         return l;
         }
     
@@ -1039,6 +1049,8 @@ public class TypeSystem_c implements TypeSystem
     				}
     			}
     		}
+    		
+    		if (!ot.isAny() && hasMethodNamed((ContainerType)Any(), name)) return true;
     	}
 
     	return false;
@@ -1337,46 +1349,45 @@ public class TypeSystem_c implements TypeSystem
         return new X10TypeMatcher(name);
     }
 
-    public MethodInstance SUPER_findMethod(Type container, MethodMatcher matcher)
-    throws SemanticException {
+    public MethodInstance SUPER_findMethod(Type container, MethodMatcher matcher) throws SemanticException {
 
-	assert_(container);
+    	assert_(container);
 
-	Context context = matcher.context();
+    	Context context = matcher.context();
 
-	List<MethodInstance> acceptable = findAcceptableMethods(container, matcher);
+    	List<MethodInstance> acceptable = findAcceptableMethods(container, matcher);
+    	
+    	if (acceptable.size() == 0) {
+    		throw new NoMemberException(NoMemberException.METHOD,
+    				"No valid method call found for call in given type."
+    						+ "\n\t Call: " + matcher.stripConstraints()
+    						+ "\n\t Type: " + Types.stripConstraintsIfDynamicCalls(container));
 
-	if (acceptable.size() == 0) {
-	    throw new NoMemberException(NoMemberException.METHOD,
-	                                "No valid method call found for call in given type."
-	    		+ "\n\t Call: " + matcher.stripConstraints()
-	    		+ "\n\t Type: " + Types.stripConstraintsIfDynamicCalls(container));
+    	}
 
-	}
+    	Collection<MethodInstance> maximal =
+    			findMostSpecificProcedures(container, acceptable, (Matcher<MethodInstance>) matcher, context);
 
-	Collection<MethodInstance> maximal =
-	    findMostSpecificProcedures(container, acceptable, (Matcher<MethodInstance>) matcher, context);
+    	if (maximal.size() > 1) {
+    		StringBuffer sb = new StringBuffer();
+    		for (Iterator<MethodInstance> i = maximal.iterator(); i.hasNext();) {
+    			MethodInstance ma =  i.next();
+    			sb.append(ma.container());
+    			sb.append(".");
+    			sb.append(ma.signature());
+    			if (i.hasNext()) {
+    				if (maximal.size() == 2) {
+    					sb.append(" and ");
+    				}
+    				else {
+    					sb.append(", ");
+    				}
+    			}
+    		}
 
-	if (maximal.size() > 1) {
-	    StringBuffer sb = new StringBuffer();
-	    for (Iterator<MethodInstance> i = maximal.iterator(); i.hasNext();) {
-		MethodInstance ma =  i.next();
-		sb.append(ma.container());
-		sb.append(".");
-		sb.append(ma.signature());
-		if (i.hasNext()) {
-		    if (maximal.size() == 2) {
-			sb.append(" and ");
-		    }
-		    else {
-			sb.append(", ");
-		    }
-		}
-	    }
-
-	    throw Errors.MultipleMethodDefsMatch.make(maximal, matcher.toString(),
-	                                              Position.COMPILER_GENERATED);
-	}
+    		throw Errors.MultipleMethodDefsMatch.make(maximal, matcher.toString(),
+    				Position.COMPILER_GENERATED);
+    	}
 
 	MethodInstance mi = maximal.iterator().next();
 	return mi;
@@ -1443,41 +1454,41 @@ public class TypeSystem_c implements TypeSystem
 	}
 
 	if (maximal.size() > 1) {
-	    // If exactly one method is not abstract, it is the most specific.
-	    List<T> notAbstract = new ArrayList<T>(maximal.size());
-	    for (Iterator<T> j = maximal.iterator(); j.hasNext(); ) {
-		T p = j.next();
-		if (! (p instanceof MemberInstance<?>) || ! ((MemberInstance<?>) p).flags().isAbstract()) {
-		    notAbstract.add(p);
-		}
-	    }
-
-	    if (notAbstract.size() == 1) {
-		maximal = notAbstract;
-	    }
-	    else if (notAbstract.size() == 0) {
-		// all are abstract; if all signatures match, any will do.
-		Iterator<T> j = maximal.iterator();
-		first = j.next();
-		S firstDecl = first.def();
-		List<Type> firstFormals = new TransformingList<Ref<? extends Type>,Type>(firstDecl.formalTypes(), new DerefTransform<Type>());
-		while (j.hasNext()) {
-		    T p = j.next();
-
-		    // Use the declarations to compare formals.
-		    S pDecl = p.def();
-
-		    List<Type> pFormals = new TransformingList<Ref<? extends Type>,Type>(pDecl.formalTypes(), new DerefTransform<Type>());
-
-		    if (! CollectionUtil.allElementwise(firstFormals, pFormals, new TypeEquals(context))) {
-			// not all signatures match; must be ambiguous
-			return maximal;
-		    }
+		// If exactly one method is not abstract, it is the most specific.
+		List<T> notAbstract = new ArrayList<T>(maximal.size());
+		for (Iterator<T> j = maximal.iterator(); j.hasNext(); ) {
+			T p = j.next();
+			if (! (p instanceof MemberInstance<?>) || ! ((MemberInstance<?>) p).flags().isAbstract()) {
+				notAbstract.add(p);
+			}
 		}
 
-		// all signatures match, just take the first
-		maximal = Collections.<T>singletonList(first);
-	    }
+		if (notAbstract.size() == 1) {
+			maximal = notAbstract;
+		}
+		else if (notAbstract.size() == 0) {
+			// all are abstract; if all signatures match, any will do.
+			Iterator<T> j = maximal.iterator();
+			first = j.next();
+			S firstDecl = first.def();
+			List<Type> firstFormals = new TransformingList<Ref<? extends Type>,Type>(firstDecl.formalTypes(), new DerefTransform<Type>());
+			while (j.hasNext()) {
+				T p = j.next();
+
+				// Use the declarations to compare formals.
+				S pDecl = p.def();
+
+				List<Type> pFormals = new TransformingList<Ref<? extends Type>,Type>(pDecl.formalTypes(), new DerefTransform<Type>());
+
+				if (! CollectionUtil.allElementwise(firstFormals, pFormals, new TypeEquals(context))) {
+					// not all signatures match; must be ambiguous
+					return maximal;
+				}
+			}
+
+			// all signatures match, just take the first
+			maximal = Collections.<T>singletonList(first);
+		}
 	}
 
 	return maximal;
@@ -1590,99 +1601,98 @@ public class TypeSystem_c implements TypeSystem
      * Populates the list acceptable with those MethodInstances which are
      * Applicable and Accessible as defined by JLS 15.11.2.1
      */
-    private List<MethodInstance> superFindAcceptableMethods(Type container, MethodMatcher matcher)
-    throws SemanticException {
-        if (container==null) return Collections.EMPTY_LIST;
-        assert_(container);
-        
-    // Collect allMethods with the relevant name
-    Name name = matcher.name();
-    Context context = matcher.context();
-	List<MethodInstance> allMethods = new ArrayList<MethodInstance>();
-	Set<Type> visitedTypes = CollectionFactory.newHashSet();
+    private List<MethodInstance> superFindAcceptableMethods(Type container, MethodMatcher matcher) throws SemanticException {
+    	if (container==null) return Collections.EMPTY_LIST;
+    	assert_(container);
 
-	LinkedList<Type> typeQueue = new LinkedList<Type>();
-	typeQueue.addLast(container);
+    	// Collect allMethods with the relevant name
+    	Name name = matcher.name();
+    	Context context = matcher.context();
+    	List<MethodInstance> allMethods = new ArrayList<MethodInstance>();
+    	Set<Type> visitedTypes = CollectionFactory.newHashSet();
 
-	Q:
-	    while (! typeQueue.isEmpty()) {
-		Type t = typeQueue.removeFirst();
+    	LinkedList<Type> typeQueue = new LinkedList<Type>();
+    	typeQueue.addLast(container);
+    	typeQueue.addLast(container.typeSystem().Any());
 
-		if (t instanceof ContainerType) {
-		    ContainerType type = (ContainerType) t;
+    	Q: while (! typeQueue.isEmpty()) {
+			Type t = typeQueue.removeFirst();
 
-		    for (Type s : visitedTypes) {
-			if (typeEquals(type, s, context))
-			    continue Q;
-		    }
+			if (t instanceof ContainerType) {
+				ContainerType type = (ContainerType) t;
 
-		    if (visitedTypes.contains(type)) {
-			continue;
-		    }
+				for (Type s : visitedTypes) {
+					if (typeEquals(type, s, context))
+						continue Q;
+				}
 
-		    visitedTypes.add(type);
+				if (visitedTypes.contains(type)) {
+					continue;
+				}
 
-		    if (reporter.should_report(Reporter.types, 2))
-			reporter.report(2, "Searching type " + type + " for method " + matcher.signature());
+				visitedTypes.add(type);
 
-            allMethods.addAll(type.methodsNamed(name));
-		}
+				if (reporter.should_report(Reporter.types, 2))
+					reporter.report(2, "Searching type " + type + " for method " + matcher.signature());
 
-		if (t instanceof ObjectType) {
-		    ObjectType ot = (ObjectType) t;
-
-		    if (ot.superClass() != null) {
-			typeQueue.addLast(ot.superClass());
-		    }
-
-		    typeQueue.addAll(ot.interfaces());
-		}
-	    }
-
-        // Collected all methods, now let's filter them
-        List<Type> typeParams = matcher.typeArgs;
-        List<Type> argTypes = matcher.argTypes;
-        boolean isDumbMatcher = matcher.isDumbMatcher;
-
-        SemanticException error = null;
-        List<MethodInstance> resolved = resolveProcedure(container, context, allMethods, typeParams, argTypes, isDumbMatcher);
-
-        List<MethodInstance> acceptable = new ArrayList<MethodInstance>();
-		for (MethodInstance mi : resolved)	{
-				MethodInstance oldmi = mi;
-			    mi = matcher.instantiate(mi);
-
-			    if (mi == null) {
-				continue;
-			    }
-			    mi.setOrigMI(oldmi);
-			    if (isAccessible(mi, context)) {
-				    acceptable.add(mi);
-			    }
-			    else {
-                    // method call is valid, but the method is
-                    // unacceptable.
-                    if (error == null) {
-                        error = new NoMemberException(NoMemberException.METHOD,
-                                                      "Method " + mi.signature() +
-                                                      " in " + container +
-                        " is inaccessible.");
-                    }
-			    }
+				allMethods.addAll(type.methodsNamed(name));
 			}
 
-        
-        if (acceptable.size() == 0) {
-            if (error == null) {
-                  throw new NoMemberException(NoMemberException.METHOD,
-                          "No valid method call found for call in given type."
-                            + "\n\t Call: " + matcher.stripConstraints()
-                            + "\n\t Type: " + Types.stripConstraintsIfDynamicCalls(container));
-            }
-            throw error;
-        }
+			if (t instanceof ObjectType) {
+				ObjectType ot = (ObjectType) t;
 
-        return acceptable;
+				if (ot.superClass() != null) {
+					typeQueue.addLast(ot.superClass());
+				}
+
+				typeQueue.addAll(ot.interfaces());
+			}
+		}
+
+    	// Collected all methods, now let's filter them
+    	List<Type> typeParams = matcher.typeArgs;
+    	List<Type> argTypes = matcher.argTypes;
+    	boolean isDumbMatcher = matcher.isDumbMatcher;
+
+    	SemanticException error = null;
+    	List<MethodInstance> resolved = resolveProcedure(container, context, allMethods, typeParams, argTypes, isDumbMatcher);
+
+    	List<MethodInstance> acceptable = new ArrayList<MethodInstance>();
+    	for (MethodInstance mi : resolved)	{
+    		MethodInstance oldmi = mi;
+    		mi = matcher.instantiate(mi);
+
+    		if (mi == null) {
+    			continue;
+    		}
+    		mi.setOrigMI(oldmi);
+    		if (isAccessible(mi, context)) {
+    			acceptable.add(mi);
+    		}
+    		else {
+    			// method call is valid, but the method is
+    			// unacceptable.
+    			if (error == null) {
+    				error = new NoMemberException(NoMemberException.METHOD,
+    						"Method " + mi.signature() +
+    						" in " + container +
+    						" is inaccessible.");
+    			}
+    		}
+    	}
+
+
+    	if (acceptable.size() == 0) {
+    		if (error == null) {
+    			throw new NoMemberException(NoMemberException.METHOD,
+    					"No valid method call found for call in given type."
+    							+ "\n\t Call: " + matcher.stripConstraints()
+    							+ "\n\t Type: " + Types.stripConstraintsIfDynamicCalls(container));
+    		}
+    		throw error;
+    	}
+
+    	return acceptable;
     }
 
     public static <D extends ProcedureDef, T extends X10ProcedureInstance<D> & MemberInstance<D>> List<T> resolveProcedure(Type container, Context context, List<T> allMethods, List<Type> typeParams, List<Type> argTypes, boolean dumbMatcher) {
@@ -1734,6 +1744,7 @@ public class TypeSystem_c implements TypeSystem
                         break;
                     }
                 }
+                
             }
             if (isOk)
                 resolved.add(mi);
@@ -1913,7 +1924,7 @@ public class TypeSystem_c implements TypeSystem
     }
 
     public void checkOverride(MethodInstance mi, MethodInstance mj, Context context) throws SemanticException {
-	env(context).checkOverride(mi, mj);
+        env(context).checkOverride(mi, mj);
     }
 
    // public void checkOverride(MethodInstance mi, MethodInstance mj, boolean allowCovariantReturn, Context context) throws SemanticException {
@@ -2018,7 +2029,7 @@ public class TypeSystem_c implements TypeSystem
         ThisDef thisDef = thisDef(pos, Types.ref(container));
         X10MethodDef md = (X10MethodDef) methodDef(pos, pos, Types.ref(container), flags,
                                                    Types.ref(returnType), name, Collections.<ParameterType>emptyList(),
-                                                   args, thisDef, formalNames, null, null,  null, null);
+                                                   args, Collections.<Ref<? extends Type>>emptyList(), thisDef, formalNames, null, null,  null, null);
         List<ParameterType> typeParams = new ArrayList<ParameterType>();
         i = 0;
         for (Type r : typeArgs) {
@@ -2042,7 +2053,7 @@ public class TypeSystem_c implements TypeSystem
         }
         ThisDef thisDef = thisDef(pos, Types.ref(container));
         X10ConstructorDef cd = (X10ConstructorDef) constructorDef(pos, pos, Types.ref(container), flags,
-                Types.ref(container), args,
+                Types.ref(container), args, Collections.<Ref<? extends Type>>emptyList(),
                 thisDef, formalNames, null, null,  null);
 //        List<Ref<? extends Type>> typeParams = new ArrayList<Ref<? extends Type>>();
 //        i = 0;
@@ -2052,7 +2063,7 @@ public class TypeSystem_c implements TypeSystem
 //        cd.setTypeParameters(typeParams);
         return ((X10ConstructorInstance) cd.asInstance()).error(error);
     }
-
+    
     public X10LocalInstance createFakeLocal(Name name, SemanticException error) {
         Position pos = Position.COMPILER_GENERATED;
         Type type = unknownType(pos);
@@ -2104,30 +2115,17 @@ public class TypeSystem_c implements TypeSystem
         return forName(name);
     }
 
-    protected X10ClassType OBJECT_;
     protected Type CLASS_;
     protected X10ClassType STRING_;
-    protected X10ClassType THROWABLE_;
-    protected X10ClassType JLTHROWABLE_;
+    protected X10ClassType EXCEPTION_;
 
     public Type JavaClass()   { 
         if (CLASS_ != null) return CLASS_;
         return CLASS_ = load("java.lang.Class"); 
     }
-    public X10ClassType JavaThrowable() {
-        if (JLTHROWABLE_ != null) return JLTHROWABLE_;
-        return JLTHROWABLE_ = load("java.lang.Throwable");
-    }
-    public X10ClassType JavaError() { return load("java.lang.Error"); }
-    public X10ClassType JavaException() { return load("java.lang.Exception"); }
-    public X10ClassType JavaRuntimeException() { return load("java.lang.RuntimeException"); }
     public Type Cloneable() { return load("java.lang.Cloneable"); }
+    public Type JLIterable() { return load("java.lang.Iterable"); }
     public Type Serializable() { return load("java.io.Serializable"); }
-    public Type JavaNullPointerException() { return load("java.lang.NullPointerException"); }
-    public Type JavaClassCastException()   { return load("java.lang.ClassCastException"); }
-    public Type JavaOutOfBoundsException() { return load("java.lang.ArrayIndexOutOfBoundsException"); }
-    public Type JavaArrayStoreException()  { return load("java.lang.ArrayStoreException"); }
-    public Type JavaArithmeticException()  { return load("java.lang.ArithmeticException"); }
 
     protected NullType createJavaNull() {
 	return new NullType(this);
@@ -2283,12 +2281,6 @@ public class TypeSystem_c implements TypeSystem
         return GLOBAL_REF_;
     }
 
-    public X10ClassType Object() {
-        if (OBJECT_ == null)
-            OBJECT_ = load("x10.lang.Object");
-        return (X10ClassType) OBJECT_;
-    }
-
     public Type Class() {
         if (CLASS_ != null)
             return CLASS_;
@@ -2320,11 +2312,11 @@ public class TypeSystem_c implements TypeSystem
         return t;
     }
 
-    public X10ClassType Throwable() {
-        if (THROWABLE_ != null)
-            return (X10ClassType) THROWABLE_;
-        X10ClassType t = load("x10.lang.Throwable");
-        THROWABLE_ = t;
+    public X10ClassType Exception() {
+        if (EXCEPTION_ != null)
+            return (X10ClassType) EXCEPTION_;
+        X10ClassType t = load("x10.lang.Exception");
+        EXCEPTION_ = t;
         return t;
     }
 
@@ -2332,8 +2324,12 @@ public class TypeSystem_c implements TypeSystem
         return load("x10.lang.Error");
     }
 
-    public X10ClassType Exception() {
-        return load("x10.lang.Exception");
+    public X10ClassType CheckedThrowable() {
+        return load("x10.lang.CheckedThrowable");
+    }
+
+    public X10ClassType CheckedException() {
+        return load("x10.lang.CheckedException");
     }
 
     public X10ClassType NullPointerException() {
@@ -2394,6 +2390,29 @@ public class TypeSystem_c implements TypeSystem
             reducibleType_ = load("x10.lang.Reducible"); // java file
         return reducibleType_;
     }
+        
+    protected X10ClassType arithmeticType_;
+    public X10ClassType Arithmetic() {
+        if (arithmeticType_ == null)
+            arithmeticType_ = load("x10.lang.Arithmetic");
+        return arithmeticType_;
+    }
+     
+    protected X10ClassType bitwiseType_;
+    public X10ClassType Bitwise() {
+        if (bitwiseType_ == null)
+            bitwiseType_ = load("x10.lang.Bitwise");
+        return bitwiseType_;
+    }
+  
+    protected X10ClassType orderedType_;
+    public X10ClassType Ordered() {
+        if (orderedType_ == null)
+            orderedType_ = load("x10.util.Ordered");
+        return orderedType_;
+    }
+
+    
 
     protected X10ClassType nativeRepType_;
     public X10ClassType NativeRep() {
@@ -2421,6 +2440,20 @@ public class TypeSystem_c implements TypeSystem
         if (EndpointType_ == null)
             EndpointType_ = load("x10.compiler.Endpoint");
         return EndpointType_;
+    }
+
+    protected X10ClassType RuntimeProfileType_;
+    public X10ClassType RuntimeProfile() {
+        if (RuntimeProfileType_ == null)
+        	RuntimeProfileType_ = load("x10.lang.Runtime.Profile");
+        return RuntimeProfileType_;
+    }
+
+    protected X10ClassType ProfileType_;
+    public X10ClassType Profile() {
+        if (ProfileType_ == null)
+        	ProfileType_ = load("x10.compiler.Profile");
+        return ProfileType_;
     }
 
     protected X10ClassType compileTimeConstantType_;
@@ -2516,6 +2549,13 @@ public class TypeSystem_c implements TypeSystem
         return runtimeType_;
     }
 
+    protected X10ClassType systemType_;
+    public X10ClassType System() {
+        if (systemType_ == null)
+        	systemType_ = load("x10.lang.System");
+        return systemType_;
+    }
+
     protected X10ClassType embedType_;
     public X10ClassType Embed() {
         if (embedType_ == null)
@@ -2523,11 +2563,18 @@ public class TypeSystem_c implements TypeSystem
         return embedType_;
     }
 
-    protected X10ClassType throwsType_;
-    public X10ClassType Throws() {
-        if (throwsType_ == null)
-        	throwsType_ = load("x10.interop.java.Throws");
-        return throwsType_;
+    protected X10ClassType perProcessType_;
+    public X10ClassType PerProcess() {
+        if (perProcessType_ == null)
+            perProcessType_ = load("x10.compiler.PerProcess");
+        return perProcessType_;
+    }
+
+    protected X10ClassType remoteInvocationType_;
+    public X10ClassType RemoteInvocation() {
+        if (remoteInvocationType_ == null)
+            remoteInvocationType_ = load("x10.compiler.RemoteInvocation");
+        return remoteInvocationType_;
     }
 
     protected X10ClassType arrayType_ = null;
@@ -2939,17 +2986,7 @@ public class TypeSystem_c implements TypeSystem
                 "x10.lang.Float".equals(arrayType) ||
                 "x10.lang.Long".equals(arrayType);
     }
-    
-    public boolean isJavaThrowable(Type type) {
-        assert_(type);
-        return emptyContextSubtype(type,JavaThrowable());
-    }
 
-    public boolean isJavaUncheckedException(Type type) {
-    	assert_(type);
-    	return emptyContextSubtype(type,JavaRuntimeException()) ||
-    	       emptyContextSubtype(type, JavaError());
-    }
     
     public Type arrayOf(Ref<? extends Type> type, int dims) {
 	return arrayOf(null, type, dims);
@@ -3358,11 +3395,6 @@ public class TypeSystem_c implements TypeSystem
 		    // any superclasses it may have.
 		}
 	    }
-	    // A work-around for the current transient state of the system in which
-	 	   // Object is an interface.
-	 	   if (isStructType(t)) {
-	 		   superInterfaces.remove(Object());
-	 	   }
 
 	    return superInterfaces;
 	}
@@ -4090,8 +4122,11 @@ public class TypeSystem_c implements TypeSystem
             //typeEquals(me, Struct(), emptyContext());
     }
 
-    public boolean isObject(Type me) {
-        return typeEquals(me, Object(), emptyContext());
+    public boolean isHandOptimizedInterface(Type me) {
+        return hasSameClassDef(me, Any()) ||
+                hasSameClassDef(me, Arithmetic()) ||
+                hasSameClassDef(me, Ordered()) ||
+                hasSameClassDef(me, Bitwise());
     }
 
     public boolean isString(Type me) {
@@ -4206,6 +4241,9 @@ public class TypeSystem_c implements TypeSystem
         return kind(t, c) == Kind.OBJECT;
     }
 
+    public boolean isInterfaceType(Type t, Context c) {
+        return kind(t, c) == Kind.INTERFACE;
+    }
 
     public boolean isStructType(Type t) {
         return kind(t, null) == Kind.STRUCT;
@@ -4494,6 +4532,7 @@ public class TypeSystem_c implements TypeSystem
             }
             
             for (XFormula x : c.atoms()) {
+            	//assert x != null;
                 if (hasUnknown(x, visited)) {
                     return true;
                 }
@@ -4539,5 +4578,66 @@ public class TypeSystem_c implements TypeSystem
     /** Return true if constraints in the type are all consistent. */
     public boolean consistent(Type t, Context context) {
         return env(context).consistent(t);
+    }
+
+    /**
+     * Returns true iff <p1> throws fewer exceptions than <p2>.
+     */
+    public <T extends ProcedureDef> boolean throwsSubset(ProcedureInstance<T> p1, ProcedureInstance<T> p2) {
+        assert_(p1);
+        assert_(p2);
+        return ((ProcedureInstance_c<T>) p1).throwsSubset(p2);
+    }
+    
+    // checks that the number of type args match the number of type params
+    public static void internalConsistencyCheck (Type t) {
+    	if (t instanceof X10ParsedClassType_c) {
+    		X10ParsedClassType_c t2 = (X10ParsedClassType_c) t;
+    		X10ClassDef t2_def = t2.def();
+    		List<ParameterType> t2_params = t2_def.typeParameters();
+    		List<Type> t2_args = t2.typeArguments();
+    		int num_params = t2_params.size();
+    		// sometimes t2_args == null means it has not yet been filled in
+    		// sometimes it means 0 args
+    		// this ambiguity weakens the following check but that's life
+    		if (t2_args == null) { return; }
+    		int num_args = t2_args.size();
+    		// sometimes num_args==0 can mean that the type is used in a static fashion
+    		// e.g. class C[T] { static PI = 3.142; } ... C.PI;
+    		if (num_args == 0) return;
+    		if (num_params != num_args) {
+    			throw new InternalCompilerError(t+" has "+t2_params+" type params but "+t2_args+" type arguments.");
+    		}
+    	} else if (t instanceof ConstrainedType) {
+    		ConstrainedType t2 = (ConstrainedType) t;
+    		internalConsistencyCheck(t2.baseType().get());
+    		// Look for broken types inside variables in the constraint
+    		CConstraint c = t2.constraint().get();
+    		for (XTerm xt : c.getTerms()) {
+    			if (xt instanceof CNativeLocal) {
+    				X10LocalDef xld = ((CNativeLocal) xt).name();
+    				Type t3 = xld.type().get();
+    				if (t3 == t) return; // simple cycle check
+    				internalConsistencyCheck(t3);
+    			}
+    		}
+    	}
+    	
+	}
+    
+    // calling this on unpopulated mi may result in a runtime error
+    public static void internalConsistencyCheck (MethodInstance mi) {
+        for (Type t : mi.formalTypes()) {
+    		TypeSystem_c.internalConsistencyCheck(t);
+    	}
+        for (Ref<? extends Type> t : mi.def().formalTypes()) {
+    		TypeSystem_c.internalConsistencyCheck(t.get());
+    	}
+        for (LocalDef ld : mi.def().formalNames()) {
+    		TypeSystem_c.internalConsistencyCheck(ld.type().get());
+    	}
+        for (LocalInstance li : mi.formalNames()) {
+    		TypeSystem_c.internalConsistencyCheck(li.type());
+    	}    	
     }
 }

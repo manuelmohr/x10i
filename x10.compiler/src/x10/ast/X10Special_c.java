@@ -45,7 +45,7 @@ import x10.types.checker.PlaceChecker;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.CConstraint;
 import x10.types.constraints.CThis;
-import x10.types.constraints.QualifiedVar;
+import x10.types.constraints.ConstraintManager;
 import x10.types.constraints.XConstrainedTerm;
 
 public class X10Special_c extends Special_c implements X10Special {
@@ -153,7 +153,7 @@ public class X10Special_c extends Special_c implements X10Special {
         if (kind == THIS) {
             Type tt = Types.baseType(t);
             CConstraint cc = Types.xclause(t);
-            cc = cc == null ? new CConstraint() : cc.copy();
+            cc = cc == null ? ConstraintManager.getConstraintSystem().makeCConstraint() : cc.copy();
             try {
                 // In case there is a qualifier, bind self to
                 // both the thisVar of the corresponding outer context
@@ -183,21 +183,27 @@ public class X10Special_c extends Special_c implements X10Special {
         }
         else if (kind == SUPER) {
             Type superClass =  Types.superClass(t);
-            Type tt = Types.baseType(superClass);
-            CConstraint cc = Types.xclause(superClass);
-            cc = cc == null ? new CConstraint() : cc.copy();
-            try {
-                XVar var = (XVar) xts.xtypeTranslator().translate(cc, this, c);
-                if (var != null) {
-                    cc.addSelfBinding(var);
-                    //PlaceChecker.AddThisHomeEqualsPlaceTerm(cc, var, c);
-                }
-            } catch (IllegalConstraint z) {
-            	Errors.issue(tc.job(), z);
+            if (superClass == null) {
+            	Errors.issue(tc.job(), new SemanticException("One cannot use super in a class that does not extend anything.", position()));
+            	// [DC] this seems like a reasonable substitute...
+	            result = (X10Special) type(ts.Null());
+            } else {
+	            Type tt = Types.baseType(superClass);
+	            CConstraint cc = Types.xclause(superClass);
+	            cc = cc == null ? ConstraintManager.getConstraintSystem().makeCConstraint() : cc.copy();
+	            try {
+	                XVar var = (XVar) xts.xtypeTranslator().translate(cc, this, c);
+	                if (var != null) {
+	                    cc.addSelfBinding(var);
+	                    //PlaceChecker.AddThisHomeEqualsPlaceTerm(cc, var, c);
+	                }
+	            } catch (IllegalConstraint z) {
+	            	Errors.issue(tc.job(), z);
+	            }
+	            
+	            tt = Types.xclause(Types.baseType(tt), cc);
+	            result = (X10Special) type(tt);
             }
-           
-            tt = Types.xclause(Types.baseType(tt), cc);
-            result = (X10Special) type(tt);
         }
        
         assert result.type() != null;

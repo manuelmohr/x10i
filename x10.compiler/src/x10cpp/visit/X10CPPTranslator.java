@@ -184,16 +184,6 @@ public class X10CPPTranslator extends Translator {
 		}
 		
 		X10CPPCompilerOptions opts = (X10CPPCompilerOptions) job.extensionInfo().getOptions();
-/* 		Statement hooks are no longer needed in the current debugger.  They were used by the "small scale" debugger, based on gdb.
-		if (opts.x10_config.DEBUG && n instanceof Stmt && !(n instanceof Assert) && !(n instanceof Block) && !(n instanceof Catch) && !(parent instanceof If) && !(n instanceof For))
-		{
-			w.write("_X10_STATEMENT_HOOK()");
-			if (!(parent instanceof For))
-				w.write("; ");
-			else
-				w.write(", ");
-		}
-*/		
 		
 		final int startLine = w.currentStream().getStreamLineNumber(); // for debug info
 
@@ -299,8 +289,7 @@ public class X10CPPTranslator extends Translator {
 			            			if (s instanceof X10ConstructorCall && ((X10ConstructorCall)s).kind().equals(Kind.SUPER))
 			            			{
 			            				String superClass = ((X10ConstructorCall)s).constructorInstance().returnType().toString();
-			            				if (!"x10.lang.Object".equals(superClass)) // don't bother pointing out an extension of x10.lang.Object in the debug maps
-			            					lineNumberMap.addClassMemberVariable(superClass, superClass, Emitter.mangled_non_method_name(thisClass), ((X10ConstructorCall)s).constructorInstance().returnType().toClass().isX10Struct(), false, true);
+			            				lineNumberMap.addClassMemberVariable(superClass, superClass, Emitter.mangled_non_method_name(thisClass), ((X10ConstructorCall)s).constructorInstance().returnType().toClass().isX10Struct(), false, true);
 			            			}
 		            			}
 		            		}
@@ -620,6 +609,34 @@ public class X10CPPTranslator extends Translator {
 			if (!doPostCompile(options, eq, compilationUnits, cxxCmd)) return false;
 			
 			if (options.buildX10Lib != null) {
+			    if (shared_lib_props.staticLib) {
+			        ArrayList<String> arCmd = new ArrayList<String>();
+			        arCmd.add(shared_lib_props.ar);
+			        arCmd.add(shared_lib_props.arFlags);
+			        arCmd.add(ccb.targetFilePath().getPath());
+			        
+			        ArrayList<String> objFiles = new ArrayList<String>();
+			        for (String file : compiler.flatOutputFiles()) {
+			            int lastPeriod = file.lastIndexOf('.');
+			            if (-1 == lastPeriod) continue;
+			            String suffix = file.substring(lastPeriod+1, file.length());
+			            if (suffix.equals("cc") || suffix.equals("c") || suffix.equals("cpp") || suffix.equals("cxx")) {
+                            objFiles.add(file.substring(file.lastIndexOf(File.separatorChar)+1, lastPeriod)+".o");   
+			            }
+			        }
+			        if (!objFiles.isEmpty()) {
+			            arCmd.addAll(objFiles);
+			            boolean savedKeepOutputFiles = options.keep_output_files;
+			            options.keep_output_files = false;
+			            try {
+			                if (!doPostCompile(options, eq, objFiles, arCmd.toArray(new String[arCmd.size()]))) return false;
+			            } finally {
+			                options.keep_output_files = savedKeepOutputFiles;
+			            }
+			        }
+			    }
+			    
+			    
 				if (!emitPropertiesFile(options, ccb)) return false;
 			}
 
@@ -761,13 +778,13 @@ public class X10CPPTranslator extends Translator {
 
         	proc.waitFor();
 
-        	if (!options.keep_output_files) {
+        	if (!options.keep_output_files && outputFiles != null) {
         		String[] rmCmd = new String[1+outputFiles.size()];
         		rmCmd[0] = "rm";
         		Iterator<String> iter = outputFiles.iterator();
         		for (int i = 1; iter.hasNext(); i++)
         			rmCmd[i] = iter.next();
-        		runtime.exec(rmCmd);
+        		runtime.exec(rmCmd, null, options.output_directory);
         	}
 
         	if (output != null)

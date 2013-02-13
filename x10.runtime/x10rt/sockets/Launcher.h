@@ -38,11 +38,17 @@
 #define X10_LAUNCHER_PARENT "X10_LAUNCHER_PARENT" // the hostname:port of the parent launcher.  This is set by the launcher.
 #define X10_LAUNCHER_RUNLAUNCHER "X10_LAUNCHER_RUNLAUNCHER" // this is a flag to run as a runtime or a launcher.  Set by the launcher.
 #define X10_LAUNCHER_CWD "X10_LAUNCHER_CWD" // the working directory of the program
+#define X10_LAUNCHER_HOST "X10_LAUNCHER_HOST" // the hostname from the hostfile or hostlist
+#define X10_SCRATCH_CWD "X10_SCRATCH_CWD" // Make a new (empty) cwd directory for each place to run in
 #define X10_GDB "X10_GDB" // This flag causes the runtime to launch under gdb in a new xterm
+#define X10_JDB "X10_JDB" // This flag causes the runtime to add extra parameters that java interprets to turn on jdb support in the vm 
+#define X10_JDB_BASE_PORT "X10_JDB_BASE_PORT" // Port to run jdb on (+ the place index)
+#define X10_JDB_SUSPEND "X10_JDB_SUSPEND" // Whether to suspend all, none, or the first place's jdb vms (i.e. start execution paused)
 #define X10_FORCEPORTS "X10_FORCEPORTS" // a way to force specific listen ports, to run without the launcher
 #define X10_NOYIELD "X10_NOYIELD" // setting this flag means "don't issue a sched_yield() after a probe comes up empty".
 #define X10_LAZYLINKS "X10_LAZYLINKS" // flag to establish place to place links to be at startup, instead of lazily.
 #define X10_NOWRITEBUFFER "X10_NOWRITEBUFFER" // turns off non-blocking sockets
+#define X10_LIBRARY_MODE "X10_LIBRARY_MODE" // Don't use our own launcher, but instead rely on some external system.
 // don't miss X10_DEBUGGER_ID and X10_DEBUGGER_NAME over in DebugHelper.h
 
 // Enable/disable debug information
@@ -58,6 +64,11 @@ struct ctrl_msg
 	// followed by the data
 };
 
+static inline bool checkBoolEnvVar(char* value)
+{
+    return (value && !(strcasecmp("false", value) == 0) && !(strcasecmp("0", value) == 0) && !(strcasecmp("f", value) == 0));
+}
+
 /* ************************************************************************ */
 /*                ProcManager class definition                              */
 /* ************************************************************************ */
@@ -67,10 +78,11 @@ class Launcher
 	public:
 		static int _parentLauncherControlLink; /* parent control connection */
 		static void Setup(int argc, char ** argv);
+		static void enterRandomScratchDir(uint32_t _myproc);
 		static void cb_sighandler_cld(int signo);
 		static void cb_sighandler_term(int signo);
 		static int lookupPlace(uint32_t myPlace, uint32_t destPlace, char* response, int responseLen);
-		static int setPort(uint32_t place, char* port);
+		static int setPort(uint32_t place, int port);
 
 	protected:
 		/* SockProcManager_Init.cc */
@@ -109,7 +121,7 @@ class Launcher
 
 		/* parent child structure */
 		char ** _hostlist; /* child host list */
-		char _runtimePort[512]; /* the host:port number of the associated x10 runtime's listen port */
+		char _runtimePort[1024]; /* the host:port number of the associated x10 runtime's listen port */
 		uint32_t _firstchildproc; /* the ID of the first child launcher */
 		uint32_t _numchildren; /* number of launcher children in this node */
 		int * _pidlst; /* list of all spawned pids */

@@ -11,25 +11,26 @@
 
 package x10.core;
 
+import java.io.IOException;
+
 import x10.rtt.RuntimeType;
 import x10.rtt.Type;
 import x10.rtt.Types;
-import x10.x10rt.X10JavaDeserializer;
-import x10.x10rt.X10JavaSerializable;
-import x10.x10rt.X10JavaSerializer;
-
-import java.io.IOException;
+import x10.serialization.X10JavaDeserializer;
+import x10.serialization.X10JavaSerializable;
+import x10.serialization.X10JavaSerializer;
 
 /**
  * Represents a boxed Float value. Boxed representation is used when casting
  * an Float value to type Any, parameter type T or superinterfaces such
  * as Comparable<Float>.
  */
-final public class Float extends Number implements StructI,
-	java.lang.Comparable<Float>, x10.lang.Arithmetic<Float>, x10.util.Ordered<Float>
+final public class Float extends java.lang.Number implements StructI, java.lang.Comparable<Float>,
+// for X10PrettyPrinterVisitor.exposeSpecialDispatcherThroughSpecialInterface
+//    x10.lang.Arithmetic<Float>, x10.util.Ordered<Float>
+    x10.core.Arithmetic.x10$lang$Float, x10.util.Ordered<Float>
 {
     private static final long serialVersionUID = 1L;
-    private static final short _serialization_id = x10.x10rt.DeserializationDispatcher.addDispatcher(x10.x10rt.DeserializationDispatcher.ClosureKind.CLOSURE_KIND_NOT_ASYNC, Float.class);
     
     public static final RuntimeType<?> $RTT = Types.FLOAT;
     public RuntimeType<?> $getRTT() {return $RTT;}
@@ -57,6 +58,11 @@ final public class Float extends Number implements StructI,
     // make $box/$unbox idempotent
     public static Float $box(Float obj) {
         return obj;
+    }
+
+    public static Float $box(Object obj) {
+        if (obj instanceof Float) return (Float) obj;
+        else return $box(((java.lang.Float)obj).floatValue());
     }
 
     public static float $unbox(float value) {
@@ -103,17 +109,22 @@ final public class Float extends Number implements StructI,
     public Float $minus(java.lang.Object b, Type t) { return Float.$box($value - ((Float)b).$value); }
     public Float $times(java.lang.Object b, Type t) { return Float.$box($value * ((Float)b).$value); }
     public Float $over(java.lang.Object b, Type t) { return Float.$box($value / ((Float)b).$value); }
+    // for X10PrettyPrinterVisitor.exposeSpecialDispatcherThroughSpecialInterface
+    public float $plus$F(java.lang.Object b, Type t) { return $value + ((Float)b).$value; }
+    public float $minus$F(java.lang.Object b, Type t) { return $value - ((Float)b).$value; }
+    public float $times$F(java.lang.Object b, Type t) { return $value * ((Float)b).$value; }
+    public float $over$F(java.lang.Object b, Type t) { return $value / ((Float)b).$value; }
     
     // implements Ordered<Float>
     public java.lang.Object $lt(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value < ((Float)b).$value); }
     public java.lang.Object $gt(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value > ((Float)b).$value); }
     public java.lang.Object $le(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value <= ((Float)b).$value); }
     public java.lang.Object $ge(java.lang.Object b, Type t) { return x10.core.Boolean.$box($value >= ((Float)b).$value); }
-    // for X10PrettyPrinterVisitor.returnSpecialTypeFromDispatcher
-    public boolean $lt$O(java.lang.Object b, Type t) { return $value < ((Float)b).$value; }
-    public boolean $gt$O(java.lang.Object b, Type t) { return $value > ((Float)b).$value; }
-    public boolean $le$O(java.lang.Object b, Type t) { return $value <= ((Float)b).$value; }
-    public boolean $ge$O(java.lang.Object b, Type t) { return $value >= ((Float)b).$value; }
+    // for X10PrettyPrinterVisitor.generateSpecialDispatcher
+    public boolean $lt$Z(java.lang.Object b, Type t) { return $value < ((Float)b).$value; }
+    public boolean $gt$Z(java.lang.Object b, Type t) { return $value > ((Float)b).$value; }
+    public boolean $le$Z(java.lang.Object b, Type t) { return $value <= ((Float)b).$value; }
+    public boolean $ge$Z(java.lang.Object b, Type t) { return $value >= ((Float)b).$value; }
 
     // extends abstract class java.lang.Number
     @Override
@@ -133,22 +144,18 @@ final public class Float extends Number implements StructI,
         return (double)$value;
     }
 
-    public void $_serialize(X10JavaSerializer serializer) throws IOException {
-        serializer.write($value);
+    public void $_serialize(X10JavaSerializer $serializer) throws IOException {
+        $serializer.write($value);
     }
 
-    public short $_get_serialization_id() {
-        return _serialization_id;
+    public static X10JavaSerializable $_deserializer(X10JavaDeserializer $deserializer) throws IOException {
+        return $_deserialize_body(null, $deserializer);
     }
 
-    public static X10JavaSerializable $_deserializer(X10JavaDeserializer deserializer) throws IOException {
-        return $_deserialize_body(null, deserializer);
-    }
-
-    public static X10JavaSerializable $_deserialize_body(Float f, X10JavaDeserializer deserializer) throws IOException {
-        float value  = deserializer.readFloat();
-        f = new Float(value);
-        deserializer.record_reference(f);
-        return f;
+    public static X10JavaSerializable $_deserialize_body(Float $_obj, X10JavaDeserializer $deserializer) throws IOException {
+        float value  = $deserializer.readFloat();
+        $_obj = new Float(value);
+        $deserializer.record_reference($_obj);
+        return $_obj;
     }
 }

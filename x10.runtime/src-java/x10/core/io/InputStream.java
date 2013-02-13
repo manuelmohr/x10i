@@ -15,11 +15,25 @@ import x10.core.Ref;
 import x10.rtt.NamedType;
 import x10.rtt.RuntimeType;
 import x10.rtt.Type;
-import x10.rtt.Types;
 
 public class InputStream extends Ref {
   
-	private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
+ 
+    public void $_serialize(x10.serialization.X10JavaSerializer $serializer) throws java.io.IOException {
+        // TODO need check
+        $serializer.write(stream);
+    }
+    public static x10.serialization.X10JavaSerializable $_deserialize_body(InputStream $_obj, x10.serialization.X10JavaDeserializer $deserializer) throws java.io.IOException {
+        // TODO need check
+        $_obj.stream = (java.io.InputStream) $deserializer.readRef();
+        return $_obj;
+    }
+    public static x10.serialization.X10JavaSerializable $_deserializer(x10.serialization.X10JavaDeserializer $deserializer) throws java.io.IOException {
+        InputStream $_obj = new InputStream((java.lang.System[]) null);
+        $deserializer.record_reference($_obj);
+        return $_deserialize_body($_obj, $deserializer);
+    }
 
     private java.io.InputStream stream;
 
@@ -28,20 +42,22 @@ public class InputStream extends Ref {
         super($dummy);
     }
     
-    public InputStream $init(java.io.InputStream stream) {
+    public final InputStream x10$io$InputStreamReader$InputStream$$init$S(java.io.InputStream stream) {
         this.stream = stream;
         return this;
     }
     
+    // creation method for java code (1-phase java constructor)
     public InputStream(java.io.InputStream stream) {
-        this.stream = stream;
+        this((java.lang.System[]) null);
+        x10$io$InputStreamReader$InputStream$$init$S(stream);
     }
     
     public void close() {
         try {
             stream.close();
         } catch (java.io.IOException e) {
-            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
+            throw new x10.io.IOException(e.getMessage());
         }
     }
     
@@ -49,7 +65,7 @@ public class InputStream extends Ref {
         try {
             return stream.read();
         } catch (java.io.IOException e) {
-            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
+            throw new x10.io.IOException(e.getMessage());
         }
     }
     
@@ -58,7 +74,7 @@ public class InputStream extends Ref {
         try {
             return stream.read();
         } catch (java.io.IOException e) {
-            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
+            throw new x10.io.IOException(e.getMessage());
         }
     }
 
@@ -66,7 +82,16 @@ public class InputStream extends Ref {
         try {
             stream.read(b, off, len);
         } catch (java.io.IOException e) {
-            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
+            throw new x10.io.IOException(e.getMessage());
+        }
+    }
+
+    // XTENLANG-2680
+    public void read__0$1x10$lang$Byte$2(x10.array.Array r, int off, int len) {
+        try {
+            stream.read(r.raw().getByteArray(), off, len);
+        } catch (java.io.IOException e) {
+            throw new x10.io.IOException(e.getMessage());
         }
     }
     
@@ -74,7 +99,7 @@ public class InputStream extends Ref {
         try {
             return stream.available();
         } catch (java.io.IOException e) {
-            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
+            throw new x10.io.IOException(e.getMessage());
         }
     }
     
@@ -83,7 +108,7 @@ public class InputStream extends Ref {
         try {
             return stream.available();
         } catch (java.io.IOException e) {
-            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
+            throw new x10.io.IOException(e.getMessage());
         }
     }
 
@@ -91,7 +116,7 @@ public class InputStream extends Ref {
         try {
             stream.skip(n);
         } catch (java.io.IOException e) {
-            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
+            throw new x10.io.IOException(e.getMessage());
         }
     }
     
@@ -103,7 +128,7 @@ public class InputStream extends Ref {
         try {
             stream.reset();
         } catch (java.io.IOException e) {
-            throw x10.core.ThrowableUtilities.getCorrespondingX10Throwable(e);
+            throw new x10.io.IOException(e.getMessage());
         }
     }
     
@@ -121,12 +146,9 @@ public class InputStream extends Ref {
     //
     public static final RuntimeType<InputStream> $RTT = NamedType.<InputStream> make(
         "x10.io.InputStreamReader.InputStream",
-        InputStream.class,
-        new Type[] { Types.OBJECT }
+        InputStream.class
     );
-    @Override
     public RuntimeType<?> $getRTT() { return $RTT; }
-    @Override
     public Type<?> $getParam(int i) { return null; }
 
 }

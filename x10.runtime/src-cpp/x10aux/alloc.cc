@@ -80,6 +80,31 @@ char *x10aux::realloc_printf(char *buf, const char *fmt, ...) {
     return r;
 }
 
+char * x10aux::alloc_utils::strdup(const char* old) {
+#ifdef X10_USE_BDWGC
+    int len = strlen(old);
+    char *ans = x10aux::alloc<char>(len+1);
+    memcpy(ans, old, len);
+    ans[len] = 0;
+    return ans;
+#else
+    return ::strdup(old);
+#endif
+}
+
+char * x10aux::alloc_utils::strndup(const char* old, int len) {
+#if defined(X10_USE_BDWGC) || defined(__SVR4) || defined(__APPLE__)
+    int len2 = strlen(old);
+    if (len2 < len) len = len2;
+    char *ans = x10aux::alloc<char>(len+1);
+    memcpy(ans, old, len);
+    ans[len] = 0;
+    return ans;
+#else
+    return ::strndup(old, len);
+#endif
+}
+
 #ifdef X10_USE_BDWGC
 bool x10aux::gc_init_done;
 #endif        
@@ -170,6 +195,7 @@ static void ensure_init_congruent (size_t req_size) {
 
     char *size_ = x10aux::get_congruent_size();
     size_t size = size_!=NULL ? strtoull(size_,NULL,0) : 0;
+    size_t count = 0;
 
     long page = 0;
 
@@ -196,7 +222,12 @@ static void ensure_init_congruent (size_t req_size) {
                     if (val_c == NULL) { fprintf(stderr, "Formatting error in /proc/meminfo!!\n"); abort(); }
                     size_t val = strtoull(val_c,NULL,10);
                     page = val * 1024;
-                    break;
+                }
+                if (strcmp(key_c,"HugePages_Total") == 0) {
+                    const char *val_c   = strtok_r(NULL,"k",&saveptr);
+                    if (val_c == NULL) { fprintf(stderr, "Formatting error in /proc/meminfo!!\n"); abort(); }
+                    size_t val = strtoull(val_c,NULL,10);
+                    count = val;
                 }
             }
             ::free(lineptr);
@@ -225,6 +256,7 @@ static void ensure_init_congruent (size_t req_size) {
     }
 
     // if it's the first allocation, may as well make it big enough -- further allocations will fail
+    if (size == 0) size = page * (count / 32);
     if (size < req_size) size = req_size;
 
     // round it up to the nearest page

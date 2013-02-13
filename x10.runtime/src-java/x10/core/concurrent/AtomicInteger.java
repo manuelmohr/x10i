@@ -11,34 +11,33 @@
 
 package x10.core.concurrent;
 
-import x10.core.RefI;
+import x10.core.Any;
 import x10.rtt.NamedType;
 import x10.rtt.RuntimeType;
 import x10.rtt.Type;
 import x10.rtt.Types;
-import x10.x10rt.X10JavaDeserializer;
-import x10.x10rt.X10JavaSerializable;
-import x10.x10rt.X10JavaSerializer;
+import x10.serialization.X10JavaDeserializer;
+import x10.serialization.X10JavaSerializable;
+import x10.serialization.X10JavaSerializer;
 
 import java.io.IOException;
 
-public final class AtomicInteger extends java.util.concurrent.atomic.AtomicInteger implements RefI, X10JavaSerializable {
+public final class AtomicInteger extends java.util.concurrent.atomic.AtomicInteger implements Any, X10JavaSerializable {
 
     private static final long serialVersionUID = 1L;
-    private static final short _serialization_id = x10.x10rt.DeserializationDispatcher.addDispatcher(x10.x10rt.DeserializationDispatcher.ClosureKind.CLOSURE_KIND_NOT_ASYNC, AtomicInteger.class);
 
     // constructor just for allocation
     public AtomicInteger(java.lang.System[] $dummy) {
         super();
     }
     
-    public AtomicInteger $init() {return this;}
+    public final AtomicInteger x10$util$concurrent$AtomicInteger$$init$S() {return this;}
 	
     public AtomicInteger() {
         super();
     }
 
-    public AtomicInteger $init(int initialValue) {
+    public final AtomicInteger x10$util$concurrent$AtomicInteger$$init$S(int initialValue) {
         // TODO
         set(initialValue);
         return this;
@@ -53,8 +52,7 @@ public final class AtomicInteger extends java.util.concurrent.atomic.AtomicInteg
     //
     public static final RuntimeType<AtomicInteger> $RTT = NamedType.<AtomicInteger> make(
         "x10.util.concurrent.AtomicInteger",
-        AtomicInteger.class,
-        new Type[] { Types.OBJECT }
+        AtomicInteger.class
     );
     public RuntimeType<AtomicInteger> $getRTT() {return $RTT;}
     public Type<?> $getParam(int i) { return null; }
@@ -72,9 +70,5 @@ public final class AtomicInteger extends java.util.concurrent.atomic.AtomicInteg
         AtomicInteger ai = new AtomicInteger(i);
         deserializer.record_reference(ai);
         return ai;
-	}
-
-	public short $_get_serialization_id() {
-		return _serialization_id;
 	}
 }
