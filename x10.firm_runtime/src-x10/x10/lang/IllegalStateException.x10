@@ -16,40 +16,41 @@ import x10.compiler.NativeRep;
 
 
 /**
- * Thrown to indicate that a method has been passed an illegal or inappropriate argument.
+ * Thrown to indicate that a method has been invoked at an illegal or
+ * inappropriate time.
  */
-@NativeRep("java", "java.lang.IllegalArgumentException", null, "x10.rtt.Types.ILLEGAL_ARGUMENT_EXCEPTION")
-public class IllegalArgumentException extends Exception {
+@NativeRep("java", "java.lang.IllegalStateException", null, "x10.rtt.Types.ILLEGAL_STATE_EXCEPTION")
+public class IllegalStateException extends Exception {
 
     /**
-     * Construct an IllegalArgumentException with no detail message and no cause.
+     * Construct an IllegalStateException with no detail message and no cause.
      */
-    @Native("java", "new java.lang.IllegalArgumentException()")
+    @Native("java", "new java.lang.IllegalStateException()")
     public def this() { super(); }
 
     /**
-     * Construct an IllegalArgumentException with the specified detail message and no cause.
+     * Construct an IllegalStateException with the specified detail message and no cause.
      *
      * @param message the detail message
      */
-    @Native("java", "new java.lang.IllegalArgumentException(#message)")
+    @Native("java", "new java.lang.IllegalStateException(#message)")
     public def this(message: String) { super(message); }
 
     /**
-     * Construct an IllegalArgumentException with the specified detail message and cause.
+     * Construct an IllegalStateException with the specified detail message and cause.
      *
      * @param message the detail message
      * @param cause the cause
      */
-    @Native("java", "new java.lang.IllegalArgumentException(#message, #cause)")
+    @Native("java", "new java.lang.IllegalStateException(#message, #cause)")
     public def this(message: String, cause: CheckedThrowable) { super(message, cause); }
 
     /**
-     * Construct an IllegalArgumentException with no detail message and the specified cause.
+     * Construct an IllegalStateException with no detail message and the specified cause.
      *
      * @param cause the cause
      */
-    @Native("java", "new java.lang.IllegalArgumentException(#cause)")
+    @Native("java", "new java.lang.IllegalStateException(#cause)")
     public def this(cause: CheckedThrowable) { super(cause); }
 }
 

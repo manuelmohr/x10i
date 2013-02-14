@@ -19,11 +19,6 @@ import x10.util.GrowableIndexedMemoryChunk;
 
 /**
  * The representation of an X10 future expression.
- * @author Christian Grothoff
- * @author Christoph von Praun
- * @author tardieu
- *
- *
  */
 public class Future[T] implements ()=>T {
     private val root = GlobalRef[Future[T]](this);
@@ -40,15 +35,15 @@ public class Future[T] implements ()=>T {
      */
     // This cant be Cell because I need to create it before I know the value
     // that will go in.
-    @SuppressTransientError transient private val exception = new GrowableIndexedMemoryChunk[Throwable]();
+    @SuppressTransientError transient private val exception = new GrowableIndexedMemoryChunk[Exception]();
     @SuppressTransientError transient private val result = new GrowableIndexedMemoryChunk[T]();
     transient private val eval:()=>T;
 
     public static def make[T](eval:()=> T) {
-        Runtime.ensureNotInAtomic();
-        val f = new Future[T](eval);
-        async f.run();
-        return f;
+    	Runtime.ensureNotInAtomic();
+    	val f = new Future[T](eval);
+    	async f.run();
+    	return f;
     }
     def this(eval:()=>T) {
         this.eval = eval;
@@ -66,11 +61,11 @@ public class Future[T] implements ()=>T {
      * Wait for the completion of this activity and return the computed value.
      */
     @Global public def force():T {
-        Runtime.ensureNotInAtomic();
-        return at (root) root().forceLocal();
+    	Runtime.ensureNotInAtomic();
+    	return at (root) root().forceLocal();
     }
     @Pinned private def forceLocal():T {
-         latch.await();
+    	 latch.await();
          if (exception.length() > 0) {
              throw exception(0);
          }
@@ -80,7 +75,7 @@ public class Future[T] implements ()=>T {
         try {
             finish result.add(eval());
             latch.release();
-        } catch (t:Throwable) {
+        } catch (t:Exception) {
             exception.add(t);
             latch.release();
         }

@@ -16,7 +16,6 @@ import x10.compiler.Native;
 import x10.util.NoSuchElementException;
 
 /**
- * @author tardieu
  */
 final class Configuration {
 
@@ -44,6 +43,8 @@ final class Configuration {
     static def static_threads():Boolean = envOrElse("X10_STATIC_THREADS", DEFAULT_STATIC_THREADS);
 
     static def warn_on_thread_creation():Boolean = envOrElse("X10_WARN_ON_THREAD_CREATION", false);
+
+    static def busy_waiting():Boolean = envOrElse("X10_BUSY_WAITING", false);
 
     static def nthreads():Int {
         var v:Int = 0;

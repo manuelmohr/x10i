@@ -17,8 +17,6 @@ import x10.compiler.Pinned;
 import x10.util.Map;
 
 /**
- * @author tardieu
- *
  * Ported from 2.0 to 2.1 via naive simulation of
  *       2.0 style global object by injecting a root field
  *       that is a GlobalRef(this) and always accessing fields
@@ -27,13 +25,13 @@ import x10.util.Map;
  */
 public final class Clock(name:String) {
 
-    private val root = GlobalRef[Clock](this);
-    public def equals(a:Any) {
-        if (a == null || ! (a instanceof Clock))
-            return false;
-        return (a as Clock).root == this.root;
-    }
-    public def hashCode() = root.hashCode();
+	private val root = GlobalRef[Clock](this);
+	public def equals(a:Any) {
+		if (a == null || ! (a instanceof Clock))
+			return false;
+		return (a as Clock).root == this.root;
+	}
+	public def hashCode() = root.hashCode();
 
     public static def make(): Clock = make("");
     public static def make(name:String):Clock {
@@ -82,69 +80,48 @@ public final class Clock(name:String) {
         if (dropped()) clockUseException("async clocked");
         val ph = get();
         at (root) {
-            val me = root();
-            atomic {
-                ++ me.count;
-                if (-ph != me.phase)
-                    ++ me.alive;
-            }
+        	val me = root();
+        	atomic {
+        		 ++ me.count;
+                 if (-ph != me.phase)
+                	 ++ me.alive;
+        	}
         }
         return ph;
-    }
-    @Global def resumeUnsafe() {
+     }
+     @Global def resumeUnsafe() {
         Runtime.ensureNotInAtomic();
         val ph = get();
         if (ph < 0) return;
         at (root) {
-            val me = root();
-            me.resumeLocal();
+        	val me = root();
+        	me.resumeLocal();
         }
         put(-ph);
     }
-    @Global def resumeInternal(entry:Map.Entry[Clock,Int]) {
-        Runtime.ensureNotInAtomic();
-        val ph = entry.getValue();
-        if (ph < 0) return;
-        at (root) {
-            val me = root();
-            me.resumeLocal();
-        }
-        entry.setValue(-ph);
-    }
     @Global def advanceUnsafe() {
-        Runtime.ensureNotInAtomic();
+    	Runtime.ensureNotInAtomic();
         val ph = get();
         val abs = Math.abs(ph);
         at (root) {
-            val me = root();
+        	val me = root();
             if (ph > 0) me.resumeLocal();
             when (abs < me.phase);
         }
         put(abs + 1);
     }
-    @Global def advanceInternal(entry:Map.Entry[Clock,Int]) {
-        Runtime.ensureNotInAtomic();
-        val ph = entry.getValue();
-        val abs = Math.abs(ph);
-        at (root) {
-            val me = root();
-            if (ph > 0) me.resumeLocal();
-            when (abs < me.phase);
-        }
-        entry.setValue(abs + 1);
-    }
     @Global def dropUnsafe() {
         val ph = remove();
         at(root) {
-            val me = root();
-            me.dropLocal(ph);
+        	val me = root();
+        	me.dropLocal(ph);
         }
     }
-    @Global def dropInternal(entry:Map.Entry[Clock,Int]) {
-        val ph = entry.getValue();
-        at(root.home) async {
-	    val rcl:Clock = root();
-            rcl.dropLocal(ph);
+    @Global def dropInternal() {
+        val ph = get();
+        at(root) {
+            val me = root();
+            me.dropLocal(ph);
         }
     }
     public @Global def registered():Boolean = Runtime.activity().clockPhases().containsKey(this);
@@ -166,7 +143,7 @@ public final class Clock(name:String) {
         dropUnsafe();
     }
 
-    public def toString():String = name.equals("") ? super.toString() : name;
+    public def toString():String = name.equals("") ? System.identityToString(this) : name;
 
     private def clockUseException(method:String) {
         if (dropped()) throw new ClockUseException("invalid invocation of " + method + "() on clock " + toString() + "; calling activity is not clocked on this clock");

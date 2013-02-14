@@ -28,7 +28,7 @@ public class NativeSupport {
      * Casts object to type T without type checking. If obj is not of type T,
      * then the behaviour is undefined.
      */
-    public static native def unsafeCast[T](obj: Object): T;
+    public static native def unsafeCast[T](obj: Any): T;
 
     /** memory compare */
     public static native def memcmp(pointer1: Pointer, pointer2: Pointer, numBytes: Int): Int;

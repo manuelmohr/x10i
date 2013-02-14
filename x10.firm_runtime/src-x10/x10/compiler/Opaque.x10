@@ -9,11 +9,14 @@
  *  (C) Copyright IBM Corporation 2006-2010.
  */
 
-package x10.lang;
+package x10.compiler;
 
-public class RuntimeException extends Exception {
-    public def this() { super(); }
-    public def this(message: String) { super(message); }
-    public def this(message: String, cause: Throwable) { super(message, cause); }
-    public def this(cause: Throwable) { super(cause); }
-}
+import x10.lang.annotations.*;
+
+/** Annotation to mark property methods as being opaque to the constraint
+ * solver.
+ *
+ * This means they are not inlined, although the body (X10 code) is still used
+ * to implement constraint checks in casts.
+ */
+public interface Opaque(name: String) extends MethodAnnotation { }

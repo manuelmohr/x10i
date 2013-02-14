@@ -265,34 +265,28 @@ public class ArrayList[T] extends AbstractCollection[T] implements List[T] {
 
     // [NN]: should not need to cast x to Comparable[T]
     public def sort() {T <: Comparable[T]} { sort((x:T, y:T) => (x as Comparable[T]).compareTo(y)); }
-    public def sort(cmp: (T,T)=>Int) { qsort(a, 0, a.length()-1, cmp); }
+    public def sort(cmp: (T,T)=>Int) { ArrayUtils.qsort[T](a.toIndexedMemoryChunk(), 0, a.length()-1, cmp); }
 
     // public def sort(lessThan: (T,T)=>Boolean) = qsort(a, 0, a.length()-1, (x:T,y:T) => lessThan(x,y) ? -1 : (lessThan(y,x) ? 1 : 0));
 
-    //
-    // quick&dirty sort
-    //
-
-    private def qsort(a: GrowableIndexedMemoryChunk[T], lo: int, hi: int, cmp: (T,T)=>Int) {
-        if (hi <= lo) return;
-        var l: int = lo - 1;
-        var h: int = hi;
-        while (true) {
-            while (cmp(a(++l), a(hi))<0);
-            while (cmp(a(hi), a(--h))<0 && h>lo);
-            if (l >= h) break;
-            exch(a, l, h);
-        }
-        exch(a, l, hi);
-        qsort(a, lo, l-1, cmp);
-        qsort(a, l+1, hi, cmp);
-    }
-
-    /** exchange 2 elements, no bounds checking is performed */
     private def exch(a: GrowableIndexedMemoryChunk[T], i: int, j: int): void {
         val temp = a(i);
         a(i) = a(j);
         a(j) = temp;
+    }
+
+    /**
+     * Searches this ArrayList for the key using the binary search
+     * algorithm.  This ArrayList must be sorted (e.g. by the sort method).
+     * If the key is found, return its index in the list.
+     * Otherwise, return (-(insertion point) -1), where insertion point is the
+     * index at which the key would be inserted into the sorted list.
+     * @param key the value to find
+     * @param cmp the comparison function to use
+     */
+    public def binarySearch(key:T, cmp:(T,T)=>Int) = ArrayUtils.binarySearch[T](a.toIndexedMemoryChunk(), key, 0, a.length(), cmp);
+    public def binarySearch(key:T){T <: Comparable[T]} {
+        return ArrayUtils.binarySearch[T](a.toIndexedMemoryChunk(), key, 0, a.length(), (x:T, y:T) => (x as Comparable[T]).compareTo(y));
     }
 
     /**

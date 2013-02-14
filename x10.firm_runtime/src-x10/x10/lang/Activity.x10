@@ -17,8 +17,6 @@ import x10.util.HashMap;
 
 /**
  * Runtime representation of an async. Only to be used in the runtime implementation.
- *
- * @author tardieu
  */
 class Activity {
 
@@ -34,18 +32,18 @@ class Activity {
 
         // next statement
         def advanceAll() {
-            for(entry:Map.Entry[Clock,Int] in entries()) entry.getKey().resumeInternal(entry);
-            for(entry:Map.Entry[Clock,Int] in entries()) entry.getKey().advanceInternal(entry);
+            for(entry:Map.Entry[Clock,Int] in entries()) entry.getKey().resumeUnsafe();
+            for(entry:Map.Entry[Clock,Int] in entries()) entry.getKey().advanceUnsafe();
         }
 
         // resume all clocks
         def resumeAll() {
-            for(entry:Map.Entry[Clock,Int] in entries()) entry.getKey().resumeInternal(entry);
+            for(entry:Map.Entry[Clock,Int] in entries()) entry.getKey().resumeUnsafe();
         }
 
         // drop all clocks
         def drop() {
-            for(entry:Map.Entry[Clock,Int] in entries()) entry.getKey().dropInternal(entry);
+            for(entry:Map.Entry[Clock,Int] in entries()) entry.getKey().dropInternal();
             clear();
         }
 
@@ -146,7 +144,9 @@ class Activity {
     def run():void {
         try {
             body();
-        } catch (t:Throwable) {
+        } catch (t:Error) {
+            finishState.pushException(new WrappedThrowable(t));
+        } catch (t:Exception) {
             finishState.pushException(t);
         }
         if (null != clockPhases) clockPhases.drop();

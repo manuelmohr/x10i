@@ -14,8 +14,16 @@ package x10.compiler;
 import x10.lang.annotations.*;
 
 /**
- * An annotation that instructs the C++ backend to compile the block as a CUDA
- * kernel.  This implies that the block should be capable of running on a GPU,
- * which means restrictions on what language features are allowed.
+ *  @Profile can be used on at statements to make information about that at operation available to applications.
+ *
+ * EXAMPLE:
+ *
+ *      val x = new Runtime.Profile();
+ *      @Profile(x) at (here.next()) {
+ *      }
+ *      // x now populated with profiling data
+ *
+ * @see x10.lang.Runtime.Profile
  */
-public interface CUDA extends StatementAnnotation, MethodAnnotation { }
+public interface Profile(prof:Runtime.Profile) extends StatementAnnotation, ExpressionAnnotation {
+}

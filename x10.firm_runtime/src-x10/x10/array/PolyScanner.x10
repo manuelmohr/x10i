@@ -221,7 +221,7 @@ final class PolyScanner(rank:Int)/*(C:PolyMat)*/ {
      * next  x[0] x[1] ...  x[k]+1 min[k+1] ...  min[rank-1]
      *
      * i.e. bump k, reset k+1 through rank-1
-     * finished if k&lt;0
+     * finished if k<0
      *
      * next() does the bumping and resetting
      *
@@ -294,7 +294,6 @@ final class PolyScanner(rank:Int)/*(C:PolyMat)*/ {
         val it = new RailIt();
         public final def hasNext() = it.hasNext();
         public final def next(): Point(rank) = it.next();
-        public final def remove() { it.remove(); }
     };
 
 

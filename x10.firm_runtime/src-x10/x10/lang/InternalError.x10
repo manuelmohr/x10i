@@ -6,22 +6,24 @@
  *  You may obtain a copy of the License at
  *      http://www.opensource.org/licenses/eclipse-1.0.php
  *
- *  (C) Copyright IBM Corporation 2006-2012.
+ *  (C) Copyright IBM Corporation 2006-2013.
  */
 
-package x10.util;
+package x10.lang;
 
 import x10.compiler.Native;
 import x10.compiler.NativeRep;
 
 
-@NativeRep("java", "java.util.NoSuchElementException", null, "x10.rtt.Types.NO_SUCH_ELEMENT_EXCEPTION")
-public class NoSuchElementException extends Exception {
+@NativeRep("java", "java.lang.InternalError", null, "x10.rtt.Types.INTERNAL_ERROR")
+public class InternalError extends Error {
 
-    @Native("java", "new java.util.NoSuchElementException()")
+    @Native("java", "new java.lang.InternalError()")
     public def this() { super(); }
 
-    @Native("java", "new java.util.NoSuchElementException(#message)")
+    @Native("java", "new java.lang.InternalError(#message)")
     public def this(message: String) { super(message); }
 
 }
+
+// vim:tabstop=4:shiftwidth=4:expandtab

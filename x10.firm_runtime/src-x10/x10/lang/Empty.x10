@@ -9,16 +9,10 @@
  *  (C) Copyright IBM Corporation 2006-2010.
  */
 
-package x10.compiler;
-
-import x10.compiler.NativeRep;
+package x10.lang;
 
 /**
- * Used for generating static initialization code (SingleVM MultiPlace support) in Java backend.
- *
+ * A class you can use for the cases where you'd use new Object() in Java.
  */
-@NativeRep("java", "x10.runtime.impl.java.PlaceLocalHandle", null, null)
-class PlaceLocalHandle {
+public class Empty {
 }
-
-// vim:shiftwidth=4:tabstop=4:expandtab

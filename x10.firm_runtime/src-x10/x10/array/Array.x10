@@ -227,7 +227,6 @@ public final class Array[T] (
      * Construct an Array view of a backing IndexedMemoryChunk
      * using the region (0..backingStore.length-1)
      *
-     * @param reg The region over which to define the array.
      * @param backingStore The backing storage for the array data.
      */
     public @Inline def this(backingStore:IndexedMemoryChunk[T])

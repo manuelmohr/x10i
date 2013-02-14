@@ -24,7 +24,7 @@ import x10.lang.Pointer;
  * <p> At its home place, the value when applied to the empty list of
  * arguments returns its encapsulated value.
  */
-public struct GlobalRef[T](home: Place) {T <: Object} {
+public struct GlobalRef[T](home: Place) {T isref} {
     public property home(): Place = home;
 
     private val ptr: Pointer;
@@ -87,7 +87,7 @@ public struct GlobalRef[T](home: Place) {T <: Object} {
          *   if (here == ref.home) return eval(ref);
          *   else return at (ref.home) eval(ref);
          */
-        public static def evalAtHome[T,U](ref:GlobalRef[T], eval:(T)=> U){T <: Object}:U {
+        public static def evalAtHome[T,U](ref:GlobalRef[T], eval:(T)=> U){T isref}:U {
             if (here == ref.home) {
                 return eval(ref.localApply());
             } else {
@@ -100,7 +100,7 @@ public struct GlobalRef[T](home: Place) {T <: Object} {
          * encapsulated by ref.  If (ref.home != here),
          * returns a copy at the current place.
          */
-        public static def getLocalOrCopy[T](ref:GlobalRef[T]){T <: Object}:T {
+        public static def getLocalOrCopy[T](ref:GlobalRef[T]){T isref}:T {
             if (here == ref.home) {
                 return ref.localApply();
             } else {
@@ -108,5 +108,6 @@ public struct GlobalRef[T](home: Place) {T <: Object} {
             }
         }
     }
+
 }
-public type GlobalRef[T](p:Place) {T<:Object} = GlobalRef[T]{self.home==p};
+//public type GlobalRef[T](p:Place) {T isref} = GlobalRef[T]{self.home==p};

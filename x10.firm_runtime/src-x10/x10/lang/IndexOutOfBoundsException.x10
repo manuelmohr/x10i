@@ -16,24 +16,24 @@ import x10.compiler.NativeRep;
 
 
 /**
- * Thrown to indicate that an array has been accessed with an illegal index.
- * For example, the point is outside of the array's region.
+ * Thrown to indicate that an index of some sort (such as to an array, or to a
+ * string) is out of range.
  */
-@NativeRep("java", "java.lang.ArrayIndexOutOfBoundsException", null, "x10.rtt.Types.ARRAY_INDEX_OUT_OF_BOUNDS_EXCEPTION")
-public class ArrayIndexOutOfBoundsException extends IndexOutOfBoundsException {
+@NativeRep("java", "java.lang.IndexOutOfBoundsException", null, "x10.rtt.Types.INDEX_OUT_OF_BOUNDS_EXCEPTION")
+public class IndexOutOfBoundsException extends Exception {
 
     /**
-     * Construct an ArrayIndexOutOfBoundsException with no detail message.
+     * Construct an IndexOutOfBoundsException with no detail message.
      */
-    @Native("java", "new java.lang.ArrayIndexOutOfBoundsException()")
+    @Native("java", "new java.lang.IndexOutOfBoundsException()")
     public def this() { super(); }
 
     /**
-     * Construct an ArrayIndexOutOfBoundsException with the specified detail message.
+     * Construct an IndexOutOfBoundsException with the specified detail message.
      *
      * @param message the detail message
      */
-    @Native("java", "new java.lang.ArrayIndexOutOfBoundsException(#message)")
+    @Native("java", "new java.lang.IndexOutOfBoundsException(#message)")
     public def this(message: String) { super(message); }
 }
 

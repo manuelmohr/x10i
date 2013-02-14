@@ -12,50 +12,22 @@
 package x10.io;
 
 import x10.compiler.Native;
-import x10.compiler.PerProcess;
 
 public class Console {
         @Native("java", "new x10.core.io.OutputStream(java.lang.System.out)")
         @Native("c++", "x10::io::OutputStreamWriter__OutputStream::STANDARD_OUT()")
-        private native static def realOut(): OutputStreamWriter;
+        private native static def realOut(): OutputStreamWriter{self!=null};
 
         @Native("java", "new x10.core.io.OutputStream(java.lang.System.err)")
         @Native("c++", "x10::io::OutputStreamWriter__OutputStream::STANDARD_ERR()")
-        private native static def realErr(): OutputStreamWriter;
+        private native static def realErr(): OutputStreamWriter{self!=null};
 
         @Native("java", "new x10.core.io.InputStream(java.lang.System.in)")
         @Native("c++", "x10::io::InputStreamReader__InputStream::STANDARD_IN()")
-        private native static def realIn(): InputStreamReader;
+        private native static def realIn(): InputStreamReader{self!=null};
 
-        @PerProcess
-        public static OUT: Printer = new Printer(realOut());
-        @PerProcess
-        public static ERR: Printer = new Printer(realErr());
-        @PerProcess
-        public static IN:  Reader  = realIn();
+        public static OUT:Printer{self!=null} = new Printer(realOut());
+        public static ERR:Printer{self!=null} = new Printer(realErr());
+        public static IN:Reader{self!=null}  = realIn();
 
-   /*
-        public static def write(b: Byte): void throws IOException = OUT.write(b);
-        public static def println(): void throws IOException = OUT.println();
-        public static def print(o: Object): void throws IOException = OUT.print(o);
-        public static def print(o: String): void throws IOException = OUT.print(o);
-        public static def println(o: Object): void throws IOException = OUT.print(o);
-        public static def println(o: String): void throws IOException = OUT.print(o);
-
-        public static def printf(fmt: String, args: Rail[Object]): void throws IOException = OUT.printf(fmt, args);
-
-        public static def ewrite(b: Byte): void throws IOException = ERR.write(b);
-        public static def eprintln(): void throws IOException = ERR.println();
-        public static def eprint(o: Object): void throws IOException = ERR.print(o);
-        public static def eprint(o: String): void throws IOException = ERR.print(o);
-        public static def eprintln(o: Object): void throws IOException = ERR.print(o);
-        public static def eprintln(o: String): void throws IOException = ERR.print(o);
-
-        public static def eprintf(fmt: String, args: Rail[Object]): void throws IOException = ERR.printf(fmt, args);
-
-        public static def read(): Byte throws IOException = IN.read();
-        public static def readln(): Byte throws IOException = IN.readLine();
-        public static def readByte(): Byte throws IOException = IN.readByte();
-        public static def readChar(): Char throws IOException = IN.readChar();
-   */
 }

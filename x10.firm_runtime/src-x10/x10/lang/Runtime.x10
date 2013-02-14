@@ -11,7 +11,10 @@
 
 package x10.lang;
 
+import x10.compiler.Profile;
+
 public final class Runtime {
+    public static type Profile = Empty;
 
     private static native def deepCopyAny(o : Any) : Any;
     private static native def runAtOtherPlace(placeId : Int, o: Any) : void;
@@ -48,7 +51,7 @@ public final class Runtime {
 
     public static def runAsync(place:Place, body:()=>void):void {
         executeParallel(() => {
-            runAt(place, body);
+            runAt(place, body, null);
         });
     }
 
@@ -80,20 +83,20 @@ public final class Runtime {
     /**
      * Run at statement
      */
-    public static def runAt(place:Place, body:()=>void):void {
+    public static def runAt(place:Place, body:()=>void, prof:Profile):void {
         ensureNotInAtomic();
 
         if (place == here) {
             try {
                 val bodyCopy = deepCopy(body);
                 bodyCopy();
-            } catch (t : Throwable) {
+            } catch (t : CheckedThrowable) {
                 throw deepCopy(t);
             }
         } else {
             try {
                 runAtOtherPlace(place.id(), body);
-            } catch (t : Throwable) {
+            } catch (t : CheckedThrowable) {
                 throw deepCopy(t);
             }
         }
@@ -102,7 +105,7 @@ public final class Runtime {
     /**
      * Eval at expression
      */
-    public static def evalAt[T](place:Place, eval:()=>T):T {
+    public static def evalAt[T](place:Place, eval:()=>T, prof:Profile):T {
         ensureNotInAtomic();
 
         var res : T;
@@ -111,7 +114,7 @@ public final class Runtime {
                 val evalCopy = deepCopy(eval);
                 res = evalCopy();
                 res = deepCopy(res);
-            } catch (t : Throwable) {
+            } catch (t : CheckedThrowable) {
                 throw deepCopy(t);
             }
         } else {
@@ -123,11 +126,28 @@ public final class Runtime {
                        in a closure of type "() => Any" */
                     res = evalAtOtherPlace(place.id(), () => eval() as Any) as T;
                 }
-            } catch (t : Throwable) {
+            } catch (t : CheckedThrowable) {
                 throw deepCopy(t);
             }
         }
         return res;
+    }
+
+    /**
+     * Transparently wrap checked exceptions at the root of an at desugared closure, and unpack later.
+     */
+    private static class AtCheckedWrapper extends Exception {
+        public def this(cause: CheckedThrowable) { super(cause); }
+    }
+
+    /**
+      * Used in codegen at the root of an at closure, upon catching something that is not below Error
+      */
+    public static def wrapAtChecked (caught:CheckedThrowable) : void {
+        // Only wrap if necessary
+        if (caught instanceof Exception) throw caught as Exception;
+        if (caught instanceof Error) throw caught as Error;
+        throw new AtCheckedWrapper(caught);
     }
 
     // atomic and when
@@ -167,12 +187,14 @@ public final class Runtime {
      * Push the exception thrown while executing s in a finish s,
      * onto the finish state.
      */
-    public static def pushException(t:Throwable):void  {
+    public static def pushException(t:CheckedThrowable):void  {
     }
 
     // submit
     public static def execute(body:()=>void, finishState:FinishState):void {
     }
+
+
 }
 
 // vim:shiftwidth=4:tabstop=4:expandtab

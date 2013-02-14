@@ -6,15 +6,18 @@
  *  You may obtain a copy of the License at
  *      http://www.opensource.org/licenses/eclipse-1.0.php
  *
- *  (C) Copyright IBM Corporation 2006-2010.
+ *  (C) Copyright IBM Corporation 2006-2012.
  */
 
-package x10.io;
+package x10.lang;
 
-import x10.compiler.Native;
-import x10.compiler.NativeRep;
 
-public class IORuntimeException extends RuntimeException {
-    public def this(): IORuntimeException { super(); }
-    public def this(message: String): IORuntimeException { super(message); }
+public class WrappedThrowable extends Exception {
+
+    public def this() { super(); }
+
+    public def this(cause: CheckedThrowable) { super(cause); }
+
+    public def this(message: String, cause: CheckedThrowable) { super(message, cause); }
+
 }
