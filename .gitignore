@@ -3,30 +3,28 @@
 
 /.metadata/
 
+/x10.dist/*.cc
+/x10.dist/*.h
+/x10.dist/*.s
+/x10.dist/*.x10
+/x10.dist/a.out
+/x10.dist/bin/X10Launcher
+/x10.dist/bin/apgas
 /x10.dist/bin/java_x10rt
+/x10.dist/bin/precommit
+/x10.dist/bin/runjava
+/x10.dist/bin/runx10
 /x10.dist/bin/setupX10
 /x10.dist/bin/x10
 /x10.dist/bin/x10c
-/x10.dist/bin/x10j
-/x10.dist/bin/daemon
-/x10.dist/bin/manager
-/x10.dist/bin/launcher
-/x10.dist/bin/X10Launcher
-/x10.dist/bin/apgas
-/x10.dist/bin/precommit
+/x10.dist/bin/x10cj
+/x10.dist/bin/x10doc
 /x10.dist/etc
+/x10.dist/firm-stdlib/*.jar
 /x10.dist/include
 /x10.dist/lib
-/x10.dist/*.s
 /x10.dist/stdlib
 /x10.dist/x10firm-testsuite
-/x10.dist/a.out
-/x10.dist/firm-stdlib/*.jar
-!x10.dist/lib/libfirm.so
-/x10.dist/*.cc
-/x10.dist/*.h
-/x10.dist/*.x10
-
 /x10.compiler/classes
 
 /x10.firm/classes
@@ -35,6 +33,8 @@
 
 /x10.constraints/classes
 /x10.constraints/common/
+
+/x10.doc/classes
 
 *.o
 *.vcg
