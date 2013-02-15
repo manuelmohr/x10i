@@ -233,7 +233,7 @@ public final class SerializationSupport {
 	 *
 	 * @param firmTypes a collection of all firm types. Only class types will be handled.
 	 */
-	public void finishSerialization(final Collection<firm.Type> firmTypes) {
+	public void finishSerialization(final Collection<ClassType> firmTypes) {
 		final firm.Type global = Program.getGlobalType();
 		final firm.Type typeP = Mode.getP().getType();
 
@@ -250,11 +250,7 @@ public final class SerializationSupport {
 		final Graph constCode = Program.getConstCodeGraph();
 		final Initializer init = new Initializer(nEntries);
 
-		for (final Type type : firmTypes) {
-			if (!(type instanceof ClassType))
-				continue;
-
-			final ClassType classType = (ClassType) type;
+		for (final ClassType classType : firmTypes) {
 			final int classUid = OO.getClassUID(classType);
 			if (classUid == 0) /* this will filter out structs and interfaces */
 				continue;

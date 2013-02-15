@@ -60,8 +60,8 @@ import firm.bindings.binding_typerep.ir_type_state;
  */
 public class FirmTypeSystem {
 	/** Maps polyglot types to firm types. */
-	private final Map<polyglot.types.Type, Type> firmCoreTypes
-		= new HashMap<polyglot.types.Type, Type>();
+	private final Map<polyglot.types.Type, ClassType> firmCoreTypes
+		= new HashMap<polyglot.types.Type, ClassType>();
 
 	/** Maps some polyglot types to "native"/primitive firm types. */
 	private final Map<polyglot.types.Type, Type> firmTypes
@@ -404,7 +404,7 @@ public class FirmTypeSystem {
 	 * creations are planned. Fixes the final type memory layout.
 	 */
 	public void finishTypeSystem() {
-		for (final Type type : firmCoreTypes.values()) {
+		for (final ClassType type : firmCoreTypes.values()) {
 			layoutType(type);
 		}
 		serializationSupport.finishSerialization(firmCoreTypes.values());
@@ -523,7 +523,7 @@ public class FirmTypeSystem {
 		return entity;
 	}
 
-	private firm.Type createClassType(final X10ClassType classType) {
+	private ClassType createClassType(final X10ClassType classType) {
 		final Flags flags = classType.flags();
 		final ClassType result = new ClassType(classType.toString());
 		final QName qname = classType.fullName();
@@ -542,7 +542,7 @@ public class FirmTypeSystem {
 		/* create supertypes */
 		final polyglot.types.Type superType = classType.superClass();
 		if (superType != null) {
-			final Type firmSuperType = asClass(superType);
+			final ClassType firmSuperType = asClass(superType);
 			result.addSuperType(firmSuperType);
 			final Entity superObject = new Entity(result, "$super", firmSuperType);
 			superObject.setOffset(0);
@@ -659,8 +659,8 @@ public class FirmTypeSystem {
 	/**
 	 * same as asClass() but expects parameter to be concrete already.
 	 */
-	private Type concreteAsClass(final polyglot.types.Type type) {
-		Type result = firmCoreTypes.get(type);
+	private ClassType concreteAsClass(final polyglot.types.Type type) {
+		ClassType result = firmCoreTypes.get(type);
 		if (result != null)
 			return result;
 
@@ -668,8 +668,7 @@ public class FirmTypeSystem {
 			throw new java.lang.RuntimeException("Attempt to create firm classtype from non-X10ClassType " + type);
 		}
 
-		result = createClassType((X10ClassType) type);
-		return result;
+		return createClassType((X10ClassType) type);
 	}
 
 	/**
@@ -679,7 +678,7 @@ public class FirmTypeSystem {
 	 * @param origType  The given polyglot ast-type
 	 * @return the firm type for a given ast-type.
 	 */
-	public firm.Type asClass(final polyglot.types.Type origType) {
+	public ClassType asClass(final polyglot.types.Type origType) {
 		final polyglot.types.Type type = typeSystem.getConcreteType(origType);
 		return concreteAsClass(type);
 	}
