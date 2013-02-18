@@ -3,6 +3,7 @@ package x10firm.types;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -85,9 +86,6 @@ public class FirmTypeSystem {
 	private final GenericCodeInstantiationQueue instantiationQueue;
 
 	private final SerializationSupport serializationSupport = new SerializationSupport();
-
-	/** All class instances share the same location for the vptr (the pointer to the vtable). */
-	private Entity vptrEntity;
 
 	/** information about native classes. */
 	private static final class NativeClassInfo {
@@ -231,7 +229,6 @@ public class FirmTypeSystem {
 
 		final Position pos = Position.COMPILER_GENERATED;
 		final TypeSystem_c x10TypeSystem = typeSystem.getTypeSystem();
-		final X10ClassType objectType = x10TypeSystem.Object();
 
 		// use a unique name for the boxing class
 		final String name = getUniqueBoxingName(type);
@@ -242,7 +239,6 @@ public class FirmTypeSystem {
 		boxedClass.setPackage(Types.ref(type.package_()));
 		boxedClass.kind(ClassDef.TOP_LEVEL);
 		boxedClass.flags(Flags.FINAL);
-		boxedClass.superType(Types.ref(objectType));
 
 		final X10ClassType boxedClassType = boxedClass.asType();
 		final Ref<X10ClassType> boxedClassRef = Types.ref(boxedClassType);
@@ -271,9 +267,11 @@ public class FirmTypeSystem {
 			final TypeParamSubst subst = iface.subst();
 
 			for (final MethodDef mDef : interfaceDef.methods()) {
+				final List<Ref<? extends polyglot.types.Type>> throwsTypes
+					= Collections.<Ref<? extends polyglot.types.Type>>emptyList();
 				final X10MethodDef md = x10TypeSystem.methodDef(pos, pos,
 						boxedClassRef, Flags.PUBLIC, mDef.returnType(),
-						mDef.name(), mDef.formalTypes());
+						mDef.name(), mDef.formalTypes(), throwsTypes);
 				md.setThisDef(thisDef);
 				md.setGuard(mDef.guard());
 				md.setTypeGuard(mDef.typeGuard());
@@ -484,15 +482,6 @@ public class FirmTypeSystem {
 		return result;
 	}
 
-	private Entity getVptrEntity() {
-		if (vptrEntity == null) {
-			final firm.Type pointerType = Mode.getP().getType();
-			vptrEntity = new Entity(Program.getGlobalType(), "$vptr", pointerType);
-			OO.setFieldIsTransient(vptrEntity, true);
-		}
-		return vptrEntity;
-	}
-
 	/**
 	 * Adds a new field to the type system.
 	 * @param field The field which should be added
@@ -523,6 +512,17 @@ public class FirmTypeSystem {
 		return entity;
 	}
 
+	private void setupTopClass(final ClassType type) {
+		final firm.Type pointerType = Mode.getP().getType();
+		final Entity vptr = new Entity(type, "$vptr", pointerType);
+		OO.setFieldIsTransient(vptr, true);
+		OO.setClassVPtrEntity(type, vptr);
+
+		/* add stuff for x10.lang.Any interface */
+		final X10ClassType any = typeSystem.getTypeSystem().Any();
+		final Type firmAny = asClass(any);
+	}
+
 	private ClassType createClassType(final X10ClassType classType) {
 		final Flags flags = classType.flags();
 		final ClassType result = new ClassType(classType.toString());
@@ -546,17 +546,22 @@ public class FirmTypeSystem {
 			result.addSuperType(firmSuperType);
 			final Entity superObject = new Entity(result, "$super", firmSuperType);
 			superObject.setOffset(0);
+
+			final Entity vptr = OO.getClassVTableEntity(firmSuperType);
+			OO.setClassVPtrEntity(result, vptr);
 		} else if (flags.isStruct()) {
+			/* nothing to do */
+			/*
 			final X10ClassType any = typeSystem.getTypeSystem().Any();
 			final Type firmAny = asClass(any);
 			result.addSuperType(firmAny);
+			*/
 		} else if (flags.isInterface()) {
 			/* no superclass interface */
 			OO.setClassIsInterface(result, true);
 		} else {
-			/* the only thing left without a superclass should be x10.lang.Object */
-			assert classType.toString().equals("x10.lang.Object");
-			getVptrEntity().setOwner(result);
+			/* no superclass: add vptr field and functions of the Any interface */
+			setupTopClass(result);
 		}
 
 		/* create interfaces */
@@ -601,9 +606,6 @@ public class FirmTypeSystem {
 
 		final Type global = Program.getGlobalType();
 		final Type pointerType = Mode.getP().getType();
-
-		if (!flags.isStruct())
-			OO.setClassVPtrEntity(result, getVptrEntity());
 
 		if (!flags.isInterface() && !flags.isStruct()) {
 			final String vtableName = NameMangler.mangleVTable(classType);

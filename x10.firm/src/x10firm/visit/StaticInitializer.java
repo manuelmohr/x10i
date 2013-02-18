@@ -444,8 +444,9 @@ public class StaticInitializer extends ContextVisitor {
 	private MethodDef makeMethodDef(final X10ClassType receiver, final Name name, final Type returnType) {
 		final Position pos = Position.compilerGenerated(null);
 		final List<Ref<? extends Type>> argTypes = Collections.<Ref<? extends Type>>emptyList();
+		final List<Ref<? extends Type>> throwsTypes = Collections.<Ref<? extends Type>>emptyList();
 		final MethodDef md = xts.methodDef(pos, pos, Types.ref(receiver), Flags.STATIC, Types.ref(returnType), name,
-				argTypes);
+				argTypes, throwsTypes);
 		return md;
 	}
 
@@ -672,8 +673,9 @@ public class StaticInitializer extends ContextVisitor {
 
 		final TypeNode returnType = xnf.X10CanonicalTypeNode(pos, type);
 		final Block body = makeInitMethodBody(pos, fieldInfo, fdCond, classDef);
+		final List<TypeNode> throwsTypes = Collections.<TypeNode>emptyList();
 		MethodDecl result = xnf.X10MethodDecl(pos, xnf.FlagsNode(pos, Flags.STATIC), returnType, xnf.Id(pos, name),
-				typeParamNodes, formals, null, null, body);
+				typeParamNodes, formals, null, null, throwsTypes, body);
 		// associate methodDef with methodDecl
 		result = result.methodDef(md);
 		return result;
@@ -759,8 +761,9 @@ public class StaticInitializer extends ContextVisitor {
 
 		// create method declaration
 		final TypeNode returnType = xnf.X10CanonicalTypeNode(pos, fi.type());
+		final List<TypeNode> throwsTypes = Collections.<TypeNode>emptyList();
 		MethodDecl result = xnf.X10MethodDecl(pos, xnf.FlagsNode(pos, Flags.STATIC), returnType, xnf.Id(pos, name),
-				typeParamNodes, formals, null, null, body);
+				typeParamNodes, formals, null, null, throwsTypes, body);
 		// associate methodDef with methodDecl
 		result = result.methodDef(md);
 		return result;
