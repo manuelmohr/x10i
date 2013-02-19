@@ -46,10 +46,10 @@ If you want to run java programs in gdb, then you should make sure that gdb igno
 The easy way to do this is to add this macro to your .gdbinit and start it before running any java programs. (We advice against this for non-java programs, since it hides most segfaults from gdb)
 
 define javadebug
-handle SIGUSR1 nostop noprint pass
-handle SIGSEGV nostop noprint pass
-handle SIGILL nostop noprint pass
-handle SIGQUIT nostop noprint pass
+handle SIGUSR1 nostop pass
+handle SIGSEGV nostop pass
+handle SIGILL nostop pass
+handle SIGQUIT nostop pass
 end
 
 Tip2:
