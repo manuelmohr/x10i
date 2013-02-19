@@ -180,13 +180,13 @@ x10_string *{{method("toString", "x10.lang.Int")}}({{ctype}} self, x10_int radix
 	x10_char buf[21];
 	{{ctype}} normalised = self;
 	{%- if type.signed %}
-	if (self < 0) {
+	if (self > 0) {
 		normalised = -self;
 	}
 	{%- endif %}
 	x10_char *b = &buf[ARRAY_SIZE(buf)];
 	do {
-		*(--b) = numerals[normalised % radix];
+		*(--b) = numerals[(-((normalised % radix) - radix)) % radix];
 		normalised /= radix;
 	} while (normalised != 0);
 	{%- if type.signed %}
