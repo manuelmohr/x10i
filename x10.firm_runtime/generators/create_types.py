@@ -186,7 +186,11 @@ x10_string *{{method("toString", "x10.lang.Int")}}({{ctype}} self, x10_int radix
 	{%- endif %}
 	x10_char *b = &buf[ARRAY_SIZE(buf)];
 	do {
-		*(--b) = numerals[(-((normalised % radix) - radix)) % radix];
+		{%- if type.signed %}
+			*(--b) = numerals[(-((normalised % radix) - radix)) % radix];
+		{%- else %}
+			*(--b) = numerals[normalised % radix];
+		{%- endif %}
 		normalised /= radix;
 	} while (normalised != 0);
 	{%- if type.signed %}
