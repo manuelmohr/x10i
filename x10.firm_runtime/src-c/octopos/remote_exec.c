@@ -4,21 +4,8 @@
 #include "init.h"
 #include "serialization.h"
 
-static x10_int x10_get_here_id()
-{
-	ilocal_data_t *ilocal = get_ilocal_data();
-	return ilocal->here_id;
-}
-
-static void x10_set_here_id(x10_int id)
-{
-	ilocal_data_t *ilocal = get_ilocal_data();
-	ilocal->here_id = id;
-}
-
 void x10_rt_init(void)
 {
-	x10_set_here_id(0);
 }
 
 typedef struct {
@@ -77,7 +64,6 @@ static void x10_place_execute(void *arg)
 	place_execute_args *pea = arg;
 
 	/* set up state for the newly create thread. */
-	x10_set_here_id(pea->place_id);
 	finish_state_set_current(pea->fs);
 
 	char *recv_buf = malloc(pea->closure_len);

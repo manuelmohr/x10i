@@ -58,7 +58,6 @@ typedef struct async_closure {
 	finish_state_t *enclosing;
 	/* executing ilet */
 	simple_ilet    *ilet;
-	x10_int         here_id;
 } async_closure;
 
 finish_state_t* finish_state_get_current(void)
@@ -114,12 +113,10 @@ static void execute(void *ptr)
 	x10_object     *body    = ac->body;
 	finish_state_t *fs      = ac->enclosing;
 	simple_ilet    *ilet    = ac->ilet;
-	x10_int         here_id = ac->here_id;
 	free(ac);
 
 	/* store enclosing finish state in i-let-local data */
 	finish_state_set_current(fs);
-	x10_rt_set_here_id(here_id);
 	/* initialize atomic depth */
 	activity_set_atomic_depth(0);
 
@@ -167,7 +164,6 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object
 	ac->body      = body;
 	ac->enclosing = enclosing;
 	ac->ilet      = child;
-	ac->here_id   = x10_rt_get_here_id();
 	simple_ilet_init(child, execute, ac);
 	if (infect(enclosing->claim, child, 1)) panic("infect failed");
 	register_at_finish_state(enclosing);

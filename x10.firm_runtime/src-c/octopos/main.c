@@ -4,6 +4,10 @@
 #include "init.h"
 #include "places.h"
 
+#if __GNUC__ > 4 || (__GNUC__==4 && __GNUC_MINOR__>=7)
+#error Error: gcc-4.7 and above are not supported by octopos (yet?)
+#endif
+
 /* single tile octopos only has place 0 */
 unsigned n_places = 1;
 
