@@ -661,8 +661,8 @@ public class FirmTypeSystem {
 	/**
 	 * same as asClass() but expects parameter to be concrete already.
 	 */
-	private ClassType concreteAsClass(final polyglot.types.Type type) {
-		ClassType result = firmCoreTypes.get(type);
+	private ClassType concreteAsClass(final X10ClassType type) {
+		final ClassType result = firmCoreTypes.get(type);
 		if (result != null)
 			return result;
 

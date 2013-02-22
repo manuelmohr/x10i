@@ -751,6 +751,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 		final List<LocalInstance> formals = instance.formalNames();
 		final X10ClassType        owner   = (X10ClassType) instance.container();
+		assert formals.size() == instance.formalTypes().size();
 
 		// extract all formals and locals from the method.
 		final List<LocalInstance> locals = getAllLocalInstancesInCodeBlock(dec);
