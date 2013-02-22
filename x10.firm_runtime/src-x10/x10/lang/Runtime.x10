@@ -87,18 +87,18 @@ public final class Runtime {
         ensureNotInAtomic();
 
         if (place == here) {
-            try {
+//            try {
                 val bodyCopy = deepCopy(body);
                 bodyCopy();
-            } catch (t : CheckedThrowable) {
-                throw deepCopy(t);
-            }
+//            } catch (t : CheckedThrowable) {
+//                throw deepCopy(t);
+//            }
         } else {
-            try {
+//            try {
                 runAtOtherPlace(place.id(), body);
-            } catch (t : CheckedThrowable) {
-                throw deepCopy(t);
-            }
+//            } catch (t : CheckedThrowable) {
+//                throw deepCopy(t);
+//            }
         }
     }
 
@@ -110,25 +110,25 @@ public final class Runtime {
 
         var res : T;
         if (place == here) {
-            try {
+//            try {
                 val evalCopy = deepCopy(eval);
                 res = evalCopy();
                 res = deepCopy(res);
-            } catch (t : CheckedThrowable) {
-                throw deepCopy(t);
-            }
+//            } catch (t : CheckedThrowable) {
+//                throw deepCopy(t);
+//            }
         } else {
-            try {
-                if (eval instanceof () => Object)
-                    res = evalAtOtherPlace(place.id(), eval) as T;
-                else {
+//            try {
+//                if (eval instanceof () => Object)
+//                    res = evalAtOtherPlace(place.id(), eval) as T;
+//                else {
                     /* enforce boxing of return value by wrapping eval
                        in a closure of type "() => Any" */
                     res = evalAtOtherPlace(place.id(), () => eval() as Any) as T;
-                }
-            } catch (t : CheckedThrowable) {
-                throw deepCopy(t);
-            }
+//                }
+//            } catch (t : CheckedThrowable) {
+//               throw deepCopy(t);
+//            }
         }
         return res;
     }
