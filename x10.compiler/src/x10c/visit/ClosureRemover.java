@@ -526,7 +526,12 @@ public class ClosureRemover extends ContextVisitor {
                                                               Collections.<Ref<? extends Type>>emptyList(),
                                                               staticNestedClassDef.thisDef(),
                                                               formalNames, null, null, null);
-                    
+
+                    ArrayList<LocalDef> formalNamesUpdate = new ArrayList<LocalDef>();
+                    for (Formal formal: formals)
+                        formalNamesUpdate.add(formal.localDef());
+                    consd.setFormalNames(formalNamesUpdate);
+
                     cm.add((ClassMember) consdcl.constructorDef(consd).typeCheck(this));
                     
                     staticNestedClassDef.addConstructor(consd);
