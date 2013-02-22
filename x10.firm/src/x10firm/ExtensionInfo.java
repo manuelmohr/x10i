@@ -146,10 +146,14 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/lang/Boolean.x10");
 			allowedFiles.add("x10/lang/Byte.x10");
 			allowedFiles.add("x10/lang/Char.x10");
+			allowedFiles.add("x10/lang/CheckedException.x10");
+			allowedFiles.add("x10/lang/CheckedThrowable.x10");
 			allowedFiles.add("x10/lang/Cell.x10");
 			allowedFiles.add("x10/lang/Comparable.x10");
 			allowedFiles.add("x10/lang/Complex.x10");
 			allowedFiles.add("x10/lang/Double.x10");
+			allowedFiles.add("x10/lang/Empty.x10");
+			allowedFiles.add("x10/lang/Exception.x10");
 			allowedFiles.add("x10/lang/FinishState.x10");
 			allowedFiles.add("x10/lang/Float.x10");
 			allowedFiles.add("x10/lang/GlobalCell.x10");
@@ -179,10 +183,12 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/lang/UInt.x10");
 			allowedFiles.add("x10/lang/ULong.x10");
 			allowedFiles.add("x10/lang/UShort.x10");
+			allowedFiles.add("x10/lang/WrappedThrowable.x10");
 			allowedFiles.add("x10/lang/Zero.x10");
 			allowedFiles.add("x10/util/AbstractCollection.x10");
 			allowedFiles.add("x10/util/AbstractContainer.x10");
 			allowedFiles.add("x10/util/ArrayList.x10");
+			allowedFiles.add("x10/util/ArrayUtils.x10");
 			allowedFiles.add("x10/util/Box.x10");
 			allowedFiles.add("x10/util/Builder.x10");
 			allowedFiles.add("x10/util/Collection.x10");
