@@ -23,6 +23,7 @@ import firm.Program;
 import firm.Relation;
 import firm.Type;
 import firm.bindings.binding_ircons.ir_where_alloc;
+import firm.bindings.binding_oo;
 import firm.bindings.binding_oo.ddispatch_binding;
 import firm.bindings.binding_typerep.ir_type_state;
 import firm.nodes.Alloc;
@@ -152,10 +153,21 @@ public final class SerializationSupport {
 			/* normal classes, dynamic dispatch of serializer method required */
 			final Entity serEntity = new Entity(firmType, serializeMethodName, serializeMethodType);
 
-			final ClassType superType = (ClassType) firmType.getSuperType(0);
-			final Entity superSerEntity = serializeMethods.get(superType);
-			assert superSerEntity != null;
-			serEntity.addEntityOverwrites(superSerEntity);
+			final boolean hasRealSuperclass;
+			if (firmType.getNSuperTypes() > 0) {
+				final ClassType superType = (ClassType) firmType.getSuperType(0);
+				assert superType != null;
+				hasRealSuperclass = !binding_oo.oo_get_class_is_interface(superType.ptr);
+			} else {
+				hasRealSuperclass = false;
+			}
+
+			if (hasRealSuperclass) {
+				final ClassType superType = (ClassType) firmType.getSuperType(0);
+				final Entity superSerEntity = serializeMethods.get(superType);
+				assert superSerEntity != null;
+				serEntity.addEntityOverwrites(superSerEntity);
+			}
 
 			OO.setEntityBinding(serEntity, ddispatch_binding.bind_dynamic);
 			serializeMethods.put(firmType, serEntity);
