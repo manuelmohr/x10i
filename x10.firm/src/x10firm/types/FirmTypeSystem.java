@@ -512,11 +512,23 @@ public class FirmTypeSystem {
 		return entity;
 	}
 
+	private Entity vptrEntity = null;
+	private Entity getInterfaceVptrEntity() {
+		if (vptrEntity == null) {
+			final firm.Type pointerType = Mode.getP().getType();
+			vptrEntity = new Entity(Program.getGlobalType(), "$vptr", pointerType);
+			OO.setFieldIsTransient(vptrEntity, true);
+		}
+		return vptrEntity;
+	}
+
 	private void setupTopClass(final ClassType type) {
 		final firm.Type pointerType = Mode.getP().getType();
 		final Entity vptr = new Entity(type, "$vptr", pointerType);
+		vptr.setOffset(0);
 		OO.setFieldIsTransient(vptr, true);
 		OO.setClassVPtrEntity(type, vptr);
+		vptr.setOwner(type);
 
 		/* add stuff for x10.lang.Any interface */
 		final X10ClassType any = typeSystem.getTypeSystem().Any();
@@ -547,7 +559,7 @@ public class FirmTypeSystem {
 			final Entity superObject = new Entity(result, "$super", firmSuperType);
 			superObject.setOffset(0);
 
-			final Entity vptr = OO.getClassVTableEntity(firmSuperType);
+			final Entity vptr = OO.getClassVPtrEntity(firmSuperType);
 			OO.setClassVPtrEntity(result, vptr);
 		} else if (flags.isStruct()) {
 			/* nothing to do */
@@ -559,6 +571,9 @@ public class FirmTypeSystem {
 		} else if (flags.isInterface()) {
 			/* no superclass interface */
 			OO.setClassIsInterface(result, true);
+			OO.setClassVPtrEntity(result, getInterfaceVptrEntity());
+			if (classType.isAny())
+				getInterfaceVptrEntity().setOwner(result);
 		} else {
 			/* no superclass: add vptr field and functions of the Any interface */
 			setupTopClass(result);
