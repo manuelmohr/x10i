@@ -139,10 +139,10 @@ public final class SerializationSupport {
 			serializeMethodType = new MethodType(new firm.Type[] {Mode.getP().getType(), Mode.getP().getType()},
 					new firm.Type[] {});
 
+		assert !serializeMethods.containsKey(firmType);
+
 		if (astType.isX10Struct()) {
 			/* (de)serializers for structs will be bound statically */
-			assert !serializeMethods.containsKey(firmType);
-
 			final Entity serEntity = new Entity(global, serializeMethodName, serializeMethodType);
 			OO.setEntityBinding(serEntity, ddispatch_binding.bind_static);
 			OO.setMethodExcludeFromVTable(serEntity, true);
@@ -150,8 +150,6 @@ public final class SerializationSupport {
 			serializeMethods.put(firmType, serEntity);
 		} else {
 			/* normal classes, dynamic dispatch of serializer method required */
-			assert !serializeMethods.containsKey(firmType);
-
 			final Entity serEntity = new Entity(firmType, serializeMethodName, serializeMethodType);
 
 			final ClassType superType = (ClassType) firmType.getSuperType(0);
