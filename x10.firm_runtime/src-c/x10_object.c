@@ -8,7 +8,7 @@ x10_object *x10_alloc_object(const x10_vtable *vptr, size_t size)
 {
 	assert(size > 0);
 	assert(vptr->runtime_type_info->size == size);
-	x10_object *o = XMALLOC(x10_object);
+	x10_object *o = (x10_object*)xmalloc(size);
 	o->vptr = vptr;
 	return o;
 }
