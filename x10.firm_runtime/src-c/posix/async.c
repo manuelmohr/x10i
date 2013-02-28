@@ -135,7 +135,7 @@ static void *execute(void *ptr)
 	if (pthread_setspecific(activity_atomic_depth, NULL))
 		panic("Could not set thread-local key");
 	/* run the closure */
-	_ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(body);
+	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(body);
 
 	unregister_from_finish_state(fs);
 	pthread_exit(NULL);

@@ -237,7 +237,7 @@ static void handle_remote_exec(const message_t *message)
 	send_msg((const message_t*)&deserialization_complete, header.from_place);
 
 	if (header.msg_type == MSG_RUN_AT) {
-		_ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(closure);
+		_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(closure);
 
 		/* acknowledge return1 */
 		completion_simple_message_t completion;
@@ -247,7 +247,7 @@ static void handle_remote_exec(const message_t *message)
 		send_msg((const message_t*)&completion, header.from_place);
 	} else {
 		assert(header.msg_type == MSG_EVAL_AT);
-		x10_object *retval = _ZN3x104lang7Runtime8evaluateEPN3x104lang8$Fun_0_0IPN3x104lang3AnyEEE(closure);
+		x10_object *retval = _ZN3x104lang7Runtime14callAnyClosureEPN3x104lang8$Fun_0_0IPN3x104lang3AnyEEE(closure);
 
 		struct obstack obst;
 		obstack_init(&obst);

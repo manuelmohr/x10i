@@ -121,7 +121,7 @@ static void execute(void *ptr)
 	activity_set_atomic_depth(0);
 
 	/* run the closure */
-	_ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(body);
+	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(body);
 
 	/* send signal to finish state */
 	unregister_from_finish_state(fs);

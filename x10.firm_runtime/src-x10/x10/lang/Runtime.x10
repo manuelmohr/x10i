@@ -68,14 +68,6 @@ public final class Runtime {
     /** Spawn of a thread/iLet to execute body() */
     private static native def executeParallel(body:()=>void):void;
 
-    /** This is called from our C runtime to execute activity closures */
-    private static def execute(body:()=>void):void {
-        body();
-    }
-    private static def evaluate(eval:()=>Any):Any {
-        return eval();
-    }
-
     public static def runFinish(body:()=>void):void {
         finish body();
     }
@@ -188,6 +180,15 @@ public final class Runtime {
      * onto the finish state.
      */
     public static def pushException(t:CheckedThrowable):void  {
+    }
+
+    /** used by the C runtime to call closures */
+    private static def callVoidClosure(body:()=>void):void {
+        body();
+    }
+    /** used by the C runtime to call closures */
+    private static def callAnyClosure(eval:()=>Any):Any {
+        return eval();
     }
 }
 

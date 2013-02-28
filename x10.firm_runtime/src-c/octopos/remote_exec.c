@@ -76,9 +76,9 @@ static void x10_place_execute(void *arg)
 	free(recv_buf);
 
 	if (pea->msg_type == MSG_RUN_AT) {
-		_ZN3x104lang7Runtime7executeEPN3x104lang12$VoidFun_0_0E(closure);
+		_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(closure);
 	} else if (pea->msg_type == MSG_EVAL_AT) {
-		x10_object *ret = _ZN3x104lang7Runtime8evaluateEPN3x104lang8$Fun_0_0IPN3x104lang3AnyEEE(closure);
+		x10_object *ret = _ZN3x104lang7Runtime14callAnyClosureEPN3x104lang8$Fun_0_0IPN3x104lang3AnyEEE(closure);
 
 		struct obstack obst;
 		obstack_init(&obst);
