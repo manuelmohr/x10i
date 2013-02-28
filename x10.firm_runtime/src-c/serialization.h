@@ -215,9 +215,6 @@ void x10_destroy_deserialization_buffer(deserialization_buffer_t *buf);
 void x10_deserialization_restore_primitive(deserialization_buffer_t *buf, void *addr, size_t nbytes);
 void x10_deserialization_restore_object(deserialization_buffer_t *buf, x10_object **addr);
 
-extern serialize_method    _ZN3x104lang6Object11__serializeEPvPv;
-extern deserialize_method  _ZN3x104lang6Object13__deserializeEPvPv;
-
 /** convenience function, serializes an X10 object to an obstack (by growing) */
 void x10_serialize_to_obst(struct obstack *obst, const x10_object *obj);
 /** convenience function, deserialize from a given data pointer */

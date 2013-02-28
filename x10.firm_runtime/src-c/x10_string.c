@@ -387,14 +387,12 @@ x10_pointer x10_string_get_pointer(const x10_string *self)
 
 void x10_string_serialize(serialization_buffer_t *buf, const x10_string *self)
 {
-	_ZN3x104lang6Object11__serializeEPvPv(buf, &self->base);
 	x10_serialization_write_primitive(buf, &self->len, sizeof(x10_int));
 	x10_serialization_write_primitive(buf, self->chars, self->len * sizeof(x10_char));
 }
 
 void x10_string_deserialize(deserialization_buffer_t *buf, x10_string *self)
 {
-	_ZN3x104lang6Object13__deserializeEPvPv(buf, &self->base);
 	x10_deserialization_restore_primitive(buf, &self->len, sizeof(x10_int));
 	self->chars = allocate_chars(self->len);
 	x10_deserialization_restore_primitive(buf, (void *)self->chars, self->len * sizeof(x10_char));
