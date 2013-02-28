@@ -67,31 +67,34 @@ public class CheckedThrowable {
     //@Native("java", "#this.toString()")
     @Native("c++", "x10aux::to_string(#this)")
     // virtual method with @Native needs to be final in managed x10
-    public final native def toString():String;
+    public final def toString():String = message;
 
     @Native("java", "x10.runtime.impl.java.ThrowableUtils.getStackTrace(#this)")
     //@Native("java", "#this.$getStackTrace()")
     @Native("c++", "(#this)->getStackTrace()")
-    public final native def getStackTrace() : Array[String](1);
+    public final def getStackTrace() : Array[String](1) = null;
 
     @Native("java", "#this.printStackTrace()")
     @Native("c++", "(#this)->printStackTrace()")
-    public native def printStackTrace() : void;
+    public def printStackTrace() : void {
+    }
 
     @Native("java", "x10.runtime.impl.java.ThrowableUtils.printStackTrace(#this, #p)")
     // @Native("java", "#this.printStackTrace(#p)")
     @Native("c++",  "(#this)->printStackTrace(#p)")
     // virtual method with @Native needs to be final in managed x10
-    public final native def printStackTrace(p: Printer) : void;
+    public final def printStackTrace(p: Printer) : void {
+    }
 
     @Native("java", "#this.fillInStackTrace()")
     @Native("c++", "(#this)->fillInStackTrace()")
-    public native def fillInStackTrace() : CheckedThrowable;
+    public def fillInStackTrace() : CheckedThrowable = this;
 
     // work-around for XTENLANG-3086
     // this code should be uncommented in x10.lang.Runtime when bug is fixed
     @Native("java", "if (false) throw (#T)null; else { }")
     @Native("c++", "do { } while (0)")
-    public static native def pretendToThrow[T] () { T<: CheckedThrowable } : void;
+    public static def pretendToThrow[T] () { T<: CheckedThrowable } : void {
+    }
 
 }
