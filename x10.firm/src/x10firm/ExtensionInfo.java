@@ -140,6 +140,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/io/StringWriter.x10");
 			allowedFiles.add("x10/io/Writable.x10");
 			allowedFiles.add("x10/io/Writer.x10");
+			allowedFiles.add("x10/lang/Activity.x10");
 			allowedFiles.add("x10/lang/Any.x10");
 			allowedFiles.add("x10/lang/Arithmetic.x10");
 			allowedFiles.add("x10/lang/Bitwise.x10");
