@@ -2,3 +2,4 @@
 #include <stdio.h>
 #include "x10_inputstreamreader.h"
 #include "x10_lock_octopos.h"
+#include "x10_signal_octopos.h"
