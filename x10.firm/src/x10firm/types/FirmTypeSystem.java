@@ -512,27 +512,44 @@ public class FirmTypeSystem {
 		return entity;
 	}
 
-	private Entity vptrEntity = null;
-	private Entity getInterfaceVptrEntity() {
-		if (vptrEntity == null) {
-			final firm.Type pointerType = Mode.getP().getType();
-			vptrEntity = new Entity(Program.getGlobalType(), "$vptr", pointerType);
-			OO.setFieldIsTransient(vptrEntity, true);
-		}
-		return vptrEntity;
-	}
-
-	private void setupTopClass(final ClassType type) {
+	private static void createVPtr(final ClassType type) {
 		final firm.Type pointerType = Mode.getP().getType();
 		final Entity vptr = new Entity(type, "$vptr", pointerType);
 		vptr.setOffset(0);
 		OO.setFieldIsTransient(vptr, true);
 		OO.setClassVPtrEntity(type, vptr);
 		vptr.setOwner(type);
+	}
 
-		/* add stuff for x10.lang.Any interface */
-		final X10ClassType any = typeSystem.getTypeSystem().Any();
-		final Type firmAny = asClass(any);
+	private void createVTable(final X10ClassType classType, final ClassType firmType) {
+		final Type global = Program.getGlobalType();
+		final Type pointerType = Mode.getP().getType();
+
+		final String vtableName = NameMangler.mangleVTable(classType);
+		final Entity cEntity = cStdlibEntities.get(vtableName);
+		final Entity vtable;
+		if (cEntity != null) {
+			if (!cEntity.hasLinkage(ir_linkage.IR_LINKAGE_WEAK)) {
+				throw new RuntimeException(
+						"Existing entity for vtable in c-library (" + vtableName + ") is not weak");
+			}
+			cEntity.removeLinkage(ir_linkage.IR_LINKAGE_WEAK);
+			vtable = cEntity;
+		} else {
+			vtable = new Entity(global, vtableName, pointerType);
+		}
+		vtable.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
+		OO.setClassVTableEntity(firmType, vtable);
+	}
+
+	private static void createTypeinfo(final X10ClassType classType, final ClassType firmType) {
+		final Type global = Program.getGlobalType();
+		final Type pointerType = Mode.getP().getType();
+
+		final String rttiName = NameMangler.mangleTypeinfo(classType);
+		final Entity classInfoEntity = new Entity(global, rttiName, pointerType);
+		classInfoEntity.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
+		OO.setClassRTTIEntity(firmType, classInfoEntity);
 	}
 
 	private ClassType createClassType(final X10ClassType classType) {
@@ -563,20 +580,14 @@ public class FirmTypeSystem {
 			OO.setClassVPtrEntity(result, vptr);
 		} else if (flags.isStruct()) {
 			/* nothing to do */
-			/*
-			final X10ClassType any = typeSystem.getTypeSystem().Any();
-			final Type firmAny = asClass(any);
-			result.addSuperType(firmAny);
-			*/
 		} else if (flags.isInterface()) {
 			/* no superclass interface */
+			createVPtr(result);
 			OO.setClassIsInterface(result, true);
-			OO.setClassVPtrEntity(result, getInterfaceVptrEntity());
-			if (classType.isAny())
-				getInterfaceVptrEntity().setOwner(result);
 		} else {
 			/* no superclass: add vptr field and functions of the Any interface */
-			setupTopClass(result);
+			createVPtr(result);
+			/* TODO: insert default implementations for Any stuff */
 		}
 
 		/* create interfaces */
@@ -619,38 +630,15 @@ public class FirmTypeSystem {
 			}
 		}
 
-		final Type global = Program.getGlobalType();
-		final Type pointerType = Mode.getP().getType();
-
-		if (!flags.isInterface() && !flags.isStruct()) {
-			final String vtableName = NameMangler.mangleVTable(classType);
-			final Entity cEntity = cStdlibEntities.get(vtableName);
-			final Entity vtable;
-			if (cEntity != null) {
-				if (!cEntity.hasLinkage(ir_linkage.IR_LINKAGE_WEAK)) {
-					throw new RuntimeException(
-							"Existing entity for vtable in c-library (" + vtableName + ") is not weak");
-				}
-				cEntity.removeLinkage(ir_linkage.IR_LINKAGE_WEAK);
-				vtable = cEntity;
-			} else {
-				vtable = new Entity(global, vtableName, pointerType);
-			}
-			vtable.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
-			OO.setClassVTableEntity(result, vtable);
-		}
-
-		final String rttiName = NameMangler.mangleTypeinfo(classType);
-		final Entity classInfoEntity = new Entity(global, rttiName, pointerType);
-		classInfoEntity.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
-		OO.setClassRTTIEntity(result, classInfoEntity);
-
 		if (!flags.isInterface()) {
+			if (!flags.isStruct()) {
+				createVTable(classType, result);
+			}
+
 			serializationSupport.generateSerializationFunction(classType, result, this);
 			serializationSupport.generateDeserializationFunction(classType, result, this);
 		}
-
-		// Layouting of classes must be done explicitly by finishTypes
+		createTypeinfo(classType, result);
 
 		return result;
 	}
@@ -680,12 +668,7 @@ public class FirmTypeSystem {
 		final ClassType result = firmCoreTypes.get(type);
 		if (result != null)
 			return result;
-
-		if (!(type instanceof X10ClassType)) {
-			throw new java.lang.RuntimeException("Attempt to create firm classtype from non-X10ClassType " + type);
-		}
-
-		return createClassType((X10ClassType) type);
+		return createClassType(type);
 	}
 
 	/**
@@ -697,7 +680,10 @@ public class FirmTypeSystem {
 	 */
 	public ClassType asClass(final polyglot.types.Type origType) {
 		final polyglot.types.Type type = typeSystem.getConcreteType(origType);
-		return concreteAsClass(type);
+		if (!(type instanceof X10ClassType)) {
+			throw new java.lang.RuntimeException("Attempt to create firm classtype from non-X10ClassType " + type);
+		}
+		return concreteAsClass((X10ClassType)type);
 	}
 
 	/**
