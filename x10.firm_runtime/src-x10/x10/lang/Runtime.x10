@@ -189,12 +189,6 @@ public final class Runtime {
      */
     public static def pushException(t:CheckedThrowable):void  {
     }
-
-    // submit
-    public static def execute(body:()=>void, finishState:FinishState):void {
-    }
-
-
 }
 
 // vim:shiftwidth=4:tabstop=4:expandtab
