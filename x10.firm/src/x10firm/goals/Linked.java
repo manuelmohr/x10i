@@ -106,7 +106,7 @@ public class Linked extends AbstractGoal_c {
 		if (options.useSoftFloat()) {
 			result += "softfloat/";
 		} else {
-			result += "default/";
+			result += "multitile/";
 		}
 		return result;
 	}

@@ -30,7 +30,7 @@ ifeq ($(findstring darwin11, $(TARGET)), darwin11)
 	APP_CFLAGS += -m32
 endif
 ifeq ($(TARGET), i686-invasic-octopos)
-	OCTOPOS_BASE=../octopos-app/releases/current/x86guest/default
+	OCTOPOS_BASE=../octopos-app/releases/current/x86guest/multitile
 	GCC_INCLUDE:=$(shell $(CC) --print-file-name=include)
 	CFLAGS += -m32 -fno-stack-protector -mfpmath=sse -msse2
 	CPPFLAGS += -nostdinc -D__OCTOPOS__ -I $(GCC_INCLUDE) -I $(OCTOPOS_BASE)/include
