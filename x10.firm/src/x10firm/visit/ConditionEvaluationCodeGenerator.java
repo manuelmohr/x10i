@@ -142,17 +142,25 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	@Override
 	public void visit(final X10Binary_c b) {
 		final Binary.Operator op = b.operator();
-		if (op != Binary.EQ && op != Binary.NE) {
+		final Relation relation;
+		/* only '==', '!=' are allowed operators.
+		 * all other operators are implemented by native calls. */
+		if (op == Binary.EQ) {
+			relation = Relation.Equal;
+		} else if (op == Binary.NE) {
+			relation = Relation.LessGreater;
+		} else if (op == Binary.LT) {
+			/* in theory this should never happen in X10, as < is actually a function call to
+			 * the < operator function. In practice the StaticInitializer lowering code is lazy and
+			 * uses it anyway. */
+			relation = Relation.Less;
+		} else {
 			visit((Binary_c)b);
 			return;
 		}
 
-		/* only '==', '!=' are allowed operators.
-		 * all other operators are implemented by native calls. */
-
 		final Expr     left      = b.left();
 		final Expr     right     = b.right();
-		final Relation relation  = (op == Binary.EQ) ? Relation.Equal : Relation.LessGreater;
 		Node           retLeft   = codeGenerator.visitExpression(left);
 		Node           retRight  = codeGenerator.visitExpression(right);
 		final Type     leftType  = left.type();

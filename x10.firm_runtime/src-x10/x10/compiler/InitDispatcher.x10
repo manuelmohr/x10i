@@ -12,6 +12,8 @@
 package x10.compiler;
 
 import x10.compiler.NativeRep;
+/* TODO TODO reenable Monitor when it is available */
+//import x10.util.concurrent.Monitor;
 
 /**
  * Used for generating static initialization code in Java backend.
@@ -19,9 +21,25 @@ import x10.compiler.NativeRep;
  */
 @NativeRep("java", "x10.runtime.impl.java.InitDispatcher", null, null)
 class InitDispatcher {
-    public static val UNINITIALIZED = 0;
-    public static val INITIALIZED = 1;
-    public static val INITIALIZING = 2;
+    //static staticMonitor = new Monitor();
+
+    public static val UNINITIALIZED    = 0;
+    public static val INITIALIZING     = 1;
+    public static val INITIALIZED      = 2;
+    public static val EXCEPTION_RAISED = 3;
+
+    public static def lockInitialized() {
+        //staticMonitor.lock();
+    }
+    public static def unlockInitialized() {
+        //staticMonitor.unlock();
+    }
+    public static def awaitInitialized() {
+        //staticMonitor.await();
+    }
+    public static def notifyInitialized() {
+        //staticMonitor.release();
+    }
 }
 
 // vim:shiftwidth=4:tabstop=4:expandtab

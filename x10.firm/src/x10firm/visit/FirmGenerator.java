@@ -34,6 +34,7 @@ import polyglot.ast.Do_c;
 import polyglot.ast.Empty_c;
 import polyglot.ast.Eval_c;
 import polyglot.ast.Expr;
+import polyglot.ast.FieldDecl;
 import polyglot.ast.FieldDecl_c;
 import polyglot.ast.Field_c;
 import polyglot.ast.FloatLit_c;
@@ -213,7 +214,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	private CompilerOptions options;
 
 	/** Holds all static initializer blocks. */
-	private static List<polyglot.ast.Initializer> staticInitBlocks = new LinkedList<polyglot.ast.Initializer>();
+	private final List<FieldDecl> initFields = new ArrayList<FieldDecl>();
 
 	private X10ConstructorInstance stringLiteralConstructor;
 
@@ -260,8 +261,10 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			= initConstruction(methodEntity, Collections.<LocalInstance>emptyList(),
 				Collections.<LocalInstance>emptyList(), voidT, null);
 
-		for (final polyglot.ast.Initializer n : staticInitBlocks) {
-			visitAppropriate(n.body());
+		for (final FieldDecl field : initFields) {
+			final FieldInstance instance = field.fieldDef().asInstance();
+			final Node value = visitExpression(field.init());
+			genFieldInstanceAssign(null, instance, value);
 		}
 
 		finishConstruction(methodEntity, savedConstruction);
@@ -907,25 +910,26 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	@Override
 	public void visit(final FieldDecl_c dec) {
+		/* static fields may have initializers */
 		final Flags flags = dec.flags().flags();
 		if (flags.isStatic()) {
 			if (dontGenerateStatics)
 				return;
+
+			final Expr init = dec.init();
+			if (init != null) {
+				// Check for in place initializer
+				if (ASTQuery.isGlobalInit(typeSystem.getTypeSystem(), dec)) {
+					final Initializer initializer = exprToInitializer(init);
+					final FieldInstance instance = dec.fieldDef().asInstance();
+					final Entity entity = firmTypeSystem.getFieldEntity(instance);
+					entity.setInitializer(initializer);
+				} else {
+					initFields.add(dec);
+				}
+			}
 		} else if (unboundTypeParameters) {
 			return;
-		}
-
-		final FieldInstance instance = dec.fieldDef().asInstance();
-
-		/* static fields may have initializers */
-		if (flags.isStatic()) {
-			final Expr init = dec.init();
-			// Check for in place initializer
-			if (init != null && ASTQuery.isGlobalInit(typeSystem.getTypeSystem(), dec)) {
-				final Initializer initializer = exprToInitializer(init);
-				final Entity entity = firmTypeSystem.getFieldEntity(instance);
-				entity.setInitializer(initializer);
-			}
 		}
 	}
 
@@ -2453,11 +2457,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	@Override
 	public void visit(final Initializer_c n) {
-		if (n.flags().flags().isStatic()) {
-			staticInitBlocks.add(n);
-		} else {
-			throw new CodeGenError("Non-static initializer not implemented yet", n);
-		}
+		throw new CodeGenError("Initializer blocks not supported", n);
 	}
 
 	/**
