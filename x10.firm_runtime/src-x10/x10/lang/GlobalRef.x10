@@ -24,7 +24,7 @@ import x10.lang.Pointer;
  * <p> At its home place, the value when applied to the empty list of
  * arguments returns its encapsulated value.
  */
-public struct GlobalRef[T](home: Place) {T isref} {
+public struct GlobalRef[T](home: Place) {T <: Any, T isref} {
     public property home(): Place = home;
 
     private val ptr: Pointer;
