@@ -16,6 +16,7 @@ struct deserialize_methods_entry_t {
 typedef struct deserialize_methods_entry_t dm_entry_t;
 
 extern dm_entry_t __deserialize_methods[];
+extern serialize_method *__serialize_methods[];
 
 static inline int find_object(const x10_object **arr, const x10_object *key)
 {
@@ -88,7 +89,7 @@ void x10_serialization_write_object(serialization_buffer_t *buf, const x10_objec
 	obstack_grow(buf->obst, &uid, sizeof(uint32_t));
 
 	/* frontend assures that T::__serialize is in the first vtable slot */
-	serialize_method *serializer = objPtr->vptr->fptrs[0];
+	serialize_method *serializer = __serialize_methods[uid];
 	serializer(buf, objPtr);
 }
 

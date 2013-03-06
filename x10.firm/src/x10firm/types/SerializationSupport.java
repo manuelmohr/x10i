@@ -23,9 +23,7 @@ import firm.Program;
 import firm.Relation;
 import firm.Type;
 import firm.bindings.binding_ircons.ir_where_alloc;
-import firm.bindings.binding_oo;
 import firm.bindings.binding_oo.ddispatch_binding;
-import firm.bindings.binding_typerep.ir_type_state;
 import firm.nodes.Alloc;
 import firm.nodes.Block;
 import firm.nodes.Call;
@@ -58,6 +56,7 @@ public final class SerializationSupport {
 	private MethodType deserializeMethodType;
 
 	private static final String DESERIALIZE_METHOD_TABLE_NAME = "__deserialize_methods";
+	private static final String SERIALIZE_METHOD_TABLE_NAME = "__serialize_methods";
 
 	private Entity serializationWritePrimitiveEntity;
 	private Entity serializationWriteObjectEntity;
@@ -142,36 +141,10 @@ public final class SerializationSupport {
 
 		assert !serializeMethods.containsKey(firmType);
 
-		if (astType.isX10Struct()) {
-			/* (de)serializers for structs will be bound statically */
-			final Entity serEntity = new Entity(global, serializeMethodName, serializeMethodType);
-			OO.setEntityBinding(serEntity, ddispatch_binding.bind_static);
-			OO.setMethodExcludeFromVTable(serEntity, true);
-
-			serializeMethods.put(firmType, serEntity);
-		} else {
-			/* normal classes, dynamic dispatch of serializer method required */
-			final Entity serEntity = new Entity(firmType, serializeMethodName, serializeMethodType);
-
-			final boolean hasRealSuperclass;
-			if (firmType.getNSuperTypes() > 0) {
-				final ClassType superType = (ClassType) firmType.getSuperType(0);
-				assert superType != null;
-				hasRealSuperclass = !binding_oo.oo_get_class_is_interface(superType.ptr);
-			} else {
-				hasRealSuperclass = false;
-			}
-
-			if (hasRealSuperclass) {
-				final ClassType superType = (ClassType) firmType.getSuperType(0);
-				final Entity superSerEntity = serializeMethods.get(superType);
-				assert superSerEntity != null;
-				serEntity.addEntityOverwrites(superSerEntity);
-			}
-
-			OO.setEntityBinding(serEntity, ddispatch_binding.bind_dynamic);
-			serializeMethods.put(firmType, serEntity);
-		}
+		final Entity serEntity = new Entity(global, serializeMethodName, serializeMethodType);
+		OO.setEntityBinding(serEntity, ddispatch_binding.bind_static);
+		OO.setMethodExcludeFromVTable(serEntity, true);
+		serializeMethods.put(firmType, serEntity);
 
 		final String deserializeMethodName =
 				NameMangler.mangleGeneratedMethodName(astType, DESERIALIZE_METHOD_NAME, DESERIALIZE_METHOD_SIGNATURE);
@@ -251,12 +224,18 @@ public final class SerializationSupport {
 		final int nEntries = maxClassUid * 2;
 		final ArrayType dmtType = new ArrayType(typeP);
 		dmtType.setBounds(0, 0, nEntries);
-		dmtType.setSizeBytes(typeP.getSizeBytes() * nEntries);
-		dmtType.setTypeState(ir_type_state.layout_fixed);
+		dmtType.finishLayout();
 		final Entity deserializeMethodTable = new Entity(global, dmtName, dmtType);
+		final Initializer dmtInitializer = new Initializer(nEntries);
+
+		final String smtName = NameMangler.mangleKnownName(SERIALIZE_METHOD_TABLE_NAME);
+		final ArrayType smtType = new ArrayType(typeP);
+		smtType.setBounds(0, 0, maxClassUid);
+		smtType.finishLayout();
+		final Entity serializeMethodTable = new Entity(global, smtName, smtType);
+		final Initializer smtInitializer = new Initializer(maxClassUid);
 
 		final Graph constCode = Program.getConstCodeGraph();
-		final Initializer init = new Initializer(nEntries);
 
 		for (final ClassType classType : firmTypes) {
 			final int classUid = OO.getClassUID(classType);
@@ -264,6 +243,7 @@ public final class SerializationSupport {
 				continue;
 
 			final Entity deserEntity = deserializeMethods.get(classType);
+			final Entity serEntity = serializeMethods.get(classType);
 			final Entity vtableEntity = OO.getClassVTableEntity(classType);
 
 			assert classUid > 0;
@@ -272,12 +252,17 @@ public final class SerializationSupport {
 
 			final Node symcDeser = constCode.newSymConst(deserEntity);
 			final Initializer initDeser = new Initializer(symcDeser);
-			init.setCompoundValue(classUid * 2, initDeser);
+			dmtInitializer.setCompoundValue(classUid * 2, initDeser);
 			final Node symcVtable = constCode.newSymConst(vtableEntity);
 			final Initializer initVtable = new Initializer(symcVtable);
-			init.setCompoundValue(classUid * 2 + 1, initVtable);
+			dmtInitializer.setCompoundValue(classUid * 2 + 1, initVtable);
+
+			final Node symcSer = constCode.newSymConst(serEntity);
+			final Initializer initSer = new Initializer(symcSer);
+			smtInitializer.setCompoundValue(classUid, initSer);
 		}
-		deserializeMethodTable.setInitializer(init);
+		deserializeMethodTable.setInitializer(dmtInitializer);
+		serializeMethodTable.setInitializer(smtInitializer);
 	}
 
 	private Entity lookupCustomSerializeMethod(final ClassType klass) {
