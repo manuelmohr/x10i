@@ -60,11 +60,22 @@ M   com.ibm.wala.cast/source/java/com/ibm/wala/cast/ir/translator/AstTranslator.
  *
  */
 public class X10CAst2IRTranslator extends X10DelegatingCAstVisitor<WalkContext> /* implements ArrayOpHandler */ {
+	
 	private static class X10JavaCAst2IRTranslator extends JavaCAst2IRTranslator {
-	    protected final X10SourceLoaderImpl x10Loader;
+
+		protected final X10SourceLoaderImpl x10Loader;
+		private final ModuleEntry entry;
+		private final CAstEntity sourceFileEntity;
+	    
 		private X10JavaCAst2IRTranslator(ModuleEntry entry, CAstEntity sourceFileEntity, JavaSourceLoaderImpl loader) {
 			super(entry, sourceFileEntity, loader);
 			x10Loader = (X10SourceLoaderImpl) loader;
+			this.entry = entry;
+			this.sourceFileEntity = sourceFileEntity;
+		}
+		
+		public void translate(X10CAst2IRTranslator translator) {
+			translator.translate(sourceFileEntity, entry);
 		}
 
 		/* (non-Javadoc)
@@ -335,21 +346,19 @@ public class X10CAst2IRTranslator extends X10DelegatingCAstVisitor<WalkContext> 
       }
     }
 
-    private void translate(final CAstEntity N, final String nm) {
+    public void translate(final CAstEntity N, final ModuleEntry module) {
+//    private void translate(final CAstEntity N, final String nm) {
         if (AstTranslator.DEBUG_TOP)
-            System.err.println("translating " + nm);
+            System.err.println("translating " + N);
 //      PrintWriter printWriter= new PrintWriter(System.out);
 //      X10CAstPrinter.printTo(N, printWriter);
 //      printWriter.flush();
-        //TODO this may not be null - this whole method is a mess. It should never have a these parameters to begin with...
-        ModuleEntry entry = new SourceFileModule(null, nm);
-        visitEntities(N, translator.new RootContext(N, entry), this);
+        visitEntities(N, translator.new RootContext(N, module), this);
     }
 
     /* UGH! */
     public void translate() {
-        CAstEntity fSourceEntity = translator.sourceFileEntity();
-        translate(fSourceEntity, fSourceEntity.getName());
+        translator.translate(this);
     }
     
     public JavaCAst2IRTranslator getCAst2IRTranslator() {

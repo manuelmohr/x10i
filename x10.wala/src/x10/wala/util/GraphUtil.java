@@ -39,16 +39,13 @@ public class GraphUtil {
     public static void printNumberedGraph(NumberedGraph g, String name){
 	String os = System.getProperty("os.name");
 	String dot_path = "";
-	String file_path = "";
 	MyNumberedGraphDecorator mnd = new MyNumberedGraphDecorator();
 	if (!os.contains("Linux")) {
-	    dot_path = "/Applications/Graphviz.app/Contents/MacOS/dot";
-	    file_path = "/Users/blshao/Desktop/";
+	    dot_path = "/opt/local/bin/dot";
 	} else {
 	    dot_path = "/usr/bin/dot";
-	    file_path = "/home/blshao/Desktop/";
 	}
-	String full_name = file_path+name;
+	String full_name = name;
 	try {
 	    DotUtil.dotify(g, mnd, (full_name + ".dot"), 
 		    (full_name + ".pdf"),dot_path);

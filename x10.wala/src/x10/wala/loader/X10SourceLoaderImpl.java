@@ -27,7 +27,7 @@ public class X10SourceLoaderImpl extends JavaSourceLoaderImpl {
 
     public final static Atom X10 = Atom.findOrCreateUnicodeAtom("X10");
 
-    public static ClassLoaderReference X10SourceLoader = new ClassLoaderReference(X10SourceLoaderName, X10, null);
+    public static ClassLoaderReference X10SourceLoader = new ClassLoaderReference(X10SourceLoaderName, X10, ClassLoaderReference.Application);
 
     public X10SourceLoaderImpl(ClassLoaderReference loaderRef, IClassLoader parent, SetOfClasses exclusions, IClassHierarchy cha)
             throws IOException {

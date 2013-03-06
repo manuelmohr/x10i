@@ -20,23 +20,32 @@ import polyglot.visit.NodeVisitor;
 import x10.compiler.ws.util.WSTransformationContent;
 import x10.wala.client.X10SourceAnalysisEngine;
 import x10.wala.loader.X10SourceLoaderImpl;
+import x10.wala.util.GraphUtil;
 
+import com.ibm.wala.cast.java.loader.JavaSourceLoaderImpl;
 import com.ibm.wala.cast.tree.CAstEntity;
 import com.ibm.wala.classLoader.ModuleEntry;
 import com.ibm.wala.classLoader.SourceFileModule;
+import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
+import com.ibm.wala.ssa.IR;
 import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.Descriptor;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.strings.Atom;
 
+import edu.kit.joana.wala.util.PrettyWalaNames;
+
 public class X102IRGoal extends SourceGoal_c {
     // TODO: get rid of static state
     // TODO: figure out whether we need multiple loaders
 	static {
+		// ugly hack to prevent Java source loader from removing type map information.
+    	JavaSourceLoaderImpl.deleteTypeMapAfterInit = false;
+    	
 		if(Report.verbose)
 			Report.reporter.report(5,"WALA is invoked!");
 	}
@@ -83,7 +92,17 @@ public class X102IRGoal extends SourceGoal_c {
 
     // test method to be called once the IR has been generated for all jo
     public static void printCallGraph() {
-    	System.err.println(buildCallGraph());
+    	CallGraph cg = buildCallGraph();
+    	System.err.println(cg);
+    	for (CGNode n : cg) {
+			System.err.println(n.getMethod());
+    		final IR ir = n.getIR();
+    		if (ir != null) {
+    			System.err.println(PrettyWalaNames.ir2string(ir));
+    		}
+    	}
+    	GraphUtil.printNumberedGraph(cg, "_x10_wala_callgraph");
+    	
     	//GraphUtil.printNumberedGraph(buildCallGraph(), (String)mainClasses.get(mainClasses.size()-1));
     }
     

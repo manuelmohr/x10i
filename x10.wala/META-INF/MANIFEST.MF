@@ -9,7 +9,8 @@ Require-Bundle: com.ibm.wala.cast,
  com.ibm.wala.core,
  com.ibm.wala.shrike,
  org.eclipse.core.runtime,
- x10.compiler
+ x10.compiler,
+ joana.wala.util;bundle-version="0.0.1"
 Bundle-ActivationPolicy: lazy
 Export-Package: x10.wala.analysis.typeInference,
  x10.wala.classLoader,

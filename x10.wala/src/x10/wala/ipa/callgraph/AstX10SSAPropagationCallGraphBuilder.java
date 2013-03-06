@@ -6,10 +6,10 @@ import x10.wala.ssa.AtStmtInstruction;
 import x10.wala.ssa.AtomicInstruction;
 import x10.wala.ssa.FinishInstruction;
 import x10.wala.ssa.HereInstruction;
-import x10.wala.ssa.NextInstruction;
 import x10.wala.ssa.IterHasNextInstruction;
 import x10.wala.ssa.IterInitInstruction;
 import x10.wala.ssa.IterNextInstruction;
+import x10.wala.ssa.NextInstruction;
 import x10.wala.ssa.TupleInstruction;
 
 import com.ibm.wala.analysis.typeInference.TypeInference;
@@ -143,6 +143,10 @@ public class AstX10SSAPropagationCallGraphBuilder extends AstJavaSSAPropagationC
     }
     }
 
+    protected ConstraintVisitor makeVisitor(CGNode node) {
+        return new AstX10ConstraintVisitor(this, (ExplicitCallGraph.ExplicitNode) node);
+    }
+    
     protected ConstraintVisitor makeVisitor(ExplicitCallGraph.ExplicitNode node) {
 	return new AstX10ConstraintVisitor(this, node);
     }

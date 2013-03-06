@@ -1482,7 +1482,7 @@ public class X10toCAstTranslator implements TranslatorToCAst {
       }
 
       public CAstSourcePositionMap.Position getPosition() {
-        Assertions.UNREACHABLE("CompilationUnitEntity.getPosition()");
+//        Assertions.UNREACHABLE("CompilationUnitEntity.getPosition()");
         return null;
       }
 
