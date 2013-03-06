@@ -9,8 +9,8 @@ public class TupleInstruction extends SSAInstruction {
 
     private int childValues[];
 
-    public TupleInstruction(int result, int[] childValues) {
-        super();
+    public TupleInstruction(int iindex, int result, int[] childValues) {
+        super(iindex);
         this.retValue = result;
         this.childValues = childValues;
     }
@@ -25,7 +25,7 @@ public class TupleInstruction extends SSAInstruction {
 
     @Override
     public SSAInstruction copyForSSA(SSAInstructionFactory insts, int[] defs, int[] uses) {
-        TupleInstruction copy = ((AstX10InstructionFactory) insts).Tuple((defs != null) ? defs[0] : retValue,
+        TupleInstruction copy = ((AstX10InstructionFactory) insts).Tuple(iindex, (defs != null) ? defs[0] : retValue,
                 childValues);
 
         if (childValues != null) {

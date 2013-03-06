@@ -25,6 +25,7 @@ import polyglot.ast.ArrayTypeNode;
 import polyglot.ast.Assert;
 import polyglot.ast.Assign;
 import polyglot.ast.Binary;
+import polyglot.ast.Binary.Operator;
 import polyglot.ast.Block;
 import polyglot.ast.BooleanLit;
 import polyglot.ast.Branch;
@@ -40,6 +41,7 @@ import polyglot.ast.ClassLit;
 import polyglot.ast.ClassMember;
 import polyglot.ast.Conditional;
 import polyglot.ast.ConstructorCall;
+import polyglot.ast.ConstructorCall.Kind;
 import polyglot.ast.ConstructorDecl;
 import polyglot.ast.Do;
 import polyglot.ast.Empty;
@@ -84,9 +86,6 @@ import polyglot.ast.TopLevelDecl;
 import polyglot.ast.Try;
 import polyglot.ast.Unary;
 import polyglot.ast.While;
-import polyglot.ast.Binary.Operator;
-import polyglot.ast.ConstructorCall.Kind;
-
 import polyglot.types.ClassType;
 import polyglot.types.CodeInstance;
 import polyglot.types.ConstructorInstance;
@@ -96,22 +95,20 @@ import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
 import polyglot.types.InitializerDef;
 import polyglot.types.InitializerInstance;
+import polyglot.types.JavaArrayType;
 import polyglot.types.LocalDef;
 import polyglot.types.MemberDef;
-import polyglot.types.JavaArrayType;
-
 import polyglot.types.Name;
 import polyglot.types.ObjectType;
 import polyglot.types.ProcedureInstance;
-import polyglot.types.QName;
 import polyglot.types.SemanticException;
-
 import polyglot.types.Type;
 import polyglot.types.TypeSystem;
 import polyglot.types.Types;
+import polyglot.util.Position;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import x10.ast.AssignPropertyCall;
 import x10.ast.Async;
-import x10.ast.AtEach;
 import x10.ast.AtStmt;
 import x10.ast.Atomic;
 import x10.ast.Clocked;
@@ -133,19 +130,16 @@ import x10.ast.X10Formal;
 import x10.ast.X10Loop;
 import x10.types.FunctionType;
 import x10.types.MethodInstance;
-import x10.types.MethodInstance_c;
-import x10.types.ParametrizedType;
 import x10.wala.tree.X10CAstEntity;
 import x10.wala.tree.X10CastNode;
-import polyglot.types.TypeSystem;
-import polyglot.util.Position;
 
 import com.ibm.wala.cast.ir.translator.AstTranslator.InternalCAstSymbol;
+import com.ibm.wala.cast.ir.translator.TranslatorToCAst;
 import com.ibm.wala.cast.java.loader.Util;
 import com.ibm.wala.cast.java.translator.JavaProcedureEntity;
-import com.ibm.wala.cast.java.translator.TranslatorToCAst;
 import com.ibm.wala.cast.java.types.JavaType;
 import com.ibm.wala.cast.tree.CAst;
+import com.ibm.wala.cast.tree.CAstAnnotation;
 import com.ibm.wala.cast.tree.CAstControlFlowMap;
 import com.ibm.wala.cast.tree.CAstEntity;
 import com.ibm.wala.cast.tree.CAstNode;
@@ -156,14 +150,17 @@ import com.ibm.wala.cast.tree.CAstSymbol;
 import com.ibm.wala.cast.tree.CAstType;
 import com.ibm.wala.cast.tree.CAstTypeDictionary;
 import com.ibm.wala.cast.tree.impl.AbstractSourcePosition;
-import com.ibm.wala.cast.tree.impl.CAstCloner;
 import com.ibm.wala.cast.tree.impl.CAstControlFlowRecorder;
 import com.ibm.wala.cast.tree.impl.CAstImpl;
 import com.ibm.wala.cast.tree.impl.CAstNodeTypeMapRecorder;
 import com.ibm.wala.cast.tree.impl.CAstOperator;
-import com.ibm.wala.cast.tree.impl.CAstRewriter;
 import com.ibm.wala.cast.tree.impl.CAstSourcePositionRecorder;
 import com.ibm.wala.cast.tree.impl.CAstSymbolImpl;
+import com.ibm.wala.cast.tree.rewrite.CAstCloner;
+import com.ibm.wala.cast.tree.rewrite.CAstRewriter;
+import com.ibm.wala.cast.tree.rewrite.CAstRewriter.CopyKey;
+import com.ibm.wala.cast.tree.rewrite.CAstRewriter.RewriteContext;
+import com.ibm.wala.cast.tree.rewrite.CAstRewriterFactory;
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.shrikeBT.IInvokeInstruction;
 import com.ibm.wala.types.ClassLoaderReference;
@@ -181,6 +178,40 @@ import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.strings.Atom;
 
 public class X10toCAstTranslator implements TranslatorToCAst {
+	
+	//ugly hack to force this class to use x10.wala.translator.WalkContext and not TranslatorToCast.WalkContext
+	public interface WalkContext extends TranslatorToCAst.WalkContext<WalkContext, Node> {
+//	    void addScopedEntity(CAstNode node, CAstEntity e);
+	//
+//	    CAstControlFlowRecorder cfg();
+	//
+//	    CAstSourcePositionRecorder pos();
+	//
+//	    CAstNodeTypeMapRecorder getNodeTypeMap();
+
+	    Collection<Pair<Type, Object>> getCatchTargets(Type label);
+
+//	    Node getContinueFor(String label);
+	//
+//	    Node getBreakFor(String label);
+
+	    Node getFinally();
+
+	    CodeInstance getEnclosingMethod();
+
+	    Type getEnclosingType();
+
+	    CAstTypeDictionary getTypeDictionary();
+
+	    List<ClassMember> getStaticInitializers();
+
+	    List<ClassMember> getInitializers();
+
+	    Map<Node, String> getLabelMap();
+
+	    boolean needLVal();
+	}
+	
     protected final CAst fFactory = new CAstImpl();
 
     protected final NodeFactory fNodeFactory;
@@ -1468,6 +1499,10 @@ public class X10toCAstTranslator implements TranslatorToCAst {
         Assertions.UNREACHABLE("CompilationUnitEntity.getType()");
         return null;
       }
+
+      public Collection<CAstAnnotation> getAnnotations() {
+		return null;
+      }
     }
 
     public class PolyglotJavaType implements JavaType {
@@ -1678,6 +1713,11 @@ public class X10toCAstTranslator implements TranslatorToCAst {
       public String toString() {
         return fCT.fullName().toString();
       }
+
+	public Collection<CAstAnnotation> getAnnotations() {
+		// TODO Auto-generated method stub
+		return null;
+	}
     }
 
     protected final class ProcedureEntity extends CodeBodyEntity implements JavaProcedureEntity {
@@ -1846,6 +1886,10 @@ public class X10toCAstTranslator implements TranslatorToCAst {
           }
         };
       }
+
+      public Collection<CAstAnnotation> getAnnotations() {
+		return null;
+      }
     }
 
     protected final class FieldEntity implements CAstEntity {
@@ -1924,7 +1968,11 @@ public class X10toCAstTranslator implements TranslatorToCAst {
       }
 
       public CAstType getType() {
-        return fContext.getTypeDictionary().getCAstTypeFor(fFI.type());
+        return getTypeDict().getCAstTypeFor(fFI.type());
+      }
+
+      public Collection<CAstAnnotation> getAnnotations() {
+		return null;
       }
     }
 
@@ -1943,9 +1991,9 @@ public class X10toCAstTranslator implements TranslatorToCAst {
         parent.addScopedEntity(node, e);
       }
 
-      // public Map/*<CAstNode,CAstEntity>*/ getScopedEntities() {
-      // return parent.getScopedEntities();
-      // }
+      public Map<CAstNode, Collection<CAstEntity>> getScopedEntities() {
+    	  return parent.getScopedEntities();
+      }
 
       public CAstControlFlowRecorder cfg() {
         return parent.cfg();
@@ -2290,6 +2338,10 @@ public class X10toCAstTranslator implements TranslatorToCAst {
         Assertions.UNREACHABLE("ClassContext.needLVal()");
         return false;
       }
+
+      public Map<CAstNode, Collection<CAstEntity>> getScopedEntities() {
+		return null;
+      }
     }
 
     public class BreakContext extends DelegatingContext {
@@ -2513,6 +2565,16 @@ public class X10toCAstTranslator implements TranslatorToCAst {
       return walkEntity((Node) ast, new RootContext(getTypeDict()));
     }
 
+    public CAstEntity translateToCAst() throws IOException {
+    	//TODO
+    	throw new NotImplementedException();
+    }
+
+    public <C extends RewriteContext<K>, K extends CopyKey<K>> void addRewriter(CAstRewriterFactory<C, K> factory, boolean prepend) {
+    	//TODO
+    	throw new NotImplementedException();
+    }
+ 
     protected static Collection<CAstQualifier> mapFlagsToQualifiers(Flags flags) {
       Set<CAstQualifier> quals = new LinkedHashSet<CAstQualifier>();
 
@@ -2969,6 +3031,10 @@ public class X10toCAstTranslator implements TranslatorToCAst {
 	}
 	public String toString() {
 	    return getName();
+	}
+
+	public Collection<CAstAnnotation> getAnnotations() {
+		return null;
 	}
     }
 
@@ -3559,6 +3625,10 @@ public class X10toCAstTranslator implements TranslatorToCAst {
 	public CAstType getType() {
 	    return fBodyType;
 	}
+
+	public Collection<CAstAnnotation> getAnnotations() {
+		return null;
+	}
     }
 
     private final class ClosureBodyType implements CAstType.Method {
@@ -3773,6 +3843,10 @@ public class X10toCAstTranslator implements TranslatorToCAst {
       private final CAstSourcePositionMap.Position fPosition;
       
       private final TypeDecl fTypeDecl;
+
+      public Collection<CAstAnnotation> getAnnotations() {
+		return null;
+      }
       
     }
 }

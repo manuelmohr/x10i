@@ -46,7 +46,7 @@ public class AstX10ZeroXCFABuilder extends AstX10CFABuilder {
 	      makeDefaultContextInterpreters(appContextInterpreter, options, cha);
       setContextInterpreter(contextInterpreter);
 
-      ContextSelector def = new DefaultContextSelector(options);
+      ContextSelector def = new DefaultContextSelector(options, cha);
 
       ContextSelector  contextSelector = 
 	  appContextSelector == null? 

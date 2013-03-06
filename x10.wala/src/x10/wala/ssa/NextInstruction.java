@@ -12,11 +12,11 @@ import com.ibm.wala.ssa.SymbolTable;
 
 public class NextInstruction extends SSAInstruction {
 
-    public NextInstruction() {
-   
+    public NextInstruction(int iindex) {
+      super(iindex);
     }
     public SSAInstruction copyForSSA(SSAInstructionFactory insts, int[] defs, int[] uses) {
-      return ((AstX10InstructionFactory)insts).Next();
+      return ((AstX10InstructionFactory)insts).Next(iindex);
     }
 
     public String toString(SymbolTable symbolTable) {

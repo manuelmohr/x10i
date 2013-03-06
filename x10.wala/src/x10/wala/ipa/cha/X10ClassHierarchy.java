@@ -1178,4 +1178,9 @@ public class X10ClassHierarchy implements IClassHierarchy {
     }
   }
 
+  public Set<TypeReference> getUnresolvedClasses() {
+	//TODO collect unresolved classes
+	return Collections.emptySet();
+  }
+
 }

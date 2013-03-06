@@ -10,9 +10,8 @@ import com.ibm.wala.cast.tree.visit.*;
  * @author Igor Peshansky
  * Extend DelegatingCAstVisitor to accommodate X10 CAst nodes and entities.
  * Doesn't work for visit/leaveEntity, visit/leaveNode, visit/leaveAssign...
- * TODO: document me.
  */
-public abstract class X10DelegatingCAstVisitor extends DelegatingCAstVisitor {
+public abstract class X10DelegatingCAstVisitor<C extends CAstVisitor.Context> extends DelegatingCAstVisitor<C> {
 
     /**
      * X10CAstVisitor constructor.
@@ -41,7 +40,7 @@ public abstract class X10DelegatingCAstVisitor extends DelegatingCAstVisitor {
      * Should invoke super.doVisitEntity() for unprocessed entities.
      * @return true if entity was handled
      */
-    protected boolean doVisitEntity(CAstEntity n, Context context, CAstVisitor visitor_) {
+    protected boolean doVisitEntity(CAstEntity n, C context, CAstVisitor visitor_) {
 	X10DelegatingCAstVisitor visitor = (X10DelegatingCAstVisitor)visitor_;
 	switch (n.getKind()) {
 	    case X10CAstEntity.ASYNC_BODY: {
@@ -79,14 +78,14 @@ public abstract class X10DelegatingCAstVisitor extends DelegatingCAstVisitor {
      * @param codeContext a visitor-specific context for this script
      * @return true if no further processing is needed
      */
-    protected boolean visitAsyncBodyEntity(CAstEntity n, Context context, Context codeContext, CAstVisitor visitor) { return visitor.visitEntity(n, context, visitor); }
+    protected boolean visitAsyncBodyEntity(CAstEntity n, C context, C codeContext, CAstVisitor visitor) { return visitor.visitEntity(n, context, visitor); }
     /**
      * Leave an AsyncBody entity.
      * @param n the entity to process
      * @param context a visitor-specific context
      * @param codeContext a visitor-specific context for this script
      */
-    protected void leaveAsyncBodyEntity(CAstEntity n, Context context, Context codeContext, CAstVisitor visitor) { visitor.leaveEntity(n, context, visitor); }
+    protected void leaveAsyncBodyEntity(CAstEntity n, C context, C codeContext, CAstVisitor visitor) { visitor.leaveEntity(n, context, visitor); }
 
     /**
      * Visit an AsyncBody entity.
@@ -95,14 +94,14 @@ public abstract class X10DelegatingCAstVisitor extends DelegatingCAstVisitor {
      * @param codeContext a visitor-specific context for this script
      * @return true if no further processing is needed
      */
-    protected boolean visitClosureBodyEntity(CAstEntity n, Context context, Context codeContext, CAstVisitor visitor) { return visitor.visitEntity(n, context, visitor); }
+    protected boolean visitClosureBodyEntity(CAstEntity n, C context, C codeContext, CAstVisitor visitor) { return visitor.visitEntity(n, context, visitor); }
     /**
      * Leave an AsyncBody entity.
      * @param n the entity to process
      * @param context a visitor-specific context
      * @param codeContext a visitor-specific context for this script
      */
-    protected void leaveClosureBodyEntity(CAstEntity n, Context context, Context codeContext, CAstVisitor visitor) { visitor.leaveEntity(n, context, visitor); }
+    protected void leaveClosureBodyEntity(CAstEntity n, C context, C codeContext, CAstVisitor visitor) { visitor.leaveEntity(n, context, visitor); }
 
     /**
      * Node processing hook; sub-classes are expected to override if they
@@ -110,7 +109,7 @@ public abstract class X10DelegatingCAstVisitor extends DelegatingCAstVisitor {
      * Should invoke super.doVisit() for unprocessed nodes.
      * @return true if node was handled
      */
-    protected boolean doVisit(CAstNode n, Context context, CAstVisitor visitor_) {
+    protected boolean doVisit(CAstNode n, C context, CAstVisitor visitor_) {
 	X10DelegatingCAstVisitor visitor = (X10DelegatingCAstVisitor)visitor_;
 	switch (n.getKind()) {
 	    case X10CastNode.ASYNC: {
@@ -216,161 +215,161 @@ public abstract class X10DelegatingCAstVisitor extends DelegatingCAstVisitor {
      * @param c a visitor-specific context
      * @return true if no further processing is needed
      */
-    protected boolean visitAsyncInvoke(CAstNode n, Context c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
+    protected boolean visitAsyncInvoke(CAstNode n, C c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
     /**
      * Leave an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      */
-    protected void leaveAsyncInvoke(CAstNode n, Context c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
+    protected void leaveAsyncInvoke(CAstNode n, C c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
     /**
      * Visit an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      * @return true if no further processing is needed
      */
-    protected boolean visitAtomicEnter(CAstNode n, Context c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
+    protected boolean visitAtomicEnter(CAstNode n, C c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
     /**
      * Leave an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      */
-    protected void leaveAtomicEnter(CAstNode n, Context c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
+    protected void leaveAtomicEnter(CAstNode n, C c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
     /**
      * Visit an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      * @return true if no further processing is needed
      */
-    protected boolean visitAtomicExit(CAstNode n, Context c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
+    protected boolean visitAtomicExit(CAstNode n, C c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
     /**
      * Leave an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      */
-    protected void leaveAtomicExit(CAstNode n, Context c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
+    protected void leaveAtomicExit(CAstNode n, C c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
     /**
      * Visit an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      * @return true if no further processing is needed
      */
-    protected boolean visitFinishEnter(CAstNode n, Context c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
+    protected boolean visitFinishEnter(CAstNode n, C c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
     /**
      * Leave an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      */
-    protected void leaveFinishEnter(CAstNode n, Context c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
+    protected void leaveFinishEnter(CAstNode n, C c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
     /**
      * Visit an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      * @return true if no further processing is needed
      */
-    protected boolean visitFinishExit(CAstNode n, Context c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
+    protected boolean visitFinishExit(CAstNode n, C c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
     /**
      * Leave an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      */
-    protected void leaveFinishExit(CAstNode n, Context c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
+    protected void leaveFinishExit(CAstNode n, C c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
     /**
      * Visit an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      * @return true if no further processing is needed
      */
-    protected boolean visitForce(CAstNode n, Context c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
+    protected boolean visitForce(CAstNode n, C c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
     /**
      * Leave an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      */
-    protected void leaveForce(CAstNode n, Context c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
+    protected void leaveForce(CAstNode n, C c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
     /**
      * Visit an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      * @return true if no further processing is needed
      */
-    protected boolean visitIterInit(CAstNode n, Context c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
+    protected boolean visitIterInit(CAstNode n, C c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
     /**
      * Leave an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      */
-    protected void leaveIterInit(CAstNode n, Context c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
+    protected void leaveIterInit(CAstNode n, C c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
     /**
      * Visit an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      * @return true if no further processing is needed
      */
-    protected boolean visitIterHasNext(CAstNode n, Context c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
+    protected boolean visitIterHasNext(CAstNode n, C c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
     /**
      * Leave an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      */
-    protected void leaveIterHasNext(CAstNode n, Context c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
+    protected void leaveIterHasNext(CAstNode n, C c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
     /**
      * Visit an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      * @return true if no further processing is needed
      */
-    protected boolean visitIterNext(CAstNode n, Context c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
+    protected boolean visitIterNext(CAstNode n, C c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
     /**
      * Leave an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      */
-    protected void leaveIterNext(CAstNode n, Context c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
+    protected void leaveIterNext(CAstNode n, C c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
     /**
      * Visit an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      * @return true if no further processing is needed
      */
-    protected boolean visitHere(CAstNode n, Context c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
+    protected boolean visitHere(CAstNode n, C c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
     /**
      * Leave a here node.
      * @param n the node to process
      * @param c a visitor-specific context
      */
-    protected void leaveHere(CAstNode n, Context c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
+    protected void leaveHere(CAstNode n, C c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
     /**
      * Visit an Async node.
      * @param n the node to process
      * @param c a visitor-specific context
      * @return true if no further processing is needed
      */
-    protected boolean visitNext(CAstNode n, Context c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
+    protected boolean visitNext(CAstNode n, C c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
     /**
      * Leave a PLACE_OF_POINT node.
      * @param n the node to process
      * @param c a visitor-specific context
      */
-    protected void leavePlaceOfPoint(CAstNode n, Context c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
+    protected void leavePlaceOfPoint(CAstNode n, C c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
     /**
      * Visit a PLACE_OF_POINT node.
      * @param n the node to process
      * @param c a visitor-specific context
      */
-    protected boolean visitPlaceOfPoint(CAstNode n, Context c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
+    protected boolean visitPlaceOfPoint(CAstNode n, C c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
     /**
      * Visit a TUPLE_EXPR node.
      * @param n the node to process
      * @param c a visitor-specific context
      */
-    protected boolean visitTupleExpr(CAstNode n, Context c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
+    protected boolean visitTupleExpr(CAstNode n, C c, CAstVisitor visitor) { return visitor.visitNode(n, c, visitor); }
     /**
      * Leave a TUPLE_EXPR node.
      * @param n the node to process
      * @param c a visitor-specific context
      */
-    protected void leaveTupleExpr(CAstNode n, Context c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
+    protected void leaveTupleExpr(CAstNode n, C c, CAstVisitor visitor) { visitor.leaveNode(n, c, visitor); }
     
     /**
      * Visits the AtStmt node at the beginning of the block code.
@@ -380,7 +379,7 @@ public abstract class X10DelegatingCAstVisitor extends DelegatingCAstVisitor {
      * @param visitor The CAst visitor for redirection.
      * @return True if no further processing is needed, false otherwise.
      */
-    protected boolean visitAtStmtEnter(final CAstNode node, final Context context, final CAstVisitor visitor) {
+    protected boolean visitAtStmtEnter(final CAstNode node, final C context, final CAstVisitor visitor) {
       return visitor.visitNode(node, context, visitor);
     }
     
@@ -391,7 +390,7 @@ public abstract class X10DelegatingCAstVisitor extends DelegatingCAstVisitor {
      * @param context A visitor-specific context.
      * @param visitor The CAst visitor for redirection.
      */
-    protected void leaveAtStmtEnter(final CAstNode node, final Context context, final CAstVisitor visitor) {
+    protected void leaveAtStmtEnter(final CAstNode node, final C context, final CAstVisitor visitor) {
       visitor.leaveNode(node, context, visitor);
     }
     
@@ -403,7 +402,7 @@ public abstract class X10DelegatingCAstVisitor extends DelegatingCAstVisitor {
      * @param visitor The CAst visitor for redirection.
      * @return True if no further processing is needed, false otherwise.
      */
-    protected boolean visitAtStmtExit(final CAstNode node, final Context context, final CAstVisitor visitor) {
+    protected boolean visitAtStmtExit(final CAstNode node, final C context, final CAstVisitor visitor) {
       return visitor.visitNode(node, context, visitor);
     }
     
@@ -414,7 +413,7 @@ public abstract class X10DelegatingCAstVisitor extends DelegatingCAstVisitor {
      * @param context A visitor-specific context.
      * @param visitor The CAst visitor for redirection.
      */
-    protected void leaveAtStmtExit(final CAstNode node, final Context context, final CAstVisitor visitor) {
+    protected void leaveAtStmtExit(final CAstNode node, final C context, final CAstVisitor visitor) {
       visitor.leaveNode(node, context, visitor);
     }
 }

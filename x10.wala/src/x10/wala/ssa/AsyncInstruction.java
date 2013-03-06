@@ -11,18 +11,18 @@ public class AsyncInstruction extends AstJavaInvokeInstruction {
     private int clocks[];
     //FIXME: a hack to get whether placeExpr is HERE
     
-    public AsyncInstruction(int result, int[] params, int exception, CallSiteReference site, int[] clocks) {
-	super(result, params, exception, site);
+    public AsyncInstruction(int iindex, int result, int[] params, int exception, CallSiteReference site, int[] clocks) {
+	super(iindex, result, params, exception, site);
 	  this.clocks = clocks;
     }
 
-    public AsyncInstruction(int[] params, int exception, CallSiteReference site, int[] clocks) {
-	super(params, exception, site);
+    public AsyncInstruction(int iindex, int[] params, int exception, CallSiteReference site, int[] clocks) {
+	super(iindex, params, exception, site);
 	  this.clocks = clocks;
     }
 
-    public AsyncInstruction(int[] results, int[] params, int exception, Access[] lexicalReads, Access[] lexicalWrites, CallSiteReference csr) {
-	super(results, params, exception, csr, lexicalReads, lexicalWrites);
+    public AsyncInstruction(int iindex, int[] results, int[] params, int exception, Access[] lexicalReads, Access[] lexicalWrites, CallSiteReference csr) {
+	super(iindex, results, params, exception, csr, lexicalReads, lexicalWrites);
     }
 
     public int[] getClocks() {
@@ -76,7 +76,7 @@ public class AsyncInstruction extends AstJavaInvokeInstruction {
 
     @Override
   protected SSAInstruction copyInstruction(SSAInstructionFactory insts, int results[], int[] params, int exception, Access[] lexicalReads, Access[] lexicalWrites) {
-      return ((AstX10InstructionFactory)insts).AsyncInvoke(results, params, exception, lexicalReads, lexicalWrites, getCallSite());
+      return ((AstX10InstructionFactory)insts).AsyncInvoke(iindex, results, params, exception, lexicalReads, lexicalWrites, getCallSite());
     }
 
     @Override

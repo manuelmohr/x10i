@@ -1,5 +1,6 @@
 package x10.wala.translator;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -18,10 +19,11 @@ import polyglot.main.Reporter;
 import polyglot.visit.NodeVisitor;
 import x10.compiler.ws.util.WSTransformationContent;
 import x10.wala.client.X10SourceAnalysisEngine;
-import x10.wala.ipa.cha.X10ClassHierarchy;
 import x10.wala.loader.X10SourceLoaderImpl;
 
 import com.ibm.wala.cast.tree.CAstEntity;
+import com.ibm.wala.classLoader.ModuleEntry;
+import com.ibm.wala.classLoader.SourceFileModule;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
@@ -64,7 +66,9 @@ public class X102IRGoal extends SourceGoal_c {
         
         if(shouldReport)
 			reporter.report(2,"translating " + job.source().name() + " wala ast to ir ...");
-        new X10CAst2IRTranslator(entity, fSourceLoader).translate();
+        final File srcFile = new File(job.source().path());
+        final ModuleEntry module = new SourceFileModule(srcFile, job.source().name());
+        new X10CAst2IRTranslator(module, entity, fSourceLoader).translate();
         return true;
     }
 

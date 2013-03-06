@@ -75,6 +75,7 @@ import x10.ast.StmtSeq;
 import x10.ast.Tuple;
 import x10.ast.When;
 import x10.ast.X10Formal;
+import x10.wala.translator.X10toCAstTranslator.WalkContext;
 
 import com.ibm.wala.cast.tree.CAstNode;
 

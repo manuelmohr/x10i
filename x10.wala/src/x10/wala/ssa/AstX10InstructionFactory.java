@@ -7,16 +7,16 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.types.TypeReference;
 
 public interface AstX10InstructionFactory extends AstJavaInstructionFactory {
-	AsyncInstruction AsyncInvoke(int result, int[] params, int exception, CallSiteReference site, int[] clocks);
-	AsyncInstruction AsyncInvoke(int[] params, int exception, CallSiteReference site, int[] clocks);
-	AsyncInstruction AsyncInvoke(int[] results, int[] params, int exception, Access[] lexicalReads, Access[] lexicalWrites, CallSiteReference csr);
-	AtomicInstruction Atomic(boolean isEnter);
-	FinishInstruction Finish(boolean isEnter);
-	NextInstruction Next();
-	HereInstruction Here(int retValue);
-	IterHasNextInstruction IterHasNext(int hasNextValue, int regionIter);
-	IterInitInstruction IterInit(int iterVal, int regionVal);
-	IterNextInstruction IterNext(int nextValue, int regionIter);
-	TupleInstruction Tuple(int retValue, int[] slotValues);
-	AtStmtInstruction AtStmt(boolean isEnter);
+	AsyncInstruction AsyncInvoke(int iindex, int result, int[] params, int exception, CallSiteReference site, int[] clocks);
+	AsyncInstruction AsyncInvoke(int iindex, int[] params, int exception, CallSiteReference site, int[] clocks);
+	AsyncInstruction AsyncInvoke(int iindex, int[] results, int[] params, int exception, Access[] lexicalReads, Access[] lexicalWrites, CallSiteReference csr);
+	AtomicInstruction Atomic(int iindex, boolean isEnter);
+	FinishInstruction Finish(int iindex, boolean isEnter);
+	NextInstruction Next(int iindex);
+	HereInstruction Here(int iindex, int retValue);
+	IterHasNextInstruction IterHasNext(int iindex, int hasNextValue, int regionIter);
+	IterInitInstruction IterInit(int iindex, int iterVal, int regionVal);
+	IterNextInstruction IterNext(int iindex, int nextValue, int regionIter);
+	TupleInstruction Tuple(int iindex, int retValue, int[] slotValues);
+	AtStmtInstruction AtStmt(int iindex, boolean isEnter);
 }

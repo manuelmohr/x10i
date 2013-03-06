@@ -201,53 +201,53 @@ public class X10LanguageImpl extends LanguageImpl implements BytecodeLanguage {
 
     public static class InstructionFactory extends JavaSourceLoaderImpl.InstructionFactory implements AstX10InstructionFactory {
 
-        public AsyncInstruction AsyncInvoke(int result, int[] params, int exception, CallSiteReference site, int[] clocks) {
-            return new AsyncInstruction(result, params, exception, site, clocks);
+        public AsyncInstruction AsyncInvoke(int iindex, int result, int[] params, int exception, CallSiteReference site, int[] clocks) {
+            return new AsyncInstruction(iindex, result, params, exception, site, clocks);
         }
 
-        public AsyncInstruction AsyncInvoke(int[] params, int exception, CallSiteReference site, int[] clocks) {
-            return new AsyncInstruction(params, exception, site, clocks);
+        public AsyncInstruction AsyncInvoke(int iindex, int[] params, int exception, CallSiteReference site, int[] clocks) {
+            return new AsyncInstruction(iindex, params, exception, site, clocks);
         }
 
-        public AsyncInstruction AsyncInvoke(int[] results, int[] params, int exception, Access[] lexicalReads,
+        public AsyncInstruction AsyncInvoke(int iindex, int[] results, int[] params, int exception, Access[] lexicalReads,
                 Access[] lexicalWrites, CallSiteReference csr) {
-            return new AsyncInstruction(results, params, exception, lexicalReads, lexicalWrites, csr);
+            return new AsyncInstruction(iindex, results, params, exception, lexicalReads, lexicalWrites, csr);
         }
 
-        public AtomicInstruction Atomic(boolean isEnter) {
-            return new AtomicInstruction(isEnter);
+        public AtomicInstruction Atomic(int iindex, boolean isEnter) {
+            return new AtomicInstruction(iindex, isEnter);
         }
 
-        public FinishInstruction Finish(boolean isEnter) {
-            return new FinishInstruction(isEnter);
+        public FinishInstruction Finish(int iindex, boolean isEnter) {
+            return new FinishInstruction(iindex, isEnter);
         }
 
-        public NextInstruction Next() {
-            return new NextInstruction();
+        public NextInstruction Next(int iindex) {
+            return new NextInstruction(iindex);
         }
 
-        public HereInstruction Here(int retValue) {
-            return new HereInstruction(retValue);
+        public HereInstruction Here(int iindex, int retValue) {
+            return new HereInstruction(iindex, retValue);
         }
 
-        public IterHasNextInstruction IterHasNext(int hasNextValue, int regionIter) {
-            return new IterHasNextInstruction(hasNextValue, regionIter);
+        public IterHasNextInstruction IterHasNext(int iindex, int hasNextValue, int regionIter) {
+            return new IterHasNextInstruction(iindex, hasNextValue, regionIter);
         }
 
-        public IterInitInstruction IterInit(int iterVal, int regionVal) {
-            return new IterInitInstruction(iterVal, regionVal);
+        public IterInitInstruction IterInit(int iindex, int iterVal, int regionVal) {
+            return new IterInitInstruction(iindex, iterVal, regionVal);
         }
 
-        public IterNextInstruction IterNext(int nextValue, int regionIter) {
-            return new IterNextInstruction(nextValue, regionIter);
+        public IterNextInstruction IterNext(int iindex, int nextValue, int regionIter) {
+            return new IterNextInstruction(iindex, nextValue, regionIter);
         }
 
-        public TupleInstruction Tuple(int retValue, int[] slotValues) {
-            return new TupleInstruction(retValue, slotValues);
+        public TupleInstruction Tuple(int iindex, int retValue, int[] slotValues) {
+            return new TupleInstruction(iindex, retValue, slotValues);
         }
 
-        public AtStmtInstruction AtStmt(final boolean isEnter) {
-            return new AtStmtInstruction(isEnter);
+        public AtStmtInstruction AtStmt(int iindex, final boolean isEnter) {
+            return new AtStmtInstruction(iindex, isEnter);
         }
     }
 

@@ -1,17 +1,13 @@
 package x10.wala.util;
 
-import java.util.HashMap;
-
 import java.util.Iterator;
-import java.util.Stack;
 
 import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.ipa.callgraph.impl.ExplicitCallGraph.ExplicitNode;
 import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.graph.NumberedGraph;
-import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
-import com.ibm.wala.util.warnings.WalaException;
 import com.ibm.wala.viz.DotUtil;
 import com.ibm.wala.viz.NodeDecorator;
 

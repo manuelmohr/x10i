@@ -9,12 +9,12 @@ import com.ibm.wala.ssa.SymbolTable;
 
 public class IterNextInstruction extends SSAAbstractUnaryInstruction {
 
-    public IterNextInstruction(int nextValue, int regionIter) {
-	super(nextValue, regionIter);
+    public IterNextInstruction(int iindex, int nextValue, int regionIter) {
+	super(iindex, nextValue, regionIter);
     }
 
     public SSAInstruction copyForSSA(SSAInstructionFactory insts, int[] defs, int[] uses) {
-	return ((AstX10InstructionFactory)insts).IterNext((defs != null ? defs[0] : getDef(0)), (uses != null ? uses[0] : getUse(0)));
+	return ((AstX10InstructionFactory)insts).IterNext(iindex, (defs != null ? defs[0] : getDef(0)), (uses != null ? uses[0] : getUse(0)));
     }
 
     public String toString(SymbolTable symbolTable) {

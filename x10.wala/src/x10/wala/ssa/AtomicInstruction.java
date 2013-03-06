@@ -12,12 +12,12 @@ import com.ibm.wala.ssa.SymbolTable;
 
 public class AtomicInstruction extends SSAInstruction {
     private final boolean isEnter;
-    public AtomicInstruction(boolean isEnter) {
-      super();
+    public AtomicInstruction(int iindex, boolean isEnter) {
+      super(iindex);
       this.isEnter = isEnter;
     }
     public SSAInstruction copyForSSA(SSAInstructionFactory insts, int[] defs, int[] uses) {
-      return ((AstX10InstructionFactory)insts).Atomic(isEnter);
+      return ((AstX10InstructionFactory)insts).Atomic(iindex, isEnter);
     }
 
     public String toString(SymbolTable symbolTable) {

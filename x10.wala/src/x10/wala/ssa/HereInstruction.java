@@ -10,12 +10,13 @@ import com.ibm.wala.ssa.SymbolTable;
 public class HereInstruction extends SSAInstruction {
     private final int retValue;
 
-    public HereInstruction(int retValue) {
+    public HereInstruction(int iindex, int retValue) {
+   	super(iindex);
 	this.retValue= retValue;
     }
 
     public SSAInstruction copyForSSA(SSAInstructionFactory insts, int[] defs, int[] uses) {
-	return ((AstX10InstructionFactory)insts).Here(defs != null ? defs[0] : retValue);
+	return ((AstX10InstructionFactory)insts).Here(iindex, defs != null ? defs[0] : retValue);
     }
 
     public String toString(SymbolTable symbolTable) {
