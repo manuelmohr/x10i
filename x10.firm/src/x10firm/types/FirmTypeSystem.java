@@ -135,12 +135,9 @@ public class FirmTypeSystem {
 		for (final Entity ent : glob.getMembers()) {
 			if (!ent.hasDefinition())
 				continue;
-			this.cStdlibEntities.put(ent.getLdName(), ent);
-			/*
-			 * We must put methods into their respective classes. However, this
-			 * type does not even exist yet, so this is delayed until the entity
-			 * is retrieved from cStdlibEntities.
-			 */
+			cStdlibEntities.put(ent.getLdName(), ent);
+			/* putting the entities in their classes will be done when the
+			 * X10 MethodInstance is processed */
 		}
 	}
 
@@ -336,7 +333,7 @@ public class FirmTypeSystem {
 	 * @param methodInstance an X10 method instance, for which a Firm type is needed
 	 * @return corresponding Firm type
 	 */
-	private MethodType asFirmType(final MethodInstance methodInstance) {
+	private MethodType asFirmMethodType(final MethodInstance methodInstance) {
 		final List<polyglot.types.Type> formalTypes
 			= methodInstance.formalTypes();
 		final Flags flags = methodInstance.flags();
@@ -552,6 +549,28 @@ public class FirmTypeSystem {
 		OO.setClassRTTIEntity(firmType, classInfoEntity);
 	}
 
+	private void addDefaultAnyImplementation(final X10ClassType classType, final ClassType firmType) {
+		/* X10-AST is incomplete and does not mention that every object implements
+		 * the Any interface and uses generic default implementations for missing
+		 * methods from Any. */
+		final TypeSystem_c x10TypeSystem = typeSystem.getTypeSystem();
+		final X10ClassType any = x10TypeSystem.Any();
+		final Type firmAny = asClass(any);
+		firmType.addSuperType(firmAny);
+		for (final MethodInstance method : any.methods()) {
+			/* any implementation of this method in the type? */
+			if (classType.hasMethod(method, typeSystem.emptyContext()))
+				continue;
+
+			final String shortName = NameMangler.mangleMethodShort(method);
+			final String linkName = NameMangler.mangleKnownName("x10_object_" + shortName);
+			final MethodType type = asFirmMethodType(method);
+			final Entity entity = new Entity(firmType, shortName, type);
+			entity.setLdIdent(linkName);
+			OO.setEntityBinding(entity, ddispatch_binding.bind_interface);
+		}
+	}
+
 	private ClassType createClassType(final X10ClassType classType) {
 		final Flags flags = classType.flags();
 		final ClassType result = new ClassType(classType.toString());
@@ -587,7 +606,7 @@ public class FirmTypeSystem {
 		} else {
 			/* no superclass: add vptr field and functions of the Any interface */
 			createVPtr(result);
-			/* TODO: insert default implementations for Any stuff */
+			addDefaultAnyImplementation(classType, result);
 		}
 
 		/* create interfaces */
@@ -882,15 +901,18 @@ public class FirmTypeSystem {
 	 * Returns entity for an X10 method.
 	 */
 	public Entity getMethodEntity(final MethodInstance instance) {
-		String name = getAnnotatedLinkName(instance);
-		if (name == null)
-			name = NameMangler.mangleMethod(instance);
-		final Entity entity = entities.get(name);
+		String linkName = getAnnotatedLinkName(instance);
+		if (linkName == null) {
+			linkName = NameMangler.mangleMethod(instance);
+		} else {
+			linkName = NameMangler.mangleKnownName(linkName);
+		}
 
+		final Entity entity = entities.get(linkName);
 		if (entity != null)
 			return entity;
 
-		return createMethodEntity(name, instance);
+		return createMethodEntity(linkName, instance);
 	}
 
 	/** Returns name annotated via LinkSymbol or null. */
@@ -907,23 +929,21 @@ public class FirmTypeSystem {
 		return null;
 	}
 
-	private Entity createMethodEntity(final String name, final MethodInstance instance) {
-		final firm.Type type = asFirmType(instance);
+	private Entity createMethodEntity(final String linkName, final MethodInstance instance) {
 		final X10ClassType owner = (X10ClassType) instance.container();
 		final String shortName = NameMangler.mangleMethodShort(instance);
 		final Flags flags = instance.flags();
-		final Type ownerFirm;
+		final ClassType ownerFirm;
 		if (!flags.isStatic()) {
-			final firm.Type owningClass = asClass(owner);
+			final ClassType owningClass = asClass(owner);
 			ownerFirm = owningClass;
 		} else {
 			ownerFirm = Program.getGlobalType();
 		}
-
-		Entity entity = null;
-
 		/* try to get it from stdlib */
-		final Entity cEntity = this.cStdlibEntities.get(name);
+		final Entity entity;
+		final Entity cEntity = cStdlibEntities.get(linkName);
+		final MethodType type = asFirmMethodType(instance);
 		if (cEntity != null) {
 			/* make weak entities non-weak and remove existing implementation */
 			if (cEntity.hasLinkage(ir_linkage.IR_LINKAGE_WEAK)) {
@@ -937,8 +957,7 @@ public class FirmTypeSystem {
 			if (!(entityType instanceof MethodType))
 				throw new CodeGenError("native Entity without methodtype", instance.position());
 			final MethodType entityMType = (MethodType) entityType;
-			final MethodType mType = (MethodType) type;
-			if (!methodsCompatible(entityMType, mType))
+			if (!methodsCompatible(entityMType, type))
 				throw new CodeGenError(
 						String.format("native Entity '%s' does not match declared type", instance),
 						instance.position());
@@ -948,12 +967,11 @@ public class FirmTypeSystem {
 			cEntity.setOwner(ownerFirm);
 
 			entity = cEntity;
-		}
-
-		if (entity == null) {
+		} else {
 			entity = new Entity(ownerFirm, shortName, type);
-			entity.setLdIdent(name);
+			entity.setLdIdent(linkName);
 		}
+		entities.put(linkName, entity);
 
 		if (flags.isStatic()) {
 			OO.setEntityBinding(entity, ddispatch_binding.bind_static);
@@ -979,7 +997,6 @@ public class FirmTypeSystem {
 			entity.addEntityOverwrites(ent);
 		}
 
-		entities.put(name, entity);
 		return entity;
 	}
 }
