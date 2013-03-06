@@ -599,7 +599,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final MethodConstruction savedConstruction = con;
 		con = new MethodConstruction(graph);
 		con.returnType = retType;
-		final firm.Type frameType = con.getGraph().getFrameType();
+		final CompoundType frameType = con.getGraph().getFrameType();
 
 		final Node args = graph.getArgs();
 		int idx = 0;

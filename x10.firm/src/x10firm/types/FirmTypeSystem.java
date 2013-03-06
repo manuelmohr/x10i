@@ -320,7 +320,7 @@ public class FirmTypeSystem {
 
 		// preinit the type
 		asType(boxedClassType);
-		final Type ft = asClass(boxedClassType);
+		final ClassType ft = asClass(boxedClassType);
 
 		final FieldInstance fieldInstance = boxValue.asInstance();
 		getFieldEntity(fieldInstance, ft);
@@ -488,7 +488,7 @@ public class FirmTypeSystem {
 	 * @param klass The defining class of the field
 	 * @return The firm entity for the field
 	 */
-	private Entity getFieldEntity(final FieldInstance field, final firm.Type owner) {
+	private Entity getFieldEntity(final FieldInstance field, final CompoundType owner) {
 		final String name = NameMangler.mangleField(field);
 		final Entity existingEntity = entities.get(name);
 		if (existingEntity != null)
@@ -522,7 +522,7 @@ public class FirmTypeSystem {
 	}
 
 	private void createVTable(final X10ClassType classType, final ClassType firmType) {
-		final Type global = Program.getGlobalType();
+		final ClassType global = Program.getGlobalType();
 		final Type pointerType = Mode.getP().getType();
 
 		final String vtableName = NameMangler.mangleVTable(classType);
@@ -543,7 +543,7 @@ public class FirmTypeSystem {
 	}
 
 	private static void createTypeinfo(final X10ClassType classType, final ClassType firmType) {
-		final Type global = Program.getGlobalType();
+		final ClassType global = Program.getGlobalType();
 		final Type pointerType = Mode.getP().getType();
 
 		final String rttiName = NameMangler.mangleTypeinfo(classType);
@@ -609,7 +609,7 @@ public class FirmTypeSystem {
 
 		/* create fields */
 		for (final FieldInstance field : classType.fields()) {
-			final Type owner = field.flags().isStatic() ? Program.getGlobalType() : result;
+			final ClassType owner = field.flags().isStatic() ? Program.getGlobalType() : result;
 			getFieldEntity(field, owner);
 		}
 
@@ -649,7 +649,7 @@ public class FirmTypeSystem {
 	 * the fields class.
 	 */
 	public Entity getFieldEntity(final FieldInstance instance) {
-		final firm.Type owner;
+		final CompoundType owner;
 		if (!instance.flags().isStatic()) {
 			/* make sure enclosing class-type has been created,
 			 * this should in turn create all fields */

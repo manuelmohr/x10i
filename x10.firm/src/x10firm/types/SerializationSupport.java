@@ -88,7 +88,7 @@ public final class SerializationSupport {
 		assert deserializationRestorePrimitiveEntity == null;
 		assert deserializationRestoreObjectEntity == null;
 
-		final firm.Type global = Program.getGlobalType();
+		final ClassType global = Program.getGlobalType();
 		final firm.Type typeP = Mode.getP().getType();
 		final firm.Type typeIu = Mode.getIu().getType();
 		final firm.Type[] retTypeVoid = new firm.Type[] {};
@@ -242,7 +242,7 @@ public final class SerializationSupport {
 	 * @param firmTypes a collection of all firm types. Only class types will be handled.
 	 */
 	public void finishSerialization(final Collection<ClassType> firmTypes) {
-		final firm.Type global = Program.getGlobalType();
+		final ClassType global = Program.getGlobalType();
 		final firm.Type typeP = Mode.getP().getType();
 
 		// Emit the table used to lookup the __deserialize method and vtable address
@@ -525,7 +525,7 @@ public final class SerializationSupport {
 
 	private static Node getMallocSymConst(final Construction con) {
 		final String mallocName = NameMangler.mangleKnownName("malloc");
-		final Type global = Program.getGlobalType();
+		final ClassType global = Program.getGlobalType();
 		final Entity ent = new Entity(global, mallocName, getMallocMethodType());
 		return con.newSymConst(ent);
 	}
