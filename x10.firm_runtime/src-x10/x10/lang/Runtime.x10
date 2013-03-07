@@ -12,6 +12,7 @@
 package x10.lang;
 
 import x10.compiler.Profile;
+import x10.util.concurrent.Monitor;
 
 public final class Runtime {
     public static type Profile = Empty;
@@ -20,6 +21,8 @@ public final class Runtime {
     private static native def runAtOtherPlace(placeId : Int, o: Any) : void;
     private static native def evalAtOtherPlace(placeId : Int, o: Any) : Any;
     private static native def getHereId() : Int;
+    
+    public static val atomicMonitor = new Monitor();
 
     /**
      * Return a deep copy of the parameter.
@@ -147,14 +150,25 @@ public final class Runtime {
     }
 
     // atomic and when
+    public static def enterAtomic() {
+        atomicMonitor.lock();
+        Activity.incrementAtomicDepth();
+    }
 
-    public static native def enterAtomic(): void;
+    public static def ensureNotInAtomic() {
+        if (Activity.getAtomicDepth() > 0U) {
+            throw new IllegalOperationException();
+        }
+    }
 
-    public static native def ensureNotInAtomic(): void;
+    public static def exitAtomic() {
+        Activity.decrementAtomicDepth();
+        atomicMonitor.release();
+    }
 
-    public static native def exitAtomic(): void;
-
-    public static native def awaitAtomic(): void;
+    public static def awaitAtomic():void {
+        atomicMonitor.await();
+    }
 
     // finish
     private static native def finishBlockBegin():void;

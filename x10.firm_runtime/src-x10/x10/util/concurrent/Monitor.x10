@@ -30,12 +30,8 @@ import x10.util.Stack;
         throw new UnsupportedOperationException("Cannot deserialize "+typeName());
     }
 
-    static type Worker = Runtime.Worker;
 
-    /**
-     * Parked workers
-     */
-    private val workers = new Stack[Worker]();
+    private val signals: Stack[Signal] = new Stack[Signal]();
 
     /**
      * Await notification
@@ -43,14 +39,11 @@ import x10.util.Stack;
      * Must not be called while holding the lock more than once
      */
     public def await():void {
-        Runtime.increaseParallelism(); // likely to be blocked for a while
-        val worker = Runtime.worker();
-        workers.push(worker);
-        while (workers.contains(worker)) {
-            super.unlock();
-            Worker.park();
-            super.lock();
-        }
+        val s = new Signal();
+        signals.push(s);
+        super.unlock();
+        s.wait();
+        super.lock();
     }
 
     /**
@@ -58,10 +51,8 @@ import x10.util.Stack;
      * Must be called while holding the lock
      */
     public def release():void {
-        val size = workers.size();
-        if (size > 0) {
-            Runtime.decreaseParallelism(size);
-            for (var i:Int = 0; i<size; i++) workers.pop().unpark();
+        while (!signals.isEmpty()) {
+            signals.pop().signal();
         }
         super.unlock();
     }

@@ -199,7 +199,9 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/util/concurrent/AtomicFloat.x10");
 			allowedFiles.add("x10/util/concurrent/AtomicInteger.x10");
 			allowedFiles.add("x10/util/concurrent/AtomicLong.x10");
+			allowedFiles.add("x10/util/concurrent/Latch.x10");
 			allowedFiles.add("x10/util/concurrent/Lock.x10");
+			allowedFiles.add("x10/util/concurrent/Monitor.x10");
 			allowedFiles.add("x10/util/concurrent/Signal.x10");
 			allowedFiles.add("x10/util/Container.x10");
 			allowedFiles.add("x10/util/CollectionIterator.x10");
