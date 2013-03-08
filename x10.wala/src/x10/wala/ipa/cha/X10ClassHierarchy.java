@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import x10.wala.classLoader.X10LanguageImpl;
+
 import com.ibm.wala.classLoader.ArrayClass;
 import com.ibm.wala.classLoader.ClassLoaderFactory;
 import com.ibm.wala.classLoader.ClassLoaderFactoryImpl;
@@ -30,6 +32,7 @@ import com.ibm.wala.classLoader.IField;
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.classLoader.ShrikeClass;
+import com.ibm.wala.classLoader.SyntheticClass;
 import com.ibm.wala.ipa.callgraph.AnalysisScope;
 import com.ibm.wala.ipa.cha.CancelCHAConstructionException;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
@@ -195,6 +198,98 @@ public class X10ClassHierarchy implements IClassHierarchy {
       for (ClassLoaderReference ref : scope.getLoaders()) {
           IClassLoader icl = factory.getLoader(ref, this, scope);
           loaders[idx++] = icl;
+      }
+      
+      if (this.root == null) {
+    	  // artificially injecting generic root class. There is no such thing in recent X10, but WALA needs it.
+    	  final IClass artificialRoot = new SyntheticClass(this.rootTypeRef, this) {
+			@Override
+			public boolean isReferenceType() {
+				return true;
+			}
+			
+			@Override
+			public boolean isPublic() {
+				return true;
+			}
+			
+			@Override
+			public boolean isPrivate() {
+				return false;
+			}
+			
+			@Override
+			public IClass getSuperclass() {
+				return null;
+			}
+			
+			@Override
+			public int getModifiers() throws UnsupportedOperationException {
+				return 0;
+			}
+			
+			@Override
+			public IMethod getMethod(Selector selector) {
+				return null;
+			}
+			
+			@Override
+			public IField getField(Atom name) {
+				return null;
+			}
+			
+			@Override
+			public Collection<? extends IClass> getDirectInterfaces() {
+				return null;
+			}
+			
+			@Override
+			public Collection<IField> getDeclaredStaticFields() {
+				return null;
+			}
+			
+			@Override
+			public Collection<IMethod> getDeclaredMethods() {
+				return null;
+			}
+			
+			@Override
+			public Collection<IField> getDeclaredInstanceFields() {
+				return null;
+			}
+			
+			@Override
+			public IMethod getClassInitializer() {
+				return null;
+			}
+			
+			@Override
+			public Collection<IField> getAllStaticFields() {
+				return null;
+			}
+			
+			@Override
+			public Collection<IMethod> getAllMethods() {
+				return null;
+			}
+			
+			@Override
+			public Collection<IField> getAllInstanceFields() {
+				return null;
+			}
+			
+			@Override
+			public Collection<IClass> getAllImplementedInterfaces() {
+				return null;
+			}
+			
+			@Override
+			public Collection<IField> getAllFields() {
+				return null;
+			}
+		};
+		
+    	addClass(artificialRoot);
       }
     } catch (IOException e) {
       throw new ClassHierarchyException("factory.getLoader failed " + e);
