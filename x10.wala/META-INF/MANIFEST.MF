@@ -22,5 +22,5 @@ Require-Bundle: com.ibm.wala.cast,
  com.ibm.wala.shrike,
  org.eclipse.core.runtime,
  x10.compiler
-Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-ActivationPolicy: lazy

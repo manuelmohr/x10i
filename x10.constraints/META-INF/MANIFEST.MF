@@ -8,3 +8,4 @@ Export-Package: x10.constraint,
  x10.constraint.xnative,
  x10.constraint.xsmt
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Require-Bundle: x10.common;bundle-version="1.0.0"

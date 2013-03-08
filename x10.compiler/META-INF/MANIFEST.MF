@@ -3,8 +3,6 @@ Bundle-ManifestVersion: 2
 Bundle-Name: Compiler
 Bundle-SymbolicName: x10.compiler
 Bundle-Version: 1.0.0.qualifier
-Bundle-ClassPath: compiler.jar,
- lib/lpg.jar
 Export-Package: lpg.runtime,
  polyglot.ast,
  polyglot.frontend,
@@ -56,3 +54,6 @@ Export-Package: lpg.runtime,
  x10cuda.visit,
  x10rose,
  x10rose.visit
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Require-Bundle: x10.common;bundle-version="1.0.0",
+ x10.constraints;bundle-version="1.0.0"
