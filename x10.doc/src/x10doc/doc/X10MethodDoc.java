@@ -128,24 +128,24 @@ public class X10MethodDoc extends X10Doc implements MethodDoc {
 		}
 
 		// code to generate compact constraints; at present, simply prints to console
-        String desc = this.name() + "(";
-        boolean first = true;
-		for (X10Parameter p: parameters) {
-			if (first) {
-				first = false;
-			}
-			else {
-				desc += ", ";
-			}
-			desc += p.name() + ": " + p.typeName();
-			if (p.isX10Specific()) {
-				desc += X10Type.descriptor(p.type());
-			}
-		}
-		desc += ") " + methodDef.guard() + ": " + methodDef.returnType();
-		if (X10Type.isX10Specific(returnType)) {
-			desc += X10Type.descriptor(returnType);
-		}
+//        String desc = this.name() + "(";
+//        boolean first = true;
+//		for (X10Parameter p: parameters) {
+//			if (first) {
+//				first = false;
+//			}
+//			else {
+//				desc += ", ";
+//			}
+//			desc += p.name() + ": " + p.typeName();
+//			if (p.isX10Specific()) {
+//				desc += X10Type.descriptor(p.type());
+//			}
+//		}
+//		desc += ") " + methodDef.guard() + ": " + methodDef.returnType();
+//		if (X10Type.isX10Specific(returnType)) {
+//			desc += X10Type.descriptor(returnType);
+//		}
 //		System.out.println("X10MethodDoc{" + methodDef.signature() + "}.declString(): descriptor = " + desc);
 
 		String guard = (methodDef.guard() == null) ? "" : methodDef.guard().toString();

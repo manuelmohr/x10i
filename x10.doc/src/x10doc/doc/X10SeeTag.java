@@ -126,7 +126,7 @@ public class X10SeeTag extends X10Tag implements SeeTag {
         // ([^\\}]*)\\}: any seq of chars other than '}', followed by '}'; contains group 8; label = m.group(8)
 
         Matcher m = p.matcher(text);
-        String pkgName, className, memberName;
+        String pkgName, className; // , memberName;
         String g3, g4, g5, g6, g7, g8; 
         X10ClassDoc cd;
         if (m.find()) {

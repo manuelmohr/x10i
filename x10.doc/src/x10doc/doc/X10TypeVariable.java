@@ -10,16 +10,16 @@ import com.sun.javadoc.TypeVariable;
 
 public class X10TypeVariable extends X10Type implements TypeVariable {
 	private ProgramElementDoc owner;
-	private TypeConstraint typeGuard;
+	// private TypeConstraint typeGuard;
 
 	public X10TypeVariable(polyglot.types.Type t, ProgramElementDoc owner) {
 		super(t);
 		this.owner = owner;
-		this.typeGuard = null;
+		// this.typeGuard = null;
 	}
 	
 	public void setTypeGuard(TypeConstraint c) {
-		this.typeGuard = c;
+		// this.typeGuard = c;
 	}
 	
 	@Override

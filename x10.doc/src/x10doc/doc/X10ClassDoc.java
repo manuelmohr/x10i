@@ -109,8 +109,6 @@ public class X10ClassDoc extends X10Doc implements ClassDoc {
 			}
 		}
 		for(MethodDoc doc: methods.values()){
-			String n = doc.name();
-			String s= doc.signature();
 			if (doc.name().equals(shortname)
 				&& doc.signature().equals(signature)){
 				return doc;
@@ -162,7 +160,7 @@ public class X10ClassDoc extends X10Doc implements ClassDoc {
 	void initTypeParameters() {
 		List<ParameterType> params = classDef.typeParameters();
 		typeParams = new LinkedHashMap<String, X10TypeVariable>(params.size());
-		Ref<CConstraint> inv = classDef.classInvariant();
+		// Ref<CConstraint> inv = classDef.classInvariant();
 		// System.out.println("classInvariant: " + ((inv == null) ? "" : inv.get()));
 		TypeConstraint c = classDef.typeGuard().get();
 		for (ParameterType p: params) {
@@ -174,9 +172,9 @@ public class X10ClassDoc extends X10Doc implements ClassDoc {
 		// null for x10.lang.Ref
 		// System.out.println("TypeBounds: " + classDef.typeBounds().get());
 		// System.out.println("TypeGuard: " + classDef.typeGuard().get());
-		for (SubtypeConstraint s: classDef.typeGuard().get().terms()) {
+		// for (SubtypeConstraint s: classDef.typeGuard().get().terms()) {
 			// System.out.println("SubtypeConstraint: " + s);
-		}
+		// }
 	}
 
 	// initializations that are common to specified and unspecified classes; this method initializes classes, interfaces
@@ -255,7 +253,7 @@ public class X10ClassDoc extends X10Doc implements ClassDoc {
 			return null;
 		}
 
-		String temp = classDef.asType().toString();
+		// String temp = classDef.asType().toString();
 		String result = "<B>Declaration</B>: <TT>" + name();
 		TypeVariable[] params = typeParameters();
 		if (refG != null && (params.length > 0)) {
@@ -346,7 +344,7 @@ public class X10ClassDoc extends X10Doc implements ClassDoc {
 //		}
 		if (t instanceof ParameterType) {
 			ParameterType p = (ParameterType) t;
-			return ("{@link " + name() + " " + ((ParameterType) t).name().toString() + "}"); 
+			return ("{@link " + name() + " " + p.name().toString() + "}"); 
 		}
 		X10ClassDef classDef = (X10ClassDef) t.toClass().def();
 		if (classDef.typeParameters().size() == 0) {

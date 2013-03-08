@@ -160,7 +160,8 @@ public class X10PackageDoc extends X10Doc implements PackageDoc {
 			File file = new File(path + "package.html");
 			if (file.exists()) {
 				StringBuilder builder = new StringBuilder();
-				fc = new FileInputStream(file).getChannel();
+				final FileInputStream fIn = new FileInputStream(file);
+				fc = fIn.getChannel();
 				br = new BufferedReader(Channels.newReader(fc, "UTF-8"));
 
 				String delim = System.getProperty("line.separator");
@@ -178,6 +179,7 @@ public class X10PackageDoc extends X10Doc implements PackageDoc {
 
 				br.close();
 				fc.close();
+				fIn.close();
 
 				return "/**" + body + "*/";
 			}
