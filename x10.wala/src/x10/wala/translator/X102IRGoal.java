@@ -21,6 +21,7 @@ import x10.compiler.ws.util.WSTransformationContent;
 import x10.wala.client.X10SourceAnalysisEngine;
 import x10.wala.loader.X10SourceLoaderImpl;
 import x10.wala.util.GraphUtil;
+import x10.wala.util.PrettyWalaNames;
 
 import com.ibm.wala.cast.java.loader.JavaSourceLoaderImpl;
 import com.ibm.wala.cast.tree.CAstEntity;
@@ -36,8 +37,6 @@ import com.ibm.wala.types.Descriptor;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.strings.Atom;
-
-import edu.kit.joana.wala.util.PrettyWalaNames;
 
 public class X102IRGoal extends SourceGoal_c {
     // TODO: get rid of static state
