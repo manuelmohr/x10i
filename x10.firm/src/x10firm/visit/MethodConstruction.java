@@ -3,6 +3,7 @@ package x10firm.visit;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Stack;
 
 import polyglot.ast.Case;
 import polyglot.ast.Id;
@@ -44,6 +45,8 @@ public class MethodConstruction extends OOConstruction {
 	Node switchNode;
 	/** maps Cases to switch projection numbers. */
 	Map<Case, Integer> casePNs;
+	/** stack of outer try {} finally blocks (with actual code in the finally. */
+	Stack<polyglot.ast.Block> tryFinallyStack = new Stack<polyglot.ast.Block>();
 	/** local instance for "this". */
 	LocalInstance thisInstance;
 	/** tells wether a struct constructor is created. So we know when a
@@ -56,6 +59,12 @@ public class MethodConstruction extends OOConstruction {
 	 */
 	public MethodConstruction(final Graph graph) {
 		super(graph);
+	}
+
+	@Override
+	public void finish() {
+		assert tryFinallyStack.empty();
+		super.finish();
 	}
 
 	/** Sets the "VarEntry" for a given variable (local variable or field instance).

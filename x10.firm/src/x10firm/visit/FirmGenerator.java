@@ -1121,6 +1121,20 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		setReturnNode(casted);
 	}
 
+	private void produceAllFinallyCode() {
+		final int oldHeight = con.tryFinallyStack.size();
+		if (oldHeight == 0)
+			return;
+
+		final polyglot.ast.Block block = con.tryFinallyStack.pop();
+		visitAppropriate(block);
+		if (!con.isUnreachable()) {
+			produceAllFinallyCode();
+		}
+		con.tryFinallyStack.push(block);
+		assert con.tryFinallyStack.size() == oldHeight;
+	}
+
 	private void genReturn(final Type returnType, final Expr expr) {
 		final Node[] retValues;
 		if (con.inStructConstructor) {
@@ -1134,6 +1148,11 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		} else {
 			retValues = new Node[0];
 		}
+
+		produceAllFinallyCode();
+		if (con.isUnreachable())
+			return;
+
 		final Node mem     = con.getCurrentMem();
 		final Node retNode = con.newReturn(mem, retValues);
 		con.getGraph().getEndBlock().addPred(retNode);
@@ -1142,7 +1161,6 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	@Override
 	public void visit(final Return_c n) {
-		/* nothing to do in unreachable code */
 		if (con.isUnreachable())
 			return;
 
@@ -2510,10 +2528,16 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		/* no exception handling yet, just build contents of try block,
 		 * ignore later catch blocks */
 		final polyglot.ast.Block block = n.tryBlock();
-		visitAppropriate(block);
 		final polyglot.ast.Block finallyBlock = n.finallyBlock();
-		if (finallyBlock != null)
+		if (finallyBlock != null) {
+			con.tryFinallyStack.add(finallyBlock);
+		}
+		visitAppropriate(block);
+		if (finallyBlock != null) {
+			final polyglot.ast.Block stackBlock = con.tryFinallyStack.pop();
+			assert stackBlock == finallyBlock;
 			visitAppropriate(finallyBlock);
+		}
 	}
 
 	@Override
