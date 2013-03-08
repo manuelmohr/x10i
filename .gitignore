@@ -7,6 +7,10 @@
 /TODO
 /octopos-app
 /x10.common/classes
+/x10.compiler/ArraySum*.class
+/x10.compiler/ArraySum*.java
+/x10.compiler/_*.dot
+/x10.compiler/_*.pdf
 /x10.compiler/classes
 /x10.constraints/classes
 /x10.constraints/common/
@@ -31,6 +35,7 @@
 /x10.firm_runtime/gen
 /x10.runtime/classes
 /x10.runtime/src-cpp/bdwgc
+/x10.runtime/src-cpp/bdwgc-7.2d
 /x10.runtime/src-cpp/gen
 /x10.runtime/src-cpp/libx10.mft
 /x10.runtime/src-cpp/libx10.properties
