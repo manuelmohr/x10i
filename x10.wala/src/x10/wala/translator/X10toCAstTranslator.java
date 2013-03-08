@@ -2657,7 +2657,10 @@ public class X10toCAstTranslator implements TranslatorToCAst {
 
     protected void addConstructorsToAnonymousClass(New n, ClassType anonType, ClassContext classContext,
         List<CAstEntity> memberEntities) {
-      List superConstructors = ((ClassType) anonType.superClass()).constructors();
+      final Type sup = anonType.superClass();
+      // some classes dont have a supertype
+      if (sup == null) return;
+      List superConstructors = ((ClassType) sup).constructors();
 
       for (Iterator iter = superConstructors.iterator(); iter.hasNext();) {
         ConstructorInstance superCtor = (ConstructorInstance) iter.next();
