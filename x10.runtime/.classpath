@@ -5,5 +5,8 @@
 	<classpathentry kind="lib" path="/x10.dist/lib/commons-math3-3.0.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/x10.common"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/x10.compiler"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/x10.constraints"/>
 	<classpathentry kind="output" path="classes"/>
 </classpath>
