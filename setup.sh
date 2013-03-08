@@ -15,7 +15,7 @@ if [ -z "$JAVA_HOME" ] ; then
 	echo ""
 	echo ""
 fi
-JAVA_HOME_STUFF="bin/java bin/javac bin/jar lib/tools.jar include/linux/ include/jni.h"
+JAVA_HOME_STUFF="bin/java bin/javac bin/jar lib/tools.jar include/jni.h"
 JAVA_INSTALL_OK=1
 for file in $JAVA_HOME_STUFF; do
 	if ! [ -e "$JAVA_HOME/$file" ]; then
