@@ -31,7 +31,7 @@ public class X10SourceLoaderImpl extends JavaSourceLoaderImpl {
 
     public X10SourceLoaderImpl(ClassLoaderReference loaderRef, IClassLoader parent, SetOfClasses exclusions, IClassHierarchy cha)
             throws IOException {
-        super(loaderRef, parent, exclusions, cha);
+        super(false /* no common superclass */, loaderRef, parent, exclusions, cha);
     }
 
     @Override
