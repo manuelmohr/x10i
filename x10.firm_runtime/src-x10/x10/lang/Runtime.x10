@@ -55,6 +55,10 @@ public final class Runtime {
         });
     }
 
+    public static def runAsync(place:Place, body:()=>void, prof:Profile):void {
+        runAsync(place, body);
+    }
+
     /**
      * Run async
      */
