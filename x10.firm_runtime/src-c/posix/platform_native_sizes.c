@@ -3,3 +3,4 @@
 #include "posix_types.h"
 #include "x10_inputstreamreader.h"
 #include "x10_lock.h"
+#include "x10_signal_posix.h"

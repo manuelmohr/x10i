@@ -13,7 +13,6 @@ int main(int argc, char **argv)
 	init_ipc();
 	atexit(shutdown_ipc);
 
-	init_mutex();
 	init_locks();
 	init_finish_state();
 
