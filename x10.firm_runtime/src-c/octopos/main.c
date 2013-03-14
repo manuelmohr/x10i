@@ -45,4 +45,8 @@ void main_ilet(claim_t claim)
 	finish_state_destroy(&fs);
 
 	guest_shutdown();
+#ifdef __sparc__
+	/* stop grmon. (older octoposses did not do this in guest_shotdown()) */
+	__asm__("mov 1, %g1; ta 0;\n");
+#endif
 }
