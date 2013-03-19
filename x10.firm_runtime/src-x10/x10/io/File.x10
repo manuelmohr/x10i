@@ -164,11 +164,11 @@ FileSystem operations
      = openRead().chars();
     public def bytes(): ReaderIterator[Byte] //throws IOException
     = openRead().bytes();
-    public def openRead():FileReader //throws IOException
-    = new FileReader(this);
+    private static native def nativeOpenRead(path: String): FileReader{self!=null};
+    public def openRead() = nativeOpenRead(getPath()); //throws IOException
+    private static native def nativeOpenWrite(path: String, append: Boolean): FileWriter{self!=null};
     public def openWrite() = openWrite(false);
-    public def openWrite(append:Boolean):FileWriter //throws IOException
-    = new FileWriter(this, append);
+    public def openWrite(append:Boolean) = nativeOpenWrite(getPath(), append); //throws IOException
     public def printer() = printer(false);
     public def printer(append:Boolean):Printer //throws IOException
     = new Printer(openWrite(append));
