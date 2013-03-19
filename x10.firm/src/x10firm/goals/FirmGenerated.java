@@ -43,7 +43,7 @@ public class FirmGenerated extends AllBarrierGoal {
 		if (options.x10_config.ONLY_TYPE_CHECKING)
 			return true;
 
-		FirmState.initializeCodeGen();
+		FirmState.initializeCodeGen(options);
 		if (options.useFirmLibraries()) {
 			final String libName = "x10";
 			final boolean loaded = FirmState.loadFirmLibrary(options, libName);

@@ -3,6 +3,7 @@ package x10firm;
 import java.io.File;
 import java.util.ArrayList;
 
+import firm.Backend;
 import firm.Firm;
 import firm.Mode;
 import firm.Mode.Arithmetic;
@@ -69,13 +70,19 @@ public final class FirmState {
 	private static boolean codegenInitialized = false;
 	/** Ensure that libOO and pointer size is initialized to prepare
 	 * code generation. */
-	public static void initializeCodeGen() {
+	public static void initializeCodeGen(CompilerOptions options) {
 		if (codegenInitialized)
 			return;
 		codegenInitialized = true;
 
 		initializeFirm();
 		initializeImplicitOptimizations();
+
+		/* workaround for gaisler sparc-elf-gcc */
+		MachineTriple triple = options.getTargetTriple();
+		if (triple.getCpu().equals("sparc") && triple.getOS().equals("octopos")) {
+			Backend.option("dwarf-has_cfi_sections=false");
+		}
 
 		setPointerSize(PointerSize.Size32);
 		OO.init();
