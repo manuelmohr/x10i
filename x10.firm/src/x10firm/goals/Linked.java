@@ -93,15 +93,22 @@ public class Linked extends AbstractGoal_c {
 		return System.getProperty("x10.dist", ".");
 	}
 
-	private static String x86OctoposPrefix() {
-		return distPath() + "/../octopos-app/releases/current/x86guest/default/";
-	}
-
-	private static String sparcOctoposPrefix(final boolean softfloat) {
-		if (softfloat)
-			return distPath() + "/../octopos-app/releases/current/leon/softfloat/";
-
-		return distPath() + "/../octopos-app/releases/current/leon/default/";
+	private String octoposPrefix() {
+		final MachineTriple target = options.getTargetTriple();
+		String result = distPath() + "/../octopos-app/releases/current/";
+		if (target.getCpu().equals("sparc")) {
+			result += "leon/";
+		} else if (target.getCpu().equals("i686")) {
+			result += "x86guest/";
+		} else {
+			throw new RuntimeException("only sparc/i686 support for octopos");
+		}
+		if (options.useSoftFloat()) {
+			result += "softfloat/";
+		} else {
+			result += "default/";
+		}
+		return result;
 	}
 
 	@Override
@@ -128,28 +135,27 @@ public class Linked extends AbstractGoal_c {
 
 		if (os.equals("octopos")) {
 			if (cpu.equals("sparc")) {
-				final boolean sf = options.useSoftFloat();
 				cmd.add("-mcpu=v8");
-				cmd.add("-L" + sparcOctoposPrefix(sf) + "lib");
+				cmd.add("-L" + octoposPrefix() + "lib");
 				cmd.add("-nostdlib");
 				// Must be first object
-				cmd.add(sparcOctoposPrefix(sf) + "lib/traptable.S.o");
+				cmd.add(octoposPrefix() + "lib/traptable.S.o");
 			} else {
-				cmd.add("-L" + x86OctoposPrefix() + "lib");
+				cmd.add("-L" + octoposPrefix() + "lib");
 				cmd.add("-nostdlib");
-				if (linkerScript != null)
-					System.err.println("Warning: Ignoring specified linker script.");
-				linkerScript = x86OctoposPrefix() + "lib/sections.x";
 			}
 
 			cmd.add(queryGccPath("crti.o"));
 			cmd.add(queryGccPath("crtbegin.o"));
 			/* octopos only supports static linking */
 			linkStatically = true;
+			/* octopos always needs a linkerscript */
+			if (linkerScript == null)
+				linkerScript = octoposPrefix() + "lib/sections.x";
 		}
 
 		if (linkerScript != null)
-			cmd.add("-Wl,-T" + linkerScript);
+			cmd.add("-Wl,-T," + linkerScript);
 		if (linkStatically)
 			cmd.add("-static");
 
