@@ -3,8 +3,31 @@
 #include "main.h"
 #include "x10_string.h"
 
+#include <stdlib.h>
+#include <string.h>
+#include <dirent.h>
+
 x10_object *_ZN3x102io4File10NativeFile4listEPN3x104lang6StringE(const x10_string *path)
 {
+	char *cpath = cstring_from_x10_string(path);
+	DIR  *dir   = opendir(cpath);
+	free(cpath);
+	if (dir == NULL) {
+		return _ZN3x105array5Array15makeStringArrayEPvi((x10_pointer) NULL, 0);
+	}
+
+	x10_string   **filenames = NEW_ARR_F(x10_string*, 0);
+	struct dirent *entry;
+	while ((entry = readdir(dir)) != NULL) {
+		x10_string *name = x10_string_from_cstring(entry->d_name);
+		ARR_APP1(x10_string*, filenames, name);
+	}
+	closedir(dir);
+
+	const int   elems = ARR_LEN(filenames);
+	x10_object *list  = _ZN3x105array5Array15makeStringArrayEPvi((x10_pointer)filenames, elems);
+
+	return list;
 }
 
 /*
