@@ -33,13 +33,67 @@ import x10.compiler.Incomplete;
  */
 public class File {
     private static final class NativeFile {
-        public static def getName(path: String): String = path;
-        public static def getParent(path: String): String = path;
+    	
+    	public static SEPARATOR: Char = '/';
+    	
+        public static def getName(path: String): String {
+        	val i = path.lastIndexOf(SEPARATOR);
+        	if (i > 0) {
+        		return path.substring(i + 1, path.length());
+        	} else {
+        		return path;
+        	}
+        }
+        
+        public static def getParent(path: String): String {
+        	val i = path.lastIndexOf(SEPARATOR);
+        	if (i > 0) {
+        		return path.substring(0, i);
+        	} else {
+        		return null;
+        	}
+        }
+        
         public static def getPath(path: String): String = path;
-        public static def isAbsolute(path: String): Boolean = false;
-        public static def getAbsolutePath(path: String): String = path;
-        public static def getCanonicalPath(path: String): String = path;
-        public static def isHidden(path: String): Boolean = false;
+        
+        public static def isAbsolute(path: String): Boolean {
+        	if (path.length() == 0) {
+        		return false;
+        	}
+        	else if (path.charAt(0) == SEPARATOR) {
+        		return true;
+        	}
+        	else {
+        		return false;
+        	}
+        }
+        
+        public static def getAbsolutePath(path: String): String {
+        	if (path.length() == 0 || isAbsolute(path)) {
+        		return path;
+        	}
+        	else {
+        		return getCwd() + SEPARATOR + path;
+        	}
+        }
+        
+        public static def getCanonicalPath(path: String): String {
+        	throw new UnsupportedOperationException();
+        }
+        
+        public static def isHidden(path: String): Boolean {
+        	if (path.length() == 0) {
+        		return false;
+        	}
+        	else if (path.charAt(0) == '.') {
+        		return true;
+        	}
+        	else {
+        		return false;
+        	}
+        }
+        
+        private static native def getCwd(): String;
 
         public static native def list(path: String): Rail[String];
 
@@ -53,8 +107,29 @@ public class File {
         public static native def setLastModified(path: String, v:Long): Boolean;
         public static native def delete(path: String): Boolean;
         public static native def mkdir(path: String): Boolean;
-        public static native def mkdirs(path: String): Boolean;
+        
         public static native def renameTo(src: String, dest: String): Boolean;
+        
+        public static def mkdirs(path: String): Boolean {
+        	var i:int = 0;
+        	i = path.indexOf(SEPARATOR, i);
+        	while (i >= 0) {
+        		val spath = path.substring(0, i);
+        		if (!exists(spath)) {
+        			if (!mkdir(spath)) {
+        				return false;
+        			}
+        		}
+        		++i;
+        		i = path.indexOf(SEPARATOR, i);
+        	}
+        	if (!exists(path)) {
+        		if (!mkdir(path)) {
+        			return false;
+        		}
+        	}
+        	return true;
+        }
     }
 /*
 FileSystem operations
