@@ -43,7 +43,7 @@ ifeq ($(TARGET), sparc-invasic-octopos)
 	OCTOPOS_BASE=../octopos-app/releases/current/leon/softfloat
 	GCC_INCLUDE:=$(shell $(CC) --print-file-name=include)
 	CFLAGS += -fno-stack-protector
-	CPPFLAGS += -nostdinc -D__OCTOPOS__ -I $(OCTOPOS_BASE)/include -isystem $(GCC_INCLUDE)
+	CPPFLAGS += -nostdinc -D__leon__ -D__OCTOPOS__ -I $(OCTOPOS_BASE)/include -isystem $(GCC_INCLUDE)
 	PLATFORM = octopos
 	# Use the normal SPARC target to avoid having to adapt cparser
 	CPARSER_TARGET = -mtarget=sparc-leon-linux-gnu

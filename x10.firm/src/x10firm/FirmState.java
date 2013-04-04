@@ -70,7 +70,7 @@ public final class FirmState {
 	private static boolean codegenInitialized = false;
 	/** Ensure that libOO and pointer size is initialized to prepare
 	 * code generation. */
-	public static void initializeCodeGen(CompilerOptions options) {
+	public static void initializeCodeGen(final CompilerOptions options) {
 		if (codegenInitialized)
 			return;
 		codegenInitialized = true;
@@ -79,9 +79,14 @@ public final class FirmState {
 		initializeImplicitOptimizations();
 
 		/* workaround for gaisler sparc-elf-gcc */
-		MachineTriple triple = options.getTargetTriple();
-		if (triple.getCpu().equals("sparc") && triple.getOS().equals("octopos")) {
-			Backend.option("dwarf-has_cfi_sections=false");
+		final MachineTriple triple = options.getTargetTriple();
+		if (triple.getCpu().equals("sparc")) {
+			if (triple.getOS().equals("octopos")) {
+				Backend.option("dwarf-has_cfi_sections=false");
+			}
+			if (triple.getManufacturer().equals("leon") || triple.getManufacturer().equals("invasic")) {
+				Backend.option("sparc-cpu=leon");
+			}
 		}
 
 		setPointerSize(PointerSize.Size32);

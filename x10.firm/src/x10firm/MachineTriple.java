@@ -60,6 +60,11 @@ public final class MachineTriple {
 		return operatingSystem;
 	}
 
+	/** Returns manufacturer part of the target triple. */
+	public String getManufacturer() {
+		return manufacturer;
+	}
+
 	@Override
 	public String toString() {
 		if (manufacturer.equals("unknown"))
