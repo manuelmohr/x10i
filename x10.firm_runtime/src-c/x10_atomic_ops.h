@@ -4,8 +4,6 @@
 #include "types.h"
 
 x10_int x10_atomic_ops_compareAndSet_32(volatile x10_int* address, x10_int oldValue, x10_int newValue);
-x10_long x10_atomic_ops_compareAndSet_64(volatile x10_long* address, x10_long oldValue, x10_long newValue);
-void* x10_atomic_ops_compareAndSet_ptr(volatile void** address, void* oldValue, void* newValue);
 
 /**
  * Ensure that all loads before the barrier have loaded their
