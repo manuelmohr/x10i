@@ -11,6 +11,7 @@
 
 package x10.util.concurrent;
 
+import x10.compiler.StackAllocate;
 import x10.io.SerialData;
 import x10.util.Stack;
 
@@ -38,7 +39,7 @@ public class Monitor extends Lock {
      * Must not be called while holding the lock more than once
      */
     public def await():void {
-        val s = new Signal();
+        val s = @StackAllocate new Signal();
         signals.push(s);
         super.unlock();
         s.wait();
