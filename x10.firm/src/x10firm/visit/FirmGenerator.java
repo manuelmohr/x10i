@@ -122,6 +122,7 @@ import x10.ast.X10SourceFile_c;
 import x10.ast.X10Special;
 import x10.ast.X10Special_c;
 import x10.ast.X10Unary_c;
+import x10.extension.X10Ext;
 import x10.types.MethodInstance;
 import x10.types.ParameterType;
 import x10.types.ReinstantiatedMethodInstance;
@@ -1789,7 +1790,9 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 		final List<Expr> arguments = n.arguments();
 		if (!typeSystem.isStructType(n.type())) {
-			final Node objectNode = genHeapAlloc(type);
+			final Type stackAnnotation = typeSystem.getTypeSystem().StackAllocate();
+			final boolean stackAlloc = ((X10Ext) n.ext()).annotationMatching(stackAnnotation).size() > 0;
+			final Node objectNode = stackAlloc ? genStackAlloc(type) : genHeapAlloc(type);
 			genClassConstructorCall(n.position(), objectNode, constructor, arguments);
 			setReturnNode(objectNode);
 		} else {
