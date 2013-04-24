@@ -45,6 +45,14 @@ x10_string *x10_string_from_cstring(const char *string)
 	return x10_string_from_cstring_len(strlen(string), string);
 }
 
+char *cstring_from_x10_string(const x10_string *str)
+{
+	char *cstr = xmalloc(str->len + 1);
+	memcpy(cstr, str->chars, str->len);
+	cstr[str->len] = '\0';
+	return cstr;
+}
+
 /* String.this(): String */
 void x10_string_create_empty(x10_string *str)
 {
