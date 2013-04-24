@@ -11,7 +11,6 @@
 
 package x10.util.concurrent;
 
-import x10.compiler.Pinned;
 import x10.io.SerialData;
 import x10.util.Stack;
 
@@ -19,7 +18,7 @@ import x10.util.Stack;
  * Lock with wait/notify capabilities.
  * Cooperates with runtime scheduler.
  */
-@Pinned public class Monitor extends Lock {
+public class Monitor extends Lock {
     public def this() { super(); }
 
     public def serialize():SerialData {
