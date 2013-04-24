@@ -195,7 +195,7 @@ public final struct Place(id: Int)  {
      */
     @Native("java", "(#r).home")
     @Native("c++", "x10::lang::Place::place((#r)->location)")
-    public static native operator[T] (r:GlobalRef[T]){T isref}: Place{self==r.home};
+    public static operator[T] (r:GlobalRef[T]){T isref}: Place{self==r.home} = r.home;
 
 }
 public type Place(id:Int) = Place{self.id==id};
