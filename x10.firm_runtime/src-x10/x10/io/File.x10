@@ -33,70 +33,12 @@ import x10.compiler.Incomplete;
  */
 public class File {
     private static final class NativeFile {
-    	
-    	public static SEPARATOR: Char = '/';
-    	
-        public static def getName(path: String): String {
-        	val i = path.lastIndexOf(SEPARATOR);
-        	if (i > 0) {
-        		return path.substring(i + 1, path.length());
-        	} else {
-        		return path;
-        	}
-        }
-        
-        public static def getParent(path: String): String {
-        	val i = path.lastIndexOf(SEPARATOR);
-        	if (i > 0) {
-        		return path.substring(0, i);
-        	} else {
-        		return null;
-        	}
-        }
-        
-        public static def getPath(path: String): String = path;
-        
-        public static def isAbsolute(path: String): Boolean {
-        	if (path.length() == 0) {
-        		return false;
-        	}
-        	else if (path.charAt(0) == SEPARATOR) {
-        		return true;
-        	}
-        	else {
-        		return false;
-        	}
-        }
-        
-        public static def getAbsolutePath(path: String): String {
-        	if (path.length() == 0 || isAbsolute(path)) {
-        		return path;
-        	}
-        	else {
-        		return getCwd() + SEPARATOR + path;
-        	}
-        }
-        
         public static def getCanonicalPath(path: String): String {
-        	throw new UnsupportedOperationException();
+            throw new UnsupportedOperationException();
         }
-        
-        public static def isHidden(path: String): Boolean {
-        	if (path.length() == 0) {
-        		return false;
-        	}
-        	else if (path.charAt(0) == '.') {
-        		return true;
-        	}
-        	else {
-        		return false;
-        	}
-        }
-        
-        private static native def getCwd(): String;
 
+        public static native def getCwd(): String;
         public static native def list(path: String): Rail[String];
-
         public static native def canRead(path: String): Boolean;
         public static native def canWrite(path: String): Boolean;
         public static native def exists(path: String): Boolean;
@@ -107,29 +49,7 @@ public class File {
         public static native def setLastModified(path: String, v:Long): Boolean;
         public static native def delete(path: String): Boolean;
         public static native def mkdir(path: String): Boolean;
-        
         public static native def renameTo(src: String, dest: String): Boolean;
-        
-        public static def mkdirs(path: String): Boolean {
-        	var i:int = 0;
-        	i = path.indexOf(SEPARATOR, i);
-        	while (i >= 0) {
-        		val spath = path.substring(0, i);
-        		if (!exists(spath)) {
-        			if (!mkdir(spath)) {
-        				return false;
-        			}
-        		}
-        		++i;
-        		i = path.indexOf(SEPARATOR, i);
-        	}
-        	if (!exists(path)) {
-        		if (!mkdir(path)) {
-        			return false;
-        		}
-        	}
-        	return true;
-        }
     }
 /*
 FileSystem operations
@@ -203,7 +123,14 @@ FileSystem operations
     public def getPath(): String = parent == null ? name : (parent.getPath() + SEPARATOR + name);
     public def isAbsolute(): Boolean = absolute;
 
-    public def getAbsoluteFile(): File = new File(NativeFile.getAbsolutePath(getPath()));
+    public def getAbsoluteFile(): File {
+        var path: String = getPath();
+        if (path.length() > 0 && !isAbsolute()) {
+            path = NativeFile.getCwd() + SEPARATOR + path;
+        }
+        return new File(path);
+    }
+
     public def getCanonicalFile(): File  // throws IOException
     = new File(NativeFile.getCanonicalPath(getPath()));
 
@@ -222,7 +149,11 @@ FileSystem operations
 
     public def isDirectory(): Boolean = NativeFile.isDirectory(getPath());
     public def isFile(): Boolean = NativeFile.isFile(getPath());
-    public def isHidden(): Boolean = NativeFile.isHidden(getPath());
+    public def isHidden(): Boolean {
+        val name = getName();
+        return name.length() > 0 && name.charAt(0) == '.'
+               && !name.equals(".") && !name.equals("..");
+    }
 
     public def lastModified(): Long = NativeFile.lastModified(getPath());
     public def setLastModified(t:Long): Boolean = NativeFile.setLastModified(getPath(), t);
@@ -236,6 +167,15 @@ FileSystem operations
     public def delete(): Boolean = NativeFile.delete(getPath());
     public def list(): Rail[String] = NativeFile.list(getPath());
     public def mkdir(): Boolean = NativeFile.mkdir(getPath());
-    public def mkdirs(): Boolean = NativeFile.mkdirs(getPath());
+    public def mkdirs(): Boolean {
+        if (exists()) {
+            return false;
+        }
+        if (mkdir()) {
+            return true;
+        }
+        val parent = getParentFile();
+        return parent != null && (parent.mkdirs() || parent.exists());
+    }
     public def renameTo(dest:File): Boolean = NativeFile.renameTo(getPath(), dest.getPath());
 }
