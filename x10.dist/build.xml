@@ -168,7 +168,7 @@
     <target name="dist-java" depends="init,build,common-jar,constraints-jar,compiler-jar,runtime-java,tools-java"/>
     <target name="dist-cpp" depends="dist-java,runtime-cpp"/>
     <target name="dist-x10rt" depends="runtime-x10rt"/>
-    <target name="dist" depends="dist-java,dist-cpp,dist-firm,dist-bridge,dist-x10doc"/>
+    <target name="dist" depends="dist-java,dist-cpp,dist-firm,dist-x10doc"/>
     <target name="dist-firm" depends="init,build,common-jar,constraints-jar,compiler-jar,jfirm-jar,liboo-jar,x10firm-jar,runtime-firm"/>
     <target name="dist-par" depends="init,build,common-jar,constraints-jar,compiler-jar">
         <ant antfile="${x10.runtime.location}/build.xml" target="dist-par" inheritAll="false" dir="${x10.runtime.location}"/>
