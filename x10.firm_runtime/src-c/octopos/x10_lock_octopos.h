@@ -6,8 +6,8 @@
 #include "x10_lock.h"
 
 struct X10_TYPE("x10.util.concurrent.Lock") x10_lock {
-	x10_object      base;
-	simple_spinlock lock;
+	x10_object         base;
+	recursive_spinlock lock;
 };
 
 #endif
