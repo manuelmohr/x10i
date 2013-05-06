@@ -1,8 +1,8 @@
 package x10firm.visit;
 
+import firm.Construction;
 import firm.nodes.Block;
 import firm.nodes.Node;
-import firm.nodes.OOConstruction;
 
 /**
  * Firm code templates.
@@ -94,7 +94,7 @@ public final class FirmCodeTemplate {
 	 * @param ifStmt The if statement template
 	 * @param elseStmt The else statement template
 	 */
-	public static void genIfStatement(final OOConstruction con,
+	public static void genIfStatement(final Construction con,
 			final CondTemplate cond, final StmtTemplate ifStmt, final StmtTemplate elseStmt) {
 		final Block bTrue  = con.newBlock();
 		final Block bAfter = con.newBlock();

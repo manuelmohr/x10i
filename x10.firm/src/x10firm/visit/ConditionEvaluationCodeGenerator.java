@@ -26,8 +26,8 @@ import firm.Relation;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Cond;
-import firm.nodes.InstanceOf;
 import firm.nodes.Node;
+import firm.oo.nodes.InstanceOf;
 
 /**
  * Generates code which "evaluates" a boolean condition.
@@ -233,7 +233,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		assert firmType != null;
 
 		final Node mem = con.getCurrentMem();
-		final Node instanceOf = con.newInstanceOf(mem, objPtr, firmType);
+		final Node instanceOf = InstanceOf.create(con, mem, objPtr, firmType);
 		final Node projM = con.newProj(instanceOf, Mode.getM(), InstanceOf.pnM);
 		con.setCurrentMem(projM);
 		final Node projRes = con.newProj(instanceOf, Mode.getb(), InstanceOf.pnRes);

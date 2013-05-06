@@ -31,7 +31,6 @@ import firm.nodes.Cond;
 import firm.nodes.CopyB;
 import firm.nodes.Load;
 import firm.nodes.Node;
-import firm.nodes.OOConstruction;
 import firm.nodes.Store;
 
 /**
@@ -415,7 +414,7 @@ public final class SerializationSupport {
 		final Entity serEntity = serializeMethods.get(klass);
 
 		final Graph graph = new Graph(serEntity, 2);
-		final Construction con = new OOConstruction(graph);
+		final Construction con = new Construction(graph);
 		final Node swoSymConst = con.newSymConst(serializationWriteObjectEntity);
 
 		final Node args = graph.getArgs();
@@ -606,7 +605,7 @@ public final class SerializationSupport {
 		final Entity deserEntity = deserializeMethods.get(klass);
 
 		final Graph graph = new Graph(deserEntity, 2);
-		final Construction con = new OOConstruction(graph);
+		final Construction con = new Construction(graph);
 
 		final Node droSymc = con.newSymConst(deserializationRestoreObjectEntity);
 

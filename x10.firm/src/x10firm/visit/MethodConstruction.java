@@ -11,17 +11,17 @@ import polyglot.ast.Stmt;
 import polyglot.types.LocalDef;
 import polyglot.types.LocalInstance;
 import polyglot.types.Type;
+import firm.Construction;
 import firm.Graph;
 import firm.nodes.Block;
 import firm.nodes.Node;
-import firm.nodes.OOConstruction;
 
 /**
  * Class that holds state while a method graph is constructed.
  * (We need this as a class because it is possible to get nested method
  *  constructions - for boxing types or closures for example)
  */
-public class MethodConstruction extends OOConstruction {
+public class MethodConstruction extends Construction {
 	/** Maps local var defs to the appropriate var entries. */
 	private Map<LocalDef, VarEntry> varEntryMapper = new HashMap<LocalDef, VarEntry>();
 	/** Reference to the current procedure return type. */
