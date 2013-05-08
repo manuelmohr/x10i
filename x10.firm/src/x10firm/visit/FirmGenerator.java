@@ -192,6 +192,9 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	private static final String X10_STATIC_INITIALIZER = "x10_static_initializer";
 	private static final Charset UTF8 = Charset.forName("UTF8");
 
+	private Entity assertEntity;
+	private Entity throwEntity;
+
 	private final Builtins builtins = new Builtins();
 
 	/** The current method construction object. */
@@ -237,6 +240,27 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		xnf = nodeFactory;
 		this.options = options;
 		DebugInfo.init();
+
+		initKnownRuntimeEntities();
+	}
+
+	private void initKnownRuntimeEntities() {
+		final Type stringType = typeSystem.getTypeSystem().String();
+		final firm.Type[] assertParameterTypes = new firm.Type[] {
+			firmTypeSystem.asType(typeSystem.getTypeSystem().Boolean()),
+			firmTypeSystem.asType(stringType),
+			firmTypeSystem.asType(stringType),
+		};
+		final firm.Type[] assertResultTypes = new firm.Type[] {};
+		final MethodType assertType = new firm.MethodType(assertParameterTypes, assertResultTypes);
+		final String assertName = NameMangler.mangleKnownName(X10_ASSERT);
+		assertEntity = new Entity(Program.getGlobalType(), assertName, assertType);
+
+		final firm.Type[] throwParameterTypes = new firm.Type[0];
+		final firm.Type[] throwResultTypes = new firm.Type[0];
+		final MethodType throwType = new firm.MethodType(throwParameterTypes, throwResultTypes);
+		final String throwName = NameMangler.mangleKnownName(X10_THROW_STUB);
+		throwEntity = new Entity(Program.getGlobalType(), throwName, throwType);
 	}
 
 	/** Set info about whether we are currently compiling a command line job or not. */
@@ -2440,7 +2464,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node cond = visitExpression(n.cond());
 
 		final Type stringType = typeSystem.getTypeSystem().String();
-		Node errMsg = null;
+		final Node errMsg;
 		if (n.errorMessage() != null) {
 			errMsg = visitExpression(n.errorMessage());
 		} else {
@@ -2454,20 +2478,11 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			position = con.newConst(0, firmTypeSystem.getFirmMode(stringType));
 		}
 
-		final firm.Type[] parameterTypes = new firm.Type[] {
-			firmTypeSystem.asType(typeSystem.getTypeSystem().Boolean()),
-			firmTypeSystem.asType(stringType),
-			firmTypeSystem.asType(stringType),
-		};
-		final firm.Type[] resultTypes = new firm.Type[] {};
-		final MethodType type = new firm.MethodType(parameterTypes, resultTypes);
-		final String name = NameMangler.mangleKnownName(X10_ASSERT);
-		final Entity funcEnt = new Entity(Program.getGlobalType(), name, type);
-		final Node address = con.newSymConst(funcEnt);
+		final Node address = con.newSymConst(assertEntity);
 
 		final Node[] parameters = new Node[] {cond, errMsg, position};
 		final Node mem = con.getCurrentMem();
-		final Node call = con.newCall(mem, address, parameters, type);
+		final Node call = con.newCall(mem, address, parameters, assertEntity.getType());
 		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
 		con.setCurrentMem(newMem);
 
@@ -2486,16 +2501,11 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	 */
 	@Override
 	public void visit(final Throw_c n) {
-		final firm.Type[] parameterTypes = new firm.Type[0];
-		final firm.Type[] resultTypes = new firm.Type[0];
-		final MethodType type = new firm.MethodType(parameterTypes, resultTypes);
-		final String name = NameMangler.mangleKnownName(X10_THROW_STUB);
-		final Entity funcEnt = new Entity(Program.getGlobalType(), name, type);
-		final Node address = con.newSymConst(funcEnt);
+		final Node address = con.newSymConst(throwEntity);
 
 		final Node[] parameters = new Node[0];
 		final Node mem = con.getCurrentMem();
-		final Node call = con.newCall(mem, address, parameters, type);
+		final Node call = con.newCall(mem, address, parameters, throwEntity.getType());
 		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
 		con.setCurrentMem(newMem);
 
