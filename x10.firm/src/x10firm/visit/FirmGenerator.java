@@ -268,10 +268,10 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		sizeTType = Mode.createIntMode("size_t", Arithmetic.TwosComplement, Mode.getP().getSizeBits(),
 				false, Mode.getP().getModuloShift()).getType();
 		final firm.Type[] mallocParamTypes = new firm.Type[] {
-			sizeTType
+			sizeTType,
 		};
 		final firm.Type[] mallocResultTypes = new firm.Type[] {
-			Mode.getP().getType()
+			Mode.getP().getType(),
 		};
 		final MethodType mallocType = new firm.MethodType(mallocParamTypes, mallocResultTypes);
 		final String mallocName = NameMangler.mangleKnownName(X10_MALLOC);
@@ -1680,7 +1680,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	private Node genMallocCall(final Node size) {
 		final Node mem = con.getCurrentMem();
 		final Node malloc = con.newSymConst(mallocEntity);
-		final Node call = con.newCall(mem, malloc, new Node[] { size }, mallocEntity.getType());
+		final Node call = con.newCall(mem, malloc, new Node[] {size}, mallocEntity.getType());
 		final Node callRes = con.newProj(call, Mode.getT(), Call.pnTResult);
 		final Node resultPtr = con.newProj(callRes, Mode.getP(), 0);
 		final Node callMem = con.newProj(call, Mode.getM(), Call.pnM);
