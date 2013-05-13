@@ -46,26 +46,34 @@ void x10_serialization_write_primitive(serialization_buffer_t *buf, const void *
 	obstack_grow(buf->obst, data, nbytes);
 }
 
-void x10_serialization_write_object(serialization_buffer_t *buf, const x10_object *objPtr)
+static inline void put_u32(serialization_buffer_t *buf, uint32_t val)
+{
+	obstack_make_room(buf->obst, 4);
+	obstack_1grow_fast(buf->obst, (uint8_t)(val >>  0));
+	obstack_1grow_fast(buf->obst, (uint8_t)(val >>  8));
+	obstack_1grow_fast(buf->obst, (uint8_t)(val >> 16));
+	obstack_1grow_fast(buf->obst, (uint8_t)(val >> 24));
+}
+
+void x10_serialization_write_object(serialization_buffer_t *const buf,
+                                    const x10_object *const objPtr)
 {
 	if (objPtr == NULL) {
-		uint32_t uid = X10_SERIALIZATION_NULL_TYPE_UID;
-		obstack_grow(buf->obst, &uid, sizeof(uint32_t));
+		put_u32(buf, X10_SERIALIZATION_NULL_TYPE_UID);
 		return;
 	}
 
 	int idx = find_object(buf->serialized_objects, objPtr);
 	if (idx >= 0) {
-		uint32_t uid = X10_SERIALIZATION_KNOWN_OBJECT_TYPE_UID;
-		obstack_grow(buf->obst, &uid, sizeof(uint32_t));
-		obstack_grow(buf->obst, &idx, sizeof(uint32_t));
+		put_u32(buf, X10_SERIALIZATION_KNOWN_OBJECT_TYPE_UID);
+		put_u32(buf, idx);
 		return;
 	}
 
 	ARR_APP1(const x10_object *, buf->serialized_objects, objPtr);
 
 	uint32_t uid = objPtr->vptr->runtime_type_info->uid;
-	obstack_grow(buf->obst, &uid, sizeof(uint32_t));
+	put_u32(buf, uid);
 
 	/* frontend assures that T::__serialize is in the first vtable slot */
 	serialize_method *serializer = __serialize_methods[uid];
