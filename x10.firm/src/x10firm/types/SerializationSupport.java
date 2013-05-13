@@ -22,7 +22,6 @@ import firm.PointerType;
 import firm.Program;
 import firm.Relation;
 import firm.Type;
-import firm.bindings.binding_ircons.ir_where_alloc;
 import firm.bindings.binding_oo.ddispatch_binding;
 import firm.nodes.Alloc;
 import firm.nodes.Block;
@@ -636,8 +635,8 @@ public final class SerializationSupport {
 			Node mem = con.getCurrentMem();
 			final Node customSymc = con.newSymConst(customDeserializeConstructor);
 
-			final Node serialDataAlloc = con.newAlloc(mem, con.newConst(1, Mode.getIu()),
-					new PointerType(Mode.getP().getType()), ir_where_alloc.stack_alloc);
+			final Node size = con.newSymConstTypeSize(Mode.getP().getType(), Mode.getIu());
+			final Node serialDataAlloc = con.newAlloc(mem, size, Mode.getP().getType().getAlignmentBytes());
 			mem = con.newProj(serialDataAlloc, Mode.getM(), Alloc.pnM);
 			final Node serialDataPtr = con.newProj(serialDataAlloc, Mode.getP(), Alloc.pnRes);
 

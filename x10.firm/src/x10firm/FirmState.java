@@ -132,7 +132,7 @@ public final class FirmState {
 		final int bits = size.getSize();
 		final String name = "p" + bits;
 		final Mode mode
-			= Mode.createReferenceMode(name, arithmetic, bits, eqSignedInt, eqUnsignedInt);
+			= Mode.createReferenceMode(name, arithmetic, bits, eqSignedInt, eqUnsignedInt, bits);
 		Mode.setDefaultModeP(mode);
 	}
 }

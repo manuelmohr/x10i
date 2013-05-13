@@ -165,12 +165,12 @@ import firm.Ident;
 import firm.Initializer;
 import firm.MethodType;
 import firm.Mode;
+import firm.Mode.Arithmetic;
 import firm.OO;
 import firm.Program;
 import firm.Relation;
 import firm.SwitchTable;
 import firm.TargetValue;
-import firm.bindings.binding_ircons.ir_where_alloc;
 import firm.bindings.binding_typerep.ir_linkage;
 import firm.bindings.binding_typerep.ir_type_state;
 import firm.bindings.binding_typerep.ir_visibility;
@@ -190,10 +190,13 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	private static final String X10_THROW_STUB         = "x10_throw_stub";
 	private static final String X10_ASSERT             = "x10_assert";
 	private static final String X10_STATIC_INITIALIZER = "x10_static_initializer";
+	private static final String X10_MALLOC             = "malloc";
 	private static final Charset UTF8 = Charset.forName("UTF8");
 
 	private Entity assertEntity;
 	private Entity throwEntity;
+	private Entity mallocEntity;
+	private firm.Type sizeTType;
 
 	private final Builtins builtins = new Builtins();
 
@@ -261,6 +264,18 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final MethodType throwType = new firm.MethodType(throwParameterTypes, throwResultTypes);
 		final String throwName = NameMangler.mangleKnownName(X10_THROW_STUB);
 		throwEntity = new Entity(Program.getGlobalType(), throwName, throwType);
+
+		sizeTType = Mode.createIntMode("size_t", Arithmetic.TwosComplement, Mode.getP().getSizeBits(),
+				false, Mode.getP().getModuloShift()).getType();
+		final firm.Type[] mallocParamTypes = new firm.Type[] {
+			sizeTType
+		};
+		final firm.Type[] mallocResultTypes = new firm.Type[] {
+			Mode.getP().getType()
+		};
+		final MethodType mallocType = new firm.MethodType(mallocParamTypes, mallocResultTypes);
+		final String mallocName = NameMangler.mangleKnownName(X10_MALLOC);
+		mallocEntity = new Entity(Program.getGlobalType(), mallocName, mallocType);
 	}
 
 	/** Set info about whether we are currently compiling a command line job or not. */
@@ -682,7 +697,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		// map all local variables.
 		for (final LocalInstance loc : locals) {
 			if (needEntityForLocalInstance(loc)) {
-				final Entity ent = new Entity(frameType, loc.name().toString(), firmTypeSystem.asClass(loc.type()));
+				final firm.Type locType = firmTypeSystem.asClass(loc.type(), true);
+				final Entity ent = new Entity(frameType, loc.name().toString(), locType);
 				con.setVarEntry(VarEntry.newVarEntryForStructVariable(loc, ent));
 			} else {
 				// a normal local variable
@@ -1650,24 +1666,53 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		setReturnNode(node);
 	}
 
-	private Node genAlloc(final firm.Type type, final ir_where_alloc where) {
+	private Node genAlloc(final firm.Type type) {
 		final Node mem = con.getCurrentMem();
-		final Node count = con.newConst(1, Mode.getIu());
-		final Node alloc = con.newAlloc(mem, count, type, where);
+		final Node size = con.newSymConstTypeSize(type, Mode.getIu());
+		assert type.getTypeState() == ir_type_state.layout_fixed;
+		final Node alloc = con.newAlloc(mem, size, type.getAlignmentBytes());
 		final Node newMem = con.newProj(alloc, Mode.getM(), Alloc.pnM);
 		final Node res = con.newProj(alloc, Mode.getP(), Alloc.pnRes);
 		con.setCurrentMem(newMem);
 		return res;
 	}
 
-	/**
-	 * Create the appropriate firm nodes for a heap allocation.
-	 * @param x10Type The x10 type of the object
-	 * @return A proj node to the allocated memory.
-	 */
-	public Node genHeapAlloc(final Type x10Type) {
-		final firm.Type firmType = firmTypeSystem.asClass(x10Type);
-		return genAlloc(firmType, ir_where_alloc.heap_alloc);
+	private Node genMallocCall(final Node size) {
+		final Node mem = con.getCurrentMem();
+		final Node malloc = con.newSymConst(mallocEntity);
+		final Node call = con.newCall(mem, malloc, new Node[] { size }, mallocEntity.getType());
+		final Node callRes = con.newProj(call, Mode.getT(), Call.pnTResult);
+		final Node resultPtr = con.newProj(callRes, Mode.getP(), 0);
+		final Node callMem = con.newProj(call, Mode.getM(), Call.pnM);
+		con.setCurrentMem(callMem);
+
+		return resultPtr;
+	}
+
+	private void initVPtr(final Node ptr, final ClassType firmType) {
+		final Entity vptr = OO.getClassVPtrEntity(firmType);
+		final Node sel = con.newSel(ptr, vptr);
+		final Entity vtable = OO.getClassVTableEntity(firmType);
+		final Node vtableSymConst = con.newSymConst(vtable);
+		final Node mem = con.getCurrentMem();
+		final Node store = con.newStore(mem, sel, vtableSymConst);
+		final Node newMem = con.newProj(store, Mode.getM(), Store.pnM);
+		con.setCurrentMem(newMem);
+	}
+
+	private Node genObjectHeapAlloc(final Type x10Type) {
+		final ClassType firmType = firmTypeSystem.asClass(x10Type, true);
+		final Node size = con.newSymConstTypeSize(firmType, Mode.getIu());
+		final Node objPtr = genMallocCall(size);
+		initVPtr(objPtr, firmType);
+		return objPtr;
+	}
+
+	private Node genObjectStackAlloc(final Type x10Type) {
+		final ClassType firmType = firmTypeSystem.asClass(x10Type, true);
+		final Node objPtr = genAlloc(firmType);
+		initVPtr(objPtr, firmType);
+		return objPtr;
 	}
 
 	/**
@@ -1677,8 +1722,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	 * @return A proj node to the allocated memory.
 	 */
 	public Node genStackAlloc(final Type x10Type) {
-		final firm.Type firmType = firmTypeSystem.asClass(x10Type);
-		return genAlloc(firmType, ir_where_alloc.stack_alloc);
+		final firm.Type firmType = firmTypeSystem.asClass(x10Type, true);
+		return genAlloc(firmType);
 	}
 
 	private Node genConstructorCall(final Position pos, final X10ConstructorInstance instance,
@@ -1706,8 +1751,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	 * @param args The arguments of the constructor call (without the implicit this pointer)
 	 */
 	private void genClassConstructorCall(final Position pos, final Node objectThisNode,
-			final X10ConstructorInstance instance,
-			final List<Expr> args) {
+			final X10ConstructorInstance instance, final List<Expr> args) {
 		final List<Expr> arguments = wrapArguments(instance.formalTypes(), args);
 		final int        argumentCount = arguments.size() + 1;
 		final Node[]     argumentNodes = new Node[argumentCount];
@@ -1816,7 +1860,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		if (!typeSystem.isStructType(n.type())) {
 			final Type stackAnnotation = typeSystem.getTypeSystem().StackAllocate();
 			final boolean stackAlloc = ((X10Ext) n.ext()).annotationMatching(stackAnnotation).size() > 0;
-			final Node objectNode = stackAlloc ? genStackAlloc(type) : genHeapAlloc(type);
+			final Node objectNode = stackAlloc ? genObjectStackAlloc(type) : genObjectHeapAlloc(type);
 			genClassConstructorCall(n.position(), objectNode, constructor, arguments);
 			setReturnNode(objectNode);
 		} else {
@@ -1916,7 +1960,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Entity entity = createStringEntity(value);
 
 		final Type type = typeSystem.getTypeSystem().String();
-		final Node object = genHeapAlloc(type);
+		final Node object = genObjectHeapAlloc(type);
 		final Mode sizeMode = firmTypeSystem.getFirmMode(typeSystem.getTypeSystem().Int());
 		final Node sizeNode = con.newConst(value.length(), sizeMode);
 		final Node stringConst = con.newSymConst(entity);
@@ -2234,7 +2278,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final X10ClassType boxType = getBoxingType(type);
 
 		// Generate the box
-		final Node box = genHeapAlloc(boxType);
+		final Node box = genObjectHeapAlloc(boxType);
 
 		// save the boxed value in the box
 		final FieldInstance boxValue = boxType.fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE));
@@ -2611,12 +2655,11 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 		final List<Expr> arguments = n.arguments();
 		final int size = arguments.size();
-		final Node mem = con.getCurrentMem();
-		final Node count = con.newConst(size, Mode.getIu());
-		final Node alloc = con.newAlloc(mem, count, firmType, ir_where_alloc.heap_alloc);
-		final Node newMem = con.newProj(alloc, Mode.getM(), Alloc.pnM);
-		final Node baseAddr = con.newProj(alloc, Mode.getP(), Alloc.pnRes);
-		con.setCurrentMem(newMem);
+		final Mode sizeMode = sizeTType.getMode();
+		final Node count = con.newConst(size, sizeMode);
+		final Node elSize = con.newSymConstTypeSize(firmType, sizeMode);
+		final Node byteSize = con.newMul(count, elSize, sizeMode);
+		final Node baseAddr = genMallocCall(byteSize);
 
 		/* construct elements */
 		final int elementSize = firmType.getSizeBytes();
@@ -2650,9 +2693,9 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		if (arrayConstructor == null) {
 			throw new CodeGenError("Couldn't find Array.this(Pointer,Int) constructor", n);
 		}
-		final Node arrayAddr = genHeapAlloc(concreteType);
-		final Mode sizeMode = firmTypeSystem.getFirmMode(typeSystem.getTypeSystem().Int());
-		final Node sizeNode = con.newConst(size, sizeMode);
+		final Node arrayAddr = genObjectHeapAlloc(concreteType);
+		final Mode intMode = firmTypeSystem.getFirmMode(typeSystem.getTypeSystem().Int());
+		final Node sizeNode = con.newConst(size, intMode);
 		final Node[] constructorArguments = new Node[] {arrayAddr, baseAddr, sizeNode};
 		genConstructorCall(n.position(), arrayConstructor, constructorArguments);
 
@@ -2669,7 +2712,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		if (typeSystem.isStructType(n.type())) {
 			objectNode = genStackAlloc(type);
 		} else {
-			objectNode = genHeapAlloc(type);
+			objectNode = genObjectHeapAlloc(type);
 		}
 
 		setReturnNode(objectNode);

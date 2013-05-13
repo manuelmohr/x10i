@@ -317,7 +317,7 @@ public class FirmTypeSystem {
 
 		// preinit the type
 		asType(boxedClassType);
-		final ClassType ft = asClass(boxedClassType);
+		final ClassType ft = asClass(boxedClassType, true);
 
 		final FieldInstance fieldInstance = boxValue.asInstance();
 		getFieldEntity(fieldInstance, ft);
@@ -374,34 +374,11 @@ public class FirmTypeSystem {
 	}
 
 	/**
-	 * Layouts a given type.
-	 * @param type The type which should be layouted
-	 */
-	private void layoutType(final Type type) {
-		if (type.getTypeState() == ir_type_state.layout_fixed)
-			return;
-
-		if (!(type instanceof ClassType))
-			return;
-
-		final ClassType klass = (ClassType)type;
-		for (final Entity entity : klass.getMembers()) {
-			layoutType(entity.getType());
-		}
-
-		klass.layoutFields();
-		klass.finishLayout();
-	}
-
-	/**
 	 * Finishes the type system.
 	 * This should be called when no further modification or new type
 	 * creations are planned. Fixes the final type memory layout.
 	 */
 	public void finishTypeSystem() {
-		for (final ClassType type : firmCoreTypes.values()) {
-			layoutType(type);
-		}
 		serializationSupport.finishSerialization(firmCoreTypes.values());
 	}
 
@@ -469,10 +446,11 @@ public class FirmTypeSystem {
 		if (result != null)
 			return result;
 
-		result = asClass(baseType);
-		/* we have references to stuff unless it is a struct type */
 		if (!typeSystem.isStructType(baseType)) {
+			result = asClass(baseType, false);
 			result = new PointerType(result);
+		} else {
+			result = asClass(baseType, true);
 		}
 		firmTypes.put(baseType, result);
 
@@ -497,7 +475,6 @@ public class FirmTypeSystem {
 		if (existingEntity2 != null)
 			return existingEntity2;
 
-		/* we mustn't create entities in native classes with known size */
 		assert owner.getTypeState() != ir_type_state.layout_fixed;
 		final Entity entity = new Entity(owner, name, type);
 		entity.setLdIdent(name);
@@ -518,7 +495,7 @@ public class FirmTypeSystem {
 		vptr.setOwner(type);
 	}
 
-	private void createVTable(final X10ClassType classType, final ClassType firmType) {
+	private void createVTableEntity(final X10ClassType classType, final ClassType firmType) {
 		final ClassType global = Program.getGlobalType();
 		final Type pointerType = Mode.getP().getType();
 
@@ -539,7 +516,7 @@ public class FirmTypeSystem {
 		OO.setClassVTableEntity(firmType, vtable);
 	}
 
-	private static void createTypeinfo(final X10ClassType classType, final ClassType firmType) {
+	private static void createTypeinfoEntity(final X10ClassType classType, final ClassType firmType) {
 		final ClassType global = Program.getGlobalType();
 		final Type pointerType = Mode.getP().getType();
 
@@ -555,7 +532,7 @@ public class FirmTypeSystem {
 		 * methods from Any. */
 		final TypeSystem_c x10TypeSystem = typeSystem.getTypeSystem();
 		final X10ClassType any = x10TypeSystem.Any();
-		final Type firmAny = asClass(any);
+		final Type firmAny = asClass(any, true);
 		firmType.addSuperType(firmAny);
 		for (final MethodInstance method : any.methods()) {
 			/* any implementation of this method in the type? */
@@ -571,9 +548,22 @@ public class FirmTypeSystem {
 		}
 	}
 
-	private ClassType createClassType(final X10ClassType classType) {
-		final Flags flags = classType.flags();
-		final ClassType result = new ClassType(classType.toString());
+	private ClassType getClassType(final X10ClassType classType, final boolean needMembers) {
+		ClassType result = firmCoreTypes.get(classType);
+		if (result == null) {
+			result = new ClassType(classType.toString());
+
+			/* put the class into the core types already, because we could
+			 * have a field referencing ourself */
+			firmCoreTypes.put(classType, result);
+		}
+
+		if (!needMembers || result.getTypeState() == ir_type_state.layout_fixed) {
+			return result;
+		}
+
+		instantiationQueue.instantiateGenericClass(classType);
+
 		final QName qname = classType.fullName();
 		final NativeClassInfo classInfo = x10NativeTypes.get(qname.toString());
 		if (classInfo != null) {
@@ -581,16 +571,11 @@ public class FirmTypeSystem {
 			result.setTypeState(ir_type_state.layout_fixed);
 		}
 
-		instantiationQueue.instantiateGenericClass(classType);
-
-		/* put the class into the core types already, because we could
-		 * have a field referencing ourself */
-		firmCoreTypes.put(classType, result);
-
 		/* create supertypes */
+		final Flags flags = classType.flags();
 		final polyglot.types.Type superType = classType.superClass();
 		if (superType != null) {
-			final ClassType firmSuperType = asClass(superType);
+			final ClassType firmSuperType = asClass(superType, true);
 			result.addSuperType(firmSuperType);
 			final Entity superObject = new Entity(result, "$super", firmSuperType);
 			superObject.setOffset(0);
@@ -608,12 +593,16 @@ public class FirmTypeSystem {
 			createVPtr(result);
 			addDefaultAnyImplementation(classType, result);
 		}
+		createTypeinfoEntity(classType, result);
+		if (!flags.isInterface() && !flags.isStruct()) {
+			createVTableEntity(classType, result);
+		}
 
 		/* create interfaces */
 		final Set<polyglot.types.Type> interfaces = new LinkedHashSet<polyglot.types.Type>(classType.interfaces());
 		boolean implementsCustomSerializable = false;
 		for (final polyglot.types.Type iface : interfaces) {
-			final Type firmIface = asClass(iface);
+			final Type firmIface = asClass(iface, true);
 			result.addSuperType(firmIface);
 
 			if (iface.toString().equals("x10.io.CustomSerialization")) {
@@ -622,42 +611,42 @@ public class FirmTypeSystem {
 			}
 		}
 
-		if (!flags.isInterface()) {
-			serializationSupport.setupSerialization(classType, result);
-		}
-
 		/* create fields */
 		for (final FieldInstance field : classType.fields()) {
-			final ClassType owner = field.flags().isStatic() ? Program.getGlobalType() : result;
-			getFieldEntity(field, owner);
+			if (field.flags().isStatic())
+				continue;
+			getFieldEntity(field, result);
+		}
+		/* layout fields if necessary */
+		if (result.getTypeState() != ir_type_state.layout_fixed) {
+			result.layoutFields();
+			result.setTypeState(ir_type_state.layout_fixed);
 		}
 
-		if (implementsCustomSerializable) {
-			/* create non-generic methods */
-			for (final MethodInstance method : classType.methods()) {
-				if (method.typeParameters().isEmpty()) {
-					final Entity methodEntity = getMethodEntity(method);
-					serializationSupport.setCustomSerializeMethod(method, result, methodEntity);
+		if (!flags.isInterface()) {
+			serializationSupport.setupSerialization(classType, result);
+
+			if (implementsCustomSerializable) {
+				/* create non-generic methods */
+				for (final MethodInstance method : classType.methods()) {
+					if (method.typeParameters().isEmpty()) {
+						final Entity methodEntity = getMethodEntity(method);
+						serializationSupport.setCustomSerializeMethod(method, result, methodEntity);
+					}
+				}
+
+				/* create constructors */
+				for (final ConstructorInstance ctor : classType.constructors()) {
+					final X10ConstructorInstance x10Ctor = (X10ConstructorInstance) ctor;
+					final Entity ctorEntity = getConstructorEntity(x10Ctor);
+					serializationSupport.setCustomDeserializeConstructor(x10Ctor, result, ctorEntity);
 				}
 			}
 
-			/* create constructors */
-			for (final ConstructorInstance ctor : classType.constructors()) {
-				final X10ConstructorInstance x10Ctor = (X10ConstructorInstance) ctor;
-				final Entity ctorEntity = getConstructorEntity(x10Ctor);
-				serializationSupport.setCustomDeserializeConstructor(x10Ctor, result, ctorEntity);
-			}
-		}
-
-		if (!flags.isInterface()) {
-			if (!flags.isStruct()) {
-				createVTable(classType, result);
-			}
 
 			serializationSupport.generateSerializationFunction(classType, result, this);
 			serializationSupport.generateDeserializationFunction(classType, result, this);
 		}
-		createTypeinfo(classType, result);
 
 		return result;
 	}
@@ -672,22 +661,12 @@ public class FirmTypeSystem {
 		if (!instance.flags().isStatic()) {
 			/* make sure enclosing class-type has been created,
 			 * this should in turn create all fields */
-			owner = asClass(instance.container());
+			owner = asClass(instance.container(), true);
 		} else {
 			owner = Program.getGlobalType();
 		}
 
 		return getFieldEntity(instance, owner);
-	}
-
-	/**
-	 * same as asClass() but expects parameter to be concrete already.
-	 */
-	private ClassType concreteAsClass(final X10ClassType type) {
-		final ClassType result = firmCoreTypes.get(type);
-		if (result != null)
-			return result;
-		return createClassType(type);
 	}
 
 	/**
@@ -697,12 +676,12 @@ public class FirmTypeSystem {
 	 * @param origType  The given polyglot ast-type
 	 * @return the firm type for a given ast-type.
 	 */
-	public ClassType asClass(final polyglot.types.Type origType) {
+	public ClassType asClass(final polyglot.types.Type origType, final boolean needMembers) {
 		final polyglot.types.Type type = typeSystem.getConcreteType(origType);
 		if (!(type instanceof X10ClassType)) {
 			throw new java.lang.RuntimeException("Attempt to create firm classtype from non-X10ClassType " + type);
 		}
-		return concreteAsClass((X10ClassType)type);
+		return getClassType((X10ClassType)type, needMembers);
 	}
 
 	/**
@@ -935,7 +914,7 @@ public class FirmTypeSystem {
 		final Flags flags = instance.flags();
 		final ClassType ownerFirm;
 		if (!flags.isStatic()) {
-			final ClassType owningClass = asClass(owner);
+			final ClassType owningClass = asClass(owner, true);
 			ownerFirm = owningClass;
 		} else {
 			ownerFirm = Program.getGlobalType();
