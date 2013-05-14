@@ -75,7 +75,6 @@ void x10_serialization_write_object(serialization_buffer_t *const buf,
 	uint32_t uid = objPtr->vptr->runtime_type_info->uid;
 	put_u32(buf, uid);
 
-	/* frontend assures that T::__serialize is in the first vtable slot */
 	serialize_method *serializer = __serialize_methods[uid];
 	serializer(buf, objPtr);
 }
