@@ -290,8 +290,6 @@ public final class SerializationSupport {
 	}
 
 	private void genCallToSerialize(final Type type, final Construction con, final Node bufPtr, final Node objPtr) {
-		final Node swpSymConst = con.newSymConst(serializationWritePrimitiveEntity);
-		final Node swoSymConst = con.newSymConst(serializationWriteObjectEntity);
 		Node mem = con.getCurrentMem();
 
 		if (type instanceof ClassType) {
@@ -314,13 +312,14 @@ public final class SerializationSupport {
 			con.setCurrentMem(mem);
 			final Node newObjPtr = con.newProj(load, Mode.getP(), Load.pnRes);
 
+			final Node swoSymConst = con.newSymConst(serializationWriteObjectEntity);
 			final Node call = con.newCall(mem, swoSymConst,
 					new Node[] {bufPtr, newObjPtr}, serializationWriteObjectEntity.getType());
 			mem = con.newProj(call, Mode.getM(), Call.pnM);
 			con.setCurrentMem(mem);
 		} else {
 			/* primitives */
-
+			final Node swpSymConst = con.newSymConst(serializationWritePrimitiveEntity);
 			final Node call = con.newCall(mem, swpSymConst,
 					new Node[] {bufPtr, objPtr, con.newSymConstTypeSize(type, Mode.getIu())},
 					serializationWritePrimitiveEntity.getType());
