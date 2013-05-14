@@ -109,6 +109,8 @@ public final class GrowableIndexedMemoryChunk[T] {
      * Remove all elements.
      */
     public final def clear():void {
+        if (length == 0)
+            return;
         imc.clear(0,length-1);
         length = 0;
     }
