@@ -46,7 +46,7 @@ public final class GrowableIndexedMemoryChunk[T] {
      * capacity of cap.
      */
     public def this(cap:Int) {
-        imc = IndexedMemoryChunk.allocateUninitialized[T](cap);
+        imc = IndexedMemoryChunk.allocateZeroed[T](cap);
         length = 0;
     }
 
@@ -100,6 +100,7 @@ public final class GrowableIndexedMemoryChunk[T] {
      * Remove the last element. May shrink backing storage.
      */
     public final def removeLast():void {
+        imc.clear(length-1,1);
         --length;
         shrink(length+1);
     }
@@ -108,6 +109,7 @@ public final class GrowableIndexedMemoryChunk[T] {
      * Remove all elements.
      */
     public final def clear():void {
+        imc.clear(0,length-1);
         length = 0;
     }
 
@@ -125,6 +127,7 @@ public final class GrowableIndexedMemoryChunk[T] {
 	val tmp = IndexedMemoryChunk.allocateUninitialized[T](len);
         IndexedMemoryChunk.copy(imc, i, tmp, 0, len);
         IndexedMemoryChunk.copy(imc, j+1, imc, i, length-j-1);
+        imc.clear(length-len, len);
         length-=len;
         shrink(length+1);
         return tmp;
@@ -163,6 +166,7 @@ public final class GrowableIndexedMemoryChunk[T] {
 
         val tmp = IndexedMemoryChunk.allocateUninitialized[T](newCapacity);
         IndexedMemoryChunk.copy(imc, 0, tmp, 0, length);
+        tmp.clear(length, newCapacity-length);
         imc.deallocate();
         imc = tmp;
     }
@@ -174,6 +178,7 @@ public final class GrowableIndexedMemoryChunk[T] {
         newCapacity = x10.lang.Math.max(newCapacity, 8);
         val tmp = IndexedMemoryChunk.allocateUninitialized[T](newCapacity);
         IndexedMemoryChunk.copy(imc, 0, tmp, 0, length);
+        tmp.clear(length, newCapacity-length);
         imc.deallocate();
         imc = tmp;
     }
