@@ -166,11 +166,9 @@ public final struct PlaceLocalHandle[T]{T isref, T <: Any} {
      * @param init the initialization closure used to create the local object.
      * @return a PlaceLocalHandle that can be used to access the local objects.
      */
-     /*
     public static def makeFlat[T](dist:Dist, init:()=>T){T isref}:PlaceLocalHandle[T] {
         return makeFlat(dist.places(), init);
     }
-    */
 
     /**
      * Create a distributed object with local state of type T
