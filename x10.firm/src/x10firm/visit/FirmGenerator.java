@@ -345,9 +345,9 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	 * @param trueBlock The true block
 	 * @param falseBlock The false block
 	 */
-	void evaluateCondition(final Expr e, final Block trueBlock, final Block falseBlock) {
+	void evaluateCondition(final Position pos, final Expr e, final Block trueBlock, final Block falseBlock) {
 		final ConditionEvaluationCodeGenerator codegen
-			= new ConditionEvaluationCodeGenerator(trueBlock, falseBlock, this);
+			= new ConditionEvaluationCodeGenerator(trueBlock, falseBlock, this, pos);
 		codegen.visitAppropriate(e);
 	}
 
@@ -366,7 +366,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node zero = con.newConst(mode.getNull());
 
 		con.setCurrentBlock(cur);
-		evaluateCondition(e, bTrue, bFalse);
+		evaluateCondition(e.position(), e, bTrue, bFalse);
 		bTrue.mature();
 		bFalse.mature();
 
@@ -1312,7 +1312,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			bTrue.addPred(jmp);
 			con.getGraph().keepAlive(bCond);
 		} else {
-			evaluateCondition(n.cond(), bTrue, bFalse);
+			evaluateCondition(n.position(), n.cond(), bTrue, bFalse);
 		}
 
 		bTrue.mature();
@@ -1346,7 +1346,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			bTrue.addPred(jmp);
 			con.getGraph().keepAlive(bCond);
 		} else {
-			evaluateCondition(n.cond(), bTrue, bFalse);
+			evaluateCondition(n.position(), n.cond(), bTrue, bFalse);
 		}
 		bTrue.mature();
 
@@ -1410,7 +1410,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			bTrue.addPred(jmp);
 			con.getGraph().keepAlive(bCond);
 		} else {
-			evaluateCondition(n.cond(), bTrue, bFalse);
+			evaluateCondition(n.position(), n.cond(), bTrue, bFalse);
 		}
 		bTrue.mature();
 
@@ -1474,7 +1474,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 		final Block trueBlock = con.newBlock();
 		final Block falseBlock = con.newBlock();
-		evaluateCondition(cond, trueBlock, falseBlock);
+		evaluateCondition(n.position(), cond, trueBlock, falseBlock);
 		trueBlock.mature();
 		falseBlock.mature();
 
@@ -1498,7 +1498,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Block trueBlock = con.newBlock();
 		final Block falseBlock = con.newBlock();
 
-		evaluateCondition(n.cond(), trueBlock, falseBlock);
+		evaluateCondition(n.position(), n.cond(), trueBlock, falseBlock);
 		trueBlock.mature();
 		falseBlock.mature();
 
@@ -1575,11 +1575,14 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		setReturnNode(ret);
 	}
 
-	private void setDebugInfo(final Node node, final Position pos) {
-		if (options.x10_config.DEBUG && !pos.isCompilerGenerated()) {
-			final Pointer dbgInfo = DebugInfo.createInfo(pos.file(), pos.line(), pos.column());
-			node.setDebugInfo(dbgInfo);
-		}
+	/**
+	 * Set debug location info of a firm node to an X10 AST Position.
+	 */
+	public static void setDebugInfo(final Node node, final Position pos) {
+		if (pos == null || pos.isCompilerGenerated())
+			return;
+		final Pointer dbgInfo = DebugInfo.createInfo(pos.file(), pos.line(), pos.column());
+		node.setDebugInfo(dbgInfo);
 	}
 
 	@Override
@@ -2316,7 +2319,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	 * @param fromType The from type
 	 * @param toType The to type
 	 */
-	void genSubtypeCheck(final Node node, final Type fromType, final Type toType) {
+	void genSubtypeCheck(final Position pos, final Node node, final Type fromType, final Type toType) {
 
 		final Type from = typeSystem.getConcreteType(fromType);
 		final Type to   = typeSystem.getConcreteType(toType);
@@ -2329,7 +2332,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			public void genCode(final Block trueBlock, final Block falseBlock) {
 				final Node ret = ConditionEvaluationCodeGenerator.genInstanceOf(
 						node, from, compType, FirmGenerator.this, typeSystem, firmTypeSystem, con);
-				ConditionEvaluationCodeGenerator.makeJumps(ret, falseBlock, trueBlock, con);
+				ConditionEvaluationCodeGenerator.makeJumps(pos, ret, falseBlock, trueBlock, con);
 			}
 		};
 
@@ -2345,7 +2348,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		FirmCodeTemplate.genIfStatement(con, condTemplate, ifStmt, null);
 	}
 
-	private void genCastNullCheck(final Node node, final Type t) {
+	private void genCastNullCheck(final Position pos, final Node node, final Type t) {
 
 		final Type type = typeSystem.getConcreteType(t);
 
@@ -2354,7 +2357,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			public void genCode(final Block trueBlock, final Block falseBlock) {
 				final Node nullNode = con.newConst(Mode.getP().getNull());
 				final Node cmp = con.newCmp(node, nullNode, Relation.Equal);
-				ConditionEvaluationCodeGenerator.makeJumps(cmp, trueBlock, falseBlock, con);
+				setDebugInfo(cmp, pos);
+				ConditionEvaluationCodeGenerator.makeJumps(pos, cmp, trueBlock, falseBlock, con);
 			}
 		};
 
@@ -2370,7 +2374,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		FirmCodeTemplate.genIfStatement(con, condTemplate, ifStmt, null);
 	}
 
-	private Node genCheckedRefToRefCast(final Expr expr, final Type fromType, final Type toType) {
+	private Node genCheckedRefToRefCast(final Position pos, final Expr expr, final Type fromType, final Type toType) {
 		final Type from = typeSystem.getConcreteType(fromType);
 		final Type to   = typeSystem.getConcreteType(toType);
 		final Node node = visitExpression(expr);
@@ -2380,14 +2384,14 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			public void genCode(final Block trueBlock, final Block falseBlock) {
 				final Node nullNode = con.newConst(Mode.getP().getNull());
 				final Node cmp = con.newCmp(node, nullNode, Relation.Equal);
-				ConditionEvaluationCodeGenerator.makeJumps(cmp, trueBlock, falseBlock, con);
+				setDebugInfo(cmp, pos);
+				ConditionEvaluationCodeGenerator.makeJumps(pos, cmp, trueBlock, falseBlock, con);
 			}
 		};
 
 		final ExprTemplate trueExpr = new ExprTemplate() {
 			@Override
 			public Node genCode() {
-				final Position pos = Position.COMPILER_GENERATED;
 				return visitExpression(xnf.NullLit(pos).type(typeSystem.getTypeSystem().Null()));
 			}
 		};
@@ -2395,7 +2399,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final ExprTemplate falseExpr = new ExprTemplate() {
 			@Override
 			public Node genCode() {
-				genSubtypeCheck(node, from, to);
+				genSubtypeCheck(pos, node, from, to);
 				return node;
 			}
 		};
@@ -2411,12 +2415,12 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		}
 
 		if (typeSystem.isRefType(from) && typeSystem.isRefType(to)) {
-			return genCheckedRefToRefCast(value, from, to);
+			return genCheckedRefToRefCast(pos, value, from, to);
 		} else if (typeSystem.isRefType(from) && typeSystem.isStructType(to)) {
 			/* unboxing */
 			final Node valueNode = visitExpression(value);
-			genCastNullCheck(valueNode, from);
-			genSubtypeCheck(valueNode, from, to);
+			genCastNullCheck(pos, valueNode, from);
+			genSubtypeCheck(pos, valueNode, from, to);
 			return genUnboxing(valueNode, typeSystem.toClass(to));
 		} else {
 			throw new CodeGenError("Unsupported cast", pos);
