@@ -2190,29 +2190,29 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			final Flags flags = m.flags();
 			final Entity entity = firmTypeSystem.getMethodEntity(m);
 
-	        final List<Stmt> statements = new ArrayList<Stmt>();
+			final List<Stmt> statements = new ArrayList<Stmt>();
 
-	        /* We will generate the following code
-	         *
-	         * def BoxingType:"MethodName"(param1, param2, param3, ...) {
-	         *    return this.boxValue."MethodName"(param1, param2, param3, ...);
-	         * }
-	         *
-	         * To avoid unnecessary dynamic delegation calls we can and will do a static method call on the boxed field.
-	         */
+			/* We will generate the following code
+			 *
+			 * def BoxingType:"MethodName"(param1, param2, param3, ...) {
+			 *    return this.boxValue."MethodName"(param1, param2, param3, ...);
+			 * }
+			 *
+			 * To avoid unnecessary dynamic delegation calls we can and will do a static method call on the boxed field.
+			 */
 
-	        final Type thisType = flags.isStatic() ? null : boxType;
+			final Type thisType = flags.isStatic() ? null : boxType;
 			final MethodConstruction savedConstruction = initConstruction(entity,
 					m.formalNames(), new LinkedList<LocalInstance>(),
 					m.returnType(), thisType);
 
-	        // The receiver of the delegated method call -> the boxed value
+			// The receiver of the delegated method call -> the boxed value
 			final Id id = xnf.Id(pos, boxedField.name());
 			final Expr typeExpr = xnf.This(pos).type(boxType);
-	        final Expr bxdField = xnf.Field(pos, typeExpr, id).fieldInstance(boxedField).type(boxedType);
+			final Expr bxdField = xnf.Field(pos, typeExpr, id).fieldInstance(boxedField).type(boxedType);
 
-	        // the arguments.
-	        final List<Expr> args = new LinkedList<Expr>();
+			// the arguments.
+			final List<Expr> args = new LinkedList<Expr>();
 			for (final LocalInstance loc : m.formalNames()) {
 				final Expr rval = xnf.Local(pos, xnf.Id(pos, loc.name())).localInstance(loc).type(loc.type());
 				args.add(rval);
@@ -2228,11 +2228,11 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 				}
 			}
 
-	        assert method != null;
+			assert method != null;
 			@SuppressWarnings("null")
 			final Name imName = method.name();
 
-	        // create the call
+			// create the call
 			final Id imID = xnf.Id(pos, imName);
 			final List<TypeNode> typeArgs = Collections.<TypeNode>emptyList();
 			final Expr call = xnf.X10Call(pos, bxdField, imID, typeArgs, args)
@@ -2246,11 +2246,11 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 				statements.add(xnf.Eval(pos, call));
 			}
 
-	        final polyglot.ast.Block block = xnf.Block(pos, statements);
-	        // Now generate the firm graph
-	        visitAppropriate(block);
+			final polyglot.ast.Block block = xnf.Block(pos, statements);
+			// Now generate the firm graph
+			visitAppropriate(block);
 
-	        finishConstruction(entity, savedConstruction);
+			finishConstruction(entity, savedConstruction);
 		}
 	}
 
