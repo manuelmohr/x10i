@@ -184,6 +184,7 @@ public abstract class DummyDelegatingVisitor extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(final Switch_c n) {
+		visitAppropriate(n.expr());
 		for (final SwitchElement elem : n.elements()) {
 			visitAppropriate(elem);
 		}
@@ -400,7 +401,7 @@ public abstract class DummyDelegatingVisitor extends X10DelegatingVisitor {
 
 	@Override
 	public void visit(final X10Cast_c c) {
-
+		visitAppropriate(c.expr());
 	}
 
 	@Override
