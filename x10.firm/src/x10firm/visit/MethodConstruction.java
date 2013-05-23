@@ -82,8 +82,8 @@ public class MethodConstruction extends Construction {
 	public VarEntry getVarEntry(final LocalInstance var) {
 		/*
 		 * The TypeAlphaRenamer and ClassRemover visitors create and use copies of X10LocalDefs.
-		 * This copies will not work with our X10LocalDef hashing mechanism. To handle this copies with will not
-		 * adjust the visitors instead we will search for the appropriate X10LocalDef copy in our varEntryMapper.
+		 * These copies will not work with our X10LocalDef hashing mechanism. To handle these copies, we will not
+		 * adjust the visitors; instead we will search for the appropriate X10LocalDef copy in our varEntryMapper.
 		 */
 		final LocalDef def = var.def();
 		VarEntry ret = varEntryMapper.get(var.def());
