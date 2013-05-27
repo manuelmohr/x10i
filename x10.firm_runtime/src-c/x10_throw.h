@@ -2,7 +2,8 @@
 #define X10_THROW_H
 
 #include "types.h"
+#include "x10_object.h"
 
-void x10_throw_stub(void);
+void __attribute__((noreturn)) x10_exception_unwind(x10_object *checked_throwable);
 
 #endif

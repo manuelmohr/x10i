@@ -208,6 +208,10 @@ public final class Runtime {
     private static def callAnyClosure(eval:()=>Any):Any {
         return eval();
     }
+    /** used by the C runtime when aborting because of an exception */
+    private static def printException(t:CheckedThrowable):void {
+        Console.ERR.println("Exception " + t.typeName() + ": " + t.toString());
+    }
 }
 
 // vim:shiftwidth=4:tabstop=4:expandtab

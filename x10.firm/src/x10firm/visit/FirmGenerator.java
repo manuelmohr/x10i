@@ -174,6 +174,7 @@ import firm.TargetValue;
 import firm.bindings.binding_typerep.ir_linkage;
 import firm.bindings.binding_typerep.ir_type_state;
 import firm.bindings.binding_typerep.ir_visibility;
+import firm.bindings.binding_typerep.mtp_additional_properties;
 import firm.nodes.Alloc;
 import firm.nodes.Block;
 import firm.nodes.Call;
@@ -187,14 +188,14 @@ import firm.nodes.Switch;
  * creates a firm-program (a collection of firm-graphs) from an X10-AST.
  */
 public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeInstantiationQueue {
-	private static final String X10_THROW_STUB         = "x10_throw_stub";
+	private static final String X10_EXCEPTION_UNWIND   = "x10_exception_unwind";
 	private static final String X10_ASSERT             = "x10_assert";
 	private static final String X10_STATIC_INITIALIZER = "x10_static_initializer";
 	private static final String X10_MALLOC             = "malloc";
 	private static final Charset UTF8 = Charset.forName("UTF8");
 
 	private Entity assertEntity;
-	private Entity throwEntity;
+	private Entity exceptionUnwindEntity;
 	private Entity mallocEntity;
 	private firm.Type sizeTType;
 
@@ -259,11 +260,15 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final String assertName = NameMangler.mangleKnownName(X10_ASSERT);
 		assertEntity = new Entity(Program.getGlobalType(), assertName, assertType);
 
-		final firm.Type[] throwParameterTypes = new firm.Type[0];
-		final firm.Type[] throwResultTypes = new firm.Type[0];
-		final MethodType throwType = new firm.MethodType(throwParameterTypes, throwResultTypes);
-		final String throwName = NameMangler.mangleKnownName(X10_THROW_STUB);
-		throwEntity = new Entity(Program.getGlobalType(), throwName, throwType);
+		final firm.Type checkedThrowableType = firmTypeSystem.asType(typeSystem.getTypeSystem().CheckedThrowable());
+		final firm.Type[] unwindParameterTypes = new firm.Type[] {
+			checkedThrowableType,
+		};
+		final firm.Type[] unwindResultTypes = new firm.Type[0];
+		final MethodType unwindType = new firm.MethodType(unwindParameterTypes, unwindResultTypes);
+		unwindType.addAdditionalProperties(mtp_additional_properties.mtp_property_noreturn);
+		final String unwindName = NameMangler.mangleKnownName(X10_EXCEPTION_UNWIND);
+		exceptionUnwindEntity = new Entity(Program.getGlobalType(), unwindName, unwindType);
 
 		sizeTType = Mode.createIntMode("size_t", Arithmetic.TwosComplement, Mode.getP().getSizeBits(),
 				false, Mode.getP().getModuloShift()).getType();
@@ -2298,19 +2303,32 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		return boxedValue;
 	}
 
+	/** Returns "ExceptionType.this(String): ExceptionType" constructor instance. */
+	private X10ConstructorInstance getExceptionConstructor(final X10ClassType type) {
+		final Type stringType = typeSystem.getTypeSystem().String();
+		for (ConstructorInstance constructor : type.constructors()) {
+			final List<Type> paramTypes = constructor.formalTypes();
+			if (paramTypes.size() != 1)
+				continue;
+			if (!typeSystem.typeEquals(paramTypes.get(0), stringType))
+				continue;
+			return (X10ConstructorInstance)constructor;
+		}
+		throw new RuntimeException("Couldn't find Exception Constructor for " + type);
+	}
+
 	/**
 	 * Returns a throw statement with the given text message.
 	 * @param msg The text message
-	 * @return A throw statement
 	 */
-	private Stmt getThrowNewExceptionStmt(final Type excType, final String msg) {
-		final Position pos = Position.COMPILER_GENERATED;
-		final Expr excStr = xnf.StringLit(pos, msg);
-		final List<Expr> excArgs = new ArrayList<Expr>();
-		excArgs.add(excStr);
-		final Expr newClassCastExc = xnf.New(pos, xnf.CanonicalTypeNode(pos, excType), excArgs);
-		final Stmt throwStmt = xnf.Throw(pos, newClassCastExc);
-		return throwStmt;
+	private Node createExceptionObject(final X10ClassType type, final String msg) {
+		final Node messageLiteral = createStringLiteral(msg);
+		final Node object = genObjectHeapAlloc(type);
+		final Node[] constructorArguments = new Node[] {object, messageLiteral};
+		final X10ConstructorInstance constructor = getExceptionConstructor(type);
+		genConstructorCall(null, constructor, constructorArguments);
+
+		return object;
 	}
 
 	/**
@@ -2340,8 +2358,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			@Override
 			public void genCode() {
 				final X10ClassType exceptionType = typeSystem.getTypeSystem().ClassCastException();
-				final Stmt throwStmt = getThrowNewExceptionStmt(exceptionType, "Cannot cast " + from + " to " + to);
-				visitAppropriate(throwStmt);
+				final Node exceptionObject = createExceptionObject(exceptionType, "Cannot cast " + from + " to " + to);
+				throwObject(pos, exceptionObject);
 			}
 		};
 
@@ -2366,8 +2384,9 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			@Override
 			public void genCode() {
 				final X10ClassType exceptionType = typeSystem.getTypeSystem().ClassCastException();
-				final Stmt throwStmt = getThrowNewExceptionStmt(exceptionType, "null cannot be cast to struct " + type);
-				visitAppropriate(throwStmt);
+				final Node exceptionObject
+					= createExceptionObject(exceptionType, "null cannot be cast to struct " + type);
+				throwObject(pos, exceptionObject);
 			}
 		};
 
@@ -2544,24 +2563,30 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		throw new CodeGenError("Initializer blocks not supported", n);
 	}
 
+	private void throwObject(final Position pos, final Node object) {
+		final Node address = con.newSymConst(exceptionUnwindEntity);
+		final Node[] parameters = new Node[] {
+			object,
+		};
+		final Node mem = con.getCurrentMem();
+		final Node call = con.newCall(mem, address, parameters, exceptionUnwindEntity.getType());
+		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
+		con.setCurrentMem(newMem);
+		setDebugInfo(call, pos);
+
+		/* unwind does not return */
+		con.getGraph().keepAlive(call);
+		con.getGraph().keepAlive(con.getCurrentBlock());
+		con.setUnreachable();
+	}
+
 	/**
 	 * Just a stub implementation for now.
 	 */
 	@Override
 	public void visit(final Throw_c n) {
-		final Node address = con.newSymConst(throwEntity);
-
-		final Node[] parameters = new Node[0];
-		final Node mem = con.getCurrentMem();
-		final Node call = con.newCall(mem, address, parameters, throwEntity.getType());
-		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
-		con.setCurrentMem(newMem);
-
-		setDebugInfo(call, n.position());
-
-		con.getGraph().keepAlive(call);
-		con.getGraph().keepAlive(con.getCurrentBlock());
-		con.setUnreachable();
+		final Node excObject = visitExpression(n.expr());
+		throwObject(n.position(), excObject);
 	}
 
 	@Override

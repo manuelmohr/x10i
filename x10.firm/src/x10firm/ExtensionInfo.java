@@ -116,6 +116,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/array/RemoteArray.x10");
 			allowedFiles.add("x10/array/Row.x10");
 			allowedFiles.add("x10/array/SparsePlaceGroup.x10");
+			allowedFiles.add("x10/array/UnboundedRegionException.x10");
 			allowedFiles.add("x10/array/UniqueDist.x10");
 			allowedFiles.add("x10/array/VarMat.x10");
 			allowedFiles.add("x10/array/ValRow.x10");
@@ -127,6 +128,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/compiler/StackAllocate.x10");
 			allowedFiles.add("x10/io/Console.x10");
 			allowedFiles.add("x10/io/CustomSerialization.x10");
+			allowedFiles.add("x10/io/EOFException.x10");
 			allowedFiles.add("x10/io/File.x10");
 			allowedFiles.add("x10/io/FileNotFoundException.x10");
 			allowedFiles.add("x10/io/FileReader.x10");
@@ -134,6 +136,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/io/FilterReader.x10");
 			allowedFiles.add("x10/io/FilterWriter.x10");
 			allowedFiles.add("x10/io/InputStreamReader.x10");
+			allowedFiles.add("x10/io/IOException.x10");
 			allowedFiles.add("x10/io/Marshal.x10");
 			allowedFiles.add("x10/io/OutputStreamWriter.x10");
 			allowedFiles.add("x10/io/Printer.x10");
@@ -148,6 +151,8 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/lang/Activity.x10");
 			allowedFiles.add("x10/lang/Any.x10");
 			allowedFiles.add("x10/lang/Arithmetic.x10");
+			allowedFiles.add("x10/lang/ArrayIndexOutOfBoundsException.x10");
+			allowedFiles.add("x10/lang/BadPlaceException.x10");
 			allowedFiles.add("x10/lang/Bitwise.x10");
 			allowedFiles.add("x10/lang/Boolean.x10");
 			allowedFiles.add("x10/lang/Byte.x10");
@@ -155,16 +160,21 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/lang/CheckedException.x10");
 			allowedFiles.add("x10/lang/CheckedThrowable.x10");
 			allowedFiles.add("x10/lang/Cell.x10");
+			allowedFiles.add("x10/lang/ClassCastException.x10");
 			allowedFiles.add("x10/lang/Comparable.x10");
 			allowedFiles.add("x10/lang/Complex.x10");
 			allowedFiles.add("x10/lang/Double.x10");
 			allowedFiles.add("x10/lang/Empty.x10");
 			allowedFiles.add("x10/lang/Exception.x10");
+			allowedFiles.add("x10/lang/FailedDynamicCheckException.x10");
 			allowedFiles.add("x10/lang/FinishState.x10");
 			allowedFiles.add("x10/lang/Float.x10");
 			allowedFiles.add("x10/lang/GlobalCell.x10");
 			allowedFiles.add("x10/lang/GlobalRef.x10");
+			allowedFiles.add("x10/lang/IllegalArgumentException.x10");
+			allowedFiles.add("x10/lang/IllegalOperationException.x10");
 			allowedFiles.add("x10/lang/Indexable.x10");
+			allowedFiles.add("x10/lang/IndexOutOfBoundsException.x10");
 			allowedFiles.add("x10/lang/IntRange.x10");
 			allowedFiles.add("x10/lang/Int.x10");
 			allowedFiles.add("x10/lang/Iterable.x10");
@@ -173,6 +183,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/lang/Long.x10");
 			allowedFiles.add("x10/lang/Math.x10");
 			allowedFiles.add("x10/lang/NativeSupport.x10");
+			allowedFiles.add("x10/lang/NoSuchElementException.x10");
 			allowedFiles.add("x10/lang/Object.x10");
 			allowedFiles.add("x10/lang/Place.x10");
 			allowedFiles.add("x10/lang/PlaceLocalHandle.x10");
@@ -189,6 +200,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/lang/UByte.x10");
 			allowedFiles.add("x10/lang/UInt.x10");
 			allowedFiles.add("x10/lang/ULong.x10");
+			allowedFiles.add("x10/lang/UnsupportedOperationException.x10");
 			allowedFiles.add("x10/lang/UShort.x10");
 			allowedFiles.add("x10/lang/WrappedThrowable.x10");
 			allowedFiles.add("x10/lang/Zero.x10");
@@ -221,6 +233,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/util/Map.x10");
 			allowedFiles.add("x10/util/MapIterator.x10");
 			allowedFiles.add("x10/util/MapSet.x10");
+			allowedFiles.add("x10/util/NoSuchElementException.x10");
 			allowedFiles.add("x10/util/Ordered.x10");
 			allowedFiles.add("x10/util/Pair.x10");
 			allowedFiles.add("x10/util/Random.x10");

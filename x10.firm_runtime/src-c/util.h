@@ -34,9 +34,7 @@ static inline x10_object *x10_new_exception_object(const x10_char *name, const x
 
 static inline void x10_throw_exception_object(x10_object *obj)
 {
-	// TODO: Implement me
-	X10_UNUSED(obj);
-	x10_throw_stub();
+	x10_exception_unwind(obj);
 }
 
 static inline void x10_throw_exception(const x10_char *name, const x10_char *msg)
