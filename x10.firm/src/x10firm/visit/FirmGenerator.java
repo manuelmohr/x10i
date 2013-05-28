@@ -70,6 +70,7 @@ import polyglot.ast.TopLevelDecl;
 import polyglot.ast.Try_c;
 import polyglot.ast.TypeNode;
 import polyglot.ast.Unary_c;
+import polyglot.ast.VarDecl;
 import polyglot.ast.While_c;
 import polyglot.types.ConstructorInstance;
 import polyglot.types.ContainerType;
@@ -597,15 +598,14 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final LocalDeclVisitor xLocalsVisitor = new LocalDeclVisitor();
 		xLocalsVisitor.visitAppropriate(code.body());
 
-		final List<LocalDecl_c> matchesList = xLocalsVisitor.getLocals();
+		final List<VarDecl> matchesList = xLocalsVisitor.getLocals();
 
 		if (matchesList.size() == 0)
 			return ret;
 
-		for (final LocalDecl_c c : matchesList) {
+		for (final VarDecl c : matchesList) {
 			// extract the local instances from the found "LocalDecl_c`s"
 			final LocalInstance locInstance = c.localDef().asInstance();
-
 			ret.add(locInstance);
 		}
 
