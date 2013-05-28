@@ -22,21 +22,34 @@ import firm.nodes.Node;
  *  constructions - for boxing types or closures for example)
  */
 public class MethodConstruction extends Construction {
+	/** a tuple of a block representing a branch target for a continue/break
+	 * and a level in the tryFinallyStack. */
+	class BranchTarget {
+		/** target block of the branch. */
+		Block block;
+		/** level of the tryFinallyStack at the time the target was created.
+		 * (Everything code in a finally block above this level has to be
+		 *  emitted when the branch is executed) */
+		int finallyLevel;
+	}
+
 	/** Maps local var defs to the appropriate var entries. */
 	private Map<LocalDef, VarEntry> varEntryMapper = new HashMap<LocalDef, VarEntry>();
 	/** Reference to the current procedure return type. */
 	Type returnType;
 	/** holds current target for break statements. */
-	Block breakBlock;
+	BranchTarget breakTarget;
 	/** holds current target for continue statements. */
-	Block continueBlock;
+	BranchTarget continueTarget;
+	/** holds block where catch handling starts. */
+	Block catchBlock;
 	/** holds mapping of Id to labeled Statement.
 	 * (This implies that labeled statement are not duplicated,
 	 *  but for now this should be good enough as it is as bad as the
 	 *  x10 c++ backend: XTENLANG-2434 */
-	Map<String, Block> labeledBreaks = new HashMap<String, Block>();
+	Map<String, BranchTarget> labeledBreaks = new HashMap<String, BranchTarget>();
 	/** mapping of Id to labeled continue block. */
-	Map<String, Block> labeledContinues = new HashMap<String, Block>();
+	Map<String, BranchTarget> labeledContinues = new HashMap<String, BranchTarget>();
 	/** Id of last labeled statement seen. */
 	Id lastLabel;
 	/** last node in a labeled statement. */
@@ -45,13 +58,12 @@ public class MethodConstruction extends Construction {
 	Node switchNode;
 	/** maps Cases to switch projection numbers. */
 	Map<Case, Integer> casePNs;
-	/** stack of outer try {} finally blocks (with actual code in the finally. */
+	/** stack of outer try {} finally blocks (with actual code in the finally). */
 	Stack<polyglot.ast.Block> tryFinallyStack = new Stack<polyglot.ast.Block>();
 	/** local instance for "this". */
 	LocalInstance thisInstance;
 	/** tells wether a struct constructor is created. So we know when a
-	 * "return" has to be interpreted as "return this";
-	 */
+	 * "return" has to be interpreted as "return this"; */
 	boolean inStructConstructor;
 
 	/**
@@ -105,9 +117,26 @@ public class MethodConstruction extends Construction {
 	/**
 	 * Returns current break block, creates a new one if necessary.
 	 */
-	public Block createBreakBlock() {
-		if (breakBlock == null)
-			breakBlock = newBlock();
-		return breakBlock;
+	public Block ensureBreakBlock() {
+		if (breakTarget.block == null)
+			breakTarget.block = newBlock();
+		return breakTarget.block;
+	}
+
+	/**
+	 * Returns current catch block, creates a new one if necessary.
+	 */
+	public Block ensureCatchBlock() {
+		if (catchBlock == null)
+			catchBlock = newBlock();
+		return catchBlock;
+	}
+
+	/** create a new BranchTarget for the given block. */
+	public BranchTarget makeTarget(final Block targetBlock) {
+		final BranchTarget target = new BranchTarget();
+		target.block = targetBlock;
+		target.finallyLevel = tryFinallyStack.size();
+		return target;
 	}
 }

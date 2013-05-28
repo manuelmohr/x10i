@@ -23,6 +23,7 @@ import polyglot.ast.Branch;
 import polyglot.ast.Branch_c;
 import polyglot.ast.Case;
 import polyglot.ast.Case_c;
+import polyglot.ast.Catch;
 import polyglot.ast.Catch_c;
 import polyglot.ast.CharLit_c;
 import polyglot.ast.ClassBody;
@@ -41,6 +42,7 @@ import polyglot.ast.FloatLit_c;
 import polyglot.ast.ForInit;
 import polyglot.ast.ForUpdate;
 import polyglot.ast.For_c;
+import polyglot.ast.Formal;
 import polyglot.ast.Formal_c;
 import polyglot.ast.Id;
 import polyglot.ast.Id_c;
@@ -152,6 +154,7 @@ import x10firm.types.NameMangler;
 import x10firm.visit.FirmCodeTemplate.CondTemplate;
 import x10firm.visit.FirmCodeTemplate.ExprTemplate;
 import x10firm.visit.FirmCodeTemplate.StmtTemplate;
+import x10firm.visit.MethodConstruction.BranchTarget;
 import x10firm.visit.builtins.Builtins;
 
 import com.sun.jna.Pointer;
@@ -179,6 +182,7 @@ import firm.bindings.binding_typerep.mtp_additional_properties;
 import firm.nodes.Alloc;
 import firm.nodes.Block;
 import firm.nodes.Call;
+import firm.nodes.Cond;
 import firm.nodes.CopyB;
 import firm.nodes.Load;
 import firm.nodes.Node;
@@ -195,6 +199,9 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	private static final String X10_STATIC_INITIALIZER = "x10_static_initializer";
 	private static final String X10_MALLOC             = "malloc";
 	private static final Charset UTF8 = Charset.forName("UTF8");
+	private static final int EXCEPTION_VARNUM = 0;
+	/** variable number of first parameter in the firm construction object. */
+	public static final int PARAM_VARNUM = EXCEPTION_VARNUM + 1;
 
 	private Entity assertEntity;
 	private Entity exceptionUnwindEntity;
@@ -640,7 +647,10 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 				nLocalFirmVars++;
 		}
 
-		final int nFirmVars = formals.size() + nLocalFirmVars + (thisType != null ? 1 : 0);
+		final int nFormals = formals.size();
+		/* we need a variable number for each formal and local var, for the this parameter,
+		 * and the exception object */
+		final int nFirmVars = nFormals + nLocalFirmVars + (thisType != null ? 1 : 0) + 1;
 		final Graph graph = new Graph(entity, nFirmVars);
 		final MethodConstruction savedConstruction = con;
 		con = new MethodConstruction(graph);
@@ -648,7 +658,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final CompoundType frameType = con.getGraph().getFrameType();
 
 		final Node args = graph.getArgs();
-		int idx = 0;
+		int idx =  PARAM_VARNUM;
+		int paramNumber = 0;
 		if (thisType != null) {
 			/* Create a new formal for "this" */
 			final Position pos = Position.COMPILER_GENERATED;
@@ -662,21 +673,21 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			/* Look at the firm type instead of the X10 type:
 			 * FirmTypeSystem contains a hack that passes this by
 			 * reference for some special struct methods and in this
-			 * case the firm type differs from the X10 type.
-			 */
+			 * case the firm type differs from the X10 type.*/
 			final firm.MethodType methodType = (MethodType) entity.getType();
 			final firm.Type firmType = methodType.getParamType(0);
 			if (firmType instanceof CompoundType) {
-				final Entity paramEntity = Entity.createParameterEntity(frameType, idx, firmType);
+				final Entity paramEntity = Entity.createParameterEntity(frameType, paramNumber, firmType);
 				final Node node = getEntityFromCurrentFrame(paramEntity);
 				con.setVariable(idx, node);
 			} else {
 				final Mode mode = firmTypeSystem.getFirmMode(thisType);
-				final Node projParam = con.newProj(args, mode, idx);
+				final Node projParam = con.newProj(args, mode, paramNumber);
 				con.setVariable(idx, projParam);
 			}
 			con.setVarEntry(VarEntry.newVarEntryForLocalVariable(thisInstance, idx));
 			con.thisInstance = thisInstance;
+			++paramNumber;
 			++idx;
 		}
 
@@ -686,14 +697,15 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 			if (firmTypeSystem.isFirmStructType(type)) {
 				final firm.Type firmType = firmTypeSystem.asType(type);
-				final Entity paramEntity = Entity.createParameterEntity(frameType, idx, firmType);
+				final Entity paramEntity = Entity.createParameterEntity(frameType, paramNumber, firmType);
 				final Node node = getEntityFromCurrentFrame(paramEntity);
 				con.setVariable(idx, node);
 			} else {
 				final Mode mode = firmTypeSystem.getFirmMode(loc.type());
-				final Node projParam = con.newProj(args, mode, idx);
+				final Node projParam = con.newProj(args, mode, paramNumber);
 				con.setVariable(idx, projParam);
 			}
+			++paramNumber;
 
 			// map the local instance with the appropriate idx.
 			con.setVarEntry(VarEntry.newVarEntryForLocalVariable(loc, idx));
@@ -727,9 +739,18 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		if (!con.isUnreachable()) {
 			genReturn(null, null);
 		}
+		createUnwind();
 
 		con.finish();
 		con = savedConstruction;
+	}
+
+	private void setExceptionObject(final Node node) {
+		con.setVariable(EXCEPTION_VARNUM, node);
+	}
+
+	private Node getExceptionObject() {
+		return con.getVariable(EXCEPTION_VARNUM, Mode.getP());
 	}
 
 	@Override
@@ -1022,8 +1043,9 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node switchNode = con.newSwitch(expr, nextPn, tbl.ptr);
 		con.setUnreachable();
 
-		final Block oldBreak = con.breakBlock;
-		con.breakBlock = null;
+		final BranchTarget oldBreak = con.breakTarget;
+		final BranchTarget breakTarget = con.makeTarget(null);
+		con.breakTarget = breakTarget;
 		final Node oldSwitch = con.switchNode;
 		con.switchNode = switchNode;
 		final Map<Case, Integer> oldCasePNs = con.casePNs;
@@ -1035,23 +1057,25 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 		if (!con.isUnreachable()) {
 			final Node jmp = con.newJmp();
-			con.createBreakBlock().addPred(jmp);
+			con.ensureBreakBlock().addPred(jmp);
 		}
 
 		if (!hasDefaultCase) {
 			con.setCurrentBlock(curBlock);
 			final Node proj = con.newProj(switchNode, Mode.getX(), Switch.pnDefault);
-			con.createBreakBlock().addPred(proj);
+			con.ensureBreakBlock().addPred(proj);
 		}
 
-		if (con.breakBlock != null) {
-			con.breakBlock.mature();
-			con.setCurrentBlock(con.breakBlock);
+		final Block breakBlock = con.breakTarget.block;
+		if (breakBlock != null) {
+			breakBlock.mature();
+			con.setCurrentBlock(breakBlock);
 		} else {
 			con.setUnreachable();
 		}
 
-		con.breakBlock = oldBreak;
+		assert con.breakTarget == breakTarget;
+		con.breakTarget = oldBreak;
 		assert con.switchNode == switchNode;
 		con.switchNode = oldSwitch;
 		assert con.casePNs == casePNs;
@@ -1088,7 +1112,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		if (con.isUnreachable())
 			return;
 
-		final Block target;
+		final BranchTarget target;
 		final Id targetId = br.labelNode();
 		if (targetId != null) {
 			if (br.kind() == Branch.CONTINUE) {
@@ -1098,14 +1122,20 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			}
 		} else {
 			if (br.kind() == Branch.CONTINUE) {
-				target = con.continueBlock;
+				target = con.continueTarget;
 			} else {
-				target = con.createBreakBlock();
+				con.ensureBreakBlock();
+				target = con.breakTarget;
 			}
 		}
 
+		produceFinallyCode(target.finallyLevel);
+		if (con.isUnreachable())
+			return;
+
+		final Block block = target.block;
 		final Node jmp = con.newJmp();
-		target.addPred(jmp);
+		block.addPred(jmp);
 
 		con.setUnreachable();
 	}
@@ -1123,7 +1153,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			final Node jmp = con.newJmp();
 			labeledBlock.addPred(jmp);
 		}
-		con.labeledBreaks.put(labelId.toString(), labeledBlock);
+		final BranchTarget target = con.makeTarget(labeledBlock);
+		con.labeledBreaks.put(labelId.toString(), target);
 
 		visitAppropriate(stmt);
 		labeledBlock.mature();
@@ -1139,8 +1170,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 		/* Assignment to a local variable
 		 * -> Assignments to saved variables are not allowed in closures.
-		 *  -> so we will not handle them.
-		 */
+		 *  -> so we will not handle them. */
 		if (lhs instanceof Local_c) {
 			final Local_c lhsLocal = (Local_c)lhs;
 			final LocalInstance loc = lhsLocal.localInstance();
@@ -1168,15 +1198,15 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		setReturnNode(casted);
 	}
 
-	private void produceAllFinallyCode() {
+	private void produceFinallyCode(final int targetLevel) {
 		final int oldHeight = con.tryFinallyStack.size();
-		if (oldHeight == 0)
+		if (oldHeight == targetLevel)
 			return;
 
 		final polyglot.ast.Block block = con.tryFinallyStack.pop();
 		visitAppropriate(block);
 		if (!con.isUnreachable()) {
-			produceAllFinallyCode();
+			produceFinallyCode(targetLevel);
 		}
 		con.tryFinallyStack.push(block);
 		assert con.tryFinallyStack.size() == oldHeight;
@@ -1196,7 +1226,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			retValues = new Node[0];
 		}
 
-		produceAllFinallyCode();
+		produceFinallyCode(0);
 		if (con.isUnreachable())
 			return;
 
@@ -1283,22 +1313,24 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		bTrue.addPred(con.newJmp());
 		con.setCurrentBlock(bTrue);
 
-		final Block oldBreak = con.breakBlock;
-		con.breakBlock = bFalse;
-		final Block oldContinue = con.continueBlock;
-		con.continueBlock = bCond;
+		final BranchTarget oldBreak = con.breakTarget;
+		final BranchTarget breakTarget = con.makeTarget(bFalse);
+		con.breakTarget = breakTarget;
+		final BranchTarget oldContinue = con.continueTarget;
+		final BranchTarget continueTarget = con.makeTarget(bCond);
+		con.continueTarget = continueTarget;
 		if (label != null && con.labeledStmt == n) {
-			con.labeledBreaks.put(label.toString(), bFalse);
-			con.labeledContinues.put(label.toString(), bCond);
+			con.labeledBreaks.put(label.toString(), breakTarget);
+			con.labeledContinues.put(label.toString(), continueTarget);
 		}
 
 		final Stmt body = n.body();
 		visitAppropriate(body);
 
-		assert con.breakBlock == bFalse;
-		con.breakBlock = oldBreak;
-		assert con.continueBlock == bCond;
-		con.continueBlock = oldContinue;
+		assert con.breakTarget == breakTarget;
+		con.breakTarget = oldBreak;
+		assert con.continueTarget == continueTarget;
+		con.continueTarget = oldContinue;
 
 		if (con.isUnreachable()) {
 			return;
@@ -1358,22 +1390,24 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 		con.setCurrentBlock(bTrue);
 
-		final Block oldBreak = con.breakBlock;
-		con.breakBlock = bFalse;
-		final Block oldContinue = con.continueBlock;
-		con.continueBlock = bCond;
+		final BranchTarget oldBreak = con.breakTarget;
+		final BranchTarget breakTarget = con.makeTarget(bFalse);
+		con.breakTarget = breakTarget;
+		final BranchTarget oldContinue = con.continueTarget;
+		final BranchTarget continueTarget = con.makeTarget(bCond);
+		con.continueTarget = continueTarget;
 		if (label != null && con.labeledStmt == n) {
-			con.labeledBreaks.put(label.toString(), bFalse);
-			con.labeledContinues.put(label.toString(), bCond);
+			con.labeledBreaks.put(label.toString(), breakTarget);
+			con.labeledContinues.put(label.toString(), continueTarget);
 		}
 
 		final Stmt body = n.body();
 		visitAppropriate(body);
 
-		assert con.breakBlock == bFalse;
-		con.breakBlock = oldBreak;
-		assert con.continueBlock == bCond;
-		con.continueBlock = oldContinue;
+		assert con.breakTarget == breakTarget;
+		con.breakTarget = oldBreak;
+		assert con.continueTarget == continueTarget;
+		con.continueTarget = oldContinue;
 
 		bFalse.mature();
 
@@ -1422,22 +1456,24 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 		con.setCurrentBlock(bTrue);
 
-		final Block oldBreak = con.breakBlock;
-		con.breakBlock = bFalse;
-		final Block oldContinue = con.continueBlock;
-		con.continueBlock = bUpdate;
+		final BranchTarget oldBreak = con.breakTarget;
+		final BranchTarget breakTarget = con.makeTarget(bFalse);
+		con.breakTarget = breakTarget;
+		final BranchTarget oldContinue = con.continueTarget;
+		final BranchTarget continueTarget = con.makeTarget(bUpdate);
+		con.continueTarget = continueTarget;
 		if (label != null && con.labeledStmt == n) {
-			con.labeledBreaks.put(label.toString(), bFalse);
-			con.labeledContinues.put(label.toString(), bUpdate);
+			con.labeledBreaks.put(label.toString(), breakTarget);
+			con.labeledContinues.put(label.toString(), continueTarget);
 		}
 
 		final Stmt body = n.body();
 		visitAppropriate(body);
 
-		assert con.breakBlock == bFalse;
-		con.breakBlock = oldBreak;
-		assert con.continueBlock == bUpdate;
-		con.continueBlock = oldContinue;
+		assert con.breakTarget == breakTarget;
+		con.breakTarget = oldBreak;
+		assert con.continueTarget == continueTarget;
+		con.continueTarget = oldContinue;
 
 		bFalse.mature();
 
@@ -2564,6 +2600,25 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	}
 
 	private void throwObject(final Position pos, final Node object) {
+		setExceptionObject(object);
+		final Node jmp = con.newJmp();
+		setDebugInfo(jmp, pos);
+		final Block catchBlock = con.ensureCatchBlock();
+		catchBlock.addPred(jmp);
+		con.setUnreachable();
+	}
+
+	/**
+	 * Creates the "exception method end" that ends in an unwind() call.
+	 */
+	private void createUnwind() {
+		final Block catchBlock = con.catchBlock;
+		if (catchBlock == null)
+			return;
+
+		catchBlock.mature();
+		con.setCurrentBlock(catchBlock);
+		final Node object = getExceptionObject();
 		final Node address = con.newSymConst(exceptionUnwindEntity);
 		final Node[] parameters = new Node[] {
 			object,
@@ -2572,7 +2627,6 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node call = con.newCall(mem, address, parameters, exceptionUnwindEntity.getType());
 		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
 		con.setCurrentMem(newMem);
-		setDebugInfo(call, pos);
 
 		/* unwind does not return */
 		con.getGraph().keepAlive(call);
@@ -2611,14 +2665,74 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	@Override
 	public void visit(final Try_c n) {
-		/* no exception handling yet, just build contents of try block,
-		 * ignore later catch blocks */
+		final Block oldCatchBlock = con.catchBlock;
+		con.catchBlock = null;
+
 		final polyglot.ast.Block block = n.tryBlock();
 		final polyglot.ast.Block finallyBlock = n.finallyBlock();
 		if (finallyBlock != null) {
 			con.tryFinallyStack.add(finallyBlock);
 		}
 		visitAppropriate(block);
+
+		/* build code for the catch blocks. They are lowered to an if-cascade
+		 * with instanceof checks. */
+		final List<Catch> catchBlocks = n.catchBlocks();
+		final Block catchBlock = con.catchBlock;
+		con.catchBlock = oldCatchBlock;
+
+		if (catchBlock != null) {
+			final Block finallyFirmBlock = con.newBlock();
+			if (!con.isUnreachable()) {
+				final Node jmp = con.newJmp();
+				finallyFirmBlock.addPred(jmp);
+			}
+
+			con.setCurrentBlock(catchBlock);
+			catchBlock.mature();
+			final Node exceptionObject = getExceptionObject();
+			for (final Catch cb : catchBlocks) {
+				/* create instanceof check */
+				final Type catchType = cb.catchType();
+				final Node check = genInstanceOfObject(exceptionObject, catchType);
+				final Node cond = con.newCond(check);
+				final Node projTrue = con.newProj(cond, Mode.getX(), Cond.pnTrue);
+				final Node projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
+
+				final Block catchBody = con.newBlock();
+				catchBody.addPred(projTrue);
+				con.setCurrentBlock(catchBody);
+
+				final Formal formal = cb.formal();
+				final VarEntry entry = con.getVarEntry(formal.localDef().asInstance());
+				con.setVariable(entry.getIdx(), exceptionObject);
+
+				visitAppropriate(cb.body());
+				if (!con.isUnreachable()) {
+					final Node jmp = con.newJmp();
+					finallyFirmBlock.addPred(jmp);
+				}
+
+				final Block nextCatchBlock = con.newBlock();
+				nextCatchBlock.addPred(projFalse);
+				con.setCurrentBlock(nextCatchBlock);
+			}
+			/* case of an uncatched exception: execute finally code, then rethrow */
+			assert !con.isUnreachable();
+			if (finallyBlock != null) {
+				final polyglot.ast.Block stackBlock = con.tryFinallyStack.pop();
+				assert stackBlock == finallyBlock;
+				visitAppropriate(finallyBlock);
+				throwObject(null, exceptionObject);
+				con.tryFinallyStack.add(finallyBlock);
+			} else {
+				throwObject(null, exceptionObject);
+			}
+
+			finallyFirmBlock.mature();
+			con.setCurrentBlock(finallyFirmBlock);
+		}
+
 		if (finallyBlock != null) {
 			final polyglot.ast.Block stackBlock = con.tryFinallyStack.pop();
 			assert stackBlock == finallyBlock;

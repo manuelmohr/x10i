@@ -46,7 +46,7 @@ abstract class X10LangPointer {
 			final Mode parMode = firmTypeSystem.getFirmMode(typeParameter);
 			final Node result;
 			final firm.Type firmType = firmTypeSystem.asType(typeParameter);
-			final Node addr = con.getVariable(0, parMode);
+			final Node addr = con.getVariable(FirmGenerator.PARAM_VARNUM, parMode);
 			if (firmTypeSystem.isFirmStructType(typeParameter)) {
 				result = addr;
 			} else {
@@ -95,7 +95,7 @@ abstract class X10LangPointer {
 			assert varValue != null;
 
 			final Mode ptrMode = Mode.getP();
-			final Node address = con.getVariable(0, ptrMode);
+			final Node address = con.getVariable(FirmGenerator.PARAM_VARNUM, ptrMode);
 
 			final Node newMem;
 			if (firmTypeSystem.isFirmStructType(typeParameter)) {
@@ -146,7 +146,7 @@ abstract class X10LangPointer {
 						returnType, owner);
 
 			final MethodConstruction con = codeGenerator.getFirmConstruction();
-			final Node ptr = con.getVariable(0, Mode.getP());
+			final Node ptr = con.getVariable(FirmGenerator.PARAM_VARNUM, Mode.getP());
 			final Node result = con.newConv(ptr, firmTypeSystem.getFirmMode(typeParameter));
 			final Node mem = con.getCurrentMem();
 			final Node retNode = con.newReturn(mem, new Node[]{result});
