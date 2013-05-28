@@ -2628,32 +2628,32 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	@Override
 	public void visit(final Catch_c n) {
-		/* ignore catch blocks for now */
+		throw new CodeGenError("catch should be handled by visit(Try)", n);
 	}
 
 	@Override
-	public void visit(final Atomic_c a) {
-		throw new CodeGenError("Not implemented yet", a);
+	public void visit(final Atomic_c n) {
+		throwNotLoweredException(n);
 	}
 
 	@Override
 	public void visit(final Next_c n) {
-		throw new CodeGenError("Not implemented yet", n);
+		throwNotLoweredException(n);
 	}
 
 	@Override
 	public void visit(final ForLoop_c n) {
-		throw new CodeGenError("Not implemented yet", n);
+		throwNotLoweredException(n);
 	}
 
 	@Override
 	public void visit(final AtEach_c n) {
-		throw new CodeGenError("Not implemented yet", n);
+		throwNotLoweredException(n);
 	}
 
 	@Override
 	public void visit(final Finish_c n) {
-		throw new CodeGenError("Not implemented yet", n);
+		throwNotLoweredException(n);
 	}
 
 	@Override
@@ -2668,7 +2668,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	@Override
 	public void visit(final Async_c n) {
-		throw new CodeGenError("Not implemented yet", n);
+		throwNotLoweredException(n);
 	}
 
 	@Override
