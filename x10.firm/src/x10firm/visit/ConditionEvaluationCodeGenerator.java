@@ -28,7 +28,6 @@ import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Cond;
 import firm.nodes.Node;
-import firm.oo.nodes.InstanceOf;
 
 /**
  * Generates code which "evaluates" a boolean condition.
@@ -214,39 +213,6 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		}
 	}
 
-	/** Creates code for instanceof check. */
-	public static Node genInstanceOf(final Node objPtr, final Type eType, final Type cmpType,
-			final FirmGenerator codeGenerator, final GenericTypeSystem typeSystem,
-			final FirmTypeSystem firmTypeSystem, final MethodConstruction con) {
-
-		final Type exprType = typeSystem.getConcreteType(eType);
-		final Type compType = typeSystem.getConcreteType(cmpType);
-		firm.Type firmType = null;
-
-		/* struct-types can be evaluated statically */
-		if (typeSystem.isStructType(exprType)) {
-			final boolean subtype = typeSystem.isSubtype(exprType, compType);
-			final Mode modeB = Mode.getb();
-			return con.newConst(subtype ? modeB.getOne() : modeB.getNull());
-		}
-
-		/* If the compare type is a struct type we must compare against the boxing type of the struct type */
-		if (typeSystem.isStructType(compType)) {
-			final Type tmp = codeGenerator.getBoxingType((X10ClassType)compType);
-			firmType = firmTypeSystem.asClass(tmp, true);
-		} else {
-			firmType = firmTypeSystem.asClass(compType, true);
-		}
-		assert firmType != null;
-
-		final Node mem = con.getCurrentMem();
-		final Node instanceOf = InstanceOf.create(con, mem, objPtr, firmType);
-		final Node projM = con.newProj(instanceOf, Mode.getM(), InstanceOf.pnM);
-		con.setCurrentMem(projM);
-		final Node projRes = con.newProj(instanceOf, Mode.getb(), InstanceOf.pnRes);
-		return projRes;
-	}
-
 	@Override
 	public void visit(final X10Instanceof_c n) {
 		final Type exprType = n.expr().type();
@@ -254,8 +220,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		final Node objPtr = codeGenerator.visitExpression(objExpr);
 		final Type compareType = n.compareType().type();
 
-		final Node node = genInstanceOf(objPtr, exprType, compareType,
-		                                codeGenerator, typeSystem, firmTypeSystem, con);
+		final Node node = codeGenerator.genInstanceOf(objPtr, exprType, compareType);
 		makeJumps(pos, node, trueBlock, falseBlock, con);
 	}
 

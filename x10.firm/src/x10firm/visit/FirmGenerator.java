@@ -184,6 +184,7 @@ import firm.nodes.Load;
 import firm.nodes.Node;
 import firm.nodes.Store;
 import firm.nodes.Switch;
+import firm.oo.nodes.InstanceOf;
 
 /**
  * creates a firm-program (a collection of firm-graphs) from an X10-AST.
@@ -2348,8 +2349,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final CondTemplate condTemplate = new CondTemplate() {
 			@Override
 			public void genCode(final Block trueBlock, final Block falseBlock) {
-				final Node ret = ConditionEvaluationCodeGenerator.genInstanceOf(
-						node, from, compType, FirmGenerator.this, typeSystem, firmTypeSystem, con);
+				final Node ret = genInstanceOf(node, from, compType);
 				ConditionEvaluationCodeGenerator.makeJumps(pos, ret, falseBlock, trueBlock, con);
 			}
 		};
@@ -2829,5 +2829,39 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	/** Returns FIRM type system. */
 	public FirmTypeSystem getFirmTypeSystem() {
 		return firmTypeSystem;
+	}
+
+	private Node genInstanceOfObject(final Node objPtr, final Type cmpType) {
+		final Type compType = typeSystem.getConcreteType(cmpType);
+		/* If the compare type is a struct type we must compare against the boxing type of the struct type */
+		final firm.Type firmType;
+		if (typeSystem.isStructType(compType)) {
+			final Type tmp = getBoxingType((X10ClassType)compType);
+			firmType = firmTypeSystem.asClass(tmp, true);
+		} else {
+			firmType = firmTypeSystem.asClass(compType, true);
+		}
+
+		final Node mem = con.getCurrentMem();
+		final Node instanceOf = InstanceOf.create(con, mem, objPtr, firmType);
+		final Node projM = con.newProj(instanceOf, Mode.getM(), InstanceOf.pnM);
+		con.setCurrentMem(projM);
+		final Node projRes = con.newProj(instanceOf, Mode.getb(), InstanceOf.pnRes);
+		return projRes;
+	}
+
+	/** Creates code for instanceof check. */
+	public Node genInstanceOf(final Node objPtr, final Type eType, final Type cmpType) {
+		final Type exprType = typeSystem.getConcreteType(eType);
+
+		/* struct-types can be evaluated statically */
+		if (typeSystem.isStructType(exprType)) {
+			final Type compType = typeSystem.getConcreteType(cmpType);
+			final boolean subtype = typeSystem.isSubtype(exprType, compType);
+			final Mode modeB = Mode.getb();
+			return con.newConst(subtype ? modeB.getOne() : modeB.getNull());
+		}
+
+		return genInstanceOfObject(objPtr, cmpType);
 	}
 }
