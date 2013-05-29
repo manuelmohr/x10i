@@ -60,14 +60,13 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 	/**
 	 * Creates conditional jump to true/false Block.
 	 */
-	public static void makeJumps(final Position pos, final Node node, final Block trueBlock,
-			final Block falseBlock, final MethodConstruction con) {
-		final Node     cond      = con.newCond(node);
+	public void makeJumps(final Node node, final Block trueDestBlock, final Block falseDestBlock) {
+		final Node cond      = con.newCond(node);
 		FirmGenerator.setDebugInfo(cond, pos);
-		final Node     projTrue  = con.newProj(cond, Mode.getX(), Cond.pnTrue);
-		final Node     projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
-		trueBlock.addPred(projTrue);
-		falseBlock.addPred(projFalse);
+		final Node projTrue  = con.newProj(cond, Mode.getX(), Cond.pnTrue);
+		final Node projFalse = con.newProj(cond, Mode.getX(), Cond.pnFalse);
+		trueDestBlock.addPred(projTrue);
+		falseDestBlock.addPred(projFalse);
 		con.setUnreachable();
 	}
 
@@ -182,7 +181,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 			final Node toCmp = con.newConst(Mode.getBu().getOne());
 			final Node cmp = con.newCmp(ret, toCmp, relation);
 			FirmGenerator.setDebugInfo(cmp, pos);
-			makeJumps(pos, cmp, trueBlock, falseBlock, con);
+			makeJumps(cmp, trueBlock, falseBlock);
 		} else {
 			/* special case: there may be struct == null (I guess it's a bug,
 			 * reported it in XTENLANG-3044) */
@@ -209,7 +208,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 			}
 			final Node cmp = con.newCmp(retLeft, retRight, relation);
 			FirmGenerator.setDebugInfo(cmp, b.position());
-			makeJumps(pos, cmp, trueBlock, falseBlock, con);
+			makeJumps(cmp, trueBlock, falseBlock);
 		}
 	}
 
@@ -224,11 +223,11 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 
 		final Node nullConst = con.newConst(Mode.getP().getNull());
 		final Node cmp = con.newCmp(objPtr, nullConst, Relation.Equal);
-		makeJumps(pos, cmp, falseBlock, instanceOfCheckBlock, con);
+		makeJumps(cmp, trueBlock, instanceOfCheckBlock);
 
 		con.setCurrentBlock(instanceOfCheckBlock);
 		final Node node = codeGenerator.genInstanceOf(objPtr, exprType, compareType);
-		makeJumps(pos, node, trueBlock, falseBlock, con);
+		makeJumps(node, trueBlock, falseBlock);
 	}
 
 	@Override
@@ -240,6 +239,6 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		final Node one = con.newConst(mode.getOne());
 		final Node cmp = con.newCmp(node, one, Relation.Equal);
 		FirmGenerator.setDebugInfo(cmp, expr.position());
-		makeJumps(pos, cmp, trueBlock, falseBlock, con);
+		makeJumps(cmp, trueBlock, falseBlock);
 	}
 }
