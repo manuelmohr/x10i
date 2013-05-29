@@ -2368,18 +2368,20 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		return object;
 	}
 
+	private X10ClassType getClassCastException() {
+		// return typeSystem.getTypeSystem().ClassCastException(); currently returns FailedDyanmicCheck type?!?
+		return typeSystem.getTypeSystem().load("x10.lang.ClassCastException");
+	}
+
 	/**
 	 * Generates firm code for sub type checks.
 	 * @param node The node which should be checked
 	 * @param fromType The from type
 	 * @param toType The to type
 	 */
-	void genSubtypeCheck(final Position pos, final Node node, final Type fromType, final Type toType) {
-
+	private void genSubtypeCheck(final Position pos, final Node node, final Type fromType, final Type toType) {
 		final Type from = typeSystem.getConcreteType(fromType);
 		final Type to   = typeSystem.getConcreteType(toType);
-
-		assert to instanceof X10ClassType;
 		final Type compType = typeSystem.isStructType(to) ? firmTypeSystem.getBoxingType((X10ClassType)to) : to;
 
 		final CondTemplate condTemplate = new CondTemplate() {
@@ -2393,8 +2395,9 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final StmtTemplate ifStmt = new StmtTemplate() {
 			@Override
 			public void genCode() {
-				final X10ClassType exceptionType = typeSystem.getTypeSystem().ClassCastException();
-				final Node exceptionObject = createExceptionObject(exceptionType, "Cannot cast " + from + " to " + to);
+				final X10ClassType exceptionType = getClassCastException();
+				final String toName = to.fullName().toString();
+				final Node exceptionObject = createExceptionObject(exceptionType, toName);
 				throwObject(pos, exceptionObject);
 			}
 		};
@@ -2402,10 +2405,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		FirmCodeTemplate.genIfStatement(con, condTemplate, ifStmt, null);
 	}
 
-	private void genCastNullCheck(final Position pos, final Node node, final Type t) {
-
-		final Type type = typeSystem.getConcreteType(t);
-
+	private void genCastNullCheck(final Position pos, final Node node, final Type toType) {
 		final CondTemplate condTemplate = new CondTemplate() {
 			@Override
 			public void genCode(final Block trueBlock, final Block falseBlock) {
@@ -2419,9 +2419,9 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final StmtTemplate ifStmt = new StmtTemplate() {
 			@Override
 			public void genCode() {
-				final X10ClassType exceptionType = typeSystem.getTypeSystem().ClassCastException();
-				final Node exceptionObject
-					= createExceptionObject(exceptionType, "null cannot be cast to struct " + type);
+				final X10ClassType exceptionType = getClassCastException();
+				final String toName = toType.fullName().toString();
+				final Node exceptionObject = createExceptionObject(exceptionType, toName);
 				throwObject(pos, exceptionObject);
 			}
 		};
@@ -2474,7 +2474,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		} else if (typeSystem.isRefType(from) && typeSystem.isStructType(to)) {
 			/* unboxing */
 			final Node valueNode = visitExpression(value);
-			genCastNullCheck(pos, valueNode, from);
+			genCastNullCheck(pos, valueNode, to);
 			genSubtypeCheck(pos, valueNode, from, to);
 			return genUnboxing(valueNode, typeSystem.toClass(to));
 		} else {
