@@ -220,6 +220,13 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		final Node objPtr = codeGenerator.visitExpression(objExpr);
 		final Type compareType = n.compareType().type();
 
+		final Block instanceOfCheckBlock = con.newBlock();
+
+		final Node nullConst = con.newConst(Mode.getP().getNull());
+		final Node cmp = con.newCmp(objPtr, nullConst, Relation.Equal);
+		makeJumps(pos, cmp, falseBlock, instanceOfCheckBlock, con);
+
+		con.setCurrentBlock(instanceOfCheckBlock);
 		final Node node = codeGenerator.genInstanceOf(objPtr, exprType, compareType);
 		makeJumps(pos, node, trueBlock, falseBlock, con);
 	}
