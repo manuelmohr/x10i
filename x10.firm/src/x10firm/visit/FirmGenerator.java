@@ -151,9 +151,6 @@ import x10firm.CompilerOptions;
 import x10firm.types.FirmTypeSystem;
 import x10firm.types.GenericTypeSystem;
 import x10firm.types.NameMangler;
-import x10firm.visit.FirmCodeTemplate.CondTemplate;
-import x10firm.visit.FirmCodeTemplate.ExprTemplate;
-import x10firm.visit.FirmCodeTemplate.StmtTemplate;
 import x10firm.visit.MethodConstruction.BranchTarget;
 import x10firm.visit.builtins.Builtins;
 
@@ -2373,93 +2370,45 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		return typeSystem.getTypeSystem().load("x10.lang.ClassCastException");
 	}
 
-	/**
-	 * Generates firm code for sub type checks.
-	 * @param node The node which should be checked
-	 * @param fromType The from type
-	 * @param toType The to type
-	 */
-	private void genSubtypeCheck(final Position pos, final Node node, final Type fromType, final Type toType) {
-		final Type from = typeSystem.getConcreteType(fromType);
-		final Type to   = typeSystem.getConcreteType(toType);
-		final Type compType = typeSystem.isStructType(to) ? firmTypeSystem.getBoxingType((X10ClassType)to) : to;
+	private void genSubtypeCheck(final Position pos, final Node value, final Type toType, final boolean nullAllowed) {
+		final Type to = typeSystem.getConcreteType(toType);
+		final Node nullConst = con.newConst(Mode.getP().getNull());
+		final Node cmp = con.newCmp(value, nullConst, Relation.Equal);
+		setDebugInfo(cmp, pos);
+		final Node nullCond = con.newCond(cmp);
+		setDebugInfo(nullCond, pos);
+		final Node nullTrueProj = con.newProj(nullCond, Mode.getX(), Cond.pnTrue);
+		final Node nullFalseProj = con.newProj(nullCond, Mode.getX(), Cond.pnFalse);
 
-		final CondTemplate condTemplate = new CondTemplate() {
-			@Override
-			public void genCode(final Block trueBlock, final Block falseBlock) {
-				final Node ret = genInstanceOf(node, from, compType);
-				ConditionEvaluationCodeGenerator.makeJumps(pos, ret, falseBlock, trueBlock, con);
-			}
-		};
+		final Block instanceOfBlock = con.newBlock();
+		instanceOfBlock.addPred(nullFalseProj);
+		instanceOfBlock.mature();
+		con.setCurrentBlock(instanceOfBlock);
+		final Node instanceOf = genInstanceOfObject(value, to);
+		final Node instanceCond = con.newCond(instanceOf);
+		setDebugInfo(instanceCond, pos);
+		final Node instanceTrueProj = con.newProj(instanceCond, Mode.getX(), Cond.pnTrue);
+		final Node instanceFalseProj = con.newProj(instanceCond, Mode.getX(), Cond.pnFalse);
 
-		final StmtTemplate ifStmt = new StmtTemplate() {
-			@Override
-			public void genCode() {
-				final X10ClassType exceptionType = getClassCastException();
-				final String toName = to.fullName().toString();
-				final Node exceptionObject = createExceptionObject(exceptionType, toName);
-				throwObject(pos, exceptionObject);
-			}
-		};
+		final Block failBlock = con.newBlock();
+		failBlock.addPred(instanceFalseProj);
+		if (!nullAllowed) {
+			failBlock.addPred(nullTrueProj);
+		}
+		failBlock.mature();
+		con.setCurrentBlock(failBlock);
+		final X10ClassType exceptionType = getClassCastException();
+		final String toName = toType.fullName().toString();
+		final Node exceptionObject = createExceptionObject(exceptionType, toName);
+		throwObject(pos, exceptionObject);
 
-		FirmCodeTemplate.genIfStatement(con, condTemplate, ifStmt, null);
-	}
-
-	private void genCastNullCheck(final Position pos, final Node node, final Type toType) {
-		final CondTemplate condTemplate = new CondTemplate() {
-			@Override
-			public void genCode(final Block trueBlock, final Block falseBlock) {
-				final Node nullNode = con.newConst(Mode.getP().getNull());
-				final Node cmp = con.newCmp(node, nullNode, Relation.Equal);
-				setDebugInfo(cmp, pos);
-				ConditionEvaluationCodeGenerator.makeJumps(pos, cmp, trueBlock, falseBlock, con);
-			}
-		};
-
-		final StmtTemplate ifStmt = new StmtTemplate() {
-			@Override
-			public void genCode() {
-				final X10ClassType exceptionType = getClassCastException();
-				final String toName = toType.fullName().toString();
-				final Node exceptionObject = createExceptionObject(exceptionType, toName);
-				throwObject(pos, exceptionObject);
-			}
-		};
-
-		FirmCodeTemplate.genIfStatement(con, condTemplate, ifStmt, null);
-	}
-
-	private Node genCheckedRefToRefCast(final Position pos, final Expr expr, final Type fromType, final Type toType) {
-		final Type from = typeSystem.getConcreteType(fromType);
-		final Type to   = typeSystem.getConcreteType(toType);
-		final Node node = visitExpression(expr);
-
-		final CondTemplate cond = new CondTemplate() {
-			@Override
-			public void genCode(final Block trueBlock, final Block falseBlock) {
-				final Node nullNode = con.newConst(Mode.getP().getNull());
-				final Node cmp = con.newCmp(node, nullNode, Relation.Equal);
-				setDebugInfo(cmp, pos);
-				ConditionEvaluationCodeGenerator.makeJumps(pos, cmp, trueBlock, falseBlock, con);
-			}
-		};
-
-		final ExprTemplate trueExpr = new ExprTemplate() {
-			@Override
-			public Node genCode() {
-				return visitExpression(xnf.NullLit(pos).type(typeSystem.getTypeSystem().Null()));
-			}
-		};
-
-		final ExprTemplate falseExpr = new ExprTemplate() {
-			@Override
-			public Node genCode() {
-				genSubtypeCheck(pos, node, from, to);
-				return node;
-			}
-		};
-
-		return FirmCodeTemplate.genConditional(con, cond, trueExpr, falseExpr);
+		final Block mergeBlock = con.newBlock();
+		if (nullAllowed) {
+			mergeBlock.addPred(nullTrueProj);
+		}
+		mergeBlock.addPred(instanceTrueProj);
+		mergeBlock.mature();
+		con.setCurrentBlock(mergeBlock);
 	}
 
 	private Node checkedCast(final Expr value, final Type to, final Position pos) {
@@ -2469,13 +2418,14 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			return visitExpression(value);
 		}
 
+		final Node valueNode = visitExpression(value);
 		if (typeSystem.isRefType(from) && typeSystem.isRefType(to)) {
-			return genCheckedRefToRefCast(pos, value, from, to);
+			genSubtypeCheck(pos, valueNode, to, true);
+			return valueNode;
 		} else if (typeSystem.isRefType(from) && typeSystem.isStructType(to)) {
 			/* unboxing */
-			final Node valueNode = visitExpression(value);
-			genCastNullCheck(pos, valueNode, to);
-			genSubtypeCheck(pos, valueNode, from, to);
+			final Type boxingType = firmTypeSystem.getBoxingType((X10ClassType)to);
+			genSubtypeCheck(pos, valueNode, boxingType, false);
 			return genUnboxing(valueNode, typeSystem.toClass(to));
 		} else {
 			throw new CodeGenError("Unsupported cast", pos);
