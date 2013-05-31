@@ -219,7 +219,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		final Node objPtr = codeGenerator.visitExpression(objExpr);
 		final Type compareType = n.compareType().type();
 
-		if (firmTypeSystem.asType(exprType).getMode().isReference()) {
+		if (firmTypeSystem.getFirmMode(exprType).isReference()) {
 			final Block instanceOfCheckBlock = con.newBlock();
 
 			final Node nullConst = con.newConst(Mode.getP().getNull());
