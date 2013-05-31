@@ -2370,6 +2370,17 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		return typeSystem.getTypeSystem().load("x10.lang.ClassCastException");
 	}
 
+	/** For box types, return the full name of the boxed type. */
+	private static String getTypeFullName(final Type type) {
+		FieldInstance boxedField = null;
+		if (type instanceof X10ClassType &&
+			(boxedField = ((X10ClassType) type).fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE))) != null) {
+			return boxedField.type().fullName().toString();
+		}
+
+		return type.fullName().toString();
+	}
+
 	private void genSubtypeCheck(final Position pos, final Node value, final Type toType, final boolean nullAllowed) {
 		final Type to = typeSystem.getConcreteType(toType);
 		final Node nullConst = con.newConst(Mode.getP().getNull());
@@ -2398,7 +2409,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		failBlock.mature();
 		con.setCurrentBlock(failBlock);
 		final X10ClassType exceptionType = getClassCastException();
-		final String toName = toType.fullName().toString();
+		final String toName = getTypeFullName(toType);
 		final Node exceptionObject = createExceptionObject(exceptionType, toName);
 		throwObject(pos, exceptionObject);
 
