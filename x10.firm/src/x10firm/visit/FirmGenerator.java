@@ -2372,10 +2372,10 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	/** For box types, return the full name of the boxed type. */
 	private static String getTypeFullName(final Type type) {
-		FieldInstance boxedField = null;
-		if (type instanceof X10ClassType &&
-			(boxedField = ((X10ClassType) type).fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE))) != null) {
-			return boxedField.type().fullName().toString();
+		if (type instanceof X10ClassType) {
+			final FieldInstance boxedField = ((X10ClassType) type).fieldNamed(Name.make(FirmTypeSystem.BOXED_VALUE));
+			if (boxedField != null)
+				return boxedField.type().fullName().toString();
 		}
 
 		return type.fullName().toString();
