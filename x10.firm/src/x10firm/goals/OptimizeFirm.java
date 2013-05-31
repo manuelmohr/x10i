@@ -14,7 +14,7 @@ import firm.Program;
 import firm.bindings.binding_irflag;
 
 /**
- * This defines the lowering pass.
+ * This defines the optimizing pass.
  */
 public class OptimizeFirm extends AbstractGoal_c {
 

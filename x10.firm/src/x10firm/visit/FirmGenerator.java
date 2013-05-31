@@ -431,7 +431,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	/**
 	 * Represents an Instance of a generic native method, field or class
-	 * a Node + TypeParameterMapping pair.
+	 * a Node + TypeParamSubst pair.
 	 */
 	private static final class GenericNodeInstance {
 		private final polyglot.ast.Node node;
@@ -2366,7 +2366,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	}
 
 	private X10ClassType getClassCastException() {
-		// return typeSystem.getTypeSystem().ClassCastException(); currently returns FailedDyanmicCheck type?!?
+		// return typeSystem.getTypeSystem().ClassCastException(); currently returns FailedDynamicCheck type?!?
 		return typeSystem.getTypeSystem().load("x10.lang.ClassCastException");
 	}
 
