@@ -1,133 +1,403 @@
-#include "remote_exec.h"
-#include "ilocal_data.h"
+#include <octopos.h>
 #include "async.h"
+#include "ilocal_data.h"
 #include "init.h"
+#include "places_octopos.h"
+#include "remote_exec.h"
 #include "serialization.h"
+#include "x10_runtime.h"
+
+/**
+ * This file provides the runtime support for at statements/expressions.
+ *
+ * The following terms are use throughout the code:
+ * - source denotes the place/tile that initiates the remote execution
+ * - destination denotes the remote place/tile
+ *
+ * The control flow for an at expression looks like this:
+ *
+ *                          Source                          |                       Destination
+ *                                                          |
+ * x10_execute_at:                                          |
+ * - allocates source-local data                            |
+ * - serializes closure                                     |
+ * - registers at finish state                              |
+ * - waits for local termination                            |
+ * |                                                        |
+ * +--------------------------------------------------------+-+
+ *     message:                                             | |
+ *     - address of source-local data                       | |
+ *     - size of closure                                    | |
+ *                                                          | v
+ *                                                          | allocate_destination_memory:
+ *                                                          | - allocates destination-local data
+ *                                                          | - allocates DMA receive buffer
+ *                                                          | |
+ * +--------------------------------------------------------+-+ message:
+ * |                                                        |   - address of source-local data
+ * |                                                        |   - address of receive buffer
+ * |                                                        |     (can be used to synthesize destination-local data)
+ * v                                                        |
+ * transfer_parameters:                                     |
+ * - initiates DMA transfer of closure                      |
+ * |                                                        |
+ * +--------------------------------------------------------+-+
+ * |   message:                                             | |
+ * |   - address of receive buffer                          | |
+ * |     (can be used to synthesize destination-local data) | |
+ * |   - source finish state                                | |
+ * |                                                        | |
+ * | message:                                               | |
+ * | - address of send buffer                               | |
+ * v                                                        | v
+ * free_obstack:                                            | evaluate_at_expression:
+ * - frees send buffer                                      | - allocates new top level finish state
+ *                                                          | - deserializes closure
+ *                                                          | - frees DMA receive buffer
+ *                                                          | - evaluates expression
+ *                                                          | - serializes result
+ *                                                          | |
+ * +--------------------------------------------------------+-+ message:
+ * |                                                        |   - address of destination-local data
+ * |                                                        |   - size of closure
+ * v                                                        |
+ * allocate_source_memory:                                  |
+ * - allocates DMA receive buffer                           |
+ * |                                                        |
+ * +--------------------------------------------------------+-+
+ *     message:                                             | |
+ *     - address of destination-local data                  | |
+ *     - address of receive buffer                          | |
+ *       (can be used to synthesize buffer size)            | |
+ *                                                          | v
+ *                                                          | transfer_result:
+ *                                                          | - initiates DMA transfer of closure
+ *                                                          | |
+ * +--------------------------------------------------------+-+ message:
+ * |                                                        | | - address of receive buffer
+ * |                                                        | |   (can be used to synthesize buffer size)
+ * |                                                        | | - address of destination-local data
+ * |                                                        | |
+ * |                                                        | | message:
+ * |                                                        | | - address of destination-local data
+ * v                                                        | v
+ * receive_result:                                          | wait_for_global_termination:
+ * - deserializes closure                                   | - frees send buffer
+ * - frees DMA receive buffer                               | - frees destination-local data
+ * - notifies local termination                             | - waits for global termination
+ * |                                                        | - frees top level finish state
+ * v                                                        | |
+ * x10_execute_at:                                          | |
+ * - wakes up                                               | |
+ * - terminates locally                                     | |
+ *                                                          | |
+ * +--------------------------------------------------------+-+ message:
+ * |                                                        |   - source finish state
+ * v                                                        |
+ * notify_global_termination:                               |
+ * - unregisters from source finish state                   |
+ *   (at expression terminates globally)                    |
+ */
+
+struct source_local_data {
+	simple_signal  *join_signal;
+	finish_state_t *finish_state;
+	x10_int         message_type;
+	void           *obstack;
+	x10_object     *return_value;
+	void           *send_buffer;
+	buf_size_t      buffer_size;
+	proxy_claim_t   proxy_claim;
+};
+typedef struct source_local_data source_local_data_t;
+
+/* Data structure that acts as receive buffer. */
+struct source_dma_data {
+	buf_size_t buffer_size;
+	char       receive_buffer[];
+};
+typedef struct source_dma_data source_dma_data_t;
+
+struct destination_local_data {
+	buf_size_t        buffer_size;
+	finish_state_t   *finish_state;
+	void             *obstack;
+	void             *send_buffer;
+	dispatch_claim_t  source_dispatch_claim;
+	void             *source_local_data;
+	void             *source_finish_state;
+};
+typedef struct destination_local_data destination_local_data_t;
+
+/* Data structure that acts as receive buffer. */
+struct destination_dma_data {
+	destination_local_data_t *destination_local_data;
+	char                      receive_buffer[];
+};
+typedef struct destination_dma_data destination_dma_data_t;
 
 void x10_rt_init(void)
 {
 }
 
-typedef struct {
-	simple_signal join_signal;
-	void         *other_args;
-} octopos_place_execute_args;
-
-static void x10_place_execute(void *arg);
-static void octopos_place_execute(void *arg)
+/* Notifies local termination of the at statement/expression. */
+static void notify_local_termination(void *arg)
 {
-	octopos_place_execute_args *opea = arg;
+	source_local_data_t *source_local_data = (source_local_data_t *)arg;
 
-	x10_place_execute(opea->other_args);
-
-	simple_signal_signal(&opea->join_signal);
+	simple_signal_signal(source_local_data->join_signal);
 }
 
-static void x10_spawn(x10_int place_id, void *arg, size_t arg_len)
+/* Notifies global termination of the at statement/expression. */
+static void notify_global_termination(void *arg)
 {
-	(void) place_id; /* TODO: associate the place (id) with a claim_t. */
-	(void) arg_len;
+	finish_state_t *fs = (finish_state_t *)arg;
 
-	octopos_place_execute_args *opea = XMALLOC(octopos_place_execute_args);
-	simple_signal_init(&opea->join_signal, 1);
-	opea->other_args = arg;
-
-	simple_ilet *ilet = XMALLOC(simple_ilet);
-	simple_ilet_init(ilet, octopos_place_execute, opea);
-
-	infect(finish_state_get_current()->claim, ilet, 1);
-	simple_signal_wait(&opea->join_signal);
-
-	free(opea);
-	free(ilet);
+	simple_signal_signal(&fs->signal);
 }
 
-static void x10_dma(void *dest, const void *src, size_t len)
+/* Frees obstack that acts as send buffer. */
+static void free_obstack(void *obstack)
 {
-	memcpy(dest, src, len);
+	struct obstack *obst = (struct obstack *)obstack;
+
+	obstack_free(obst, NULL);
+	mem_free(obst);
 }
 
-typedef struct {
-	x10_int         place_id;
-	x10_int         msg_type;
-	finish_state_t *fs;
-
-	size_t          closure_len;
-	void           *closure;
-
-	size_t          result_len;
-	char           *result;
-} place_execute_args;
-
-static void x10_place_execute(void *arg)
+/* Runs an at statement. */
+static void run_at_statement(void *arg, void *source_finish_state)
 {
-	place_execute_args *pea = arg;
+	/* Deserialize object. */
+	destination_dma_data_t   *destination_dma_data   = (destination_dma_data_t *)((char *)arg - offsetof(destination_dma_data_t, receive_buffer));
+	destination_local_data_t *destination_local_data = destination_dma_data->destination_local_data;
+	x10_object               *closure                = x10_deserialize_from(destination_dma_data->receive_buffer, destination_local_data->buffer_size);
+	dispatch_claim_t          source_claim           = destination_local_data->source_dispatch_claim;
+	void                     *source_local_data      = destination_local_data->source_local_data;
 
-	/* set up state for the newly create thread. */
-	finish_state_set_current(pea->fs);
+	/* Free destination's data. */
+	mem_free(destination_dma_data);
+	mem_free(destination_local_data);
 
-	char *recv_buf = malloc(pea->closure_len);
-	if (! recv_buf)
-		panic("Could not allocate receive buffer.");
+	/* Create a new top level finish state on the new tile. */
+	finish_state_t fs;
+	fs.claim = get_claim();
+	simple_signal_init(&fs.signal, 0);
+	finish_state_set_current(&fs);
+	register_at_finish_state(&fs);
 
-	x10_dma(recv_buf, pea->closure, pea->closure_len);
+	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(closure);
 
-	x10_object *closure = x10_deserialize_from(recv_buf, pea->closure_len);
-	free(recv_buf);
+	/* Notify local termination to source tile. */
+	simple_ilet notify_local_termination_ilet;
+	simple_ilet_init(&notify_local_termination_ilet, notify_local_termination, source_local_data);
+	dispatch_claim_infect(source_claim, &notify_local_termination_ilet, 1);
 
-	if (pea->msg_type == MSG_RUN_AT) {
-		_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(closure);
-	} else if (pea->msg_type == MSG_EVAL_AT) {
-		x10_object *ret = _ZN3x104lang7Runtime14callAnyClosureEPN3x104lang8$Fun_0_0IPN3x104lang3AnyEEE(closure);
+	unregister_from_finish_state(&fs);
 
-		struct obstack obst;
-		obstack_init(&obst);
-		x10_serialize_to_obst(&obst, ret);
+	/* Wait for global termination. */
+	simple_signal_wait(&fs.signal);
 
-		pea->result_len  = obstack_object_size(&obst);
-		pea->result      = obstack_finish(&obst);
+	/* Notify global termination to source tile. */
+	simple_ilet notify_global_termination_ilet;
+	simple_ilet_init(&notify_global_termination_ilet, notify_global_termination, source_finish_state);
+	dispatch_claim_infect(source_claim, &notify_global_termination_ilet, 1);
+}
+
+/* Cleans up and waits until at expression terminates globally. */
+static void wait_for_global_termination(void *destination_data)
+{
+	destination_local_data_t *destination_local_data = (destination_local_data_t *)destination_data;
+	void                     *obstack                = destination_local_data->obstack;
+
+	free_obstack(obstack);
+
+	finish_state_t   *finish_state        = destination_local_data->finish_state;
+	dispatch_claim_t  source_claim        = destination_local_data->source_dispatch_claim;
+	void             *source_finish_state = destination_local_data->source_finish_state;
+
+	/* Free destination's local data. */
+	mem_free(destination_local_data);
+
+	unregister_from_finish_state(finish_state);
+
+	/* Wait for global termination. */
+	simple_signal_wait(&finish_state->signal);
+
+	mem_free(finish_state);
+
+	/* Notify global termination to source tile. */
+	simple_ilet notify_global_termination_ilet;
+	simple_ilet_init(&notify_global_termination_ilet, notify_global_termination, source_finish_state);
+	dispatch_claim_infect(source_claim, &notify_global_termination_ilet, 1);
+}
+
+/* Receives the result of the at expression. */
+static void receive_result(void *source_buffer, void *source_data)
+{
+	source_dma_data_t   *source_dma_data   = (source_dma_data_t *)((char *)source_buffer - offsetof(source_dma_data_t, receive_buffer));
+	buf_size_t           buffer_size       = source_dma_data->buffer_size;
+	source_local_data_t *source_local_data = (source_local_data_t *)source_data;
+
+	source_local_data->return_value = x10_deserialize_from(source_buffer, buffer_size);
+
+	/* Free source's DMA data. */
+	mem_free(source_dma_data);
+
+	notify_local_termination(source_local_data);
+}
+
+/* Transfers the closure of the result of the at expression. */
+static void transfer_result(void *destination_data, void *source_buffer)
+{
+	destination_local_data_t *destination_local_data = (destination_local_data_t *)destination_data;
+	void                     *send_buffer            = destination_local_data->send_buffer;
+	dispatch_claim_t          source_claim           = destination_local_data->source_dispatch_claim;
+	void                     *source_local_data      = destination_local_data->source_local_data;
+	buf_size_t                buffer_size            = destination_local_data->buffer_size;
+
+	assert(buffer_size > 0);
+
+	/* Perform DMA transfer. */
+	simple_ilet local;
+	simple_ilet remote;
+	simple_ilet_init(&local, wait_for_global_termination, destination_local_data);
+	dual_ilet_init(&remote, receive_result, source_buffer, source_local_data);
+	dispatch_claim_push_dma(source_claim, send_buffer, source_buffer, buffer_size, &local, &remote);
+}
+
+/* Allocates the receive buffer in the source memory. */
+static void allocate_source_memory(void *destination_local_data, void *buffer_size)
+{
+	source_dma_data_t *source_dma_data = mem_allocate(MEM_TLM_GLOBAL, sizeof(*source_dma_data) + (buf_size_t)buffer_size);
+	void              *source_buffer   = &source_dma_data->receive_buffer;
+	simple_ilet        dma_ilet;
+
+	source_dma_data->buffer_size = (buf_size_t)buffer_size;
+
+	dual_ilet_init(&dma_ilet, transfer_result, destination_local_data, source_buffer);
+	dispatch_claim_send_reply(&dma_ilet);
+}
+
+/* Evaluates an at expression. */
+static void evaluate_at_expression(void *arg, void *source_finish_state)
+{
+	/* Deserialize object. */
+	destination_dma_data_t   *destination_dma_data   = (destination_dma_data_t *)((char *)arg - offsetof(destination_dma_data_t, receive_buffer));
+	destination_local_data_t *destination_local_data = destination_dma_data->destination_local_data;
+	x10_object               *closure                = x10_deserialize_from(destination_dma_data->receive_buffer, destination_local_data->buffer_size);
+
+	/* Free destination's DMA data. */
+	mem_free(destination_dma_data);
+
+	/* Create a new top level finish state on the new tile. */
+	finish_state_t *fs = mem_allocate(MEM_TLM_LOCAL, sizeof(*fs));
+	fs->claim = get_claim();
+	simple_signal_init(&fs->signal, 0);
+	finish_state_set_current(fs);
+	register_at_finish_state(fs);
+
+	x10_object *return_value = _ZN3x104lang7Runtime14callAnyClosureEPN3x104lang8$Fun_0_0IPN3x104lang3AnyEEE(closure);
+
+	/* Serialize return value. */
+	struct obstack *obst = mem_allocate(MEM_TLM_LOCAL, sizeof(*obst));
+	obstack_init(obst);
+	x10_serialize_to_obst(obst, return_value);
+
+	/* Set destination-local data. */
+	destination_local_data->buffer_size         = obstack_object_size(obst);
+	destination_local_data->finish_state        = fs;
+	destination_local_data->obstack             = obst;
+	destination_local_data->send_buffer         = get_global_address(obstack_finish(obst));
+	destination_local_data->source_finish_state = source_finish_state;
+
+	/* Create source i-let for memory allocation. */
+	simple_ilet      allocation_ilet;
+	dispatch_claim_t source_claim    = destination_local_data->source_dispatch_claim;
+	dual_ilet_init(&allocation_ilet, allocate_source_memory, (void*)destination_local_data, (void*)destination_local_data->buffer_size);
+	dispatch_claim_infect(source_claim, &allocation_ilet, 1);
+}
+
+/* Transfers the closure needed to execute the at statement/expression. */
+static void transfer_parameters(void *source_data, void *destination_buffer)
+{
+	source_local_data_t *source_local_data = (source_local_data_t *)source_data;
+	finish_state_t      *finish_state      = source_local_data->finish_state;
+	x10_int              message_type      = source_local_data->message_type;
+	void                *obstack           = source_local_data->obstack;
+	void                *send_buffer       = source_local_data->send_buffer;
+	buf_size_t           buffer_size       = source_local_data->buffer_size;
+	proxy_claim_t        proxy_claim       = source_local_data->proxy_claim;
+
+	assert(buffer_size > 0);
+
+	/* Perform DMA transfer. */
+	simple_ilet local;
+	simple_ilet remote;
+	simple_ilet_init(&local, free_obstack, obstack);
+	if (message_type == MSG_EVAL_AT) {
+		dual_ilet_init(&remote, evaluate_at_expression, destination_buffer, finish_state);
 	} else {
-		panic("Unhandled message type.");
+		assert(message_type == MSG_RUN_AT);
+		dual_ilet_init(&remote, run_at_statement, destination_buffer, finish_state);
 	}
+	proxy_push_dma(proxy_claim, send_buffer, destination_buffer, buffer_size, &local, &remote);
+}
 
-	unregister_from_finish_state(pea->fs);
+/* Allocates the receive buffer in the destination memory. */
+static void allocate_destination_memory(void *source_local_data, void *buffer_size)
+{
+	destination_local_data_t *destination_local_data = mem_allocate(MEM_TLM_LOCAL, sizeof(*destination_local_data));
+	destination_dma_data_t   *destination_dma_data   = mem_allocate(MEM_TLM_GLOBAL, sizeof(*destination_dma_data) + (buf_size_t)buffer_size);
+	simple_ilet               dma_ilet;
+
+	destination_local_data->buffer_size           = (buf_size_t)buffer_size;
+	destination_local_data->source_dispatch_claim = get_parent_dispatch_claim();
+	destination_local_data->source_local_data     = source_local_data;
+	destination_dma_data->destination_local_data  = destination_local_data;
+
+	dual_ilet_init(&dma_ilet, transfer_parameters, source_local_data, &destination_dma_data->receive_buffer);
+	dispatch_claim_send_reply(&dma_ilet);
 }
 
 x10_object *x10_execute_at(x10_int place_id, x10_int msg_type, x10_object *closure)
 {
 	assert(msg_type == MSG_RUN_AT || msg_type == MSG_EVAL_AT);
 
-	struct obstack obst;
-	obstack_init(&obst);
-	x10_serialize_to_obst(&obst, closure);
+	/* Serialize closure. */
+	struct obstack *obst = mem_allocate(MEM_TLM_LOCAL, sizeof(*obst));
+	obstack_init(obst);
+	x10_serialize_to_obst(obst, closure);
 
-	place_execute_args *pea = malloc(sizeof(place_execute_args));
-	pea->place_id    = place_id;
-	pea->msg_type    = msg_type;
-	pea->fs          = finish_state_get_current();
+	/* Initialize source-local data. */
+	simple_signal        join_signal;
+	source_local_data_t  source_local_data;
+	finish_state_t      *finish_state      = finish_state_get_current();
+	source_local_data.join_signal  = &join_signal;
+	source_local_data.finish_state = finish_state;
+	source_local_data.message_type = msg_type;
+	source_local_data.buffer_size  = obstack_object_size(obst);
+	source_local_data.obstack      = obst;
+	source_local_data.return_value = NULL;
+	source_local_data.send_buffer  = get_global_address(obstack_finish(obst));
 
-	pea->closure_len = obstack_object_size(&obst);
-	pea->closure     = obstack_finish(&obst);
-	pea->result_len  = 0;
-	pea->result      = NULL;
+	simple_signal_init(&join_signal, 1);
 
-	register_at_finish_state(pea->fs);
+	assert(place_id >= 0 && (unsigned)place_id < n_places);
+	proxy_claim_t destination_claim = places[place_id];
 
-	x10_spawn(place_id, pea, sizeof(place_execute_args));
+	source_local_data.proxy_claim = destination_claim;
 
-	x10_object *retVal = NULL;
-	if (msg_type == MSG_EVAL_AT) {
-		char *recv_buf = malloc(pea->result_len);
-		x10_dma(recv_buf, pea->result, pea->result_len);
+	/* Create destination i-let for memory allocation. */
+	simple_ilet allocation_ilet;
+	dual_ilet_init(&allocation_ilet, allocate_destination_memory, (void*)&source_local_data, (void*)source_local_data.buffer_size);
+	proxy_infect(destination_claim, &allocation_ilet, 1);
 
-		retVal = x10_deserialize_from(recv_buf, pea->result_len);
-		free(recv_buf);
-	}
+	/* Register at current finish state to recognize global termination of the at. */
+	register_at_finish_state(finish_state);
 
-	free(pea->closure);
-	if (pea->result)
-		free(pea->result);
-	free(pea);
+	/* Wait for local termination. */
+	simple_signal_wait(&join_signal);
 
-	return retVal;
+	return source_local_data.return_value;
 }
