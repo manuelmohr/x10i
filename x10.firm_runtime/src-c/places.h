@@ -2,7 +2,7 @@
 #ifndef PLACES_H
 #define PLACES_H
 
-/** the highest possible tile ID */
+/** the number of places */
 extern unsigned n_places;
 
 #endif
