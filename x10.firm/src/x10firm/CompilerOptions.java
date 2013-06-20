@@ -238,7 +238,7 @@ public class CompilerOptions extends X10CompilerOptions {
 				"Dump FIRM graphs");
 		usageForFlag(out, "-nativeTypesConfigPath <pathname>",
 				"Path to the firm native types configuration files");
-		usageForFlag(out, "-showCommandline",
+		usageForFlag(out, "-V",
 		        "Print commandline when invoking external tools");
 		usageForFlag(out, "-S",
 				"Do not assemble and link; keep .s files");
