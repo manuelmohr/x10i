@@ -69,3 +69,13 @@ Tip4: If you are unlucky and have a SIGSEGV in the C code, then you should not
 == AST Dumping ==
 You can use -dump PASSNAME to dump the x10 ast after a specific pass (for
 example "Desugarer"). Passnames can be in all the goals in the ExtensionInfo.
+
+== OctoPOS Target ==
+
+Requires octopos-app within this base directory.
+Depending on what you do, you might have to create more symlinks
+within octopos to choose the right release/variant/version.
+
+Within x10.dist compile via
+
+	ant dist-firm -DTARGET=i686-invasic-octopos -DSIMULATOR=
