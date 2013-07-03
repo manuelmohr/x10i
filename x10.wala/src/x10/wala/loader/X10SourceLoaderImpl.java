@@ -1,6 +1,7 @@
 package x10.wala.loader;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.Set;
 
 import x10.wala.classLoader.X10LanguageImpl;
@@ -13,6 +14,7 @@ import com.ibm.wala.cast.loader.AstMethod.DebuggingInformation;
 import com.ibm.wala.cast.tree.CAstEntity;
 import com.ibm.wala.cast.tree.CAstSourcePositionMap;
 import com.ibm.wala.cfg.AbstractCFG;
+import com.ibm.wala.cfg.IBasicBlock;
 import com.ibm.wala.classLoader.IClassLoader;
 import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.ipa.callgraph.impl.SetOfClasses;
@@ -46,7 +48,7 @@ public class X10SourceLoaderImpl extends JavaSourceLoaderImpl {
 
     public void defineAsync(CAstEntity fn, TypeReference asyncRef, CAstSourcePositionMap.Position fileName,
             WalkContext definingContext, AbstractCFG cfg, SymbolTable symtab, boolean hasCatchBlock,
-            TypeReference[][] caughtTypes, boolean hasMonitorOp, AstLexicalInformation lexicalInfo,
+            Map<IBasicBlock,TypeReference[]> caughtTypes, boolean hasMonitorOp, AstLexicalInformation lexicalInfo,
             DebuggingInformation debugInfo) {
         X10AsyncObject asyncObject = new X10AsyncObject(asyncRef, this, fileName, cha);
         asyncObject.setCodeBody(new ConcreteJavaMethod(fn, asyncObject, cfg, symtab, hasCatchBlock, caughtTypes, hasMonitorOp,
@@ -57,7 +59,7 @@ public class X10SourceLoaderImpl extends JavaSourceLoaderImpl {
 
     public void defineClosure(CAstEntity fn, TypeReference closureRef, CAstSourcePositionMap.Position fileName,
             WalkContext definingContext, AbstractCFG cfg, SymbolTable symtab, boolean hasCatchBlock,
-            TypeReference[][] caughtTypes, boolean hasMonitorOp, AstLexicalInformation lexicalInfo,
+            Map<IBasicBlock,TypeReference[]> caughtTypes, boolean hasMonitorOp, AstLexicalInformation lexicalInfo,
             DebuggingInformation debugInfo) {
         X10ClosureObject closureObject = new X10ClosureObject(closureRef, this, fileName, cha);
         closureObject.setCodeBody(new ConcreteJavaMethod(fn, closureObject, cfg, symtab, hasCatchBlock, caughtTypes,

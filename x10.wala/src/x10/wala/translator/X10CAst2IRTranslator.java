@@ -3,6 +3,8 @@
  */
 package x10.wala.translator;
 
+import java.util.Map;
+
 import x10.wala.classLoader.AsyncCallSiteReference;
 import x10.wala.loader.X10SourceLoaderImpl;
 import x10.wala.ssa.AstX10InstructionFactory;
@@ -14,6 +16,7 @@ import x10.wala.tree.X10CastNode;
 import x10.wala.tree.visit.X10DelegatingCAstVisitor;
 
 import com.ibm.wala.cast.ir.translator.AstTranslator;
+import com.ibm.wala.cast.ir.translator.AstTranslator.AstLexicalInformation;
 import com.ibm.wala.cast.ir.translator.AstTranslator.RootContext;
 import com.ibm.wala.cast.ir.translator.AstTranslator.WalkContext;
 import com.ibm.wala.cast.java.loader.JavaSourceLoaderImpl;
@@ -25,6 +28,7 @@ import com.ibm.wala.cast.tree.CAstNode;
 import com.ibm.wala.cast.tree.CAstType;
 import com.ibm.wala.cast.tree.visit.CAstVisitor;
 import com.ibm.wala.cfg.AbstractCFG;
+import com.ibm.wala.cfg.IBasicBlock;
 import com.ibm.wala.classLoader.ModuleEntry;
 import com.ibm.wala.classLoader.NewSiteReference;
 import com.ibm.wala.classLoader.SourceFileModule;
@@ -95,22 +99,22 @@ public class X10CAst2IRTranslator extends X10DelegatingCAstVisitor<WalkContext> 
                       AbstractCFG cfg,
                       SymbolTable symtab,
                       boolean hasCatchBlock,
-                      TypeReference[][] catchTypes,
+                      Map<IBasicBlock,TypeReference[]> caughtTypes,
                       boolean hasMonitorOp,
                       AstLexicalInformation lexicalInfo,
                       DebuggingInformation debugInfo) {
             if (n.getKind() == X10CAstEntity.ASYNC_BODY) {
                 x10Loader.defineAsync(n,
                         asyncTypeReference(x10Loader, n),
-                        n.getPosition(), definingContext, cfg, symtab, hasCatchBlock, catchTypes,
+                        n.getPosition(), definingContext, cfg, symtab, hasCatchBlock, caughtTypes,
                         hasMonitorOp, lexicalInfo, debugInfo);
             } else if (n.getKind() == X10CAstEntity.CLOSURE_BODY) {
                 x10Loader.defineClosure(n,
                         closureTypeReference(x10Loader, n),
-                        n.getPosition(), definingContext, cfg, symtab, hasCatchBlock, catchTypes,
+                        n.getPosition(), definingContext, cfg, symtab, hasCatchBlock, caughtTypes,
                         hasMonitorOp, lexicalInfo, debugInfo);
             } else
-                super.defineFunction(n, definingContext, cfg, symtab, hasCatchBlock, catchTypes, hasMonitorOp, lexicalInfo, debugInfo);
+                super.defineFunction(n, definingContext, cfg, symtab, hasCatchBlock, caughtTypes, hasMonitorOp, lexicalInfo, debugInfo);
         }
     }
 

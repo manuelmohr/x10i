@@ -75,7 +75,7 @@ public class X102IRGoal extends SourceGoal_c {
         if(shouldReport)
 			reporter.report(2,"translating " + job.source().name() + " wala ast to ir ...");
         final File srcFile = new File(job.source().path());
-        final ModuleEntry module = new SourceFileModule(srcFile, job.source().name());
+        final ModuleEntry module = new SourceFileModule(srcFile, job.source().name(), null);
         new X10CAst2IRTranslator(module, entity, fSourceLoader).translate();
         return true;
     }
