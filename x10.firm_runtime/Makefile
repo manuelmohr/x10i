@@ -40,7 +40,7 @@ ifeq ($(TARGET), i686-invasic-octopos)
 endif
 ifeq ($(TARGET), sparc-invasic-octopos)
 	# For now, always build for soft float
-	OCTOPOS_BASE=../octopos-app/releases/current/leon/softfloat
+	OCTOPOS_BASE=../octopos-app/releases/current/leon/4t-ml605
 	GCC_INCLUDE:=$(shell $(CC) --print-file-name=include)
 	CFLAGS += -fno-stack-protector
 	CPPFLAGS += -nostdinc -D__leon__ -D__OCTOPOS__ -I $(OCTOPOS_BASE)/include -isystem $(GCC_INCLUDE)
