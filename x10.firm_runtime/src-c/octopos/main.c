@@ -1,7 +1,6 @@
 #include <octopos.h>
 #include "ilocal_data.h"
 #include "main.h"
-#include "init.h"
 #include "places.h"
 #include "places_octopos.h"
 
@@ -81,8 +80,6 @@ void main_ilet(claim_t claim)
 
 	/* begin main i-let's finish block */
 	_ZN3x104lang7Runtime16finishBlockBeginEv();
-
-	x10_rt_init();
 
 	x10_object *args = _ZN3x105array5Array15makeStringArrayEPvi(NULL, 0);
 	x10_main(args);

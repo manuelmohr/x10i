@@ -1,7 +1,6 @@
 #include <octopos.h>
 #include "async.h"
 #include "ilocal_data.h"
-#include "init.h"
 #include "places_octopos.h"
 #include "remote_exec.h"
 #include "serialization.h"
@@ -135,10 +134,6 @@ struct destination_dma_data {
 	char                      receive_buffer[];
 };
 typedef struct destination_dma_data destination_dma_data_t;
-
-void x10_rt_init(void)
-{
-}
 
 /* Notifies local termination of the at statement/expression. */
 static void notify_local_termination(void *arg)
