@@ -12,6 +12,22 @@
 unsigned       n_places;
 proxy_claim_t *places;
 
+static void notify_initialization(void *signal)
+{
+	simple_signal_signal((simple_signal *)signal);
+}
+
+static void x10_static_initializer_wrapper(void *signal, void *number_of_places)
+{
+	n_places = (unsigned)number_of_places;
+
+	x10_static_initializer();
+
+	simple_ilet notification_ilet;
+	simple_ilet_init(&notification_ilet, notify_initialization, signal);
+	dispatch_claim_send_reply(&notification_ilet);
+}
+
 void main_ilet(claim_t claim)
 {
 	/* We want to use uart redirection through grmon -u */
@@ -20,7 +36,7 @@ void main_ilet(claim_t claim)
 	n_places = get_tile_count();
 	places   = mem_allocate(MEM_TLM_GLOBAL, n_places * sizeof(*places));
 
-	unsigned place_id = 0;
+	unsigned n_invaded_places = 0;
 
 	/*
 	 * Get as many CPUs as possible.
@@ -40,12 +56,22 @@ void main_ilet(claim_t claim)
 
 		assert(num > 0 && "Could not invade tile");
 
-		places[place_id++] = claim;
+		places[n_invaded_places++] = claim;
 	}
 
-	n_places = place_id;
+	simple_signal initialization_signal;
+	simple_signal_init(&initialization_signal, n_invaded_places);
 
-	x10_static_initializer();
+	/* Initialize tiles. */
+	for (unsigned tile_id = 0; tile_id < n_invaded_places; tile_id++) {
+		simple_ilet   initialization_ilet;
+		proxy_claim_t proxy_claim         = places[tile_id];
+		dual_ilet_init(&initialization_ilet, x10_static_initializer_wrapper, &initialization_signal, (void *)n_invaded_places);
+		proxy_infect(proxy_claim, &initialization_ilet, 1);
+	}
+
+	/* Wait until all tile are initialized. */
+	simple_signal_wait(&initialization_signal);
 
 	finish_state_t fs;
 	fs.claim = claim;
