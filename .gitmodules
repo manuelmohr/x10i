@@ -11,3 +11,6 @@
 	path = cparser
 	url = http://pp.info.uni-karlsruhe.de/git/cparser.git
 	fetchRecurseSubmodules = no
+[submodule "octopos-app"]
+	path = octopos-app
+	url = gitolite@invasic.informatik.uni-erlangen.de:octopos-app
