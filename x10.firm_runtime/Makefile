@@ -33,7 +33,7 @@ ifeq ($(TARGET), i686-invasic-octopos)
 	OCTOPOS_BASE=../octopos-app/releases/current/x86guest/multitile
 	GCC_INCLUDE:=$(shell $(CC) --print-file-name=include)
 	CFLAGS += -m32 -fno-stack-protector -mfpmath=sse -msse2
-	CPPFLAGS += -nostdinc -D__OCTOPOS__ -I $(GCC_INCLUDE) -I $(OCTOPOS_BASE)/include
+	CPPFLAGS += -nostdinc -I $(GCC_INCLUDE) -I $(OCTOPOS_BASE)/include
 	LFLAGS += -m32 -nostdlib -Wl,-T,$(OCTOPOS_BASE)/lib/sections.x $(OCTOPOS_BASE)/lib/liboctopos.a $(OCTOPOS_BASE)/lib/libcsubset.a
 	PLATFORM = octopos
 	CPARSER_TARGET =
@@ -43,7 +43,7 @@ ifeq ($(TARGET), sparc-invasic-octopos)
 	OCTOPOS_BASE=../octopos-app/releases/current/leon/4t-ml605
 	GCC_INCLUDE:=$(shell $(CC) --print-file-name=include)
 	CFLAGS += -fno-stack-protector
-	CPPFLAGS += -nostdinc -D__leon__ -D__OCTOPOS__ -I $(OCTOPOS_BASE)/include -isystem $(GCC_INCLUDE)
+	CPPFLAGS += -nostdinc -D__leon__ -I $(OCTOPOS_BASE)/include -isystem $(GCC_INCLUDE)
 	PLATFORM = octopos
 	# Use the normal SPARC target to avoid having to adapt cparser
 	CPARSER_TARGET = -mtarget=sparc-leon-linux-gnu
