@@ -75,7 +75,7 @@
  * +--------------------------------------------------------+-+ message:
  * |                                                        | | - address of receive buffer
  * |                                                        | |   (can be used to synthesize buffer size)
- * |                                                        | | - address of destination-local data
+ * |                                                        | | - address of source-local data
  * |                                                        | |
  * |                                                        | | message:
  * |                                                        | | - address of destination-local data
