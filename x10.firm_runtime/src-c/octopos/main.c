@@ -11,14 +11,22 @@
 unsigned       n_places;
 proxy_claim_t *places;
 
+struct initialization_data {
+	unsigned       n_places;
+	proxy_claim_t *places;
+};
+typedef struct initialization_data initialization_data_t;
+
 static void notify_initialization(void *signal)
 {
 	simple_signal_signal((simple_signal *)signal);
 }
 
-static void x10_static_initializer_wrapper(void *signal, void *number_of_places)
+static void x10_static_initializer_wrapper(void *signal, void *initialization_data)
 {
-	n_places = (unsigned)number_of_places;
+	initialization_data_t *data = (initialization_data_t *)initialization_data;
+	n_places = data->n_places;
+	places   = data->places;
 
 	x10_static_initializer();
 
@@ -58,6 +66,10 @@ void main_ilet(claim_t claim)
 		places[n_invaded_places++] = claim;
 	}
 
+	initialization_data_t *initialization_data = mem_allocate(MEM_TLM_GLOBAL, sizeof(*initialization_data));
+	initialization_data->n_places = n_invaded_places;
+	initialization_data->places   = places;
+
 	simple_signal initialization_signal;
 	simple_signal_init(&initialization_signal, n_invaded_places);
 
@@ -65,12 +77,13 @@ void main_ilet(claim_t claim)
 	for (unsigned tile_id = 0; tile_id < n_invaded_places; tile_id++) {
 		simple_ilet   initialization_ilet;
 		proxy_claim_t proxy_claim         = places[tile_id];
-		dual_ilet_init(&initialization_ilet, x10_static_initializer_wrapper, &initialization_signal, (void *)n_invaded_places);
+		dual_ilet_init(&initialization_ilet, x10_static_initializer_wrapper, &initialization_signal, (void *)initialization_data);
 		proxy_infect(proxy_claim, &initialization_ilet, 1);
 	}
 
 	/* Wait until all tile are initialized. */
 	simple_signal_wait(&initialization_signal);
+	mem_free(initialization_data);
 
 	finish_state_t fs;
 	fs.claim = claim;
