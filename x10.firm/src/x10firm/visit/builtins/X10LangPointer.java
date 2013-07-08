@@ -13,7 +13,6 @@ import x10firm.visit.MethodConstruction;
 import x10firm.visit.VarEntry;
 import firm.Entity;
 import firm.Mode;
-import firm.nodes.CopyB;
 import firm.nodes.Load;
 import firm.nodes.Node;
 import firm.nodes.Store;
@@ -103,7 +102,7 @@ abstract class X10LangPointer {
 				final Node mem = con.getCurrentMem();
 				final firm.Type firmType = firmTypeSystem.asType(typeParameter);
 				final Node copyB = con.newCopyB(mem, address, value, firmType);
-				newMem = con.newProj(copyB, Mode.getM(), CopyB.pnM);
+				newMem = copyB;
 			} else {
 				final Mode mode = firmTypeSystem.getFirmMode(val.type());
 				final Node asgn = con.getVariable(varValue.getIdx(), mode);

@@ -180,7 +180,6 @@ import firm.nodes.Alloc;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Cond;
-import firm.nodes.CopyB;
 import firm.nodes.Load;
 import firm.nodes.Node;
 import firm.nodes.Store;
@@ -949,8 +948,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			final firm.Type firmType = firmTypeSystem.asType(type);
 			final Node mem = con.getCurrentMem();
 			final Node copyB = con.newCopyB(mem, address, value, firmType);
-			final Node curMem = con.newProj(copyB, Mode.getM(), CopyB.pnM);
-			con.setCurrentMem(curMem);
+			con.setCurrentMem(copyB);
 		} else {
 			final Node mem = con.getCurrentMem();
 			final Node store = con.newStore(mem, address, value);
@@ -1179,8 +1177,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 				final Node mem = con.getCurrentMem();
 				final Node destAddr = visitExpression(lhs);
 				final Node copyB = con.newCopyB(mem, destAddr, casted, entity.getType());
-				final Node curMem = con.newProj(copyB, Mode.getM(), CopyB.pnM);
-				con.setCurrentMem(curMem);
+				con.setCurrentMem(copyB);
 			} else {
 				// local normal variable
 				final int idx = var.getIdx();
@@ -1261,8 +1258,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 				final Node initNode = visitExpression(initExpr);
 				final Node mem = con.getCurrentMem();
 				final Node copyB = con.newCopyB(mem, sel, initNode, entity.getType());
-				final Node curMem = con.newProj(copyB, Mode.getM(), CopyB.pnM);
-				con.setCurrentMem(curMem);
+				con.setCurrentMem(copyB);
 			} else {
 				final Node initNode = visitExpression(initExpr);
 				final int idx = var.getIdx();

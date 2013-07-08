@@ -25,15 +25,28 @@ import firm.nodes.Node;
  * Create instance of built-in {@code static x10.lang.Zero.get[T](): T} method.
  */
 class X10LangZeroGet implements BuiltinMethodGenerator {
+	private static firm.Mode getSizeTMode() {
+		return Mode.getP().findUnsigned();
+	}
+
 	private static MethodType getMemsetMethodType() {
 		final firm.Type pointer = Mode.getP().getType();
 		final firm.Type signedInt = Mode.getIs().getType();
-		final firm.Type sizeT = Mode.getP().getType();
+		final firm.Type sizeT = sizeTMode.getType();
 		final firm.Type[] parameterTypes = new firm.Type[]{pointer, signedInt, sizeT};
 		final firm.Type[] resultTypes = new firm.Type[]{pointer};
 
 		final MethodType methodType = new firm.MethodType(parameterTypes, resultTypes);
 		return methodType;
+	}
+
+	private static MethodType memsetType;
+	private static Mode sizeTMode;
+
+	/** constructs X10LagnZeroGet instance */
+	public X10LangZeroGet() {
+		sizeTMode = getSizeTMode();
+		memsetType = getMemsetMethodType();
 	}
 
 	@Override
@@ -62,13 +75,12 @@ class X10LangZeroGet implements BuiltinMethodGenerator {
 			final Mode mode = firmTypeSystem.getFirmMode(typeParameter);
 			final Node tmpStruct = codeGenerator.genStackAlloc(typeParameter);
 
-			final MethodType memsetType = getMemsetMethodType();
 			final Ident memsetIdent = new Ident("memset");
 			final Pointer memsetEntPtr =
 					binding_iroptimize.create_compilerlib_entity(memsetIdent.ptr, memsetType.ptr);
 			final Entity memsetEntity = new Entity(memsetEntPtr);
 			final Node memsetAddress = con.newSymConst(memsetEntity);
-			final Node structSize = con.newSymConstTypeSize(firmType, Mode.getP());
+			final Node structSize = con.newSymConstTypeSize(firmType, sizeTMode);
 			final Node zero = con.newConst(0, Mode.getIs());
 			final Node[] memsetArgs = new Node[]{tmpStruct, zero, structSize};
 			final Node call = con.newCall(con.getCurrentMem(), memsetAddress, memsetArgs, memsetType);

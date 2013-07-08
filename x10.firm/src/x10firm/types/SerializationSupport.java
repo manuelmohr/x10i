@@ -27,7 +27,6 @@ import firm.nodes.Alloc;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Cond;
-import firm.nodes.CopyB;
 import firm.nodes.Load;
 import firm.nodes.Node;
 import firm.nodes.Store;
@@ -385,7 +384,7 @@ public final class SerializationSupport {
 		final Node currentAddr = con.getVariable(1, Mode.getP());
 		genCallToSerialize(elementType, con, bufPtr, currentAddr);
 		final Node nextIndex = con.newAdd(currentIndex, con.newConst(1, Mode.getIs()), Mode.getIs());
-		final Node elementSize = con.newSymConstTypeSize(elementType, Mode.getP());
+		final Node elementSize = con.newSymConstTypeSize(elementType, Mode.getIu());
 		final Node nextAddr = con.newAdd(currentAddr, elementSize, Mode.getP());
 		con.setVariable(0, nextIndex);
 		con.setVariable(1, nextAddr);
@@ -576,7 +575,7 @@ public final class SerializationSupport {
 		final Node currentAddr = con.getVariable(1, Mode.getP());
 		genCallToDeserialize(elementType, con, bufPtr, currentAddr);
 		final Node nextIndex = con.newAdd(currentIndex, con.newConst(1, Mode.getIs()), Mode.getIs());
-		final Node elementSize = con.newSymConstTypeSize(elementType, Mode.getP());
+		final Node elementSize = con.newSymConstTypeSize(elementType, Mode.getIu());
 		final Node nextAddr = con.newAdd(currentAddr, elementSize, Mode.getP());
 		con.setVariable(0, nextIndex);
 		con.setVariable(1, nextAddr);
@@ -661,7 +660,7 @@ public final class SerializationSupport {
 				final Mode resultMode = firmTypeSystem.getFirmMode(astType);
 				final Node newObj = con.newProj(results, resultMode, 0);
 				final Node copyB = con.newCopyB(mem, objPtr, newObj, klass);
-				mem = con.newProj(copyB, Mode.getM(), CopyB.pnM);
+				mem = copyB;
 			}
 
 			con.setCurrentMem(mem);
