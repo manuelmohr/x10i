@@ -117,11 +117,27 @@ static void register_notify_handler(void)
 	}
 }
 
+static void *start_message_handler(void *arg)
+{
+	message_t *message = (message_t*)arg;
+	message->base.handler(message);
+	free(message);
+	return NULL;
+}
+
+static void handle_remote_exec(const message_t *message);
+static bool can_handle_synchronously(const message_t *message)
+{
+	if (message->base.handler == handle_remote_exec)
+		return false;
+	return true;
+}
+
 static bool receive_single_message(void)
 {
-	message_t message;
+	message_t *message = malloc(sizeof(*message));
 again:;
-	ssize_t sz = mq_receive(my_queue, (char*)&message, sizeof(message), NULL);
+	ssize_t sz = mq_receive(my_queue, (char*)message, sizeof(*message), NULL);
 	if (sz < 0) {
 		if (errno == EAGAIN)
 			return false;
@@ -130,13 +146,28 @@ again:;
 		perror("x10 runtime: failure while receiving message");
 		abort();
 	}
-	if (sz != sizeof(message)) {
+	if (sz != sizeof(*message)) {
 		fprintf(stderr, "x10 runtime: %u received message with strange len '%u'\n",
 		        place_id, (unsigned)sz);
 		abort();
 	}
 
-	message.base.handler(&message);
+	if (can_handle_synchronously(message)) {
+		message->base.handler(message);
+		free(message);
+	} else {
+		pthread_attr_t attr;
+		pthread_attr_init(&attr);
+		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+		pthread_t thread;
+		int res = pthread_create(&thread, &attr, start_message_handler, message);
+		if (res != 0) {
+			perror("Couldn't create message handling thread");
+			abort();
+		}
+		pthread_attr_destroy(&attr);
+	}
 	return true;
 }
 
