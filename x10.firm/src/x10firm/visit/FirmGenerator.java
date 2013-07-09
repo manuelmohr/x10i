@@ -2742,6 +2742,31 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		throwNotLoweredException(n);
 	}
 
+	/**
+	 * check if a tuple only has constant initializers. In this case we can place a "template"
+	 * in the const data section (instead of producing long sequences of stores)
+	 */
+	private static boolean isConstantTuple(final Tuple_c n) {
+		final List<Expr> arguments = n.arguments();
+		for (final Expr e : arguments) {
+			if (!ASTQuery.isConstantExpression(e))
+				return false;
+		}
+		return true;
+	}
+
+	private Initializer createConstantTupleInitializer(final Tuple_c n) {
+		final List<Expr> arguments = n.arguments();
+		final int size = arguments.size();
+		final Initializer result = new Initializer(size);
+		for (int i = 0; i < size; ++i) {
+			final Expr e = arguments.get(i);
+			final Initializer einit = exprToInitializer(e);
+			result.setCompoundValue(i, einit);
+		}
+		return result;
+	}
+
 	@Override
 	public void visit(final Tuple_c n) {
 		final Type concreteType = typeSystem.getConcreteType(n.type());
@@ -2762,17 +2787,35 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node baseAddr = genMallocCall(byteSize);
 
 		/* construct elements */
-		final int elementSize = firmType.getSizeBytes();
-		for (int i = 0; i < size; ++i) {
-			final Expr expr = arguments.get(i);
-			Node addr = baseAddr;
-			if (i > 0) {
-				final int offset = elementSize * i;
-				final Node offsetC = con.newConst(offset, Mode.getIu());
-				addr = con.newAdd(baseAddr, offsetC, Mode.getP());
+		if (isConstantTuple(n)) {
+			/* create initializer in read-only-data and use CopyB */
+			final ArrayType initType = new ArrayType(firmType);
+			initType.setBounds(0, 0, size);
+			initType.finishLayout();
+
+			final ClassType global = Program.getGlobalType();
+			final Entity initEntity = new Entity(global, Ident.createUnique("x10init.%u"), initType);
+			final Initializer initializer = createConstantTupleInitializer(n);
+			initEntity.setInitializer(initializer);
+
+			final Node initAddr = con.newSymConst(initEntity);
+			final Node mem = con.getCurrentMem();
+			final Node copyB = con.newCopyB(mem, baseAddr, initAddr, initType);
+			con.setCurrentMem(copyB);
+		} else {
+			/* do a sequence of stores */
+			final int elementSize = firmType.getSizeBytes();
+			for (int i = 0; i < size; ++i) {
+				final Expr expr = arguments.get(i);
+				Node addr = baseAddr;
+				if (i > 0) {
+					final int offset = elementSize * i;
+					final Node offsetC = con.newConst(offset, Mode.getIu());
+					addr = con.newAdd(baseAddr, offsetC, Mode.getP());
+				}
+				final Node node = uncheckedCast(expr, elementType, n.position());
+				assignToAddress(addr, elementType, node);
 			}
-			final Node node = uncheckedCast(expr, elementType, n.position());
-			assignToAddress(addr, elementType, node);
 		}
 
 		/* construct Array object */
