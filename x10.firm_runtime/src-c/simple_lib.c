@@ -52,7 +52,7 @@ void _ZN9SimpleLib5printEf(x10_float v)
 	/* use Float.toString to match x10cpp based output */
 	extern x10_string *_ZN3x104lang5Float8toStringEv(x10_float v);
 	x10_string *str = _ZN3x104lang5Float8toStringEv(v);
-	x10_write_block(str->chars, str->len);
+	fwrite(str->chars, str->len, 1, stdout);
 	putchar('\n');
 }
 
@@ -61,7 +61,7 @@ void _ZN9SimpleLib5printEd(x10_double v)
 	/* use Double.toString to match x10cpp based output */
 	extern x10_string *_ZN3x104lang6Double8toStringEv(x10_double v);
 	x10_string *str = _ZN3x104lang6Double8toStringEv(v);
-	x10_write_block(str->chars, str->len);
+	fwrite(str->chars, str->len, 1, stdout);
 	putchar('\n');
 }
 
@@ -72,6 +72,6 @@ void _ZN9SimpleLib5printEb(x10_boolean v)
 
 void _ZN9SimpleLib5printEPN3x104lang6StringE(x10_string *str)
 {
-	x10_write_block(str->chars, str->len);
+	fwrite(str->chars, str->len, 1, stdout);
 	putchar('\n');
 }
