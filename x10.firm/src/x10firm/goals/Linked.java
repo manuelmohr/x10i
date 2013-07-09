@@ -95,18 +95,23 @@ public class Linked extends AbstractGoal_c {
 
 	private String octoposPrefix() {
 		final MachineTriple target = options.getTargetTriple();
-		String result = distPath() + "/../octopos-app/releases/current/";
+		String result = distPath() + "/../octopos-app/releases/";
+		// Always use 'current' OctoPOS release
+		result += "current/";
+		// Choose OctoPOS architecture
 		if (target.getCpu().equals("sparc")) {
 			result += "leon/";
+			// Choose OctoPOS variant
+			if (options.useSoftFloat()) {
+				result += "softfloat/";
+			} else {
+				result += "4t-ml605/";
+			}
 		} else if (target.getCpu().equals("i686")) {
-			result += "x86guest/";
+			// Always use 'multitile' variant
+			result += "x86guest/multitile/";
 		} else {
 			throw new RuntimeException("only sparc/i686 support for octopos");
-		}
-		if (options.useSoftFloat()) {
-			result += "softfloat/";
-		} else {
-			result += "4t-ml605/";
 		}
 		return result;
 	}
