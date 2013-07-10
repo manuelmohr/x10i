@@ -59,13 +59,13 @@ LIBOO_BASE ?= ../liboo
 
 LIBNAME=x10
 A_FILE=$(BUILDDIR)/lib$(LIBNAME).a
-ALL_C_FILES=$(wildcard $(SRCDIR)/*.c) $(wildcard $(PLATFORMDIR)/*.c)
+ALL_C_FILES=$(wildcard $(SRCDIR)/*.c) $(wildcard $(SRCDIR)/adt/*.c) $(wildcard $(PLATFORMDIR)/*.c)
 GEN_FIRM_NATIVE_SIZES=$(SRCDIR)/gen_firm_native_sizes.c $(PLATFORMDIR)/platform_native_sizes.c
 GEN_PRIMITIVE_TYPES=$(BUILDDIR)/x10_primitive_types.c
 FIRM_NATIVE_TYPES_CONF=$(BUILDDIR)/firmNativeTypes.conf
 C_FILES=$(filter-out $(GEN_FIRM_NATIVE_SIZES), $(ALL_C_FILES)) $(GEN_PRIMITIVE_TYPES)
 O_FILES=$(addprefix $(BUILDDIR), $(basename $(C_FILES:%.c=%.o)))
-H_FILES=$(wildcard $(SRCDIR)/*.h)
+H_FILES=$(wildcard $(SRCDIR)/*.h) $(wildcard $(SRCDIR)/adt/*.h) $(wildcard $(PLATFORMDIR)/*.h)
 CPPFLAGS += -I $(SRCDIR) -I $(SRCDIR)/$(PLATFORM) -I $(LIBOO_BASE)/include
 CFLAGS += -Wall -W -std=c99
 APP_CFLAGS += -std=c99

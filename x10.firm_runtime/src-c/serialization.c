@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include "serialization.h"
-#include "array.h"
+#include "adt/array.h"
 
 #define X10_SERIALIZATION_NULL_TYPE_UID 0
 #define X10_SERIALIZATION_KNOWN_OBJECT_TYPE_UID ((uint32_t)-1)

@@ -1,5 +1,5 @@
 #include "types.h"
-#include "array.h"
+#include "adt/array.h"
 #include "main.h"
 #include "x10_string.h"
 
