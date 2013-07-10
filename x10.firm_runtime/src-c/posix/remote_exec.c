@@ -18,6 +18,7 @@ static void             **shm_addrs;
 static pthread_mutex_t    send_mutex;
 static volatile bool      idle_running = true;
 static pid_t              master_pid;
+static pthread_attr_t     remote_exec_pthread_attr;
 
 /* maximum of 4 places by default */
 unsigned n_places = 4;
@@ -156,17 +157,13 @@ again:;
 		message->base.handler(message);
 		free(message);
 	} else {
-		pthread_attr_t attr;
-		pthread_attr_init(&attr);
-		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-
-		pthread_t thread;
-		int res = pthread_create(&thread, &attr, start_message_handler, message);
+		pthread_t dummy;
+		int res = pthread_create(&dummy, &remote_exec_pthread_attr,
+		                         start_message_handler, message);
 		if (res != 0) {
 			perror("Couldn't create message handling thread");
 			abort();
 		}
-		pthread_attr_destroy(&attr);
 	}
 	return true;
 }
@@ -466,6 +463,10 @@ void init_ipc(void)
 	if (place_id == 0) {
 		init_master();
 	}
+
+	pthread_attr_init(&remote_exec_pthread_attr);
+	pthread_attr_setdetachstate(&remote_exec_pthread_attr,
+	                            PTHREAD_CREATE_DETACHED);
 }
 
 void shutdown_ipc(void)
@@ -482,6 +483,7 @@ void shutdown_ipc(void)
 		queues[i] = (mqd_t)-1;
 	}
 	pthread_mutex_destroy(&send_mutex);
+	pthread_attr_destroy(&remote_exec_pthread_attr);
 }
 
 void x10_idle(void)

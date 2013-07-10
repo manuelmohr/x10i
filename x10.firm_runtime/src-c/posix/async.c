@@ -8,6 +8,8 @@
 
 #define MAX_ACTIVITIES_PER_FINISH 64
 
+static pthread_attr_t async_pthread_attr;
+
 /**
  * A finish_state holds all information for a finish statement.
  * All its child activities are tracked. Also, their children must register
@@ -169,6 +171,9 @@ void _ZN3x104lang7Runtime16finishBlockBeginEv(void)
 
 void init_finish_state(void)
 {
+	pthread_attr_init(&async_pthread_attr);
+	pthread_attr_setdetachstate(&async_pthread_attr, PTHREAD_CREATE_DETACHED);
+
 	/* initialize main thread's finish state */
 	if (pthread_key_create(&enclosing_finish_state, NULL))
 		panic("Could not create thread-local key");
@@ -190,8 +195,13 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object
 	async_closure  *ac        = XMALLOC(async_closure);
 	ac->body = body;
 	ac->enclosing = enclosing;
-	pthread_t child;
-	if (pthread_create(&child, NULL, execute, ac))
+
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+	pthread_t dummy;
+	if (pthread_create(&dummy, &async_pthread_attr, execute, ac))
 		panic("Could not create thread");
 	register_at_finish_state(enclosing);
 }
@@ -229,4 +239,6 @@ void exit_finish_state(void)
 {
 	/* end main thread's finish block */
 	_ZN3x104lang7Runtime14finishBlockEndEv();
+
+	pthread_attr_destroy(&async_pthread_attr);
 }
