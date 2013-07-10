@@ -9,8 +9,6 @@
  *  (C) Copyright IBM Corporation 2006-2010.
  */
 #include "x10_atomic_ops.h"
-#include "platform.h"
-#include "platform_atomic_ops.h"
 
 /**
  * Ensure that all loads before the barrier have loaded their

@@ -1,12 +1,4 @@
-#include "platform_atomic_ops.h"
 #include "x10_lock_octopos.h"
-
-simple_spinlock x10_op_lock;
-
-static void __attribute__((constructor)) init_locks(void)
-{
-	simple_spinlock_init(&x10_op_lock);
-}
 
 /* x10.util.concurrent.Lock.this(): Lock */
 void _ZN3x104util10concurrent4LockC1Ev(x10_lock *self)

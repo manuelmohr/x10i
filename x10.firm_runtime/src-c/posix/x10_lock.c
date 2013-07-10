@@ -57,15 +57,3 @@ x10_int _ZN3x104util10concurrent4Lock12getHoldCountEv(x10_lock *self)
 	X10_UNUSED(self);
 	return -1;
 }
-
-pthread_mutex_t x10_op_lock;
-
-void init_locks(void)
-{
-	pthread_mutex_init(&x10_op_lock, NULL);
-}
-
-void destroy_locks(void)
-{
-	pthread_mutex_destroy(&x10_op_lock);
-}

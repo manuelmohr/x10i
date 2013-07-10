@@ -13,7 +13,6 @@ int main(int argc, char **argv)
 	init_ipc();
 	atexit(shutdown_ipc);
 
-	init_locks();
 	init_finish_state();
 
 	x10_static_initializer();
@@ -33,7 +32,6 @@ int main(int argc, char **argv)
 	}
 
 	exit_finish_state();
-	destroy_locks();
 
 	return exit_code;
 }
