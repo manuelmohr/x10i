@@ -102,11 +102,16 @@ public final struct Place(id: Int)  {
     public static FIRST_PLACE:Place(0) = Place(0);
 
     /**
+     * The place that represents the InvasIC host system.
+     */
+    public static INVASIC_HOST: Place(-1) = Place(-1);
+
+    /**
      * Creates a Place struct from an integer place id.
      */
     public def this(id: Int):Place(id) {
         property(id);
-        if (CompilerFlags.checkPlace() && (id < 0)) {
+        if (CompilerFlags.checkPlace() && (id < 0) && id != -1) {
             throw new IllegalArgumentException(id+" is not a valid Place id");
         }
     }

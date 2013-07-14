@@ -208,6 +208,8 @@ public class Linked extends AbstractGoal_c {
 		} else {
 			cmd.add("-lm");
 			cmd.add("-lrt");
+			cmd.add("-L" + distPath() + "/../octopos-app/releases/current/extras/libethcomm/i686/");
+			cmd.add("-lethcomm");
 			cmd.add("-pthread");
 		}
 

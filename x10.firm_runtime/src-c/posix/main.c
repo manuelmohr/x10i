@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <limits.h>
 #include <sched.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -14,8 +15,14 @@ int main(int argc, char **argv)
 {
 	gc_init();
 
-	init_ipc();
-	atexit(shutdown_ipc);
+	if (argc == 3 && strcmp(argv[1], "--invasicSystem") == 0) {
+		/* Special mode as invasic host system. */
+		place_id = (unsigned)INVASIC_HOST_PLACE_ID;
+	} else {
+		/* Normal startup. */
+		init_ipc();
+		atexit(shutdown_ipc);
+	}
 
 	x10_serialization_init();
 	init_finish_state();
@@ -31,6 +38,9 @@ int main(int argc, char **argv)
 		}
 		x10_object *array = _ZN3x105array5Array15makeStringArrayEPvi((x10_pointer)&arg_pointers, argc-1);
 		x10_main(array);
+	} else if (place_id == (unsigned)INVASIC_HOST_PLACE_ID) {
+		const char *octo_sys = argv[2];
+		run_as_invasic_host(octo_sys);
 	} else {
 		/* idle around until we get an exit signal... */
 		x10_idle();

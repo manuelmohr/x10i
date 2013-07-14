@@ -58,7 +58,9 @@ ifeq ($(findstring sparc-invasic, $(TARGET)), sparc-invasic)
 	CPPFLAGS += -D__leon__ -isystem $(GCC_INCLUDE)
 endif
 ifeq ($(findstring linux, $(TARGET)), linux)
+	OCTOPOS_EXTRAS=../octopos-app/releases/current/extras/libethcomm
 	CFLAGS += -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -pthread
+	CPPFLAGS += -I $(OCTOPOS_EXTRAS)
 endif
 
 CPARSER_BASE ?= ../cparser

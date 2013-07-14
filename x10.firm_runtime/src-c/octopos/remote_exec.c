@@ -6,6 +6,7 @@
 #include "agent.h"
 #include "serialization.h"
 #include "x10_runtime.h"
+#include "invasic_host.h"
 
 /**
  * This file provides the runtime support for at statements/expressions.
@@ -364,6 +365,11 @@ static void allocate_destination_memory(void *source_local_data, void *buffer_si
 x10_object *x10_execute_at(x10_int place_id, x10_int msg_type, x10_object *closure)
 {
 	assert(msg_type == MSG_RUN_AT || msg_type == MSG_EVAL_AT);
+
+	if (place_id == INVASIC_HOST_PLACE_ID) {
+		/* Special host place. */
+		return exec_on_invasic_host(msg_type, closure);
+	}
 
 	/* Serialize closure. */
 	struct obstack *obst = mem_allocate(MEM_TLM_LOCAL, sizeof(*obst));
