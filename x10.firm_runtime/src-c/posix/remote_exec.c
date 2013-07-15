@@ -16,9 +16,11 @@ static mqd_t             *queues;
 static mqd_t              my_queue;
 static void             **shm_addrs;
 static pthread_mutex_t    send_mutex;
+static pthread_mutex_t    mq_send_mutex;
 static volatile bool      idle_running = true;
 static pid_t              master_pid;
-static pthread_attr_t     remote_exec_pthread_attr;
+static pthread_attr_t     detached_pthread_attr;
+static pthread_t          message_receive_thread;
 
 /* maximum of 4 places by default */
 unsigned n_places = 4;
@@ -94,27 +96,22 @@ static void send_msg(const message_t *const msg, unsigned const place)
 {
 	mqd_t const queue = queues[place];
 again:;
+	/* Matze: the mq_send here is protected with a mutex. In theory and
+	 * according to the posix spec this should not be necessary, but I've had
+	 * several programs where I have seen messages disappearing when multiple
+	 * threads used mq_send to the same queue at once.
+	 * TODO: investigate if this is really a linux bug: write a simple C
+	 * testprogram that reproduces the bug so we can report it. */
+	pthread_mutex_lock(&mq_send_mutex);
 	int const res = mq_send(queue, (const char*)msg, sizeof(*msg), 0);
-	if (res == EINTR)
-		  goto again;
+	pthread_mutex_unlock(&mq_send_mutex);
+	if (res == EINTR) {
+		goto again;
+	}
 
 	if (res != 0) {
 		  perror("x10 runtime: failure while sending remote exec message");
 		  abort();
-	}
-}
-
-static void message_received(union sigval val);
-static void register_notify_handler(void)
-{
-	struct sigevent sigev;
-	memset(&sigev, 0, sizeof(sigev));
-	sigev.sigev_notify            = SIGEV_THREAD;
-	sigev.sigev_notify_function   = message_received;
-	sigev.sigev_notify_attributes = NULL;
-	if (mq_notify(my_queue, &sigev) != 0) {
-		perror("x10 runtime: couldn't register message notify event");
-		exit(1);
 	}
 }
 
@@ -140,15 +137,15 @@ static bool receive_single_message(void)
 again:;
 	ssize_t sz = mq_receive(my_queue, (char*)message, sizeof(*message), NULL);
 	if (sz < 0) {
-		if (errno == EAGAIN)
-			return false;
-		if (errno == EINTR)
+		if (errno == EINTR) {
 			goto again;
+		}
 		perror("x10 runtime: failure while receiving message");
 		abort();
 	}
 	if (sz != sizeof(*message)) {
-		fprintf(stderr, "x10 runtime: %u received message with strange len '%u'\n",
+		fprintf(stderr,
+		        "x10 runtime: %u received message with strange len '%u'\n",
 		        place_id, (unsigned)sz);
 		abort();
 	}
@@ -158,7 +155,7 @@ again:;
 		free(message);
 	} else {
 		pthread_t dummy;
-		int res = pthread_create(&dummy, &remote_exec_pthread_attr,
+		int res = pthread_create(&dummy, &detached_pthread_attr,
 		                         start_message_handler, message);
 		if (res != 0) {
 			perror("Couldn't create message handling thread");
@@ -168,13 +165,12 @@ again:;
 	return true;
 }
 
-static void message_received(union sigval val)
+static void *message_receive_loop(void *arg)
 {
-	(void)val;
-	register_notify_handler();
+	(void)arg;
 	while (receive_single_message()) {
-		/* empty */
 	}
+	return NULL;
 }
 
 /** initiate dma transfer to remote tile and send an dma_message_t.
@@ -352,21 +348,6 @@ static mqd_t setup_queue(unsigned place, int flags)
 	return queue;
 }
 
-static void set_queue_nonblocking(mqd_t queue)
-{
-	struct mq_attr attr;
-	memset(&attr, 0, sizeof(attr));
-	if (mq_getattr(queue, &attr) != 0) {
-		perror("x10 runtime: couldn't get queue attributes");
-		exit(1);
-	}
-	attr.mq_flags |= O_NONBLOCK;
-	if (mq_setattr(queue, &attr, NULL) != 0) {
-		perror("x10 runtime: couldn't set queue attributes");
-		exit(1);
-	}
-}
-
 static void unlink_queues(void)
 {
 	char buf[64];
@@ -383,18 +364,24 @@ static void init_message_queues(void)
 	/* open message queues for each place */
 	for (unsigned i = 0; i < n_places; ++i) {
 		if (place_id == 0 && i == 0) {
-			set_queue_nonblocking(my_queue);
 			queues[0] = my_queue;
 			continue;
 		}
 		int flags = O_CREAT;
-		flags |= i == place_id ? O_RDONLY|O_NONBLOCK : O_WRONLY;
+		flags |= i == place_id ? O_RDONLY : O_WRONLY;
 		queues[i] = setup_queue(i, flags);
 	}
 
 	my_queue = queues[place_id];
 	pthread_mutex_init(&send_mutex, NULL);
-	register_notify_handler();
+	pthread_mutex_init(&mq_send_mutex, NULL);
+
+	int res = pthread_create(&message_receive_thread, &detached_pthread_attr,
+							 message_receive_loop, NULL);
+	if (res != 0) {
+		perror("Couldn't create message handling thread");
+		abort();
+	}
 }
 
 static void init_master(void)
@@ -464,8 +451,8 @@ void init_ipc(void)
 		init_master();
 	}
 
-	pthread_attr_init(&remote_exec_pthread_attr);
-	pthread_attr_setdetachstate(&remote_exec_pthread_attr,
+	pthread_attr_init(&detached_pthread_attr);
+	pthread_attr_setdetachstate(&detached_pthread_attr,
 	                            PTHREAD_CREATE_DETACHED);
 }
 
@@ -474,6 +461,7 @@ void shutdown_ipc(void)
 	if (queues == NULL)
 		return;
 
+	pthread_cancel(message_receive_thread);
 	signal(SIGCHLD, SIG_DFL);
 
 	for (unsigned i = 0; i < n_places; ++i) {
@@ -483,7 +471,8 @@ void shutdown_ipc(void)
 		queues[i] = (mqd_t)-1;
 	}
 	pthread_mutex_destroy(&send_mutex);
-	pthread_attr_destroy(&remote_exec_pthread_attr);
+	pthread_mutex_destroy(&mq_send_mutex);
+	pthread_attr_destroy(&detached_pthread_attr);
 }
 
 void x10_idle(void)
