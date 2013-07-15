@@ -22,7 +22,8 @@ static void notify_initialization(void *signal)
 	simple_signal_signal((simple_signal *)signal);
 }
 
-static void x10_static_initializer_wrapper(void *signal, void *initialization_data)
+/** initialization code that is run once on each tile before it is used. */
+static void init_tile(void *signal, void *initialization_data)
 {
 	initialization_data_t *data = (initialization_data_t *)initialization_data;
 	n_places = data->n_places;
@@ -77,7 +78,8 @@ void main_ilet(claim_t claim)
 	for (unsigned tile_id = 0; tile_id < n_invaded_places; tile_id++) {
 		simple_ilet   initialization_ilet;
 		proxy_claim_t proxy_claim         = places[tile_id];
-		dual_ilet_init(&initialization_ilet, x10_static_initializer_wrapper, &initialization_signal, (void *)initialization_data);
+		dual_ilet_init(&initialization_ilet, init_tile, &initialization_signal,
+		               initialization_data);
 		proxy_infect(proxy_claim, &initialization_ilet, 1);
 	}
 
