@@ -203,18 +203,23 @@ typedef struct deserialization_buffer_t deserialization_buffer_t;
 typedef void (serialize_method)(serialization_buffer_t *buf, const x10_object *objPtr);
 typedef void (deserialize_method)(deserialization_buffer_t *buf, x10_object *objPtr);
 
+void x10_serialization_init(void);
+
 void x10_init_serialization_buffer(serialization_buffer_t *buffer,
                                    struct obstack *obst);
 void x10_destroy_serialization_buffer(serialization_buffer_t *buffer);
 
-void x10_serialization_write_primitive(serialization_buffer_t *buf, const void *data, size_t nbytes);
-void x10_serialization_write_object(serialization_buffer_t *buf, const x10_object *objPtr);
+void x10_serialization_write_int(serialization_buffer_t *buf,
+                                 const x10_int *value_ptr);
+void x10_serialization_write_object(serialization_buffer_t *buf,
+                                    const x10_object *objPtr);
 
 void x10_init_deserialization_buffer(deserialization_buffer_t *buffer,
                                      const char *data, size_t data_size);
 void x10_destroy_deserialization_buffer(deserialization_buffer_t *buf);
 
-void x10_deserialization_restore_primitive(deserialization_buffer_t *buf, void *addr, size_t nbytes);
+void x10_deserialization_restore_int(deserialization_buffer_t *buf,
+                                     x10_int *target);
 void x10_deserialization_restore_object(deserialization_buffer_t *buf, x10_object **addr);
 
 /** convenience function, serializes an X10 object to an obstack (by growing) */

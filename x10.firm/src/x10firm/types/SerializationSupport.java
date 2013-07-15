@@ -55,14 +55,13 @@ public final class SerializationSupport {
 	private static final String DESERIALIZE_METHOD_TABLE_NAME = "__deserialize_methods";
 	private static final String SERIALIZE_METHOD_TABLE_NAME = "__serialize_methods";
 
-	private Entity serializationWritePrimitiveEntity;
-	private Entity serializationWriteObjectEntity;
-	private Entity deserializationRestorePrimitiveEntity;
-	private Entity deserializationRestoreObjectEntity;
+	private Entity serializationWriteObject;
+	private Entity deserializationRestoreObject;
 
-	/** Store the (de)serialization method for each (class) type. */
-	private final Map<Type, Entity> serializeMethods = new HashMap<Type, Entity>();
-	private final Map<Type, Entity> deserializeMethods = new HashMap<Type, Entity>();
+	/** Store the serialization function for each (class) type. */
+	private final Map<Type, Entity> serializeFunctions = new HashMap<Type, Entity>();
+	/** Store the deserialization function for each (class) type. */
+	private final Map<Type, Entity> deserializeFunctions = new HashMap<Type, Entity>();
 
 	/** record of the method / constructor used in the custom serialization protocol. */
 	private static class CustomSerializationMethods {
@@ -79,40 +78,24 @@ public final class SerializationSupport {
 	 * This builds the entities for (de-)serializing primitives and objects.
 	 */
 	public void init() {
-		assert serializationWritePrimitiveEntity == null;
-		assert serializationWriteObjectEntity == null;
-		assert deserializationRestorePrimitiveEntity == null;
-		assert deserializationRestoreObjectEntity == null;
+		assert serializationWriteObject == null;
 
 		final ClassType global = Program.getGlobalType();
-		final firm.Type typeP = Mode.getP().getType();
-		final firm.Type typeIu = Mode.getIu().getType();
-		final firm.Type[] retTypeVoid = new firm.Type[] {};
+		final Type typeP = Mode.getP().getType();
+		final Type[] emptyTypelist = new Type[] {};
 
 		// first step: create the entities representing the runtime methods in x10_serialization.c
-		final firm.Type[] swpParameterTypes = new firm.Type[] {typeP, typeP, typeIu};
-		final MethodType swpType = new MethodType(swpParameterTypes, retTypeVoid);
-		final String swpName = NameMangler.mangleKnownName("x10_serialization_write_primitive");
-		serializationWritePrimitiveEntity = new Entity(global, swpName, swpType);
-		serializationWritePrimitiveEntity.setLdIdent(swpName);
-
 		final firm.Type[] swoParameterTypes = new firm.Type[] {typeP, typeP};
-		final MethodType swoType = new MethodType(swoParameterTypes, retTypeVoid);
+		final MethodType swoType = new MethodType(swoParameterTypes, emptyTypelist);
 		final String swoName = NameMangler.mangleKnownName("x10_serialization_write_object");
-		serializationWriteObjectEntity = new Entity(global, swoName, swoType);
-		serializationWriteObjectEntity.setLdIdent(swoName);
-
-		final firm.Type[] drpParameterTypes = new firm.Type[] {typeP, typeP, typeIu};
-		final MethodType drpType = new MethodType(drpParameterTypes, retTypeVoid);
-		final String drpName = NameMangler.mangleKnownName("x10_deserialization_restore_primitive");
-		deserializationRestorePrimitiveEntity = new Entity(global, drpName, drpType);
-		deserializationRestorePrimitiveEntity.setLdIdent(drpName);
+		serializationWriteObject = new Entity(global, swoName, swoType);
+		serializationWriteObject.setLdIdent(swoName);
 
 		final firm.Type[] droParamTypes = new firm.Type[] {typeP, typeP};
-		final MethodType droType = new MethodType(droParamTypes, retTypeVoid);
+		final MethodType droType = new MethodType(droParamTypes, emptyTypelist);
 		final String droName = NameMangler.mangleKnownName("x10_deserialization_restore_object");
-		deserializationRestoreObjectEntity = new Entity(global, droName, droType);
-		deserializationRestoreObjectEntity.setLdIdent(droName);
+		deserializationRestoreObject = new Entity(global, droName, droType);
+		deserializationRestoreObject.setLdIdent(droName);
 	}
 
 	/**
@@ -136,12 +119,12 @@ public final class SerializationSupport {
 			serializeMethodType = new MethodType(new firm.Type[] {Mode.getP().getType(), Mode.getP().getType()},
 					new firm.Type[] {});
 
-		assert !serializeMethods.containsKey(firmType);
+		assert !serializeFunctions.containsKey(firmType);
 
 		final Entity serEntity = new Entity(global, serializeMethodName, serializeMethodType);
 		OO.setEntityBinding(serEntity, ddispatch_binding.bind_static);
 		OO.setMethodExcludeFromVTable(serEntity, true);
-		serializeMethods.put(firmType, serEntity);
+		serializeFunctions.put(firmType, serEntity);
 
 		final String deserializeMethodName =
 				NameMangler.mangleGeneratedMethodName(astType, DESERIALIZE_METHOD_NAME, DESERIALIZE_METHOD_SIGNATURE);
@@ -152,7 +135,7 @@ public final class SerializationSupport {
 		final Entity deserEntity = new Entity(global, deserializeMethodName, deserializeMethodType);
 		OO.setEntityBinding(deserEntity, ddispatch_binding.bind_static);
 		OO.setMethodExcludeFromVTable(deserEntity, true);
-		deserializeMethods.put(firmType, deserEntity);
+		deserializeFunctions.put(firmType, deserEntity);
 	}
 
 	/**
@@ -239,8 +222,8 @@ public final class SerializationSupport {
 			if (classUid == 0) /* this will filter out structs and interfaces */
 				continue;
 
-			final Entity deserEntity = deserializeMethods.get(classType);
-			final Entity serEntity = serializeMethods.get(classType);
+			final Entity deserEntity = deserializeFunctions.get(classType);
+			final Entity serEntity = serializeFunctions.get(classType);
 			final Entity vtableEntity = OO.getClassVTableEntity(classType);
 
 			assert classUid > 0;
@@ -289,41 +272,29 @@ public final class SerializationSupport {
 	}
 
 	private void genCallToSerialize(final Type type, final Construction con, final Node bufPtr, final Node objPtr) {
-		Node mem = con.getCurrentMem();
-
-		if (type instanceof ClassType) {
-			/* this has to be a Struct or the $super / $__value__ entity,
-			 * because otherwise we'd have a PointerType.
-			 * in any case, we know exactly which serializer we need to call. */
-
-			final Entity structSerializer = serializeMethods.get(type);
-			assert structSerializer != null;
-			final Node symc = con.newSymConst(structSerializer);
-			final Node call = con.newCall(mem, symc,
-					new Node[] {bufPtr, objPtr}, structSerializer.getType());
-			mem = con.newProj(call, Mode.getM(), Call.pnM);
-			con.setCurrentMem(mem);
-		} else if (type instanceof PointerType) {
+		final Node mem = con.getCurrentMem();
+		if (type instanceof PointerType) {
 			/* this is an object reference */
-
 			final Node load = con.newLoad(mem, objPtr, Mode.getP());
-			mem = con.newProj(load, Mode.getM(), Load.pnM);
-			con.setCurrentMem(mem);
+			final Node loadMem = con.newProj(load, Mode.getM(), Load.pnM);
 			final Node newObjPtr = con.newProj(load, Mode.getP(), Load.pnRes);
 
-			final Node swoSymConst = con.newSymConst(serializationWriteObjectEntity);
-			final Node call = con.newCall(mem, swoSymConst,
-					new Node[] {bufPtr, newObjPtr}, serializationWriteObjectEntity.getType());
-			mem = con.newProj(call, Mode.getM(), Call.pnM);
-			con.setCurrentMem(mem);
+			final Node swoSymConst = con.newSymConst(serializationWriteObject);
+			final Node call = con.newCall(loadMem, swoSymConst,
+					new Node[] {bufPtr, newObjPtr}, serializationWriteObject.getType());
+			final Node callMem = con.newProj(call, Mode.getM(), Call.pnM);
+			con.setCurrentMem(callMem);
 		} else {
-			/* primitives */
-			final Node swpSymConst = con.newSymConst(serializationWritePrimitiveEntity);
-			final Node call = con.newCall(mem, swpSymConst,
-					new Node[] {bufPtr, objPtr, con.newSymConstTypeSize(type, Mode.getIu())},
-					serializationWritePrimitiveEntity.getType());
-			mem = con.newProj(call, Mode.getM(), Call.pnM);
-			con.setCurrentMem(mem);
+			/* this has to be a value type (a Struct or the $super / $__value__ entity,
+			 * or a primitive type) because otherwise we'd have a PointerType.
+			 * in any case, we know exactly which serializer we need to call. */
+			final Entity serializationFunction = serializeFunctions.get(type);
+			assert serializationFunction != null;
+			final Node symc = con.newSymConst(serializationFunction);
+			final Type functionType = serializationFunction.getType();
+			final Node call = con.newCall(mem, symc, new Node[] {bufPtr, objPtr}, functionType);
+			final Node callMem = con.newProj(call, Mode.getM(), Call.pnM);
+			con.setCurrentMem(callMem);
 		}
 	}
 
@@ -398,6 +369,26 @@ public final class SerializationSupport {
 	}
 
 	/**
+	 * Register a serialization function from the runtime library.
+	 * This is used for primitive types and similar where we cannot/or do now want to automatically generate one,
+	 * but instead use a given variant form the runtime library.
+	 */
+	public void setKnownSerializationFunction(final Type type, final Entity function)
+	{
+		serializeFunctions.put(type, function);
+	}
+
+	/**
+	 * Register a deserialization function for a specific firm type.
+	 * This is used for primitive types and similar where we cannot/or do now want to automatically generate one,
+	 * but instead use a given variant form the runtime library.
+	 */
+	public void setKnownDeserializationFunction(final Type type, final Entity function)
+	{
+		deserializeFunctions.put(type, function);
+	}
+
+	/**
 	 * Generate the serialization function for the given type.
 	 * @param astType The X10 type.
 	 * @param klass The corresponding Firm type.
@@ -405,14 +396,14 @@ public final class SerializationSupport {
 	 */
 	public void generateSerializationFunction(final X10ClassType astType, final ClassType klass,
 	                                          final FirmTypeSystem firmTypeSystem) {
-		if (!serializeMethods.containsKey(klass))
+		if (!serializeFunctions.containsKey(klass))
 			return;
 
-		final Entity serEntity = serializeMethods.get(klass);
+		final Entity serEntity = serializeFunctions.get(klass);
 
 		final Graph graph = new Graph(serEntity, 2);
 		final Construction con = new Construction(graph);
-		final Node swoSymConst = con.newSymConst(serializationWriteObjectEntity);
+		final Node swoSymConst = con.newSymConst(serializationWriteObject);
 
 		final Node args = graph.getArgs();
 		final Node bufPtr = con.newProj(args, Mode.getP(), 0);
@@ -442,7 +433,7 @@ public final class SerializationSupport {
 			final Node serialData = con.newProj(customRes, Mode.getP(), 0);
 
 			final Node writeCall = con.newCall(mem, swoSymConst, new Node[] {bufPtr, serialData},
-					serializationWriteObjectEntity.getType());
+					serializationWriteObject.getType());
 			mem = con.newProj(writeCall, Mode.getM(), Call.pnM);
 			con.setCurrentMem(mem);
 		} else {
@@ -467,33 +458,25 @@ public final class SerializationSupport {
 	}
 
 	private void genCallToDeserialize(final Type type, final Construction con, final Node bufPtr, final Node objPtr) {
-		final Node drpSymc = con.newSymConst(deserializationRestorePrimitiveEntity);
-		final Node droSymc = con.newSymConst(deserializationRestoreObjectEntity);
-		Node mem = con.getCurrentMem();
-
-		if (type instanceof ClassType) {
-			/* structs and superclass subobjects */
-			final Entity structDeserializer = deserializeMethods.get(type);
-			assert structDeserializer != null;
-			final Node symc = con.newSymConst(structDeserializer);
-			final Node call = con.newCall(mem, symc,
-					new Node[] {bufPtr, objPtr}, deserializeMethodType);
-			mem = con.newProj(call, Mode.getM(), Call.pnM);
-			con.setCurrentMem(mem);
-		} else if (type instanceof PointerType) {
+		final Node mem = con.getCurrentMem();
+		if (type instanceof PointerType) {
 			/* object references */
+			final Node droSymc = con.newSymConst(deserializationRestoreObject);
 			final Node call = con.newCall(mem, droSymc,
 					new Node[] {bufPtr, objPtr},
-					deserializationRestoreObjectEntity.getType());
-			mem = con.newProj(call, Mode.getM(), Call.pnM);
-			con.setCurrentMem(mem);
+					deserializationRestoreObject.getType());
+			final Node callMem = con.newProj(call, Mode.getM(), Call.pnM);
+			con.setCurrentMem(callMem);
 		} else {
-			/* primitives */
-			final Node call = con.newCall(mem, drpSymc,
-					new Node[] {bufPtr, objPtr, con.newSymConstTypeSize(type, Mode.getIu())},
-					deserializationRestorePrimitiveEntity.getType());
-			mem = con.newProj(call, Mode.getM(), Call.pnM);
-			con.setCurrentMem(mem);
+			/* primitives, structs and superclass subobjects */
+			final Entity deserializer = deserializeFunctions.get(type);
+			assert deserializer != null;
+			final Node symc = con.newSymConst(deserializer);
+			final Type deserializerType = deserializer.getType();
+			final Node call = con.newCall(mem, symc,
+					new Node[] {bufPtr, objPtr}, deserializerType);
+			final Node callMem = con.newProj(call, Mode.getM(), Call.pnM);
+			con.setCurrentMem(callMem);
 		}
 	}
 
@@ -596,15 +579,15 @@ public final class SerializationSupport {
 	 */
 	public void generateDeserializationFunction(final X10ClassType astType, final ClassType klass,
 	                                            final FirmTypeSystem firmTypeSystem) {
-		if (!deserializeMethods.containsKey(klass))
+		if (!deserializeFunctions.containsKey(klass))
 			return;
 
-		final Entity deserEntity = deserializeMethods.get(klass);
+		final Entity deserEntity = deserializeFunctions.get(klass);
 
 		final Graph graph = new Graph(deserEntity, 2);
 		final Construction con = new Construction(graph);
 
-		final Node droSymc = con.newSymConst(deserializationRestoreObjectEntity);
+		final Node droSymc = con.newSymConst(deserializationRestoreObject);
 
 		final Node args = graph.getArgs();
 		final Node bufPtr = con.newProj(args, Mode.getP(), 0);
@@ -639,7 +622,7 @@ public final class SerializationSupport {
 			final Node serialDataPtr = con.newProj(serialDataAlloc, Mode.getP(), Alloc.pnRes);
 
 			final Node restoreCall = con.newCall(mem, droSymc, new Node[] {bufPtr,  serialDataPtr},
-					deserializationRestoreObjectEntity.getType());
+					deserializationRestoreObject.getType());
 			mem = con.newProj(restoreCall, Mode.getM(), Call.pnM);
 
 			final Node load = con.newLoad(mem, serialDataPtr, Mode.getP());

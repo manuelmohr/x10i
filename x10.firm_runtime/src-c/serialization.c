@@ -39,11 +39,82 @@ void x10_destroy_serialization_buffer(serialization_buffer_t *buffer)
 	DEL_ARR_F(buffer->serialized_objects);
 }
 
-void x10_serialization_write_primitive(serialization_buffer_t *buf, const void *data, size_t nbytes)
+void x10_serialization_write_long(serialization_buffer_t *buf,
+                                  const x10_long *value_ptr)
 {
-	assert(nbytes > 0);
+	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+}
 
-	obstack_grow(buf->obst, data, nbytes);
+void x10_serialization_write_ulong(serialization_buffer_t *buf,
+                                   const x10_ulong *value_ptr)
+{
+	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+}
+
+void x10_serialization_write_int(serialization_buffer_t *buf,
+                                 const x10_int *value_ptr)
+{
+	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+}
+
+void x10_serialization_write_uint(serialization_buffer_t *buf,
+                                  const x10_uint *value_ptr)
+{
+	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+}
+
+void x10_serialization_write_short(serialization_buffer_t *buf,
+                                   const x10_short *value_ptr)
+{
+	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+}
+
+void x10_serialization_write_ushort(serialization_buffer_t *buf,
+                                    const x10_ushort *value_ptr)
+{
+	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+}
+
+void x10_serialization_write_byte(serialization_buffer_t *buf,
+                                  const x10_byte *value_ptr)
+{
+	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+}
+
+void x10_serialization_write_ubyte(serialization_buffer_t *buf,
+                                   const x10_ubyte *value_ptr)
+{
+	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+}
+
+void x10_serialization_write_boolean(serialization_buffer_t *buf,
+                                     const x10_boolean *value_ptr)
+{
+	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+}
+
+void x10_serialization_write_char(serialization_buffer_t *buf,
+                                  const x10_char *value_ptr)
+{
+	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+}
+
+void x10_serialization_write_float(serialization_buffer_t *buf,
+                                   const x10_float *value_ptr)
+{
+	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+}
+
+void x10_serialization_write_double(serialization_buffer_t *buf,
+                                    const x10_double *value_ptr)
+{
+	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+}
+
+void x10_serialization_write_pointer(serialization_buffer_t *buf,
+                                     const x10_pointer *value_ptr)
+{
+	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
 }
 
 static inline void put_u32(serialization_buffer_t *buf, uint32_t val)
@@ -88,7 +159,6 @@ void x10_serialize_to_obst(struct obstack *const obst,
 	x10_destroy_serialization_buffer(&buffer);
 }
 
-
 static inline uint32_t get_u32(deserialization_buffer_t *buf)
 {
 	uint8_t b1 = buf->data[buf->cursor++];
@@ -114,12 +184,95 @@ void x10_destroy_deserialization_buffer(deserialization_buffer_t *buffer)
 	DEL_ARR_F(buffer->deserialized_objects);
 }
 
-void x10_deserialization_restore_primitive(deserialization_buffer_t *buf, void *addr, size_t nbytes)
+void x10_deserialization_restore_long(deserialization_buffer_t *buf,
+                                      x10_long *addr)
 {
-	/* TODO: think about endianess conversions */
-	assert(buf->cursor + nbytes <= buf->length);
-	memcpy(addr, &buf->data[buf->cursor], nbytes);
-	buf->cursor += nbytes;
+	*addr = * ((x10_long*)&buf->data[buf->cursor]);
+	buf->cursor += sizeof(*addr);
+}
+
+void x10_deserialization_restore_ulong(deserialization_buffer_t *buf,
+                                       x10_ulong *addr)
+{
+	*addr = * ((x10_ulong*)&buf->data[buf->cursor]);
+	buf->cursor += sizeof(*addr);
+}
+
+void x10_deserialization_restore_int(deserialization_buffer_t *buf,
+                                     x10_int *addr)
+{
+	*addr = * ((x10_int*)&buf->data[buf->cursor]);
+	buf->cursor += sizeof(*addr);
+}
+
+void x10_deserialization_restore_uint(deserialization_buffer_t *buf,
+                                      x10_uint *addr)
+{
+	*addr = * ((x10_uint*)&buf->data[buf->cursor]);
+	buf->cursor += sizeof(*addr);
+}
+
+void x10_deserialization_restore_short(deserialization_buffer_t *buf,
+                                       x10_short *addr)
+{
+	*addr = * ((x10_short*)&buf->data[buf->cursor]);
+	buf->cursor += sizeof(*addr);
+}
+
+void x10_deserialization_restore_ushort(deserialization_buffer_t *buf,
+                                        x10_ushort *addr)
+{
+	*addr = * ((x10_ushort*)&buf->data[buf->cursor]);
+	buf->cursor += sizeof(*addr);
+}
+
+void x10_deserialization_restore_byte(deserialization_buffer_t *buf,
+                                      x10_byte *addr)
+{
+	*addr = * ((x10_byte*)&buf->data[buf->cursor]);
+	buf->cursor += sizeof(*addr);
+}
+
+void x10_deserialization_restore_ubyte(deserialization_buffer_t *buf,
+                                       x10_ubyte *addr)
+{
+	*addr = * ((x10_ubyte*)&buf->data[buf->cursor]);
+	buf->cursor += sizeof(*addr);
+}
+
+void x10_deserialization_restore_char(deserialization_buffer_t *buf,
+                                      x10_char *addr)
+{
+	*addr = * ((x10_char*)&buf->data[buf->cursor]);
+	buf->cursor += sizeof(*addr);
+}
+
+void x10_deserialization_restore_boolean(deserialization_buffer_t *buf,
+                                         x10_boolean *addr)
+{
+	*addr = * ((x10_boolean*)&buf->data[buf->cursor]);
+	buf->cursor += sizeof(*addr);
+}
+
+void x10_deserialization_restore_float(deserialization_buffer_t *buf,
+                                       x10_float *addr)
+{
+	*addr = * ((x10_float*)&buf->data[buf->cursor]);
+	buf->cursor += sizeof(*addr);
+}
+
+void x10_deserialization_restore_double(deserialization_buffer_t *buf,
+                                        x10_double *addr)
+{
+	*addr = * ((x10_double*)&buf->data[buf->cursor]);
+	buf->cursor += sizeof(*addr);
+}
+
+void x10_deserialization_restore_pointer(deserialization_buffer_t *buf,
+                                         x10_pointer *addr)
+{
+	*addr = * ((x10_pointer*)&buf->data[buf->cursor]);
+	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_object(deserialization_buffer_t *buf, x10_object **addr)

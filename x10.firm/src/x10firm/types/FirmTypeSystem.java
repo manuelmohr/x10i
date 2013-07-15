@@ -697,10 +697,31 @@ public class FirmTypeSystem {
 		return mode;
 	}
 
-	private void recordPrimitiveType(final polyglot.types.Type x10Type, final Type firmType, final String mangled) {
+	private void recordPrimitiveType(final String name, final polyglot.types.Type x10Type, final Type firmType, final String mangled) {
 		firmTypes.put(x10Type, firmType);
 		primitiveTypes.add(x10Type);
 		NameMangler.addPrimitiveMangling(x10Type, mangled);
+
+		final String serializationFuncName = "x10_serialization_write_" + name;
+		final firm.Type typeP = Mode.getP().getType();
+		final firm.Type pointerToFirm = new PointerType(firmType);
+		final firm.Type[] serializeArgTypes = new firm.Type[] {typeP, pointerToFirm};
+		final MethodType serializeType = new MethodType(serializeArgTypes, new Type[] {});
+		final ClassType global = Program.getGlobalType();
+		final Entity serialize = new Entity(global, serializationFuncName, serializeType);
+		serialize.setLdIdent(NameMangler.mangleKnownName(serializationFuncName));
+		OO.setEntityBinding(serialize, ddispatch_binding.bind_static);
+		OO.setMethodExcludeFromVTable(serialize, true);
+		serializationSupport.setKnownSerializationFunction(firmType, serialize);
+
+		final String deserializationFuncName = "x10_deserialization_restore_" + name;
+		final firm.Type[] deserializeArgTypes = new firm.Type[] {typeP, pointerToFirm};
+		final MethodType deserializeType = new MethodType(deserializeArgTypes, new Type[] {});
+		final Entity deserialize = new Entity(global, deserializationFuncName, deserializeType);
+		deserialize.setLdIdent(NameMangler.mangleKnownName(deserializationFuncName));
+		OO.setEntityBinding(deserialize, ddispatch_binding.bind_static);
+		OO.setMethodExcludeFromVTable(deserialize, true);
+		serializationSupport.setKnownDeserializationFunction(firmType, deserialize);
 	}
 
 	private void initIA32DataTypeAlignment(final Type type) {
@@ -732,56 +753,56 @@ public class FirmTypeSystem {
 		/* we "lower" some well-known types directly to firm modes */
 		final Mode modePointer = Mode.getP();
 		final Type typePointer = new PrimitiveType(modePointer);
-		recordPrimitiveType(typeSystem.pointer(), typePointer, "Pv");
+		recordPrimitiveType("pointer", typeSystem.pointer(), typePointer, "Pv");
 
 		final Mode modeLong = Mode.createIntMode("Long", Arithmetic.TwosComplement, 64, true, 64);
 		final Type typeLong = new PrimitiveType(modeLong);
 		initIA32DataTypeAlignment(typeLong);
-		recordPrimitiveType(x10TypeSystem.Long(), typeLong, "x");
+		recordPrimitiveType("long", x10TypeSystem.Long(), typeLong, "x");
 
 		final Mode modeULong = Mode.createIntMode("ULong", Arithmetic.TwosComplement, 64, false, 64);
 		final Type typeULong = new PrimitiveType(modeULong);
 		initIA32DataTypeAlignment(typeULong);
-		recordPrimitiveType(x10TypeSystem.ULong(), typeULong, "y");
+		recordPrimitiveType("ulong", x10TypeSystem.ULong(), typeULong, "y");
 
 		final Mode modeInt = Mode.createIntMode("Int", Arithmetic.TwosComplement, 32, true, 32);
 		final Type typeInt = new PrimitiveType(modeInt);
-		recordPrimitiveType(x10TypeSystem.Int(), typeInt, "i");
+		recordPrimitiveType("int", x10TypeSystem.Int(), typeInt, "i");
 
 		final Mode modeUInt = Mode.createIntMode("UInt", Arithmetic.TwosComplement, 32, false, 32);
 		final Type typeUInt = new PrimitiveType(modeUInt);
-		recordPrimitiveType(x10TypeSystem.UInt(), typeUInt, "j");
+		recordPrimitiveType("uint", x10TypeSystem.UInt(), typeUInt, "j");
 
 		final Mode modeShort = Mode.createIntMode("Short", Arithmetic.TwosComplement, 16, true, 32);
 		final Type typeShort = new PrimitiveType(modeShort);
-		recordPrimitiveType(x10TypeSystem.Short(), typeShort, "s");
+		recordPrimitiveType("short", x10TypeSystem.Short(), typeShort, "s");
 
 		final Mode modeUShort = Mode.createIntMode("UShort", Arithmetic.TwosComplement, 16, false, 32);
 		final Type typeUShort = new PrimitiveType(modeUShort);
-		recordPrimitiveType(x10TypeSystem.UShort(), typeUShort, "t");
+		recordPrimitiveType("ushort", x10TypeSystem.UShort(), typeUShort, "t");
 
 		final Mode modeByte = Mode.createIntMode("Byte", Arithmetic.TwosComplement, 8, true, 32);
 		final Type typeByte = new PrimitiveType(modeByte);
-		recordPrimitiveType(x10TypeSystem.Byte(), typeByte, "a");
+		recordPrimitiveType("byte", x10TypeSystem.Byte(), typeByte, "a");
 
 		final Mode modeUByte = Mode.createIntMode("UByte", Arithmetic.TwosComplement, 8, false, 32);
 		final Type typeUByte = new PrimitiveType(modeUByte);
-		recordPrimitiveType(x10TypeSystem.UByte(), typeUByte, "h");
+		recordPrimitiveType("ubyte", x10TypeSystem.UByte(), typeUByte, "h");
 
 		/* since octopos has no real support for unicode yet, and we have a somewhat hardware-centric
 		 * project we go for 8bit-chars for now. (You can still use UTF-8 strings after all) */
 		final Mode modeChar = modeByte;
 		final Type typeChar = new PrimitiveType(modeChar);
-		recordPrimitiveType(x10TypeSystem.Char(), typeChar, "c");
+		recordPrimitiveType("char", x10TypeSystem.Char(), typeChar, "c");
 
 		final Mode modeFloat = Mode.createFloatMode("Float", Arithmetic.IEE754, 8, 23);
 		final Type typeFloat = new PrimitiveType(modeFloat);
-		recordPrimitiveType(x10TypeSystem.Float(), typeFloat, "f");
+		recordPrimitiveType("float", x10TypeSystem.Float(), typeFloat, "f");
 
 		final Mode modeDouble = Mode.createFloatMode("Double", Arithmetic.IEE754, 11, 52);
 		final Type typeDouble = new PrimitiveType(modeDouble);
 		initIA32DataTypeAlignment(typeDouble);
-		recordPrimitiveType(x10TypeSystem.Double(), typeDouble, "d");
+		recordPrimitiveType("double", x10TypeSystem.Double(), typeDouble, "d");
 
 		/* Note that the mode_b in firm can't be used here, since it is an
 		 * internal mode which cannot be used for fields/call parameters/return
@@ -789,7 +810,7 @@ public class FirmTypeSystem {
 		 * conditional jumps. */
 		final Mode modeBoolean = Mode.getBu();
 		final Type typeBoolean = new PrimitiveType(modeBoolean);
-		recordPrimitiveType(x10TypeSystem.Boolean(), typeBoolean, "b");
+		recordPrimitiveType("boolean", x10TypeSystem.Boolean(), typeBoolean, "b");
 
 		/* do not fail for Null() types */
 		firmTypes.put(x10TypeSystem.Null(), typePointer);

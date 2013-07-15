@@ -395,13 +395,15 @@ x10_pointer x10_string_get_pointer(const x10_string *self)
 
 void x10_string_serialize(serialization_buffer_t *buf, const x10_string *self)
 {
-	x10_serialization_write_primitive(buf, &self->len, sizeof(x10_int));
-	x10_serialization_write_primitive(buf, self->chars, self->len * sizeof(x10_char));
+	x10_serialization_write_int(buf, &self->len);
+	obstack_grow(buf->obst, self->chars, self->len*sizeof(x10_char));
 }
 
 void x10_string_deserialize(deserialization_buffer_t *buf, x10_string *self)
 {
-	x10_deserialization_restore_primitive(buf, &self->len, sizeof(x10_int));
-	self->chars = allocate_chars(self->len);
-	x10_deserialization_restore_primitive(buf, (void *)self->chars, self->len * sizeof(x10_char));
+	x10_deserialization_restore_int(buf, &self->len);
+	x10_char *new_chars = allocate_chars(self->len);
+	memcpy(new_chars, &buf->data[buf->cursor], self->len*sizeof(x10_char));
+	buf->cursor += self->len*sizeof(x10_char);
+	self->chars = new_chars;
 }
