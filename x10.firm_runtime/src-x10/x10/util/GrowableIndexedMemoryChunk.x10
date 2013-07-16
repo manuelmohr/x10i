@@ -158,7 +158,9 @@ public final class GrowableIndexedMemoryChunk[T] {
     }
 
     public final def grow(var newCapacity:int):void {
-        var oldCapacity:int = capacity();
+        val oldCapacity = capacity();
+        if (newCapacity <= oldCapacity)
+            return;
         if (newCapacity < oldCapacity*2) {
             newCapacity = oldCapacity*2;
         }
