@@ -3,6 +3,7 @@
 #include "main.h"
 #include "places.h"
 #include "places_octopos.h"
+#include "serialization.h"
 
 #if __GNUC__ > 4 || (__GNUC__==4 && __GNUC_MINOR__>=7)
 #error Error: gcc-4.7 and above are not supported by octopos (yet?)
@@ -30,6 +31,7 @@ static void init_tile(void *signal, void *initialization_data)
 	places   = data->places;
 
 	x10_static_initializer();
+	x10_serialization_init();
 
 	simple_ilet notification_ilet;
 	simple_ilet_init(&notification_ilet, notify_initialization, signal);

@@ -15,21 +15,22 @@ x10_object *_ZN3x102io4File10NativeFile4listEPN3x104lang6StringE(const x10_strin
 {
 	char *cpath = cstring_from_x10_string(path);
 	DIR  *dir   = opendir(cpath);
-	free(cpath);
+	gc_free(cpath);
 	if (dir == NULL) {
 		return _ZN3x105array5Array15makeStringArrayEPvi((x10_pointer) NULL, 0);
 	}
 
-	x10_string   **filenames = NEW_ARR_F(x10_string*, 0);
+	flexible_array_t filenames;
+	memset(&filenames, 0, sizeof(filenames));
 	struct dirent *entry;
 	while ((entry = readdir(dir)) != NULL) {
 		x10_string *name = x10_string_from_cstring(entry->d_name);
-		ARR_APP1(x10_string*, filenames, name);
+		ARR_APPEND(x10_string*, &filenames, name);
 	}
 	closedir(dir);
 
-	const int   elems = ARR_LEN(filenames);
-	x10_object *list  = _ZN3x105array5Array15makeStringArrayEPvi((x10_pointer)filenames, elems);
+	const size_t n_filenames = ARR_LEN(x10_string*, &filenames);
+	x10_object *list  = _ZN3x105array5Array15makeStringArrayEPvi((x10_pointer)ARR_ARRAY(x10_string*, &filenames), (x10_int)n_filenames);
 
 	return list;
 }
@@ -49,7 +50,7 @@ x10_boolean _ZN3x102io4File10NativeFile7canReadEPN3x104lang6StringE(const x10_st
 {
 	char *str    = cstring_from_x10_string(path);
 	int   status = access(str, R_OK);
-	free(str);
+	gc_free(str);
 	return (x10_boolean)(status == 0);
 }
 
@@ -57,7 +58,7 @@ x10_boolean _ZN3x102io4File10NativeFile8canWriteEPN3x104lang6StringE(const x10_s
 {
 	char *str    = cstring_from_x10_string(path);
 	int   status = access(str, W_OK);
-	free(str);
+	gc_free(str);
 	return (x10_boolean)(status == 0);
 }
 
@@ -65,7 +66,7 @@ x10_boolean _ZN3x102io4File10NativeFile6existsEPN3x104lang6StringE(const x10_str
 {
 	char *str    = cstring_from_x10_string(path);
 	int   status = access(str, F_OK);
-	free(str);
+	gc_free(str);
 	return (x10_boolean)(status == 0);
 }
 
@@ -74,7 +75,7 @@ x10_boolean _ZN3x102io4File10NativeFile11isDirectoryEPN3x104lang6StringE(const x
 	struct stat info;
 	char *str    = cstring_from_x10_string(path);
 	int   status = stat(str, &info);
-	free(str);
+	gc_free(str);
 	return (x10_boolean)(status == 0 && S_ISDIR(info.st_mode));
 }
 
@@ -83,7 +84,7 @@ x10_boolean _ZN3x102io4File10NativeFile6isFileEPN3x104lang6StringE(const x10_str
 	struct stat info;
 	char *str    = cstring_from_x10_string(path);
 	int   status = stat(str, &info);
-	free(str);
+	gc_free(str);
 	return (x10_boolean)(status == 0 && S_ISREG(info.st_mode));
 }
 
@@ -92,7 +93,7 @@ x10_long _ZN3x102io4File10NativeFile12lastModifiedEPN3x104lang6StringE(const x10
 	struct stat info;
 	char *str    = cstring_from_x10_string(path);
 	int   status = stat(str, &info);
-	free(str);
+	gc_free(str);
 	return (x10_long)(status == 0 ? info.st_mtime : 0);
 }
 
@@ -101,7 +102,7 @@ x10_long _ZN3x102io4File10NativeFile6lengthEPN3x104lang6StringE(const x10_string
 	struct stat info;
 	char *str    = cstring_from_x10_string(path);
 	int   status = stat(str, &info);
-	free(str);
+	gc_free(str);
 	return (x10_long)(status == 0 ? info.st_size : 0);
 }
 
@@ -116,7 +117,7 @@ x10_boolean _ZN3x102io4File10NativeFile15setLastModifiedEPN3x104lang6StringEx(co
 	times.actime  = info.st_atime;
 	times.modtime = v;
 	status        = utime(str, &times);
-	free(str);
+	gc_free(str);
 	return (x10_boolean)(status == 0);
 }
 
@@ -124,7 +125,7 @@ x10_boolean _ZN3x102io4File10NativeFile6deleteEPN3x104lang6StringE(const x10_str
 {
 	char *str    = cstring_from_x10_string(path);
 	int   status = remove(str);
-	free(str);
+	gc_free(str);
 	return (x10_boolean)(status == 0);
 }
 
@@ -132,7 +133,7 @@ x10_boolean _ZN3x102io4File10NativeFile5mkdirEPN3x104lang6StringE(const x10_stri
 {
 	char *str    = cstring_from_x10_string(path);
 	int   status = mkdir(str, 0755);
-	free(str);
+	gc_free(str);
 	return (x10_boolean)(status == 0);
 }
 
@@ -141,7 +142,7 @@ x10_boolean _ZN3x102io4File10NativeFile8renameToEPN3x104lang6StringEPN3x104lang6
 	char *str    = cstring_from_x10_string(path);
 	char *dstr   = cstring_from_x10_string(dest);
 	int   status = rename(str, dstr);
-	free(str);
-	free(dstr);
+	gc_free(str);
+	gc_free(dstr);
 	return (x10_boolean)(status == 0);
 }

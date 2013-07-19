@@ -4,6 +4,7 @@
 #include "types.h"
 #include "x10_object.h"
 #include "obst.h"
+#include "adt/array.h"
 
 /**
  * @file
@@ -188,15 +189,15 @@
 typedef struct obstack obstack;
 struct serialization_buffer_t {
 	obstack           *obst;
-	const x10_object **serialized_objects;
+	flexible_array_t   serialized_objects;
 };
 typedef struct serialization_buffer_t serialization_buffer_t;
 
 struct deserialization_buffer_t {
-	const char        *data;
-	size_t             cursor;
-	size_t             length;
-	x10_object **deserialized_objects;
+	const char      *data;
+	size_t           cursor;
+	size_t           length;
+	flexible_array_t deserialized_objects;
 };
 typedef struct deserialization_buffer_t deserialization_buffer_t;
 

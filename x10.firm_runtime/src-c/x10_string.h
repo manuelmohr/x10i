@@ -28,8 +28,7 @@ x10_string *x10_string_from_cstring_len(size_t len, const char *string);
 #define X10_STRING_FROM_CLITERAL(literal)  x10_string_from_literal((x10_int)sizeof(literal)-1, literal)
 
 /** Create a null-terminated cstring from an X10 string.
- * Useful when interfacing with a C library. Remember to free() the returned
- * memory. */
+ * Useful when interfacing with a C library. */
 char *cstring_from_x10_string(const x10_string *str);
 
 #endif

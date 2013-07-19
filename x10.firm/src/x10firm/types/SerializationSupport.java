@@ -44,6 +44,8 @@ public final class SerializationSupport {
 
 	private int maxClassUid = 1;
 
+	private static final String GC_XMALLOC = "gc_xmalloc";
+
 	private static final String SERIALIZE_METHOD_NAME = "__serialize";
 	private static final String SERIALIZE_METHOD_SIGNATURE = "PvPv";
 	private MethodType serializeMethodType;
@@ -57,6 +59,7 @@ public final class SerializationSupport {
 
 	private Entity serializationWriteObject;
 	private Entity deserializationRestoreObject;
+	private Entity gc_xmalloc;
 
 	/** Store the serialization function for each (class) type. */
 	private final Map<Type, Entity> serializeFunctions = new HashMap<Type, Entity>();
@@ -96,6 +99,11 @@ public final class SerializationSupport {
 		final String droName = NameMangler.mangleKnownName("x10_deserialization_restore_object");
 		deserializationRestoreObject = new Entity(global, droName, droType);
 		deserializationRestoreObject.setLdIdent(droName);
+
+		final MethodType mallocType = new MethodType(new Type[] { Mode.getIs().getType() }, new Type[] { typeP });
+
+		gc_xmalloc = new Entity(global, GC_XMALLOC, mallocType);
+		gc_xmalloc.setLdIdent(NameMangler.mangleKnownName(GC_XMALLOC));
 	}
 
 	/**
@@ -480,20 +488,6 @@ public final class SerializationSupport {
 		}
 	}
 
-	private static MethodType getMallocMethodType() {
-		final MethodType mallocType = new MethodType(1, 1);
-		mallocType.setParamType(0, Mode.getIs().getType());
-		mallocType.setResType(0, Mode.getP().getType());
-		return mallocType;
-	}
-
-	private static Node getMallocSymConst(final Construction con) {
-		final String mallocName = NameMangler.mangleKnownName("malloc");
-		final ClassType global = Program.getGlobalType();
-		final Entity ent = new Entity(global, mallocName, getMallocMethodType());
-		return con.newSymConst(ent);
-	}
-
 	private void generateIndexedMemoryChunkDeserialize(final Construction con, final X10ClassType astType,
 	                                                   final ClassType klass, final Node bufPtr,
 	                                                   final Node objPtr, final FirmTypeSystem firmTypeSystem) {
@@ -529,9 +523,9 @@ public final class SerializationSupport {
 		final Type elementType = firmTypeSystem.asType(astType.typeArguments().get(0));
 		final Node elemSize = con.newSymConstTypeSize(elementType, Mode.getIs());
 		final Node mallocSize = con.newMul(length, elemSize, Mode.getIs());
-		final Node mallocSymConst = getMallocSymConst(con);
+		final Node mallocSymConst = con.newSymConst(gc_xmalloc);
 		final Node[] mallocArgs = new Node[] {mallocSize};
-		final Node mallocCall = con.newCall(con.getCurrentMem(), mallocSymConst, mallocArgs, getMallocMethodType());
+		final Node mallocCall = con.newCall(con.getCurrentMem(), mallocSymConst, mallocArgs, gc_xmalloc.getType());
 		con.setCurrentMem(con.newProj(mallocCall, Mode.getM(), Call.pnM));
 		final Node mallocResults = con.newProj(mallocCall, Mode.getT(), Call.pnTResult);
 		final Node newStorage = con.newProj(mallocResults, Mode.getP(), 0);
@@ -636,8 +630,7 @@ public final class SerializationSupport {
 
 			/* If we're dealing with a struct, the constructor does not take a hidden parameter (see above)
 			 * and returns the newly constructed struct by value.  We therefore have to copy the returned
-			 * value to the target destination.
-			 */
+			 * value to the target destination. */
 			if (isStruct) {
 				final Node results = con.newProj(ctorCall, Mode.getT(), Call.pnTResult);
 				final Mode resultMode = firmTypeSystem.getFirmMode(astType);

@@ -20,7 +20,7 @@ x10_inputstreamreader *_ZN3x102io4File14nativeOpenReadEPN3x104lang6StringE(const
 	char *zpath  = cstring_from_x10_string(path);
 	FILE *handle = fopen(zpath, "r");
 	assert(handle != NULL && "Failed to open file for reading");
-	free(zpath);
+	gc_free(zpath);
 	stream->in = handle;
 	return stream;
 }
@@ -32,7 +32,7 @@ x10_outputstreamwriter *_ZN3x102io4File15nativeOpenWriteEPN3x104lang6StringEb(co
 	char *zpath  = cstring_from_x10_string(path);
 	FILE *handle = fopen(zpath, append ? "a" : "w");
 	assert(handle != NULL && "Failed to open file for writing");
-	free(zpath);
+	gc_free(zpath);
 	stream->out = handle;
 	return stream;
 }

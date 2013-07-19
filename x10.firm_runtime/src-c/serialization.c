@@ -2,7 +2,8 @@
 #include <stdio.h>
 #include <assert.h>
 #include "serialization.h"
-#include "adt/array.h"
+#include "adt/pset_new.h"
+#include "xmalloc.h"
 
 #define X10_SERIALIZATION_NULL_TYPE_UID 0
 #define X10_SERIALIZATION_KNOWN_OBJECT_TYPE_UID ((uint32_t)-1)
@@ -13,14 +14,25 @@ struct deserialize_methods_entry_t {
 };
 typedef struct deserialize_methods_entry_t dm_entry_t;
 
+static pset_new_t uncollectable_refs;
+
 extern dm_entry_t __deserialize_methods[];
 extern serialize_method *__serialize_methods[];
 
-static inline int find_object(const x10_object **arr, const x10_object *key)
+void x10_serialization_init(void)
 {
-	int i;
-	for (i = ARR_LEN(arr)-1; i >= 0; i--) {
-		if (arr[i] == key)
+	pset_new_init(&uncollectable_refs);
+}
+
+static inline int find_object(serialization_buffer_t *buffer,
+                              const x10_object *key)
+{
+	x10_object const* const* objects
+		= ARR_ARRAY(const x10_object*, &buffer->serialized_objects);
+	for (size_t i = 0,
+	     n_objects = ARR_LEN(const x10_object*, &buffer->serialized_objects);
+		 i < n_objects; ++i) {
+		if (objects[i] == key)
 			return i;
 	}
 	return -1;
@@ -30,13 +42,12 @@ void x10_init_serialization_buffer(serialization_buffer_t *buffer,
                                    struct obstack *obst)
 {
 	memset(buffer, 0, sizeof(*buffer));
-	buffer->obst               = obst;
-	buffer->serialized_objects = NEW_ARR_F(const x10_object *, 0);
+	buffer->obst = obst;
 }
 
 void x10_destroy_serialization_buffer(serialization_buffer_t *buffer)
 {
-	DEL_ARR_F(buffer->serialized_objects);
+	ARR_FREE(&buffer->serialized_objects);
 }
 
 void x10_serialization_write_long(serialization_buffer_t *buf,
@@ -115,6 +126,11 @@ void x10_serialization_write_pointer(serialization_buffer_t *buf,
                                      const x10_pointer *value_ptr)
 {
 	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+	/* Currently our garbage collector is per-place only, as soon as pointers
+	 * get sent to other places (e.g. GlobalRef contains a pointer), we may have
+	 * reference at other places to our data. For now we simple remember the
+	 * address and avoid any future garbage collection of referenced objects */
+	pset_new_insert(&uncollectable_refs, (void*) *value_ptr);
 }
 
 static inline void put_u32(serialization_buffer_t *buf, uint32_t val)
@@ -134,14 +150,14 @@ void x10_serialization_write_object(serialization_buffer_t *const buf,
 		return;
 	}
 
-	int idx = find_object(buf->serialized_objects, objPtr);
+	int idx = find_object(buf, objPtr);
 	if (idx >= 0) {
 		put_u32(buf, X10_SERIALIZATION_KNOWN_OBJECT_TYPE_UID);
 		put_u32(buf, idx);
 		return;
 	}
 
-	ARR_APP1(const x10_object *, buf->serialized_objects, objPtr);
+	ARR_APPEND(const x10_object*, &buf->serialized_objects, objPtr);
 
 	uint32_t uid = objPtr->vptr->runtime_type_info->uid;
 	put_u32(buf, uid);
@@ -175,13 +191,12 @@ void x10_init_deserialization_buffer(deserialization_buffer_t *buffer,
 	buffer->data   = data;
 	buffer->cursor = 0;
 	buffer->length = size;
-	buffer->deserialized_objects = NEW_ARR_F(x10_object *, 0);
 }
 
 void x10_destroy_deserialization_buffer(deserialization_buffer_t *buffer)
 {
 	assert(buffer->cursor == buffer->length);
-	DEL_ARR_F(buffer->deserialized_objects);
+	ARR_FREE(&buffer->deserialized_objects);
 }
 
 void x10_deserialization_restore_long(deserialization_buffer_t *buf,
@@ -286,17 +301,20 @@ void x10_deserialization_restore_object(deserialization_buffer_t *buf, x10_objec
 
 	if (class_id == X10_SERIALIZATION_KNOWN_OBJECT_TYPE_UID) {
 		uint32_t object_num = get_u32(buf);
-		assert(ARR_LEN(buf->deserialized_objects) > object_num);
+		assert(object_num < ARR_LEN(x10_object*, &buf->deserialized_objects));
 
-		x10_object *result = buf->deserialized_objects[object_num];
+		x10_object **objects
+			= ARR_ARRAY(x10_object*, &buf->deserialized_objects);
+		x10_object *result = objects[object_num];
 		*addr = result;
 		return;
 	}
 
 	dm_entry_t *entry = &__deserialize_methods[class_id];
-	x10_object *newObj = calloc(1, entry->vtable->runtime_type_info->size);
+	x10_object *newObj
+		= (x10_object*)gc_xmalloc(entry->vtable->runtime_type_info->size);
 	newObj->vptr = entry->vtable;
-	ARR_APP1(x10_object *, buf->deserialized_objects, newObj);
+	ARR_APPEND(x10_object*, &buf->deserialized_objects, newObj);
 
 	entry->deserializer(buf, newObj);
 

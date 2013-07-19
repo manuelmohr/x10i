@@ -33,7 +33,7 @@ ifeq ($(TARGET), i686-invasic-octopos)
 	OCTOPOS_BASE=../octopos-app/releases/current/x86guest/multitile
 	GCC_INCLUDE:=$(shell $(CC) --print-file-name=include)
 	CFLAGS += -m32 -fno-stack-protector -mfpmath=sse -msse2
-	CPPFLAGS += -nostdinc -I $(GCC_INCLUDE) -I $(OCTOPOS_BASE)/include
+	CPPFLAGS += -nostdinc -I $(GCC_INCLUDE) -I $(OCTOPOS_BASE)/include -DNO_GARBAGE_COLLECTION
 	LFLAGS += -m32 -nostdlib -Wl,-T,$(OCTOPOS_BASE)/lib/sections.x $(OCTOPOS_BASE)/lib/liboctopos.a $(OCTOPOS_BASE)/lib/libcsubset.a
 	PLATFORM = octopos
 endif
@@ -42,11 +42,11 @@ ifeq ($(TARGET), sparc-invasic-octopos)
 	OCTOPOS_BASE=../octopos-app/releases/current/leon/4t-ml605
 	GCC_INCLUDE:=$(shell $(CC) --print-file-name=include)
 	CFLAGS += -fno-stack-protector
-	CPPFLAGS += -nostdinc -D__leon__ -I $(OCTOPOS_BASE)/include -isystem $(GCC_INCLUDE)
+	CPPFLAGS += -nostdinc -D__leon__ -I $(OCTOPOS_BASE)/include -isystem $(GCC_INCLUDE) -DNO_GARBAGE_COLLECTION
 	PLATFORM = octopos
 endif
 ifeq ($(findstring linux, $(TARGET)), linux)
-	CFLAGS += -D_XOPEN_SOURCE=500 -D_SVID_SOURCE
+	CFLAGS += -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -pthread
 endif
 
 CPARSER_BASE ?= ../cparser

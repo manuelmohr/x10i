@@ -28,9 +28,7 @@
 #include "obstack.h"
 #include "xmalloc.h"
 
-/** @cond PRIVATE */
-#define obstack_chunk_alloc xmalloc
-#define obstack_chunk_free  free
-/** @endcond */
+#define obstack_chunk_alloc gc_xmalloc
+#define obstack_chunk_free  gc_free
 
 #endif

@@ -7,12 +7,17 @@
 #include "main.h"
 #include "init.h"
 #include "places.h"
+#include "serialization.h"
+#include "xmalloc.h"
 
 int main(int argc, char **argv)
 {
+	gc_init();
+
 	init_ipc();
 	atexit(shutdown_ipc);
 
+	x10_serialization_init();
 	init_finish_state();
 
 	x10_static_initializer();

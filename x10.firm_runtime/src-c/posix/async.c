@@ -5,6 +5,7 @@
 #include "init.h"
 #include "remote_exec.h"
 #include "x10_runtime.h"
+#include "xmalloc.h"
 
 #define MAX_ACTIVITIES_PER_FINISH 64
 
@@ -87,7 +88,7 @@ void finish_state_set_current(finish_state_t *fs)
 void register_at_finish_state(finish_state_t *fs)
 {
 	if (pthread_mutex_lock(& fs->mutex))
-		panic("Could not lock mutex");
+		panic("Could not lock mutex (register_at)");
 
 	fs->number_of_activities++;
 
@@ -98,7 +99,7 @@ void register_at_finish_state(finish_state_t *fs)
 void unregister_from_finish_state(finish_state_t *fs)
 {
 	if (pthread_mutex_lock(& fs->mutex))
-		panic("Could not lock mutex");
+		panic("Could not lock mutex (unregister at)");
 
 	fs->number_of_activities--;
 	pthread_cond_signal(& fs->condition);
@@ -130,7 +131,7 @@ static void *execute(void *ptr)
 	async_closure  *ac   = (async_closure *) ptr;
 	finish_state_t *fs   = ac->enclosing;
 	x10_object     *body = ac->body;
-	free(ac);
+	gc_free(ac);
 	/* store enclosing finish state in thread-local data */
 	finish_state_set_current(fs);
 	/* Initialize atomic depth. */
@@ -164,7 +165,9 @@ static void *execute(void *ptr)
 void _ZN3x104lang7Runtime16finishBlockBeginEv(void)
 {
 	finish_state_t *enclosing = finish_state_get_current();
-	finish_state_t *nested    = XMALLOC(finish_state_t);
+	/* finish_state_t is put into TLS data, so mark is at uncollectable because
+	 * the current version of the boehm GC does not scan thread local storage */
+	finish_state_t *nested    = (finish_state_t*)GC_MALLOC_UNCOLLECTABLE(sizeof(finish_state_t));
 	finish_state_init(nested, enclosing);
 	finish_state_set_current(nested);
 }
@@ -192,7 +195,7 @@ void init_finish_state(void)
 void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object *body)
 {
 	finish_state_t *enclosing = finish_state_get_current();
-	async_closure  *ac        = XMALLOC(async_closure);
+	async_closure  *ac        = GC_XMALLOC(async_closure);
 	ac->body = body;
 	ac->enclosing = enclosing;
 
@@ -201,7 +204,7 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
 	pthread_t dummy;
-	if (pthread_create(&dummy, &async_pthread_attr, execute, ac))
+	if (GC_pthread_create(&dummy, &async_pthread_attr, execute, ac))
 		panic("Could not create thread");
 	register_at_finish_state(enclosing);
 }
@@ -210,7 +213,7 @@ void finish_state_wait(finish_state_t *state)
 {
 	/* wait for all child threads */
 	if (pthread_mutex_lock(&state->mutex))
-		panic("Could not lock mutex");
+		panic("Could not lock mutex (wait)");
 
 	while (state->number_of_activities > 0) {
 		if (pthread_cond_wait(&state->condition, & state->mutex))
@@ -230,7 +233,7 @@ void _ZN3x104lang7Runtime14finishBlockEndEv(void)
 	/* clear the finish state */
 	finish_state_t *parent = enclosing->parent;
 	finish_state_destroy(enclosing);
-	free(enclosing);
+	gc_free(enclosing);
 	/* restore enclosing finish state */
 	finish_state_set_current(parent);
 }

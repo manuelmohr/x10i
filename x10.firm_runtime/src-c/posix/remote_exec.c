@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <sys/prctl.h>
 #include <fcntl.h>
+#include "xmalloc.h"
 #include "remote_exec.h"
 #include "init.h"
 #include "serialization.h"
@@ -119,7 +120,7 @@ static void *start_message_handler(void *arg)
 {
 	message_t *message = (message_t*)arg;
 	message->base.handler(message);
-	free(message);
+	gc_free(message);
 	return NULL;
 }
 
@@ -133,7 +134,7 @@ static bool can_handle_synchronously(const message_t *message)
 
 static bool receive_single_message(void)
 {
-	message_t *message = malloc(sizeof(*message));
+	message_t *message = GC_XMALLOC(message_t);
 again:;
 	ssize_t sz = mq_receive(my_queue, (char*)message, sizeof(*message), NULL);
 	if (sz < 0) {
@@ -152,10 +153,10 @@ again:;
 
 	if (can_handle_synchronously(message)) {
 		message->base.handler(message);
-		free(message);
+		gc_free(message);
 	} else {
 		pthread_t dummy;
-		int res = pthread_create(&dummy, &detached_pthread_attr,
+		int res = GC_pthread_create(&dummy, &detached_pthread_attr,
 		                         start_message_handler, message);
 		if (res != 0) {
 			perror("Couldn't create message handling thread");
@@ -315,7 +316,7 @@ static void create_queue_name(char *buf, size_t buf_size, unsigned place)
 
 static void init_shared_memory(void)
 {
-	shm_addrs = XMALLOCN(void*, n_places);
+	shm_addrs = GC_XMALLOCN(void*, n_places);
 	for (unsigned i = 0; i < n_places; ++i) {
 		void *addr = mmap(NULL, SHM_SIZE, PROT_READ|PROT_WRITE,
 		                  MAP_SHARED|MAP_ANONYMOUS, 0, 0);
@@ -359,7 +360,7 @@ static void unlink_queues(void)
 
 static void init_message_queues(void)
 {
-	queues = XMALLOCNZ(mqd_t, n_places);
+	queues = GC_XMALLOCNZ(mqd_t, n_places);
 
 	/* open message queues for each place */
 	for (unsigned i = 0; i < n_places; ++i) {
@@ -376,8 +377,8 @@ static void init_message_queues(void)
 	pthread_mutex_init(&send_mutex, NULL);
 	pthread_mutex_init(&mq_send_mutex, NULL);
 
-	int res = pthread_create(&message_receive_thread, &detached_pthread_attr,
-							 message_receive_loop, NULL);
+	int res = GC_pthread_create(&message_receive_thread, &detached_pthread_attr,
+	                            message_receive_loop, NULL);
 	if (res != 0) {
 		perror("Couldn't create message handling thread");
 		abort();

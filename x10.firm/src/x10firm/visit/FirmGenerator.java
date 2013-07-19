@@ -168,6 +168,7 @@ import firm.MethodType;
 import firm.Mode;
 import firm.Mode.Arithmetic;
 import firm.OO;
+import firm.PointerType;
 import firm.Program;
 import firm.Relation;
 import firm.SwitchTable;
@@ -193,7 +194,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	private static final String X10_EXCEPTION_UNWIND   = "x10_exception_unwind";
 	private static final String X10_ASSERT             = "x10_assert";
 	private static final String X10_STATIC_INITIALIZER = "x10_static_initializer";
-	private static final String X10_MALLOC             = "malloc";
+	private static final String GC_MALLOC              = "GC_malloc";
+	private static final String GC_MALLOC_ATOMIC       = "GC_malloc_atomic";
 	private static final Charset UTF8 = Charset.forName("UTF8");
 	private static final int EXCEPTION_VARNUM = 0;
 	/** variable number of first parameter in the firm construction object. */
@@ -201,7 +203,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	private Entity assertEntity;
 	private Entity exceptionUnwindEntity;
-	private Entity mallocEntity;
+	private Entity gcMallocEntity;
+	private Entity gcMallocAtomicEntity;
 	private firm.Type sizeTType;
 
 	private final Builtins builtins = new Builtins();
@@ -254,6 +257,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	}
 
 	private void initKnownRuntimeEntities() {
+		ClassType global = Program.getGlobalType();
+
 		final Type stringType = typeSystem.getTypeSystem().String();
 		final firm.Type[] assertParameterTypes = new firm.Type[] {
 			firmTypeSystem.asType(typeSystem.getTypeSystem().Boolean()),
@@ -263,7 +268,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final firm.Type[] assertResultTypes = new firm.Type[] {};
 		final MethodType assertType = new firm.MethodType(assertParameterTypes, assertResultTypes);
 		final String assertName = NameMangler.mangleKnownName(X10_ASSERT);
-		assertEntity = new Entity(Program.getGlobalType(), assertName, assertType);
+		assertEntity = new Entity(global, assertName, assertType);
 
 		final firm.Type checkedThrowableType = firmTypeSystem.asType(typeSystem.getTypeSystem().CheckedThrowable());
 		final firm.Type[] unwindParameterTypes = new firm.Type[] {
@@ -273,7 +278,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final MethodType unwindType = new firm.MethodType(unwindParameterTypes, unwindResultTypes);
 		unwindType.addAdditionalProperties(mtp_additional_properties.mtp_property_noreturn);
 		final String unwindName = NameMangler.mangleKnownName(X10_EXCEPTION_UNWIND);
-		exceptionUnwindEntity = new Entity(Program.getGlobalType(), unwindName, unwindType);
+		exceptionUnwindEntity = new Entity(global, unwindName, unwindType);
 
 		sizeTType = Mode.createIntMode("size_t", Arithmetic.TwosComplement, Mode.getP().getSizeBits(),
 				false, Mode.getP().getModuloShift()).getType();
@@ -284,8 +289,11 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			Mode.getP().getType(),
 		};
 		final MethodType mallocType = new firm.MethodType(mallocParamTypes, mallocResultTypes);
-		final String mallocName = NameMangler.mangleKnownName(X10_MALLOC);
-		mallocEntity = new Entity(Program.getGlobalType(), mallocName, mallocType);
+		final String gcMallocName = NameMangler.mangleKnownName(GC_MALLOC);
+		gcMallocEntity = new Entity(global, gcMallocName, mallocType);
+
+		final String gcMallocAtomicName = NameMangler.mangleKnownName(GC_MALLOC_ATOMIC);
+		gcMallocAtomicEntity = new Entity(global, gcMallocAtomicName, mallocType);
 	}
 
 	/** Set info about whether we are currently compiling a command line job or not. */
@@ -1715,10 +1723,10 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		return res;
 	}
 
-	private Node genMallocCall(final Node size) {
+	private Node genMallocCall(final Entity mallocEnt, final Node size) {
 		final Node mem = con.getCurrentMem();
-		final Node malloc = con.newSymConst(mallocEntity);
-		final Node call = con.newCall(mem, malloc, new Node[] {size}, mallocEntity.getType());
+		final Node malloc = con.newSymConst(mallocEnt);
+		final Node call = con.newCall(mem, malloc, new Node[] {size}, gcMallocEntity.getType());
 		final Node callRes = con.newProj(call, Mode.getT(), Call.pnTResult);
 		final Node resultPtr = con.newProj(callRes, Mode.getP(), 0);
 		final Node callMem = con.newProj(call, Mode.getM(), Call.pnM);
@@ -1741,7 +1749,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	private Node genObjectHeapAlloc(final Type x10Type) {
 		final ClassType firmType = firmTypeSystem.asClass(x10Type, true);
 		final Node size = con.newSymConstTypeSize(firmType, Mode.getIu());
-		final Node objPtr = genMallocCall(size);
+		final Node objPtr = genMallocCall(gcMallocEntity, size);
 		initVPtr(objPtr, firmType);
 		return objPtr;
 	}
@@ -2784,7 +2792,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node count = con.newConst(size, sizeMode);
 		final Node elSize = con.newSymConstTypeSize(firmType, sizeMode);
 		final Node byteSize = con.newMul(count, elSize, sizeMode);
-		final Node baseAddr = genMallocCall(byteSize);
+		final Entity malloc = firmType instanceof PointerType ? gcMallocEntity : gcMallocAtomicEntity;
+		final Node baseAddr = genMallocCall(malloc, byteSize);
 
 		/* construct elements */
 		if (isConstantTuple(n)) {

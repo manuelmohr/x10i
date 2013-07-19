@@ -194,6 +194,7 @@ public class Linked extends AbstractGoal_c {
 		} else {
 			cmd.add("-lm");
 			cmd.add("-lrt");
+			cmd.add("-lgc");
 			cmd.add("-pthread");
 		}
 

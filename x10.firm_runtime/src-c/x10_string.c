@@ -15,7 +15,7 @@ static void check_string_bounds(const x10_string *str, x10_int idx)
 
 static x10_char *allocate_chars(x10_int len)
 {
-	return XMALLOCN(x10_char, len);
+	return gc_xmalloc_atomic(len*sizeof(x10_char));
 }
 
 x10_string *x10_string_from_literal(x10_int len, const x10_char *chars)
@@ -47,7 +47,7 @@ x10_string *x10_string_from_cstring(const char *string)
 
 char *cstring_from_x10_string(const x10_string *str)
 {
-	char *cstr = xmalloc(str->len + 1);
+	char *cstr = (char*)gc_xmalloc_atomic((str->len+1)*sizeof(cstr[0]));
 	memcpy(cstr, str->chars, str->len);
 	cstr[str->len] = '\0';
 	return cstr;
