@@ -194,8 +194,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	private static final String X10_EXCEPTION_UNWIND   = "x10_exception_unwind";
 	private static final String X10_ASSERT             = "x10_assert";
 	private static final String X10_STATIC_INITIALIZER = "x10_static_initializer";
-	private static final String GC_MALLOC              = "GC_malloc";
-	private static final String GC_MALLOC_ATOMIC       = "GC_malloc_atomic";
+	private static final String GC_MALLOC              = "gc_xmalloc";
+	private static final String GC_MALLOC_ATOMIC       = "gc_xmalloc_atomic";
 	private static final Charset UTF8 = Charset.forName("UTF8");
 	private static final int EXCEPTION_VARNUM = 0;
 	/** variable number of first parameter in the firm construction object. */
