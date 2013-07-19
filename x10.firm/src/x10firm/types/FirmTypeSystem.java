@@ -697,7 +697,8 @@ public class FirmTypeSystem {
 		return mode;
 	}
 
-	private void recordPrimitiveType(final String name, final polyglot.types.Type x10Type, final Type firmType, final String mangled) {
+	private void recordPrimitiveType(final String name, final polyglot.types.Type x10Type,
+			final Type firmType, final String mangled) {
 		firmTypes.put(x10Type, firmType);
 		primitiveTypes.add(x10Type);
 		NameMangler.addPrimitiveMangling(x10Type, mangled);

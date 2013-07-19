@@ -59,7 +59,7 @@ public final class SerializationSupport {
 
 	private Entity serializationWriteObject;
 	private Entity deserializationRestoreObject;
-	private Entity gc_xmalloc;
+	private Entity gcXMalloc;
 
 	/** Store the serialization function for each (class) type. */
 	private final Map<Type, Entity> serializeFunctions = new HashMap<Type, Entity>();
@@ -100,10 +100,10 @@ public final class SerializationSupport {
 		deserializationRestoreObject = new Entity(global, droName, droType);
 		deserializationRestoreObject.setLdIdent(droName);
 
-		final MethodType mallocType = new MethodType(new Type[] { Mode.getIs().getType() }, new Type[] { typeP });
+		final MethodType mallocType = new MethodType(new Type[] {Mode.getIs().getType()}, new Type[] {typeP});
 
-		gc_xmalloc = new Entity(global, GC_XMALLOC, mallocType);
-		gc_xmalloc.setLdIdent(NameMangler.mangleKnownName(GC_XMALLOC));
+		gcXMalloc = new Entity(global, GC_XMALLOC, mallocType);
+		gcXMalloc.setLdIdent(NameMangler.mangleKnownName(GC_XMALLOC));
 	}
 
 	/**
@@ -523,9 +523,9 @@ public final class SerializationSupport {
 		final Type elementType = firmTypeSystem.asType(astType.typeArguments().get(0));
 		final Node elemSize = con.newSymConstTypeSize(elementType, Mode.getIs());
 		final Node mallocSize = con.newMul(length, elemSize, Mode.getIs());
-		final Node mallocSymConst = con.newSymConst(gc_xmalloc);
+		final Node mallocSymConst = con.newSymConst(gcXMalloc);
 		final Node[] mallocArgs = new Node[] {mallocSize};
-		final Node mallocCall = con.newCall(con.getCurrentMem(), mallocSymConst, mallocArgs, gc_xmalloc.getType());
+		final Node mallocCall = con.newCall(con.getCurrentMem(), mallocSymConst, mallocArgs, gcXMalloc.getType());
 		con.setCurrentMem(con.newProj(mallocCall, Mode.getM(), Call.pnM));
 		final Node mallocResults = con.newProj(mallocCall, Mode.getT(), Call.pnTResult);
 		final Node newStorage = con.newProj(mallocResults, Mode.getP(), 0);

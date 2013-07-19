@@ -257,7 +257,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	}
 
 	private void initKnownRuntimeEntities() {
-		ClassType global = Program.getGlobalType();
+		final ClassType global = Program.getGlobalType();
 
 		final Type stringType = typeSystem.getTypeSystem().String();
 		final firm.Type[] assertParameterTypes = new firm.Type[] {
