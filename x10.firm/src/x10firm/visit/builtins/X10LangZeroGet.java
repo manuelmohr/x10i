@@ -43,7 +43,7 @@ class X10LangZeroGet implements BuiltinMethodGenerator {
 	private static MethodType memsetType;
 	private static Mode sizeTMode;
 
-	/** Constructs X10LagnZeroGet instance. */
+	/** Constructs X10LangZeroGet instance. */
 	public X10LangZeroGet() {
 		sizeTMode = getSizeTMode();
 		memsetType = getMemsetMethodType();
