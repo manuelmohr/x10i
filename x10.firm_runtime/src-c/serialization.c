@@ -202,91 +202,91 @@ void x10_destroy_deserialization_buffer(deserialization_buffer_t *buffer)
 void x10_deserialization_restore_long(deserialization_buffer_t *buf,
                                       x10_long *addr)
 {
-	*addr = * ((x10_long*)&buf->data[buf->cursor]);
+	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_ulong(deserialization_buffer_t *buf,
                                        x10_ulong *addr)
 {
-	*addr = * ((x10_ulong*)&buf->data[buf->cursor]);
+	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_int(deserialization_buffer_t *buf,
                                      x10_int *addr)
 {
-	*addr = * ((x10_int*)&buf->data[buf->cursor]);
+	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_uint(deserialization_buffer_t *buf,
                                       x10_uint *addr)
 {
-	*addr = * ((x10_uint*)&buf->data[buf->cursor]);
+	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_short(deserialization_buffer_t *buf,
                                        x10_short *addr)
 {
-	*addr = * ((x10_short*)&buf->data[buf->cursor]);
+	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_ushort(deserialization_buffer_t *buf,
                                         x10_ushort *addr)
 {
-	*addr = * ((x10_ushort*)&buf->data[buf->cursor]);
+	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_byte(deserialization_buffer_t *buf,
                                       x10_byte *addr)
 {
-	*addr = * ((x10_byte*)&buf->data[buf->cursor]);
+	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_ubyte(deserialization_buffer_t *buf,
                                        x10_ubyte *addr)
 {
-	*addr = * ((x10_ubyte*)&buf->data[buf->cursor]);
+	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_char(deserialization_buffer_t *buf,
                                       x10_char *addr)
 {
-	*addr = * ((x10_char*)&buf->data[buf->cursor]);
+	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_boolean(deserialization_buffer_t *buf,
                                          x10_boolean *addr)
 {
-	*addr = * ((x10_boolean*)&buf->data[buf->cursor]);
+	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_float(deserialization_buffer_t *buf,
                                        x10_float *addr)
 {
-	*addr = * ((x10_float*)&buf->data[buf->cursor]);
+	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_double(deserialization_buffer_t *buf,
                                         x10_double *addr)
 {
-	*addr = * ((x10_double*)&buf->data[buf->cursor]);
+	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_pointer(deserialization_buffer_t *buf,
                                          x10_pointer *addr)
 {
-	*addr = * ((x10_pointer*)&buf->data[buf->cursor]);
+	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
 	buf->cursor += sizeof(*addr);
 }
 
