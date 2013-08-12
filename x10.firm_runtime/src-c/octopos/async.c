@@ -101,7 +101,7 @@ unsigned activity_get_atomic_depth(void)
 	return ilocal->atomic_depth;
 }
 
-static void activity_set_atomic_depth(unsigned depth)
+void activity_set_atomic_depth(unsigned depth)
 {
 	ilocal_data_t *ilocal = get_ilocal_data();
 	ilocal->atomic_depth = depth;

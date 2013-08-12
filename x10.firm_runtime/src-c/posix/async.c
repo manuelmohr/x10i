@@ -113,6 +113,11 @@ unsigned activity_get_atomic_depth(void)
 	return (unsigned) pthread_getspecific(activity_atomic_depth);
 }
 
+void activity_set_atomic_depth(unsigned depth)
+{
+	pthread_setspecific(activity_atomic_depth, (void*)depth);
+}
+
 void activity_inc_atomic_depth(void)
 {
 	const unsigned new_depth = activity_get_atomic_depth() + 1;

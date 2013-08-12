@@ -14,6 +14,9 @@ void finish_state_wait(finish_state_t *state);
 
 /** Returns the number of active atomic blocks for the current activity. */
 unsigned activity_get_atomic_depth(void);
+/** Sets the number of active atomic blocks for the current activity.
+ * Use only for initialization and use inc/dec anywhere else. */
+void activity_set_atomic_depth(unsigned depth);
 /** Increment the number of active atomic blocks for the current activity. */
 void activity_inc_atomic_depth(void);
 /** Decrement the number of active atomic blocks for the current activity. */

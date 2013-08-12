@@ -92,8 +92,9 @@ void main_ilet(claim_t claim)
 	finish_state_t fs;
 	fs.claim = claim;
 
-	/* initialize main i-let's finish state */
+	/* initialize main i-let's finish state and atomic depth. */
 	finish_state_set_current(&fs);
+	activity_set_atomic_depth(0);
 
 	/* begin main i-let's finish block */
 	_ZN3x104lang7Runtime16finishBlockBeginEv();
