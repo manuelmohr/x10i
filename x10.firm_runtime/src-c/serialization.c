@@ -126,9 +126,9 @@ void x10_serialization_write_pointer(serialization_buffer_t *buf,
                                      const x10_pointer *value_ptr)
 {
 	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
-	/* Currently our garbage collector is per-place only, as soon as pointers
+	/* Currently our garbage collector is per-place only. As soon as pointers
 	 * get sent to other places (e.g. GlobalRef contains a pointer), we may have
-	 * reference at other places to our data. For now we simple remember the
+	 * references on other places to our data. For now, we simply remember the
 	 * address and avoid any future garbage collection of referenced objects */
 	pset_new_insert(&uncollectable_refs, (void*) *value_ptr);
 }
