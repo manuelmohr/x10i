@@ -5,9 +5,6 @@
 #include "places_octopos.h"
 #include "serialization.h"
 
-#if __GNUC__ > 4 || (__GNUC__==4 && __GNUC_MINOR__>=7)
-#error Error: gcc-4.7 and above are not supported by octopos (yet?)
-#endif
 
 unsigned       n_places;
 proxy_claim_t *places;
