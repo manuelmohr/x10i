@@ -7,7 +7,7 @@ import polyglot.main.UsageError;
 
 /**
  * A "machine-triple" is a triple describing a target or host machine
- * of a compiler. It is composed from cpu, manufacturer and operating-system
+ * of a compiler. It is composed from cpu, manufacturer and operating system.
  */
 public final class MachineTriple {
 	private final String cpu;
@@ -18,7 +18,7 @@ public final class MachineTriple {
 	 *
 	 * @param triple A triple string such as "i686-apple-darwin", "sparc-unknown-linux-gnu"
 	 * and the common "i686-linux-gnu" (which is misleading because linux-gnu is the
-	 * operatingsystem part)
+	 * operating system part).
 	 */
 	public MachineTriple(final String triple) throws UsageError {
 		final Pattern pattern = Pattern.compile("([^-]+)-([^-]+)-(.+)");
@@ -32,7 +32,7 @@ public final class MachineTriple {
 		String newManufacturer = matcher.group(g++);
 		String newOperatingSystem = matcher.group(g++);
 
-		/** some people leave out the manifacturere, in combination with
+		/** some people leave out the manufacturer, in combination with
 		 * the "linux-gnu" operating system the parser gets confused and
 		 * needs a special case here */
 		if (newManufacturer.contains("linux")) {
