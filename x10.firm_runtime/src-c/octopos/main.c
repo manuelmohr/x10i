@@ -5,89 +5,124 @@
 #include "places_octopos.h"
 #include "serialization.h"
 
+unsigned          n_places;
+dispatch_claim_t *places;
 
-unsigned       n_places;
-proxy_claim_t *places;
+static simple_signal initialization_signal;
 
-struct initialization_data {
-	unsigned       n_places;
-	proxy_claim_t *places;
-};
-typedef struct initialization_data initialization_data_t;
-
-static void notify_initialization(void *signal)
+static void ilet_notify_initialization(void *arg)
 {
-	simple_signal_signal((simple_signal *)signal);
+	(void)arg;
+	simple_signal_signal(&initialization_signal);
 }
 
 /** initialization code that is run once on each tile before it is used. */
-static void init_tile(void *signal, void *initialization_data)
+static void init_tile()
 {
-	initialization_data_t *data = (initialization_data_t *)initialization_data;
-	n_places = data->n_places;
-	places   = data->places;
-
 	x10_static_initializer();
 	x10_serialization_init();
+}
+
+static void ilet_init_tile(void *arg)
+{
+	(void)arg;
+	init_tile();
 
 	simple_ilet notification_ilet;
-	simple_ilet_init(&notification_ilet, notify_initialization, signal);
+	simple_ilet_init(&notification_ilet, ilet_notify_initialization, NULL);
 	dispatch_claim_send_reply(&notification_ilet);
 }
 
-void main_ilet(claim_t claim)
+static void ilet_transfer_places(void *arg_remote_place_id, void *remote_places)
+{
+	const unsigned   remote_place_id = (unsigned)arg_remote_place_id;
+	dispatch_claim_t remote_claim   = places[remote_place_id];
+	buf_size_t       size           = n_places * sizeof(*places);
+
+	simple_ilet init_ilet;
+	simple_ilet_init(&init_ilet, ilet_init_tile, NULL);
+	dispatch_claim_push_dma(remote_claim, places, remote_places, size, NULL, &init_ilet);
+}
+
+static void ilet_allocate_places(void *arg_place_id, void *arg_n_places)
+{
+	const unsigned place_id = (unsigned)arg_place_id;
+	n_places = (unsigned)arg_n_places;
+	places   = mem_allocate(MEM_TLM_LOCAL, n_places * sizeof(*places));
+
+	simple_ilet transfer_ilet;
+	dual_ilet_init(&transfer_ilet, ilet_transfer_places, arg_place_id, get_global_address(places));
+	dispatch_claim_send_reply(&transfer_ilet);
+}
+
+/* Start value when trying to acquire more PEs. */
+#define START_NUM_PES 4
+
+void main_ilet(claim_t root_claim)
 {
 	/* We want to use uart redirection through grmon -u */
 	leon_set_uart_debug_mode(1);
 
-	n_places = get_tile_count();
-	places   = mem_allocate(MEM_TLM_GLOBAL, n_places * sizeof(*places));
+	const unsigned n_tiles      = get_tile_count();
+	const unsigned root_tile_id = (unsigned)get_tile_id();
+	const unsigned io_tile_id   = get_io_tile_id();
 
-	unsigned n_invaded_places = 0;
+	/* Workaround, SPARC OctoPOS currently returns 0 for get_io_tile_id(). */
+	if (root_tile_id == io_tile_id || io_tile_id >= n_tiles) {
+		n_places = n_tiles;
+	} else {
+		n_places = n_tiles - 1;
+	}
+	const unsigned n_other_places = n_places - 1;
 
-	/*
-	 * Get as many CPUs as possible.
-	 * Remove this once invading is exposed as an API call to the user.
-	 */
-	for (unsigned tile_id = 0; tile_id < n_places; tile_id++) {
-		uint32_t        num = 4;
-		invade_future_t fut;
+	places = mem_allocate(MEM_TLM_LOCAL, n_places * sizeof(*places));
+	memset(places, 0, n_places * sizeof(*places));
 
-		/* Skip I/O tile. */
-		if (tile_id == get_io_tile_id())
+	/* Get as many CPUs as possible on local tile.
+	 * Remove this once invading is exposed as an API call to the user. */
+	unsigned place_id = 0;
+	{
+		uint32_t num = START_NUM_PES;
+		while (num > 0 && invade_simple(root_claim, num) == -1)
+			--num;
+		assert(num > 0 && "Could not get additional PEs on root tile");
+		places[place_id++] = get_own_dispatch_claim();
+	}
+
+	/* Get as many CPUs as possible on all other tiles. */
+	for (unsigned tile_id = 0; tile_id < n_tiles; ++tile_id) {
+		/* Skip root and I/O tiles. */
+		if (tile_id == root_tile_id || tile_id == io_tile_id)
 			continue;
 
-		proxy_claim_t claim;
+		uint32_t        num = START_NUM_PES;
+		proxy_claim_t   claim = NULL;
+		invade_future_t fut;
 		while (num > 0 && (proxy_invade(tile_id, &fut, num) != 0 || (claim = invade_future_force(&fut)) == 0))
 			--num;
+		assert(claim != NULL && "Could not invade tile");
 
-		assert(num > 0 && "Could not invade tile");
+		places[place_id++] = proxy_get_dispatch_info(claim);
+	}
+	assert(place_id == n_places);
 
-		places[n_invaded_places++] = claim;
+	/* Distribute places array and initialize all non-initial places. */
+	simple_signal_init(&initialization_signal, n_other_places);
+	for (place_id = 1; place_id < n_places; ++place_id) {
+		dispatch_claim_t dispatch_claim  = places[place_id];
+		simple_ilet      start_init_ilet;
+		dual_ilet_init(&start_init_ilet, ilet_allocate_places, (void*)place_id, (void*)n_places);
+		dispatch_claim_infect(dispatch_claim, &start_init_ilet, 1);
 	}
 
-	initialization_data_t *initialization_data = mem_allocate(MEM_TLM_GLOBAL, sizeof(*initialization_data));
-	initialization_data->n_places = n_invaded_places;
-	initialization_data->places   = places;
+	/* Initialize initial place. */
+	init_tile();
 
-	simple_signal initialization_signal;
-	simple_signal_init(&initialization_signal, n_invaded_places);
-
-	/* Initialize tiles. */
-	for (unsigned tile_id = 0; tile_id < n_invaded_places; tile_id++) {
-		simple_ilet   initialization_ilet;
-		proxy_claim_t proxy_claim         = places[tile_id];
-		dual_ilet_init(&initialization_ilet, init_tile, &initialization_signal,
-		               initialization_data);
-		proxy_infect(proxy_claim, &initialization_ilet, 1);
-	}
-
-	/* Wait until all tile are initialized. */
+	/* Wait until all places are initialized. */
 	simple_signal_wait(&initialization_signal);
-	mem_free(initialization_data);
 
 	finish_state_t fs;
-	fs.claim = claim;
+	fs.claim = root_claim;
 
 	/* initialize main i-let's finish state and atomic depth. */
 	finish_state_set_current(&fs);
@@ -103,6 +138,7 @@ void main_ilet(claim_t claim)
 	_ZN3x104lang7Runtime14finishBlockEndEv();
 	finish_state_destroy(&fs);
 
+	mem_free(places);
 	guest_shutdown();
 #ifdef __sparc__
 	/* stop grmon. (older octoposses did not do this in guest_shotdown()) */

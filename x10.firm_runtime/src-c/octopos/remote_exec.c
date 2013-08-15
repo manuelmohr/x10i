@@ -99,14 +99,14 @@
  */
 
 struct source_local_data {
-	simple_signal  *join_signal;
-	finish_state_t *finish_state;
-	x10_int         message_type;
-	void           *obstack;
-	x10_object     *return_value;
-	void           *send_buffer;
-	buf_size_t      buffer_size;
-	proxy_claim_t   proxy_claim;
+	simple_signal   *join_signal;
+	finish_state_t  *finish_state;
+	x10_int          message_type;
+	void            *obstack;
+	x10_object      *return_value;
+	void            *send_buffer;
+	buf_size_t       buffer_size;
+	dispatch_claim_t dispatch_claim;
 };
 typedef struct source_local_data source_local_data_t;
 
@@ -322,7 +322,7 @@ static void transfer_parameters(void *source_data, void *destination_buffer)
 	void                *obstack           = source_local_data->obstack;
 	void                *send_buffer       = source_local_data->send_buffer;
 	buf_size_t           buffer_size       = source_local_data->buffer_size;
-	proxy_claim_t        proxy_claim       = source_local_data->proxy_claim;
+	dispatch_claim_t     dispatch_claim    = source_local_data->dispatch_claim;
 
 	assert(buffer_size > 0);
 
@@ -379,14 +379,14 @@ x10_object *x10_execute_at(x10_int place_id, x10_int msg_type, x10_object *closu
 	simple_signal_init(&join_signal, 1);
 
 	assert(place_id >= 0 && (unsigned)place_id < n_places);
-	proxy_claim_t destination_claim = places[place_id];
+	dispatch_claim_t destination_claim = places[place_id];
 
-	source_local_data.proxy_claim = destination_claim;
+	source_local_data.dispatch_claim = destination_claim;
 
 	/* Create destination i-let for memory allocation. */
 	simple_ilet allocation_ilet;
 	dual_ilet_init(&allocation_ilet, allocate_destination_memory, (void*)&source_local_data, (void*)source_local_data.buffer_size);
-	proxy_infect(destination_claim, &allocation_ilet, 1);
+	dispatch_claim_infect(destination_claim, &allocation_ilet, 1);
 
 	/* Register at current finish state to recognize global termination of the at. */
 	register_at_finish_state(finish_state);

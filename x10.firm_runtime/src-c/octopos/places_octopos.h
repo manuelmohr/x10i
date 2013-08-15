@@ -4,6 +4,6 @@
 
 #include <octopos.h>
 
-extern proxy_claim_t *places;
+extern dispatch_claim_t *places;
 
 #endif

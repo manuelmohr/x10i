@@ -148,8 +148,6 @@ public class Linked extends AbstractGoal_c {
 				cmd.add("-mcpu=v8");
 				cmd.add("-L" + octoposPrefix() + "lib");
 				cmd.add("-nostdlib");
-				// Must be first object
-				cmd.add(octoposPrefix() + "lib/traptable.S.o");
 			} else {
 				cmd.add("-L" + octoposPrefix() + "lib");
 				cmd.add("-nostdlib");
@@ -196,6 +194,8 @@ public class Linked extends AbstractGoal_c {
 			cmd.add("-lgcc");
 			cmd.add(queryGccPath("crtend.o"));
 			cmd.add(queryGccPath("crtn.o"));
+			if (cpu.equals("sparc"))
+				cmd.add("-lotail");
 		} else {
 			cmd.add("-lm");
 			cmd.add("-lrt");
