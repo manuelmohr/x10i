@@ -13,6 +13,7 @@ public final class MachineTriple {
 	private final String cpu;
 	private final String manufacturer;
 	private final String operatingSystem;
+	private final String osVariant;
 
 	/** Constructs a target triple from a triple string.
 	 *
@@ -31,6 +32,7 @@ public final class MachineTriple {
 		cpu = matcher.group(g++);
 		String newManufacturer = matcher.group(g++);
 		String newOperatingSystem = matcher.group(g++);
+		String newOSVariant = null;
 
 		/** some people leave out the manufacturer, in combination with
 		 * the "linux-gnu" operating system the parser gets confused and
@@ -38,9 +40,18 @@ public final class MachineTriple {
 		if (newManufacturer.contains("linux")) {
 			newOperatingSystem = newManufacturer + "-" + newOperatingSystem;
 			newManufacturer = "unknown";
+		} else if (newOperatingSystem.contains("octopos")) {
+			/* Support OctoPOS variants. */
+			final int index = newOperatingSystem.indexOf('-');
+			if (index != -1) {
+				newOSVariant = newOperatingSystem.substring(index + 1);
+				newOperatingSystem = newOperatingSystem.substring(0, index);
+			}
 		}
-		this.manufacturer = newManufacturer;
-		this.operatingSystem = newOperatingSystem;
+
+		manufacturer = newManufacturer;
+		operatingSystem = newOperatingSystem;
+		osVariant = newOSVariant;
 	}
 
 	/** Get CPU string. */
@@ -58,6 +69,11 @@ public final class MachineTriple {
 	/** Returns operating system part of the target triple. */
 	public String getOS() {
 		return operatingSystem;
+	}
+
+	/** Returns operating system variant. */
+	public String getOSVariant() {
+		return osVariant;
 	}
 
 	/** Returns manufacturer part of the target triple. */

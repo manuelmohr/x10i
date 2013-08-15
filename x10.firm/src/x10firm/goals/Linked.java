@@ -102,14 +102,19 @@ public class Linked extends AbstractGoal_c {
 		if (target.getCpu().equals("sparc")) {
 			result += "leon/";
 			// Choose OctoPOS variant
-			if (options.useSoftFloat()) {
-				result += "softfloat/";
+			if (target.getOSVariant() == null) {
+				result += "default/";
 			} else {
-				result += "4t-ml605/";
+				result += target.getOSVariant() + "/";
 			}
 		} else if (target.getCpu().equals("i686")) {
-			// Always use 'multitile' variant
-			result += "x86guest/multitile/";
+			result += "x86guest/";
+			// Choose OctoPOS variant
+			if (target.getOSVariant() == null) {
+				result += "multitile/"; // Use 'multitile' variant as default
+			} else {
+				result += target.getOSVariant() + "/";
+			}
 		} else {
 			throw new RuntimeException("only sparc/i686 support for octopos");
 		}
