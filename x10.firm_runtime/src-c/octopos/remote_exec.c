@@ -164,7 +164,8 @@ static void free_obstack(void *obstack)
 static void run_at_statement(void *arg, void *source_finish_state)
 {
 	/* Deserialize object. */
-	destination_dma_data_t   *destination_dma_data   = (destination_dma_data_t *)((char *)arg - offsetof(destination_dma_data_t, receive_buffer));
+	char                     *buf                    = get_local_address(arg);
+	destination_dma_data_t   *destination_dma_data   = (destination_dma_data_t *)(buf - offsetof(destination_dma_data_t, receive_buffer));
 	destination_local_data_t *destination_local_data = destination_dma_data->destination_local_data;
 	x10_object               *closure                = x10_deserialize_from(destination_dma_data->receive_buffer, destination_local_data->buffer_size);
 	dispatch_claim_t          source_claim           = destination_local_data->source_dispatch_claim;
@@ -231,11 +232,12 @@ static void wait_for_global_termination(void *destination_data)
 /* Receives the result of the at expression. */
 static void receive_result(void *source_buffer, void *source_data)
 {
-	source_dma_data_t   *source_dma_data   = (source_dma_data_t *)((char *)source_buffer - offsetof(source_dma_data_t, receive_buffer));
+	char                *buf               = get_local_address(source_buffer);
+	source_dma_data_t   *source_dma_data   = (source_dma_data_t *)(buf - offsetof(source_dma_data_t, receive_buffer));
 	buf_size_t           buffer_size       = source_dma_data->buffer_size;
 	source_local_data_t *source_local_data = (source_local_data_t *)source_data;
 
-	source_local_data->return_value = x10_deserialize_from(source_buffer, buffer_size);
+	source_local_data->return_value = x10_deserialize_from(buf, buffer_size);
 
 	/* Free source's DMA data. */
 	mem_free(source_dma_data);
@@ -265,13 +267,12 @@ static void transfer_result(void *destination_data, void *source_buffer)
 /* Allocates the receive buffer in the source memory. */
 static void allocate_source_memory(void *destination_local_data, void *buffer_size)
 {
-	source_dma_data_t *source_dma_data = mem_allocate(MEM_TLM_GLOBAL, sizeof(*source_dma_data) + (buf_size_t)buffer_size);
+	source_dma_data_t *source_dma_data = mem_allocate(MEM_TLM_LOCAL, sizeof(*source_dma_data) + (buf_size_t)buffer_size);
 	void              *source_buffer   = &source_dma_data->receive_buffer;
 	simple_ilet        dma_ilet;
-
 	source_dma_data->buffer_size = (buf_size_t)buffer_size;
 
-	dual_ilet_init(&dma_ilet, transfer_result, destination_local_data, source_buffer);
+	dual_ilet_init(&dma_ilet, transfer_result, destination_local_data, get_global_address(source_buffer));
 	dispatch_claim_send_reply(&dma_ilet);
 }
 
@@ -279,7 +280,8 @@ static void allocate_source_memory(void *destination_local_data, void *buffer_si
 static void evaluate_at_expression(void *arg, void *source_finish_state)
 {
 	/* Deserialize object. */
-	destination_dma_data_t   *destination_dma_data   = (destination_dma_data_t *)((char *)arg - offsetof(destination_dma_data_t, receive_buffer));
+	char                     *buf                    = get_local_address(arg);
+	destination_dma_data_t   *destination_dma_data   = (destination_dma_data_t *)(buf - offsetof(destination_dma_data_t, receive_buffer));
 	destination_local_data_t *destination_local_data = destination_dma_data->destination_local_data;
 	x10_object               *closure                = x10_deserialize_from(destination_dma_data->receive_buffer, destination_local_data->buffer_size);
 
@@ -305,7 +307,7 @@ static void evaluate_at_expression(void *arg, void *source_finish_state)
 	destination_local_data->buffer_size         = obstack_object_size(obst);
 	destination_local_data->finish_state        = fs;
 	destination_local_data->obstack             = obst;
-	destination_local_data->send_buffer         = get_global_address(obstack_finish(obst));
+	destination_local_data->send_buffer         = obstack_finish(obst);
 	destination_local_data->source_finish_state = source_finish_state;
 
 	/* Create source i-let for memory allocation. */
@@ -338,14 +340,14 @@ static void transfer_parameters(void *source_data, void *destination_buffer)
 		assert(message_type == MSG_RUN_AT);
 		dual_ilet_init(&remote, run_at_statement, destination_buffer, finish_state);
 	}
-	proxy_push_dma(proxy_claim, send_buffer, destination_buffer, buffer_size, &local, &remote);
+	dispatch_claim_push_dma(dispatch_claim, send_buffer, destination_buffer, buffer_size, &local, &remote);
 }
 
 /* Allocates the receive buffer in the destination memory. */
 static void allocate_destination_memory(void *source_local_data, void *buffer_size)
 {
 	destination_local_data_t *destination_local_data = mem_allocate(MEM_TLM_LOCAL, sizeof(*destination_local_data));
-	destination_dma_data_t   *destination_dma_data   = mem_allocate(MEM_TLM_GLOBAL, sizeof(*destination_dma_data) + (buf_size_t)buffer_size);
+	destination_dma_data_t   *destination_dma_data   = mem_allocate(MEM_TLM_LOCAL, sizeof(*destination_dma_data) + (buf_size_t)buffer_size);
 	simple_ilet               dma_ilet;
 
 	destination_local_data->buffer_size           = (buf_size_t)buffer_size;
@@ -353,7 +355,8 @@ static void allocate_destination_memory(void *source_local_data, void *buffer_si
 	destination_local_data->source_local_data     = source_local_data;
 	destination_dma_data->destination_local_data  = destination_local_data;
 
-	dual_ilet_init(&dma_ilet, transfer_parameters, source_local_data, &destination_dma_data->receive_buffer);
+	void *global_receive_buffer = get_global_address(&destination_dma_data->receive_buffer);
+	dual_ilet_init(&dma_ilet, transfer_parameters, source_local_data, global_receive_buffer);
 	dispatch_claim_send_reply(&dma_ilet);
 }
 
@@ -376,7 +379,7 @@ x10_object *x10_execute_at(x10_int place_id, x10_int msg_type, x10_object *closu
 	source_local_data.buffer_size  = obstack_object_size(obst);
 	source_local_data.obstack      = obst;
 	source_local_data.return_value = NULL;
-	source_local_data.send_buffer  = get_global_address(obstack_finish(obst));
+	source_local_data.send_buffer  = obstack_finish(obst);
 
 	simple_signal_init(&join_signal, 1);
 
