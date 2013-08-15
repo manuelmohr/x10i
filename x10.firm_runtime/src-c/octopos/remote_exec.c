@@ -180,6 +180,7 @@ static void run_at_statement(void *arg, void *source_finish_state)
 	simple_signal_init(&fs.signal, 0);
 	finish_state_set_current(&fs);
 	register_at_finish_state(&fs);
+	activity_set_atomic_depth(0);
 
 	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(closure);
 
@@ -291,6 +292,7 @@ static void evaluate_at_expression(void *arg, void *source_finish_state)
 	simple_signal_init(&fs->signal, 0);
 	finish_state_set_current(fs);
 	register_at_finish_state(fs);
+	activity_set_atomic_depth(0);
 
 	x10_object *return_value = _ZN3x104lang7Runtime14callAnyClosureEPN3x104lang8$Fun_0_0IPN3x104lang3AnyEEE(closure);
 
