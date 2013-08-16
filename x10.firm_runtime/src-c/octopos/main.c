@@ -44,7 +44,6 @@ static void ilet_transfer_places(void *arg_remote_place_id, void *remote_places)
 
 static void ilet_allocate_places(void *arg_place_id, void *arg_n_places)
 {
-	const unsigned place_id = (unsigned)arg_place_id;
 	n_places = (unsigned)arg_n_places;
 	places   = mem_allocate(MEM_TLM_LOCAL, n_places * sizeof(*places));
 
