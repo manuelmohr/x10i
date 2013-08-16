@@ -137,8 +137,4 @@ void main_ilet(claim_t root_claim)
 
 	mem_free(places);
 	guest_shutdown();
-#ifdef __sparc__
-	/* stop grmon. (older octoposses did not do this in guest_shotdown()) */
-	__asm__("mov 1, %g1; ta 0;\n");
-#endif
 }
