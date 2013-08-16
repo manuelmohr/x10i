@@ -10,10 +10,9 @@ dispatch_claim_t *places;
 
 static simple_signal initialization_signal;
 
-static void ilet_notify_initialization(void *arg)
+static void ilet_notify(void *arg)
 {
-	(void)arg;
-	simple_signal_signal(&initialization_signal);
+	simple_signal_signal((simple_signal*)arg);
 }
 
 /** initialization code that is run once on each tile before it is used. */
@@ -23,13 +22,12 @@ static void init_tile()
 	x10_serialization_init();
 }
 
-static void ilet_init_tile(void *arg)
+static void ilet_init_tile(void *init_signal)
 {
-	(void)arg;
 	init_tile();
 
 	simple_ilet notification_ilet;
-	simple_ilet_init(&notification_ilet, ilet_notify_initialization, NULL);
+	simple_ilet_init(&notification_ilet, ilet_notify, init_signal);
 	dispatch_claim_send_reply(&notification_ilet);
 }
 
@@ -40,7 +38,7 @@ static void ilet_transfer_places(void *arg_remote_place_id, void *remote_places)
 	buf_size_t       size           = n_places * sizeof(*places);
 
 	simple_ilet init_ilet;
-	simple_ilet_init(&init_ilet, ilet_init_tile, NULL);
+	simple_ilet_init(&init_ilet, ilet_init_tile, &initialization_signal);
 	dispatch_claim_push_dma(remote_claim, places, remote_places, size, NULL, &init_ilet);
 }
 
