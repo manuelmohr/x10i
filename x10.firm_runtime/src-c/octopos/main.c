@@ -31,6 +31,19 @@ static void ilet_init_tile(void *init_signal)
 	dispatch_claim_send_reply(&notification_ilet);
 }
 
+/** shutdown code that is run on each tile before exiting. */
+static void shutdown_tile()
+{
+	mem_free(places);
+	guest_shutdown();
+}
+
+static void ilet_shutdown_tile(void *arg)
+{
+	(void)arg;
+	shutdown_tile();
+}
+
 static void ilet_transfer_places(void *arg_remote_place_id, void *remote_places)
 {
 	const unsigned   remote_place_id = (unsigned)arg_remote_place_id;
@@ -135,6 +148,14 @@ void main_ilet(claim_t root_claim)
 	_ZN3x104lang7Runtime14finishBlockEndEv();
 	finish_state_destroy(&fs);
 
-	mem_free(places);
-	guest_shutdown();
+	/* Shutdown all other tiles. */
+	for (place_id = 1; place_id < n_places; ++place_id) {
+		dispatch_claim_t dispatch_claim = places[place_id];
+		simple_ilet      shutdown_ilet;
+		simple_ilet_init(&shutdown_ilet, ilet_shutdown_tile, NULL);
+		dispatch_claim_infect(dispatch_claim, &shutdown_ilet, 1);
+	}
+
+	/* Shutdown root tile. */
+	shutdown_tile();
 }
