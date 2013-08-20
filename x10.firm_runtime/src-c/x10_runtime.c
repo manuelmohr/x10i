@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "remote_exec.h"
+#include "places.h"
 
 void __attribute__((weak)) _ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(x10_object *closure)
 {
@@ -25,4 +26,10 @@ void _ZN3x104lang7Runtime15runAtOtherPlaceEiPN3x104lang3AnyE(x10_int place_id, x
 x10_object *_ZN3x104lang7Runtime16evalAtOtherPlaceEiPN3x104lang3AnyE(x10_int place_id, x10_object *closure)
 {
 	return x10_execute_at(place_id, MSG_EVAL_AT, closure);
+}
+
+// x10.lang.Runtime.getHere() : Int
+x10_int _ZN3x104lang7Runtime9getHereIdEv()
+{
+	return (x10_int)place_id;
 }

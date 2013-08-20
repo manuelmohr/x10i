@@ -23,12 +23,6 @@ static pid_t              master_pid;
 static pthread_attr_t     detached_pthread_attr;
 static pthread_t          message_receive_thread;
 
-/* maximum of 4 places by default */
-unsigned n_places = 4;
-
-/* current place */
-unsigned place_id;
-
 typedef union message_t message_t;
 typedef void (*message_handler)(const message_t *message);
 
@@ -421,6 +415,8 @@ void init_ipc(void)
 {
 	master_pid = getpid();
 
+	/* maximum of 4 places by default */
+	n_places = 4;
 	char *nplaces = getenv("X10_NPLACES");
 	if (nplaces != NULL) {
 		int nplaces_int = atoi(nplaces);

@@ -5,7 +5,6 @@
 #include "places_octopos.h"
 #include "serialization.h"
 
-unsigned          n_places;
 dispatch_claim_t *places;
 
 static simple_signal initialization_signal;
@@ -57,6 +56,7 @@ static void ilet_transfer_places(void *arg_remote_place_id, void *remote_places)
 
 static void ilet_allocate_places(void *arg_place_id, void *arg_n_places)
 {
+	place_id = (unsigned)arg_place_id;
 	n_places = (unsigned)arg_n_places;
 	places   = mem_allocate(MEM_TLM_LOCAL, n_places * sizeof(*places));
 
@@ -74,7 +74,7 @@ void main_ilet(claim_t root_claim)
 	leon_set_uart_debug_mode(1);
 
 	const unsigned n_tiles      = get_tile_count();
-	const unsigned root_tile_id = (unsigned)get_tile_id();
+	const unsigned root_tile_id = get_tile_id();
 	const unsigned io_tile_id   = get_io_tile_id();
 
 	/* Workaround, SPARC OctoPOS currently returns 0 for get_io_tile_id(). */
@@ -90,38 +90,37 @@ void main_ilet(claim_t root_claim)
 
 	/* Get as many CPUs as possible on local tile.
 	 * Remove this once invading is exposed as an API call to the user. */
-	unsigned place_id = 0;
-	{
-		uint32_t num = START_NUM_PES;
-		while (num > 0 && invade_simple(root_claim, num) == -1)
-			--num;
-		assert(num > 0 && "Could not get additional PEs on root tile");
-		places[place_id++] = get_own_dispatch_claim();
-	}
+	place_id = 0; /* Set root place's id. */
+	uint32_t num = START_NUM_PES;
+	while (num > 0 && invade_simple(root_claim, num) == -1)
+		--num;
+	assert(num > 0 && "Could not get additional PEs on root tile");
+	places[0] = get_own_dispatch_claim();
 
 	/* Get as many CPUs as possible on all other tiles. */
+	unsigned pid = 1;
 	for (unsigned tile_id = 0; tile_id < n_tiles; ++tile_id) {
 		/* Skip root and I/O tiles. */
 		if (tile_id == root_tile_id || tile_id == io_tile_id)
 			continue;
 
-		uint32_t        num = START_NUM_PES;
 		proxy_claim_t   claim = NULL;
 		invade_future_t fut;
+		num = START_NUM_PES;
 		while (num > 0 && (proxy_invade(tile_id, &fut, num) != 0 || (claim = invade_future_force(&fut)) == 0))
 			--num;
 		assert(claim != NULL && "Could not invade tile");
 
-		places[place_id++] = proxy_get_dispatch_info(claim);
+		places[pid++] = proxy_get_dispatch_info(claim);
 	}
-	assert(place_id == n_places);
+	assert(pid == n_places);
 
 	/* Distribute places array and initialize all non-initial places. */
 	simple_signal_init(&initialization_signal, n_other_places);
-	for (place_id = 1; place_id < n_places; ++place_id) {
-		dispatch_claim_t dispatch_claim  = places[place_id];
+	for (pid = 1; pid < n_places; ++pid) {
+		dispatch_claim_t dispatch_claim  = places[pid];
 		simple_ilet      start_init_ilet;
-		dual_ilet_init(&start_init_ilet, ilet_allocate_places, (void*)place_id, (void*)n_places);
+		dual_ilet_init(&start_init_ilet, ilet_allocate_places, (void*)pid, (void*)n_places);
 		dispatch_claim_infect(dispatch_claim, &start_init_ilet, 1);
 	}
 
@@ -149,8 +148,8 @@ void main_ilet(claim_t root_claim)
 	finish_state_destroy(&fs);
 
 	/* Shutdown all other tiles. */
-	for (place_id = 1; place_id < n_places; ++place_id) {
-		dispatch_claim_t dispatch_claim = places[place_id];
+	for (pid = 1; pid < n_places; ++pid) {
+		dispatch_claim_t dispatch_claim = places[pid];
 		simple_ilet      shutdown_ilet;
 		simple_ilet_init(&shutdown_ilet, ilet_shutdown_tile, NULL);
 		dispatch_claim_infect(dispatch_claim, &shutdown_ilet, 1);

@@ -11,6 +11,4 @@ void shutdown_ipc(void);
 
 extern int exit_code;
 
-extern unsigned place_id;
-
 #endif
