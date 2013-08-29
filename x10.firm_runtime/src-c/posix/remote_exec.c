@@ -13,15 +13,15 @@
 
 #define SHM_SIZE  (8*1024*1024)
 
-static mqd_t             *queues;
-static mqd_t              my_queue;
-static void             **shm_addrs;
-static pthread_mutex_t    send_mutex;
-static pthread_mutex_t    mq_send_mutex;
-static volatile bool      idle_running = true;
-static pid_t              master_pid;
-static pthread_attr_t     detached_pthread_attr;
-static pthread_t          message_receive_thread;
+static mqd_t                *queues;
+static mqd_t                 my_queue;
+static void                **shm_addrs;
+static pthread_mutex_t       send_mutex;
+static pthread_mutex_t       mq_send_mutex;
+static volatile sig_atomic_t idle_running = 1;
+static pid_t                 master_pid;
+static pthread_attr_t        detached_pthread_attr;
+static pthread_t             message_receive_thread;
 
 typedef union message_t message_t;
 typedef void (*message_handler)(const message_t *message);
@@ -84,7 +84,7 @@ static void sigchld_handler(int signum)
 static void sighup_handler(int signum)
 {
 	(void)signum;
-	idle_running = false;
+	idle_running = 0;
 }
 
 static void send_msg(const message_t *const msg, unsigned const place)
@@ -474,7 +474,7 @@ void shutdown_ipc(void)
 
 void x10_idle(void)
 {
-	while (idle_running) {
+	while (idle_running != 0) {
 		pause();
 	}
 }
