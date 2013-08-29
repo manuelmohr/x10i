@@ -37,8 +37,10 @@ typedef struct dma_message_t {
 } dma_message_t;
 
 typedef struct completion_simple_message_t {
-	message_base_t  base;
-	pthread_cond_t *return_cond;
+	message_base_t   base;
+	pthread_cond_t  *return_cond;
+	bool            *return_flag;
+	pthread_mutex_t *return_lock;
 } completion_simple_message_t;
 
 typedef struct completion_finish_message_t {
@@ -61,17 +63,21 @@ union message_t {
 };
 
 typedef struct remote_exec_header_t {
-	unsigned        from_place;
-	x10_int         msg_type;
-	pthread_cond_t *return_cond;
-	x10_object    **return_value_pointer;
-	finish_state_t *finish_state;
+	unsigned          from_place;
+	x10_int           msg_type;
+	pthread_cond_t   *return_cond;
+	bool             *return_flag;
+	pthread_mutex_t  *return_lock;
+	x10_object      **return_value_pointer;
+	finish_state_t   *finish_state;
 } remote_exec_header_t;
 
 typedef struct completion_header_t {
-	unsigned        from_place;
-	pthread_cond_t *return_cond;
-	x10_object    **return_value_pointer;
+	unsigned          from_place;
+	pthread_cond_t   *return_cond;
+	bool             *return_flag;
+	pthread_mutex_t  *return_lock;
+	x10_object      **return_value_pointer;
 } completion_header_t;
 
 static void sigchld_handler(int signum)
@@ -203,7 +209,10 @@ static void handle_completion_simple(const message_t *message)
 {
 	const completion_simple_message_t *const completion
 		= &message->completion_simple;
+	pthread_mutex_lock(completion->return_lock);
+	*completion->return_flag = true;
 	pthread_cond_signal(completion->return_cond);
+	pthread_mutex_unlock(completion->return_lock);
 }
 
 static void handle_completion_finish(const message_t *message)
@@ -232,7 +241,10 @@ static void handle_completion(const message_t *message)
 	send_msg(&msg, header->from_place);
 
 	/* wake up execute_at */
+	pthread_mutex_lock(header->return_lock);
+	*header->return_flag = true;
 	pthread_cond_signal(header->return_cond);
+	pthread_mutex_unlock(header->return_lock);
 }
 
 static void handle_remote_exec(const message_t *message)
@@ -267,6 +279,8 @@ static void handle_remote_exec(const message_t *message)
 		completion_simple_message_t *completion = &msg.completion_simple;
 		completion->base.handler = handle_completion_simple;
 		completion->return_cond  = header.return_cond;
+		completion->return_flag  = header.return_flag;
+		completion->return_lock  = header.return_lock;
 		send_msg(&msg, header.from_place);
 	} else {
 		assert(header.msg_type == MSG_EVAL_AT);
@@ -277,6 +291,8 @@ static void handle_remote_exec(const message_t *message)
 		completion_header_t completion_header;
 		completion_header.from_place           = place_id;
 		completion_header.return_cond          = header.return_cond;
+		completion_header.return_flag          = header.return_flag;
+		completion_header.return_lock          = header.return_lock;
 		completion_header.return_value_pointer = header.return_value_pointer;
 		obstack_grow(&obst, &completion_header, sizeof(completion_header));
 
@@ -493,8 +509,9 @@ x10_object *x10_execute_at(x10_int remote_place, x10_int msg_type,
 
 	assert(msg_type == MSG_RUN_AT || msg_type == MSG_EVAL_AT);
 
-	pthread_mutex_t condlock     = PTHREAD_MUTEX_INITIALIZER;
+	pthread_mutex_t return_lock  = PTHREAD_MUTEX_INITIALIZER;
 	pthread_cond_t  return_cond  = PTHREAD_COND_INITIALIZER;
+	bool            return_flag  = false;
 	x10_object     *return_value = NULL;
 
 	finish_state_t *finish_state = finish_state_get_current();
@@ -507,6 +524,8 @@ x10_object *x10_execute_at(x10_int remote_place, x10_int msg_type,
 	header.from_place           = place_id;
 	header.msg_type             = msg_type;
 	header.return_cond          = &return_cond;
+	header.return_flag          = &return_flag;
+	header.return_lock          = &return_lock;
 	header.return_value_pointer = &return_value;
 	header.finish_state         = finish_state;
 	obstack_grow(&obst, &header, sizeof(header));
@@ -516,15 +535,17 @@ x10_object *x10_execute_at(x10_int remote_place, x10_int msg_type,
 	size_t data_size = obstack_object_size(&obst);
 	char  *data      = obstack_finish(&obst);
 
+	pthread_mutex_lock(&return_lock);
 	/* send a message to the other place to trigger the execution */
 	send_msg_dma(remote_id, handle_remote_exec, data, data_size);
 	obstack_free(&obst, NULL);
 
-	pthread_mutex_lock(&condlock);
-	pthread_cond_wait(&return_cond, &condlock);
+	while (!return_flag) {
+		pthread_cond_wait(&return_cond, &return_lock);
+	}
+	pthread_mutex_unlock(&return_lock);
 
-	pthread_mutex_unlock(&condlock);
-	pthread_mutex_destroy(&condlock);
+	pthread_mutex_destroy(&return_lock);
 	pthread_cond_destroy(&return_cond);
 
 	return return_value;
