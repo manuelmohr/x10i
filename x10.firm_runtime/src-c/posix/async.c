@@ -208,10 +208,10 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
+	register_at_finish_state(enclosing);
 	pthread_t dummy;
 	if (GC_pthread_create(&dummy, &async_pthread_attr, execute, ac))
 		panic("Could not create thread");
-	register_at_finish_state(enclosing);
 }
 
 void finish_state_wait(finish_state_t *state)
