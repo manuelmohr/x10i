@@ -182,14 +182,15 @@ static void send_msg_dma(unsigned const place, message_handler const handler,
 		fprintf(stderr, "x10 runtime: message size too big (maximum allowed is %u)\n", SHM_SIZE);
 		abort();
 	}
-	dma_message_t message;
-	memset(&message, 0, sizeof(message));
-	message.base.handler = handler;
-	message.data         = dest;
-	message.data_size    = data_size;
+	message_t msg;
+	memset(&msg, 0, sizeof(msg));
+	dma_message_t *dma   = &msg.dma;
+	dma->base.handler    = handler;
+	dma->data            = dest;
+	dma->data_size       = data_size;
 
 	/* send a message to the other place to trigger the execution */
-	send_msg((const message_t*)&message, place);
+	send_msg(&msg, place);
 }
 
 static void handle_deserialization_complete(const message_t *message)
@@ -224,10 +225,11 @@ static void handle_completion(const message_t *message)
 	*(header->return_value_pointer) = return_value;
 
 	/* notify caller that we don't need the send buffer anymore */
-	message_base_t deserialization_complete;
-	memset(&deserialization_complete, 0, sizeof(deserialization_complete));
-	deserialization_complete.handler = handle_deserialization_complete;
-	send_msg((const message_t*)&deserialization_complete, header->from_place);
+	message_t msg;
+	memset(&msg, 0, sizeof(msg));
+	message_base_t *deserialization_complete = &msg.base;
+	deserialization_complete->handler        = handle_deserialization_complete;
+	send_msg(&msg, header->from_place);
 
 	/* wake up execute_at */
 	pthread_cond_signal(header->return_cond);
@@ -250,20 +252,22 @@ static void handle_remote_exec(const message_t *message)
 
 	x10_object *closure = x10_deserialize_from(data, data_size);
 
-	message_base_t deserialization_complete;
-	memset(&deserialization_complete, 0, sizeof(deserialization_complete));
-	deserialization_complete.handler = handle_deserialization_complete;
-	send_msg((const message_t*)&deserialization_complete, header.from_place);
+	message_t msg;
+	memset(&msg, 0, sizeof(msg));
+	message_base_t *deserialization_complete = &msg.base;
+	deserialization_complete->handler = handle_deserialization_complete;
+	send_msg(&msg, header.from_place);
 
 	if (header.msg_type == MSG_RUN_AT) {
 		_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(closure);
 
 		/* acknowledge return1 */
-		completion_simple_message_t completion;
-		memset(&completion, 0, sizeof(completion));
-		completion.base.handler = handle_completion_simple;
-		completion.return_cond  = header.return_cond;
-		send_msg((const message_t*)&completion, header.from_place);
+		message_t msg;
+		memset(&msg, 0, sizeof(msg));
+		completion_simple_message_t *completion = &msg.completion_simple;
+		completion->base.handler = handle_completion_simple;
+		completion->return_cond  = header.return_cond;
+		send_msg(&msg, header.from_place);
 	} else {
 		assert(header.msg_type == MSG_EVAL_AT);
 		x10_object *retval = _ZN3x104lang7Runtime14callAnyClosureEPN3x104lang8$Fun_0_0IPN3x104lang3AnyEEE(closure);
@@ -290,11 +294,11 @@ static void handle_remote_exec(const message_t *message)
 	finish_state_destroy(&state);
 	finish_state_set_current(NULL);
 
-	completion_finish_message_t completion;
-	memset(&completion, 0, sizeof(completion));
-	completion.base.handler = handle_completion_finish;
-	completion.finish_state = header.finish_state;
-	send_msg((const message_t*)&completion, header.from_place);
+	memset(&msg, 0, sizeof(msg));
+	completion_finish_message_t *completion = &msg.completion_finish;
+	completion->base.handler    = handle_completion_finish;
+	completion->finish_state    = header.finish_state;
+	send_msg(&msg, header.from_place);
 }
 
 static void handle_init_complete(const message_t *message)
@@ -401,10 +405,12 @@ static void init_child(void)
 	init_message_queues();
 
 	/* notify place 0 that we are ready */
-	init_complete_message_t init_complete;
-	init_complete.base.handler = handle_init_complete;
-	init_complete.from_place   = place_id;
-	send_msg((const message_t*)&init_complete, 0);
+	message_t msg;
+	memset(&msg, 0, sizeof(msg));
+	init_complete_message_t *init_complete = &msg.init_complete;
+	init_complete->base.handler    = handle_init_complete;
+	init_complete->from_place      = place_id;
+	send_msg(&msg, 0);
 
 	/* fixup for possible race */
 	if (getppid() == 1)
