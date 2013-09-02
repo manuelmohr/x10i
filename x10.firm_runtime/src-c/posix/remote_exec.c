@@ -233,6 +233,10 @@ static void handle_completion(const message_t *message)
 	x10_object *return_value = x10_deserialize_from(data, data_size);
 	*(header->return_value_pointer) = return_value;
 
+	pthread_mutex_t *lock = header->return_lock;
+	pthread_cond_t  *cond = header->return_cond;
+	bool            *flag = header->return_flag;
+
 	/* notify caller that we don't need the send buffer anymore */
 	message_t msg;
 	memset(&msg, 0, sizeof(msg));
@@ -241,10 +245,10 @@ static void handle_completion(const message_t *message)
 	send_msg(&msg, header->from_place);
 
 	/* wake up execute_at */
-	pthread_mutex_lock(header->return_lock);
-	*header->return_flag = true;
-	pthread_cond_signal(header->return_cond);
-	pthread_mutex_unlock(header->return_lock);
+	pthread_mutex_lock(lock);
+	*flag = true;
+	pthread_cond_signal(cond);
+	pthread_mutex_unlock(lock);
 }
 
 static void handle_remote_exec(const message_t *message)
