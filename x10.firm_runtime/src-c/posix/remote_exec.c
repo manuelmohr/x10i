@@ -356,7 +356,7 @@ static mqd_t setup_queue(unsigned place, int flags)
 	mqd_t queue = mq_open(buf, flags, 0600, &attr);
 	if (queue == (mqd_t)-1) {
 		perror("x10 runtime: couldn't setup message queue");
-		fprintf(stderr, "Place %u, queueu '%s'\n", place_id, buf);
+		fprintf(stderr, "Place %u, queue '%s'\n", place_id, buf);
 		exit(1);
 	}
 
