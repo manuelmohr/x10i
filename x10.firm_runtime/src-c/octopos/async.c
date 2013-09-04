@@ -114,7 +114,7 @@ static void execute(void *ptr)
 #ifdef USE_AGENTSYSTEM
 	agentclaim_t    agent_claim = ac->agent_claim;
 #endif
-	gc_free(ac);
+	mem_free(ac);
 
 	/* store enclosing finish state in i-let-local data */
 	finish_state_set_current(fs);
@@ -131,7 +131,7 @@ static void execute(void *ptr)
 	/* send signal to finish state */
 	unregister_from_finish_state(fs);
 
-	gc_free(ilet);
+	mem_free(ilet);
 }
 
 /**
@@ -155,7 +155,7 @@ static void execute(void *ptr)
 void _ZN3x104lang7Runtime16finishBlockBeginEv(void)
 {
 	finish_state_t *enclosing = finish_state_get_current();
-	finish_state_t *nested    = GC_XMALLOC(finish_state_t);
+	finish_state_t *nested    = mem_allocate(MEM_TLM_LOCAL, sizeof(finish_state_t));
 	finish_state_init(nested, enclosing);
 	finish_state_set_current(nested);
 }
@@ -164,8 +164,8 @@ void _ZN3x104lang7Runtime16finishBlockBeginEv(void)
 void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object *body)
 {
 	finish_state_t *enclosing = finish_state_get_current();
-	async_closure  *ac        = GC_XMALLOC(async_closure);
-	simple_ilet    *child     = GC_XMALLOC(simple_ilet);
+	async_closure  *ac        = mem_allocate(MEM_TLM_LOCAL, sizeof(async_closure));
+	simple_ilet    *child     = mem_allocate(MEM_TLM_LOCAL, sizeof(simple_ilet));
 	ac->body      = body;
 	ac->enclosing = enclosing;
 	ac->ilet      = child;
@@ -191,7 +191,7 @@ void _ZN3x104lang7Runtime14finishBlockEndEv(void)
 	/* clear the finish state */
 	finish_state_t *parent = enclosing->parent;
 	finish_state_destroy(enclosing);
-	gc_free(enclosing);
+	mem_free(enclosing);
 	/* restore enclosing finish state */
 	finish_state_set_current(parent);
 }
