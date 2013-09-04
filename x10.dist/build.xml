@@ -47,6 +47,7 @@
     <property name="jfirm.location" location="${x10.home}/jFirm"/>
     <property name="liboo.location" location="${x10.home}/liboo"/>
     <property name="x10.firm.location" location="${x10.home}/x10.firm"/>
+    <property name="bdwgc.location" location="${x10.home}/bdwgc"/>
     <path id="project.classpath"/>
     <!-- get the environment variables -->
     <property environment="env"/>
@@ -118,6 +119,7 @@
         <ant antfile="${jfirm.location}/build.xml" target="clean" inheritAll="false" dir="${jfirm.location}"/>
         <ant antfile="${liboo.location}/build.xml" target="clean" inheritAll="false" dir="${liboo.location}"/>
         <ant antfile="${x10.firm.location}/build.xml" target="clean" inheritAll="false" dir="${x10.firm.location}"/>
+        <ant antfile="${bdwgc.location}/build.xml" target="clean" inheritAll="false" dir="${bdwgc.location}"/>
     </target>
 
     <target name="clean-cpp" depends="clean-java">
@@ -169,7 +171,7 @@
     <target name="dist-cpp" depends="dist-java,runtime-cpp"/>
     <target name="dist-x10rt" depends="runtime-x10rt"/>
     <target name="dist" depends="dist-java,dist-cpp,dist-firm,dist-x10doc"/>
-    <target name="dist-firm" depends="init,build,common-jar,constraints-jar,compiler-jar,jfirm-jar,liboo-jar,x10firm-jar,runtime-firm"/>
+    <target name="dist-firm" depends="init,build,common-jar,constraints-jar,compiler-jar,jfirm-jar,liboo-jar,x10firm-jar,bdwgc,runtime-firm"/>
     <target name="dist-par" depends="init,build,common-jar,constraints-jar,compiler-jar">
         <ant antfile="${x10.runtime.location}/build.xml" target="dist-par" inheritAll="false" dir="${x10.runtime.location}"/>
     </target>
@@ -425,6 +427,10 @@
 
     <target name="checkstyle" depends="x10firm-jar">
         <ant antfile="${x10.firm.location}/build.xml" target="checkstyle" inheritAll="false" dir="${x10.firm.location}"/>
+    </target>
+
+    <target name="bdwgc" depends="init">
+        <ant antfile="${bdwgc.location}/build.xml" target="dist" inheritAll="false" dir="${bdwgc.location}"/>
     </target>
 
     <target name="bin"

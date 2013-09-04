@@ -14,3 +14,6 @@
 [submodule "octopos-app"]
 	path = octopos-app
 	url = gitolite@invasic.informatik.uni-erlangen.de:octopos-app
+[submodule "bdwgc"]
+	path = bdwgc
+	url = http://pp.info.uni-karlsruhe.de/git/bdwgc.git

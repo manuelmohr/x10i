@@ -51,6 +51,7 @@ ifeq ($(findstring sparc-invasic, $(TARGET)), sparc-invasic)
 endif
 ifeq ($(findstring linux, $(TARGET)), linux)
 	CFLAGS += -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -pthread
+	CPPFLAGS += -I../bdwgc/include
 endif
 
 CPARSER_BASE ?= ../cparser
