@@ -68,11 +68,8 @@ static void ilet_allocate_places(void *arg_place_id, void *arg_n_places)
 /* Start value when trying to acquire more PEs. */
 #define START_NUM_PES 4
 
-void main_ilet(claim_t root_claim)
+static void init_placelist(claim_t root_claim)
 {
-	/* We want to use uart redirection through grmon -u */
-	leon_set_uart_debug_mode(1);
-
 	const unsigned n_tiles      = get_tile_count();
 	const unsigned root_tile_id = get_tile_id();
 	const unsigned io_tile_id   = get_io_tile_id();
@@ -129,6 +126,14 @@ void main_ilet(claim_t root_claim)
 
 	/* Wait until all places are initialized. */
 	simple_signal_wait(&initialization_signal);
+}
+
+void main_ilet(claim_t root_claim)
+{
+	/* We want to use uart redirection through grmon -u */
+	leon_set_uart_debug_mode(1);
+
+	init_placelist(root_claim);
 
 	finish_state_t fs;
 	fs.claim = root_claim;
@@ -148,7 +153,7 @@ void main_ilet(claim_t root_claim)
 	finish_state_destroy(&fs);
 
 	/* Shutdown all other tiles. */
-	for (pid = 1; pid < n_places; ++pid) {
+	for (unsigned pid = 1; pid < n_places; ++pid) {
 		dispatch_claim_t dispatch_claim = places[pid];
 		simple_ilet      shutdown_ilet;
 		simple_ilet_init(&shutdown_ilet, ilet_shutdown_tile, NULL);
