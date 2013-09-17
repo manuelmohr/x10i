@@ -35,11 +35,14 @@ ifeq ($(findstring invasic, $(TARGET)), invasic)
 	CFLAGS += -fno-stack-protector
 	CPPFLAGS += -nostdinc -I $(OCTOPOS_BASE)/include -DNO_GARBAGE_COLLECTION
 endif
-ifeq ($(TARGET), i686-invasic-octopos)
+ifeq ($(findstring i686-invasic, $(TARGET)), i686-invasic)
 	OCTOPOS_BASE=../octopos-app/releases/current/x86guest/multitile
 	CFLAGS += -m32 -mfpmath=sse -msse2
 	CPPFLAGS += -I $(GCC_INCLUDE)
 	LFLAGS += -m32 -nostdlib -Wl,-T,$(OCTOPOS_BASE)/lib/sections.x $(OCTOPOS_BASE)/lib/liboctopos.a $(OCTOPOS_BASE)/lib/libcsubset.a
+endif
+ifeq ($(TARGET), i686-invasic-irtss)
+	CPPFLAGS += -DUSE_AGENTSYSTEM
 endif
 ifeq ($(TARGET), sparc-invasic-octopos)
 	# For now, always build for soft float
