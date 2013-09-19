@@ -635,7 +635,8 @@ public final class SerializationSupport {
 				final Node results = con.newProj(ctorCall, Mode.getT(), Call.pnTResult);
 				final Mode resultMode = firmTypeSystem.getFirmMode(astType);
 				final Node newObj = con.newProj(results, resultMode, 0);
-				final Node copyB = con.newCopyB(mem, objPtr, newObj, klass);
+				final Node copyB = con.newCopyB(mem, objPtr, newObj, klass,
+						firm.bindings.binding_ircons.ir_cons_flags.cons_none);
 				mem = copyB;
 			}
 
