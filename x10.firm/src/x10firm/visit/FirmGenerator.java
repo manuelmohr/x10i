@@ -955,7 +955,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		if (firmTypeSystem.isFirmStructType(type)) {
 			final firm.Type firmType = firmTypeSystem.asType(type);
 			final Node mem = con.getCurrentMem();
-			final Node copyB = con.newCopyB(mem, address, value, firmType);
+			final Node copyB = con.newCopyB(mem, address, value, firmType,
+					firm.bindings.binding_ircons.ir_cons_flags.cons_none);
 			con.setCurrentMem(copyB);
 		} else {
 			final Node mem = con.getCurrentMem();
@@ -1184,7 +1185,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 				final Entity entity = var.getEntity();
 				final Node mem = con.getCurrentMem();
 				final Node destAddr = visitExpression(lhs);
-				final Node copyB = con.newCopyB(mem, destAddr, casted, entity.getType());
+				final Node copyB = con.newCopyB(mem, destAddr, casted, entity.getType(),
+						firm.bindings.binding_ircons.ir_cons_flags.cons_none);
 				con.setCurrentMem(copyB);
 			} else {
 				// local normal variable
@@ -1265,7 +1267,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 				// Hmm not a "new" call -> we must copy the return node of the initExpr.
 				final Node initNode = visitExpression(initExpr);
 				final Node mem = con.getCurrentMem();
-				final Node copyB = con.newCopyB(mem, sel, initNode, entity.getType());
+				final Node copyB = con.newCopyB(mem, sel, initNode, entity.getType(),
+						firm.bindings.binding_ircons.ir_cons_flags.cons_none);
 				con.setCurrentMem(copyB);
 			} else {
 				final Node initNode = visitExpression(initExpr);
@@ -2809,7 +2812,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 			final Node initAddr = con.newSymConst(initEntity);
 			final Node mem = con.getCurrentMem();
-			final Node copyB = con.newCopyB(mem, baseAddr, initAddr, initType);
+			final Node copyB = con.newCopyB(mem, baseAddr, initAddr, initType,
+					firm.bindings.binding_ircons.ir_cons_flags.cons_none);
 			con.setCurrentMem(copyB);
 		} else {
 			/* do a sequence of stores */

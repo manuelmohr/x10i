@@ -101,7 +101,8 @@ abstract class X10LangPointer {
 				final Node value = con.getVariable(varValue.getIdx(), ptrMode);
 				final Node mem = con.getCurrentMem();
 				final firm.Type firmType = firmTypeSystem.asType(typeParameter);
-				final Node copyB = con.newCopyB(mem, address, value, firmType);
+				final Node copyB = con.newCopyB(mem, address, value, firmType,
+						firm.bindings.binding_ircons.ir_cons_flags.cons_none);
 				newMem = copyB;
 			} else {
 				final Mode mode = firmTypeSystem.getFirmMode(val.type());

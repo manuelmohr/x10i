@@ -58,10 +58,16 @@ public class Linked extends AbstractGoal_c {
 	private boolean generate32BitCode() {
 		final MachineTriple target = options.getTargetTriple();
 		final String os = target.getOS();
-		final String cpu = target.getCpu();
+		if (os.equals("darwin11"))
+			return true;
 
-		return (os.equals("octopos") && !cpu.equals("sparc"))
-		       || os.equals("darwin11") || cpu.equals("x86_64");
+		final String cpu = target.getCpu();
+		if (cpu.equals("x86_64"))
+			return true;
+		if (!cpu.equals("sparc")) {
+			return (os.equals("octopos") || os.equals("irtss"));
+		}
+		return false;
 	}
 
 	private String queryGccPath(final String path) {
@@ -143,7 +149,7 @@ public class Linked extends AbstractGoal_c {
 			cmd.add("-m32");
 		}
 
-		if (os.equals("octopos")) {
+		if (os.equals("octopos") || os.equals("irtss")) {
 			if (cpu.equals("sparc")) {
 				cmd.add("-mcpu=v8");
 				cmd.add("-L" + octoposPrefix() + "lib");
@@ -186,7 +192,7 @@ public class Linked extends AbstractGoal_c {
 			final String stdlibPath = x10DistPath + "/../x10.firm_runtime/build/" + target;
 			cmd.add(stdlibPath + "/libx10.a");
 		}
-		if (os.equals("octopos")) {
+		if (os.equals("octopos") || os.equals("irtss")) {
 			cmd.add("-loctopos");
 			cmd.add("-lcsubset");
 			// Workaround: Pass -loctopos again because of circular dependencies in OctoPOS

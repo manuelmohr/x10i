@@ -29,21 +29,25 @@ ifeq ($(findstring darwin11, $(TARGET)), darwin11)
 	LFLAGS += -m32
 	APP_CFLAGS += -m32
 endif
-ifeq ($(TARGET), i686-invasic-octopos)
-	OCTOPOS_BASE=../octopos-app/releases/current/x86guest/multitile
-	GCC_INCLUDE:=$(shell $(CC) --print-file-name=include)
-	CFLAGS += -m32 -fno-stack-protector -mfpmath=sse -msse2
-	CPPFLAGS += -nostdinc -I $(GCC_INCLUDE) -I $(OCTOPOS_BASE)/include -DNO_GARBAGE_COLLECTION
-	LFLAGS += -m32 -nostdlib -Wl,-T,$(OCTOPOS_BASE)/lib/sections.x $(OCTOPOS_BASE)/lib/liboctopos.a $(OCTOPOS_BASE)/lib/libcsubset.a
+ifeq ($(findstring invasic, $(TARGET)), invasic)
 	PLATFORM = octopos
+	GCC_INCLUDE:=$(shell $(CC) --print-file-name=include)
+	CFLAGS += -fno-stack-protector
+	CPPFLAGS += -nostdinc -I $(OCTOPOS_BASE)/include -DNO_GARBAGE_COLLECTION
+endif
+ifeq ($(findstring i686-invasic, $(TARGET)), i686-invasic)
+	OCTOPOS_BASE=../octopos-app/releases/current/x86guest/multitile
+	CFLAGS += -m32 -mfpmath=sse -msse2
+	CPPFLAGS += -I $(GCC_INCLUDE)
+	LFLAGS += -m32 -nostdlib -Wl,-T,$(OCTOPOS_BASE)/lib/sections.x $(OCTOPOS_BASE)/lib/liboctopos.a $(OCTOPOS_BASE)/lib/libcsubset.a
+endif
+ifeq ($(TARGET), i686-invasic-irtss)
+	CPPFLAGS += -DUSE_AGENTSYSTEM
 endif
 ifeq ($(TARGET), sparc-invasic-octopos)
 	# For now, always build for soft float
 	OCTOPOS_BASE=../octopos-app/releases/current/leon/4t-ml605
-	GCC_INCLUDE:=$(shell $(CC) --print-file-name=include)
-	CFLAGS += -fno-stack-protector
-	CPPFLAGS += -nostdinc -D__leon__ -I $(OCTOPOS_BASE)/include -isystem $(GCC_INCLUDE) -DNO_GARBAGE_COLLECTION
-	PLATFORM = octopos
+	CPPFLAGS += -D__leon__ -isystem $(GCC_INCLUDE)
 endif
 ifeq ($(findstring linux, $(TARGET)), linux)
 	CFLAGS += -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -pthread
