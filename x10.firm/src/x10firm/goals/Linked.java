@@ -58,9 +58,12 @@ public class Linked extends AbstractGoal_c {
 	private boolean generate32BitCode() {
 		final MachineTriple target = options.getTargetTriple();
 		final String os = target.getOS();
-		if (os.equals("darwin11")) return true;
-		if (os.equals("x86_64")) return true;
+		if (os.equals("darwin11"))
+			return true;
+
 		final String cpu = target.getCpu();
+		if (cpu.equals("x86_64"))
+			return true;
 		if (!cpu.equals("sparc")) {
 			return (os.equals("octopos") || os.equals("irtss"));
 		}
