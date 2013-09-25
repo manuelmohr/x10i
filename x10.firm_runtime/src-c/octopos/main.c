@@ -91,9 +91,11 @@ static void init_places(claim_t root_claim)
 	 * Remove this once invading is exposed as an API call to the user. */
 	place_id = 0; /* Set root place's id. */
 	uint32_t num = START_NUM_PES;
+#ifndef USE_AGENTSYSTEM
 	while (num > 0 && invade_simple(root_claim, num) == -1)
 		--num;
 	assert(num > 0 && "Could not get additional PEs on root tile");
+#endif
 	places[0] = get_own_dispatch_claim();
 
 	/* Get as many CPUs as possible on all other tiles. */
