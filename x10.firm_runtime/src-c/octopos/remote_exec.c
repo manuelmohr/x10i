@@ -383,8 +383,12 @@ x10_object *x10_execute_at(x10_int place_id, x10_int msg_type, x10_object *closu
 
 	simple_signal_init(&join_signal, 1);
 
+#ifdef USE_AGENTSYSTEM
+	dispatch_claim_t destination_claim = *(dispatch_claim_t*) (&place_id);
+#else
 	assert(place_id >= 0 && (unsigned)place_id < n_places);
 	dispatch_claim_t destination_claim = places[place_id];
+#endif
 
 	source_local_data.dispatch_claim = destination_claim;
 
@@ -401,3 +405,16 @@ x10_object *x10_execute_at(x10_int place_id, x10_int msg_type, x10_object *closu
 
 	return source_local_data.return_value;
 }
+
+#ifdef USE_AGENTSYSTEM
+#include <octo_agent.h>
+x10_int x10_get_placeid(void *claim, x10_int tileid, x10_int petype)
+{
+  agentclaim_t ac = (agentclaim_t) claim;
+  res_type_t pt = (res_type_t) petype;
+  proxy_claim_t pc = agent_claim_get_proxyclaim_tile_type(ac, tileid, pt);
+  dispatch_claim_t dc = proxy_get_dispatch_info(pc);
+  assert (sizeof(dispatch_claim_t) <= sizeof(x10_int));
+  return *(x10_int*) (&dc);
+}
+#endif
