@@ -49,10 +49,17 @@ static inline void gc_init(void)
 
 /**
  * Allocate @p size bytes on the heap.
- * This is a wrapper for malloc which calls panic() in case of errors, so no
- * error handling is required for code using it.
+ * This is a wrapper for malloc/calloc which calls panic() in case of errors,
+ * so no error handling is required for code using it. The memory allocated with
+ * this function is set to 0.
  */
 FIRM_API void *gc_xmalloc(size_t size);
+/**
+ * Allocate @p size bytes on the heap.
+ * This is a variant of gc_xmalloc(), but the resulting memory mustn't contain
+ * any pointers (or the garbage collection behaviour is undefined). Furthermore
+ * the memory returned is uninitialized and not necessarily set to 0.
+ */
 FIRM_API void *gc_xmalloc_atomic(size_t size);
 /**
  * Change size of a previously allocated memory block to @p size bytes.
