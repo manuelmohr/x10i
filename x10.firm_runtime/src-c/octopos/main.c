@@ -129,15 +129,7 @@ static void init_placelist(claim_t root_claim)
 }
 
 static void shutdown_everything(void) {
-	/* Shutdown all other tiles. */
-	for (unsigned pid = 1; pid < n_places; ++pid) {
-		dispatch_claim_t dispatch_claim = places[pid];
-		simple_ilet      shutdown_ilet;
-		simple_ilet_init(&shutdown_ilet, ilet_shutdown_tile, NULL);
-		dispatch_claim_infect(dispatch_claim, &shutdown_ilet, 1);
-	}
-
-	/* Shutdown root tile. */
+	/* Shutdown root tile. Ignore the rest. */
 	shutdown_tile();
 }
 
