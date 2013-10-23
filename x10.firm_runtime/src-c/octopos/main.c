@@ -68,7 +68,7 @@ static void ilet_allocate_places(void *arg_place_id, void *arg_n_places)
 /* Start value when trying to acquire more PEs. */
 #define START_NUM_PES 4
 
-static void init_placelist(claim_t root_claim)
+static void init_places(claim_t root_claim)
 {
 	const unsigned n_tiles      = get_tile_count();
 	const unsigned root_tile_id = get_tile_id();
@@ -84,14 +84,20 @@ static void init_placelist(claim_t root_claim)
 
 	places = mem_allocate(MEM_TLM_LOCAL, n_places * sizeof(*places));
 	memset(places, 0, n_places * sizeof(*places));
+	proxy_claim_t *proxies = mem_allocate(MEM_TLM_LOCAL, n_places * sizeof(*proxies));
+	memset(proxies, 0, n_places * sizeof(*proxies));
 
 	/* Get as many CPUs as possible on local tile.
 	 * Remove this once invading is exposed as an API call to the user. */
 	place_id = 0; /* Set root place's id. */
 	uint32_t num = START_NUM_PES;
+#ifndef USE_AGENTSYSTEM
 	while (num > 0 && invade_simple(root_claim, num) == -1)
 		--num;
 	assert(num > 0 && "Could not get additional PEs on root tile");
+#else
+  (void) root_claim; /* remove warning */
+#endif
 	places[0] = get_own_dispatch_claim();
 
 	/* Get as many CPUs as possible on all other tiles. */
@@ -108,7 +114,9 @@ static void init_placelist(claim_t root_claim)
 			--num;
 		assert(claim != NULL && "Could not invade tile");
 
-		places[pid++] = proxy_get_dispatch_info(claim);
+		proxies[pid] = claim;
+		places[pid] = proxy_get_dispatch_info(claim);
+		pid++;
 	}
 	assert(pid == n_places);
 
@@ -126,6 +134,17 @@ static void init_placelist(claim_t root_claim)
 
 	/* Wait until all places are initialized. */
 	simple_signal_wait(&initialization_signal);
+
+	/* If we use an agent system, we must free everything again,
+	 * so the agent can invade everything. */
+#ifdef USE_AGENTSYSTEM
+	for (pid = 1; pid < n_places; ++pid) {
+		proxy_claim_t pclaim = proxies[pid];
+		retreat_future_t fut;
+		proxy_retreat(pclaim, &fut);
+		retreat_future_force(&fut);
+	}
+#endif
 }
 
 static void shutdown_everything(void) {
@@ -138,7 +157,14 @@ void main_ilet(claim_t root_claim)
 	/* We want to use uart redirection through grmon -u */
 	leon_set_uart_debug_mode(1);
 
-	init_placelist(root_claim);
+	/* initialize static fields etc */
+	init_places(root_claim);
+
+	/* initialize agent system which invades everything */
+#ifdef USE_AGENTSYSTEM
+	agentclaim_t initialClaim = agent_claim_get_initial(root_claim);
+  (void) initialClaim; /*remove warning*/
+#endif
 
 	finish_state_t fs;
 	fs.claim = root_claim;
