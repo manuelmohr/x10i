@@ -42,15 +42,16 @@ static void __attribute__((noreturn)) xnomem(void)
 #ifdef NO_GARBAGE_COLLECTION
 void *gc_xmalloc(size_t size)
 {
-	void *res = calloc(1, size);
+	void *res = mem_allocate_global(size);
 	if (res == NULL && size != 0)
 		xnomem();
+	memset(res, 0, size);
 	return res;
 }
 
 void *gc_xmalloc_atomic(size_t size)
 {
-	void *res = malloc(size);
+	void *res = mem_allocate_global(size);
 	if (res == NULL && size != 0)
 		xnomem();
 	return res;
