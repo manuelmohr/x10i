@@ -48,8 +48,17 @@ static inline void gc_init(void)
  */
 
 /**
+ * Allocate @p size bytes in tile-local memory (heap on POSIX).
+ */
+FIRM_API void *mem_allocate_tlm(size_t size);
+/**
  * Allocate @p size bytes on the heap.
- * This is a wrapper for malloc/calloc which calls panic() in case of errors,
+ */
+FIRM_API void *mem_allocate_global(size_t size);
+
+/**
+ * Allocate @p size bytes on the heap.
+ * This is a wrapper for mem_allocate_global which calls panic() in case of errors,
  * so no error handling is required for code using it. The memory allocated with
  * this function is set to 0.
  */
