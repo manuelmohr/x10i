@@ -414,7 +414,7 @@ x10_int x10_get_placeid(void *claim, x10_int tileid, x10_int petype)
 	res_type_t       pt = (res_type_t)petype;
 	proxy_claim_t    pc = agent_claim_get_proxyclaim_tile_type(ac, tileid, pt);
 	dispatch_claim_t dc = proxy_get_dispatch_info(pc);
-	assert (sizeof(dispatch_claim_t) <= sizeof(x10_int));
-	return *(x10_int*) (&dc);
+	assert(sizeof(dispatch_claim_t) == sizeof(x10_ushort));
+	return *(x10_ushort*)(&dc);
 }
 #endif
