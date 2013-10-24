@@ -96,7 +96,7 @@ static void init_places(claim_t root_claim)
 		--num;
 	assert(num > 0 && "Could not get additional PEs on root tile");
 #else
-  (void) root_claim; /* remove warning */
+	(void) root_claim; /* remove warning */
 #endif
 	places[0] = get_own_dispatch_claim();
 
@@ -163,7 +163,7 @@ void main_ilet(claim_t root_claim)
 	/* initialize agent system which invades everything */
 #ifdef USE_AGENTSYSTEM
 	agentclaim_t initialClaim = agent_claim_get_initial(root_claim);
-  (void) initialClaim; /*remove warning*/
+	(void) initialClaim; /*remove warning*/
 #endif
 
 	finish_state_t fs;
