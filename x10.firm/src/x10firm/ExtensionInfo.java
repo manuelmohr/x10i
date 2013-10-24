@@ -241,6 +241,24 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/util/Stack.x10");
 			allowedFiles.add("x10/util/StringBuilder.x10");
 			allowedFiles.add("x10/util/Timer.x10");
+			allowedFiles.add("invasic/ProcessingElement.x10");
+			allowedFiles.add("invasic/Claim.x10");
+			allowedFiles.add("invasic/constraints/Constraint.x10");
+			allowedFiles.add("invasic/constraints/PredicateConstraint.x10");
+			allowedFiles.add("invasic/constraints/NotEnoughResources.x10");
+			allowedFiles.add("invasic/constraints/ScalabilityHint.x10");
+			allowedFiles.add("invasic/constraints/Hint.x10");
+			allowedFiles.add("invasic/constraints/MultipleConstraints.x10");
+			allowedFiles.add("invasic/constraints/ThisPlace.x10");
+			allowedFiles.add("invasic/constraints/PEQuantity.x10");
+			allowedFiles.add("invasic/constraints/PartitionConstraint.x10");
+			allowedFiles.add("invasic/constraints/AND.x10");
+			allowedFiles.add("invasic/RetreatFromSelf.x10");
+			allowedFiles.add("invasic/util/Queue.x10");
+			allowedFiles.add("invasic/util/NonblockingQueue.x10");
+			allowedFiles.add("invasic/util/BlockingHashMap.x10");
+			allowedFiles.add("invasic/util/BlockingQueue.x10");
+			allowedFiles.add("invasic/IncarnationID.x10");
 		}
 		whiteListInitialized = true;
 	}
