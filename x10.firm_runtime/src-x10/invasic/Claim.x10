@@ -40,12 +40,10 @@ abstract public class Claim {
     public def infect(ilet:(IncarnationID)=>void) {
         val pes = this.processingElements();
         assert (pes.size() == this.size());
-        Console.ERR.println("infecting "+pes.size()+" PEs");
         var iid:Int = 0;
         finish for (pe in pes) {
             val p = pe.getPlace();
             val current_iid = iid;
-      Console.ERR.println("compare "+p+" =?= "+here);
             if (p == here) { // FIXME compare tile instead?
                 async {
                     val id = new IncarnationID(current_iid, pe);
