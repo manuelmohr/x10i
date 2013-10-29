@@ -59,6 +59,8 @@ typedef struct async_closure {
 	finish_state_t *enclosing;
 	/* executing ilet */
 	simple_ilet    *ilet;
+	/* owning agent claim */
+	agentclaim_t   agent_claim;
 } async_closure;
 
 finish_state_t* finish_state_get_current(void)
@@ -114,12 +116,15 @@ static void execute(void *ptr)
 	x10_object     *body    = ac->body;
 	finish_state_t *fs      = ac->enclosing;
 	simple_ilet    *ilet    = ac->ilet;
+	agentclaim_t    agent_claim = ac->agent_claim;
 	gc_free(ac);
 
 	/* store enclosing finish state in i-let-local data */
 	finish_state_set_current(fs);
 	/* initialize atomic depth */
 	activity_set_atomic_depth(0);
+	/* initialize agent claim */
+	agentclaim_set_current(agent_claim);
 
 	/* run the closure */
 	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(body);
@@ -165,6 +170,7 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object
 	ac->body      = body;
 	ac->enclosing = enclosing;
 	ac->ilet      = child;
+	ac->agent_claim = agentclaim_get_current();
 	simple_ilet_init(child, execute, ac);
 	if (infect(enclosing->claim, child, 1)) panic("infect failed");
 	register_at_finish_state(enclosing);

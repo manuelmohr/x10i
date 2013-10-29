@@ -37,32 +37,12 @@ abstract public class Claim {
     }
 
     /** Create a team from the given ilet instance and let them run on the processing elements of this claim. */
-    public def infect(ilet:(IncarnationID)=>void) {
-        val pes = this.processingElements();
-        assert (pes.size() == this.size());
-        var iid:Int = 0;
-        finish for (pe in pes) {
-            val p = pe.getPlace();
-            val current_iid = iid;
-            if (p == here) { // FIXME compare tile instead?
-                async {
-                    val id = new IncarnationID(current_iid, pe);
-                    ilet(id);
-                }
-            } else {
-                at (p) async {
-                    val id = new IncarnationID(current_iid, pe);
-                    ilet(id);
-                }
-            }
-            iid += 1;
-        }
-    }
 
     public def infect[T](ilet:(IncarnationID)=>T) {T haszero}:Array[T] {
         return null;
     }
 
+    abstract public def infect(ilet:(IncarnationID)=>void):void;
     abstract public def reinvade():boolean;
     abstract public def reinvade(c:Constraint):boolean;
     abstract public def retreat():void;
@@ -161,6 +141,12 @@ final class AgentClaim extends Claim {
     @LinkSymbol("agent_claim_get_tileid_iterative")
     static native def get_tileid(clm:Pointer, iter:Int):Int;
 
+    @LinkSymbol("agentclaim_get_current")
+    static native def get_current():Pointer;
+
+    @LinkSymbol("agentclaim_set_current")
+    static native def set_current(ptr:Pointer):void;
+
     static def tiles(clm:Pointer):List[Int] {
         val ts = tilecount(clm);
         val ret = new ArrayList[Int](ts);
@@ -192,6 +178,31 @@ final class AgentClaim extends Claim {
 
     @LinkSymbol("agent_claim_print")
     static native def print_claim(claim:Pointer):void;
+
+    public def infect(ilet:(IncarnationID)=>void) {
+        val pes = this.processingElements();
+        assert (pes.size() == this.size());
+        var iid:Int = 0;
+        finish for (pe in pes) {
+            val p = pe.getPlace();
+            val current_iid = iid;
+            if (p == here) { // FIXME compare tile instead?
+                async {
+                    val id = new IncarnationID(current_iid, pe);
+                    ilet(id);
+                }
+            } else {
+                val current = AgentClaim.get_current();
+                AgentClaim.set_current(this.clm);
+                at (p) async {
+                    val id = new IncarnationID(current_iid, pe);
+                    ilet(id);
+                }
+                AgentClaim.set_current(current);
+            }
+            iid += 1;
+        }
+    }
 }
 
 final class UnionClaim extends Claim {
@@ -246,5 +257,12 @@ final class UnionClaim extends Claim {
     public def print():void {
         this.a.print();
         this.b.print();
+    }
+
+    public def infect(ilet:(IncarnationID)=>void) {
+      finish {
+        async this.a.infect(ilet);
+        async this.b.infect(ilet);
+      }
     }
 }

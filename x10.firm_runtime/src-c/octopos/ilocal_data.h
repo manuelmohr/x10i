@@ -7,6 +7,9 @@ typedef struct {
 	finish_state_t *fs;
 	x10_int         here_id;
 	unsigned        atomic_depth;
+#ifdef USE_AGENTSYSTEM
+	agentclaim_t    agent_claim;
+#endif
 } ilocal_data_t;
 
 #endif

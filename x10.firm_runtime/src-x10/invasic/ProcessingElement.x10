@@ -26,13 +26,9 @@ public class ProcessingElement {
         return "<PE@"+tileid+"t"+petype+">";
     }
 
-    @LinkSymbol("x10_get_placeid")
-    static native def get_placeid(clm:Pointer, tiled:Int, petype:Int):Int;
-
     /** Returns place of the PE */
     public def getPlace():Place {
-        val pid = get_placeid(this.clm, this.tileid, this.petype);
-        return new Place(pid);
+        return new Place(tileid);
     }
 
     public def equals(pe:Any) {
