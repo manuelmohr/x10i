@@ -37,12 +37,6 @@ static void shutdown_tile()
 	guest_shutdown();
 }
 
-static void ilet_shutdown_tile(void *arg)
-{
-	(void)arg;
-	shutdown_tile();
-}
-
 static void ilet_transfer_places(void *arg_remote_place_id, void *remote_places)
 {
 	const unsigned   remote_place_id = (unsigned)arg_remote_place_id;
