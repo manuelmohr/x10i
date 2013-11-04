@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "ilocal_data.h"
+#include "agent.h"
 
 #ifdef USE_AGENTSYSTEM
 agentclaim_t agentclaim_get_current(void)

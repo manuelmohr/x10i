@@ -4,6 +4,7 @@
 #include "async.h"
 #include "remote_exec.h"
 #include "ilocal_data.h"
+#include "agent.h"
 #include "x10_runtime.h"
 #include "xmalloc.h"
 
@@ -123,8 +124,10 @@ static void execute(void *ptr)
 	finish_state_set_current(fs);
 	/* initialize atomic depth */
 	activity_set_atomic_depth(0);
+#ifdef USE_AGENTSYSTEM
 	/* initialize agent claim */
 	agentclaim_set_current(agent_claim);
+#endif
 
 	/* run the closure */
 	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(body);
@@ -170,7 +173,11 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object
 	ac->body      = body;
 	ac->enclosing = enclosing;
 	ac->ilet      = child;
+#ifdef USE_AGENTSYSTEM
 	ac->agent_claim = agentclaim_get_current();
+#else
+	ac->agent_claim = 0;
+#endif
 	simple_ilet_init(child, execute, ac);
 	if (infect(enclosing->claim, child, 1)) panic("infect failed");
 	register_at_finish_state(enclosing);

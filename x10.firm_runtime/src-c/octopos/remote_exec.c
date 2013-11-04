@@ -3,6 +3,7 @@
 #include "ilocal_data.h"
 #include "places_octopos.h"
 #include "remote_exec.h"
+#include "agent.h"
 #include "serialization.h"
 #include "x10_runtime.h"
 

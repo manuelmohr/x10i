@@ -2,6 +2,7 @@
 #include "ilocal_data.h"
 #include "main.h"
 #include "places.h"
+#include "agent.h"
 #include "places_octopos.h"
 #include "serialization.h"
 
