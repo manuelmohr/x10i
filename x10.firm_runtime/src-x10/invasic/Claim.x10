@@ -36,12 +36,7 @@ abstract public class Claim {
         return invade(cs);
     }
 
-    /** Create a team from the given ilet instance and let them run on the processing elements of this claim. */
-
-    public def infect[T](ilet:(IncarnationID)=>T) {T haszero}:Array[T] {
-        return null;
-    }
-
+    abstract public def infect[T](ilet:(IncarnationID)=>T) {T haszero}:Array[T];
     abstract public def infect(ilet:(IncarnationID)=>void):void;
     abstract public def reinvade():boolean;
     abstract public def reinvade(c:Constraint):boolean;
@@ -203,6 +198,33 @@ final class AgentClaim extends Claim {
             iid += 1;
         }
     }
+
+    public def infect[T](ilet:(IncarnationID)=>T) {T haszero}:Array[T] {
+        val pes = this.processingElements();
+        val results = new Array[T](pes.size(), Zero.get[T]());
+        assert (pes.size() == this.size());
+        var iid:Int = 0;
+        finish for (pe in pes) {
+            val p = pe.getPlace();
+            val current_iid = iid;
+            if (p == here) { // FIXME compare tile instead?
+                async {
+                    val id = new IncarnationID(current_iid, pe);
+                    results(current_iid) = ilet(id);
+                }
+            } else {
+                val current = AgentClaim.get_current();
+                AgentClaim.set_current(this.clm);
+                async {
+                    results(current_iid) = at (p)
+                        ilet(new IncarnationID(current_iid, pe));
+                }
+                AgentClaim.set_current(current);
+            }
+            iid += 1;
+        }
+        return results;
+    }
 }
 
 final class UnionClaim extends Claim {
@@ -264,5 +286,9 @@ final class UnionClaim extends Claim {
         async this.a.infect(ilet);
         async this.b.infect(ilet);
       }
+    }
+
+    public def infect[T](ilet:(IncarnationID)=>T) {T haszero}:Array[T] {
+      return null; // FIXME
     }
 }
