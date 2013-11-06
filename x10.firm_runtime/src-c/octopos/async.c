@@ -113,11 +113,13 @@ void activity_set_atomic_depth(unsigned depth)
 /** Top-level i-let function, initializes activity and cleans up afterwards */
 static void execute(void *ptr)
 {
-	async_closure  *ac      = (async_closure *)ptr;
-	x10_object     *body    = ac->body;
-	finish_state_t *fs      = ac->enclosing;
-	simple_ilet    *ilet    = ac->ilet;
+	async_closure  *ac          = (async_closure *)ptr;
+	x10_object     *body        = ac->body;
+	finish_state_t *fs          = ac->enclosing;
+	simple_ilet    *ilet        = ac->ilet;
+#ifdef USE_AGENTSYSTEM
 	agentclaim_t    agent_claim = ac->agent_claim;
+#endif
 	gc_free(ac);
 
 	/* store enclosing finish state in i-let-local data */
