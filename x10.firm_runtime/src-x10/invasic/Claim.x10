@@ -36,7 +36,6 @@ abstract public class Claim {
         return invade(cs);
     }
 
-    abstract public def infect[T](ilet:(IncarnationID)=>T) {T haszero}:Array[T];
     abstract public def infect(ilet:(IncarnationID)=>void):void;
     abstract public def reinvade():boolean;
     abstract public def reinvade(c:Constraint):boolean;
@@ -46,6 +45,7 @@ abstract public class Claim {
     abstract public def processingElements():List[ProcessingElement];
     abstract public def size():int;
     abstract public def print():void;
+    abstract def my_clm():Pointer;
 
     /** Returns a string representing this claim */
     public def toString():String = "(Claim "+size()+" PE)";
@@ -65,6 +65,33 @@ abstract public class Claim {
         return ps;
     }
 
+    public def infect[T](ilet:(IncarnationID)=>T) {T haszero}:Array[T] {
+        val pes = this.processingElements();
+        val results = new Array[T](pes.size(), Zero.get[T]());
+        assert (pes.size() == this.size());
+        var iid:Int = 0;
+        finish for (pe in pes) {
+            val p = pe.getPlace();
+            val current_iid = iid;
+            if (p == here) { // FIXME compare tile instead?
+                async {
+                    val id = new IncarnationID(current_iid, pe);
+                    results(current_iid) = ilet(id);
+                }
+            } else {
+                val current = AgentClaim.get_current();
+                AgentClaim.set_current(this.my_clm());
+                async {
+                    results(current_iid) = at (p)
+                        ilet(new IncarnationID(current_iid, pe));
+                }
+                AgentClaim.set_current(current);
+            }
+            iid += 1;
+        }
+        return results;
+    }
+
     public def infect[T](ilet:(IncarnationID)=>T, reduce:(T,T)=>T) {T haszero}:T {
         val results = infect[T](ilet);
         // TODO(roloff) simulator does account reduction to infect call
@@ -82,6 +109,7 @@ abstract public class Claim {
 
 final class AgentClaim extends Claim {
     private val clm:Pointer;
+    def my_clm():Pointer = this.clm;
 
     /** Constructor is protected, because the invade method is the only way to get a claim. */
     def this(clm:Pointer) {
@@ -198,33 +226,6 @@ final class AgentClaim extends Claim {
             iid += 1;
         }
     }
-
-    public def infect[T](ilet:(IncarnationID)=>T) {T haszero}:Array[T] {
-        val pes = this.processingElements();
-        val results = new Array[T](pes.size(), Zero.get[T]());
-        assert (pes.size() == this.size());
-        var iid:Int = 0;
-        finish for (pe in pes) {
-            val p = pe.getPlace();
-            val current_iid = iid;
-            if (p == here) { // FIXME compare tile instead?
-                async {
-                    val id = new IncarnationID(current_iid, pe);
-                    results(current_iid) = ilet(id);
-                }
-            } else {
-                val current = AgentClaim.get_current();
-                AgentClaim.set_current(this.clm);
-                async {
-                    results(current_iid) = at (p)
-                        ilet(new IncarnationID(current_iid, pe));
-                }
-                AgentClaim.set_current(current);
-            }
-            iid += 1;
-        }
-        return results;
-    }
 }
 
 final class UnionClaim extends Claim {
@@ -288,7 +289,5 @@ final class UnionClaim extends Claim {
       }
     }
 
-    public def infect[T](ilet:(IncarnationID)=>T) {T haszero}:Array[T] {
-      return null; // FIXME
-    }
+    def my_clm():Pointer = null as Pointer;
 }
