@@ -13,6 +13,7 @@ package x10.lang;
 
 import x10.compiler.Profile;
 import x10.util.concurrent.Monitor;
+import x10.compiler.LinkSymbol;
 
 public final class Runtime {
     public static type Profile = Empty;
@@ -212,6 +213,10 @@ public final class Runtime {
     private static def printException(t:CheckedThrowable):void {
         Console.ERR.println("Exception " + t.typeName() + ": " + t.toString());
     }
+
+    /** Returns whether an agent system is available in the runtime */
+    @LinkSymbol("use_agentsystem")
+    public static native def useAgentsystem():Boolean;
 }
 
 // vim:shiftwidth=4:tabstop=4:expandtab

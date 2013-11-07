@@ -12,4 +12,6 @@ extern x10_object *_ZN3x104lang7Runtime14callAnyClosureEPN3x104lang8$Fun_0_0IPN3
 /** x10.lang.Runtime.getHereId() */
 x10_int _ZN3x104lang7Runtime9getHereIdEv(void);
 
+x10_boolean use_agentsystem();
+
 #endif

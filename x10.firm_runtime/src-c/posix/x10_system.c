@@ -21,3 +21,7 @@ void _ZN3x104lang6System2gcEv(void)
 {
 	/* no garbage collector yet, so nothing to collect */
 }
+
+x10_boolean use_agentsystem(void) {
+  return 0;
+}
