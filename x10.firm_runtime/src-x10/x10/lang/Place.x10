@@ -13,6 +13,7 @@ package x10.lang;
 
 import x10.compiler.Native;
 import x10.compiler.CompilerFlags;
+import invasic.Claim;
 
 /**
  * Representation of a place within the APGAS model.
@@ -85,7 +86,12 @@ public final struct Place(id: Int)  {
     /**
      * A convenience for iterating over all host places.
      */
-    public static def places():Sequence[Place]=places.sequence();
+    public static def places():Sequence[Place] {
+      if (Runtime.useAgentsystem())
+        return Claim.placeSeq();
+      else
+        return places.sequence();
+    }
 
     /**
      * A convenience for iterating over all accelerators.

@@ -65,6 +65,18 @@ abstract public class Claim {
         return ps;
     }
 
+    /** Returns the list of all places according to your current claim */
+    public static def placeSeq():Sequence[Place] {
+      val tiles = AgentClaim.tiles(AgentClaim.get_current());
+      val arr = new Array[Place](tiles.size());
+      var i:int = 0;
+      for (tid in tiles) {
+        arr(i) = new Place(tid);
+        i += 1;
+      }
+      return arr.sequence();
+    }
+
     public def infect[T](ilet:(IncarnationID)=>T) {T haszero}:Array[T] {
         val pes = this.processingElements();
         val results = new Array[T](pes.size(), Zero.get[T]());
