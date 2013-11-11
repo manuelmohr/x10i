@@ -158,7 +158,7 @@ void main_ilet(claim_t root_claim)
 	/* initialize agent system which invades everything */
 #ifdef USE_AGENTSYSTEM
 	agentclaim_t initialClaim = agent_claim_get_initial(root_claim);
-  agentclaim_set_current(initialClaim);
+	agentclaim_set_current(initialClaim);
 #endif
 
 	finish_state_t fs;
