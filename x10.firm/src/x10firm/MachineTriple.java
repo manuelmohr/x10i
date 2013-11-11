@@ -40,7 +40,7 @@ public final class MachineTriple {
 		if (newManufacturer.contains("linux")) {
 			newOperatingSystem = newManufacturer + "-" + newOperatingSystem;
 			newManufacturer = "unknown";
-		} else if (newOperatingSystem.contains("octopos")) {
+		} else if (newOperatingSystem.contains("octopos") || newOperatingSystem.contains("irtss")) {
 			/* Support OctoPOS variants. */
 			final int index = newOperatingSystem.indexOf('-');
 			if (index != -1) {

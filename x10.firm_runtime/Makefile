@@ -41,12 +41,12 @@ ifeq ($(findstring i686-invasic, $(TARGET)), i686-invasic)
 	CPPFLAGS += -I $(GCC_INCLUDE)
 	LFLAGS += -m32 -nostdlib -Wl,-T,$(OCTOPOS_BASE)/lib/sections.x $(OCTOPOS_BASE)/lib/liboctopos.a $(OCTOPOS_BASE)/lib/libcsubset.a
 endif
-ifeq ($(TARGET), i686-invasic-irtss)
+ifeq ($(findstring invasic-irtss, $(TARGET)), invasic-irtss)
 	CPPFLAGS += -DUSE_AGENTSYSTEM
 endif
-ifeq ($(TARGET), sparc-invasic-octopos)
+ifeq ($(findstring sparc-invasic, $(TARGET)), sparc-invasic)
 	# For now, always build for soft float
-	OCTOPOS_BASE=../octopos-app/releases/current/leon/4t-ml605
+	OCTOPOS_BASE=../octopos-app/releases/current/leon/4t-sf-chipit-w-iotile
 	CPPFLAGS += -D__leon__ -isystem $(GCC_INCLUDE)
 endif
 ifeq ($(findstring linux, $(TARGET)), linux)
