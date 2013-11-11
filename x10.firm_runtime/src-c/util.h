@@ -8,6 +8,9 @@
 #include "x10_object.h"
 #include "x10_throw.h"
 
+/* prints msg and shuts down everything */
+void panic(const char * msg);
+
 #define X10_UNUSED(s) (void)(s)
 
 #define X10_UNIMPLEMENTED() printf("%s not implemented yet", __FUNCTION__); abort();

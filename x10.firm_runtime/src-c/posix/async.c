@@ -34,7 +34,7 @@ struct finish_state_t {
 	finish_state_t *parent;
 };
 
-static void panic(const char * msg)
+void panic(const char * msg)
 {
 	fprintf(stderr, "%s\n", msg);
 	abort();
