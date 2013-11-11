@@ -20,6 +20,6 @@ void agentclaim_set_current(agentclaim_t ac)
 	ilocal_data_t *ilocal = get_ilocal_data();
 	ilocal->agent_claim = ac;
 #else
-	return NULL;
+	(void)ac;
 #endif
 }
