@@ -34,12 +34,6 @@ struct finish_state_t {
 	finish_state_t *parent;
 };
 
-void panic(const char * msg)
-{
-	fprintf(stderr, "%s\n", msg);
-	abort();
-}
-
 void finish_state_init(finish_state_t *fs, finish_state_t *parent)
 {
 	if (pthread_mutex_init(& fs->mutex, NULL))

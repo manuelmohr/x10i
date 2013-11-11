@@ -9,7 +9,7 @@
 #include "x10_throw.h"
 
 /* prints msg and shuts down everything */
-void panic(const char * msg);
+void panic(const char *msg);
 
 #define X10_UNUSED(s) (void)(s)
 

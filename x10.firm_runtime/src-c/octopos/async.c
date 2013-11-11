@@ -8,12 +8,6 @@
 #include "x10_runtime.h"
 #include "xmalloc.h"
 
-static void panic(const char * msg)
-{
-	printf("%s\n", msg);
-	abort();
-}
-
 /**
  * A finish_state_t holds all information for a finish statement.
  * All its child activities are tracked. Also, their children must register
