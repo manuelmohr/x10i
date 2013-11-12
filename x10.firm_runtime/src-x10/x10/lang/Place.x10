@@ -21,7 +21,7 @@ import invasic.Claim;
 public final struct Place(id: Int)  {
     public property id():Int = id;
 
-    private static native def getMaxPlaces(): Int;
+    public static native def getMaxPlaces(): Int;
 
     /** The number of places not including accelerators. */
     public static MAX_PLACES: Int = getMaxPlaces();
