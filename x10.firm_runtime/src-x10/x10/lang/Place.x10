@@ -23,11 +23,6 @@ public final struct Place(id: Int)  {
 
     public static native def getMaxPlaces(): Int;
 
-    /** The number of places not including accelerators. */
-    public static MAX_PLACES: Int = getMaxPlaces();
-
-    public static ALL_PLACES: Int = MAX_PLACES;
-
     /**
      * Find number of children under a place.
      * For hosts, this returns the number of accelerators at that host.
@@ -78,10 +73,10 @@ public final struct Place(id: Int)  {
     public static def childIndex(id:Int):Int { throw new BadPlaceException(); }
 
     private static childrenArray =
-        new Array[Array[Place](1)](ALL_PLACES,
+        new Array[Array[Place](1)](getMaxPlaces(),
                                    (p: Int) => new Array[Place](numChildren(p), (i:Int) => Place(child(p,i))));
 
-    private static places:Array[Place](1) = new Array[Place](MAX_PLACES, ((id:Int) => Place(id)));
+    private static places:Array[Place](1) = new Array[Place](getMaxPlaces(), ((id:Int) => Place(id)));
 
     /**
      * A convenience for iterating over all host places.
@@ -138,8 +133,9 @@ public final struct Place(id: Int)  {
      */
     public def next(i: Int): Place {
         // -1 % n == -1, not n-1, so need to add n
+        val max = getMaxPlaces();
         if (isHost(id)) {
-            val k = (id + i % MAX_PLACES + MAX_PLACES) % MAX_PLACES;
+            val k = (id + i % max + max) % max;
             return place(k);
         }
         // FIXME: iterate through peers
@@ -149,13 +145,13 @@ public final struct Place(id: Int)  {
     /**
      * The number of places including accelerators.
      */
-    public static def numPlaces():int = ALL_PLACES;
+    public static def numPlaces():int = getMaxPlaces();
 
     /**
      *
      */
     public def isFirst(): Boolean = id == 0;
-    public def isLast(): Boolean = id == MAX_PLACES - 1;
+    public def isLast(): Boolean = id == getMaxPlaces() - 1;
 
     /** Is this place a host (i.e. not an accelerator)? */
     public def isHost(): Boolean = isHost(id);

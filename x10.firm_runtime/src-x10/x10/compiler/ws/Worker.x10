@@ -120,7 +120,7 @@ public final class Worker {
 
     public static def stop(){
         val body = ()=> @x10.compiler.RemoteInvocation("stop") { Runtime.wsEnd(); };
-        for (var i:Int = 1; i<Place.MAX_PLACES; i++) {
+        for (var i:Int = 1; i<Place.getMaxPlaces(); i++) {
             Runtime.x10rtSendMessage(i, body, null);
         }
         Runtime.dealloc(body);
@@ -146,7 +146,8 @@ public final class Worker {
 
     public static def start() {
         val worker = startHere(); // init place 0 first
-        for (var i:Int = 1; i<Place.MAX_PLACES; i++) { // init place >0
+        val max = Place.getMaxPlaces();
+        for (var i:Int = 1; i<max; i++) { // init place >0
             val p = Place.place(i);
             at(p) async startHere().run();
         }
