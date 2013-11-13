@@ -37,6 +37,14 @@ static inline void gc_free(void *ptr)
 
 static inline void gc_init(void)
 {
+	/* Setting max_retries changes Boehm GC's behavior if a request for more
+	 * memory cannot be satisfied by the operating system:
+	 * with max_retries == 0, the GC just aborts in this case.
+	 * With max_retries == 2, the GC does up to two collector runs before
+	 * giving up in this scenario.
+	 * As we only have limited memory for InvasIC, we set it to 2.
+	 */
+	GC_set_max_retries(2);
 	GC_INIT();
 }
 #endif
