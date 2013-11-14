@@ -12,7 +12,7 @@ x10_int _ZN3x104lang5Place12getMaxPlacesEv(void)
 #ifdef USE_AGENTSYSTEM
 	agentclaim_t cur = agentclaim_get_current();
 	int tilecount = agent_claim_get_tilecount(cur);
-	return tilecount-1;
+	return tilecount;
 #else
 	return n_places;
 #endif

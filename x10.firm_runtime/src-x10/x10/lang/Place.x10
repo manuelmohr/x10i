@@ -21,6 +21,9 @@ import invasic.Claim;
 public final struct Place(id: Int)  {
     public property id():Int = id;
 
+    /** Returns the number of available places
+     * (which equals the highest place id + 1)
+     */
     public static native def getMaxPlaces(): Int;
 
     /**
