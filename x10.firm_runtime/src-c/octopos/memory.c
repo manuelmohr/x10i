@@ -27,5 +27,9 @@ void *mem_allocate_tlm(size_t size)
 
 void *mem_allocate_global(size_t size)
 {
+#ifdef NO_GARBAGE_COLLECTION
 	return mem_allocate(MEM_SHM, size);
+#else
+	abort();
+#endif
 }
