@@ -26,9 +26,8 @@
 #define FIRM_ADT_OBST_H
 
 #include "obstack.h"
-#include "xmalloc.h"
 
-#define obstack_chunk_alloc gc_xmalloc
-#define obstack_chunk_free  gc_free
+void *obstack_chunk_alloc(size_t bytes);
+void  obstack_chunk_free(void *ptr);
 
 #endif
