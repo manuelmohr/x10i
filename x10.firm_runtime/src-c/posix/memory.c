@@ -18,10 +18,12 @@
 
 #include "xmalloc.h"
 
-void *mem_allocate_tlm(size_t size) {
-  return malloc(size);
+void *mem_allocate_tlm(size_t size)
+{
+	return malloc(size);
 }
 
-void *mem_allocate_global(size_t size) {
-  return malloc(size);
+void *mem_allocate_global(size_t size)
+{
+	return malloc(size);
 }

@@ -20,10 +20,12 @@
 
 #include "xmalloc.h"
 
-void *mem_allocate_tlm(size_t size) {
+void *mem_allocate_tlm(size_t size)
+{
 	return mem_allocate(MEM_TLM_LOCAL, size);
 }
 
-void *mem_allocate_global(size_t size) {
+void *mem_allocate_global(size_t size)
+{
 	return mem_allocate(MEM_SHM, size);
 }
