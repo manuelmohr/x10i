@@ -5,6 +5,7 @@
 #include "agent.h"
 #include "places_octopos.h"
 #include "serialization.h"
+#include "xmalloc.h"
 
 dispatch_claim_t *places;
 
@@ -18,6 +19,7 @@ static void ilet_notify(void *arg)
 /** initialization code that is run once on each tile before it is used. */
 static void init_tile()
 {
+	gc_init();
 	x10_static_initializer();
 	x10_serialization_init();
 }

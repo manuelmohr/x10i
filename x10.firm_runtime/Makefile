@@ -7,6 +7,7 @@ CC              = $(TARGET)-gcc
 CPARSER_TARGET ?= -mtarget=$(TARGET)
 CFLAGS         ?= -g3
 CPPFLAGS       ?=
+CPPFLAGS       += -I../bdwgc/include
 
 APP_CFLAGS ?=
 PLATFORM   ?= posix
@@ -33,7 +34,14 @@ ifeq ($(findstring invasic, $(TARGET)), invasic)
 	PLATFORM = octopos
 	GCC_INCLUDE:=$(shell $(CC) --print-file-name=include)
 	CFLAGS += -fno-stack-protector
-	CPPFLAGS += -nostdinc -I $(OCTOPOS_BASE)/include -DNO_GARBAGE_COLLECTION
+	CPPFLAGS += -nostdinc
+	# This is NOT unix/linux...
+	CPPFLAGS += -Ulinux -U__linux -U__linux__ -U__gnu_linux__ -Uunix -U__unix -U__unix__
+	# ...it is OctoPOS
+	CPPFLAGS += -D__OCTOPOS__
+	CPPFLAGS += -I $(OCTOPOS_BASE)/include
+	# Choose if you want garbage collection or not
+	CPPFLAGS += -DNO_GARBAGE_COLLECTION
 endif
 ifeq ($(findstring i686-invasic, $(TARGET)), i686-invasic)
 	OCTOPOS_BASE=../octopos-app/releases/current/x86guest/multitile
@@ -51,7 +59,6 @@ ifeq ($(findstring sparc-invasic, $(TARGET)), sparc-invasic)
 endif
 ifeq ($(findstring linux, $(TARGET)), linux)
 	CFLAGS += -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -pthread
-	CPPFLAGS += -I../bdwgc/include
 endif
 
 CPARSER_BASE ?= ../cparser

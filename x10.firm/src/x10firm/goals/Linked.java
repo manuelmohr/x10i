@@ -193,6 +193,8 @@ public class Linked extends AbstractGoal_c {
 			cmd.add(stdlibPath + "/libx10.a");
 		}
 
+		cmd.add(x10DistPath + "/../bdwgc/build/" + target + "/gc.a");
+
 		if (os.equals("octopos") || os.equals("irtss")) {
 			cmd.add("-loctopos");
 			cmd.add("-lcsubset");
@@ -204,7 +206,6 @@ public class Linked extends AbstractGoal_c {
 			if (cpu.equals("sparc"))
 				cmd.add("-lotail");
 		} else {
-			cmd.add(x10DistPath + "/../bdwgc/build/" + target + "/gc.a");
 			cmd.add("-lm");
 			cmd.add("-lrt");
 			cmd.add("-pthread");
