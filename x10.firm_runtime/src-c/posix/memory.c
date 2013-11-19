@@ -34,7 +34,7 @@ void *mem_allocate_global(size_t size)
 	return malloc(size);
 #else
 	(void)size;
-	abort();
+	panic("All heap allocations should go through the garbage collector");
 #endif
 }
 
