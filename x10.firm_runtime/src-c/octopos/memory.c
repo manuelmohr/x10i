@@ -33,6 +33,11 @@ void *mem_allocate_global(size_t size)
 #endif
 }
 
+void mem_free_tlm(void *tlm_ptr)
+{
+	mem_free(tlm_ptr);
+}
+
 void *mem_get_global_address(void *tlm_local_ptr)
 {
 	return get_global_address(tlm_local_ptr);

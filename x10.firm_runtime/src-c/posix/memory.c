@@ -21,11 +21,8 @@
 
 void *mem_allocate_tlm(size_t size)
 {
-#ifdef NO_GARBAGE_COLLECTION
-	return malloc(size);
-#else
+	/* Will call GC_MALLOC/malloc depending on NO_GARBAGE_COLLECTION */
 	return gc_xmalloc(size);
-#endif
 }
 
 void *mem_allocate_global(size_t size)
@@ -36,6 +33,12 @@ void *mem_allocate_global(size_t size)
 	(void)size;
 	panic("All heap allocations should go through the garbage collector");
 #endif
+}
+
+void mem_free_tlm(void *tlm_ptr)
+{
+	/* Will call GC_FREE/free depending on NO_GARBAGE_COLLECTION */
+	gc_free(tlm_ptr);
 }
 
 void *mem_get_global_address(void *tlm_local_ptr)
