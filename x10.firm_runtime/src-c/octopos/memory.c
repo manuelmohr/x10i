@@ -17,8 +17,7 @@
  */
 
 #include <octopos.h>
-
-#include "xmalloc.h"
+#include "memory.h"
 
 void *mem_allocate_tlm(size_t size)
 {
@@ -32,4 +31,14 @@ void *mem_allocate_global(size_t size)
 #else
 	abort();
 #endif
+}
+
+void *mem_get_global_address(void *tlm_local_ptr)
+{
+	return get_global_address(tlm_local_ptr);
+}
+
+void *mem_get_local_address(void *tlm_global_ptr)
+{
+	return get_local_address(tlm_global_ptr);
 }

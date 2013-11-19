@@ -31,6 +31,7 @@
 #include <stdlib.h>
 
 #include "xmalloc.h"
+#include "memory.h"
 
 static void __attribute__((noreturn)) xnomem(void)
 {

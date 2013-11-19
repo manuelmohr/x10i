@@ -196,6 +196,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	private static final String X10_STATIC_INITIALIZER = "x10_static_initializer";
 	private static final String GC_MALLOC              = "gc_xmalloc";
 	private static final String GC_MALLOC_ATOMIC       = "gc_xmalloc_atomic";
+	private static final String TLM_ALLOC              = "mem_allocate_tlm";
 	private static final Charset UTF8 = Charset.forName("UTF8");
 	private static final int EXCEPTION_VARNUM = 0;
 	/** variable number of first parameter in the firm construction object. */
@@ -205,6 +206,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	private Entity exceptionUnwindEntity;
 	private Entity gcMallocEntity;
 	private Entity gcMallocAtomicEntity;
+	private Entity tlmAllocEntity;
 	private firm.Type sizeTType;
 
 	private final Builtins builtins = new Builtins();
@@ -294,6 +296,10 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 		final String gcMallocAtomicName = NameMangler.mangleKnownName(GC_MALLOC_ATOMIC);
 		gcMallocAtomicEntity = new Entity(global, gcMallocAtomicName, mallocType);
+
+		/* mem_allocate_tlm has the same type as malloc */
+		final String tlmAllocName = NameMangler.mangleKnownName(TLM_ALLOC);
+		tlmAllocEntity = new Entity(global, tlmAllocName, mallocType);
 	}
 
 	/** Set info about whether we are currently compiling a command line job or not. */
@@ -1749,12 +1755,20 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		con.setCurrentMem(newMem);
 	}
 
-	private Node genObjectHeapAlloc(final Type x10Type) {
+	private Node genObjectAlloc(final Type x10Type, final Entity allocEntity) {
 		final ClassType firmType = firmTypeSystem.asClass(x10Type, true);
 		final Node size = con.newSymConstTypeSize(firmType, Mode.getIu());
-		final Node objPtr = genMallocCall(gcMallocEntity, size);
+		final Node objPtr = genMallocCall(allocEntity, size);
 		initVPtr(objPtr, firmType);
 		return objPtr;
+	}
+
+	private Node genObjectHeapAlloc(final Type x10Type) {
+		return genObjectAlloc(x10Type, gcMallocEntity);
+	}
+
+	private Node genObjectTLMAlloc(final Type x10Type) {
+		return genObjectAlloc(x10Type, tlmAllocEntity);
 	}
 
 	private Node genObjectStackAlloc(final Type x10Type) {
@@ -1899,6 +1913,13 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		addToWorklist(new GenericNodeInstance(decl, subst));
 	}
 
+	private X10ClassType tlmAllocateType = null;
+	private X10ClassType getTLMAllocateType() {
+		if (tlmAllocateType == null)
+			tlmAllocateType = typeSystem.getTypeSystem().load("x10.compiler.TLMAllocate");
+		return tlmAllocateType;
+	}
+
 	@Override
 	public void visit(final New_c n) {
 		final Type baseType = Types.baseType(n.objectType().type());
@@ -1909,7 +1930,21 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		if (!typeSystem.isStructType(n.type())) {
 			final Type stackAnnotation = typeSystem.getTypeSystem().StackAllocate();
 			final boolean stackAlloc = ((X10Ext) n.ext()).annotationMatching(stackAnnotation).size() > 0;
-			final Node objectNode = stackAlloc ? genObjectStackAlloc(type) : genObjectHeapAlloc(type);
+			final Type tlmAnnotation = getTLMAllocateType();
+			final boolean tlmAlloc = ((X10Ext) n.ext()).annotationMatching(tlmAnnotation).size() > 0;
+
+			if (stackAlloc && tlmAlloc)
+				throw new CodeGenError("Multiple allocation annotations", n);
+
+			final Node objectNode;
+			if (stackAlloc) {
+				objectNode = genObjectStackAlloc(type);
+			} else if (tlmAlloc) {
+				objectNode = genObjectTLMAlloc(type);
+			} else {
+				objectNode = genObjectHeapAlloc(type);
+			}
+
 			genClassConstructorCall(n.position(), objectNode, constructor, arguments);
 			setReturnNode(objectNode);
 		} else {
