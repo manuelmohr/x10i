@@ -55,7 +55,7 @@ public final class DeclFetcher {
 
 			/* Prevent spam about missing jobs for function objects. */
 			final String name = container.toString();
-			if (!name.startsWith("x10.lang. Fun_")) {
+			if (!name.startsWith("x10.lang. Fun_") && !name.startsWith("x10.lang. VoidFun_")) {
 				System.err.println(container.toString() + " has no job associated");
 			}
 			return null;
