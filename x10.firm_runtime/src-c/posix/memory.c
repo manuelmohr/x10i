@@ -23,6 +23,7 @@ void *mem_allocate_tlm(size_t size)
 #ifdef NO_GARBAGE_COLLECTION
 	return malloc(size);
 #else
+	(void)size;
 	abort();
 #endif
 }
@@ -32,6 +33,7 @@ void *mem_allocate_global(size_t size)
 #ifdef NO_GARBAGE_COLLECTION
 	return malloc(size);
 #else
+	(void)size;
 	abort();
 #endif
 }
