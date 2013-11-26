@@ -18,9 +18,8 @@ import x10.ast.X10NodeFactory_c;
 import x10c.visit.ClosureRemover;
 import x10firm.goals.AsmEmitted;
 import x10firm.goals.FirmGenerated;
+import x10firm.goals.FirmTransform;
 import x10firm.goals.Linked;
-import x10firm.goals.LoweringFirm;
-import x10firm.goals.OptimizeFirm;
 import x10firm.visit.StaticInitializer;
 
 /**
@@ -62,14 +61,10 @@ public class FirmScheduler extends X10Scheduler {
 
 	@Override
 	protected Goal PostCompiled() {
-		final Goal loweringFirm = new LoweringFirm(this).intern(this);
+		final Goal firmTransform = new FirmTransform(this).intern(this);
 
 		if (options.x10_config.ONLY_TYPE_CHECKING)
-			return loweringFirm;
-
-		final Goal optimized;
-		optimized = new OptimizeFirm().intern(this);
-		optimized.addPrereq(loweringFirm);
+			return firmTransform;
 
 		try {
 			if (options.assembleAndLink()) {
@@ -88,7 +83,7 @@ public class FirmScheduler extends X10Scheduler {
 		}
 
 		final Goal asmEmitted = new AsmEmitted(asmOutput).intern(this);
-		asmEmitted.addPrereq(optimized);
+		asmEmitted.addPrereq(firmTransform);
 
 		final Goal last;
 		if (options.assembleAndLink()) {

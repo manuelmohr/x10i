@@ -11,7 +11,7 @@ import java.util.Set;
 import polyglot.frontend.ExtensionInfo;
 import polyglot.main.UsageError;
 import x10.X10CompilerOptions;
-import x10firm.FirmOptimizations.FirmOptimization;
+import x10firm.FirmTransformations.Transformation;
 import x10firm.FirmOptions.FirmOption;
 import firm.Backend;
 
@@ -254,7 +254,7 @@ public class CompilerOptions extends X10CompilerOptions {
 		for (FirmOption option : FirmOptions.getKnownOptions().values()) {
 			usageForFlag(out, "-f " + option.getName(), option.getDescription());
 		}
-		for (FirmOptimization opt : FirmOptimizations.getOptimizations().values()) {
+		for (Transformation opt : FirmTransformations.getOptimizations().values()) {
 			if (opt.isHidden())
 				continue;
 

@@ -3,7 +3,7 @@ package x10firm;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import x10firm.FirmOptimizations.FirmOptimization;
+import x10firm.FirmTransformations.Transformation;
 
 /**
  * Firm options, just like cparser's "-f" switches.
@@ -191,8 +191,6 @@ public final class FirmOptions {
 
 		default:
 		case 2:
-			setOption("invert-loops");
-			setOption("unroll-loops");
 			setOption("reassociation");
 			setOption("place");
 			setOption("opt-load-store");
@@ -200,6 +198,7 @@ public final class FirmOptions {
 			setOption("parallelize-mem");
 			setOption("if-conv");
 			setOption("inline");
+			setOption("thread-jumps");
 		}
 	}
 
@@ -211,7 +210,7 @@ public final class FirmOptions {
 				cse = false;
 				constFolding = false;
 				// TODO: when adding new flags, set them to false too.
-				FirmOptimizations.disableAllOptimizations();
+				FirmTransformations.disableAllOptimizations();
 				return true;
 			}
 		});
@@ -287,14 +286,14 @@ public final class FirmOptions {
 	private static FirmOption optimizationOption = new FirmOption(null, null) {
 		@Override
 		boolean activate(final String arg) {
-			FirmOptimization optimization = FirmOptimizations.getOptimization(arg);
+			Transformation optimization = FirmTransformations.getOptimization(arg);
 			if (optimization != null) {
 				optimization.enable();
 				return true;
 			}
 
 			if (arg.startsWith("no-")) {
-				optimization = FirmOptimizations.getOptimization(arg.substring(3));
+				optimization = FirmTransformations.getOptimization(arg.substring(3));
 				if (optimization != null) {
 					optimization.disable();
 					return true;
