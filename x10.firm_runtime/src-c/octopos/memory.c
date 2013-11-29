@@ -29,7 +29,8 @@ void *mem_allocate_global(size_t size)
 #ifdef NO_GARBAGE_COLLECTION
 	return mem_allocate(MEM_SHM, size);
 #else
-	abort();
+	(void)size;
+	panic("All heap allocations should go through the garbage collector");
 #endif
 }
 
