@@ -130,7 +130,9 @@ static void init_places(claim_t root_claim)
 	init_tile();
 
 	/* Wait until all places are initialized. */
-	simple_signal_wait(&initialization_signal);
+	if (n_other_places > 0) {
+		simple_signal_wait(&initialization_signal);
+	}
 
 	/* If we use an agent system, we must free everything again,
 	 * so the agent can invade everything. */
