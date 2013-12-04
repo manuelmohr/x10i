@@ -5,6 +5,8 @@
 /.metadata/
 /BUGS
 /TODO
+/octopos-app
+/octopos-dist
 /x10.common/classes
 /x10.compiler/ArraySum*.class
 /x10.compiler/ArraySum*.java

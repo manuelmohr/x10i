@@ -360,7 +360,14 @@
         <ant antfile="${x10.runtime.location}/build.xml" target="dist-cpp" inheritAll="false" dir="${x10.runtime.location}"/>
     </target>
 
-    <target name="runtime-firm" depends="init">
+    <target name="fetch-octopos" depends="init">
+        <exec executable="${bash.exe}" failonerror="true" dir="${x10.home}">
+            <arg value="-c"/>
+            <arg value="./fetch_octopos.sh"/>
+        </exec>
+    </target>
+
+    <target name="runtime-firm" depends="init,fetch-octopos">
         <ant antfile="${x10.firm_runtime.location}/build.xml" target="dist" inheritAll="false" dir="${x10.firm_runtime.location}"/>
     </target>
 
