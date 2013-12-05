@@ -175,8 +175,11 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object
 	ac->agent_claim = 0;
 #endif
 	simple_ilet_init(child, execute, ac);
-	if (infect(enclosing->claim, child, 1)) panic("infect failed");
 	register_at_finish_state(enclosing);
+	if (infect(enclosing->claim, child, 1)) {
+		unregister_from_finish_state(enclosing);
+		panic("infect failed");
+	}
 }
 
 /* x10.lang.Runtime.finishBlockEnd() */
