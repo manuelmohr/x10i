@@ -424,7 +424,7 @@
         <ant antfile="${jfirm.location}/build.xml" target="jar" inheritAll="false" dir="${jfirm.location}"/>
     </target>
 
-    <target name="liboo-jar" depends="init,jfirm-jar">
+    <target name="liboo-jar" depends="init,jfirm-jar,fetch-octopos">
         <ant antfile="${liboo.location}/build.xml" target="dist" inheritAll="false" dir="${liboo.location}"/>
     </target>
 
