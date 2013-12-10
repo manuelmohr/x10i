@@ -38,6 +38,23 @@ uint32_t compute_checksum(const char *data, size_t size)
 	return checksum;
 }
 
+#if defined(BIG_ENDIAN_SERIALIZATION) && !defined(__sparc__)
+#include "endian.h"
+static void byteswap_header(ethernet_header_t *header)
+{
+	header->magic        = byteswap_32(header->magic);
+	header->length       = byteswap_32(header->length);
+	header->total_length = byteswap_32(header->total_length);
+	header->info         = byteswap_32(header->info);
+	header->checksum     = byteswap_32(header->checksum);
+}
+#else
+static void byteswap_header(ethernet_header_t *header)
+{
+	(void)header;
+}
+#endif
+
 x10i_message_t ethernet_receive(receive_func_t recv)
 {
 	char     *buffer          = mem_allocate_tlm(ETHERNET_MESSAGE_SIZE);
@@ -50,9 +67,10 @@ x10i_message_t ethernet_receive(receive_func_t recv)
 		if (!recv(buffer, ETHERNET_MESSAGE_SIZE))
 			panic("could not receive");
 
-		const ethernet_message_t *msg    = (const ethernet_message_t*)buffer;
-		const uint32_t            magic  = msg->header.magic;
-		const uint32_t            length = msg->header.length;
+		ethernet_message_t *msg = (ethernet_message_t*)buffer;
+		byteswap_header(&msg->header);
+		const uint32_t magic  = msg->header.magic;
+		const uint32_t length = msg->header.length;
 		DEBUG_PRINT("Received message with header: length=%u total_length=%u info=%u checksum=%x\n", msg->header.length, msg->header.total_length, msg->header.info, msg->header.checksum);
 
 		if (magic != ETHERNET_HEADER_MAGIC)
@@ -131,6 +149,7 @@ bool ethernet_send(send_func_t send, const x10i_message_t message)
 
 		DEBUG_PRINT("Sending message with header: length=%u total_length=%u info=%u checksum=%x\n", msg->header.length, msg->header.total_length, msg->header.info, msg->header.checksum);
 
+		byteswap_header(&msg->header);
 		if (!send(buffer, to_send_bytes + sizeof(ethernet_header_t))) {
 			okay = false;
 			goto out;

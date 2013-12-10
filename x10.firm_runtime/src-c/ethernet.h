@@ -1,7 +1,7 @@
 #ifndef ETHERNET_H
 #define ETHERNET_H
 
-#define ETHERNET_MESSAGE_SIZE (1<<14)
+#define ETHERNET_MESSAGE_SIZE 1400
 
 typedef bool (*receive_func_t)(void *buffer, size_t buffer_size);
 typedef bool (*send_func_t)(void *buffer, size_t buffer_size);

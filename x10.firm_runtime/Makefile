@@ -61,6 +61,9 @@ ifeq ($(findstring linux, $(TARGET)), linux)
 	OCTOPOS_EXTRAS=../octopos-app/releases/current/extras/libethcomm
 	CFLAGS += -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -pthread
 	CPPFLAGS += -I $(OCTOPOS_EXTRAS)
+	# Choose if you want big-endian serialization or not
+	# (Needed for host place mode on CHIPit)
+#	CPPFLAGS += -DBIG_ENDIAN_SERIALIZATION
 endif
 
 CPARSER_BASE ?= ../cparser

@@ -49,40 +49,65 @@ void x10_destroy_serialization_buffer(serialization_buffer_t *buffer)
 	ARR_FREE(&buffer->serialized_objects);
 }
 
+#if defined(BIG_ENDIAN_SERIALIZATION) && !defined(__sparc__)
+#include "endian.h"
+
+#define WRITE_TO_BUF(size, buf, addr) \
+	do { \
+		uint##size##_t val = byteswap_##size(*((const uint##size##_t*)(addr))); \
+		obstack_grow((buf)->obst, &val, sizeof(uint##size##_t)); \
+	} while (0)
+#define READ_FROM_BUF(size, buf, addr) \
+	do { \
+		uint##size##_t val; \
+		memcpy(&val, &(buf)->data[(buf)->cursor], sizeof(uint##size##_t)); \
+		val = byteswap_##size(val); \
+		memcpy((addr), &val, sizeof(uint##size##_t)); \
+	} while (0)
+
+#else
+
+#define WRITE_TO_BUF(size, buf, addr) \
+	obstack_grow((buf)->obst, (addr), sizeof(uint##size##_t))
+#define READ_FROM_BUF(size, buf, addr) \
+	memcpy((addr), &(buf)->data[(buf)->cursor], sizeof(uint##size##_t));
+
+#endif
+
 void x10_serialization_write_long(serialization_buffer_t *buf,
                                   const x10_long *value_ptr)
 {
-	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+	WRITE_TO_BUF(64, buf, value_ptr);
 }
 
 void x10_serialization_write_ulong(serialization_buffer_t *buf,
                                    const x10_ulong *value_ptr)
 {
-	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+	WRITE_TO_BUF(64, buf, value_ptr);
 }
 
 void x10_serialization_write_int(serialization_buffer_t *buf,
                                  const x10_int *value_ptr)
 {
-	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+	WRITE_TO_BUF(32, buf, value_ptr);
 }
 
 void x10_serialization_write_uint(serialization_buffer_t *buf,
                                   const x10_uint *value_ptr)
 {
-	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+	WRITE_TO_BUF(32, buf, value_ptr);
 }
 
 void x10_serialization_write_short(serialization_buffer_t *buf,
                                    const x10_short *value_ptr)
 {
-	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+	WRITE_TO_BUF(16, buf, value_ptr);
 }
 
 void x10_serialization_write_ushort(serialization_buffer_t *buf,
                                     const x10_ushort *value_ptr)
 {
-	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+	WRITE_TO_BUF(16, buf, value_ptr);
 }
 
 void x10_serialization_write_byte(serialization_buffer_t *buf,
@@ -112,19 +137,19 @@ void x10_serialization_write_char(serialization_buffer_t *buf,
 void x10_serialization_write_float(serialization_buffer_t *buf,
                                    const x10_float *value_ptr)
 {
-	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+	WRITE_TO_BUF(32, buf, value_ptr);
 }
 
 void x10_serialization_write_double(serialization_buffer_t *buf,
                                     const x10_double *value_ptr)
 {
-	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+	WRITE_TO_BUF(64, buf, value_ptr);
 }
 
 void x10_serialization_write_pointer(serialization_buffer_t *buf,
                                      const x10_pointer *value_ptr)
 {
-	obstack_grow(buf->obst, value_ptr, sizeof(*value_ptr));
+	WRITE_TO_BUF(32, buf, value_ptr);
 	/* Currently our garbage collector is per-place only. As soon as pointers
 	 * get sent to other places (e.g. GlobalRef contains a pointer), we may have
 	 * references on other places to our data. For now, we simply remember the
@@ -201,42 +226,42 @@ void x10_destroy_deserialization_buffer(deserialization_buffer_t *buffer)
 void x10_deserialization_restore_long(deserialization_buffer_t *buf,
                                       x10_long *addr)
 {
-	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
+	READ_FROM_BUF(64, buf, addr);
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_ulong(deserialization_buffer_t *buf,
                                        x10_ulong *addr)
 {
-	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
+	READ_FROM_BUF(64, buf, addr);
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_int(deserialization_buffer_t *buf,
                                      x10_int *addr)
 {
-	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
+	READ_FROM_BUF(32, buf, addr);
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_uint(deserialization_buffer_t *buf,
                                       x10_uint *addr)
 {
-	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
+	READ_FROM_BUF(32, buf, addr);
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_short(deserialization_buffer_t *buf,
                                        x10_short *addr)
 {
-	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
+	READ_FROM_BUF(16, buf, addr);
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_ushort(deserialization_buffer_t *buf,
                                         x10_ushort *addr)
 {
-	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
+	READ_FROM_BUF(16, buf, addr);
 	buf->cursor += sizeof(*addr);
 }
 
@@ -271,21 +296,21 @@ void x10_deserialization_restore_boolean(deserialization_buffer_t *buf,
 void x10_deserialization_restore_float(deserialization_buffer_t *buf,
                                        x10_float *addr)
 {
-	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
+	READ_FROM_BUF(32, buf, addr);
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_double(deserialization_buffer_t *buf,
                                         x10_double *addr)
 {
-	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
+	READ_FROM_BUF(64, buf, addr);
 	buf->cursor += sizeof(*addr);
 }
 
 void x10_deserialization_restore_pointer(deserialization_buffer_t *buf,
                                          x10_pointer *addr)
 {
-	memcpy(addr, &buf->data[buf->cursor], sizeof(*addr));
+	READ_FROM_BUF(32, buf, addr);
 	buf->cursor += sizeof(*addr);
 }
 
