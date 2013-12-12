@@ -23,7 +23,7 @@ abstract public class Claim {
         return new AgentClaim(clm);
     }
 
-    @LinkSymbol("agent_claim_invade")
+    @LinkSymbol("x10_agent_claim_invade")
     static native def invade(parent:Pointer, constraints:Pointer):Pointer;
 
     /** convenience invade function */
@@ -131,7 +131,7 @@ final class AgentClaim extends Claim {
     /** Reinvades with the same constraints and returns whether claim contents changed */
     public def reinvade():Boolean = reinvade(this.clm) != 0;
 
-    @LinkSymbol("agent_claim_reinvade")
+    @LinkSymbol("x10_agent_claim_reinvade")
     static native def reinvade(clm:Pointer):Int;
 
     /** Reinvades with new constraints and returns whether claim contents changed */
@@ -140,7 +140,7 @@ final class AgentClaim extends Claim {
         return reinvade(this.clm, and.constr) != 0;
     }
 
-    @LinkSymbol("agent_claim_reinvade_constraints")
+    @LinkSymbol("x10_agent_claim_reinvade_constraints")
     static native def reinvade(clm:Pointer, constr:Pointer):Int;
 
     /** Retreat completely and free all resources. */

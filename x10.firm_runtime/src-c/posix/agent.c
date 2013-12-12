@@ -87,3 +87,38 @@ void agent_constr_overwrite(constraints_t constrTarget, constraints_t additional
 	(void)additionalConstraints;
 	DECL_NOT_AVAILABLE();
 }
+
+agentclaim_t x10_agent_claim_invade(agent_t parentagent, constraints_t constr)
+{
+	(void)parentagent;
+	(void)constr;
+	DECL_NOT_AVAILABLE();
+}
+
+agentclaim_t x10_agent_claim_invade_or_constraints(agent_t parentagent, uint8_t constr_count, constraints_t constr[])
+{
+	(void)parentagent;
+	(void)constr_count;
+	(void)constr;
+	DECL_NOT_AVAILABLE();
+}
+
+agentclaim_t x10_agent_claim_invade_parentclaim(agentclaim_t parentclaim, constraints_t constr)
+{
+	(void)parentclaim;
+	(void)constr;
+	DECL_NOT_AVAILABLE();
+}
+
+int x10_agent_claim_reinvade(agentclaim_t claim)
+{
+	(void)claim;
+	DECL_NOT_AVAILABLE();
+}
+
+int x10_agent_claim_reinvade_constraints(agentclaim_t claim, constraints_t constr)
+{
+	(void)claim;
+	(void)constr;
+	DECL_NOT_AVAILABLE();
+}
