@@ -24,10 +24,14 @@ static void init_tile()
 	x10_serialization_init();
 }
 
+static void ilet_dma_local_finish(void *init_signal)
+{
+	simple_signal_signal((simple_signal*)init_signal);
+}
+
 static void ilet_init_tile(void *init_signal)
 {
 	init_tile();
-
 	simple_ilet notification_ilet;
 	simple_ilet_init(&notification_ilet, ilet_notify, init_signal);
 	dispatch_claim_send_reply(&notification_ilet);
@@ -46,9 +50,9 @@ static void ilet_transfer_places(void *arg_remote_place_id, void *remote_places)
 	dispatch_claim_t remote_claim   = places[remote_place_id];
 	buf_size_t       size           = n_places * sizeof(*places);
 
-	simple_ilet init_ilet;
-	simple_ilet_init(&init_ilet, ilet_init_tile, &initialization_signal);
-	dispatch_claim_push_dma(remote_claim, places, remote_places, size, NULL, &init_ilet);
+	simple_ilet finish_ilet;
+	simple_ilet_init(&finish_ilet, ilet_dma_local_finish, &initialization_signal);
+	dispatch_claim_push_dma(remote_claim, places, remote_places, size, &finish_ilet, NULL);
 }
 
 static void ilet_allocate_places(void *arg_place_id, void *arg_n_places)
@@ -65,15 +69,42 @@ static void ilet_allocate_places(void *arg_place_id, void *arg_n_places)
 /* Start value when trying to acquire more PEs. */
 #define START_NUM_PES 4
 
-/* Copy local places array to all invaded tiles */
+/* Copy local places array to all places */
 static void distribute_places(void)
 {
 	simple_signal_init(&initialization_signal, n_places-1);
+
 	for (unsigned pid = 1; pid < n_places; ++pid) {
 		dispatch_claim_t dispatch_claim  = places[pid];
 		simple_ilet      start_init_ilet;
 		dual_ilet_init(&start_init_ilet, ilet_allocate_places, (void*)pid, (void*)n_places);
 		dispatch_claim_infect(dispatch_claim, &start_init_ilet, 1);
+	}
+
+	/* Wait until all places are initialized. */
+	if (n_places > 1) {
+		simple_signal_wait(&initialization_signal);
+	}
+}
+
+/* initalize X10 an all places */
+static void init_all_places(void)
+{
+	simple_signal_init(&initialization_signal, n_places-1);
+
+	for (unsigned pid = 1; pid < n_places; ++pid) {
+		dispatch_claim_t dispatch_claim  = places[pid];
+		simple_ilet init_ilet;
+		simple_ilet_init(&init_ilet, ilet_init_tile, &initialization_signal);
+		dispatch_claim_infect(dispatch_claim, &init_ilet, 1);
+	}
+
+	/* Initialize initial place. */
+	init_tile();
+
+	/* Wait until all places are initialized. */
+	if (n_places > 1) {
+		simple_signal_wait(&initialization_signal);
 	}
 }
 
@@ -128,16 +159,8 @@ static void init_places(claim_t root_claim)
 	}
 	assert(pid == n_places);
 
-	/* Distribute places array and initialize all non-initial places. */
 	distribute_places();
-
-	/* Initialize initial place. */
-	init_tile();
-
-	/* Wait until all places are initialized. */
-	if (n_places > 1) {
-		simple_signal_wait(&initialization_signal);
-	}
+	init_all_places();
 
 	/* If we use an agent system, we must free everything again,
 	 * so the agent can invade everything. */
