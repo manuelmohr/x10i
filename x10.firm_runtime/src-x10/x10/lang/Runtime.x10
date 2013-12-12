@@ -14,6 +14,7 @@ package x10.lang;
 import x10.compiler.Profile;
 import x10.util.concurrent.Monitor;
 import x10.compiler.LinkSymbol;
+import x10.compiler.TLMAllocate;
 
 public final class Runtime {
     public static type Profile = Empty;
@@ -23,7 +24,7 @@ public final class Runtime {
     private static native def evalAtOtherPlace(placeId : Int, o: Any) : Any;
     private static native def getHereId() : Int;
     
-    public static val atomicMonitor = new Monitor();
+    public static val atomicMonitor = @TLMAllocate new Monitor();
 
     /**
      * Return a deep copy of the parameter.
