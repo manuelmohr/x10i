@@ -65,6 +65,18 @@ static void ilet_allocate_places(void *arg_place_id, void *arg_n_places)
 /* Start value when trying to acquire more PEs. */
 #define START_NUM_PES 4
 
+/* Copy local places array to all invaded tiles */
+static void distribute_places(void)
+{
+	simple_signal_init(&initialization_signal, n_places-1);
+	for (unsigned pid = 1; pid < n_places; ++pid) {
+		dispatch_claim_t dispatch_claim  = places[pid];
+		simple_ilet      start_init_ilet;
+		dual_ilet_init(&start_init_ilet, ilet_allocate_places, (void*)pid, (void*)n_places);
+		dispatch_claim_infect(dispatch_claim, &start_init_ilet, 1);
+	}
+}
+
 static void init_places(claim_t root_claim)
 {
 	const unsigned n_tiles      = get_tile_count();
@@ -77,7 +89,6 @@ static void init_places(claim_t root_claim)
 	} else {
 		n_places = n_tiles - 1;
 	}
-	const unsigned n_other_places = n_places - 1;
 
 	places = mem_allocate(MEM_TLM_LOCAL, n_places * sizeof(*places));
 	memset(places, 0, n_places * sizeof(*places));
@@ -118,19 +129,13 @@ static void init_places(claim_t root_claim)
 	assert(pid == n_places);
 
 	/* Distribute places array and initialize all non-initial places. */
-	simple_signal_init(&initialization_signal, n_other_places);
-	for (pid = 1; pid < n_places; ++pid) {
-		dispatch_claim_t dispatch_claim  = places[pid];
-		simple_ilet      start_init_ilet;
-		dual_ilet_init(&start_init_ilet, ilet_allocate_places, (void*)pid, (void*)n_places);
-		dispatch_claim_infect(dispatch_claim, &start_init_ilet, 1);
-	}
+	distribute_places();
 
 	/* Initialize initial place. */
 	init_tile();
 
 	/* Wait until all places are initialized. */
-	if (n_other_places > 0) {
+	if (n_places > 1) {
 		simple_signal_wait(&initialization_signal);
 	}
 
