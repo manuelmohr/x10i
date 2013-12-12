@@ -6,9 +6,9 @@ set -eu
 
 RELEASES=""
 RELEASES="$RELEASES release.leon.4t-sf-chipit-w-iotile.2013-12-02.tar.bz2"
-RELEASES="$RELEASES release.x86guest.multitile.2013-12-02.tar.bz2"
+RELEASES="$RELEASES release.x86guest.multitile.2013-12-12.tar.bz2"
 MD5SUMS="""8e4240dbe931e6af08824d3f61f1442c  release.leon.4t-sf-chipit-w-iotile.2013-12-02.tar.bz2
-8670f9f356b6681c8363c47b8fb12ea0  release.x86guest.multitile.2013-12-02.tar.bz2"""
+229206a82c2d7582d1f6cd235f84ea21  release.x86guest.multitile.2013-12-12.tar.bz2"""
 
 DIST_DIR="octopos-dist"
 OCTOPOS_APP_DIR="octopos-app"

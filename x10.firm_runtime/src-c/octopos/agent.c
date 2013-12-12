@@ -56,5 +56,5 @@ int x10_agent_claim_reinvade(agentclaim_t claim)
  * which does X10 specific stuff */
 int x10_agent_claim_reinvade_constraints(agentclaim_t claim, constraints_t constr)
 {
-	agent_claim_reinvade_constraints(claim, constr);
+	return agent_claim_reinvade_constraints(claim, constr);
 }

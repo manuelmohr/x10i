@@ -7,6 +7,12 @@
 #include "serialization.h"
 #include "xmalloc.h"
 
+typedef struct distribute_places_context {
+	dispatch_claim_t *places;
+	int n_places;
+	simple_signal *signal;
+} distribute_places_context;
+
 dispatch_claim_t *places;
 
 static simple_signal initialization_signal;
@@ -24,13 +30,15 @@ static void init_tile()
 	x10_serialization_init();
 }
 
-static void ilet_dma_local_finish(void *init_signal)
+static void ilet_dma_local_finish(void *context)
 {
-	simple_signal_signal((simple_signal*)init_signal);
+	distribute_places_context *dpc  = context;
+	simple_signal_signal(dpc->signal);
 }
 
-static void ilet_init_tile(void *init_signal)
+static void ilet_init_tile(void *init_signal, void *pid)
 {
+	place_id = (unsigned) pid;
 	init_tile();
 	simple_ilet notification_ilet;
 	simple_ilet_init(&notification_ilet, ilet_notify, init_signal);
@@ -44,68 +52,64 @@ static void shutdown_tile()
 	guest_shutdown();
 }
 
-static void ilet_transfer_places(void *arg_remote_place_id, void *remote_places)
+static void ilet_transfer_places(void *remote_places, void *context)
 {
-	const unsigned   remote_place_id = (unsigned)arg_remote_place_id;
-	dispatch_claim_t remote_claim   = places[remote_place_id];
-	buf_size_t       size           = n_places * sizeof(*places);
+	distribute_places_context *dpc  = context;
+	dispatch_claim_t remote_claim   = get_parent_dispatch_claim();
+	buf_size_t       size           = (dpc->n_places) * sizeof(*places);
 
-	simple_ilet finish_ilet;
-	simple_ilet_init(&finish_ilet, ilet_dma_local_finish, &initialization_signal);
-	dispatch_claim_push_dma(remote_claim, places, remote_places, size, &finish_ilet, NULL);
+	simple_ilet ilet;
+	simple_ilet_init(&ilet, ilet_dma_local_finish, context);
+	dispatch_claim_push_dma(remote_claim, dpc->places, remote_places, size, &ilet, NULL);
 }
 
-static void ilet_allocate_places(void *arg_place_id, void *arg_n_places)
+static void ilet_allocate_places(void *arg_n_places, void *context)
 {
-	place_id = (unsigned)arg_place_id;
+	if (places != NULL) mem_free(places);
 	n_places = (unsigned)arg_n_places;
 	places   = mem_allocate(MEM_TLM_LOCAL, n_places * sizeof(*places));
-
-	simple_ilet transfer_ilet;
-	dual_ilet_init(&transfer_ilet, ilet_transfer_places, arg_place_id, get_global_address(places));
-	dispatch_claim_send_reply(&transfer_ilet);
+	simple_ilet ilet;
+	dual_ilet_init(&ilet, ilet_transfer_places, get_global_address(places), context);
+	dispatch_claim_send_reply(&ilet);
 }
 
 /* Start value when trying to acquire more PEs. */
 #define START_NUM_PES 4
 
 /* Copy local places array to all places */
-static void distribute_places(void)
+static void distribute_places(dispatch_claim_t *new_places, unsigned new_n_places)
 {
-	simple_signal_init(&initialization_signal, n_places-1);
+	simple_signal finish_signal;
+	simple_signal_init(&finish_signal, new_n_places);
 
-	for (unsigned pid = 1; pid < n_places; ++pid) {
-		dispatch_claim_t dispatch_claim  = places[pid];
-		simple_ilet      start_init_ilet;
-		dual_ilet_init(&start_init_ilet, ilet_allocate_places, (void*)pid, (void*)n_places);
-		dispatch_claim_infect(dispatch_claim, &start_init_ilet, 1);
+	for (unsigned pid = 0; pid < new_n_places; ++pid) {
+		distribute_places_context *dpc = mem_allocate(MEM_TLM_LOCAL, sizeof(distribute_places_context));
+		dpc->places = new_places;
+		dpc->n_places = new_n_places;
+		dpc->signal = &finish_signal;
+		simple_ilet ilet;
+		dispatch_claim_t dc = new_places[pid];
+		dual_ilet_init(&ilet, ilet_allocate_places, (void*)new_n_places, (void*)dpc);
+		dispatch_claim_infect(dc, &ilet, 1);
 	}
 
 	/* Wait until all places are initialized. */
-	if (n_places > 1) {
-		simple_signal_wait(&initialization_signal);
-	}
+	simple_signal_wait(&finish_signal);
 }
 
 /* initalize X10 an all places */
 static void init_all_places(void)
 {
-	simple_signal_init(&initialization_signal, n_places-1);
+	simple_signal_init(&initialization_signal, n_places);
 
-	for (unsigned pid = 1; pid < n_places; ++pid) {
+	for (unsigned pid = 0; pid < n_places; ++pid) {
 		dispatch_claim_t dispatch_claim  = places[pid];
 		simple_ilet init_ilet;
-		simple_ilet_init(&init_ilet, ilet_init_tile, &initialization_signal);
+		dual_ilet_init(&init_ilet, ilet_init_tile, &initialization_signal, (void*)pid);
 		dispatch_claim_infect(dispatch_claim, &init_ilet, 1);
 	}
 
-	/* Initialize initial place. */
-	init_tile();
-
-	/* Wait until all places are initialized. */
-	if (n_places > 1) {
-		simple_signal_wait(&initialization_signal);
-	}
+	simple_signal_wait(&initialization_signal);
 }
 
 static void init_places(claim_t root_claim)
@@ -113,18 +117,19 @@ static void init_places(claim_t root_claim)
 	const unsigned n_tiles      = get_tile_count();
 	const unsigned root_tile_id = get_tile_id();
 	const unsigned io_tile_id   = get_io_tile_id();
+	unsigned new_n_places;
 
 	/* Workaround, SPARC OctoPOS currently returns 0 for get_io_tile_id(). */
 	if (root_tile_id == io_tile_id || io_tile_id >= n_tiles) {
-		n_places = n_tiles;
+		new_n_places = n_tiles;
 	} else {
-		n_places = n_tiles - 1;
+		new_n_places = n_tiles - 1;
 	}
 
-	places = mem_allocate(MEM_TLM_LOCAL, n_places * sizeof(*places));
-	memset(places, 0, n_places * sizeof(*places));
-	proxy_claim_t *proxies = mem_allocate(MEM_TLM_LOCAL, n_places * sizeof(*proxies));
-	memset(proxies, 0, n_places * sizeof(*proxies));
+	dispatch_claim_t *new_places = mem_allocate(MEM_TLM_LOCAL, new_n_places * sizeof(*new_places));
+	memset(new_places, 0, new_n_places * sizeof(*new_places));
+	proxy_claim_t *proxies = mem_allocate(MEM_TLM_LOCAL, new_n_places * sizeof(*proxies));
+	memset(proxies, 0, new_n_places * sizeof(*proxies));
 
 	/* Get as many CPUs as possible on local tile.
 	 * Remove this once invading is exposed as an API call to the user. */
@@ -137,7 +142,7 @@ static void init_places(claim_t root_claim)
 #else
 	(void) root_claim; /* remove warning */
 #endif
-	places[0] = get_own_dispatch_claim();
+	new_places[0] = get_own_dispatch_claim();
 
 	/* Get as many CPUs as possible on all other tiles. */
 	unsigned pid = 1;
@@ -154,18 +159,18 @@ static void init_places(claim_t root_claim)
 		assert(claim != NULL && "Could not invade tile");
 
 		proxies[pid] = claim;
-		places[pid] = proxy_get_dispatch_info(claim);
+		new_places[pid] = proxy_get_dispatch_info(claim);
 		pid++;
 	}
-	assert(pid == n_places);
+	assert(pid == new_n_places);
 
-	distribute_places();
+	distribute_places(new_places, new_n_places);
 	init_all_places();
 
 	/* If we use an agent system, we must free everything again,
 	 * so the agent can invade everything. */
 #ifdef USE_AGENTSYSTEM
-	for (pid = 1; pid < n_places; ++pid) {
+	for (pid = 1; pid < new_n_places; ++pid) {
 		proxy_claim_t pclaim = proxies[pid];
 		retreat_future_t fut;
 		proxy_retreat(pclaim, &fut);
