@@ -390,16 +390,8 @@ x10_object *x10_execute_at(x10_int place_id, x10_int msg_type, x10_object *closu
 
 	simple_signal_init(&join_signal, 1);
 
-#ifdef USE_AGENTSYSTEM
-	agentclaim_t myClaim = agentclaim_get_current();
-	proxy_claim_t pClaim = agent_claim_get_proxyclaim_tile_type(myClaim, place_id, 0);
-	if (pClaim == NULL)
-		panic("'at' to invalid place id");
-	dispatch_claim_t destination_claim = proxy_get_dispatch_info(pClaim);
-#else
 	assert(place_id >= 0 && (unsigned)place_id < n_places);
 	dispatch_claim_t destination_claim = places[place_id];
-#endif
 
 	source_local_data.dispatch_claim = destination_claim;
 
