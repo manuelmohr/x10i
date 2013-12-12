@@ -48,7 +48,10 @@ static void ilet_init_tile(void *init_signal, void *pid)
 /** shutdown code that is run on each tile before exiting. */
 static void shutdown_tile()
 {
+#ifndef USE_AGENTSYSTEM
+	/* within the agent system, this is implicit via retreat */
 	mem_free(places);
+#endif
 	guest_shutdown();
 }
 
@@ -65,9 +68,9 @@ static void ilet_transfer_places(void *remote_places, void *context)
 
 static void ilet_allocate_places(void *arg_n_places, void *context)
 {
-	if (places != NULL) mem_free(places);
 	n_places = (unsigned)arg_n_places;
 	places   = mem_allocate(MEM_TLM_LOCAL, n_places * sizeof(*places));
+	/* is freed implicitly upon retreat or shutdown */
 	simple_ilet ilet;
 	dual_ilet_init(&ilet, ilet_transfer_places, get_global_address(places), context);
 	dispatch_claim_send_reply(&ilet);
@@ -78,8 +81,10 @@ static void ilet_allocate_places(void *arg_n_places, void *context)
 
 /** Copy places array to all places
  * Frees new_places at the end. */
-static void distribute_places(dispatch_claim_t *new_places, unsigned new_n_places)
+void distribute_places(dispatch_claim_t *new_places, unsigned new_n_places)
 {
+	assert(new_places != NULL && "NULL places array");
+	assert(new_n_places >= 1 && "empty places array");
 	simple_signal finish_signal;
 	simple_signal_init(&finish_signal, new_n_places);
 
