@@ -76,7 +76,8 @@ static void ilet_allocate_places(void *arg_n_places, void *context)
 /* Start value when trying to acquire more PEs. */
 #define START_NUM_PES 4
 
-/* Copy local places array to all places */
+/** Copy places array to all places
+ * Frees new_places at the end. */
 static void distribute_places(dispatch_claim_t *new_places, unsigned new_n_places)
 {
 	simple_signal finish_signal;
@@ -95,6 +96,8 @@ static void distribute_places(dispatch_claim_t *new_places, unsigned new_n_place
 
 	/* Wait until all places are initialized. */
 	simple_signal_wait(&finish_signal);
+
+	mem_free(new_places);
 }
 
 /* initalize X10 an all places */
