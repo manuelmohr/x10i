@@ -91,13 +91,12 @@ abstract public class Claim {
                     results(current_iid) = ilet(id);
                 }
             } else {
-                val current = AgentClaim.get_current();
-                AgentClaim.set_current(this.my_clm());
+                val ac = this as AgentClaim;
                 async {
-                    results(current_iid) = at (p)
-                        ilet(new IncarnationID(current_iid, pe));
+                    results(current_iid) = ac.evalAtAgent (p, ()=>{
+                        return ilet(new IncarnationID(current_iid, pe));
+                    }) as T;
                 }
-                AgentClaim.set_current(current);
             }
             iid += 1;
         }
@@ -227,16 +226,27 @@ final class AgentClaim extends Claim {
                     ilet(id);
                 }
             } else {
-                val current = AgentClaim.get_current();
-                AgentClaim.set_current(this.clm);
-                at (p) async {
+                runAtAgent(p, ()=>{
                     val id = new IncarnationID(current_iid, pe);
                     ilet(id);
-                }
-                AgentClaim.set_current(current);
+                });
             }
             iid += 1;
         }
+    }
+
+    @LinkSymbol("x10_eval_at_agent")
+    private static native def evalAtOtherAgent(placeId:Int, agentclaim:Pointer, o:Any):Any;
+
+    public def evalAtAgent(p:Place, f:()=>Any):Any {
+        return evalAtOtherAgent(p.id, this.clm, f);
+    }
+
+    @LinkSymbol("x10_exec_at_agent")
+    private static native def execAtOtherAgent(placeId:Int, agentclaim:Pointer, o:Any):void;
+
+    public def runAtAgent(p:Place, f:()=>void) {
+        execAtOtherAgent(p.id, this.clm, f);
     }
 }
 

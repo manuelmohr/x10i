@@ -11,9 +11,14 @@ typedef struct distribute_places_context {
 	dispatch_claim_t *places;
 	int n_places;
 	simple_signal *signal;
+	unsigned place_id;
 } distribute_places_context;
 
-dispatch_claim_t *places;
+typedef struct place_local_data {
+	dispatch_claim_t *places;
+	unsigned n_places;
+	unsigned place_id;
+} place_local_data;
 
 static simple_signal initialization_signal;
 
@@ -34,11 +39,17 @@ static void ilet_dma_local_finish(void *context)
 {
 	distribute_places_context *dpc  = context;
 	simple_signal_signal(dpc->signal);
+	mem_free(dpc);
 }
 
-static void ilet_init_tile(void *init_signal, void *pid)
+static void ilet_dma_remote_finish(void *pid)
 {
-	place_id = (unsigned) pid;
+	place_local_data *pld = claim_get_local_data(get_claim());
+	pld->place_id = (unsigned)pid;
+}
+
+static void ilet_init_tile(void *init_signal)
+{
 	init_tile();
 	simple_ilet notification_ilet;
 	simple_ilet_init(&notification_ilet, ilet_notify, init_signal);
@@ -48,10 +59,6 @@ static void ilet_init_tile(void *init_signal, void *pid)
 /** shutdown code that is run on each tile before exiting. */
 static void shutdown_tile()
 {
-#ifndef USE_AGENTSYSTEM
-	/* within the agent system, this is implicit via retreat */
-	mem_free(places);
-#endif
 	guest_shutdown();
 }
 
@@ -59,20 +66,25 @@ static void ilet_transfer_places(void *remote_places, void *context)
 {
 	distribute_places_context *dpc  = context;
 	dispatch_claim_t remote_claim   = get_parent_dispatch_claim();
-	buf_size_t       size           = (dpc->n_places) * sizeof(*places);
+	buf_size_t       size           = (dpc->n_places) * sizeof(dispatch_claim_t);
 
-	simple_ilet ilet;
-	simple_ilet_init(&ilet, ilet_dma_local_finish, context);
-	dispatch_claim_push_dma(remote_claim, dpc->places, remote_places, size, &ilet, NULL);
+	simple_ilet ilet_local;
+	simple_ilet_init(&ilet_local, ilet_dma_local_finish, context);
+	simple_ilet ilet_remote;
+	simple_ilet_init(&ilet_remote, ilet_dma_remote_finish, (void*)dpc->place_id);
+	dispatch_claim_push_dma(remote_claim, dpc->places, remote_places, size, &ilet_local, &ilet_remote);
 }
 
 static void ilet_allocate_places(void *arg_n_places, void *context)
 {
-	n_places = (unsigned)arg_n_places;
-	places   = mem_allocate(MEM_TLM_LOCAL, n_places * sizeof(*places));
+	unsigned n_places = (unsigned)arg_n_places;
+	place_local_data *pld = mem_allocate(MEM_TLM_LOCAL, sizeof(place_local_data));
+	pld->n_places = n_places;
+	pld->places   = mem_allocate(MEM_TLM_LOCAL, n_places * sizeof(*pld->places));
+	claim_set_local_data(get_claim(), pld);
 	/* is freed implicitly upon retreat or shutdown */
 	simple_ilet ilet;
-	dual_ilet_init(&ilet, ilet_transfer_places, get_global_address(places), context);
+	dual_ilet_init(&ilet, ilet_transfer_places, get_global_address(pld->places), context);
 	dispatch_claim_send_reply(&ilet);
 }
 
@@ -93,6 +105,7 @@ void distribute_places(dispatch_claim_t *new_places, unsigned new_n_places)
 		dpc->places = new_places;
 		dpc->n_places = new_n_places;
 		dpc->signal = &finish_signal;
+		dpc->place_id = pid;
 		simple_ilet ilet;
 		dispatch_claim_t dc = new_places[pid];
 		dual_ilet_init(&ilet, ilet_allocate_places, (void*)new_n_places, (void*)dpc);
@@ -108,12 +121,14 @@ void distribute_places(dispatch_claim_t *new_places, unsigned new_n_places)
 /* initalize X10 an all places */
 static void init_all_places(void)
 {
+	place_local_data *pld = claim_get_local_data(get_claim());
+	unsigned n_places = pld->n_places;
 	simple_signal_init(&initialization_signal, n_places);
 
 	for (unsigned pid = 0; pid < n_places; ++pid) {
-		dispatch_claim_t dispatch_claim  = places[pid];
+		dispatch_claim_t dispatch_claim  = pld->places[pid];
 		simple_ilet init_ilet;
-		dual_ilet_init(&init_ilet, ilet_init_tile, &initialization_signal, (void*)pid);
+		simple_ilet_init(&init_ilet, ilet_init_tile, &initialization_signal);
 		dispatch_claim_infect(dispatch_claim, &init_ilet, 1);
 	}
 
@@ -141,7 +156,6 @@ static void init_places(claim_t root_claim)
 
 	/* Get as many CPUs as possible on local tile.
 	 * Remove this once invading is exposed as an API call to the user. */
-	place_id = 0; /* Set root place's id. */
 	uint32_t num = START_NUM_PES;
 #ifndef USE_AGENTSYSTEM
 	while (num > 0 && invade_simple(root_claim, num) == -1)
@@ -184,6 +198,8 @@ static void init_places(claim_t root_claim)
 		proxy_retreat(pclaim, &fut);
 		retreat_future_force(&fut);
 	}
+	place_local_data *pld = claim_get_local_data(get_claim());
+	pld->n_places = 1;
 #endif
 }
 

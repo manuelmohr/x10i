@@ -122,3 +122,19 @@ int x10_agent_claim_reinvade_constraints(agentclaim_t claim, constraints_t const
 	(void)constr;
 	DECL_NOT_AVAILABLE();
 }
+
+x10_object *x10_eval_at_agent(x10_int pid, void *agentclaim, x10_object *closure)
+{
+	(void)pid;
+	(void)agentclaim;
+	(void)closure;
+	DECL_NOT_AVAILABLE();
+}
+
+void x10_exec_at_agent(x10_int pid, void *agentclaim, x10_object *closure)
+{
+	(void)pid;
+	(void)agentclaim;
+	(void)closure;
+	DECL_NOT_AVAILABLE();
+}
