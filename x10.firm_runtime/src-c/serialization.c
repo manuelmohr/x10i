@@ -50,7 +50,7 @@ void x10_destroy_serialization_buffer(serialization_buffer_t *buffer)
 }
 
 #if defined(BIG_ENDIAN_SERIALIZATION) && !defined(__sparc__)
-#include "endian.h"
+#include "byteswap.h"
 
 #define WRITE_TO_BUF(size, buf, addr) \
 	do { \

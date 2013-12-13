@@ -39,7 +39,7 @@ uint32_t compute_checksum(const char *data, size_t size)
 }
 
 #if defined(BIG_ENDIAN_SERIALIZATION) && !defined(__sparc__)
-#include "endian.h"
+#include "byteswap.h"
 static void byteswap_header(ethernet_header_t *header)
 {
 	header->magic        = byteswap_32(header->magic);
