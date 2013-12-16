@@ -85,18 +85,11 @@ abstract public class Claim {
         finish for (pe in pes) {
             val p = pe.getPlace();
             val current_iid = iid;
-            if (p == here) { // FIXME compare tile instead?
-                async {
-                    val id = new IncarnationID(current_iid, pe);
-                    results(current_iid) = ilet(id);
-                }
-            } else {
-                val ac = this as AgentClaim;
-                async {
-                    results(current_iid) = ac.evalAtAgent (p, ()=>{
-                        return ilet(new IncarnationID(current_iid, pe));
-                    }) as T;
-                }
+            val ac = this as AgentClaim;
+            async {
+                results(current_iid) = ac.evalAtAgent (p, ()=>{
+                    return ilet(new IncarnationID(current_iid, pe));
+                }) as T;
             }
             iid += 1;
         }
@@ -220,12 +213,7 @@ final class AgentClaim extends Claim {
         finish for (pe in pes) {
             val p = pe.getPlace();
             val current_iid = iid;
-            if (p == here) { // FIXME compare tile instead?
-                async {
-                    val id = new IncarnationID(current_iid, pe);
-                    ilet(id);
-                }
-            } else {
+            async {
                 runAtAgent(p, ()=>{
                     val id = new IncarnationID(current_iid, pe);
                     ilet(id);
