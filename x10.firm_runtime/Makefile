@@ -40,8 +40,6 @@ ifeq ($(findstring invasic, $(TARGET)), invasic)
 	# ...it is OctoPOS
 	CPPFLAGS += -D__OCTOPOS__
 	CPPFLAGS += -I $(OCTOPOS_BASE)/include
-	# Choose if you want garbage collection or not
-	CPPFLAGS += -DNO_GARBAGE_COLLECTION
 endif
 ifeq ($(findstring i686-invasic, $(TARGET)), i686-invasic)
 	OCTOPOS_BASE=../octopos-app/releases/current/x86guest/multitile
