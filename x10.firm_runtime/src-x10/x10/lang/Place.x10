@@ -85,9 +85,6 @@ public final struct Place(id: Int)  {
      * A convenience for iterating over all host places.
      */
     public static def places():Sequence[Place] {
-      if (Runtime.useAgentsystem())
-        return Claim.placeSeq();
-      else
         return places.sequence();
     }
 

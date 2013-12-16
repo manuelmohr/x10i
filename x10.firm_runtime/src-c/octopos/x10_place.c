@@ -3,19 +3,17 @@
 #include "places.h"
 #include "types.h"
 
-unsigned n_places;
-unsigned place_id;
-
 /* x10.lang.Place.getMaxPlaces(): Int */
 x10_int _ZN3x104lang5Place12getMaxPlacesEv(void)
 {
-#ifdef USE_AGENTSYSTEM
-	agentclaim_t cur = agentclaim_get_current();
-	int tilecount = agent_claim_get_tilecount(cur);
-	return tilecount;
-#else
-	return n_places;
-#endif
+	place_local_data *pld = claim_get_local_data(get_claim());
+	return pld->n_places;
+}
+
+x10_int x10_get_here_placeid(void)
+{
+	place_local_data *pld = claim_get_local_data(get_claim());
+	return pld->place_id;
 }
 
 // vim: noet
