@@ -78,10 +78,13 @@ static void ilet_transfer_places(void *remote_places, void *context)
 static void ilet_allocate_places(void *arg_n_places, void *context)
 {
 	unsigned n_places = (unsigned)arg_n_places;
-	place_local_data *pld = mem_allocate(MEM_TLM_LOCAL, sizeof(place_local_data));
+	place_local_data *pld = claim_get_local_data(get_claim());
+	if (NULL == pld) {
+		pld = mem_allocate(MEM_TLM_LOCAL, sizeof(place_local_data));
+		claim_set_local_data(get_claim(), pld);
+	}
 	pld->n_places = n_places;
 	pld->places   = mem_allocate(MEM_TLM_LOCAL, n_places * sizeof(*pld->places));
-	claim_set_local_data(get_claim(), pld);
 	/* is freed implicitly upon retreat or shutdown */
 	simple_ilet ilet;
 	dual_ilet_init(&ilet, ilet_transfer_places, get_global_address(pld->places), context);
