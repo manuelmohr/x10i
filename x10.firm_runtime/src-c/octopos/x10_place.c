@@ -16,4 +16,10 @@ x10_int x10_get_here_placeid(void)
 	return pld->place_id;
 }
 
+// x10.lang.Runtime.getHere() : Int
+x10_int _ZN3x104lang7Runtime9getHereIdEv()
+{
+	return x10_get_here_placeid();
+}
+
 // vim: noet

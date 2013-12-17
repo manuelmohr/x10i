@@ -27,13 +27,3 @@ x10_object *_ZN3x104lang7Runtime16evalAtOtherPlaceEiPN3x104lang3AnyE(x10_int pla
 {
 	return x10_execute_at(place_id, MSG_EVAL_AT, closure);
 }
-
-// x10.lang.Runtime.getHere() : Int
-x10_int _ZN3x104lang7Runtime9getHereIdEv()
-{
-#ifdef USE_AGENTSYSTEM
-	return x10_get_here_placeid();
-#else
-	return (x10_int)place_id;
-#endif
-}
