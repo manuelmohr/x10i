@@ -87,9 +87,11 @@ abstract public class Claim {
             val current_iid = iid;
             val ac = this as AgentClaim;
             async {
-                results(current_iid) = ac.evalAtAgent (p, ()=>{
-                    return ilet(new IncarnationID(current_iid, pe));
-                }) as T;
+                val iilet = ()=>{
+                    return ilet(new IncarnationID(current_iid, pe)) as Any;
+                    /* must explicitly wrap structs in Any! */
+                };
+                results(current_iid) = (ac.evalAtAgent(p,iilet) as T);
             }
             iid += 1;
         }
