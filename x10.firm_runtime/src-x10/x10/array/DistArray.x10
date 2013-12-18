@@ -103,6 +103,14 @@ public final class DistArray[T] (
     }
 
     /**
+     * Free internal structures, it is invalid to further use the DistArrays
+     * after this point.
+     */
+    public def free() : void {
+        PlaceLocalHandle.destroy[LocalState[T]](PlaceGroup.WORLD, localHandle);
+    }
+
+    /**
      * @return the portion of the DistArray that is stored
      *    locally at the current place, as an Array
      */
