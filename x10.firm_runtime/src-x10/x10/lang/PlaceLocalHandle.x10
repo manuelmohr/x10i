@@ -245,4 +245,10 @@ public final struct PlaceLocalHandle[T]{T isref, T <: Any} {
     public static def makeFlat[T,U](pg:PlaceGroup, init_here:(Place)=>U, init_there:(U)=>T){T isref}:PlaceLocalHandle[T] {
         return make[T,U](pg, init_here, init_there);
     }
+
+    public static def destroy[T](pg: PlaceGroup, plh:PlaceLocalHandle[T]){T isref, T haszero}: void {
+        finish for (p in pg) {
+            at (p) async plh.set(Zero.get[T]());
+        }
+    }
 }
