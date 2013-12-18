@@ -44,7 +44,9 @@ static void ilet_dma_local_finish(void *context)
 
 static void ilet_dma_remote_finish(void *pid)
 {
-	place_local_data *pld = claim_get_local_data(get_claim());
+	claim_t cl = get_claim();
+	assert (cl != 0 && "stack overflow maybe?");
+	place_local_data *pld = claim_get_local_data(cl);
 	pld->place_id = (unsigned)pid;
 }
 
@@ -78,10 +80,12 @@ static void ilet_transfer_places(void *remote_places, void *context)
 static void ilet_allocate_places(void *arg_n_places, void *context)
 {
 	unsigned n_places = (unsigned)arg_n_places;
-	place_local_data *pld = claim_get_local_data(get_claim());
+	claim_t cl = get_claim();
+	assert (cl != 0 && "stack overflow maybe?");
+	place_local_data *pld = claim_get_local_data(cl);
 	if (NULL == pld) {
 		pld = mem_allocate(MEM_TLM_LOCAL, sizeof(place_local_data));
-		claim_set_local_data(get_claim(), pld);
+		claim_set_local_data(cl, pld);
 	}
 	pld->n_places = n_places;
 	pld->places   = mem_allocate(MEM_TLM_LOCAL, n_places * sizeof(*pld->places));
@@ -124,7 +128,9 @@ void distribute_places(dispatch_claim_t *new_places, unsigned new_n_places)
 /* initalize X10 an all places */
 static void init_all_places(void)
 {
-	place_local_data *pld = claim_get_local_data(get_claim());
+	claim_t cl = get_claim();
+	assert (cl != 0 && "stack overflow maybe?");
+	place_local_data *pld = claim_get_local_data(cl);
 	unsigned n_places = pld->n_places;
 	simple_signal_init(&initialization_signal, n_places);
 
@@ -201,7 +207,9 @@ static void init_places(claim_t root_claim)
 		proxy_retreat(pclaim, &fut);
 		retreat_future_force(&fut);
 	}
-	place_local_data *pld = claim_get_local_data(get_claim());
+	claim_t cl = get_claim();
+	assert (cl != 0 && "stack overflow maybe?");
+	place_local_data *pld = claim_get_local_data(cl);
 	pld->n_places = 1;
 #endif
 }
