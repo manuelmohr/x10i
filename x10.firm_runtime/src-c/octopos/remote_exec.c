@@ -150,7 +150,7 @@ static void notify_global_termination(void *arg)
 {
 	finish_state_t *fs = (finish_state_t *)arg;
 
-	simple_signal_signal(&fs->signal);
+	unregister_from_finish_state(fs);
 }
 
 /* Frees obstack that acts as send buffer. */
