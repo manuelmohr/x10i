@@ -19,6 +19,7 @@ typedef char      x10_char;
 typedef float     x10_float;
 typedef double    x10_double;
 typedef char     *x10_pointer;
+typedef void     *x10_opaque_handle;
 
 #define PRIx10_long   PRIi64
 #define PRIx10_ulong  PRIu64

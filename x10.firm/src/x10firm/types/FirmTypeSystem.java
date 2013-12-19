@@ -87,6 +87,8 @@ public class FirmTypeSystem {
 
 	private final SerializationSupport serializationSupport = new SerializationSupport();
 
+	private Type pointerType;
+
 	/** information about native classes. */
 	private static final class NativeClassInfo {
 		private final int size;
@@ -446,7 +448,11 @@ public class FirmTypeSystem {
 		if (result != null)
 			return result;
 
-		if (!typeSystem.isStructType(baseType)) {
+		if (isOpaqueHandle(baseType)) {
+			result = pointerType;
+			primitiveTypes.add(baseType);
+			NameMangler.addPrimitiveMangling(baseType, "Pv");
+		} else if (!typeSystem.isStructType(baseType)) {
 			result = asClass(baseType, false);
 			result = new PointerType(result);
 		} else {
@@ -497,7 +503,6 @@ public class FirmTypeSystem {
 
 	private void createVTableEntity(final X10ClassType classType, final ClassType firmType) {
 		final ClassType global = Program.getGlobalType();
-		final Type pointerType = Mode.getP().getType();
 
 		final String vtableName = NameMangler.mangleVTable(classType);
 		final Entity cEntity = cStdlibEntities.get(vtableName);
@@ -546,6 +551,15 @@ public class FirmTypeSystem {
 			entity.setLdIdent(linkName);
 			OO.setEntityBinding(entity, ddispatch_binding.bind_interface);
 		}
+	}
+
+	private static boolean isOpaqueHandle(final polyglot.types.Type type) {
+		//assert instance.flags().isNative() : "Only for native methods";
+		for (final polyglot.types.Type annotation : type.annotations()) {
+			if (annotation.fullName().toString().equals("x10.compiler.OpaqueHandle"))
+				return true;
+		}
+		return false;
 	}
 
 	private ClassType getClassType(final X10ClassType classType, final boolean needMembers) {
@@ -753,8 +767,8 @@ public class FirmTypeSystem {
 
 		/* we "lower" some well-known types directly to firm modes */
 		final Mode modePointer = Mode.getP();
-		final Type typePointer = new PrimitiveType(modePointer);
-		recordPrimitiveType("pointer", typeSystem.pointer(), typePointer, "Pv");
+		pointerType = new PrimitiveType(modePointer);
+		recordPrimitiveType("pointer", typeSystem.pointer(), pointerType, "Pv");
 
 		final Mode modeLong = Mode.createIntMode("Long", Arithmetic.TwosComplement, 64, true, 64);
 		final Type typeLong = new PrimitiveType(modeLong);
@@ -814,7 +828,7 @@ public class FirmTypeSystem {
 		recordPrimitiveType("boolean", x10TypeSystem.Boolean(), typeBoolean, "b");
 
 		/* do not fail for Null() types */
-		firmTypes.put(x10TypeSystem.Null(), typePointer);
+		firmTypes.put(x10TypeSystem.Null(), pointerType);
 
 		NameMangler.addPrimitiveMangling(x10TypeSystem.Void(), "v");
 	}
