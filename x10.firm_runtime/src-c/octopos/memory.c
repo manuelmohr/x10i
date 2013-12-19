@@ -21,7 +21,12 @@
 
 void *mem_allocate_tlm(size_t size)
 {
-	return mem_allocate(MEM_TLM_LOCAL, size);
+	void *result = mem_allocate(MEM_TLM_LOCAL, size);
+	if (result == NULL && size != 0) {
+		fputs("out of tile local memory\n", stderr);
+		abort();
+	}
+	return result;
 }
 
 void *mem_allocate_global(size_t size)

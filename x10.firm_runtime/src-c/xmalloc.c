@@ -36,7 +36,7 @@
 static void __attribute__((noreturn)) xnomem(void)
 {
 	/* Do not use panic() here, because it might try to allocate memory! */
-	fprintf(stderr, "out of memory");
+	fputs("out of memory\n", stderr);
 	abort();
 }
 
