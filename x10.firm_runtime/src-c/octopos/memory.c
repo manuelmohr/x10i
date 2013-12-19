@@ -53,3 +53,8 @@ void *mem_get_local_address(void *tlm_global_ptr)
 {
 	return get_local_address(tlm_global_ptr);
 }
+
+x10_pointer _ZN7octopos6Memory11allocateTLMEi(x10_int size)
+{
+	return mem_allocate_tlm(size);
+}
