@@ -1043,7 +1043,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			}
 			final long value = c.value();
 			assert value == (int)value;
-			tbl.setEntry(entry, (int)value, (int)value, nextPn);
+			final Mode mode = firmTypeSystem.getFirmMode(n.expr().type());
+			tbl.setEntry(entry, (int)value, (int)value, mode, nextPn);
 			casePNs.put(c, nextPn);
 			++entry;
 			++nextPn;
