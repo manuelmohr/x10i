@@ -223,14 +223,13 @@ static void wait_for_global_termination(void *destination_data)
 	/* Wait for global termination. */
 	simple_signal_wait(&finish_state->signal);
 
+	finish_state_destroy(finish_state);
 	mem_free(finish_state);
 
 	/* Notify global termination to source tile. */
 	simple_ilet notify_global_termination_ilet;
 	simple_ilet_init(&notify_global_termination_ilet, notify_global_termination, source_finish_state);
 	dispatch_claim_infect(source_claim, &notify_global_termination_ilet, 1);
-
-	finish_state_destroy(finish_state);
 }
 
 /* Receives the result of the at expression. */
