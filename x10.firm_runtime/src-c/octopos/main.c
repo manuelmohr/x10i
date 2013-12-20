@@ -238,7 +238,7 @@ void main_ilet(claim_t root_claim)
 #endif
 
 	finish_state_t fs;
-	fs.claim = root_claim;
+	finish_state_init_root(&fs);
 
 	/* initialize main i-let's finish state and atomic depth. */
 	finish_state_set_current(&fs);

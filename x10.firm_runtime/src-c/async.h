@@ -8,7 +8,9 @@ void finish_state_set_current(finish_state_t *finish_state);
 void register_at_finish_state(finish_state_t *finish_state);
 void unregister_from_finish_state(finish_state_t *finish_state);
 
+void finish_state_init_root(finish_state_t *fs);
 void finish_state_init(finish_state_t *finish_state, finish_state_t *parent);
+
 void finish_state_destroy(finish_state_t *finish_state);
 void finish_state_wait(finish_state_t *state);
 

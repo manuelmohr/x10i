@@ -29,6 +29,14 @@ struct finish_state_t {
 	finish_state_t *parent;
 };
 
+void finish_state_init_root(finish_state_t *fs)
+{
+	simple_signal_init(&fs->signal, 0);
+	fs->claim  = get_claim();
+	fs->parent = NULL;
+	fs->counter = 0;
+}
+
 void finish_state_init(finish_state_t *fs, finish_state_t *parent)
 {
 	simple_signal_init(&fs->signal, 0);
