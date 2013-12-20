@@ -179,8 +179,7 @@ static void run_at_statement(void *arg, void *source_finish_state)
 
 	/* Create a new top level finish state on the new tile. */
 	finish_state_t fs;
-	fs.claim = get_claim();
-	simple_signal_init(&fs.signal, 0);
+	finish_state_init_root(&fs);
 	finish_state_set_current(&fs);
 	register_at_finish_state(&fs);
 	activity_set_atomic_depth(0);
