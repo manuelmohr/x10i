@@ -229,6 +229,8 @@ static void wait_for_global_termination(void *destination_data)
 	simple_ilet notify_global_termination_ilet;
 	simple_ilet_init(&notify_global_termination_ilet, notify_global_termination, source_finish_state);
 	dispatch_claim_infect(source_claim, &notify_global_termination_ilet, 1);
+
+	finish_state_destroy(finish_state);
 }
 
 /* Receives the result of the at expression. */
