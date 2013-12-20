@@ -293,6 +293,7 @@ static void evaluate_at_expression(void *arg, void *source_finish_state)
 	/* Create a new top level finish state on the new tile. */
 	finish_state_t *fs = mem_allocate(MEM_TLM_LOCAL, sizeof(*fs));
 	finish_state_init_root(fs);
+	simple_signal_init(&fs->signal, 0);
 	finish_state_set_current(fs);
 	register_at_finish_state(fs);
 	activity_set_atomic_depth(0);
