@@ -387,13 +387,13 @@ static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_cl
 
 	source_local_data.dispatch_claim = destination_claim;
 
+	/* Register at current finish state to recognize global termination of the at. */
+	register_at_finish_state(finish_state);
+
 	/* Create destination i-let for memory allocation. */
 	simple_ilet allocation_ilet;
 	dual_ilet_init(&allocation_ilet, allocate_destination_memory, (void*)&source_local_data, (void*)source_local_data.buffer_size);
 	dispatch_claim_infect(destination_claim, &allocation_ilet, 1);
-
-	/* Register at current finish state to recognize global termination of the at. */
-	register_at_finish_state(finish_state);
 
 	/* Wait for local termination. */
 	simple_signal_wait(&join_signal);
