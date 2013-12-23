@@ -93,12 +93,12 @@ void register_at_finish_state(finish_state_t *fs)
 
 void unregister_from_finish_state(finish_state_t *fs)
 {
-	int c = fs->counter;
-	assert(c > 0);
-	simple_signal_signal(&fs->signal);
+	int c;
 	do {
 		c = fs->counter;
+		assert(c > 0);
 	} while(!cas(&fs->counter, c, c-1));
+	simple_signal_signal(&fs->signal);
 }
 
 void activity_inc_atomic_depth(void)
