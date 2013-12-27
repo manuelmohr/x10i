@@ -27,8 +27,6 @@ struct finish_state_t {
 	simple_signal   signal;
 	/* enclosing finish (maybe NULL for root) */
 	finish_state_t *parent;
-	/* for debugging/correctness checking */
-	int             counter;
 };
 
 void finish_state_init_root(finish_state_t *fs)
@@ -36,7 +34,6 @@ void finish_state_init_root(finish_state_t *fs)
 	simple_signal_init(&fs->signal, 0);
 	fs->claim  = get_claim();
 	fs->parent = NULL;
-	fs->counter = 0;
 }
 
 void finish_state_init(finish_state_t *fs, finish_state_t *parent)
@@ -44,7 +41,6 @@ void finish_state_init(finish_state_t *fs, finish_state_t *parent)
 	simple_signal_init(&fs->signal, 0);
 	fs->claim  = parent->claim;
 	fs->parent = parent;
-	fs->counter = 0;
 }
 
 void finish_state_wait(finish_state_t *state)
@@ -55,7 +51,7 @@ void finish_state_wait(finish_state_t *state)
 void finish_state_destroy(finish_state_t *fs)
 {
 	(void)fs;
-	assert(fs->counter == 0);
+	assert(simple_signal_get_counter(&fs->signal) == 0);
 }
 
 /**
@@ -92,19 +88,10 @@ void finish_state_set_current(finish_state_t *fs)
 void register_at_finish_state(finish_state_t *fs)
 {
 	simple_signal_add_signalers(&fs->signal, 1);
-	int c;
-	do {
-		c = fs->counter;
-	} while(!cas(&fs->counter, c, c+1));
 }
 
 void unregister_from_finish_state(finish_state_t *fs)
 {
-	int c;
-	do {
-		c = fs->counter;
-		assert(c > 0);
-	} while(!cas(&fs->counter, c, c-1));
 	simple_signal_signal(&fs->signal);
 }
 
