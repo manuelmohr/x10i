@@ -47,6 +47,11 @@ void finish_state_init(finish_state_t *fs, finish_state_t *parent)
 	fs->counter = 0;
 }
 
+void finish_state_wait(finish_state_t *state)
+{
+	simple_signal_wait(&state->signal);
+}
+
 void finish_state_destroy(finish_state_t *fs)
 {
 	(void)fs;
@@ -210,7 +215,7 @@ void _ZN3x104lang7Runtime14finishBlockEndEv(void)
 	finish_state_t *enclosing = finish_state_get_current();
 
 	/* wait for spawned activities */
-	simple_signal_wait(&enclosing->signal);
+	finish_state_wait(enclosing);
 
 	/* clear the finish state */
 	finish_state_t *parent = enclosing->parent;

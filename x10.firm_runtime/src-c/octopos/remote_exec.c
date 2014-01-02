@@ -194,7 +194,7 @@ static void run_at_statement(void *arg, void *source_finish_state)
 	unregister_from_finish_state(&fs);
 
 	/* Wait for global termination. */
-	simple_signal_wait(&fs.signal);
+	finish_state_wait(&fs);
 
 	/* Notify global termination to source tile. */
 	simple_ilet notify_global_termination_ilet;
@@ -220,7 +220,7 @@ static void wait_for_global_termination(void *destination_data)
 	unregister_from_finish_state(finish_state);
 
 	/* Wait for global termination. */
-	simple_signal_wait(&finish_state->signal);
+	finish_state_wait(finish_state);
 
 	finish_state_destroy(finish_state);
 	mem_free(finish_state);
