@@ -9,6 +9,7 @@ agentclaim_t agentclaim_get_current(void)
 {
 #ifdef USE_AGENTSYSTEM
 	ilocal_data_t *ilocal = get_ilocal_data();
+	assert(check_magic_number());
 	return ilocal->agent_claim;
 #else
 	return NULL;
@@ -19,6 +20,7 @@ void agentclaim_set_current(agentclaim_t ac)
 {
 #ifdef USE_AGENTSYSTEM
 	ilocal_data_t *ilocal = get_ilocal_data();
+	assert(check_magic_number());
 	ilocal->agent_claim = ac;
 #else
 	(void)ac;

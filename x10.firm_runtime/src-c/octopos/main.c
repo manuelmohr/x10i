@@ -228,6 +228,9 @@ void main_ilet(claim_t root_claim)
 	 * as a valid address. */
 	(void)mem_map(MEM_SHM, 1024 * 1024);
 
+	/* Initialize magic number to recognize stack overflows. */
+	initialize_magic_number();
+
 	/* initialize static fields etc */
 	init_places(root_claim);
 

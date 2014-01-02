@@ -177,6 +177,9 @@ static void run_at_statement(void *arg, void *source_finish_state)
 	mem_free(destination_dma_data);
 	mem_free(destination_local_data);
 
+	/* Initialize magic number to recognize stack overflows. */
+	initialize_magic_number();
+
 	/* Create a new top level finish state on the new tile. */
 	finish_state_t fs;
 	finish_state_init_root(&fs);
@@ -289,6 +292,9 @@ static void evaluate_at_expression(void *arg, void *source_finish_state)
 
 	/* Free destination's DMA data. */
 	mem_free(destination_dma_data);
+
+	/* Initialize magic number to recognize stack overflows. */
+	initialize_magic_number();
 
 	/* Create a new top level finish state on the new tile. */
 	finish_state_t *fs = mem_allocate(MEM_TLM_LOCAL, sizeof(*fs));
