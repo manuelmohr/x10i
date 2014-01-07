@@ -241,7 +241,11 @@ final class AgentClaim extends Claim implements CustomSerialization {
         execAtOtherAgent(p.id, this.clm, f);
     }
 
-    def serialize():SerialData {
+    public def this(s:SerialData) {
+      throw new Exception("Cannot deserialize Claim objects");
+    }
+
+    public def serialize():SerialData {
       throw new Exception("Cannot serialize Claim objects");
     }
 }
