@@ -2,6 +2,8 @@ package invasic;
 
 import x10.lang.Pointer;
 import x10.compiler.LinkSymbol;
+import x10.io.CustomSerialization;
+import x10.io.SerialData;
 
 import x10.util.List;
 import x10.util.ArrayList;
@@ -113,7 +115,7 @@ abstract public class Claim {
     }
 }
 
-final class AgentClaim extends Claim {
+final class AgentClaim extends Claim implements CustomSerialization {
     private val clm:Pointer;
     def my_clm():Pointer = this.clm;
 
@@ -237,6 +239,10 @@ final class AgentClaim extends Claim {
 
     public def runAtAgent(p:Place, f:()=>void) {
         execAtOtherAgent(p.id, this.clm, f);
+    }
+
+    def serialize():SerialData {
+      throw new Exception("Cannot serialize Claim objects");
     }
 }
 
