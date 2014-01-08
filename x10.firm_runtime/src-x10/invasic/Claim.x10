@@ -152,6 +152,7 @@ final class AgentClaim extends Claim implements CustomSerialization {
 
     /** Retreat from this specific PE. */
     public def retreat(pe:ProcessingElement):void {
+        throw new UnsupportedOperationException("retreatPE not supported");
     }
 
     /** Returns how many PEs are in this claim. */
