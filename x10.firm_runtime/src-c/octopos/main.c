@@ -228,6 +228,11 @@ void main_ilet(claim_t root_claim)
 	 * as a valid address. */
 	(void)mem_map(MEM_SHM, 1024 * 1024);
 
+	/* initialize main i-let's finish state. */
+	finish_state_t fs;
+	finish_state_init_root(&fs);
+	init_x10_activity(&fs);
+
 	/* initialize static fields etc */
 	init_places(root_claim);
 
@@ -236,11 +241,6 @@ void main_ilet(claim_t root_claim)
 	agentclaim_t initialClaim = agent_claim_get_initial(root_claim);
 	agentclaim_set_current(initialClaim);
 #endif
-
-	/* initialize main i-let's finish state. */
-	finish_state_t fs;
-	finish_state_init_root(&fs);
-	init_x10_activity(&fs);
 
 	x10_object *args = _ZN3x105array5Array15makeStringArrayEPvi(NULL, 0);
 	x10_main(args);
