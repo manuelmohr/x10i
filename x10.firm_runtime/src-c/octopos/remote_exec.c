@@ -165,6 +165,16 @@ static void free_obstack(void *obstack)
 /* Runs an at statement. */
 static void run_at_statement(void *arg, void *source_finish_state)
 {
+	/* Initialize magic number to recognize stack overflows. */
+	initialize_magic_number();
+
+	/* Create a new top level finish state on the new tile. */
+	finish_state_t fs;
+	finish_state_init_root(&fs);
+	finish_state_set_current(&fs);
+	register_at_finish_state(&fs);
+	activity_set_atomic_depth(0);
+
 	/* Deserialize object. */
 	char                     *buf                    = get_local_address(arg);
 	destination_dma_data_t   *destination_dma_data   = (destination_dma_data_t *)(buf - offsetof(destination_dma_data_t, receive_buffer));
@@ -176,16 +186,6 @@ static void run_at_statement(void *arg, void *source_finish_state)
 	/* Free destination's data. */
 	mem_free(destination_dma_data);
 	mem_free(destination_local_data);
-
-	/* Initialize magic number to recognize stack overflows. */
-	initialize_magic_number();
-
-	/* Create a new top level finish state on the new tile. */
-	finish_state_t fs;
-	finish_state_init_root(&fs);
-	finish_state_set_current(&fs);
-	register_at_finish_state(&fs);
-	activity_set_atomic_depth(0);
 
 	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(closure);
 
@@ -284,15 +284,6 @@ static void allocate_source_memory(void *destination_local_data, void *buffer_si
 /* Evaluates an at expression. */
 static void evaluate_at_expression(void *arg, void *source_finish_state)
 {
-	/* Deserialize object. */
-	char                     *buf                    = get_local_address(arg);
-	destination_dma_data_t   *destination_dma_data   = (destination_dma_data_t *)(buf - offsetof(destination_dma_data_t, receive_buffer));
-	destination_local_data_t *destination_local_data = destination_dma_data->destination_local_data;
-	x10_object               *closure                = x10_deserialize_from(destination_dma_data->receive_buffer, destination_local_data->buffer_size);
-
-	/* Free destination's DMA data. */
-	mem_free(destination_dma_data);
-
 	/* Initialize magic number to recognize stack overflows. */
 	initialize_magic_number();
 
@@ -303,6 +294,15 @@ static void evaluate_at_expression(void *arg, void *source_finish_state)
 	finish_state_set_current(fs);
 	register_at_finish_state(fs);
 	activity_set_atomic_depth(0);
+
+	/* Deserialize object. */
+	char                     *buf                    = get_local_address(arg);
+	destination_dma_data_t   *destination_dma_data   = (destination_dma_data_t *)(buf - offsetof(destination_dma_data_t, receive_buffer));
+	destination_local_data_t *destination_local_data = destination_dma_data->destination_local_data;
+	x10_object               *closure                = x10_deserialize_from(destination_dma_data->receive_buffer, destination_local_data->buffer_size);
+
+	/* Free destination's DMA data. */
+	mem_free(destination_dma_data);
 
 	x10_object *return_value = _ZN3x104lang7Runtime14callAnyClosureEPN3x104lang8$Fun_0_0IPN3x104lang3AnyEEE(closure);
 
