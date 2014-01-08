@@ -169,7 +169,6 @@ static void init_top_level_ilet(finish_state_t *fs)
 
 	finish_state_init_root(fs);
 	finish_state_set_current(fs);
-	register_at_finish_state(fs);
 	activity_set_atomic_depth(0);
 }
 
@@ -199,8 +198,6 @@ static void run_at_statement(void *arg, void *source_finish_state)
 	simple_ilet_init(&notify_local_termination_ilet, notify_local_termination, source_local_data);
 	dispatch_claim_infect(source_claim, &notify_local_termination_ilet, 1);
 
-	unregister_from_finish_state(&fs);
-
 	/* Wait for global termination. */
 	finish_state_wait(&fs);
 
@@ -224,8 +221,6 @@ static void wait_for_global_termination(void *destination_data)
 
 	/* Free destination's local data. */
 	mem_free(destination_local_data);
-
-	unregister_from_finish_state(finish_state);
 
 	/* Wait for global termination. */
 	finish_state_wait(finish_state);
