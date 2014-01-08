@@ -13,7 +13,6 @@ package x10.lang;
 
 import x10.compiler.Native;
 import x10.compiler.CompilerFlags;
-import invasic.Claim;
 
 /**
  * Representation of a place within the APGAS model.
