@@ -228,9 +228,6 @@ void main_ilet(claim_t root_claim)
 	 * as a valid address. */
 	(void)mem_map(MEM_SHM, 1024 * 1024);
 
-	/* Initialize magic number to recognize stack overflows. */
-	init_ilet_local_data();
-
 	/* initialize static fields etc */
 	init_places(root_claim);
 
@@ -240,21 +237,15 @@ void main_ilet(claim_t root_claim)
 	agentclaim_set_current(initialClaim);
 #endif
 
+	/* initialize main i-let's finish state. */
 	finish_state_t fs;
 	finish_state_init_root(&fs);
-
-	/* initialize main i-let's finish state and atomic depth. */
-	finish_state_set_current(&fs);
-	activity_set_atomic_depth(0);
-
-	/* begin main i-let's finish block */
-	_ZN3x104lang7Runtime16finishBlockBeginEv();
+	init_x10_activity(&fs);
 
 	x10_object *args = _ZN3x105array5Array15makeStringArrayEPvi(NULL, 0);
 	x10_main(args);
 
-	/* end main i-let's finish block */
-	_ZN3x104lang7Runtime14finishBlockEndEv();
+	finish_state_wait(&fs);
 	finish_state_destroy(&fs);
 
 	shutdown_everything();

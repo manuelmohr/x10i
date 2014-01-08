@@ -117,6 +117,17 @@ void activity_set_atomic_depth(unsigned depth)
 	ilocal->atomic_depth = depth;
 }
 
+/**
+ * Initializes ilet local data structures for an ilet that will execute
+ * X10 code.
+ */
+static void init_x10_activity(finish_state_t *fs)
+{
+	init_ilet_local_data();
+	finish_state_set_current(fs);
+	activity_set_atomic_depth(0);
+}
+
 /** Top-level i-let function, initializes activity and cleans up afterwards */
 static void execute(void *ptr)
 {
@@ -129,13 +140,8 @@ static void execute(void *ptr)
 #endif
 	mem_free(ac);
 
-	/* Initialize magic number to recognize stack overflows. */
-	init_ilet_local_data();
+	init_x10_activity(fs);
 
-	/* store enclosing finish state in i-let-local data */
-	finish_state_set_current(fs);
-	/* initialize atomic depth */
-	activity_set_atomic_depth(0);
 #ifdef USE_AGENTSYSTEM
 	/* initialize agent claim */
 	agentclaim_set_current(agent_claim);

@@ -162,22 +162,13 @@ static void free_obstack(void *obstack)
 	mem_free(obst);
 }
 
-static void init_top_level_ilet(finish_state_t *fs)
-{
-	/* Initialize magic number to recognize stack overflows. */
-	init_ilet_local_data();
-
-	finish_state_init_root(fs);
-	finish_state_set_current(fs);
-	activity_set_atomic_depth(0);
-}
-
 /* Runs an at statement. */
 static void run_at_statement(void *arg, void *source_finish_state)
 {
 	/* Create a new top level finish state on the new tile. */
 	finish_state_t fs;
-	init_top_level_ilet(&fs);
+	finish_state_init_root(&fs);
+	init_x10_activity(&fs);
 
 	/* Deserialize object. */
 	char                     *buf                    = get_local_address(arg);
@@ -200,6 +191,7 @@ static void run_at_statement(void *arg, void *source_finish_state)
 
 	/* Wait for global termination. */
 	finish_state_wait(&fs);
+	finish_state_destroy(&fs);
 
 	/* Notify global termination to source tile. */
 	simple_ilet notify_global_termination_ilet;
@@ -224,7 +216,6 @@ static void wait_for_global_termination(void *destination_data)
 
 	/* Wait for global termination. */
 	finish_state_wait(finish_state);
-
 	finish_state_destroy(finish_state);
 	mem_free(finish_state);
 
@@ -286,7 +277,8 @@ static void evaluate_at_expression(void *arg, void *source_finish_state)
 {
 	/* Create a new top level finish state on the new tile. */
 	finish_state_t *fs = mem_allocate(MEM_TLM_LOCAL, sizeof(*fs));
-	init_top_level_ilet(fs);
+	finish_state_init_root(fs);
+	init_x10_activity(fs);
 
 	/* Deserialize object. */
 	char                     *buf                    = get_local_address(arg);
