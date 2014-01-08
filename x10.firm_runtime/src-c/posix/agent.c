@@ -138,3 +138,8 @@ void x10_exec_at_agent(x10_int pid, void *agentclaim, x10_object *closure)
 	(void)closure;
 	DECL_NOT_AVAILABLE();
 }
+
+int get_tile_id()
+{
+	DECL_NOT_AVAILABLE();
+}
