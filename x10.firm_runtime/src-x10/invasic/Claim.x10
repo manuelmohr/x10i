@@ -86,6 +86,7 @@ abstract public class Claim {
             val p = pe.getPlace();
             val current_iid = iid;
             val ac = this as AgentClaim;
+            ac.check_invariant();
             async {
                 val iilet = ()=>{
                     return ilet(new IncarnationID(current_iid, pe)) as Any;
@@ -115,21 +116,39 @@ abstract public class Claim {
 
 final class AgentClaim extends Claim {
     private val clm:Pointer;
+    private val tileid:int;
     def my_clm():Pointer = this.clm;
+
+    public def check_invariant():void {
+        /* the underlying agent_claim_t is only valid on the tile,
+        where it was invaded. However, we must copy AgentClaim through 'at'
+        for infect. This might go to a different Place (Claim) on the same tile,
+        so we check the tile id. */
+        assert this.tileid == AgentClaim.current_tile_id() : "AgentClaim only valid on its tile";
+    }
 
     /** Constructor is protected, because the invade method is the only way to get a claim. */
     def this(clm:Pointer) {
         this.clm = clm;
+        this.tileid = current_tile_id();
     }
 
     /** Reinvades with the same constraints and returns whether claim contents changed */
-    public def reinvade():Boolean = reinvade(this.clm) != 0;
+    public def reinvade():Boolean {
+        this.check_invariant();
+        return reinvade(this.clm) != 0;
+    }
+
+    /** Returns the tileid we are currently executed on */
+    @LinkSymbol("get_tile_id")
+    static native def current_tile_id():Int;
 
     @LinkSymbol("x10_agent_claim_reinvade")
     static native def reinvade(clm:Pointer):Int;
 
     /** Reinvades with new constraints and returns whether claim contents changed */
     public def reinvade(c:Constraint):Boolean {
+        this.check_invariant();
         val and = c as AND;
         return reinvade(this.clm, and.constr) != 0;
     }
@@ -138,7 +157,10 @@ final class AgentClaim extends Claim {
     static native def reinvade(clm:Pointer, constr:Pointer):Int;
 
     /** Retreat completely and free all resources. */
-    public def retreat():void = { retreat(this.clm); }
+    public def retreat():void = {
+        this.check_invariant();
+        retreat(this.clm);
+    }
 
     @LinkSymbol("agent_claim_retreat")
     static native def retreat(clm:Pointer):void;
@@ -189,6 +211,7 @@ final class AgentClaim extends Claim {
 
     /** Get all PEs inside the claim */
     public def processingElements():List[ProcessingElement] {
+        this.check_invariant();
         val res = new ArrayList[ProcessingElement]();
         val tiles = tiles(this.clm);
         for (tid in tiles) {
@@ -203,6 +226,7 @@ final class AgentClaim extends Claim {
     }
 
     public def print():void {
+        this.check_invariant();
         print_claim(this.clm);
     }
 
@@ -230,6 +254,7 @@ final class AgentClaim extends Claim {
     private static native def evalAtOtherAgent(placeId:Int, agentclaim:Pointer, o:Any):Any;
 
     public def evalAtAgent(p:Place, f:()=>Any):Any {
+        this.check_invariant();
         return evalAtOtherAgent(p.id, this.clm, f);
     }
 
@@ -237,6 +262,7 @@ final class AgentClaim extends Claim {
     private static native def execAtOtherAgent(placeId:Int, agentclaim:Pointer, o:Any):void;
 
     public def runAtAgent(p:Place, f:()=>void) {
+        this.check_invariant();
         execAtOtherAgent(p.id, this.clm, f);
     }
 }
