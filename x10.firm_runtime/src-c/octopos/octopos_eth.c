@@ -9,8 +9,8 @@
 
 static void send_signal(void *data)
 {
-	simple_signal *signal = (simple_signal*)data;
-	simple_signal_signal(signal);
+	finish_state_t *current = (finish_state_t*)data;
+	unregister_from_finish_state(current);
 }
 
 x10_opaque_handle _ZN7octopos15EthWriteChannel4openEt(x10_ushort channel)
@@ -37,7 +37,7 @@ void _ZN7octopos15EthWriteChannel10writeAsyncEPvi(x10_opaque_handle handle,
 	register_at_finish_state(current);
 
 	simple_ilet ilet;
-	simple_ilet_init(&ilet, send_signal, &current->signal);
+	simple_ilet_init(&ilet, send_signal, current);
 	int res = eth_send((eth_channel_t)handle, buffer, (buf_size_t)size, &ilet);
 	if (res != 0)
 		panic("eth_send(...) failed");
@@ -51,7 +51,7 @@ void _ZN7octopos14EthReadChannel9readAsyncEPvi(x10_opaque_handle handle,
 	register_at_finish_state(current);
 
 	simple_ilet ilet;
-	simple_ilet_init(&ilet, send_signal, &current->signal);
+	simple_ilet_init(&ilet, send_signal, current);
 	int res = eth_receive((eth_channel_t)handle, buffer, (buf_size_t)size,
 	                      &ilet);
 	if (res != 0)
