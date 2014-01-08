@@ -73,15 +73,13 @@ typedef struct async_closure {
 
 finish_state_t* finish_state_get_current(void)
 {
-	ilocal_data_t *ilocal = get_ilocal_data();
-	assert(check_magic_number());
+	ilocal_data_t *ilocal = get_ilet_local_data();
 	return ilocal->fs;
 }
 
 void finish_state_set_current(finish_state_t *fs)
 {
-	ilocal_data_t *ilocal = get_ilocal_data();
-	assert(check_magic_number());
+	ilocal_data_t *ilocal = get_ilet_local_data();
 	ilocal->fs = fs;
 }
 
@@ -97,29 +95,25 @@ void unregister_from_finish_state(finish_state_t *fs)
 
 void activity_inc_atomic_depth(void)
 {
-	ilocal_data_t *ilocal = get_ilocal_data();
-	assert(check_magic_number());
+	ilocal_data_t *ilocal = get_ilet_local_data();
 	++ilocal->atomic_depth;
 }
 
 void activity_dec_atomic_depth(void)
 {
-	ilocal_data_t *ilocal = get_ilocal_data();
-	assert(check_magic_number());
+	ilocal_data_t *ilocal = get_ilet_local_data();
 	--ilocal->atomic_depth;
 }
 
 unsigned activity_get_atomic_depth(void)
 {
-	ilocal_data_t *ilocal = get_ilocal_data();
-	assert(check_magic_number());
+	ilocal_data_t *ilocal = get_ilet_local_data();
 	return ilocal->atomic_depth;
 }
 
 void activity_set_atomic_depth(unsigned depth)
 {
-	ilocal_data_t *ilocal = get_ilocal_data();
-	assert(check_magic_number());
+	ilocal_data_t *ilocal = get_ilet_local_data();
 	ilocal->atomic_depth = depth;
 }
 
@@ -136,7 +130,7 @@ static void execute(void *ptr)
 	mem_free(ac);
 
 	/* Initialize magic number to recognize stack overflows. */
-	initialize_magic_number();
+	init_ilet_local_data();
 
 	/* store enclosing finish state in i-let-local data */
 	finish_state_set_current(fs);

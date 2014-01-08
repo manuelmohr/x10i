@@ -229,7 +229,7 @@ void main_ilet(claim_t root_claim)
 	(void)mem_map(MEM_SHM, 1024 * 1024);
 
 	/* Initialize magic number to recognize stack overflows. */
-	initialize_magic_number();
+	init_ilet_local_data();
 
 	/* initialize static fields etc */
 	init_places(root_claim);

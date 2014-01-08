@@ -165,7 +165,7 @@ static void free_obstack(void *obstack)
 static void init_top_level_ilet(finish_state_t *fs)
 {
 	/* Initialize magic number to recognize stack overflows. */
-	initialize_magic_number();
+	init_ilet_local_data();
 
 	finish_state_init_root(fs);
 	finish_state_set_current(fs);

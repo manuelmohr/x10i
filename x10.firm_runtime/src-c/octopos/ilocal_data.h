@@ -9,13 +9,25 @@ typedef struct {
 #ifdef USE_AGENTSYSTEM
 	agentclaim_t    agent_claim;
 #endif
+#ifndef NDEBUG
 	unsigned magic;
+#endif
 } ilocal_data_t;
 
+static inline ilocal_data_t *get_ilet_local_data(void)
+{
+	ilocal_data_t *result = (ilocal_data_t*)get_ilocal_data();
+	assert(result->magic == 0x600DBABEu);
+	return result;
+}
+
+static inline void init_ilet_local_data(void)
+{
+#ifndef NDEBUG
+	ilocal_data_t *data = (ilocal_data_t*)get_ilocal_data();
+	memset(data, 0, sizeof(*data));
+	data->magic = 0x600DBABEu;
 #endif
+}
 
-/* Initialize magic_number to recognize stack overflows. */
-void initialize_magic_number(void);
-
-/* Returns 1 if magic number is correct, 0 otherwise. */
-int check_magic_number(void);
+#endif
