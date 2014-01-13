@@ -12,7 +12,7 @@
 package x10.io;
 
 import x10.compiler.Native;
-import x10.compiler.TLMAllocate;
+import x10.compiler.StaticAllocate;
 
 import x10.util.concurrent.Lock;
 
@@ -34,7 +34,7 @@ public class Printer extends FilterWriter {
 
     private static NEWLINE:Char = '\n'; // System.getProperty("line.separator");
 
-    private lock = @TLMAllocate new Lock();
+    private static val lock = @StaticAllocate new Lock();
 
     public def println(): void { print(NEWLINE); }
 

@@ -13,7 +13,7 @@ package x10.lang;
 
 import x10.compiler.Pragma;
 import x10.compiler.NativeClass;
-import x10.compiler.TLMAllocate;
+import x10.compiler.StaticAllocate;
 import x10.util.concurrent.AtomicInteger;
 import x10.util.GrowableIndexedMemoryChunk;
 
@@ -38,7 +38,7 @@ import x10.util.GrowableIndexedMemoryChunk;
 public final struct PlaceLocalHandle[T]{T isref, T <: Any} {
 
     /* @only at first place... */
-    private static val nextPlaceLocalId = @TLMAllocate new AtomicInteger(0);
+    private static val nextPlaceLocalId = @StaticAllocate new AtomicInteger(0);
 
     private static val datas = new GrowableIndexedMemoryChunk[Pointer]();
 
