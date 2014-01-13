@@ -31,7 +31,7 @@ public abstract class PlaceGroup implements Sequence[Place] {
    * A PlaceGroup that represents exactly Place.places().
    * All places, in order of increasing Place.id.
    */
-  public static val WORLD = new WorldPlaceGroup();
+  public static def getWorld() = new WorldPlaceGroup();
 
   /**
    * The size of the PlaceGroup is equal to the value returned by numPlaces()
