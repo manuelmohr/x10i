@@ -53,6 +53,7 @@ public final struct PlaceLocalHandle[T]{T isref, T <: Any} {
      */
     public operator this():T {
         atomic {
+            if (id >= datas.length()) return null as T;
             return datas(id).castTo[T]();
         }
     }
