@@ -21,7 +21,8 @@ public class NativeSupport {
     /**
      * Returns the number of bytes occupied by an instance of type T.
      * Does not include potential memory allocator overhead. Roughly
-     * equals sizeof(T) in C
+     * equals sizeof(T) in C. For reference types (classes) the size
+     * of the reference (a pointer) is returned.
      */
     public static native def getSize[T](): Int;
 
