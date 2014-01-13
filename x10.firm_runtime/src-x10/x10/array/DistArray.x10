@@ -142,7 +142,9 @@ public final class DistArray[T] (
 
     def this(sd:SerialData) {
       val plh:PlaceLocalHandle[LocalState[T]] = sd.data as PlaceLocalHandle[LocalState[T]];
-      val d:Dist = plh().dist;
+      val ls = plh();
+      assert ls != null : "got null from PlaceLocalHandle";
+      val d:Dist = ls.dist;
 
       property(d);
       localHandle = plh;
