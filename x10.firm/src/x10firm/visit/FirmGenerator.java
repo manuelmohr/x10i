@@ -1772,6 +1772,19 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		return genObjectAlloc(x10Type, tlmAllocEntity);
 	}
 
+	private Node genObjectStaticAlloc(final Type x10Type) {
+		final ClassType firmType = firmTypeSystem.asClass(x10Type, true);
+		final Ident id = Ident.createUnique("x10_static_alloc.%u");
+		final ClassType globalType = Program.getGlobalType();
+		final Entity ent = new Entity(globalType, id, firmType);
+		ent.setLdIdent(id);
+		ent.setVisibility(ir_visibility.ir_visibility_private);
+		ent.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
+		final Node objPtr = con.newSymConst(ent);
+		initVPtr(objPtr, firmType);
+		return objPtr;
+	}
+
 	private Node genObjectStackAlloc(final Type x10Type) {
 		final ClassType firmType = firmTypeSystem.asClass(x10Type, true);
 		final Node objPtr = genAlloc(firmType);
@@ -1921,6 +1934,13 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		return tlmAllocateType;
 	}
 
+	private X10ClassType staticAllocateType = null;
+	private X10ClassType getStaticAllocateType() {
+		if (staticAllocateType == null)
+			staticAllocateType = typeSystem.getTypeSystem().load("x10.compiler.TLMAllocate");
+		return staticAllocateType;
+	}
+
 	@Override
 	public void visit(final New_c n) {
 		final Type baseType = Types.baseType(n.objectType().type());
@@ -1933,8 +1953,14 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			final boolean stackAlloc = ((X10Ext) n.ext()).annotationMatching(stackAnnotation).size() > 0;
 			final Type tlmAnnotation = getTLMAllocateType();
 			final boolean tlmAlloc = ((X10Ext) n.ext()).annotationMatching(tlmAnnotation).size() > 0;
+			final Type staticAnnotation = getStaticAllocateType();
+			final boolean staticAlloc = ((X10Ext) n.ext()).annotationMatching(staticAnnotation).size() > 0;
 
 			if (stackAlloc && tlmAlloc)
+				throw new CodeGenError("Multiple allocation annotations", n);
+			if (stackAlloc && staticAlloc)
+				throw new CodeGenError("Multiple allocation annotations", n);
+			if (staticAlloc && tlmAlloc)
 				throw new CodeGenError("Multiple allocation annotations", n);
 
 			final Node objectNode;
@@ -1942,6 +1968,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 				objectNode = genObjectStackAlloc(type);
 			} else if (tlmAlloc) {
 				objectNode = genObjectTLMAlloc(type);
+			} else if (staticAlloc) {
+				objectNode = genObjectStaticAlloc(type);
 			} else {
 				objectNode = genObjectHeapAlloc(type);
 			}
