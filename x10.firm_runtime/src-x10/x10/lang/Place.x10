@@ -78,13 +78,12 @@ public final struct Place(id: Int)  {
         new Array[Array[Place](1)](getMaxPlaces(),
                                    (p: Int) => new Array[Place](numChildren(p), (i:Int) => Place(child(p,i))));
 
-    private static places:Array[Place](1) = new Array[Place](getMaxPlaces(), ((id:Int) => Place(id)));
-
     /**
      * A convenience for iterating over all host places.
      */
     public static def places():Sequence[Place] {
-        return places.sequence();
+        val ps = new Array[Place](getMaxPlaces(), ((id:Int) => Place(id)));
+        return ps.sequence();
     }
 
     /**
