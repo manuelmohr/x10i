@@ -25,7 +25,10 @@ void agentclaim_set_current(agentclaim_t ac)
 
 static void redistribute_places(agentclaim_t ac)
 {
+	assert (ac != NULL && "invalid claim"); // TODO throw exception?
 	unsigned new_n_places = agent_claim_get_tilecount(ac);
+	if (0 == new_n_places)
+		return; /* nothing to distribute */
 	dispatch_claim_t *new_places = mem_allocate(MEM_TLM_LOCAL, new_n_places * sizeof(*new_places));
 	assert(NULL != new_places);
 	for (unsigned pid = 0; pid < new_n_places; ++pid) {
