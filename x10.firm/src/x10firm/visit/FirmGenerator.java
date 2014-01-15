@@ -1779,7 +1779,6 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Entity ent = new Entity(globalType, id, firmType);
 		ent.setLdIdent(id);
 		ent.setVisibility(ir_visibility.ir_visibility_private);
-		ent.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
 		final Node objPtr = con.newSymConst(ent);
 		initVPtr(objPtr, firmType);
 		return objPtr;
