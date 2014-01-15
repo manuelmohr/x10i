@@ -2,13 +2,19 @@
 #
 # Called by the ant build to fetch the required version of octopos and
 # install/extract it.
+#
+# Note: octopos nightlies can be found at:
+#    https://www4.cs.fau.de/invasic/octopos/
 set -eu
 
+RELEASE_DATE="2014-01-15"
 RELEASES=""
-RELEASES="$RELEASES release.leon.4t-sf-chipit-w-iotile.2013-12-02.tar.bz2"
-RELEASES="$RELEASES release.x86guest.multitile.2014-01-15.tar.bz2"
-MD5SUMS="""8e4240dbe931e6af08824d3f61f1442c  release.leon.4t-sf-chipit-w-iotile.2013-12-02.tar.bz2
-186477a37e4d1c7e902d3a8acf421e5b  release.x86guest.multitile.2014-01-15.tar.bz2"""
+RELEASES="$RELEASES release.leon.4t-sf-chipit-w-iotile.${RELEASE_DATE}.tar.bz2"
+RELEASES="$RELEASES release.leon.4t-chipit-w-iotile.${RELEASE_DATE}.tar.bz2"
+RELEASES="$RELEASES release.x86guest.3t-w-iotile.${RELEASE_DATE}.tar.bz2"
+MD5SUMS="""cf3c5418eef874379f04878ea1a8ff00  release.leon.4t-sf-chipit-w-iotile.${RELEASE_DATE}.tar.bz2
+55784e85081689a30306e43bdf6a73bd  release.leon.4t-chipit-w-iotile.${RELEASE_DATE}.tar.bz2
+0bc74975fc9c7f15ce789246a0038435  release.x86guest.3t-w-iotile.${RELEASE_DATE}.tar.bz2"""
 
 DIST_DIR="octopos-dist"
 OCTOPOS_APP_DIR="octopos-app"
