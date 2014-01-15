@@ -9,6 +9,6 @@ import x10.lang.annotations.StatementAnnotation;
  * to only be executed once.
  *
  * Must be used *exactly* as the following for now:
- *   val v = @TLMAllocate new T(...);
+ *   val v = @StaticAllocate new T(...);
  */
 public interface StaticAllocate extends ExpressionAnnotation { }
