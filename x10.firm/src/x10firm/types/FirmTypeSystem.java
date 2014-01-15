@@ -814,10 +814,17 @@ public class FirmTypeSystem {
 		final Type typeFloat = new PrimitiveType(modeFloat);
 		recordPrimitiveType("float", x10TypeSystem.Float(), typeFloat, "f");
 
-		final Mode modeDouble = Mode.createFloatMode("Double", Arithmetic.IEE754, 11, 52);
-		final Type typeDouble = new PrimitiveType(modeDouble);
-		initIA32DataTypeAlignment(typeDouble);
-		recordPrimitiveType("double", x10TypeSystem.Double(), typeDouble, "d");
+		/* gross hack: use 32bit float on sparc target */
+		if (compilerOptions.getTargetTriple().getCpu().equals("sparc")) {
+			final Mode modeDouble = Mode.createFloatMode("Double", Arithmetic.IEE754, 8, 23);
+			final Type typeDouble = new PrimitiveType(modeDouble);
+			recordPrimitiveType("double", x10TypeSystem.Double(), typeDouble, "d");
+		} else {
+			final Mode modeDouble = Mode.createFloatMode("Double", Arithmetic.IEE754, 11, 52);
+			final Type typeDouble = new PrimitiveType(modeDouble);
+			initIA32DataTypeAlignment(typeDouble);
+			recordPrimitiveType("double", x10TypeSystem.Double(), typeDouble, "d");
+		}
 
 		/* Note that the mode_b in firm can't be used here, since it is an
 		 * internal mode which cannot be used for fields/call parameters/return

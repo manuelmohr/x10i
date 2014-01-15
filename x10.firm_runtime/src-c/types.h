@@ -17,7 +17,11 @@ typedef uint8_t   x10_ubyte;
 typedef bool      x10_boolean;
 typedef char      x10_char;
 typedef float     x10_float;
+#ifdef DOUBLE_IS_32BIT
+typedef float     x10_double;
+#else
 typedef double    x10_double;
+#endif
 typedef char     *x10_pointer;
 typedef void     *x10_opaque_handle;
 
