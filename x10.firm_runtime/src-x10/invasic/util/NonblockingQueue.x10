@@ -1,5 +1,7 @@
 package invasic.util;
 
+import x10.compiler.TLMAllocate;
+
 import x10.util.Container;
 import x10.util.ArrayList;
 import x10.util.Box;
@@ -14,13 +16,13 @@ import invasic.util.Queue;
 */
 public class NonblockingQueue[T] implements Queue[T] {
 	private static class Cons[T] {
-		public val nxt = new AtomicReference[Cons[T]]();
+		public val nxt = @TLMAllocate new AtomicReference[Cons[T]]();
 		public var value:Box[T] = null;
 	}
 
 	/* head always contains a dummy node */
-	private val head = new AtomicReference[Cons[T]]();
-	private val tail = new AtomicReference[Cons[T]]();
+	private val head = @TLMAllocate new AtomicReference[Cons[T]]();
+	private val tail = @TLMAllocate new AtomicReference[Cons[T]]();
 
 	/** Create an empty queue */
 	public def this() {

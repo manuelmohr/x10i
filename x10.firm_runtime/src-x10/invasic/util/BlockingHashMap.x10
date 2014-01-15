@@ -1,5 +1,7 @@
 package invasic.util;
 
+import x10.compiler.TLMAllocate;
+
 import x10.util.Map;
 import x10.util.Box;
 import x10.util.Set;
@@ -9,7 +11,7 @@ import x10.util.concurrent.Lock;
 /** A thread-safe hash map */
 public class BlockingHashMap[K,V] implements Map[K,V] {
 	private val data = new HashMap[K,V]();
-	private val lock = new Lock();
+	private val lock = @TLMAllocate new Lock();
 
 	public def containsKey(k:K):boolean {
 		try {

@@ -1,5 +1,7 @@
 package invasic.util;
 
+import x10.compiler.TLMAllocate;
+
 import x10.util.Container;
 import x10.util.ArrayList;
 import x10.util.Box;
@@ -20,8 +22,8 @@ public class BlockingQueue[T] implements Queue[T] {
 
 	private var head:Cons[T];
 	private var tail:Cons[T];
-	private val head_lock = new Lock();
-	private val tail_lock = new Lock();
+	private val head_lock = @TLMAllocate new Lock();
+	private val tail_lock = @TLMAllocate new Lock();
 
 	/** Create an empty queue */
 	public def this() {
