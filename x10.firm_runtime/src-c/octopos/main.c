@@ -227,6 +227,34 @@ static void shutdown_everything(void) {
 
 void main_ilet(claim_t root_claim)
 {
+#ifdef __sparc__
+	/* If we're on the CHIPit hardware, we currently have to waste core 0
+	 * on each tile because it has to be free to handle NoC interrupts,
+	 * otherwise the hardware deadlocks.  We do this by putting core 0 into
+	 * a separate claim and then throw away all references to this claim. */
+	if (root_claim != NULL) {
+		invade_future_t fut;
+		assert(proxy_invade(0, &fut, 1) == 0);
+		proxy_claim_t claim = invade_future_force(&fut);
+		assert(claim != NULL);
+		simple_ilet ilet;
+		simple_ilet_init(&ilet, &main_ilet, NULL);
+		proxy_infect(claim, &ilet, 1);
+		return;
+	} else {
+		root_claim = get_claim();
+		for (unsigned tile_id = 0; tile_id < get_tile_count(); ++tile_id) {
+			if (tile_id == get_tile_id() || tile_id == get_io_tile_id())
+				continue;
+			invade_future_t fut;
+			assert(proxy_invade(tile_id, &fut, 1) == 0);
+			proxy_claim_t claim = invade_future_force(&fut);
+			assert(claim != NULL);
+			/* Throw away claim. */
+		}
+	}
+#endif
+
 	/* We want to use uart redirection through grmon -u */
 	leon_set_uart_debug_mode(1);
 
