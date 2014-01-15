@@ -1956,11 +1956,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			final Type staticAnnotation = getStaticAllocateType();
 			final boolean staticAlloc = ((X10Ext) n.ext()).annotationMatching(staticAnnotation).size() > 0;
 
-			if (stackAlloc && tlmAlloc)
-				throw new CodeGenError("Multiple allocation annotations", n);
-			if (stackAlloc && staticAlloc)
-				throw new CodeGenError("Multiple allocation annotations", n);
-			if (staticAlloc && tlmAlloc)
+			if ((stackAlloc && tlmAlloc) || (stackAlloc && staticAlloc) || (staticAlloc && tlmAlloc))
 				throw new CodeGenError("Multiple allocation annotations", n);
 
 			final Node objectNode;
