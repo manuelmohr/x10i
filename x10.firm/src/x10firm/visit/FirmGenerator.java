@@ -1937,7 +1937,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	private X10ClassType staticAllocateType = null;
 	private X10ClassType getStaticAllocateType() {
 		if (staticAllocateType == null)
-			staticAllocateType = typeSystem.getTypeSystem().load("x10.compiler.TLMAllocate");
+			staticAllocateType = typeSystem.getTypeSystem().load("x10.compiler.StaticAllocate");
 		return staticAllocateType;
 	}
 
