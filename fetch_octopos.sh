@@ -11,8 +11,8 @@ RELEASE_DATE="2014-01-15"
 RELEASES=""
 RELEASES="$RELEASES release.leon.4t-chipit-w-iotile.${RELEASE_DATE}.tar.bz2"
 RELEASES="$RELEASES release.x86guest.3t-w-iotile.${RELEASE_DATE}.tar.bz2"
-MD5SUMS="""55784e85081689a30306e43bdf6a73bd  release.leon.4t-chipit-w-iotile.${RELEASE_DATE}.tar.bz2
-0bc74975fc9c7f15ce789246a0038435  release.x86guest.3t-w-iotile.${RELEASE_DATE}.tar.bz2"""
+MD5SUMS="""69bb475b3e9b7e173fa37993b535ec5a  release.leon.4t-chipit-w-iotile.${RELEASE_DATE}.tar.bz2
+389542e62e5d4fcc2e6944abc07e3311  release.x86guest.3t-w-iotile.${RELEASE_DATE}.tar.bz2"""
 
 DIST_DIR="octopos-dist"
 OCTOPOS_APP_DIR="octopos-app"
