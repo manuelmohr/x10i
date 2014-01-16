@@ -16,6 +16,7 @@ PLATFORM   ?= posix
 ifeq ($(findstring x86_64, $(TARGET)), x86_64)
 	CFLAGS += -m32 -march=i686
 	APP_CFLAGS += -m32 -march=i686
+	LFLAGS += -m32
 	CPARSER_TARGET=
 endif
 ifeq ($(findstring sparc, $(TARGET)), sparc)
@@ -44,6 +45,7 @@ endif
 ifeq ($(findstring i686-invasic, $(TARGET)), i686-invasic)
 	OCTOPOS_BASE=../octopos-app/releases/current/x86guest/3t-w-iotile
 	CFLAGS += -m32 -mfpmath=sse -msse2
+	APP_CFLAGS += -m32 -mfpmath=sse -msse2
 	CPPFLAGS += -I $(GCC_INCLUDE)
 	LFLAGS += -m32 -nostdlib -Wl,-T,$(OCTOPOS_BASE)/lib/sections.x $(OCTOPOS_BASE)/lib/liboctopos.a $(OCTOPOS_BASE)/lib/libcsubset.a
 endif
@@ -94,7 +96,7 @@ $(A_FILE): $(O_FILE)
 	ar rucs $@ $?
 
 $(FIRM_NATIVE_TYPES_CONF): $(GEN_FIRM_NATIVE_SIZES) $(wildcard $(PLATFORMDIR)/*.h) $(wildcard $(SRCDIR)/*.h) $(CPARSER)
-	$(CPARSER) --no-external-pp --print-compound-sizes $(CPPFLAGS) $(APP_CFLAGS) -o $@ $(SRCDIR)/gen_firm_native_sizes.c
+	$(CPARSER) --print-compound-sizes $(CPPFLAGS) $(APP_CFLAGS) -o $@ $(SRCDIR)/gen_firm_native_sizes.c
 
 $(GEN_PRIMITIVE_TYPES): $(GENERATORSDIR)/create_types.py
 	mkdir -p $(BUILDDIR)
@@ -113,7 +115,7 @@ cparser_subdir:
 .PHONY: cparser_subdir
 
 $(IR_FILE): $(MASTER) $(CPARSER)
-	$(CPARSER) --no-external-pp $(CPPFLAGS) $(CFLAGS) $(CPARSER_TARGET) -w $< --export-ir -o $@
+	$(CPARSER) $(CPPFLAGS) $(CFLAGS) $(CPARSER_TARGET) -w $< --export-ir -o $@
 
 .PHONY: clean
 clean:
