@@ -181,10 +181,12 @@ public class Linked extends AbstractGoal_c {
 				cmd.add("-Wl,-R" + libooPath);
 			cmd.add("-loo_rt");
 		}
-		if (!FirmState.libraryLoaded("x10")) {
-			final String stdlibPath = x10DistPath + "/../x10.firm_runtime/build/" + target;
+
+		final String stdlibPath = x10DistPath + "/../x10.firm_runtime/build/" + target;
+		if (!FirmState.libraryLoaded("x10"))
 			cmd.add(stdlibPath + "/libx10.a");
-		}
+		if (cpu.equals("sparc"))
+			cmd.add(stdlibPath + "/libdoublereg.a");
 
 		cmd.add(x10DistPath + "/../bdwgc/build/" + target + "/gc.a");
 

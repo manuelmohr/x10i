@@ -6,6 +6,7 @@ cmpOps = [ "==", "!=", "<", ">", "<=", ">=" ]
 binOps = [ " + ", " - ", "*", "/" ]
 intBinOps = binOps + [ "&", "|", "^", "%" ]
 shiftOps = [ "<<", ">>", ">>>" ]
+avoidDoubleRegs = len(sys.argv) > 1 and sys.argv[1] == "--avoid-doubleregs"
 class Type(object):
 	def __init__(self, name, mangled, ctype, size, signed,
 	             binOps=intBinOps, unOps=["+", "-", "~"], cmpOps=cmpOps,
@@ -138,6 +139,9 @@ def getUnsignedIntType(size):
 		if t.signed == False and t.size == size:
 			return t
 	raise "Couldn't find unsigned type with size " + size
+
+def avoidDoubleReg(type, otype):
+	return avoidDoubleRegs and type in floatTypes and otype.name == "x10.lang.UInt"
 
 env=Environment()
 
@@ -300,11 +304,13 @@ x10_boolean {{method(op, xtype)}}({{ctype}} self, {{ctype}} other)
 
 {%- for otype in type.coerceFrom %}
 
+{%- if not avoidDoubleReg(type, otype) %}
 /* {{xtype}}.operator ({{otype.name}}):{{xtype}} */
 {{ctype}} {{method("$cv"+type.mangled, otype.name)}}({{otype.ctype}} other)
 {
 	return other;
 }
+{%- endif %}
 {%- endfor %}
 
 {%- for otype in type.convertFrom %}
@@ -326,6 +332,7 @@ sys.stdout.write(template.render(
 	mangleType=mangleType,
 	typedict=typedict,
 	getUnsignedIntType=getUnsignedIntType,
+	avoidDoubleReg=avoidDoubleReg,
 	len=len,
 	str=str
 	)

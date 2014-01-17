@@ -29,6 +29,8 @@ endif
 ifeq ($(findstring sparc, $(TARGET)), sparc)
 	APP_CFLAGS += -static
 	CFLAGS += -DDOUBLE_IS_32BIT
+	GENERATOR_FLAGS = --avoid-doubleregs
+	DOUBLEREG_LIB = $(BUILDDIR)/libdoublereg.a
 endif
 ifeq ($(findstring darwin, $(TARGET)), darwin)
 	CPARSER_TARGET=
@@ -91,7 +93,7 @@ MASTER=$(BUILDDIR)/master.c
 O_FILE=$(MASTER:%.c=%.o)
 IR_FILE=$(BUILDDIR)/$(LIBNAME).ir
 
-all: $(A_FILE) $(FIRM_NATIVE_TYPES_CONF) $(IR_FILE)
+all: $(A_FILE) $(FIRM_NATIVE_TYPES_CONF) $(IR_FILE) $(DOUBLEREG_LIB)
 
 $(A_FILE): $(O_FILE)
 	ar rucs $@ $?
@@ -101,7 +103,7 @@ $(FIRM_NATIVE_TYPES_CONF): $(GEN_FIRM_NATIVE_SIZES) $(wildcard $(PLATFORMDIR)/*.
 
 $(GEN_PRIMITIVE_TYPES): $(GENERATORSDIR)/create_types.py
 	mkdir -p $(BUILDDIR)
-	$< > $@
+	$< $(GENERATOR_FLAGS) > $@
 
 $(MASTER): $(GENERATORSDIR)/mkincludes.py $(C_FILES) $(H_FILES) Makefile
 	mkdir -p $(BUILDDIR)
@@ -109,6 +111,11 @@ $(MASTER): $(GENERATORSDIR)/mkincludes.py $(C_FILES) $(H_FILES) Makefile
 
 $(O_FILE): $(MASTER)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< -c -o $@
+
+$(DOUBLEREG_LIB): $(SRCDIR)/doublereg/convert.c $(SRCDIR)/doublereg/to_string.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(SRCDIR)/doublereg/convert.c -c -o $(BUILDDIR)/convert.o
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(SRCDIR)/doublereg/to_string.c -c -o $(BUILDDIR)/to_string.o
+	ar rucs $@ $(BUILDDIR)/convert.o $(BUILDDIR)/to_string.o
 
 Makefile: cparser_subdir
 cparser_subdir:
