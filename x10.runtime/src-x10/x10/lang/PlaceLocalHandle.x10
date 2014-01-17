@@ -208,4 +208,9 @@ public final struct PlaceLocalHandle[T]{T isref} {
         }
         return handle;
     }
+
+    /* backported from newer X10 */
+    public static def destroy[T](pg: PlaceGroup, plh: PlaceLocalHandle[T]){T isref, T haszero}: void {
+        pg.broadcastFlat(()=>{ plh.set(Zero.get[T]()); });
+    }
 }

@@ -93,7 +93,7 @@ public final class DistArray[T] (
      * Method to acquire a pointer to the backing storage for the 
      * array's data in the current place.
      */
-    protected final def raw():IndexedMemoryChunk[T] {
+    public final def raw():IndexedMemoryChunk[T] {
         if (!cachedRawValid) {
             cachedRaw = localHandle().data;
             x10.util.concurrent.Fences.storeStoreBarrier();
@@ -763,6 +763,11 @@ public final class DistArray[T] (
      * @see x10.lang.Iterable[T]#iterator()
      */
     public def iterator(): Iterator[Point(rank)] = region.iterator() as Iterator[Point(rank)];
+
+    // NOP to be compatible with x10i compiler
+    public def free(): void {
+        PlaceLocalHandle.destroy[LocalState[T]](PlaceGroup.WORLD, localHandle);
+    }
 }
 public type DistArray[T](r:Int) = DistArray[T]{self.rank==r};
 public type DistArray[T](r:Region) = DistArray[T]{self.region==r};
