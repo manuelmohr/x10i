@@ -11,6 +11,8 @@ import x10firm.FirmTransformations;
 import firm.Dump;
 import firm.Graph;
 import firm.Program;
+import firm.bindings.binding_irarch;
+import firm.bindings.binding_irarch.arch_dep_opts_t;
 import firm.bindings.binding_irflag;
 import firm.bindings.binding_irgraph.ir_graph_constraints_t;
 
@@ -138,7 +140,10 @@ public class FirmTransform extends AllBarrierGoal {
 
 		optimize("remove-unused");
 
-		// TODO: enable arch_dep
+		/* enable architecture dependent optimizations */
+		binding_irarch.arch_dep_set_opts(arch_dep_opts_t.arch_dep_mul_to_shift.val |
+		                                 arch_dep_opts_t.arch_dep_div_by_const.val |
+		                                 arch_dep_opts_t.arch_dep_mod_by_const.val);
 
 		for (final Graph graph : Program.getGraphs()) {
 			optimize(graph, "reassociation");
