@@ -40,7 +40,7 @@ for release in $RELEASES; do
 			echo "Copying $release from $IPDDIR"
 			cp -p "$IPDDIR/$release" "$DIST_DIR"
 		else
-			echo "Cannot find $DIST_DIR/$release, please download it"
+			echo "Cannot find $DIST_DIR/$release, please download it from https://www4.cs.fau.de/invasic/octopos/"
 			exit 1
 		fi
 	fi
