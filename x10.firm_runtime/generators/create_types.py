@@ -25,7 +25,7 @@ class Type(object):
 		self.movableBy     = movableBy
 		self.coerceFrom    = []
 		self.convertFrom   = []
-	
+
 opMangling = {
 	"==":  "eq",
 	"!=":  "ne",
