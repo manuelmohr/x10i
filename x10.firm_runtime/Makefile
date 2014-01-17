@@ -9,8 +9,15 @@ CFLAGS         ?= -g3
 CPPFLAGS       ?=
 CPPFLAGS       += -I../bdwgc/include
 
-APP_CFLAGS ?=
-PLATFORM   ?= posix
+APP_CFLAGS     ?=
+PLATFORM       ?= posix
+
+CPARSER_BASE   ?= ../cparser
+CPARSER         = $(CPARSER_BASE)/build/debug/cparser
+BUILDDIR       ?= build/$(TARGET)
+SRCDIR          = src-c
+GENERATORSDIR   = generators
+LIBOO_BASE     ?= ../liboo
 
 # The ugly part... Collection of hacks for certain architectures
 ifeq ($(findstring x86_64, $(TARGET)), x86_64)
@@ -66,14 +73,8 @@ ifeq ($(findstring linux, $(TARGET)), linux)
 #	CPPFLAGS += -DBIG_ENDIAN_SERIALIZATION
 endif
 
-CPARSER_BASE ?= ../cparser
-CPARSER = $(CPARSER_BASE)/build/debug/cparser
-BUILDDIR?=build/$(TARGET)
-SRCDIR=src-c
-GENERATORSDIR=generators
-PLATFORMDIR=$(SRCDIR)/$(PLATFORM)
-LIBOO_BASE ?= ../liboo
 
+PLATFORMDIR=$(SRCDIR)/$(PLATFORM)
 LIBNAME=x10
 A_FILE=$(BUILDDIR)/lib$(LIBNAME).a
 ALL_C_FILES=$(wildcard $(SRCDIR)/*.c) $(wildcard $(SRCDIR)/adt/*.c) $(wildcard $(PLATFORMDIR)/*.c)
