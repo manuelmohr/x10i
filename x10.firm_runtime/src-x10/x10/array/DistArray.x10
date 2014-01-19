@@ -93,7 +93,7 @@ public final class DistArray[T] (
      * Method to acquire a pointer to the backing storage for the
      * array's data in the current place.
      */
-    protected final def raw():IndexedMemoryChunk[T] {
+    public final def raw():IndexedMemoryChunk[T] {
         if (!cachedRawValid) {
             cachedRaw = localHandle().data;
             x10.util.concurrent.Fences.storeStoreBarrier();
