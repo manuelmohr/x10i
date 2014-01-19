@@ -65,7 +65,7 @@ void* place_local::lookupData(x10_int id) {
 }
 
 void place_local::registerData(x10_int id, void *data) {
-    assert(NULL == lookupData(id));
+    assert(data == NULL || NULL == lookupData(id));
     if (id < MAX_FAST_ID) {
         _fastData[id] = data;
     } else {
