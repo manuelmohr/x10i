@@ -11,6 +11,7 @@
 
 package x10.compiler;
 
+import x10.compiler.StaticAllocate;
 import x10.compiler.NativeRep;
 import x10.util.concurrent.Monitor;
 
@@ -20,7 +21,7 @@ import x10.util.concurrent.Monitor;
  */
 @NativeRep("java", "x10.runtime.impl.java.InitDispatcher", null, null)
 class InitDispatcher {
-    static staticMonitor = new Monitor();
+    static staticMonitor = @StaticAllocate new Monitor();
 
     public static val UNINITIALIZED    = 0;
     public static val INITIALIZING     = 1;
