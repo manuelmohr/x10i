@@ -2181,32 +2181,52 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	 * @param mi The method instance
 	 * @param args The arguments of the method
 	 * @param target The target of the method call.
-	 * @return The return node or null if the call doesn`t have a return value
+	 * @return The return node or null if the call does not have a return value
 	 */
 	private Node genX10Call(final Position pos, final MethodInstance mi,
 	                        final List<Expr> args, final Receiver target) {
-		final Flags flags = mi.flags();
-		final boolean isStatic = flags.isStatic();
-		final boolean isFinal  = flags.isFinal();
-		final boolean isStruct = typeSystem.isStructType(mi.container());
-		final boolean isStaticBinding = (isStatic || isFinal || isStruct);
-		final Entity entity = firmTypeSystem.getMethodEntity(mi);
+		MethodInstance method = mi;
+		final boolean isStatic = method.flags().isStatic();
+
+		final List<Expr> arguments = new LinkedList<Expr>();
+
+		// add implicit this pointer
+		if (!isStatic) {
+			assert target != null && target instanceof Expr : method.toString();
+			final Type targetType = target.type();
+			final TypeParamSubst subst = typeSystem.getSubst();
+			final Type instantiatedTargetType = subst.reinstantiate(targetType);
+			final Context context = typeSystem.emptyContext();
+
+			// If the target had a generic type, we may find an overriding method.
+			if (!instantiatedTargetType.typeEquals(targetType, context)) {
+				Type t = instantiatedTargetType;
+				if (t.isReference()) {
+					t = t.toReference();
+				}
+				if (t.isClass()) {
+					final X10ClassType ct = t.toClass();
+					MethodInstance instantiatedMethod = method.typeSystem().findImplementingMethod(ct, method, true, context);
+
+					if (instantiatedMethod != null) {
+						assert instantiatedMethod.isSameMethod(method, context) || instantiatedMethod.canOverride(method, context);
+						method = instantiatedMethod;
+					}
+				}
+			}
+
+			final Expr receiver = (Expr)target;
+			final Expr casted = x10Cast(receiver, method.container());
+			arguments.add(casted);
+		}
+
+		final Entity entity = firmTypeSystem.getMethodEntity(method);
 
 		final MethodType type = (MethodType) entity.getType();
 		final int paramCount = type.getNParams();
 
-		final List<Expr> arguments = new LinkedList<Expr>();
-
 		// add the other arguments
-		arguments.addAll(wrapArguments(mi.formalTypes(), args));
-
-		// add implicit this pointer
-		if (!isStatic) {
-			assert target != null && target instanceof Expr : mi.toString();
-			final Expr receiver = (Expr)target;
-			final Expr casted = x10Cast(receiver, mi.container());
-			arguments.add(0, casted);
-		}
+		arguments.addAll(wrapArguments(method.formalTypes(), args));
 
 		assert arguments.size() == paramCount : "parameters are off : " + arguments.size() + " vs " + paramCount;
 		final Node[] parameters = new Node[paramCount];
@@ -2215,6 +2235,10 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			parameters[i] = visitExpression(arguments.get(i));
 		}
 
+		final Flags flags = method.flags();
+		final boolean isFinal = flags.isFinal();
+		final boolean isStruct = typeSystem.isStructType(method.container());
+		final boolean isStaticBinding = (isStatic || isFinal || isStruct);
 		final Node address = (isStaticBinding) ? con.newSymConst(entity) : con.newSel(parameters[0], entity);
 
 		final Node mem = con.getCurrentMem();
