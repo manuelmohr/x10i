@@ -86,6 +86,7 @@ import polyglot.types.MethodDef;
 import polyglot.types.Name;
 import polyglot.types.Ref_c;
 import polyglot.types.Type;
+import polyglot.types.TypeSystem;
 import polyglot.types.TypeSystem_c;
 import polyglot.types.Types;
 import polyglot.util.Position;
@@ -2206,10 +2207,12 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 				}
 				if (t.isClass()) {
 					final X10ClassType ct = t.toClass();
-					MethodInstance instantiatedMethod = method.typeSystem().findImplementingMethod(ct, method, true, context);
+					final TypeSystem pts = method.typeSystem();
+					final MethodInstance instantiatedMethod = pts.findImplementingMethod(ct, method, true, context);
 
 					if (instantiatedMethod != null) {
-						assert instantiatedMethod.isSameMethod(method, context) || instantiatedMethod.canOverride(method, context);
+						assert instantiatedMethod.isSameMethod(method, context)
+						       || instantiatedMethod.canOverride(method, context);
 						method = instantiatedMethod;
 					}
 				}
