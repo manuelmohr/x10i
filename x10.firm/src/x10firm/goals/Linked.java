@@ -101,21 +101,21 @@ public class Linked extends AbstractGoal_c {
 
 	private String octoposPrefix() {
 		final MachineTriple target = options.getTargetTriple();
-		String octoposVariant;
 		final String octoposArch;
 		// Choose OctoPOS architecture
 		if (target.getCpu().equals("sparc")) {
 			octoposArch = "leon";
-			octoposVariant = options.useSoftFloat()
-					? "4t-sf-chipit-w-iotile" : "4t-chipit-w-iotile";
 		} else if (target.getCpu().equals("i686")) {
 			octoposArch = "x86guest";
-			octoposVariant = "3t-w-iotile";
 		} else {
-			throw new RuntimeException("only sparc/i686 support for octopos");
+			throw new RuntimeException("only sparc/i686 supported for octopos");
 		}
-		if (target.getOSVariant() != null)
+		final String octoposVariant;
+		if (target.getOSVariant() != null) {
 			octoposVariant = target.getOSVariant();
+		} else {
+			octoposVariant = "default";
+		}
 
 		return distPath() + "/../octopos-app/releases/current/" + octoposArch + "/" + octoposVariant + "/";
 	}

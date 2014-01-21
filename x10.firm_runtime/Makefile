@@ -52,7 +52,7 @@ ifeq ($(findstring invasic, $(TARGET)), invasic)
 	CPPFLAGS += -I $(OCTOPOS_BASE)/include
 endif
 ifeq ($(findstring i686-invasic, $(TARGET)), i686-invasic)
-	OCTOPOS_BASE=../octopos-app/releases/current/x86guest/3t-w-iotile
+	OCTOPOS_BASE=../octopos-app/releases/current/x86guest/default
 	CFLAGS += -m32 -mfpmath=sse -msse2
 	APP_CFLAGS += -m32 -mfpmath=sse -msse2
 	CPPFLAGS += -I $(GCC_INCLUDE)
@@ -63,7 +63,7 @@ ifeq ($(findstring invasic-irtss, $(TARGET)), invasic-irtss)
 endif
 ifeq ($(findstring sparc-invasic, $(TARGET)), sparc-invasic)
 	# For now, always build for soft float
-	OCTOPOS_BASE=../octopos-app/releases/current/leon/4t-chipit-w-iotile
+	OCTOPOS_BASE=../octopos-app/releases/current/leon/default
 	CPPFLAGS += -D__leon__ -isystem $(GCC_INCLUDE)
 endif
 ifeq ($(findstring linux, $(TARGET)), linux)

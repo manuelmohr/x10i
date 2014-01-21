@@ -7,12 +7,14 @@
 #    https://www4.cs.fau.de/invasic/octopos/
 set -eu
 
-RELEASE_DATE="2014-01-15"
+RELEASE_DATE="2014-01-21"
 RELEASES=""
 RELEASES="$RELEASES release.leon.4t-chipit-w-iotile.${RELEASE_DATE}.tar.bz2"
-RELEASES="$RELEASES release.x86guest.3t-w-iotile.${RELEASE_DATE}.tar.bz2"
-MD5SUMS="""69bb475b3e9b7e173fa37993b535ec5a  release.leon.4t-chipit-w-iotile.${RELEASE_DATE}.tar.bz2
-389542e62e5d4fcc2e6944abc07e3311  release.x86guest.3t-w-iotile.${RELEASE_DATE}.tar.bz2"""
+RELEASES="$RELEASES release.x86guest.4t-w-iotile.${RELEASE_DATE}.tar.bz2"
+DEFAULT_X86GUEST="4t-w-iotile"
+DEFAULT_LEON="4t-chipit-w-iotile"
+MD5SUMS="""fabe81c1ab4521e422cab3975de68214  release.leon.4t-chipit-w-iotile.${RELEASE_DATE}.tar.bz2
+f8548abf8bc5965926ce4a79bbf056f8  release.x86guest.4t-w-iotile.${RELEASE_DATE}.tar.bz2"""
 
 DIST_DIR="octopos-dist"
 OCTOPOS_APP_DIR="octopos-app"
@@ -60,6 +62,14 @@ for release in $RELEASES; do
 	echo "Extracting $release"
 	tar -xf "$DIST_DIR/$release" -C "$OCTOPOS_APP_DIR/releases"
 done
+
+# Create default symlinks
+pushd "$OCTOPOS_APP_DIR/releases/current/x86guest" > /dev/null
+ln -sf "$DEFAULT_X86GUEST" "default"
+popd > /dev/null
+pushd "$OCTOPOS_APP_DIR/releases/current/leon" > /dev/null
+ln -sf "$DEFAULT_LEON" "default"
+popd > /dev/null
 
 # Remember what we extracted so the script doesn't need to do it again
 echo "$MD5SUMS" > "$OCTOPOS_APP_DIR/md5sums"
