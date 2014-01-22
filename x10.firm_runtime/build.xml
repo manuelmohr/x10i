@@ -10,6 +10,9 @@
 	<property name="src-x10.location" location="${basedir}/src-x10"/>
 	<property name="jar" value="x10_firm.jar"/>
 	<property name="make.exe" value="make"/>
+	<condition property="buildvariant" value="${VARIANT}" else="debug">
+		<isset property="VARIANT"/>
+	</condition>
 
 	<target name="init">
 		<mkdir dir="${build}"/>
@@ -56,11 +59,14 @@
 	<!-- If TARGET is set, build for TARGET.  Otherwise do a default build. -->
 	<target name="build" depends="build-default, build-target"/>
 	<target name="build-default" depends="init" unless="TARGET">
-		<exec executable="${make.exe}" failonerror="true"/>
+		<exec executable="${make.exe}" failonerror="true">
+			<arg value="variant=${buildvariant}"/>
+		</exec>
 	</target>
 	<target name="build-target" depends="init" if="TARGET">
 		<exec executable="${make.exe}" failonerror="true">
 			<arg value="TARGET=${TARGET}"/>
+			<arg value="variant=${buildvariant}"/>
 		</exec>
 	</target>
 </project>

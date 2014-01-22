@@ -13,7 +13,7 @@ APP_CFLAGS     ?=
 PLATFORM       ?= posix
 
 CPARSER_BASE   ?= ../cparser
-CPARSER         = $(CPARSER_BASE)/build/debug/cparser
+CPARSER         = $(CPARSER_BASE)/build/$(variant)/cparser
 BUILDDIR       ?= build/$(TARGET)
 SRCDIR          = src-c
 GENERATORSDIR   = generators

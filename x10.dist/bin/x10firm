@@ -41,7 +41,13 @@ append_classpath "${X10_TOP}/jFirm/classes"
 append_classpath "${X10_TOP}/liboo/classes"
 append_classpath "${X10_TOP}/jFirm/lib/jna.jar"
 
-JNA_LIBRARY_PATH="${X10_TOP}/libfirm/build/debug"
+# Find an existing libfirm variant
+for variant in debug optimize; do
+	if [ -d ${X10_TOP}/libfirm/build/optimize ]; then
+		JNA_LIBRARY_PATH="${X10_TOP}/libfirm/build/${variant}"
+	fi
+done
+echo ${JNA_LIBRARY_PATH}
 JNA_LIBRARY_PATH="${JNA_LIBRARY_PATH}:${X10_TOP}/liboo/build"
 # Some how we can not use -Djna.library.path= as java arguments, otherwise
 # liboo won't find the referenced libfirm library (this is not the fault of jna
