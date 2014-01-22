@@ -61,7 +61,6 @@ public final struct PlaceLocalHandle[T]{T isref, T <: Any} {
     // Only to be used by make method and Runtime class
     def set(newVal:T):void {
         atomic {
-            val length = datas.length();
             if (id >= datas.length()) {
                 datas.grow(id);
                 do {
