@@ -64,7 +64,7 @@ static void ilet_dma_local_finish(void *context)
 {
 	distribute_places_context *dpc  = context;
 	simple_signal_signal(dpc->signal);
-	mem_free(dpc);
+	mem_free_tlm(dpc);
 }
 
 static void ilet_dma_remote_finish(void *pid)
@@ -109,11 +109,11 @@ static void ilet_allocate_places(void *arg_n_places, void *context)
 	assert (cl != 0 && "stack overflow maybe?");
 	place_local_data *pld = claim_get_local_data(cl);
 	if (NULL == pld) {
-		pld = mem_allocate(MEM_TLM_LOCAL, sizeof(place_local_data));
+		pld = mem_allocate_tlm(sizeof(place_local_data));
 		claim_set_local_data(cl, pld);
 	}
 	pld->n_places = n_places;
-	pld->places   = mem_allocate(MEM_TLM_LOCAL, n_places * sizeof(*pld->places));
+	pld->places   = mem_allocate_tlm(n_places * sizeof(*pld->places));
 	/* is freed implicitly upon retreat or shutdown */
 	simple_ilet ilet;
 	dual_ilet_init(&ilet, ilet_transfer_places, get_global_address(pld->places), context);
@@ -133,7 +133,7 @@ void distribute_places(dispatch_claim_t *new_places, unsigned new_n_places)
 	simple_signal_init(&finish_signal, new_n_places);
 
 	for (unsigned pid = 0; pid < new_n_places; ++pid) {
-		distribute_places_context *dpc = mem_allocate(MEM_TLM_LOCAL, sizeof(distribute_places_context));
+		distribute_places_context *dpc = mem_allocate_tlm(sizeof(distribute_places_context));
 		dpc->places = new_places;
 		dpc->n_places = new_n_places;
 		dpc->signal = &finish_signal;
@@ -147,7 +147,7 @@ void distribute_places(dispatch_claim_t *new_places, unsigned new_n_places)
 	/* Wait until all places are initialized. */
 	simple_signal_wait(&finish_signal);
 
-	mem_free(new_places);
+	mem_free_tlm(new_places);
 }
 
 /* initalize X10 an all places */
@@ -183,9 +183,9 @@ static void init_places(claim_t root_claim)
 		new_n_places = n_tiles - 1;
 	}
 
-	dispatch_claim_t *new_places = mem_allocate(MEM_TLM_LOCAL, new_n_places * sizeof(*new_places));
+	dispatch_claim_t *new_places = mem_allocate_tlm(new_n_places * sizeof(*new_places));
 	memset(new_places, 0, new_n_places * sizeof(*new_places));
-	proxy_claim_t *proxies = mem_allocate(MEM_TLM_LOCAL, new_n_places * sizeof(*proxies));
+	proxy_claim_t *proxies = mem_allocate_tlm(new_n_places * sizeof(*proxies));
 	memset(proxies, 0, new_n_places * sizeof(*proxies));
 
 	/* Get as many CPUs as possible on local tile.

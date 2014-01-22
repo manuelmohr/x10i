@@ -159,7 +159,7 @@ static void free_obstack(void *obstack)
 	struct obstack *obst = (struct obstack *)obstack;
 
 	obstack_free(obst, NULL);
-	mem_free(obst);
+	mem_free_tlm(obst);
 }
 
 /* Runs an at statement. */
@@ -179,8 +179,8 @@ static void run_at_statement(void *arg, void *source_finish_state)
 	void                     *source_local_data      = destination_local_data->source_local_data;
 
 	/* Free destination's data. */
-	mem_free(destination_dma_data);
-	mem_free(destination_local_data);
+	mem_free_tlm(destination_dma_data);
+	mem_free_tlm(destination_local_data);
 
 	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(closure);
 
@@ -212,12 +212,12 @@ static void wait_for_global_termination(void *destination_data)
 	void             *source_finish_state = destination_local_data->source_finish_state;
 
 	/* Free destination's local data. */
-	mem_free(destination_local_data);
+	mem_free_tlm(destination_local_data);
 
 	/* Wait for global termination. */
 	finish_state_wait(finish_state);
 	finish_state_destroy(finish_state);
-	mem_free(finish_state);
+	mem_free_tlm(finish_state);
 
 	/* Notify global termination to source tile. */
 	simple_ilet notify_global_termination_ilet;
@@ -236,7 +236,7 @@ static void receive_result(void *source_buffer, void *source_data)
 	source_local_data->return_value = x10_deserialize_from(buf, buffer_size);
 
 	/* Free source's DMA data. */
-	mem_free(source_dma_data);
+	mem_free_tlm(source_dma_data);
 
 	notify_local_termination(source_local_data);
 }
@@ -263,7 +263,7 @@ static void transfer_result(void *destination_data, void *source_buffer)
 /* Allocates the receive buffer in the source memory. */
 static void allocate_source_memory(void *destination_local_data, void *buffer_size)
 {
-	source_dma_data_t *source_dma_data = mem_allocate(MEM_TLM_LOCAL, sizeof(*source_dma_data) + (buf_size_t)buffer_size);
+	source_dma_data_t *source_dma_data = mem_allocate_tlm(sizeof(*source_dma_data) + (buf_size_t)buffer_size);
 	void              *source_buffer   = &source_dma_data->receive_buffer;
 	simple_ilet        dma_ilet;
 	source_dma_data->buffer_size = (buf_size_t)buffer_size;
@@ -276,7 +276,7 @@ static void allocate_source_memory(void *destination_local_data, void *buffer_si
 static void evaluate_at_expression(void *arg, void *source_finish_state)
 {
 	/* Create a new top level finish state on the new tile. */
-	finish_state_t *fs = mem_allocate(MEM_TLM_LOCAL, sizeof(*fs));
+	finish_state_t *fs = mem_allocate_tlm(sizeof(*fs));
 	finish_state_init_root(fs);
 	init_x10_activity(fs);
 
@@ -287,12 +287,12 @@ static void evaluate_at_expression(void *arg, void *source_finish_state)
 	x10_object               *closure                = x10_deserialize_from(destination_dma_data->receive_buffer, destination_local_data->buffer_size);
 
 	/* Free destination's DMA data. */
-	mem_free(destination_dma_data);
+	mem_free_tlm(destination_dma_data);
 
 	x10_object *return_value = _ZN3x104lang7Runtime14callAnyClosureEPN3x104lang8$Fun_0_0IPN3x104lang3AnyEEE(closure);
 
 	/* Serialize return value. */
-	struct obstack *obst = mem_allocate(MEM_TLM_LOCAL, sizeof(*obst));
+	struct obstack *obst = mem_allocate_tlm(sizeof(*obst));
 	obstack_init(obst);
 	x10_serialize_to_obst(obst, return_value);
 
@@ -339,8 +339,8 @@ static void transfer_parameters(void *source_data, void *destination_buffer)
 /* Allocates the receive buffer in the destination memory. */
 static void allocate_destination_memory(void *source_local_data, void *buffer_size)
 {
-	destination_local_data_t *destination_local_data = mem_allocate(MEM_TLM_LOCAL, sizeof(*destination_local_data));
-	destination_dma_data_t   *destination_dma_data   = mem_allocate(MEM_TLM_LOCAL, sizeof(*destination_dma_data) + (buf_size_t)buffer_size);
+	destination_local_data_t *destination_local_data = mem_allocate_tlm(sizeof(*destination_local_data));
+	destination_dma_data_t   *destination_dma_data   = mem_allocate_tlm(sizeof(*destination_dma_data) + (buf_size_t)buffer_size);
 	simple_ilet               dma_ilet;
 
 	destination_local_data->buffer_size           = (buf_size_t)buffer_size;
@@ -358,7 +358,7 @@ static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_cl
 	assert(msg_type == MSG_RUN_AT || msg_type == MSG_EVAL_AT);
 
 	/* Serialize closure. */
-	struct obstack *obst = mem_allocate(MEM_TLM_LOCAL, sizeof(*obst));
+	struct obstack *obst = mem_allocate_tlm(sizeof(*obst));
 	obstack_init(obst);
 	x10_serialize_to_obst(obst, closure);
 

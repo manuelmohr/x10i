@@ -4,6 +4,7 @@
 #include "ilocal_data.h"
 #include "agent.h"
 #include "places_octopos.h"
+#include "memory.h"
 
 agentclaim_t agentclaim_get_current(void)
 {
@@ -29,7 +30,7 @@ static void redistribute_places(agentclaim_t ac)
 	unsigned new_n_places = agent_claim_get_tilecount(ac);
 	if (0 == new_n_places)
 		return; /* nothing to distribute */
-	dispatch_claim_t *new_places = mem_allocate(MEM_TLM_LOCAL, new_n_places * sizeof(*new_places));
+	dispatch_claim_t *new_places = mem_allocate_tlm(new_n_places * sizeof(*new_places));
 	assert(NULL != new_places);
 	for (unsigned pid = 0; pid < new_n_places; ++pid) {
 		proxy_claim_t pClaim = agent_claim_get_proxyclaim_tile_type(ac, pid, 0);
