@@ -71,7 +71,8 @@ agentclaim_t x10_agent_claim_invade_parentclaim(agentclaim_t parentclaim, constr
 int x10_agent_claim_reinvade(agentclaim_t claim)
 {
 	int r = agent_claim_reinvade(claim);
-	redistribute_places(claim);
+	if (r > 0)
+		redistribute_places(claim);
 	return r;
 }
 
@@ -80,6 +81,7 @@ int x10_agent_claim_reinvade(agentclaim_t claim)
 int x10_agent_claim_reinvade_constraints(agentclaim_t claim, constraints_t constr)
 {
 	int r = agent_claim_reinvade_constraints(claim, constr);
-	redistribute_places(claim);
+	if (r > 0)
+		redistribute_places(claim);
 	return r;
 }
