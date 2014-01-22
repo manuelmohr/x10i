@@ -512,7 +512,10 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param y the given entity
      * @return the resulting String
      */
-    public static operator[T] (x:String) + (y:T):String = x + y.toString();
+    public static operator[T] (x:String) + (y:T): String {
+        val ystr = y == null ? null : y.toString();
+        return x + ystr;
+    }
 
     /**
      * A string concatenation operator.
@@ -522,7 +525,10 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param y the given String
      * @return the resulting String
      */
-    public static operator[T] (x:T) + (y:String):String = x.toString() + y;
+    public static operator[T] (x:T) + (y:String): String {
+        val xstr = x == null ? null : x.toString();
+        return xstr + y;
+    }
 
     /**
      * A string concatenation operator.

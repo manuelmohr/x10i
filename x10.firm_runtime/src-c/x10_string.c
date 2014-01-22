@@ -379,11 +379,19 @@ x10_string *x10_string_type_name(const x10_string *self)
 x10_string *x10_string_concat(const x10_string *self, const x10_string *x)
 {
 	const x10_int self_len  = self->len;
-	const x10_int x_len     = x->len;
+	x10_int     x_len;
+	const char *x_chars;
+	if (x == NULL) {
+		x_len = 4;
+		x_chars = "null";
+	} else {
+		x_len   = x->len;
+		x_chars = x->chars;
+	}
 	const x10_int len       = self_len + x_len;
 	x10_char     *new_chars = allocate_chars(len);
 	memcpy(new_chars, self->chars, self_len*sizeof(new_chars[0]));
-	memcpy(&new_chars[self_len], x->chars, x_len*sizeof(new_chars[0]));
+	memcpy(&new_chars[self_len], x_chars, x_len*sizeof(new_chars[0]));
 	return x10_string_from_literal(len, new_chars);
 }
 
