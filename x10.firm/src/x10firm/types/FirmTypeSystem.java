@@ -612,6 +612,9 @@ public class FirmTypeSystem {
 			createVTableEntity(classType, result);
 		}
 
+		if (flags.isFinal())
+			OO.setClassIsFinal(result, true);
+
 		/* create interfaces */
 		final Set<polyglot.types.Type> interfaces = new LinkedHashSet<polyglot.types.Type>(classType.interfaces());
 		boolean implementsCustomSerializable = false;
@@ -1005,6 +1008,9 @@ public class FirmTypeSystem {
 		} else if (!instance.def().typeParameters().isEmpty()) {
 			/* generic methods have to be bound statically */
 			OO.setEntityBinding(entity, ddispatch_binding.bind_static);
+		} else if (flags.isFinal()) {
+			OO.setEntityBinding(entity, ddispatch_binding.bind_static);
+			OO.setMethodIsFinal(entity, true);
 		} else {
 			OO.setEntityBinding(entity, ddispatch_binding.bind_dynamic);
 		}
