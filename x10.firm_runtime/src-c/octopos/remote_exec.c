@@ -295,7 +295,7 @@ static void evaluate_at_expression(void *arg, void *source_finish_state)
 
 	/* Serialize return value. */
 	struct obstack *obst = mem_allocate_tlm(sizeof(*obst));
-	obstack_init(obst);
+	_obstack_begin(obst, 0, ARCH_DMA_BLOCK_SIZE, (void *(*) (PTR_INT_TYPE))obstack_chunk_alloc, (void (*) (void *))obstack_chunk_free);
 	x10_serialize_to_obst(obst, return_value);
 
 	/* Set destination-local data. */
@@ -361,7 +361,7 @@ static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_cl
 
 	/* Serialize closure. */
 	struct obstack *obst = mem_allocate_tlm(sizeof(*obst));
-	obstack_init(obst);
+	_obstack_begin(obst, 0, ARCH_DMA_BLOCK_SIZE, (void *(*) (PTR_INT_TYPE))obstack_chunk_alloc, (void (*) (void *))obstack_chunk_free);
 	x10_serialize_to_obst(obst, closure);
 
 	/* Initialize source-local data. */
