@@ -50,7 +50,7 @@ done
 
 # Check md5sum to be sure
 pushd "$DIST_DIR" > /dev/null
-echo "$MD5SUMS" | md5sum --quiet -c 
+echo "$MD5SUMS" | md5sum --status -c
 popd > /dev/null
 
 # Extract the releases to their correct place
