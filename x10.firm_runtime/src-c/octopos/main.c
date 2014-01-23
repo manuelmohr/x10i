@@ -50,7 +50,6 @@ static void init_tile()
 #ifndef NO_GARBAGE_COLLECTION
 	/* immediately expand boehm heap usage to three quarters of the heap as we
 	 * currently don't have any other applications competing for it. */
-	const size_t num_tiles          = get_tile_count();
 	const size_t total_mem_per_tile = mem_get_total_page_count(MEM_SHM) * mem_get_page_size();
 	const size_t start_size         = (total_mem_per_tile / 4) * 3;
 	if (GC_expand_hp(start_size) == 0) {
