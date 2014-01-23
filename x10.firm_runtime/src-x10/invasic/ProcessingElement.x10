@@ -36,4 +36,7 @@ public class ProcessingElement {
         if (pe1 == null) return false;
         return this.tileid == pe1.tileid && this.peid == pe1.peid;
     }
+
+    @LinkSymbol("get_cpu_id")
+    static native public def currentCPU():int;
 }
