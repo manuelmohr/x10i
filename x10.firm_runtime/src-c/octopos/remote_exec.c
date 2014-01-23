@@ -115,7 +115,7 @@ typedef struct source_local_data source_local_data_t;
 /* Data structure that acts as receive buffer. */
 struct source_dma_data {
 	buf_size_t buffer_size;
-	char       _padding[ARCH_DMA_BLOCK_SIZE - (sizeof(buf_size_t) % ARCH_DMA_BLOCK_SIZE)];
+	char       _padding[ARCH_DMA_BLOCK_SIZE - sizeof(buf_size_t)];
 	char       receive_buffer[];
 };
 typedef struct source_dma_data source_dma_data_t;
@@ -134,7 +134,7 @@ typedef struct destination_local_data destination_local_data_t;
 /* Data structure that acts as receive buffer. */
 struct destination_dma_data {
 	destination_local_data_t *destination_local_data;
-	char                      _padding[ARCH_DMA_BLOCK_SIZE - (sizeof(destination_local_data_t) % ARCH_DMA_BLOCK_SIZE)];
+	char                      _padding[ARCH_DMA_BLOCK_SIZE - sizeof(destination_local_data_t*)];
 	char                      receive_buffer[];
 };
 typedef struct destination_dma_data destination_dma_data_t;
