@@ -68,6 +68,7 @@ final class PEBlockDist extends PEDist {
 		val b = this.region.boundingBox();
 		val min = b.min(this.axis);
 		val max = b.max(this.axis);
+		if (min >= max) return Region.makeEmpty(this.rank);
 		val numElems = max - min + 1;
 		// calculate the partition size for all pes
 		val P = pes.size();
