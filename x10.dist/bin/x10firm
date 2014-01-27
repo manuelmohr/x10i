@@ -43,8 +43,9 @@ append_classpath "${X10_TOP}/jFirm/lib/jna.jar"
 
 # Find an existing libfirm variant
 for variant in debug optimize; do
-	if [ -d ${X10_TOP}/libfirm/build/optimize ]; then
-		JNA_LIBRARY_PATH="${X10_TOP}/libfirm/build/${variant}"
+	DIR="${X10_TOP}/libfirm/build/${variant}"
+	if [ -d "$DIR" ]; then
+		JNA_LIBRARY_PATH="${DIR}"
 	fi
 done
 echo ${JNA_LIBRARY_PATH}
