@@ -40,12 +40,6 @@ static void ilet_notify(void *arg)
 /** initialization code that is run once on each tile before it is used. */
 static void init_tile()
 {
-	/* Reserve dedicated NoC channel to I/O tile.  This prevents packets from
-	 * overtaking each other and reponses from arriving in an order that
-	 * violates program order. */
-	if (reserve_vc(get_io_tile_id(), 1) == -1) {
-		panic("Reservation of dedicated NoC channel to I/O tile failed");
-	}
 	gc_init();
 #ifndef NO_GARBAGE_COLLECTION
 	/* immediately expand boehm heap usage to three quarters of the heap as we
