@@ -68,7 +68,7 @@ public abstract class X10LangNativeSupport {
 
 			final firm.Type firmType = firmTypeSystem.asType(typeParameter);
 			final Mode mode = firmTypeSystem.getFirmMode(returnType);
-			final Node cnst = con.newSymConstTypeSize(firmType, mode);
+			final Node cnst = con.newSize(firmType, mode);
 			final Node mem = con.getCurrentMem();
 			final Node ret = con.newReturn(mem, new Node[] {cnst});
 			con.getGraph().getEndBlock().addPred(ret);

@@ -123,7 +123,7 @@ public class ConditionEvaluationCodeGenerator extends X10DelegatingVisitor {
 		// Get the method entity for our _struct_equals.
 		final Entity funcEnt = firmTypeSystem.getMethodEntity(instance);
 		final MethodType type = (MethodType) funcEnt.getType();
-		final Node address = con.newSymConst(funcEnt);
+		final Node address = con.newAddress(funcEnt);
 
 		// Create the call.
 		final Node[] parameters = new Node[] {retLeft, retRight};

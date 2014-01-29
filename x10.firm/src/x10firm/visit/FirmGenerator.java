@@ -935,7 +935,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		if (objectPointer != null) {
 			return con.newSel(objectPointer, entity);
 		}
-		return con.newSymConst(entity);
+		return con.newAddress(entity);
 	}
 
 	private Node genFieldLoad(final Node objectPointer, final FieldInstance fInst) {
@@ -1645,7 +1645,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final X10ConstructorInstance instance = n.constructorInstance();
 		final Entity entity = firmTypeSystem.getConstructorEntity(instance);
 		final MethodType type = (MethodType) entity.getType();
-		final Node address = con.newSymConst(entity);
+		final Node address = con.newAddress(entity);
 		final List<Expr> arguments = wrapArguments(instance.formalTypes(), n.arguments());
 
 		final int argumentCount = arguments.size() + 1;
@@ -1725,7 +1725,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	private Node genAlloc(final firm.Type type) {
 		final Node mem = con.getCurrentMem();
-		final Node size = con.newSymConstTypeSize(type, Mode.getIu());
+		final Node size = con.newSize(type, Mode.getIu());
 		assert type.getTypeState() == ir_type_state.layout_fixed;
 		final Node alloc = con.newAlloc(mem, size, type.getAlignmentBytes());
 		final Node newMem = con.newProj(alloc, Mode.getM(), Alloc.pnM);
@@ -1736,7 +1736,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	private Node genMallocCall(final Entity mallocEnt, final Node size) {
 		final Node mem = con.getCurrentMem();
-		final Node malloc = con.newSymConst(mallocEnt);
+		final Node malloc = con.newAddress(mallocEnt);
 		final Node call = con.newCall(mem, malloc, new Node[] {size}, gcMallocEntity.getType());
 		final Node callRes = con.newProj(call, Mode.getT(), Call.pnTResult);
 		final Node resultPtr = con.newProj(callRes, Mode.getP(), 0);
@@ -1750,7 +1750,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Entity vptr = OO.getClassVPtrEntity(firmType);
 		final Node sel = con.newSel(ptr, vptr);
 		final Entity vtable = OO.getClassVTableEntity(firmType);
-		final Node vtableSymConst = con.newSymConst(vtable);
+		final Node vtableSymConst = con.newAddress(vtable);
 		final Node mem = con.getCurrentMem();
 		final Node store = con.newStore(mem, sel, vtableSymConst);
 		final Node newMem = con.newProj(store, Mode.getM(), Store.pnM);
@@ -1759,7 +1759,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	private Node genObjectAlloc(final Type x10Type, final Entity allocEntity) {
 		final ClassType firmType = firmTypeSystem.asClass(x10Type, true);
-		final Node size = con.newSymConstTypeSize(firmType, Mode.getIu());
+		final Node size = con.newSize(firmType, Mode.getIu());
 		final Node objPtr = genMallocCall(allocEntity, size);
 		initVPtr(objPtr, firmType);
 		return objPtr;
@@ -1780,7 +1780,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Entity ent = new Entity(globalType, id, firmType);
 		ent.setLdIdent(id);
 		ent.setVisibility(ir_visibility.ir_visibility_private);
-		final Node objPtr = con.newSymConst(ent);
+		final Node objPtr = con.newAddress(ent);
 		initVPtr(objPtr, firmType);
 		return objPtr;
 	}
@@ -1807,7 +1807,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			final Node[] arguments) {
 		final Entity entity = firmTypeSystem.getConstructorEntity(instance);
 		final firm.MethodType entityType = (MethodType) entity.getType();
-		final Node address = con.newSymConst(entity);
+		final Node address = con.newAddress(entity);
 		final Node mem = con.getCurrentMem();
 		final Node call = con.newCall(mem, address, arguments, entityType);
 		final Node newMem = con.newProj(call, Mode.getM(), Call.pnM);
@@ -2072,7 +2072,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node object = genObjectHeapAlloc(type);
 		final Mode sizeMode = firmTypeSystem.getFirmMode(typeSystem.getTypeSystem().Int());
 		final Node sizeNode = con.newConst(value.length(), sizeMode);
-		final Node stringConst = con.newSymConst(entity);
+		final Node stringConst = con.newAddress(entity);
 		final Node[] constructorArguments = new Node[] {object, sizeNode, stringConst};
 		final X10ConstructorInstance stringConstructor = getStringLiteralConstructor();
 		genConstructorCall(null, stringConstructor, constructorArguments);
@@ -2242,7 +2242,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final boolean isFinal = flags.isFinal();
 		final boolean isStruct = typeSystem.isStructType(method.container());
 		final boolean isStaticBinding = (isStatic || isFinal || isStruct);
-		final Node address = (isStaticBinding) ? con.newSymConst(entity) : con.newSel(parameters[0], entity);
+		final Node address = (isStaticBinding) ? con.newAddress(entity) : con.newSel(parameters[0], entity);
 
 		final Node mem = con.getCurrentMem();
 		final Node call = con.newCall(mem, address, parameters, type);
@@ -2635,7 +2635,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			position = con.newConst(0, firmTypeSystem.getFirmMode(stringType));
 		}
 
-		final Node address = con.newSymConst(assertEntity);
+		final Node address = con.newAddress(assertEntity);
 
 		final Node[] parameters = new Node[] {cond, errMsg, position};
 		final Node mem = con.getCurrentMem();
@@ -2673,7 +2673,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		catchBlock.mature();
 		con.setCurrentBlock(catchBlock);
 		final Node object = getExceptionObject();
-		final Node address = con.newSymConst(exceptionUnwindEntity);
+		final Node address = con.newAddress(exceptionUnwindEntity);
 		final Node[] parameters = new Node[] {
 			object,
 		};
@@ -2879,7 +2879,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final int size = arguments.size();
 		final Mode sizeMode = sizeTType.getMode();
 		final Node count = con.newConst(size, sizeMode);
-		final Node elSize = con.newSymConstTypeSize(firmType, sizeMode);
+		final Node elSize = con.newSize(firmType, sizeMode);
 		final Node byteSize = con.newMul(count, elSize, sizeMode);
 		final Entity malloc = firmType instanceof PointerType ? gcMallocEntity : gcMallocAtomicEntity;
 		final Node baseAddr = genMallocCall(malloc, byteSize);
@@ -2896,7 +2896,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			final Initializer initializer = createConstantTupleInitializer(n);
 			initEntity.setInitializer(initializer);
 
-			final Node initAddr = con.newSymConst(initEntity);
+			final Node initAddr = con.newAddress(initEntity);
 			final Node mem = con.getCurrentMem();
 			final Node copyB = con.newCopyB(mem, baseAddr, initAddr, initType,
 					firm.bindings.binding_ircons.ir_cons_flags.cons_none);

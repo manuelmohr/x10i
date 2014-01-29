@@ -238,14 +238,14 @@ public final class SerializationSupport {
 			assert deserEntity != null;
 			assert vtableEntity != null;
 
-			final Node symcDeser = constCode.newSymConst(deserEntity);
+			final Node symcDeser = constCode.newAddress(deserEntity);
 			final Initializer initDeser = new Initializer(symcDeser);
 			dmtInitializer.setCompoundValue(classUid * 2, initDeser);
-			final Node symcVtable = constCode.newSymConst(vtableEntity);
+			final Node symcVtable = constCode.newAddress(vtableEntity);
 			final Initializer initVtable = new Initializer(symcVtable);
 			dmtInitializer.setCompoundValue(classUid * 2 + 1, initVtable);
 
-			final Node symcSer = constCode.newSymConst(serEntity);
+			final Node symcSer = constCode.newAddress(serEntity);
 			final Initializer initSer = new Initializer(symcSer);
 			smtInitializer.setCompoundValue(classUid, initSer);
 		}
@@ -287,7 +287,7 @@ public final class SerializationSupport {
 			final Node loadMem = con.newProj(load, Mode.getM(), Load.pnM);
 			final Node newObjPtr = con.newProj(load, Mode.getP(), Load.pnRes);
 
-			final Node swoSymConst = con.newSymConst(serializationWriteObject);
+			final Node swoSymConst = con.newAddress(serializationWriteObject);
 			final Node call = con.newCall(loadMem, swoSymConst,
 					new Node[] {bufPtr, newObjPtr}, serializationWriteObject.getType());
 			final Node callMem = con.newProj(call, Mode.getM(), Call.pnM);
@@ -298,7 +298,7 @@ public final class SerializationSupport {
 			 * in any case, we know exactly which serializer we need to call. */
 			final Entity serializationFunction = serializeFunctions.get(type);
 			assert serializationFunction != null;
-			final Node symc = con.newSymConst(serializationFunction);
+			final Node symc = con.newAddress(serializationFunction);
 			final Type functionType = serializationFunction.getType();
 			final Node call = con.newCall(mem, symc, new Node[] {bufPtr, objPtr}, functionType);
 			final Node callMem = con.newProj(call, Mode.getM(), Call.pnM);
@@ -363,7 +363,7 @@ public final class SerializationSupport {
 		final Node currentAddr = con.getVariable(1, Mode.getP());
 		genCallToSerialize(elementType, con, bufPtr, currentAddr);
 		final Node nextIndex = con.newAdd(currentIndex, con.newConst(1, Mode.getIs()), Mode.getIs());
-		final Node elementSize = con.newSymConstTypeSize(elementType, Mode.getIu());
+		final Node elementSize = con.newSize(elementType, Mode.getIu());
 		final Node nextAddr = con.newAdd(currentAddr, elementSize, Mode.getP());
 		con.setVariable(0, nextIndex);
 		con.setVariable(1, nextAddr);
@@ -411,7 +411,7 @@ public final class SerializationSupport {
 
 		final Graph graph = new Graph(serEntity, 2);
 		final Construction con = new Construction(graph);
-		final Node swoSymConst = con.newSymConst(serializationWriteObject);
+		final Node swoSymConst = con.newAddress(serializationWriteObject);
 
 		final Node args = graph.getArgs();
 		final Node bufPtr = con.newProj(args, Mode.getP(), 0);
@@ -420,7 +420,7 @@ public final class SerializationSupport {
 		if (astType.isString()) {
 			final String stringSerializeName = NameMangler.mangleKnownName("x10_string_serialize");
 			final Entity stringSerializeEntity = new Entity(klass, stringSerializeName, serializeMethodType);
-			final Node stringSerializeSymc = con.newSymConst(stringSerializeEntity);
+			final Node stringSerializeSymc = con.newAddress(stringSerializeEntity);
 
 			Node mem = con.getCurrentMem();
 			final Node call = con.newCall(mem, stringSerializeSymc, new Node[] {bufPtr, objPtr}, serializeMethodType);
@@ -432,7 +432,7 @@ public final class SerializationSupport {
 			final Entity customSerializeMethod = lookupCustomSerializeMethod(klass);
 			assert customSerializeMethod != null;
 
-			final Node customSymc = con.newSymConst(customSerializeMethod);
+			final Node customSymc = con.newAddress(customSerializeMethod);
 			Node mem = con.getCurrentMem();
 
 			final Node customCall = con.newCall(mem, customSymc, new Node[] {objPtr}, customSerializeMethod.getType());
@@ -469,7 +469,7 @@ public final class SerializationSupport {
 		final Node mem = con.getCurrentMem();
 		if (type instanceof PointerType) {
 			/* object references */
-			final Node droSymc = con.newSymConst(deserializationRestoreObject);
+			final Node droSymc = con.newAddress(deserializationRestoreObject);
 			final Node call = con.newCall(mem, droSymc,
 					new Node[] {bufPtr, objPtr},
 					deserializationRestoreObject.getType());
@@ -479,7 +479,7 @@ public final class SerializationSupport {
 			/* primitives, structs and superclass subobjects */
 			final Entity deserializer = deserializeFunctions.get(type);
 			assert deserializer != null;
-			final Node symc = con.newSymConst(deserializer);
+			final Node symc = con.newAddress(deserializer);
 			final Type deserializerType = deserializer.getType();
 			final Node call = con.newCall(mem, symc,
 					new Node[] {bufPtr, objPtr}, deserializerType);
@@ -521,9 +521,9 @@ public final class SerializationSupport {
 		// Second, allocate memory for the new backing storage
 		assert astType.typeArguments().size() == 1;
 		final Type elementType = firmTypeSystem.asType(astType.typeArguments().get(0));
-		final Node elemSize = con.newSymConstTypeSize(elementType, Mode.getIs());
+		final Node elemSize = con.newSize(elementType, Mode.getIs());
 		final Node mallocSize = con.newMul(length, elemSize, Mode.getIs());
-		final Node mallocSymConst = con.newSymConst(gcXMalloc);
+		final Node mallocSymConst = con.newAddress(gcXMalloc);
 		final Node[] mallocArgs = new Node[] {mallocSize};
 		final Node mallocCall = con.newCall(con.getCurrentMem(), mallocSymConst, mallocArgs, gcXMalloc.getType());
 		con.setCurrentMem(con.newProj(mallocCall, Mode.getM(), Call.pnM));
@@ -552,7 +552,7 @@ public final class SerializationSupport {
 		final Node currentAddr = con.getVariable(1, Mode.getP());
 		genCallToDeserialize(elementType, con, bufPtr, currentAddr);
 		final Node nextIndex = con.newAdd(currentIndex, con.newConst(1, Mode.getIs()), Mode.getIs());
-		final Node elementSize = con.newSymConstTypeSize(elementType, Mode.getIu());
+		final Node elementSize = con.newSize(elementType, Mode.getIu());
 		final Node nextAddr = con.newAdd(currentAddr, elementSize, Mode.getP());
 		con.setVariable(0, nextIndex);
 		con.setVariable(1, nextAddr);
@@ -581,7 +581,7 @@ public final class SerializationSupport {
 		final Graph graph = new Graph(deserEntity, 2);
 		final Construction con = new Construction(graph);
 
-		final Node droSymc = con.newSymConst(deserializationRestoreObject);
+		final Node droSymc = con.newAddress(deserializationRestoreObject);
 
 		final Node args = graph.getArgs();
 		final Node bufPtr = con.newProj(args, Mode.getP(), 0);
@@ -590,7 +590,7 @@ public final class SerializationSupport {
 		if (astType.isString()) {
 			final String stringDeserializeName = NameMangler.mangleKnownName("x10_string_deserialize");
 			final Entity stringDeserializeEntity = new Entity(klass, stringDeserializeName, deserializeMethodType);
-			final Node stringDeserializeSymc = con.newSymConst(stringDeserializeEntity);
+			final Node stringDeserializeSymc = con.newAddress(stringDeserializeEntity);
 
 			Node mem = con.getCurrentMem();
 			final Node call = con.newCall(mem, stringDeserializeSymc, new Node[] {bufPtr, objPtr},
@@ -608,9 +608,9 @@ public final class SerializationSupport {
 
 			final boolean isStruct = astType.isX10Struct();
 			Node mem = con.getCurrentMem();
-			final Node customSymc = con.newSymConst(customDeserializeConstructor);
+			final Node customSymc = con.newAddress(customDeserializeConstructor);
 
-			final Node size = con.newSymConstTypeSize(Mode.getP().getType(), Mode.getIu());
+			final Node size = con.newSize(Mode.getP().getType(), Mode.getIu());
 			final Node serialDataAlloc = con.newAlloc(mem, size, Mode.getP().getType().getAlignmentBytes());
 			mem = con.newProj(serialDataAlloc, Mode.getM(), Alloc.pnM);
 			final Node serialDataPtr = con.newProj(serialDataAlloc, Mode.getP(), Alloc.pnRes);
