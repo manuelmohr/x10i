@@ -1,5 +1,7 @@
 package octopos;
 
+import x10.compiler.LinkSymbol;
+
 public class Memory {
     public static native def allocateTLM(size: Int): Pointer;
 
