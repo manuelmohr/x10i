@@ -36,6 +36,8 @@ void _ZN7octopos15EthWriteChannel10writeAsyncEPvi(x10_opaque_handle handle,
 	finish_state_t *current = finish_state_get_current();
 	register_at_finish_state(current);
 
+	assert(((uintptr_t)buffer & (ARCH_DMA_BLOCK_SIZE-1)) == 0);
+
 	simple_ilet ilet;
 	simple_ilet_init(&ilet, send_signal, current);
 	int res = eth_send((eth_channel_t)handle, buffer, (buf_size_t)size, &ilet);
@@ -49,6 +51,8 @@ void _ZN7octopos14EthReadChannel9readAsyncEPvi(x10_opaque_handle handle,
 {
 	finish_state_t *current = finish_state_get_current();
 	register_at_finish_state(current);
+
+	assert(((uintptr_t)buffer & (ARCH_DMA_BLOCK_SIZE-1)) == 0);
 
 	simple_ilet ilet;
 	simple_ilet_init(&ilet, send_signal, current);
