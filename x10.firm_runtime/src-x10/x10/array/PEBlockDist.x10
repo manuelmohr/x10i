@@ -73,15 +73,14 @@ final class PEBlockDist extends PEDist {
 		// calculate the partition size for all pes
 		val P = pes.size();
 		if (P == 0) return Region.makeEmpty(this.rank);
-		var blockSize:int = numElems / P;
-		if(blockSize == 0)
-			blockSize = numElems;
-		val leftOver = numElems - P * blockSize;
+		val blockSize = numElems / P;
+		val leftOver  = numElems % P;
 		// calculate the boundaries for the specific pe
 		val i = pes.indexOf(pe);
 		if (i == -1) return Region.makeEmpty(this.rank);
 		val low = min + blockSize * i + (i < leftOver ? i : leftOver);
-		val hi = low + blockSize + (i < leftOver ? 0 : -1);
+		val hi  = low + blockSize     + (i < leftOver ? 0 : -1);
+		assert hi <= max;
 
 		// create a new region
 		if (this.region instanceof RectRegion) {
