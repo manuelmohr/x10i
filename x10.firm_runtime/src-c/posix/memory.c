@@ -40,13 +40,3 @@ void mem_free_tlm(void *tlm_ptr)
 	/* Will call GC_FREE/free depending on NO_GARBAGE_COLLECTION */
 	gc_free(tlm_ptr);
 }
-
-void *mem_get_global_address(void *tlm_local_ptr)
-{
-	return tlm_local_ptr;
-}
-
-void *mem_get_local_address(void *tlm_global_ptr)
-{
-	return tlm_global_ptr;
-}
