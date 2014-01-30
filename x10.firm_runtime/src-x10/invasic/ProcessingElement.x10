@@ -23,7 +23,7 @@ public class ProcessingElement {
     }
 
     public def toString(): String {
-        return "<PE@"+tileid+"t"+petype+">";
+        return "<PE: tile=" + tileid + " pe=" + peid + " type="+petype+">";
     }
 
     /** Returns place of the PE */
