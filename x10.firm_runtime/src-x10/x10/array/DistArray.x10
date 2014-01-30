@@ -143,9 +143,18 @@ public final class DistArray[T] (
     def this(sd:SerialData) {
       val plh:PlaceLocalHandle[LocalState[T]] = sd.data as PlaceLocalHandle[LocalState[T]];
       val ls = plh();
-      assert ls != null : "got null from PlaceLocalHandle";
-      val d:Dist = ls.dist;
-
+      var d:Dist;
+      if (ls != null) {
+          d = ls.dist;
+      } else {
+          /* might happen due to reinvasion, assume Place(0) works */
+          assert here.id != 0;
+          val dist = at (new Place(0)) plh().dist;
+          val size = dist.places().contains(here) ? dist.maxOffset()+1 : 0;
+          val localRaw = IndexedMemoryChunk.allocateZeroed[T](size);
+          plh.set(new LocalState(dist, localRaw));
+          d = dist;
+      }
       property(d);
       localHandle = plh;
     }
