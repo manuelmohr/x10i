@@ -119,6 +119,7 @@ final class PEBlockDist extends PEDist {
 		val leftOver = numElems - P*blockSize;
 		// calculate the boundaries for the specific amount of pes
 		val part = getPEs(place);
+		if (part.isEmpty()) return Region.makeEmpty(this.rank);
 		val i = pes.indexOf(part(0));
 		val low = min + blockSize*i + (i< leftOver ? i : leftOver);
 		val j = i + part.size() - 1;
