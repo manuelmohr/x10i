@@ -1725,7 +1725,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	private Node genAlloc(final firm.Type type) {
 		final Node mem = con.getCurrentMem();
-		final Node size = con.newSize(type, Mode.getIu());
+		final Node size = con.newSize(Mode.getIu(), type);
 		assert type.getTypeState() == ir_type_state.layout_fixed;
 		final Node alloc = con.newAlloc(mem, size, type.getAlignmentBytes());
 		final Node newMem = con.newProj(alloc, Mode.getM(), Alloc.pnM);
@@ -1759,7 +1759,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	private Node genObjectAlloc(final Type x10Type, final Entity allocEntity) {
 		final ClassType firmType = firmTypeSystem.asClass(x10Type, true);
-		final Node size = con.newSize(firmType, Mode.getIu());
+		final Node size = con.newSize(Mode.getIu(), firmType);
 		final Node objPtr = genMallocCall(allocEntity, size);
 		initVPtr(objPtr, firmType);
 		return objPtr;
@@ -2879,7 +2879,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final int size = arguments.size();
 		final Mode sizeMode = sizeTType.getMode();
 		final Node count = con.newConst(size, sizeMode);
-		final Node elSize = con.newSize(firmType, sizeMode);
+		final Node elSize = con.newSize(sizeMode, firmType);
 		final Node byteSize = con.newMul(count, elSize, sizeMode);
 		final Entity malloc = firmType instanceof PointerType ? gcMallocEntity : gcMallocAtomicEntity;
 		final Node baseAddr = genMallocCall(malloc, byteSize);

@@ -363,7 +363,7 @@ public final class SerializationSupport {
 		final Node currentAddr = con.getVariable(1, Mode.getP());
 		genCallToSerialize(elementType, con, bufPtr, currentAddr);
 		final Node nextIndex = con.newAdd(currentIndex, con.newConst(1, Mode.getIs()), Mode.getIs());
-		final Node elementSize = con.newSize(elementType, Mode.getIu());
+		final Node elementSize = con.newSize(Mode.getIu(), elementType);
 		final Node nextAddr = con.newAdd(currentAddr, elementSize, Mode.getP());
 		con.setVariable(0, nextIndex);
 		con.setVariable(1, nextAddr);
@@ -521,7 +521,7 @@ public final class SerializationSupport {
 		// Second, allocate memory for the new backing storage
 		assert astType.typeArguments().size() == 1;
 		final Type elementType = firmTypeSystem.asType(astType.typeArguments().get(0));
-		final Node elemSize = con.newSize(elementType, Mode.getIs());
+		final Node elemSize = con.newSize(Mode.getIs(), elementType);
 		final Node mallocSize = con.newMul(length, elemSize, Mode.getIs());
 		final Node mallocSymConst = con.newAddress(gcXMalloc);
 		final Node[] mallocArgs = new Node[] {mallocSize};
@@ -552,7 +552,7 @@ public final class SerializationSupport {
 		final Node currentAddr = con.getVariable(1, Mode.getP());
 		genCallToDeserialize(elementType, con, bufPtr, currentAddr);
 		final Node nextIndex = con.newAdd(currentIndex, con.newConst(1, Mode.getIs()), Mode.getIs());
-		final Node elementSize = con.newSize(elementType, Mode.getIu());
+		final Node elementSize = con.newSize(Mode.getIu(), elementType);
 		final Node nextAddr = con.newAdd(currentAddr, elementSize, Mode.getP());
 		con.setVariable(0, nextIndex);
 		con.setVariable(1, nextAddr);
@@ -610,7 +610,7 @@ public final class SerializationSupport {
 			Node mem = con.getCurrentMem();
 			final Node customSymc = con.newAddress(customDeserializeConstructor);
 
-			final Node size = con.newSize(Mode.getP().getType(), Mode.getIu());
+			final Node size = con.newSize(Mode.getIu(), Mode.getP().getType());
 			final Node serialDataAlloc = con.newAlloc(mem, size, Mode.getP().getType().getAlignmentBytes());
 			mem = con.newProj(serialDataAlloc, Mode.getM(), Alloc.pnM);
 			final Node serialDataPtr = con.newProj(serialDataAlloc, Mode.getP(), Alloc.pnRes);
