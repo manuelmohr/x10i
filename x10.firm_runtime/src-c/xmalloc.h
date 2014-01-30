@@ -13,7 +13,6 @@
 #ifndef FIRM_ADT_XMALLOC_H
 #define FIRM_ADT_XMALLOC_H
 
-#include "begin.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,30 +60,30 @@ static inline void gc_init(void)
  * so no error handling is required for code using it. The memory allocated with
  * this function is set to 0.
  */
-FIRM_API void *gc_xmalloc(size_t size);
+void *gc_xmalloc(size_t size);
 /**
  * Allocate @p size bytes on the heap.
  * This is a variant of gc_xmalloc(), but the resulting memory mustn't contain
  * any pointers (or the garbage collection behaviour is undefined). Furthermore
  * the memory returned is uninitialized and not necessarily set to 0.
  */
-FIRM_API void *gc_xmalloc_atomic(size_t size);
+void *gc_xmalloc_atomic(size_t size);
 /**
  * Change size of a previously allocated memory block to @p size bytes.
  * This is a wrapper for GC_realloc which calls panic() in case of errors, so no
  * error handling is required for code using it.
  */
-FIRM_API void *gc_xrealloc(void *ptr, size_t size);
+void *gc_xrealloc(void *ptr, size_t size);
 /** like gc_xrealloc() but if the memory was allocated with gc_xmalloc() and
  * not with gc_xmalloc_atomic() then it is ensured that when growing the newly
  * allocated space is zeroed. */
-FIRM_API void *gc_xrealloc_zeroed(void *ptr, size_t prev_size, size_t size);
+void *gc_xrealloc_zeroed(void *ptr, size_t prev_size, size_t size);
 /**
  * Allocates memory and copies string @p str into it.
  * This is a wrapper for strdup which calls panic() in case of errors, so no
  * error handling is required for code using it.
  */
-FIRM_API char *gc_xstrdup(const char *str);
+char *gc_xstrdup(const char *str);
 
 /**
  * Allocate n objects of a certain type

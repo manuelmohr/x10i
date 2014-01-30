@@ -118,8 +118,6 @@ Summary:
 #ifndef _OBSTACK_H
 #define _OBSTACK_H 1
 
-#include "begin.h"
-
 /** @cond DISABLED */
 
 /* We need the type of a pointer subtraction.  If __PTRDIFF_TYPE__ is
@@ -192,25 +190,25 @@ struct obstack		/* control current object in current chunk */
 
 /* Declare the external functions we use; they are in obstack.c.  */
 
-FIRM_API void _obstack_newchunk (struct obstack *, PTR_INT_TYPE);
-FIRM_API int _obstack_begin (struct obstack *, int, int,
+void _obstack_newchunk (struct obstack *, PTR_INT_TYPE);
+int _obstack_begin (struct obstack *, int, int,
                              void *(*) (PTR_INT_TYPE), void (*) (void *));
-FIRM_API int _obstack_begin_1 (struct obstack *, int, int,
+int _obstack_begin_1 (struct obstack *, int, int,
                                void *(*) (void *, PTR_INT_TYPE),
                                void (*) (void *, void *), void *);
-FIRM_API PTR_INT_TYPE _obstack_memory_used (struct obstack *);
+PTR_INT_TYPE _obstack_memory_used (struct obstack *);
 
-FIRM_API void obstack_free (struct obstack *obstack, void *block);
+void obstack_free (struct obstack *obstack, void *block);
 
 
 /* Error handler called when `obstack_chunk_alloc' failed to allocate
    more memory.  This can be set to a user defined function which
    should either abort gracefully or use longjump - but shouldn't
    return.  The default action is to print a message and abort.  */
-FIRM_API void (*obstack_alloc_failed_handler) (void);
+void (*obstack_alloc_failed_handler) (void);
 
 /* Exit value used when `print_and_abort' is used.  */
-FIRM_API int obstack_exit_failure;
+int obstack_exit_failure;
 
 /* Pointer to beginning of object being allocated or to be allocated next.
    Note that this might not be the final address of the object
@@ -515,39 +513,6 @@ __extension__								\
 
 #endif /* not __GNUC__ or not __STDC__ */
 
-/** @def FIRM_NOTHROW
- * tells that a function does not throw C++ exceptions. Currently this is only
- * necessary for obstack_printf to avoid nameclashes when linking with glibc
- * which has an obstack library with NOTHROW builtin. */
-#ifdef __cplusplus
-# define FIRM_NOTHROW throw ()
-#else
-# define FIRM_NOTHROW
-#endif
-
-/**
- * @def FIRM_PRINTF
- * Attribute with marks a function to have a printf style format
- * string and variadic argument.
- */
-#if defined(__GNUC__)
-# define FIRM_PRINTF(a,b) __attribute__((__format__(__printf__, a, b)))
-#else
-# define FIRM_PRINTF(a,b)
-#endif
-
-#if 0
-/** prints formated string (printf-style format) to an obstack.
- * This is done by "growing" the obstack with the obstack_*grow*
- * functions. Note: Does NOT append a null-byte. */
-FIRM_API int obstack_printf(struct obstack *obst, const char *fmt, ...)
-	FIRM_NOTHROW FIRM_PRINTF(2, 3);
-FIRM_API int obstack_vprintf(struct obstack *obst, const char *fmt, va_list ap)
-	FIRM_NOTHROW FIRM_PRINTF(2, 0);
-#endif
-
 /** @endcond */
-
-#include "end.h"
 
 #endif
