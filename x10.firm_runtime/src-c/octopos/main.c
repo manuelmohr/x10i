@@ -268,9 +268,6 @@ void main_ilet(claim_t root_claim)
 	}
 #endif
 
-	/* We want to use uart redirection through grmon -u */
-	leon_set_uart_debug_mode(1);
-
 	/* Waste some memory so that we never get the null pointer
 	 * as a valid address. */
 	(void)mem_map(MEM_SHM, MEMORY_WASTE_BYTES);
