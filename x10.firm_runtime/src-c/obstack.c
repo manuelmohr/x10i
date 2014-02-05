@@ -193,7 +193,7 @@ int _obstack_begin_1(struct obstack *h, int size, int alignment,
    Copies any partial object from the end of the old chunk
    to the beginning of the new one.  */
 
-void _obstack_newchunk(struct obstack *h, PTR_INT_TYPE length)
+void __attribute__((noinline)) _obstack_newchunk(struct obstack *h, PTR_INT_TYPE length)
 {
   register struct _obstack_chunk *old_chunk = h->chunk;
   register struct _obstack_chunk *new_chunk;
