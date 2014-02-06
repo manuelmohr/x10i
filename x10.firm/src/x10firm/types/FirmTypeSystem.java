@@ -19,6 +19,7 @@ import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
 import polyglot.types.LocalDef;
+import polyglot.types.LocalInstance;
 import polyglot.types.MethodDef;
 import polyglot.types.Name;
 import polyglot.types.QName;
@@ -27,6 +28,7 @@ import polyglot.types.TypeSystem_c;
 import polyglot.types.Types;
 import polyglot.util.Position;
 import x10.ast.X10StringLit_c;
+import x10.types.ConstrainedType;
 import x10.types.MethodInstance;
 import x10.types.ThisDef;
 import x10.types.TypeParamSubst;
@@ -875,6 +877,37 @@ public class FirmTypeSystem {
 		return entity;
 	}
 
+	private static X10ClassType getSuperClass(X10ClassType base) {
+		polyglot.types.Type supr = base.superClass();
+		try {
+			if (supr instanceof ConstrainedType) {
+				ConstrainedType ct = (ConstrainedType) supr;
+				return (X10ClassType) ct.baseType().get();
+			}
+			return (X10ClassType) supr;
+		} catch (ClassCastException e) {
+			System.out.println("uh: "+supr.toClass());
+			return null;
+		}
+	}
+
+	private boolean canOverride(final MethodInstance a, final MethodInstance b) {
+		List<LocalInstance> fn_a = a.formalNames();
+		List<LocalInstance> fn_b = b.formalNames();
+		if (fn_a.size() != fn_b.size()) return false;
+		for (int i=0; i<fn_a.size(); i++) {
+			polyglot.types.Type ai = fn_a.get(i).def().type().get();
+			polyglot.types.Type bi = fn_b.get(i).def().type().get();
+			if (ai instanceof ConstrainedType)
+				ai = ((ConstrainedType)ai).baseType().get();
+			if (bi instanceof ConstrainedType)
+				bi = ((ConstrainedType)bi).baseType().get();
+			if (!ai.typeEquals(bi, typeSystem.emptyContext()))
+				return false;
+		}
+		return true;
+	}
+
 	/**
 	 * Returns the potentially overridden method of a given method.
 	 * @param instance The method instance which should be checked
@@ -886,16 +919,18 @@ public class FirmTypeSystem {
 		if (flags.isStatic() || flags.isAbstract())
 			return null;
 
-		final List<MethodInstance> overrides = new LinkedList<MethodInstance>();
-
-		overrides.addAll(instance.overrides(typeSystem.emptyContext()));
-		final X10ClassType myClassType = (X10ClassType)instance.container();
-		// Watch out for constructors of classes with super classes
-		if (myClassType.superClass() != null && overrides.size() > 1) {
-			// the overridden methods in overrides are sorted !!!
-			return overrides.get(1);
+		Name name = instance.name();
+		X10ClassType clazz = (X10ClassType)instance.container();
+		while (true) {
+			clazz = getSuperClass(clazz);
+			if (clazz == null) return null;
+			List<MethodInstance> methods = clazz.methodsNamed(name);
+			for (MethodInstance mi : methods) {
+				if (canOverride(instance,mi)) {
+					return mi;
+				}
+			}
 		}
-		return null;
 	}
 
 	private static boolean methodsCompatible(final MethodType type1, final MethodType type2) {
