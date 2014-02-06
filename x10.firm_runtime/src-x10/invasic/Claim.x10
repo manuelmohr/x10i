@@ -36,6 +36,11 @@ abstract public class Claim {
         return invade(cs);
     }
 
+    /* Get current claim. */
+    public static def getCurrent():Claim {
+        return new AgentClaim(AgentClaim.get_current());
+    }
+
     abstract public def infect(ilet:(IncarnationID)=>void):void;
     abstract public def reinvade():boolean;
     abstract public def reinvade(c:Constraint):boolean;
