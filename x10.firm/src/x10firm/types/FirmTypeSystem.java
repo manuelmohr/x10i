@@ -877,27 +877,26 @@ public class FirmTypeSystem {
 		return entity;
 	}
 
-	private static X10ClassType getSuperClass(X10ClassType base) {
-		polyglot.types.Type supr = base.superClass();
+	private static X10ClassType getSuperClass(final X10ClassType base) {
+		final polyglot.types.Type supr = base.superClass();
 		try {
 			if (supr instanceof ConstrainedType) {
-				ConstrainedType ct = (ConstrainedType) supr;
+				final ConstrainedType ct = (ConstrainedType) supr;
 				return (X10ClassType) ct.baseType().get();
 			}
 			return (X10ClassType) supr;
 		} catch (ClassCastException e) {
-			System.out.println("uh: "+supr.toClass());
 			return null;
 		}
 	}
 
 	private boolean canOverride(final MethodInstance a, final MethodInstance b) {
-		List<LocalInstance> fn_a = a.formalNames();
-		List<LocalInstance> fn_b = b.formalNames();
-		if (fn_a.size() != fn_b.size()) return false;
-		for (int i=0; i<fn_a.size(); i++) {
-			polyglot.types.Type ai = fn_a.get(i).def().type().get();
-			polyglot.types.Type bi = fn_b.get(i).def().type().get();
+		final List<LocalInstance> fna = a.formalNames();
+		final List<LocalInstance> fnb = b.formalNames();
+		if (fna.size() != fnb.size()) return false;
+		for (int i = 0; i < fna.size(); i++) {
+			polyglot.types.Type ai = fna.get(i).def().type().get();
+			polyglot.types.Type bi = fnb.get(i).def().type().get();
 			if (ai instanceof ConstrainedType)
 				ai = ((ConstrainedType)ai).baseType().get();
 			if (bi instanceof ConstrainedType)
@@ -919,14 +918,14 @@ public class FirmTypeSystem {
 		if (flags.isStatic() || flags.isAbstract())
 			return null;
 
-		Name name = instance.name();
+		final Name name = instance.name();
 		X10ClassType clazz = (X10ClassType)instance.container();
 		while (true) {
 			clazz = getSuperClass(clazz);
 			if (clazz == null) return null;
-			List<MethodInstance> methods = clazz.methodsNamed(name);
+			final List<MethodInstance> methods = clazz.methodsNamed(name);
 			for (MethodInstance mi : methods) {
-				if (canOverride(instance,mi)) {
+				if (canOverride(instance, mi)) {
 					return mi;
 				}
 			}
