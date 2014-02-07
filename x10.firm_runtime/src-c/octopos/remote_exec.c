@@ -411,7 +411,8 @@ x10_object *x10_execute_at(x10_int place_id, x10_int msg_type, x10_object *closu
 
 static dispatch_claim_t get_dispatch_claim(x10_int pid, agentclaim_t ac)
 {
-	proxy_claim_t pc = agent_claim_get_proxyclaim_tile_type(ac, pid, 0);
+	int tid = agent_claim_get_tileid_iterative(ac, pid);
+	proxy_claim_t pc = agent_claim_get_proxyclaim_tile_type(ac, tid, 0);
 	dispatch_claim_t dc = proxy_get_dispatch_info(pc);
 	return dc;
 }
