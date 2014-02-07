@@ -27,15 +27,17 @@ void agentclaim_set_current(agentclaim_t ac)
 static void redistribute_places(agentclaim_t ac)
 {
 	assert (ac != NULL && "invalid claim"); // TODO throw exception?
-	unsigned new_n_places = agent_claim_get_tilecount(ac);
+	const int new_n_places = agent_claim_get_tilecount(ac);
 	if (0 == new_n_places)
 		return; /* nothing to distribute */
 	dispatch_claim_t *new_places = mem_allocate_tlm(new_n_places * sizeof(*new_places));
 	assert(NULL != new_places);
-	for (unsigned pid = 0; pid < new_n_places; ++pid) {
-		proxy_claim_t pClaim = agent_claim_get_proxyclaim_tile_type(ac, pid, 0);
+	for (int it = 0; it < new_n_places; ++it) {
+		int tid = agent_claim_get_tileid_iterative(ac, it);
+		proxy_claim_t pClaim = agent_claim_get_proxyclaim_tile_type(ac, tid, 0);
+		assert (pClaim != NULL);
 		dispatch_claim_t dc = proxy_get_dispatch_info(pClaim);
-		new_places[pid] = dc;
+		new_places[it] = dc;
 	}
 	distribute_places(new_places, new_n_places);
 }
