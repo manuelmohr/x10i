@@ -185,11 +185,11 @@ public class FirmTypeSystem {
 		readFirmNativeTypesConfig(nativeTypesConfig);
 		initFirmTypes();
 		NameMangler.setup(typeSystem, compilerOptions);
-		CompoundType glob = Program.getGlobalType();
+		final CompoundType glob = Program.getGlobalType();
 		final Type type = new MethodType(new Type[] {}, new Type[] {});
 		abstractMethod = new Entity(glob, ABSTRACT_METHOD, type);
-		final String ld_name = NameMangler.mangleKnownName(ABSTRACT_METHOD);
-		abstractMethod.setLdIdent(ld_name);
+		final String ldName = NameMangler.mangleKnownName(ABSTRACT_METHOD);
+		abstractMethod.setLdIdent(ldName);
 	}
 
 	private void readFirmNativeTypesConfig(final String firmNativeTypesFilename) {
