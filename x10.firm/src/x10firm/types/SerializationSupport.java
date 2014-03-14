@@ -211,14 +211,14 @@ public final class SerializationSupport {
 		final String dmtName = NameMangler.mangleKnownName(DESERIALIZE_METHOD_TABLE_NAME);
 		final int nEntries = maxClassUid * 2;
 		final ArrayType dmtType = new ArrayType(typeP);
-		dmtType.setBounds(0, 0, nEntries);
+		dmtType.setSize(nEntries);
 		dmtType.finishLayout();
 		final Entity deserializeMethodTable = new Entity(global, dmtName, dmtType);
 		final Initializer dmtInitializer = new Initializer(nEntries);
 
 		final String smtName = NameMangler.mangleKnownName(SERIALIZE_METHOD_TABLE_NAME);
 		final ArrayType smtType = new ArrayType(typeP);
-		smtType.setBounds(0, 0, maxClassUid);
+		smtType.setSize(maxClassUid);
 		smtType.finishLayout();
 		final Entity serializeMethodTable = new Entity(global, smtName, smtType);
 		final Initializer smtInitializer = new Initializer(maxClassUid);

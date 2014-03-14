@@ -57,11 +57,14 @@ import firm.Type;
 import firm.bindings.binding_oo.ddispatch_binding;
 import firm.bindings.binding_typerep.ir_linkage;
 import firm.bindings.binding_typerep.ir_type_state;
+import firm.nodes.Node;
 
 /**
  * Includes everything to map X10 types to Firm types.
  */
 public class FirmTypeSystem {
+	private static final String ABSTRACT_METHOD = "oo_rt_abstract_method_error";
+
 	/** Maps polyglot types to firm types. */
 	private final Map<polyglot.types.Type, ClassType> firmCoreTypes
 		= new HashMap<polyglot.types.Type, ClassType>();
@@ -76,6 +79,8 @@ public class FirmTypeSystem {
 	 * we have to get the C function entity by the mangled name.
 	 */
 	private final Map<String, Entity> cStdlibEntities = new HashMap<String, Entity>();
+
+	private Entity abstractMethod;
 
 	/** Maps X10 ConstructorInstances, MethodInstance, FieldInstances to firm entities.
 	 * We use the mangled names here as keys. (They should be unique).
@@ -180,6 +185,11 @@ public class FirmTypeSystem {
 		readFirmNativeTypesConfig(nativeTypesConfig);
 		initFirmTypes();
 		NameMangler.setup(typeSystem, compilerOptions);
+		CompoundType glob = Program.getGlobalType();
+		final Type type = new MethodType(new Type[] {}, new Type[] {});
+		abstractMethod = new Entity(glob, ABSTRACT_METHOD, type);
+		final String ld_name = NameMangler.mangleKnownName(ABSTRACT_METHOD);
+		abstractMethod.setLdIdent(ld_name);
 	}
 
 	private void readFirmNativeTypesConfig(final String firmNativeTypesFilename) {
@@ -515,6 +525,7 @@ public class FirmTypeSystem {
 						"Existing entity for vtable in c-library (" + vtableName + ") is not weak");
 			}
 			cEntity.removeLinkage(ir_linkage.IR_LINKAGE_WEAK);
+			cEntity.setInitializer(null);
 			vtable = cEntity;
 		} else {
 			vtable = new Entity(global, vtableName, pointerType);
@@ -661,7 +672,6 @@ public class FirmTypeSystem {
 					serializationSupport.setCustomDeserializeConstructor(x10Ctor, result, ctorEntity);
 				}
 			}
-
 
 			serializationSupport.generateSerializationFunction(classType, result, this);
 			serializationSupport.generateDeserializationFunction(classType, result, this);
@@ -915,7 +925,7 @@ public class FirmTypeSystem {
 	private MethodInstance getOverriddenMethod(final MethodInstance instance) {
 		final Flags flags = instance.flags();
 		// static or abstract methods can't override other methods.
-		if (flags.isStatic() || flags.isAbstract())
+		if (flags.isStatic())
 			return null;
 
 		final Name name = instance.name();
@@ -1051,12 +1061,16 @@ public class FirmTypeSystem {
 
 		if (flags.isAbstract()) {
 			OO.setMethodAbstract(entity, true);
+			final Node abstractEnt = Program.getConstCodeGraph().newAddress(abstractMethod);
+			entity.setAtomicValue(abstractEnt);
 		}
 
 		final MethodInstance m = getOverriddenMethod(instance);
 		if (m != null) {
 			final Entity ent = getMethodEntity(m);
+			assert ent.getName().equals(entity.getName());
 			entity.addEntityOverwrites(ent);
+			OO.setMethodIsInherited(entity, true);
 		}
 
 		return entity;

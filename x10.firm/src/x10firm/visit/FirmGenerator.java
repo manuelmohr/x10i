@@ -187,6 +187,7 @@ import firm.nodes.Node;
 import firm.nodes.Store;
 import firm.nodes.Switch;
 import firm.oo.nodes.InstanceOf;
+import firm.oo.nodes.MethodSel;
 
 /**
  * creates a firm-program (a collection of firm-graphs) from an X10-AST.
@@ -1737,7 +1738,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	private Node genMallocCall(final Entity mallocEnt, final Node size) {
 		final Node mem = con.getCurrentMem();
 		final Node malloc = con.newAddress(mallocEnt);
-		final Node call = con.newCall(mem, malloc, new Node[] {size}, gcMallocEntity.getType());
+		final Node call = con.newCall(mem, malloc, new Node[] {size}, mallocEnt.getType());
 		final Node callRes = con.newProj(call, Mode.getT(), Call.pnTResult);
 		final Node resultPtr = con.newProj(callRes, Mode.getP(), 0);
 		final Node callMem = con.newProj(call, Mode.getM(), Call.pnM);
@@ -2015,7 +2016,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final ClassType globalType = Program.getGlobalType();
 		final Type charType = typeSystem.getTypeSystem().Char();
 		final firm.Type elemType = firmTypeSystem.asType(charType);
-		final ArrayType type = new ArrayType(1, elemType);
+		final ArrayType type = new ArrayType(elemType);
 
 		final Ident id = Ident.createUnique("x10str.%u");
 		final Entity ent = new Entity(globalType, id, type);
@@ -2025,9 +2026,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		ent.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
 
 		final byte[] bytes = value.getBytes(UTF8);
-		type.setBounds(0, 0, bytes.length - 1);
-		type.setSizeBytes(bytes.length * elemType.getSizeBytes());
-		type.setTypeState(ir_type_state.layout_fixed);
+		type.setSize(bytes.length);
+		type.finishLayout();
 
 		final Initializer init = new Initializer(bytes.length);
 		final Mode mode = elemType.getMode();
@@ -2242,7 +2242,16 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final boolean isFinal = flags.isFinal();
 		final boolean isStruct = typeSystem.isStructType(method.container());
 		final boolean isStaticBinding = (isStatic || isFinal || isStruct);
-		final Node address = (isStaticBinding) ? con.newAddress(entity) : con.newSel(parameters[0], entity);
+		final Node address;
+		if (isStaticBinding) {
+			address = con.newAddress(entity);
+		} else {
+			final Node mem = con.getCurrentMem();
+			final Node methodSel = MethodSel.create(con, mem, parameters[0], entity);
+			final Node newMem = con.newProj(methodSel, Mode.getM(), MethodSel.pnM);
+			address = con.newProj(methodSel, Mode.getP(), MethodSel.pnRes);
+			con.setCurrentMem(newMem);
+		}
 
 		final Node mem = con.getCurrentMem();
 		final Node call = con.newCall(mem, address, parameters, type);
@@ -2888,7 +2897,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		if (isConstantTuple(n)) {
 			/* create initializer in read-only-data and use CopyB */
 			final ArrayType initType = new ArrayType(firmType);
-			initType.setBounds(0, 0, size);
+			initType.setSize(size);
 			initType.finishLayout();
 
 			final ClassType global = Program.getGlobalType();

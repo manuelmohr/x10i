@@ -103,13 +103,11 @@ public class FirmTransform extends AllBarrierGoal {
 
 			optimize(graph, "control-flow");
 			optimize(graph, "opt-load-store");
-			optimize(graph, "fp-vrp");
 			optimize(graph, "deconv");
 			optimize(graph, "thread-jumps");
 			optimize(graph, "remove-confirms");
 			optimize(graph, "gvn-pre");
 			optimize(graph, "gcse");
-			//optimize(graph, "place");
 			optimize(graph, "control-flow");
 
 			if (optimize(graph, "if-conversion")) {

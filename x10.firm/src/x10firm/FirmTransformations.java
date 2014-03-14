@@ -175,12 +175,6 @@ public final class FirmTransformations {
 				binding_iroptimize.conv_opt(graph.ptr);
 			}
 		});
-		TRANSFORMATIONS.put("fp-vrp", new Transformation("fp-vrp", "fixpoint value range propagation", NONE | IRG_OPT) {
-			@Override
-			protected void performOptimization(final Graph graph) {
-				binding_iroptimize.fixpoint_vrp(graph.ptr);
-			}
-		});
 		TRANSFORMATIONS.put("frame", new Transformation("frame", "remove unused frame entities", NONE | IRG_OPT) {
 			@Override
 			protected void performOptimization(final Graph graph) {
@@ -219,7 +213,7 @@ public final class FirmTransformations {
 		TRANSFORMATIONS.put("local", new Transformation("local", "local graph optimizations", HIDE_OPTIONS | IRG_OPT) {
 			@Override
 			protected void performOptimization(final Graph graph) {
-				binding_irgopt.local_opts(graph.ptr);
+				binding_irgopt.optimize_graph_df(graph.ptr);
 			}
 		});
 		TRANSFORMATIONS.put("lower-mux", new Transformation("lower-mux", "mux lowering", NONE | IRG_OPT) {

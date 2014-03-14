@@ -24,7 +24,7 @@ public abstract class OutputStreamWriter extends Writer {
     public native def write(r: Pointer, len: Int): void; //throws IOException
 
     public def write(x: Byte): void {
-        write(x);
+        write(x as Int);
     }
 
     /*
