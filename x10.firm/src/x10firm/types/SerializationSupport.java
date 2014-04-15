@@ -321,13 +321,13 @@ public final class SerializationSupport {
 
 			// This is slightly ugly because it also depends on the name mangling.
 			if (member.getName().endsWith("ptrE")) {
-				final Node ptrAddr = con.newSel(objPtr, member);
+				final Node ptrAddr = con.newMember(objPtr, member);
 				final Node load = con.newLoad(con.getCurrentMem(), ptrAddr, Mode.getP());
 				con.setCurrentMem(con.newProj(load, Mode.getM(), Load.pnM));
 				ptr = con.newProj(load, Mode.getP(), Load.pnRes);
 			} else if (member.getName().endsWith("lengthE")) {
 				lengthType = memberType;
-				lengthAddr = con.newSel(objPtr, member);
+				lengthAddr = con.newMember(objPtr, member);
 				final Node load = con.newLoad(con.getCurrentMem(), lengthAddr, Mode.getIs());
 				con.setCurrentMem(con.newProj(load, Mode.getM(), Load.pnM));
 				length = con.newProj(load, Mode.getIs(), Load.pnRes);
@@ -452,7 +452,7 @@ public final class SerializationSupport {
 				if (OO.getFieldIsTransient(member))
 					continue;
 
-				final Node sel = con.newSel(objPtr, member);
+				final Node sel = con.newMember(objPtr, member);
 				genCallToSerialize(memberType, con, bufPtr, sel);
 			}
 		}
@@ -502,10 +502,10 @@ public final class SerializationSupport {
 
 			// This is slightly ugly because it also depends on the name mangling.
 			if (member.getName().endsWith("ptrE")) {
-				ptrPtr = con.newSel(objPtr, member);
+				ptrPtr = con.newMember(objPtr, member);
 			} else if (member.getName().endsWith("lengthE")) {
 				lengthType = memberType;
-				lengthPtr = con.newSel(objPtr, member);
+				lengthPtr = con.newMember(objPtr, member);
 			} else {
 				assert false : "IndexedMemoryChunk has extraneous members";
 			}
@@ -649,7 +649,7 @@ public final class SerializationSupport {
 				if (OO.getFieldIsTransient(member))
 					continue;
 
-				final Node sel = con.newSel(objPtr, member);
+				final Node sel = con.newMember(objPtr, member);
 				genCallToDeserialize(memberType, con, bufPtr, sel);
 			}
 		}

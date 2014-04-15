@@ -934,7 +934,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			= instance.flags().isStatic() ? instance : typeSystem.getSubst().reinstantiate(instance);
 		final Entity entity = firmTypeSystem.getFieldEntity(reinstantiated);
 		if (objectPointer != null) {
-			return con.newSel(objectPointer, entity);
+			return con.newMember(objectPointer, entity);
 		}
 		return con.newAddress(entity);
 	}
@@ -1701,7 +1701,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	 */
 	public Node getEntityFromCurrentFrame(final Entity entity) {
 		final Node frame = con.getGraph().getFrame();
-		final Node sel = con.newSel(frame, entity);
+		final Node sel = con.newMember(frame, entity);
 		return sel;
 	}
 
@@ -1749,7 +1749,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	private void initVPtr(final Node ptr, final ClassType firmType) {
 		final Entity vptr = OO.getClassVPtrEntity(firmType);
-		final Node sel = con.newSel(ptr, vptr);
+		final Node sel = con.newMember(ptr, vptr);
 		final Entity vtable = OO.getClassVTableEntity(firmType);
 		final Node vtableSymConst = con.newAddress(vtable);
 		final Node mem = con.getCurrentMem();

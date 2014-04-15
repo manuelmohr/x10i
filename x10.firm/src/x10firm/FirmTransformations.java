@@ -7,7 +7,6 @@ import com.sun.jna.Pointer;
 
 import firm.Backend;
 import firm.Graph;
-import firm.GraphBase;
 import firm.OO;
 import firm.Util;
 import firm.bindings.binding_irconsconfirm;
@@ -122,10 +121,7 @@ public final class FirmTransformations {
 				return false;
 
 			if ((flags & IRG_OPT) != 0) {
-				final Graph old = GraphBase.getCurrent();
-				GraphBase.setCurrent(graph);
 				performOptimization(graph);
-				GraphBase.setCurrent(old);
 			} else {
 				assert graph == null;
 				performOptimization(null);

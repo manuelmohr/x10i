@@ -112,27 +112,10 @@ public final class FirmState {
 	}
 
 	private static void setPointerSize(final PointerSize size) {
-		final Mode eqSignedInt;
-		final Mode eqUnsignedInt;
-
-		switch (size) {
-		case Size32:
-			eqSignedInt = Mode.getIs();
-			eqUnsignedInt = Mode.getIu();
-			break;
-		case Size64:
-			eqSignedInt = Mode.getLs();
-			eqUnsignedInt = Mode.getLu();
-			break;
-		default:
-			throw new RuntimeException("Invalid pointer size");
-		}
-
 		final Arithmetic arithmetic = Arithmetic.TwosComplement;
 		final int bits = size.getSize();
 		final String name = "p" + bits;
-		final Mode mode
-			= Mode.createReferenceMode(name, arithmetic, bits, eqSignedInt, eqUnsignedInt, bits);
+		final Mode mode = Mode.createReferenceMode(name, arithmetic, bits, bits);
 		Mode.setDefaultModeP(mode);
 	}
 }
