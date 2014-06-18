@@ -70,6 +70,8 @@ public class CompilerOptions extends X10CompilerOptions {
 	 * Returns true if the graph @{code g} should be dumped.
 	 */
 	public boolean shouldDumpGraph(final Graph g) {
+		if (dumpFilter == null)
+			return false;
 		final Entity ent = g.getEntity();
 		return dumpFilter.matcher(ent.getName()).matches();
 	}
