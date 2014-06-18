@@ -7,8 +7,6 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 import polyglot.frontend.ExtensionInfo;
 import polyglot.main.UsageError;
@@ -16,15 +14,14 @@ import x10.X10CompilerOptions;
 import x10firm.FirmTransformations.Transformation;
 import x10firm.FirmOptions.FirmOption;
 import firm.Backend;
-import firm.Entity;
-import firm.Graph;
+import firm.bindings.binding_irdump;
 
 /**
  * Firm-Backend specific commandline option parsing.
  * @author matze
  */
 public class CompilerOptions extends X10CompilerOptions {
-	private Pattern dumpFilter = null;
+	private boolean dumpFirmGraphs = false;
 	private boolean dumpTypeGraph = false;
 	private static final String FIRM_NATIVE_TYPES_FILENAME = "firmNativeTypes.conf";
 	private String nativeTypesConfigPath = null;
@@ -67,13 +64,10 @@ public class CompilerOptions extends X10CompilerOptions {
 	}
 
 	/**
-	 * Returns true if the graph @{code g} should be dumped.
+	 * Returns true if the firm graphs should be dumped.
 	 */
-	public boolean shouldDumpGraph(final Graph g) {
-		if (dumpFilter == null)
-			return false;
-		final Entity ent = g.getEntity();
-		return dumpFilter.matcher(ent.getName()).matches();
+	public boolean isDumpFirmGraphs() {
+		return dumpFirmGraphs;
 	}
 
 	/**
@@ -202,17 +196,12 @@ public class CompilerOptions extends X10CompilerOptions {
 			whiteList = arg.substring(arg.indexOf('=') + 1);
 			return index + 1;
 		} else if (arg.equals("-dumpgraphs")) {
-			if (dumpFilter == null)
-				dumpFilter = Pattern.compile(".*");
+			dumpFirmGraphs = true;
 			return index + 1;
 		} else if (arg.startsWith("-dumpfilter=")) {
 			final String filter = arg.substring(arg.indexOf('=') + 1);
-			try {
-				dumpFilter = Pattern.compile(filter);
-			} catch (PatternSyntaxException err) {
-				System.err.println("Illegal regex syntax in dump filter \"" + filter + "\"");
-				/* Leave dumpFilter as null */
-			}
+			binding_irdump.ir_set_dump_filter(filter);
+			dumpFirmGraphs = true; // User probably wants this
 			return index + 1;
 		} else if (arg.equals("-dumptypes")) {
 			dumpTypeGraph = true;

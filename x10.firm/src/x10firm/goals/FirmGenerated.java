@@ -85,9 +85,9 @@ public class FirmGenerated extends AllBarrierGoal {
 			}
 		}
 
-		/* Dump the normal firm graph */
-		for (Graph g : Program.getGraphs()) {
-			if (options.shouldDumpGraph(g)) {
+		/* Dump the normal firm graphs */
+		if (options.isDumpFirmGraphs()) {
+			for (Graph g : Program.getGraphs()) {
 				Dump.dumpGraph(g, "--fresh");
 			}
 		}
