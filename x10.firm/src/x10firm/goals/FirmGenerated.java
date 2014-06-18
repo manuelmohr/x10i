@@ -77,7 +77,7 @@ public class FirmGenerated extends AllBarrierGoal {
 		generator.genPostCompile();
 
 		/* dump the firm typegraph */
-		if (options.isDumpFirmGraphs()) {
+		if (options.isDumpTypeGraph()) {
 			try {
 				Dump.dumpTypeGraph("typegraph.vcg");
 			} catch (IOException e) {
@@ -86,8 +86,8 @@ public class FirmGenerated extends AllBarrierGoal {
 		}
 
 		/* Dump the normal firm graph */
-		if (options.isDumpFirmGraphs()) {
-			for (Graph g : Program.getGraphs()) {
+		for (Graph g : Program.getGraphs()) {
+			if (options.shouldDumpGraph(g)) {
 				Dump.dumpGraph(g, "--fresh");
 			}
 		}

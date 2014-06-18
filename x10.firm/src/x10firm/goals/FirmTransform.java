@@ -29,15 +29,15 @@ public class FirmTransform extends AllBarrierGoal {
 
 	private boolean optimize(final Graph graph, final String name) {
 		final boolean result = FirmTransformations.getOptimization(name).perform(graph);
-		if (options.isDumpFirmGraphs())
+		if (options.shouldDumpGraph(graph))
 			Dump.dumpGraph(graph, "-" + name);
 		return result;
 	}
 
 	private boolean optimize(final String name) {
 		final boolean result = FirmTransformations.getOptimization(name).perform(null);
-		if (options.isDumpFirmGraphs()) {
-			for (Graph graph : Program.getGraphs()) {
+		for (Graph graph : Program.getGraphs()) {
+			if (options.shouldDumpGraph(graph)) {
 				Dump.dumpGraph(graph, "-" + name);
 			}
 		}

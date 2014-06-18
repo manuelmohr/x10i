@@ -7,6 +7,8 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import polyglot.frontend.ExtensionInfo;
 import polyglot.main.UsageError;
@@ -14,14 +16,16 @@ import x10.X10CompilerOptions;
 import x10firm.FirmTransformations.Transformation;
 import x10firm.FirmOptions.FirmOption;
 import firm.Backend;
+import firm.Entity;
+import firm.Graph;
 
 /**
  * Firm-Backend specific commandline option parsing.
  * @author matze
  */
 public class CompilerOptions extends X10CompilerOptions {
-	/** Decides whether compiler outputs FIRM graphs. */
-	private boolean dumpFirmGraphs = false;
+	private Pattern dumpFilter = null;
+	private boolean dumpTypeGraph = false;
 	private static final String FIRM_NATIVE_TYPES_FILENAME = "firmNativeTypes.conf";
 	private String nativeTypesConfigPath = null;
 	private MachineTriple target = null;
@@ -56,10 +60,18 @@ public class CompilerOptions extends X10CompilerOptions {
 	}
 
 	/**
-	 * Returns true if the firm graphs should be dumped.
+	 * Returns true if type graph should be dumped.
 	 */
-	public boolean isDumpFirmGraphs() {
-		return dumpFirmGraphs;
+	public boolean isDumpTypeGraph() {
+		return dumpTypeGraph;
+	}
+
+	/**
+	 * Returns true if the graph @{code g} should be dumped.
+	 */
+	public boolean shouldDumpGraph(final Graph g) {
+		final Entity ent = g.getEntity();
+		return dumpFilter.matcher(ent.getName()).matches();
 	}
 
 	/**
@@ -188,7 +200,20 @@ public class CompilerOptions extends X10CompilerOptions {
 			whiteList = arg.substring(arg.indexOf('=') + 1);
 			return index + 1;
 		} else if (arg.equals("-dumpgraphs")) {
-			dumpFirmGraphs = true;
+			if (dumpFilter == null)
+				dumpFilter = Pattern.compile(".*");
+			return index + 1;
+		} else if (arg.startsWith("-dumpfilter=")) {
+			final String filter = arg.substring(arg.indexOf('=') + 1);
+			try {
+				dumpFilter = Pattern.compile(filter);
+			} catch (PatternSyntaxException err) {
+				System.err.println("Illegal regex syntax in dump filter \"" + filter + "\"");
+				/* Leave dumpFilter as null */
+			}
+			return index + 1;
+		} else if (arg.equals("-dumptypes")) {
+			dumpTypeGraph = true;
 			return index + 1;
 		} else if (arg.equals("-dumpgoalgraph")) {
 			dumpGoalGraph = true;
@@ -234,8 +259,12 @@ public class CompilerOptions extends X10CompilerOptions {
 				"Set firm options");
 		usageForFlag(out, "-dumpgoalgraph",
 				"Dump compiler scheduler job graph");
+		usageForFlag(out, "-dumptypes",
+				"Dump type graphs");
 		usageForFlag(out, "-dumpgraphs",
-				"Dump FIRM graphs");
+				"Dump all FIRM graphs");
+		usageForFlag(out, "-dumpfilter=<pattern>",
+				"Dump only FIRM graphs whose name matches regular expression <pattern>");
 		usageForFlag(out, "-nativeTypesConfigPath <pathname>",
 				"Path to the firm native types configuration files");
 		usageForFlag(out, "-V",

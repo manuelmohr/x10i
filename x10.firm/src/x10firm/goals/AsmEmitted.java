@@ -39,7 +39,7 @@ public class AsmEmitted extends AbstractGoal_c {
 			binding_irgopt.optimize_graph_df(g.ptr);
 			binding_iroptimize.optimize_cf(g.ptr);
 			binding_irgopt.remove_bads(g.ptr);
-			if (options.isDumpFirmGraphs()) {
+			if (options.shouldDumpGraph(g)) {
 				Dump.dumpGraph(g, "--before-backend");
 			}
 		}
