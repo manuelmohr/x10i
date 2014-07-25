@@ -54,6 +54,7 @@ import firm.PointerType;
 import firm.PrimitiveType;
 import firm.Program;
 import firm.Type;
+import firm.bindings.binding_typerep;
 import firm.bindings.binding_oo.ddispatch_binding;
 import firm.bindings.binding_typerep.ir_linkage;
 import firm.bindings.binding_typerep.ir_type_state;
@@ -144,7 +145,8 @@ public class FirmTypeSystem {
 		for (final Entity ent : glob.getMembers()) {
 			if (!ent.hasDefinition())
 				continue;
-			cStdlibEntities.put(ent.getLdName(), ent);
+			if (ent.getVisibility() != binding_typerep.ir_visibility.ir_visibility_private)
+				cStdlibEntities.put(ent.getLdName(), ent);
 			/* putting the entities in their classes will be done when the
 			 * X10 MethodInstance is processed */
 		}
