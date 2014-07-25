@@ -137,7 +137,7 @@ public class FirmTypeSystem {
 		this.compilerOptions = options;
 		this.instantiationQueue = instantiationQueue;
 		init();
-		serializationSupport.init();
+		serializationSupport.init(this);
 	}
 
 	private void findExistingEntities() {
@@ -150,6 +150,17 @@ public class FirmTypeSystem {
 			/* putting the entities in their classes will be done when the
 			 * X10 MethodInstance is processed */
 		}
+	}
+
+	/**
+	 * Get method entity.  Returns existing entity if entity was already present in imported FIRM
+	 * graph from C library or creates new entity.
+	 */
+	public Entity getMethodEntity(final ClassType ownerFirm, final String linkName, final MethodType type) {
+		final Entity cEntity = cStdlibEntities.get(linkName);
+		if (cEntity != null)
+			return cEntity;
+		return new Entity(ownerFirm, linkName, type);
 	}
 
 	private static void flattenType(final StringBuffer buf, final polyglot.types.Type type) {
@@ -740,7 +751,7 @@ public class FirmTypeSystem {
 		final firm.Type[] serializeArgTypes = new firm.Type[] {typeP, pointerToFirm};
 		final MethodType serializeType = new MethodType(serializeArgTypes, new Type[] {});
 		final ClassType global = Program.getGlobalType();
-		final Entity serialize = new Entity(global, serializationFuncName, serializeType);
+		final Entity serialize = getMethodEntity(global, serializationFuncName, serializeType);
 		serialize.setLdIdent(NameMangler.mangleKnownName(serializationFuncName));
 		OO.setEntityBinding(serialize, ddispatch_binding.bind_static);
 		OO.setMethodExcludeFromVTable(serialize, true);
@@ -749,7 +760,7 @@ public class FirmTypeSystem {
 		final String deserializationFuncName = "x10_deserialization_restore_" + name;
 		final firm.Type[] deserializeArgTypes = new firm.Type[] {typeP, pointerToFirm};
 		final MethodType deserializeType = new MethodType(deserializeArgTypes, new Type[] {});
-		final Entity deserialize = new Entity(global, deserializationFuncName, deserializeType);
+		final Entity deserialize = getMethodEntity(global, deserializationFuncName, deserializeType);
 		deserialize.setLdIdent(NameMangler.mangleKnownName(deserializationFuncName));
 		OO.setEntityBinding(deserialize, ddispatch_binding.bind_static);
 		OO.setMethodExcludeFromVTable(deserialize, true);
@@ -869,9 +880,9 @@ public class FirmTypeSystem {
 
 		if (entity == null) {
 			final Flags flags = instance.flags();
-			final firm.Type type = getConstructorType(instance);
+			final firm.MethodType type = getConstructorType(instance);
 
-			entity = new Entity(Program.getGlobalType(), name, type);
+			entity = getMethodEntity(Program.getGlobalType(), name, type);
 			entity.setLdIdent(name);
 
 			if (flags.isAbstract()) {
