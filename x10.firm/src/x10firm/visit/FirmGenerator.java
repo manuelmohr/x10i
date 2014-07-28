@@ -261,8 +261,6 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	}
 
 	private void initKnownRuntimeEntities() {
-		final ClassType global = Program.getGlobalType();
-
 		final Type stringType = typeSystem.getTypeSystem().String();
 		final firm.Type[] assertParameterTypes = new firm.Type[] {
 			firmTypeSystem.asType(typeSystem.getTypeSystem().Boolean()),
@@ -272,7 +270,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final firm.Type[] assertResultTypes = new firm.Type[] {};
 		final MethodType assertType = new firm.MethodType(assertParameterTypes, assertResultTypes);
 		final String assertName = NameMangler.mangleKnownName(X10_ASSERT);
-		assertEntity = firmTypeSystem.getMethodEntity(global, assertName, assertType);
+		assertEntity = firmTypeSystem.getGlobalMethodEntity(assertName, assertType);
 
 		final firm.Type checkedThrowableType = firmTypeSystem.asType(typeSystem.getTypeSystem().CheckedThrowable());
 		final firm.Type[] unwindParameterTypes = new firm.Type[] {
@@ -282,7 +280,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final MethodType unwindType = new firm.MethodType(unwindParameterTypes, unwindResultTypes);
 		unwindType.addAdditionalProperties(mtp_additional_properties.mtp_property_noreturn);
 		final String unwindName = NameMangler.mangleKnownName(X10_EXCEPTION_UNWIND);
-		exceptionUnwindEntity = firmTypeSystem.getMethodEntity(global, unwindName, unwindType);
+		exceptionUnwindEntity = firmTypeSystem.getGlobalMethodEntity(unwindName, unwindType);
 
 		sizeTType = Mode.createIntMode("size_t", Arithmetic.TwosComplement, Mode.getP().getSizeBits(),
 				false, Mode.getP().getModuloShift()).getType();
@@ -294,14 +292,14 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		};
 		final MethodType mallocType = new firm.MethodType(mallocParamTypes, mallocResultTypes);
 		final String gcMallocName = NameMangler.mangleKnownName(GC_MALLOC);
-		gcMallocEntity = firmTypeSystem.getMethodEntity(global, gcMallocName, mallocType);
+		gcMallocEntity = firmTypeSystem.getGlobalMethodEntity(gcMallocName, mallocType);
 
 		final String gcMallocAtomicName = NameMangler.mangleKnownName(GC_MALLOC_ATOMIC);
-		gcMallocAtomicEntity = firmTypeSystem.getMethodEntity(global, gcMallocAtomicName, mallocType);
+		gcMallocAtomicEntity = firmTypeSystem.getGlobalMethodEntity(gcMallocAtomicName, mallocType);
 
 		/* mem_allocate_tlm has the same type as malloc */
 		final String tlmAllocName = NameMangler.mangleKnownName(TLM_ALLOC);
-		tlmAllocEntity = firmTypeSystem.getMethodEntity(global, tlmAllocName, mallocType);
+		tlmAllocEntity = firmTypeSystem.getGlobalMethodEntity(tlmAllocName, mallocType);
 	}
 
 	/** Set info about whether we are currently compiling a command line job or not. */
@@ -320,7 +318,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	private void genStaticInitializationSupportCode() {
 		final firm.MethodType methodType = new MethodType(new firm.Type[] {}, new firm.Type[] {});
 		final String name = NameMangler.mangleKnownName(X10_STATIC_INITIALIZER);
-		final Entity methodEntity = firmTypeSystem.getMethodEntity(Program.getGlobalType(), name, methodType);
+		final Entity methodEntity = firmTypeSystem.getGlobalMethodEntity(name, methodType);
 
 		final Type voidT = typeSystem.getTypeSystem().Void();
 		final MethodConstruction savedConstruction

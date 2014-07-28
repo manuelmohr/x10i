@@ -83,7 +83,6 @@ public final class SerializationSupport {
 	public void init(final FirmTypeSystem firmTypeSystem) {
 		assert serializationWriteObject == null;
 
-		final ClassType global = Program.getGlobalType();
 		final Type typeP = Mode.getP().getType();
 		final Type[] emptyTypelist = new Type[] {};
 
@@ -91,18 +90,18 @@ public final class SerializationSupport {
 		final firm.Type[] swoParameterTypes = new firm.Type[] {typeP, typeP};
 		final MethodType swoType = new MethodType(swoParameterTypes, emptyTypelist);
 		final String swoName = NameMangler.mangleKnownName("x10_serialization_write_object");
-		serializationWriteObject = firmTypeSystem.getMethodEntity(global, swoName, swoType);
+		serializationWriteObject = firmTypeSystem.getGlobalMethodEntity(swoName, swoType);
 		serializationWriteObject.setLdIdent(swoName);
 
 		final firm.Type[] droParamTypes = new firm.Type[] {typeP, typeP};
 		final MethodType droType = new MethodType(droParamTypes, emptyTypelist);
 		final String droName = NameMangler.mangleKnownName("x10_deserialization_restore_object");
-		deserializationRestoreObject = firmTypeSystem.getMethodEntity(global, droName, droType);
+		deserializationRestoreObject = firmTypeSystem.getGlobalMethodEntity(droName, droType);
 		deserializationRestoreObject.setLdIdent(droName);
 
 		final MethodType mallocType = new MethodType(new Type[] {Mode.getIs().getType()}, new Type[] {typeP});
 
-		gcXMalloc = firmTypeSystem.getMethodEntity(global, GC_XMALLOC, mallocType);
+		gcXMalloc = firmTypeSystem.getGlobalMethodEntity(GC_XMALLOC, mallocType);
 		gcXMalloc.setLdIdent(NameMangler.mangleKnownName(GC_XMALLOC));
 	}
 
@@ -420,7 +419,7 @@ public final class SerializationSupport {
 		if (astType.isString()) {
 			final String stringSerializeName = NameMangler.mangleKnownName("x10_string_serialize");
 			final Entity stringSerializeEntity =
-					firmTypeSystem.getMethodEntity(klass, stringSerializeName, serializeMethodType);
+					firmTypeSystem.getGlobalMethodEntity(stringSerializeName, serializeMethodType);
 			final Node stringSerializeSymc = con.newAddress(stringSerializeEntity);
 
 			Node mem = con.getCurrentMem();
@@ -592,7 +591,7 @@ public final class SerializationSupport {
 		if (astType.isString()) {
 			final String stringDeserializeName = NameMangler.mangleKnownName("x10_string_deserialize");
 			final Entity stringDeserializeEntity =
-					firmTypeSystem.getMethodEntity(klass, stringDeserializeName, deserializeMethodType);
+					firmTypeSystem.getGlobalMethodEntity(stringDeserializeName, deserializeMethodType);
 			final Node stringDeserializeSymc = con.newAddress(stringDeserializeEntity);
 
 			Node mem = con.getCurrentMem();
