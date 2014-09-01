@@ -151,27 +151,27 @@ public class FirmTransform extends AllBarrierGoal {
 
 		for (final Graph graph : Program.getGraphs()) {
 			optimize(graph, "local");
-	        optimize(graph, "deconv");
-	        optimize(graph, "control-flow");
-	        optimize(graph, "opt-load-store");
-	        optimize(graph, "gcse");
-	        optimize(graph, "place");
-	        optimize(graph, "control-flow");
+			optimize(graph, "deconv");
+			optimize(graph, "control-flow");
+			optimize(graph, "opt-load-store");
+			optimize(graph, "gcse");
+			optimize(graph, "place");
+			optimize(graph, "control-flow");
 
-	        if (optimize(graph, "if-conversion")) {
-	            optimize(graph, "local");
-	            optimize(graph, "control-flow");
-	        }
+			if (optimize(graph, "if-conversion")) {
+				optimize(graph, "local");
+				optimize(graph, "control-flow");
+			}
 
-	        graph.addConstraints(ir_graph_constraints_t.IR_GRAPH_CONSTRAINT_NORMALISATION2);
-	        optimize(graph, "local");
+			graph.addConstraints(ir_graph_constraints_t.IR_GRAPH_CONSTRAINT_NORMALISATION2);
+			optimize(graph, "local");
 
-	        optimize(graph, "parallelize-mem");
-	        optimize(graph, "frame");
-	    }
+			optimize(graph, "parallelize-mem");
+			optimize(graph, "frame");
+		}
 
-	    optimize("remove-unused");
-	    //optimize("opt-cc"); // TODO
+		optimize("remove-unused");
+		//optimize("opt-cc"); // TODO
 
 		return true;
 	}
