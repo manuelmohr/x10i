@@ -6,14 +6,12 @@ import polyglot.frontend.Goal;
 import polyglot.frontend.Job;
 import polyglot.frontend.Scheduler;
 import x10firm.CompilerOptions;
-import x10firm.FirmOptions;
 import x10firm.FirmTransformations;
 import firm.Dump;
 import firm.Graph;
 import firm.Program;
 import firm.bindings.binding_irarch;
 import firm.bindings.binding_irarch.arch_dep_opts_t;
-import firm.bindings.binding_irflag;
 import firm.bindings.binding_irgraph.ir_graph_constraints_t;
 
 /**
@@ -51,8 +49,6 @@ public class FirmTransform extends AllBarrierGoal {
 
 		if (options.x10_config.ONLY_TYPE_CHECKING)
 			return true;
-
-		binding_irflag.set_opt_alias_analysis(FirmOptions.isAliasAnalysis() ? 1 : 0);
 
 		if (FirmTransformations.getOptimization("confirm").isEnabled())
 			FirmTransformations.getOptimization("remove-confirms").enable();
@@ -102,7 +98,12 @@ public class FirmTransform extends AllBarrierGoal {
 			}
 
 			optimize(graph, "control-flow");
+		}
+		// TODO: Fuse loops once quadratic complexity of load-store opt has been removed.
+		for (final Graph graph : Program.getGraphs()) {
 			optimize(graph, "opt-load-store");
+		}
+		for (final Graph graph : Program.getGraphs()) {
 			optimize(graph, "deconv");
 			optimize(graph, "thread-jumps");
 			optimize(graph, "remove-confirms");
@@ -153,7 +154,12 @@ public class FirmTransform extends AllBarrierGoal {
 			optimize(graph, "local");
 			optimize(graph, "deconv");
 			optimize(graph, "control-flow");
+		}
+		// TODO: Fuse loops once quadratic complexity of load-store opt has been removed.
+		for (final Graph graph : Program.getGraphs()) {
 			optimize(graph, "opt-load-store");
+		}
+		for (final Graph graph : Program.getGraphs()) {
 			optimize(graph, "gcse");
 			optimize(graph, "place");
 			optimize(graph, "control-flow");

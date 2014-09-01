@@ -19,8 +19,6 @@ public final class FirmOptions {
 	private static boolean constFolding = true;
 	/** enable common-subexpression elimination. */
 	private static boolean cse = true;
-	/** enable Alias Analysis. */
-	private static boolean aliasAnalysis = true;
 	/** Maximum function size for inlining. */
 	private static int inlineMaxsize = 750;
 	/** Inlining benefice threshold. */
@@ -54,20 +52,6 @@ public final class FirmOptions {
 	 */
 	public static void setCse(final boolean cse) {
 		FirmOptions.cse = cse;
-	}
-
-	/**
-	 * @return whether the alias analysis is activated.
-	 */
-	public static boolean isAliasAnalysis() {
-		return aliasAnalysis;
-	}
-
-	/**
-	 * @param aliasAnalysis enable/disable alias analysis.
-	 */
-	public static void setAliasAnalysis(final boolean aliasAnalysis) {
-		FirmOptions.aliasAnalysis = aliasAnalysis;
 	}
 
 	/**
@@ -255,20 +239,6 @@ public final class FirmOptions {
 			@Override
 			boolean activate(final String arg) {
 				inlineThreshold = Integer.parseInt(arg);
-				return true;
-			}
-		});
-		KNOWN_OPTIONS.put("opt-alias", new FirmOption("opt-alias", "enable alias analysis") {
-			@Override
-			boolean activate(final String arg) {
-				aliasAnalysis = true;
-				return true;
-			}
-		});
-		KNOWN_OPTIONS.put("no-opt-alias", new FirmOption("no-opt-alias", "disable alias analysis") {
-			@Override
-			boolean activate(final String arg) {
-				aliasAnalysis = false;
 				return true;
 			}
 		});
