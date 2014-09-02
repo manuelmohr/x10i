@@ -6,6 +6,12 @@
 static inline x10_int x10_atomic_ops_compareAndSet_32(volatile x10_int* address,
 	x10_int oldValue, x10_int newValue)
 {
+#if defined(__sparc__) && !defined(NDEBUG)
+	if ((void*)address < (void*)0x80000000 || (void*)address > (void*)0x807FFFFF) {
+		fprintf(stderr, "CAS on non-TLM address! addr=%p\n", address);
+		abort();
+	}
+#endif
 #if defined(__leon__) && !defined(__CPARSER__)
 	// in case of sparc-elf-gcc gcc does not produce a cas instruction for a
 	// __sync_val_compare_and_swap so we use inline assembly
