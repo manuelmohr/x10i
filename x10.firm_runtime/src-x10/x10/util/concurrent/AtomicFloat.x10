@@ -17,9 +17,9 @@ public final class AtomicFloat {
 
     private val v:AtomicInteger;
 
-    public def this() { this.v = @TLMAllocate new AtomicInteger(0.0f.toRawIntBits()); }
+    public def this() { this.v = new AtomicInteger(0.0f.toRawIntBits()); }
 
-    public def this(v:Float) { this.v = @TLMAllocate new AtomicInteger(v.toRawIntBits()); }
+    public def this(v:Float) { this.v = new AtomicInteger(v.toRawIntBits()); }
 
     public def get() = Float.fromIntBits(v.get());
 

@@ -14,8 +14,10 @@ package x10.util.concurrent;
 import x10.compiler.Native;
 import x10.compiler.NativeRep;
 import x10.compiler.Volatile;
+import x10.compiler.TLMAllocate;
 
 @NativeRep("java", "x10.core.concurrent.AtomicInteger", null, "x10.core.concurrent.AtomicInteger.$RTT")
+@TLMAllocate
 public final class AtomicInteger {
 
     private @Volatile var value:Int;
