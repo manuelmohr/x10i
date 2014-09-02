@@ -1949,11 +1949,17 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final List<Expr> arguments = n.arguments();
 		if (!typeSystem.isStructType(n.type())) {
 			final Type stackAnnotation = typeSystem.getTypeSystem().StackAllocate();
-			final boolean stackAlloc = ((X10Ext) n.ext()).annotationMatching(stackAnnotation).size() > 0;
 			final Type tlmAnnotation = getTLMAllocateType();
-			final boolean tlmAlloc = ((X10Ext) n.ext()).annotationMatching(tlmAnnotation).size() > 0;
 			final Type staticAnnotation = getStaticAllocateType();
+
+			final boolean stackAlloc = ((X10Ext) n.ext()).annotationMatching(stackAnnotation).size() > 0;
+			boolean tlmAlloc = ((X10Ext) n.ext()).annotationMatching(tlmAnnotation).size() > 0;
 			final boolean staticAlloc = ((X10Ext) n.ext()).annotationMatching(staticAnnotation).size() > 0;
+
+			if (!stackAlloc && !tlmAlloc && !staticAlloc) {
+				final X10ClassDef def = type.def();
+				tlmAlloc = def.annotationsMatching(tlmAnnotation).size() > 0;
+			}
 
 			if ((stackAlloc && tlmAlloc) || (stackAlloc && staticAlloc) || (staticAlloc && tlmAlloc))
 				throw new CodeGenError("Multiple allocation annotations", n);
