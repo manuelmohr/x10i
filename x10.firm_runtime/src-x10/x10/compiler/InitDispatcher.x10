@@ -13,8 +13,7 @@ package x10.compiler;
 
 import x10.compiler.StaticAllocate;
 import x10.compiler.NativeRep;
-/* TODO TODO reenable Monitor when it is available */
-//import x10.util.concurrent.Monitor;
+import x10.util.concurrent.Monitor;
 
 /**
  * Used for generating static initialization code in Java backend.
@@ -22,7 +21,7 @@ import x10.compiler.NativeRep;
  */
 @NativeRep("java", "x10.runtime.impl.java.InitDispatcher", null, null)
 class InitDispatcher {
-    //static staticMonitor = @StaticAllocate new Monitor();
+    static staticMonitor = @StaticAllocate new Monitor();
 
     public static val UNINITIALIZED    = 0;
     public static val INITIALIZING     = 1;
@@ -30,16 +29,16 @@ class InitDispatcher {
     public static val EXCEPTION_RAISED = 3;
 
     public static def lockInitialized() {
-        //staticMonitor.lock();
+        staticMonitor.lock();
     }
     public static def unlockInitialized() {
-        //staticMonitor.unlock();
+        staticMonitor.unlock();
     }
     public static def awaitInitialized() {
-        //staticMonitor.await();
+        staticMonitor.await();
     }
     public static def notifyInitialized() {
-        //staticMonitor.release();
+        staticMonitor.release();
     }
 }
 

@@ -37,6 +37,8 @@ static void ilet_notify(void *arg)
 	simple_signal_signal((simple_signal*)arg);
 }
 
+void *_ZN3x108compiler14InitDispatcher17get_staticMonitorEv(void);
+
 /** initialization code that is run once on each tile before it is used. */
 static void init_tile()
 {
@@ -51,6 +53,8 @@ static void init_tile()
 	}
 #endif
 	x10_static_initializer();
+	/* Make sure that InitDispatcher's static monitor is initialized. */
+	(void)_ZN3x108compiler14InitDispatcher17get_staticMonitorEv();
 	x10_serialization_init();
 }
 

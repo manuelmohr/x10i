@@ -11,6 +11,8 @@
 #include "serialization.h"
 #include "xmalloc.h"
 
+void *_ZN3x108compiler14InitDispatcher17get_staticMonitorEv();
+
 int main(int argc, char **argv)
 {
 	gc_init();
@@ -28,6 +30,8 @@ int main(int argc, char **argv)
 	init_finish_state();
 
 	x10_static_initializer();
+	/* Make sure that InitDispatcher's static monitor is initialized. */
+	(void)_ZN3x108compiler14InitDispatcher17get_staticMonitorEv();
 
 	/* start main activity on the root place */
 	if (place_id == 0) {
