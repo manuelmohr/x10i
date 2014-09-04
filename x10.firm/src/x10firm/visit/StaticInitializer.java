@@ -715,8 +715,8 @@ public class StaticInitializer extends ContextVisitor {
 			throw new RuntimeException("Couldn't find AtomicInteger.this(int)");
 
 		Expr init = xnf.New(pos, tn, args).constructorInstance(consInstance).type(type);
-		final ClassType staticAllocAnnotation = xts.load("x10.compiler.StaticAllocate");
-		final TypeNode annoTypeNode = xnf.CanonicalTypeNode(pos, staticAllocAnnotation).typeRef(Types.ref(staticAllocAnnotation));
+		final ClassType staticAllocAnn = xts.load("x10.compiler.StaticAllocate");
+		final TypeNode annoTypeNode = xnf.CanonicalTypeNode(pos, staticAllocAnn).typeRef(Types.ref(staticAllocAnn));
 		final AnnotationNode annoNode = xnf.AnnotationNode(pos, annoTypeNode);
 		final List<AnnotationNode> annos = new ArrayList<AnnotationNode>();
 		annos.add(annoNode);
