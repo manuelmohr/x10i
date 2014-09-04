@@ -71,6 +71,7 @@ import polyglot.util.Position;
 import polyglot.visit.ContextVisitor;
 import polyglot.visit.NodeVisitor;
 import x10.X10CompilerOptions;
+import x10.ast.AnnotationNode;
 import x10.ast.Closure;
 import x10.ast.ClosureCall;
 import x10.ast.ParExpr;
@@ -87,6 +88,7 @@ import x10.ast.X10New_c;
 import x10.ast.X10NodeFactory_c;
 import x10.ast.X10SourceFile_c;
 import x10.constraint.XTerm;
+import x10.extension.X10Del;
 import x10.extension.X10Ext;
 import x10.types.ConstrainedType;
 import x10.types.MethodInstance;
@@ -712,7 +714,13 @@ public class StaticInitializer extends ContextVisitor {
 		if (consInstance == null)
 			throw new RuntimeException("Couldn't find AtomicInteger.this(int)");
 
-		final Expr init = xnf.New(pos, tn, args).constructorInstance(consInstance).type(type);
+		Expr init = xnf.New(pos, tn, args).constructorInstance(consInstance).type(type);
+		final ClassType staticAllocAnnotation = xts.load("x10.compiler.StaticAllocate");
+		final TypeNode annoTypeNode = xnf.CanonicalTypeNode(pos, staticAllocAnnotation).typeRef(Types.ref(staticAllocAnnotation));
+		final AnnotationNode annoNode = xnf.AnnotationNode(pos, annoTypeNode);
+		final List<AnnotationNode> annos = new ArrayList<AnnotationNode>();
+		annos.add(annoNode);
+		init = (Expr) ((X10Del) init.del()).annotations(annos);
 
 		// fieldDecl and its association with fieldDef
 		FieldDecl result = xnf.FieldDecl(pos, xnf.FlagsNode(pos, flags), tn, xnf.Id(pos, name), init);
