@@ -257,6 +257,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("invasic/constraints/PEQuantity.x10");
 			allowedFiles.add("invasic/constraints/PartitionConstraint.x10");
 			allowedFiles.add("invasic/constraints/AND.x10");
+			allowedFiles.add("invasic/ICore.x10");
 			allowedFiles.add("invasic/RetreatFromSelf.x10");
 			allowedFiles.add("invasic/util/Queue.x10");
 			allowedFiles.add("invasic/util/NonblockingQueue.x10");

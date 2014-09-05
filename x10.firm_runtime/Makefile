@@ -66,6 +66,8 @@ ifeq ($(findstring sparc-invasic, $(TARGET)), sparc-invasic)
 	# For now, always build for soft float
 	OCTOPOS_BASE=../octopos-app/releases/current/leon/default
 	CPPFLAGS += -D__leon__ -isystem $(GCC_INCLUDE)
+	# Enable for i-Core support (needs libicore)
+#	CPPFLAGS += -DHAVE_ICORE -I../libicore/include
 endif
 ifeq ($(findstring linux, $(TARGET)), linux)
 	OCTOPOS_EXTRAS=../octopos-app/releases/current/extras/libethcomm

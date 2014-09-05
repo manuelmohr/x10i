@@ -182,6 +182,13 @@ public class Linked extends AbstractGoal_c {
 			cmd.add("-loo_rt");
 		}
 
+		final String libicorePath = x10DistPath + "/../libicore";
+		final File libicore = new File(libicorePath);
+		if (cpu.equals("sparc") && libicore.exists() && libicore.isDirectory()) {
+			cmd.add("-L" + libicorePath + "/build");
+			cmd.add("-licore");
+		}
+
 		final String stdlibPath = x10DistPath + "/../x10.firm_runtime/build/" + target;
 		if (!FirmState.libraryLoaded("x10"))
 			cmd.add(stdlibPath + "/libx10.a");
