@@ -63,7 +63,6 @@ ifeq ($(findstring invasic-irtss, $(TARGET)), invasic-irtss)
 	CPPFLAGS += -DUSE_AGENTSYSTEM
 endif
 ifeq ($(findstring sparc-invasic, $(TARGET)), sparc-invasic)
-	# For now, always build for soft float
 	OCTOPOS_BASE=../octopos-app/releases/current/leon/default
 	CPPFLAGS += -D__leon__ -isystem $(GCC_INCLUDE)
 	# Enable for i-Core support (needs libicore)
