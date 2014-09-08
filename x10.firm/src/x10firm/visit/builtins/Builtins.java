@@ -24,6 +24,7 @@ public class Builtins {
 		map.put("x10.lang.Pointer.write", new X10LangPointer.Write());
 		map.put("x10.lang.Pointer.castTo", new X10LangPointer.CastTo());
 		map.put("x10.lang.NativeSupport.getSize", new X10LangNativeSupport.GetSize());
+		map.put("x10.lang.NativeSupport.isPointerFree", new X10LangNativeSupport.IsPointerFree());
 		map.put("x10.lang.NativeSupport.unsafeCast", new X10LangNativeSupport.UnsafeCast());
 		map.put("x10.compiler.CompilerFlags.TRUE", new X10CompilerCompilerFlags.TRUE());
 		map.put("x10.compiler.CompilerFlags.FALSE", new X10CompilerCompilerFlags.FALSE());

@@ -52,14 +52,16 @@ public struct IndexedMemoryChunk[T] {
     }
 
     public static def allocateUninitialized[T](length: Int): IndexedMemoryChunk[T] {
-        val size   = calculateSize[T](length);
-        val memory = NativeSupport.alloc(size);
+        val size = calculateSize[T](length);
+        val ptrFree = NativeSupport.isPointerFree[T]();
+        val memory = ptrFree ? NativeSupport.allocAtomic(size) : NativeSupport.alloc(size);
         return IndexedMemoryChunk[T](memory, length);
     }
 
     public static def allocateZeroed[T](length: Int): IndexedMemoryChunk[T]{T haszero} {
-        val size   = calculateSize[T](length);
-        val memory = NativeSupport.allocZeroed(size);
+        val size = calculateSize[T](length);
+        val ptrFree = NativeSupport.isPointerFree[T]();
+        val memory = ptrFree ? NativeSupport.allocAtomicZeroed(size) : NativeSupport.allocZeroed(size);
         return IndexedMemoryChunk[T](memory, length);
     }
 

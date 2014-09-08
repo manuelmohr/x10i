@@ -79,7 +79,6 @@ void *gc_xrealloc_zeroed(void *ptr, size_t prev_size, size_t size)
 void *gc_xmalloc(size_t size)
 {
 	void *res = GC_MALLOC(size);
-
 	if (res == NULL && size != 0)
 		xnomem();
 	return res;

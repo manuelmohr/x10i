@@ -38,6 +38,20 @@ x10_pointer _ZN3x104lang13NativeSupport11allocZeroedEi(x10_int numBytes)
 	return gc_xmalloc(numBytes);
 }
 
+/* static x10.lang.NativeSupport.allocAtomic(UInt): Pointer */
+x10_pointer _ZN3x104lang13NativeSupport11allocAtomicEi(x10_int numBytes)
+{
+	return gc_xmalloc_atomic(numBytes);
+}
+
+/* static x10.lang.NativeSupport.allocAtomicZeroed(UInt): Pointer */
+x10_pointer _ZN3x104lang13NativeSupport17allocAtomicZeroedEi(x10_int numBytes)
+{
+	void *mem = gc_xmalloc_atomic(numBytes);
+	memset(mem, 0, numBytes);
+	return mem;
+}
+
 /* static x10.lang.NativeSupport.realloc(Pointer, Int, Int): Pointer */
 x10_pointer _ZN3x104lang13NativeSupport7reallocEPvii(x10_pointer prev,
 	x10_int prev_bytes, x10_int num_bytes)

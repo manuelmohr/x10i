@@ -77,4 +77,37 @@ public abstract class X10LangNativeSupport {
 			codeGenerator.finishConstruction(entity, savedConstruction);
 		}
 	}
+
+	/**
+	 * Create an instance of the built-in {@code static x10.lang.NativeSupport.isPointerFree[T](): Boolean} method.
+	 */
+	public static class IsPointerFree implements BuiltinMethodGenerator {
+
+		@Override
+		public void generate(final FirmGenerator codeGenerator, final MethodInstance meth,
+				final List<LocalInstance> formals) {
+			final FirmTypeSystem firmTypeSystem = codeGenerator.getFirmTypeSystem();
+			final Entity entity = firmTypeSystem.getMethodEntity(meth);
+
+			assert meth.typeParameters().size() == 1;
+			final Type typeParameter = meth.typeParameters().get(0);
+
+			final Type returnType = meth.returnType();
+			final MethodConstruction savedConstruction
+			= codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
+					returnType, null);
+			final MethodConstruction con = codeGenerator.getFirmConstruction();
+
+			final Mode paramMode = firmTypeSystem.getFirmMode(typeParameter);
+			final boolean isPointerFree = paramMode.isNum();
+			final Mode retMode = firmTypeSystem.getFirmMode(returnType);
+			final Node cnst = con.newConst(isPointerFree ? retMode.getOne() : retMode.getNull());
+			final Node mem = con.getCurrentMem();
+			final Node ret = con.newReturn(mem, new Node[] {cnst});
+			con.getGraph().getEndBlock().addPred(ret);
+			con.setUnreachable();
+
+			codeGenerator.finishConstruction(entity, savedConstruction);
+		}
+	}
 }

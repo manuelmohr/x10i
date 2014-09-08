@@ -26,6 +26,12 @@ public class NativeSupport {
      */
     public static native def getSize[T](): Int;
 
+    /**
+     * Returns whether T is guaranteed not to contain pointers.
+     * Examples are built-in types like Int, Short, etc.
+     */
+    public static native def isPointerFree[T](): Boolean;
+
     /** memory compare */
     public static native def memcmp(pointer1: Pointer, pointer2: Pointer, numBytes: Int): Int;
 
@@ -43,6 +49,12 @@ public class NativeSupport {
 
     /** allocation of memory (initialized to zero) */
     public static native def allocZeroed(numBytes: Int): Pointer;
+
+    /** allocation of pointer-free memory (uninitialized) */
+    public static native def allocAtomic(numBytes: Int): Pointer;
+
+    /** allocation of pointer-free memory (initialized to zero) */
+    public static native def allocAtomicZeroed(numBytes: Int): Pointer;
 
     /** reallocation of memory */
     public static native def realloc(previous: Pointer, previousBytes: Int, numBytes: Int): Pointer;

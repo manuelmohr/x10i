@@ -45,6 +45,7 @@ public final class SerializationSupport {
 	private int maxClassUid = 1;
 
 	private static final String GC_XMALLOC = "gc_xmalloc";
+	private static final String GC_XMALLOC_ATOMIC = "gc_xmalloc_atomic";
 
 	private static final String SERIALIZE_METHOD_NAME = "__serialize";
 	private static final String SERIALIZE_METHOD_SIGNATURE = "PvPv";
@@ -60,6 +61,7 @@ public final class SerializationSupport {
 	private Entity serializationWriteObject;
 	private Entity deserializationRestoreObject;
 	private Entity gcXMalloc;
+	private Entity gcXMallocAtomic;
 
 	/** Store the serialization function for each (class) type. */
 	private final Map<Type, Entity> serializeFunctions = new HashMap<Type, Entity>();
@@ -100,9 +102,10 @@ public final class SerializationSupport {
 		deserializationRestoreObject.setLdIdent(droName);
 
 		final MethodType mallocType = new MethodType(new Type[] {Mode.getIs().getType()}, new Type[] {typeP});
-
 		gcXMalloc = firmTypeSystem.getGlobalMethodEntity(GC_XMALLOC, mallocType);
 		gcXMalloc.setLdIdent(NameMangler.mangleKnownName(GC_XMALLOC));
+		gcXMallocAtomic = firmTypeSystem.getGlobalMethodEntity(GC_XMALLOC_ATOMIC, mallocType);
+		gcXMallocAtomic.setLdIdent(NameMangler.mangleKnownName(GC_XMALLOC_ATOMIC));
 	}
 
 	/**
@@ -488,6 +491,12 @@ public final class SerializationSupport {
 		}
 	}
 
+	private Entity chooseMallocEntity(final FirmTypeSystem firmTypeSystem, final polyglot.types.Type elementType) {
+		final Mode paramMode = firmTypeSystem.getFirmMode(elementType);
+		final boolean isPointerFree = paramMode.isNum();
+		return isPointerFree ? gcXMallocAtomic : gcXMalloc;
+	}
+
 	private void generateIndexedMemoryChunkDeserialize(final Construction con, final X10ClassType astType,
 	                                                   final ClassType klass, final Node bufPtr,
 	                                                   final Node objPtr, final FirmTypeSystem firmTypeSystem) {
@@ -520,11 +529,12 @@ public final class SerializationSupport {
 
 		// Second, allocate memory for the new backing storage
 		assert astType.typeArguments().size() == 1;
-		final Type elementType = firmTypeSystem.asType(astType.typeArguments().get(0));
+		final polyglot.types.Type x10ElementType = astType.typeArguments().get(0);
+		final Type elementType = firmTypeSystem.asType(x10ElementType);
 		final Node elemSize = con.newSize(Mode.getIs(), elementType);
 		final Node mallocSize = con.newMul(length, elemSize, Mode.getIs());
 		final Node mallocSizeIu = con.newConv(mallocSize, Mode.getIu());
-		final Node mallocSymConst = con.newAddress(gcXMalloc);
+		final Node mallocSymConst = con.newAddress(chooseMallocEntity(firmTypeSystem, x10ElementType));
 		final Node[] mallocArgs = new Node[] {mallocSizeIu};
 		final Node mallocCall = con.newCall(con.getCurrentMem(), mallocSymConst, mallocArgs, gcXMalloc.getType());
 		con.setCurrentMem(con.newProj(mallocCall, Mode.getM(), Call.pnM));
