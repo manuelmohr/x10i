@@ -85,7 +85,7 @@ public abstract class X10LangNativeSupport {
 
 		@Override
 		public void generate(final FirmGenerator codeGenerator, final MethodInstance meth,
-				final List<LocalInstance> formals) {
+						final List<LocalInstance> formals) {
 			final FirmTypeSystem firmTypeSystem = codeGenerator.getFirmTypeSystem();
 			final Entity entity = firmTypeSystem.getMethodEntity(meth);
 
@@ -94,7 +94,7 @@ public abstract class X10LangNativeSupport {
 
 			final Type returnType = meth.returnType();
 			final MethodConstruction savedConstruction
-			= codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
+				= codeGenerator.initConstruction(entity, formals, Collections.<LocalInstance>emptyList(),
 					returnType, null);
 			final MethodConstruction con = codeGenerator.getFirmConstruction();
 
