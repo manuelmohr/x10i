@@ -12,6 +12,7 @@ import firm.Util;
 import firm.bindings.binding_irconsconfirm;
 import firm.bindings.binding_irflag;
 import firm.bindings.binding_irgopt;
+import firm.bindings.binding_irmemory;
 import firm.bindings.binding_iroptimize;
 import firm.bindings.binding_lowering;
 
@@ -384,6 +385,9 @@ public final class FirmTransformations {
 		getOptimization("lower-sels").enable();
 		getOptimization("target-lowering").enable();
 		getOptimization("opt-load-store").enable();
+		// TODO Enable alias analysis once quadratic worst-case complexity problems have been solved.
+		binding_irmemory.set_irp_memory_disambiguator_options(
+				binding_irmemory.ir_disambiguator_options.aa_opt_always_alias.val);
 	}
 
 	/**

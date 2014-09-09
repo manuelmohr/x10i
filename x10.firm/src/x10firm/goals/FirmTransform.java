@@ -98,12 +98,7 @@ public class FirmTransform extends AllBarrierGoal {
 			}
 
 			optimize(graph, "control-flow");
-		}
-		// TODO: Fuse loops once quadratic complexity of load-store opt has been removed.
-		for (final Graph graph : Program.getGraphs()) {
 			optimize(graph, "opt-load-store");
-		}
-		for (final Graph graph : Program.getGraphs()) {
 			optimize(graph, "deconv");
 			optimize(graph, "thread-jumps");
 			optimize(graph, "remove-confirms");
@@ -154,12 +149,7 @@ public class FirmTransform extends AllBarrierGoal {
 			optimize(graph, "local");
 			optimize(graph, "deconv");
 			optimize(graph, "control-flow");
-		}
-		// TODO: Fuse loops once quadratic complexity of load-store opt has been removed.
-		for (final Graph graph : Program.getGraphs()) {
 			optimize(graph, "opt-load-store");
-		}
-		for (final Graph graph : Program.getGraphs()) {
 			optimize(graph, "gcse");
 			optimize(graph, "place");
 			optimize(graph, "control-flow");
