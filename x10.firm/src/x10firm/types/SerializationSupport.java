@@ -309,8 +309,8 @@ public final class SerializationSupport {
 	}
 
 	private void generateIndexedMemoryChunkSerialize(final Construction con, final X10ClassType astType,
-	                                                     final ClassType klass, final Node bufPtr,
-	                                                     final Node objPtr, final FirmTypeSystem firmTypeSystem) {
+	                                                 final ClassType klass, final Node bufPtr,
+	                                                 final Node objPtr, final FirmTypeSystem firmTypeSystem) {
 		Node ptr = null;
 		Node length = null;
 		Node lengthAddr = null;
@@ -383,8 +383,7 @@ public final class SerializationSupport {
 	 * This is used for primitive types and similar where we cannot/or do now want to automatically generate one,
 	 * but instead use a given variant form the runtime library.
 	 */
-	public void setKnownSerializationFunction(final Type type, final Entity function)
-	{
+	public void setKnownSerializationFunction(final Type type, final Entity function) {
 		serializeFunctions.put(type, function);
 	}
 
@@ -393,8 +392,7 @@ public final class SerializationSupport {
 	 * This is used for primitive types and similar where we cannot/or do now want to automatically generate one,
 	 * but instead use a given variant form the runtime library.
 	 */
-	public void setKnownDeserializationFunction(final Type type, final Entity function)
-	{
+	public void setKnownDeserializationFunction(final Type type, final Entity function) {
 		deserializeFunctions.put(type, function);
 	}
 
