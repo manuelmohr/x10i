@@ -101,7 +101,7 @@ public final class SerializationSupport {
 		deserializationRestoreObject = firmTypeSystem.getGlobalMethodEntity(droName, droType);
 		deserializationRestoreObject.setLdIdent(droName);
 
-		final MethodType mallocType = new MethodType(new Type[] {Mode.getIs().getType()}, new Type[] {typeP});
+		final MethodType mallocType = new MethodType(new Type[] {Mode.getIu().getType()}, new Type[] {typeP});
 		gcXMalloc = firmTypeSystem.getGlobalMethodEntity(GC_XMALLOC, mallocType);
 		gcXMalloc.setLdIdent(NameMangler.mangleKnownName(GC_XMALLOC));
 		gcXMallocAtomic = firmTypeSystem.getGlobalMethodEntity(GC_XMALLOC_ATOMIC, mallocType);
