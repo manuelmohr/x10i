@@ -356,7 +356,7 @@ x10_object *x10_deserialize_from(const char *data, size_t data_size)
 	return result;
 }
 
-x10_object* _ZN3x104lang7Runtime11deepCopyAnyEPN3x104lang3AnyE(const x10_object *obj)
+x10_object *_ZN3x104lang7Runtime11deepCopyAnyEPN3x104lang3AnyE(const x10_object *obj)
 {
 	struct obstack obst;
 	obstack_init(&obst);
