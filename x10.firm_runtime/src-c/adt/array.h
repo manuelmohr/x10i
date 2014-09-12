@@ -17,7 +17,7 @@ static inline void flexible_array_ensure_capacity(flexible_array_t *array,
 	flexible_array_grow_po2(array, capacity);
 }
 
-#define ARR_INIT(array)           memset((array), 0, sizeof(array))
+#define ARR_INIT(array)           memset((array), 0, sizeof(*array))
 #define ARR_LEN(type, array)      ((array)->size / sizeof(type))
 #define ARR_APPEND(type, array, x) do {                                  \
 	flexible_array_t *const array_ = (array);                            \
