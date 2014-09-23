@@ -97,8 +97,8 @@ float icore_sift(float *in0, float *in1)
 	float* result  = (float *)(ICORE_TLM_START + 0x6000);
 	const unsigned span_skip_stride = 0x00100010;
 
-	memcpy(vector0, in0, MATRIX_SIZE * sizeof(float));
-	memcpy(vector1, in1, MATRIX_SIZE * sizeof(float));
+	memcpy(vector0, in0, VECTOR_SIZE * sizeof(float));
+	memcpy(vector1, in1, VECTOR_SIZE * sizeof(float));
 	memset(result, 0, 4 * sizeof(float));
 
 	__asm__ __volatile__("sigrp 0x0, %g0, %g0");
