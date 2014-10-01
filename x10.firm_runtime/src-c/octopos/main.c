@@ -232,7 +232,8 @@ static void init_places(claim_t root_claim)
 #endif
 }
 
-static void shutdown_everything(void) {
+static void shutdown_everything(void)
+{
 	/* Shutdown root tile. Ignore the rest. */
 	shutdown_tile();
 }
