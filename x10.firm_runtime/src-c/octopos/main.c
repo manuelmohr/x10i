@@ -169,22 +169,18 @@ static void init_all_places(void)
 
 static void init_places(claim_t root_claim)
 {
-	const unsigned n_tiles      = get_tile_count();
-	const unsigned root_tile_id = get_tile_id();
-	const unsigned io_tile_id   = get_io_tile_id();
-	unsigned new_n_places;
+	const unsigned n_compute_tiles = get_compute_tile_count();
+	const unsigned root_tile_id    = get_tile_id();
 
-	/* Workaround, SPARC OctoPOS currently returns 0 for get_io_tile_id(). */
-	if (root_tile_id == io_tile_id || io_tile_id >= n_tiles) {
-		new_n_places = n_tiles;
-	} else {
-		new_n_places = n_tiles - 1;
-	}
+	/* get compute tile IDs */
+	unsigned *compute_tile_ids = mem_allocate_tlm(n_compute_tiles * sizeof(*compute_tile_ids));
+	const unsigned check = get_compute_tile_ids(compute_tile_ids, n_compute_tiles);
+	assert(check == n_compute_tiles && "Number of compute tiles mismatch");
 
-	dispatch_claim_t *new_places = mem_allocate_tlm(new_n_places * sizeof(*new_places));
-	memset(new_places, 0, new_n_places * sizeof(*new_places));
-	proxy_claim_t *proxies = mem_allocate_tlm(new_n_places * sizeof(*proxies));
-	memset(proxies, 0, new_n_places * sizeof(*proxies));
+	dispatch_claim_t *new_places = mem_allocate_tlm(n_compute_tiles * sizeof(*new_places));
+	memset(new_places, 0, n_compute_tiles * sizeof(*new_places));
+	proxy_claim_t *proxies = mem_allocate_tlm(n_compute_tiles * sizeof(*proxies));
+	memset(proxies, 0, n_compute_tiles * sizeof(*proxies));
 
 	/* Get as many CPUs as possible on local tile.
 	 * Remove this once invading is exposed as an API call to the user. */
@@ -196,13 +192,12 @@ static void init_places(claim_t root_claim)
 #else
 	(void) root_claim; /* remove warning */
 #endif
-	new_places[0] = get_own_dispatch_claim();
+	new_places[compute_tile_ids[root_tile_id]] = get_own_dispatch_claim();
 
 	/* Get as many CPUs as possible on all other tiles. */
-	unsigned pid = 1;
-	for (unsigned tile_id = 0; tile_id < n_tiles; ++tile_id) {
-		/* Skip root and I/O tiles. */
-		if (tile_id == root_tile_id || tile_id == io_tile_id)
+	for (unsigned pid = 0; pid < n_compute_tiles; ++pid) {
+		unsigned tile_id = compute_tile_ids[pid];
+		if (tile_id == root_tile_id)
 			continue;
 
 		proxy_claim_t   claim = NULL;
@@ -214,17 +209,17 @@ static void init_places(claim_t root_claim)
 
 		proxies[pid] = claim;
 		new_places[pid] = proxy_get_dispatch_info(claim);
-		pid++;
 	}
-	assert(pid == new_n_places);
 
-	distribute_places(new_places, new_n_places);
+	distribute_places(new_places, n_compute_tiles);
 	init_all_places();
 
 	/* If we use an agent system, we must free everything again,
 	 * so the agent can invade everything. */
 #ifdef USE_AGENTSYSTEM
-	for (pid = 1; pid < new_n_places; ++pid) {
+	for (unsigned pid = 0; pid < n_compute_tiles; ++pid) {
+		if (compute_tile_ids[pid] == root_tile_id)
+			continue;
 		proxy_claim_t pclaim = proxies[pid];
 		retreat_future_t fut;
 		proxy_retreat(pclaim, &fut);
