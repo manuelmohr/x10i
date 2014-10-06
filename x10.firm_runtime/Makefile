@@ -44,7 +44,7 @@ endif
 ifeq ($(findstring invasic, $(TARGET)), invasic)
 	PLATFORM = octopos
 	GCC_INCLUDE:=$(shell $(CC) --print-file-name=include)
-	CFLAGS += -fno-stack-protector
+	CFLAGS += -fno-stack-protector -ffreestanding
 	CPPFLAGS += -nostdinc
 	# This is NOT unix/linux...
 	CPPFLAGS += -Ulinux -U__linux -U__linux__ -U__gnu_linux__ -Uunix -U__unix -U__unix__
