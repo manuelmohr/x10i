@@ -101,7 +101,7 @@ $(A_FILE): $(O_FILE)
 	ar rucs $@ $?
 
 $(FIRM_NATIVE_TYPES_CONF): $(GEN_FIRM_NATIVE_SIZES) $(wildcard $(PLATFORMDIR)/*.h) $(wildcard $(SRCDIR)/*.h) $(CPARSER)
-	$(CPARSER) --print-compound-sizes $(CPARSER_TARGET) $(CPPFLAGS) $(APP_CFLAGS) -o $@ $(SRCDIR)/gen_firm_native_sizes.c
+	$(CPARSER) --print-compound-sizes $(CPARSER_TARGET) $(CPPFLAGS) $(APP_CFLAGS) -I $(SRCDIR)/$(PLATFORM)/include-workaround -o $@ $(SRCDIR)/gen_firm_native_sizes.c
 
 $(GEN_PRIMITIVE_TYPES): $(GENERATORSDIR)/create_types.py
 	mkdir -p $(BUILDDIR)
@@ -125,7 +125,7 @@ cparser_subdir:
 .PHONY: cparser_subdir
 
 $(IR_FILE): $(MASTER) $(CPARSER)
-	$(CPARSER) $(CPPFLAGS) $(CFLAGS) $(CPARSER_TARGET) -w $< --export-ir -o $@
+	$(CPARSER) $(CPPFLAGS) $(CFLAGS) -I $(SRCDIR)/$(PLATFORM)/include-workaround $(CPARSER_TARGET) -w $< --export-ir -o $@
 
 .PHONY: clean
 clean:
