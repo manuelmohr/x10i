@@ -37,12 +37,13 @@ fi
 mkdir -p "$DIST_DIR"
 for release in $RELEASES; do
 	if ! test -e "$DIST_DIR/$release"; then
+		echo "Trying to fetch $DIST_DIR/$release ..."
 		IPDDIR="/ben/local/octopos-releases"
 		if test -r "$IPDDIR/$release"; then
 			echo "Copying $release from $IPDDIR"
 			cp -p "$IPDDIR/$release" "$DIST_DIR"
 		else
-			echo "Cannot find $DIST_DIR/$release, please download it from https://www4.cs.fau.de/invasic/octopos/"
+			echo "Cannot find $IPDDIR/$release, please download it from https://www4.cs.fau.de/invasic/octopos/"
 			exit 1
 		fi
 	fi
