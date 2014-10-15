@@ -6,7 +6,7 @@ import x10.compiler.LinkSymbol;
 /** A processing element executes i-lets and represents a hardware core */
 public class ProcessingElement {
     private val clm:Pointer;
-    private val tileid:Int;
+    private val plc:Place;
     private val petype:Int;
     private val peid:Int;
 
@@ -15,26 +15,26 @@ public class ProcessingElement {
     public static val ICORE  = 2 as Int;
     public static val TCPA   = 3 as Int;
 
-    public def this(clm:Pointer, tileid:Int, petype:Int, peid:Int) {
+    public def this(clm:Pointer, plc:Place, petype:Int, peid:Int) {
         this.clm = clm;
-        this.tileid = tileid;
+        this.plc = plc;
         this.petype = petype;
         this.peid = peid;
     }
 
     public def toString(): String {
-        return "<PE: tile=" + tileid + " pe=" + peid + " type="+petype+">";
+        return "<PE: " + plc + " pe=" + peid + " type="+petype+">";
     }
 
     /** Returns place of the PE */
     public def getPlace():Place {
-        return new Place(tileid);
+        return plc;
     }
 
     public def equals(pe:Any) {
         val pe1 = pe as ProcessingElement;
         if (pe1 == null) return false;
-        return this.tileid == pe1.tileid && this.peid == pe1.peid;
+        return this.plc == pe1.plc && this.peid == pe1.peid;
     }
 
     @LinkSymbol("get_cpu_id")

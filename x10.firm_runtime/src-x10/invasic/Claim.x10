@@ -76,7 +76,7 @@ abstract public class Claim {
       val arr = new Array[Place](tiles.size());
       var i:int = 0;
       for (tid in tiles) {
-        arr(i) = new Place(tid);
+        arr(i) = new Place(i);
         i += 1;
       }
       return arr.sequence();
@@ -219,13 +219,15 @@ final class AgentClaim extends Claim {
         this.check_invariant();
         val res = new ArrayList[ProcessingElement]();
         val tiles = tiles(this.clm);
+        var pid:int = 0;
         for (tid in tiles) {
             val pecount = pecount_tile_type(this.clm, tid, 0/*RISC*/);
             for (peid in 0..(pecount-1)) {
                 val pe_type = 0/*RISC*/;
-                val pe = new ProcessingElement(this.clm, tid, pe_type, peid);
+                val pe = new ProcessingElement(this.clm, new Place(pid), pe_type, peid);
                 res.add(pe);
             }
+            pid += 1;
         }
         return res;
     }
