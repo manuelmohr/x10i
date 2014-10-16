@@ -3,6 +3,7 @@
 #include "serialization.h"
 #include "adt/pset_new.h"
 #include "xmalloc.h"
+#include "sync.h"
 
 #define X10_SERIALIZATION_NULL_TYPE_UID 0
 #define X10_SERIALIZATION_KNOWN_OBJECT_TYPE_UID ((uint32_t)-1)
@@ -14,7 +15,7 @@ struct deserialize_methods_entry_t {
 typedef struct deserialize_methods_entry_t dm_entry_t;
 
 static pset_new_t uncollectable_refs;
-static simple_spinlock uncollectable_refs_lock;
+static LOCK_T uncollectable_refs_lock;
 
 extern dm_entry_t __deserialize_methods[];
 extern serialize_method *__serialize_methods[];
@@ -22,7 +23,7 @@ extern serialize_method *__serialize_methods[];
 void x10_serialization_init(void)
 {
 	pset_new_init(&uncollectable_refs);
-	simple_spinlock_init(&uncollectable_refs_lock);
+	LOCK_INIT(&uncollectable_refs_lock);
 }
 
 static inline int find_object(serialization_buffer_t *buffer,
@@ -156,9 +157,9 @@ void x10_serialization_write_pointer(serialization_buffer_t *buf,
 	 * get sent to other places (e.g. GlobalRef contains a pointer), we may have
 	 * references on other places to our data. For now, we simply remember the
 	 * address and avoid any future garbage collection of referenced objects */
-	simple_spinlock_lock(&uncollectable_refs_lock);
+	LOCK_LOCK(&uncollectable_refs_lock);
 	pset_new_insert(&uncollectable_refs, (void*) *value_ptr);
-	simple_spinlock_unlock(&uncollectable_refs_lock);
+	LOCK_UNLOCK(&uncollectable_refs_lock);
 }
 
 static inline void put_u32(serialization_buffer_t *buf, uint32_t val)
