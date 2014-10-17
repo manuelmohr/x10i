@@ -8,7 +8,7 @@ import x10.compiler.LinkSymbol;
     <p>This guarantees that no <code>at</code> is necessary.</p>
  */
 public class ThisPlace extends PredicateConstraint {
-    public def apply(constr:Pointer) {
+    public def toAgentConstr(constr:Pointer) {
         set_tile(constr, get_my_tile());
     }
 

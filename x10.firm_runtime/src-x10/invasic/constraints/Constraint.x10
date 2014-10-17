@@ -4,7 +4,7 @@ import x10.lang.Pointer;
 
 /** The abstract root of all constraints. */
 public abstract class Constraint {
-    abstract def apply(constr:Pointer):void;
+    abstract public def toAgentConstr(constr:Pointer):void;
 
     public static operator (a:Constraint) && (b:Constraint) {
         val and = new AND();

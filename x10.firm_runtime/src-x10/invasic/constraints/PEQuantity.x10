@@ -17,10 +17,10 @@ public class PEQuantity extends Constraint {
         this(count, count);
     }
 
-    public def apply(constr:Pointer) {
-        set_quantity(constr, min, max, 0);
-    }
-
     @LinkSymbol("agent_constr_set_quantity")
     static native def set_quantity(constr:Pointer, min:Int, max:Int, typ:Int):void;
+
+    public def toAgentConstr(constr:Pointer) {
+      set_quantity(constr, min, max, 0);
+    }
 }

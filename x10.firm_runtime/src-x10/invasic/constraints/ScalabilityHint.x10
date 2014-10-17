@@ -18,7 +18,7 @@ public class ScalabilityHint extends Hint {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 
-    public def apply(constr:Pointer) {
+    public def toAgentConstr(constr:Pointer) {
         val size = this.curve.size;
         val data = this.curve.raw().pointer();
         //set_curve(constr, data, size); TODO not implemented in iRTSS yet

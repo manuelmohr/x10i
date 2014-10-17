@@ -16,11 +16,28 @@ import invasic.constraints.NotEnoughResources;
   A claim represents a set of reserved resources.
  */
 abstract public class Claim {
+    @LinkSymbol("agent_constr_create")
+    static native def create_constr():Pointer;
+
+    @LinkSymbol("agent_constr_delete")
+    static native def delete_constr(c:Pointer):Pointer;
+
+    /** Converts X10 constraints into iRTSS constraints
+      * Remember to delete them afterwards! */
+    private static def createAgentConst(c:Constraint):Pointer {
+      val constr = create_constr();
+      c.toAgentConstr(constr);
+      return constr;
+    }
+
     /** Returns a claim fulfilling the constraint or throws a NotEnoughResources exception */
     public static def invade(c:Constraint):Claim {
-        val and = c as AND;
-        val clm = invade(null as Pointer, and.constr);
-        return new AgentClaim(clm);
+        val ac = create_constr();
+        c.toAgentConstr(ac);
+        val clm = invade(null as Pointer, ac);
+        val ret = new AgentClaim(clm);
+        delete_constr(ac);
+        return ret;
     }
 
     @LinkSymbol("x10_agent_claim_invade")
@@ -154,8 +171,11 @@ final class AgentClaim extends Claim {
     /** Reinvades with new constraints and returns whether claim contents changed */
     public def reinvade(c:Constraint):Boolean {
         this.check_invariant();
-        val and = c as AND;
-        return reinvade(this.clm, and.constr) != 0;
+        val ac = create_constr();
+        c.toAgentConstr(ac);
+        val ret = reinvade(this.clm, ac);
+        delete_constr(ac);
+        return ret != 0;
     }
 
     @LinkSymbol("x10_agent_claim_reinvade_constraints")

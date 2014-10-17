@@ -2,28 +2,23 @@ package invasic.constraints;
 
 import x10.lang.Pointer;
 import x10.compiler.LinkSymbol;
+import x10.util.ArrayList;
 
 /** A constraint class to combine constraints,
   such that each constraint must be fulfilled. */
 public class AND extends MultipleConstraints {
-    public val constr:Pointer;
+    public val cs = new ArrayList[Constraint]();
 
-    public def this() {
-        this.constr = create_constr();
-    }
-
-    @LinkSymbol("agent_constr_create")
-    static native def create_constr():Pointer;
+    public def this() { }
 
     /** add another constraint */
     public def add(c:Constraint):void {
-        c.apply(this.constr);
+        cs.add(c);
     }
 
-    def apply(constr2:Pointer) {
-        overwrite(this.constr, constr2);
+    public def toAgentConstr(constr:Pointer) {
+      for (c in cs) {
+        c.toAgentConstr(constr);
+      }
     }
-
-    @LinkSymbol("agent_constr_overwrite")
-    static native def overwrite(constrA:Pointer, constrB:Pointer):void;
 }
