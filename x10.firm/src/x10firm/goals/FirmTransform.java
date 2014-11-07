@@ -67,6 +67,9 @@ public class FirmTransform extends AllBarrierGoal {
 			optimize(graph, "local");
 			optimize(graph, "control-flow");
 		}
+
+		optimize("rta");
+
 		optimize("lower-oo");
 		optimize("lower-sels");
 
