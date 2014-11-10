@@ -188,6 +188,7 @@ import firm.nodes.Store;
 import firm.nodes.Switch;
 import firm.oo.nodes.InstanceOf;
 import firm.oo.nodes.MethodSel;
+import firm.oo.nodes.VptrIsSet;
 
 /**
  * creates a firm-program (a collection of firm-graphs) from an X10-AST.
@@ -1745,23 +1746,27 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		return resultPtr;
 	}
 
-	private void initVPtr(final Node ptr, final ClassType firmType) {
+	private Node initVPtr(final Node objPtr, final ClassType firmType) {
 		final Entity vptr = OO.getClassVPtrEntity(firmType);
-		final Node sel = con.newMember(ptr, vptr);
+		final Node sel = con.newMember(objPtr, vptr);
 		final Entity vtable = OO.getClassVTableEntity(firmType);
 		final Node vtableSymConst = con.newAddress(vtable);
 		final Node mem = con.getCurrentMem();
 		final Node store = con.newStore(mem, sel, vtableSymConst);
 		final Node newMem = con.newProj(store, Mode.getM(), Store.pnM);
-		con.setCurrentMem(newMem);
+		final Node vptrisset = VptrIsSet.create(con, newMem, objPtr, firmType); // place marker node after vptr initialization
+		final Node newMem2 = con.newProj(vptrisset, Mode.getM(), VptrIsSet.pnM);
+		con.setCurrentMem(newMem2);
+		final Node usableObjPtr = con.newProj(vptrisset, Mode.getP(), VptrIsSet.pnRes);
+		return usableObjPtr;
 	}
 
 	private Node genObjectAlloc(final Type x10Type, final Entity allocEntity) {
 		final ClassType firmType = firmTypeSystem.asClass(x10Type, true);
 		final Node size = con.newSize(Mode.getIu(), firmType);
 		final Node objPtr = genMallocCall(allocEntity, size);
-		initVPtr(objPtr, firmType);
-		return objPtr;
+		final Node usableObjPtr = initVPtr(objPtr, firmType);
+		return usableObjPtr;
 	}
 
 	private Node genObjectHeapAlloc(final Type x10Type) {
