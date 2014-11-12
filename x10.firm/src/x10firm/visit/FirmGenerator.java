@@ -1754,7 +1754,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node mem = con.getCurrentMem();
 		final Node store = con.newStore(mem, sel, vtableSymConst);
 		final Node newMem = con.newProj(store, Mode.getM(), Store.pnM);
-		final Node vptrisset = VptrIsSet.create(con, newMem, objPtr, firmType); // place marker node after vptr initialization
+		final Node vptrisset = VptrIsSet.create(con, newMem, objPtr, firmType);
 		final Node newMem2 = con.newProj(vptrisset, Mode.getM(), VptrIsSet.pnM);
 		con.setCurrentMem(newMem2);
 		final Node usableObjPtr = con.newProj(vptrisset, Mode.getP(), VptrIsSet.pnRes);
