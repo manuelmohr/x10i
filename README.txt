@@ -39,8 +39,6 @@ Tip: "ant dist-firm" compiles everything necessary for x10firm without
      recompiling the x10c++, x10c parts
 
 
-
-
 == Tips for debugging Java in gdb ==
 If you want to run java programs in gdb, then you should make sure that gdb ignores some unix signals that java reroutes and expects to receive. If gdb intercepts these the java program won't work.
 The easy way to do this is to add this macro to your .gdbinit and start it before running any java programs. (We advice against this for non-java programs, since it hides most segfaults from gdb)
@@ -75,6 +73,13 @@ example "Desugarer"). Passnames can be in all the goals in the ExtensionInfo.
 Requires octopos-app within this base directory.
 Depending on what you do, you might have to create more symlinks
 within octopos to choose the right release/variant/version.
+
+Also required is an executable called i686-invasic-irtss-gcc
+(or similar depending on compilation target). You can probably
+just create a symlink to the normal gcc executable. Just make
+sure it is in your $PATH.
+
+  ln -s /usr/bin/gcc i686-invasic-irtss-gcc
 
 Within x10.dist compile via
 
