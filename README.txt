@@ -78,4 +78,4 @@ within octopos to choose the right release/variant/version.
 
 Within x10.dist compile via
 
-	ant dist-firm -DTARGET=i686-invasic-octopos -DSIMULATOR=
+	ant dist-firm -DTARGET=i686-invasic-irtss
