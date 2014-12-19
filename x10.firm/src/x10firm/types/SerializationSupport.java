@@ -358,11 +358,11 @@ public final class SerializationSupport {
 		genCallToSerialize(lengthType, con, bufPtr, lengthAddr);
 
 		assert astType.typeArguments().size() == 1;
-		final Type elementType = firmTypeSystem.asType(astType.typeArguments().get(0));
+		final polyglot.types.Type argumentType = astType.typeArguments().get(0);
+		final Type elementType = firmTypeSystem.asType(argumentType);
 
 		// Generate call to write_data for primitive types
-		final Mode elementMode = elementType.getMode();
-		final boolean isPrimitive = elementMode != null && elementMode != Mode.getP();
+		final boolean isPrimitive = firmTypeSystem.getFirmMode(argumentType).isNum();
 		if (isPrimitive) {
 			final Node writeDataAddr = con.newAddress(serializationWriteData);
 			Node mem = con.getCurrentMem();
@@ -575,8 +575,8 @@ public final class SerializationSupport {
 		con.setCurrentMem(con.newProj(storePtr, Mode.getM(), Store.pnM));
 
 		// Third, generate call to restore_data for primitive types
-		final Mode elementMode = elementType.getMode();
-		final boolean isPrimitive = elementMode != null && elementMode != Mode.getP();
+		final Mode elementMode = firmTypeSystem.getFirmMode(x10ElementType);
+		final boolean isPrimitive = elementMode.isNum();
 		if (isPrimitive) {
 			final Node restoreDataAddr = con.newAddress(deserializationRestoreData);
 			Node mem = con.getCurrentMem();
