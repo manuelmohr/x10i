@@ -162,6 +162,12 @@ void x10_serialization_write_pointer(serialization_buffer_t *buf,
 	LOCK_UNLOCK(&uncollectable_refs_lock);
 }
 
+void x10_serialization_write_data(serialization_buffer_t *buf,
+                                  const void *data, size_t size)
+{
+	obstack_grow(buf->obst, data, size);
+}
+
 static inline void put_u32(serialization_buffer_t *buf, uint32_t val)
 {
 	obstack_make_room(buf->obst, 4);
@@ -317,6 +323,13 @@ void x10_deserialization_restore_pointer(deserialization_buffer_t *buf,
 {
 	READ_FROM_BUF(32, buf, addr);
 	buf->cursor += sizeof(*addr);
+}
+
+void x10_deserialization_restore_data(deserialization_buffer_t *buf,
+                                      void *data, size_t size)
+{
+	memcpy(data, &buf->data[buf->cursor], size);
+	buf->cursor += size;
 }
 
 void x10_deserialization_restore_object(deserialization_buffer_t *buf, x10_object **addr)
