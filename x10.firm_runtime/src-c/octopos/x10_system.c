@@ -1,5 +1,6 @@
 #include <time.h>
 #include "types.h"
+#include <gc.h>
 
 x10_boolean _ZN3x104lang6System5sleepEx(x10_long millis)
 {
@@ -20,5 +21,5 @@ void _ZN3x104lang6System11setExitCodeEi(x10_int code)
 // x10.lang.System.gc(): void
 void _ZN3x104lang6System2gcEv(void)
 {
-	/* no garbage collector yet, so nothing to collect */
+	GC_gcollect();
 }
