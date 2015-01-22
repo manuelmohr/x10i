@@ -251,6 +251,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("invasic/constraints/PredicateConstraint.x10");
 			allowedFiles.add("invasic/constraints/NotEnoughResources.x10");
 			allowedFiles.add("invasic/constraints/ScalabilityHint.x10");
+			allowedFiles.add("invasic/constraints/DowneyScalabilityHint.x10");
 			allowedFiles.add("invasic/constraints/Hint.x10");
 			allowedFiles.add("invasic/constraints/MultipleConstraints.x10");
 			allowedFiles.add("invasic/constraints/ThisPlace.x10");
