@@ -5,7 +5,7 @@
 #
 # Note: octopos nightlies can be found at:
 #    https://www4.cs.fau.de/invasic/octopos/
-set -eu
+set -euv
 
 RELEASE_DATE="2014-10-16"
 DEFAULT_X86GUEST="4t-w-iotile"
@@ -51,7 +51,7 @@ done
 
 # Check md5sum to be sure
 pushd "$DIST_DIR" > /dev/null
-echo "$MD5SUMS" | md5sum --status -c
+echo "$MD5SUMS" | md5sum --quiet -c
 popd > /dev/null
 
 # Extract the releases to their correct place
