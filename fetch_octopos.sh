@@ -56,8 +56,6 @@ popd > /dev/null
 
 # Extract the releases to their correct place
 #
-mkdir -p "$OCTOPOS_APP_DIR"
-rm -rf "$OCTOPOS_APP_DIR/releases"
 mkdir -p "$OCTOPOS_APP_DIR/releases"
 for release in $RELEASES; do
 	echo "Extracting $release"
