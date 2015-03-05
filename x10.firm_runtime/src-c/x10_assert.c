@@ -5,11 +5,11 @@
 void x10_assert(x10_boolean cond, x10_string* message, x10_string* position)
 {
 	if (!cond) {
-		puts("assert at \"");
+		printf("assert at \"");
 		fwrite(position->chars, position->len, 1, stdout);
-		puts("\" failed");
+		printf("\" failed");
 		if (message) {
-			puts(":\n");
+			printf(": ");
 			fwrite(message->chars, message->len, 1, stdout);
 			putchar('\n');
 		}
