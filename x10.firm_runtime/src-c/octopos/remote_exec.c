@@ -164,8 +164,7 @@ static void free_obstack(void *obstack)
 	mem_free_tlm(obst);
 }
 
-/* Runs an at statement. */
-static void run_at_statement(void *arg, void *source_finish_state)
+static void do_run_at_statement(void *arg, void *source_finish_state, bool notify_local)
 {
 	/* Create a new top level finish state on the new tile. */
 	finish_state_t fs;
@@ -186,10 +185,12 @@ static void run_at_statement(void *arg, void *source_finish_state)
 
 	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(closure);
 
-	/* Notify local termination to source tile. */
-	simple_ilet notify_local_termination_ilet;
-	simple_ilet_init(&notify_local_termination_ilet, notify_local_termination, source_local_data);
-	dispatch_claim_infect(source_claim, &notify_local_termination_ilet, 1);
+	if (notify_local) {
+		/* Notify local termination to source tile. */
+		simple_ilet notify_local_termination_ilet;
+		simple_ilet_init(&notify_local_termination_ilet, notify_local_termination, source_local_data);
+		dispatch_claim_infect(source_claim, &notify_local_termination_ilet, 1);
+	}
 
 	/* Wait for global termination. */
 	finish_state_wait(&fs);
@@ -199,6 +200,18 @@ static void run_at_statement(void *arg, void *source_finish_state)
 	simple_ilet notify_global_termination_ilet;
 	simple_ilet_init(&notify_global_termination_ilet, notify_global_termination, source_finish_state);
 	dispatch_claim_infect(source_claim, &notify_global_termination_ilet, 1);
+}
+
+/* Runs an at async statement. */
+static void run_at_async_statement(void *arg, void *source_finish_state)
+{
+	do_run_at_statement(arg, source_finish_state, false);
+}
+
+/* Runs an at statement. */
+static void run_at_statement(void *arg, void *source_finish_state)
+{
+	do_run_at_statement(arg, source_finish_state, true);
 }
 
 /* Cleans up and waits until at expression terminates globally. */
@@ -312,6 +325,15 @@ static void evaluate_at_expression(void *arg, void *source_finish_state)
 	dispatch_claim_infect(source_claim, &allocation_ilet, 1);
 }
 
+static void notify_local_and_cleanup(void *source_data)
+{
+	source_local_data_t *sld = (source_local_data_t *)source_data;
+	assert(sld->message_type == MSG_RUN_AT_ASYNC);
+
+	free_obstack(sld->obstack);
+	simple_signal_signal(sld->join_signal);
+}
+
 /* Transfers the closure needed to execute the at statement/expression. */
 static void transfer_parameters(void *source_data, void *destination_buffer)
 {
@@ -328,12 +350,16 @@ static void transfer_parameters(void *source_data, void *destination_buffer)
 	/* Perform DMA transfer. */
 	simple_ilet local;
 	simple_ilet remote;
-	simple_ilet_init(&local, free_obstack, obstack);
 	if (message_type == MSG_EVAL_AT) {
+		simple_ilet_init(&local, free_obstack, obstack);
 		dual_ilet_init(&remote, evaluate_at_expression, destination_buffer, finish_state);
-	} else {
-		assert(message_type == MSG_RUN_AT);
+	} else if (message_type == MSG_RUN_AT) {
+		simple_ilet_init(&local, free_obstack, obstack);
 		dual_ilet_init(&remote, run_at_statement, destination_buffer, finish_state);
+	} else {
+		assert(message_type == MSG_RUN_AT_ASYNC);
+		simple_ilet_init(&local, notify_local_and_cleanup, source_local_data);
+		dual_ilet_init(&remote, run_at_async_statement, destination_buffer, finish_state);
 	}
 	dispatch_claim_push_dma(dispatch_claim, send_buffer, destination_buffer, buffer_size, &local, &remote);
 }
@@ -357,7 +383,7 @@ static void allocate_destination_memory(void *source_local_data, void *buffer_si
 
 static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_claim, x10_int msg_type, x10_object *closure)
 {
-	assert(msg_type == MSG_RUN_AT || msg_type == MSG_EVAL_AT);
+	assert(msg_type == MSG_RUN_AT || msg_type == MSG_EVAL_AT || msg_type == MSG_RUN_AT_ASYNC);
 
 	/* Serialize closure. */
 	struct obstack *obst = mem_allocate_tlm(sizeof(*obst));

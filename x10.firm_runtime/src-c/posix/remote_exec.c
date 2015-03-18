@@ -286,6 +286,17 @@ static void handle_remote_exec(const message_t *message)
 		completion->return_flag  = header.return_flag;
 		completion->return_lock  = header.return_lock;
 		send_msg(&msg, header.from_place);
+	} else if (header.msg_type == MSG_RUN_AT_ASYNC) {
+		message_t msg;
+		memset(&msg, 0, sizeof(msg));
+		completion_simple_message_t *completion = &msg.completion_simple;
+		completion->base.handler = handle_completion_simple;
+		completion->return_cond  = header.return_cond;
+		completion->return_flag  = header.return_flag;
+		completion->return_lock  = header.return_lock;
+		send_msg(&msg, header.from_place);
+
+		_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(closure);
 	} else {
 		assert(header.msg_type == MSG_EVAL_AT);
 		x10_object *retval = _ZN3x104lang7Runtime14callAnyClosureEPN3x104lang8$Fun_0_0IPN3x104lang3AnyEEE(closure);
@@ -511,7 +522,7 @@ x10_object *x10_execute_at(x10_int remote_place, x10_int msg_type,
 	unsigned remote_id = (unsigned)remote_place;
 	assert(remote_id != place_id);
 
-	assert(msg_type == MSG_RUN_AT || msg_type == MSG_EVAL_AT);
+	assert(msg_type == MSG_RUN_AT || msg_type == MSG_EVAL_AT || msg_type == MSG_RUN_AT_ASYNC);
 
 	pthread_mutex_t return_lock  = PTHREAD_MUTEX_INITIALIZER;
 	pthread_cond_t  return_cond  = PTHREAD_COND_INITIALIZER;
