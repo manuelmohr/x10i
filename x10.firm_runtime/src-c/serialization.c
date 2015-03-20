@@ -351,6 +351,12 @@ void x10_deserialization_restore_object(deserialization_buffer_t *buf, x10_objec
 	*addr = newObj;
 }
 
+void x10_deserialization_restore_stateless_object(x10_object *obj, uint32_t class_id)
+{
+	dm_entry_t *entry = &__deserialize_methods[class_id];
+	obj->vptr = entry->vtable;
+}
+
 x10_object *x10_deserialize_from(const char *data, size_t data_size)
 {
 	deserialization_buffer_t debuf;

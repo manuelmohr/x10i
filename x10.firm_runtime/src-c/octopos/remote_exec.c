@@ -231,13 +231,10 @@ static void run_at_async_statement_small(void *arg, void *source_finish_state)
 	init_x10_activity(&fs);
 
 	/* Deserialize object. */
-	uint32_t     uid      = (uint32_t)arg;
-	const size_t MAX_SIZE = sizeof(void*);
-	char         buf[MAX_SIZE];
-	write_uid(buf, uid);
-	x10_object *closure = x10_deserialize_from(buf, 4);
+	x10_object closure;
+	x10_deserialization_restore_stateless_object(&closure, (uint32_t)arg);
 
-	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(closure);
+	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(&closure);
 
 	/* Wait for global termination. */
 	finish_state_wait(&fs);
