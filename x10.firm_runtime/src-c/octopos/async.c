@@ -66,8 +66,6 @@ typedef struct async_closure {
 	x10_object     *body;
 	/* enclosing finish state */
 	finish_state_t *enclosing;
-	/* executing ilet */
-	simple_ilet    *ilet;
 	/* owning agent claim */
 	agentclaim_t   agent_claim;
 } async_closure;
@@ -135,7 +133,6 @@ static void execute(void *ptr)
 	async_closure  *ac          = (async_closure *)ptr;
 	x10_object     *body        = ac->body;
 	finish_state_t *fs          = ac->enclosing;
-	simple_ilet    *ilet        = ac->ilet;
 #ifdef USE_AGENTSYSTEM
 	agentclaim_t    agent_claim = ac->agent_claim;
 #endif
@@ -153,8 +150,6 @@ static void execute(void *ptr)
 
 	/* send signal to finish state */
 	unregister_from_finish_state(fs);
-
-	mem_free_tlm(ilet);
 }
 
 /**
@@ -188,18 +183,17 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object
 {
 	finish_state_t *enclosing = finish_state_get_current();
 	async_closure  *ac        = mem_allocate_tlm(sizeof(async_closure));
-	simple_ilet    *child     = mem_allocate_tlm(sizeof(simple_ilet));
 	ac->body      = body;
 	ac->enclosing = enclosing;
-	ac->ilet      = child;
 #ifdef USE_AGENTSYSTEM
 	ac->agent_claim = agentclaim_get_current();
 #else
 	ac->agent_claim = 0;
 #endif
-	simple_ilet_init(child, execute, ac);
+	simple_ilet child;
+	simple_ilet_init(&child, execute, ac);
 	register_at_finish_state(enclosing);
-	if (infect(enclosing->claim, child, 1)) {
+	if (infect(enclosing->claim, &child, 1)) {
 		unregister_from_finish_state(enclosing);
 		panic("infect failed");
 	}
