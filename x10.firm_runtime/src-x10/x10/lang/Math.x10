@@ -270,6 +270,8 @@ public final class Math {
    @Native("c++", "x10::lang::MathNatives::sqrt(#a)")
    public static native def sqrt(a:Double):Double;
 
+   public static native def sqrt(a:Float):Float;
+
     /**
      * Returns the principal value of the square root of <code>z</code>.
      * The branch cut is on the real line at (-inf, 0)
