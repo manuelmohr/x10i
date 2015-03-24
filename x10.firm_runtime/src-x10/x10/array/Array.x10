@@ -892,12 +892,13 @@ public final class Array[T] (
      * @throws IllegalArgumentException if mismatch in size of backing storage
      *         of the two arrays.
      */
-    /*
     public static def asyncCopy[T](src:Array[T], dst:RemoteArray[T]) {
+        /*
         if (src.raw.length() != dst.rawData.length()) throw new IllegalArgumentException("source and destination do not have equal size");
         IndexedMemoryChunk.asyncCopy(src.raw, 0, dst.rawData, 0, src.raw.length());
+        */
+        assert false : "asyncCopy called";
     }
-    */
 
 
     /**
@@ -926,15 +927,16 @@ public final class Array[T] (
      * @throws IllegalArgumentException if the specified copy regions would
      *         result in an ArrayIndexOutOfBoundsException.
      */
-    /*
     public static def asyncCopy[T](src:Array[T], srcPoint:Point,
             dst:RemoteArray[T], dstPoint:Point,
             numElems:int) {
+        /*
         val gra = dst.array;
         val dstIndex = at (gra) gra().region.indexOf(dstPoint);
         asyncCopy(src, src.region.indexOf(srcPoint), dst, dstIndex, numElems);
+        */
+        assert false : "asyncCopy called";
     }
-    */
 
 
     /**
@@ -972,10 +974,10 @@ public final class Array[T] (
      * @throws IllegalArgumentException if the specified copy regions would
      *         result in an ArrayIndexOutOfBoundsException.
      */
-    /*
     public static def asyncCopy[T](src:Array[T], srcIndex:int,
             dst:RemoteArray[T], dstIndex:int,
             numElems:int) {
+        /*
         if (srcIndex < 0 || ((srcIndex+numElems) > src.raw.length())) {
             throw new IllegalArgumentException("Specified range is beyond bounds of source array");
         }
@@ -983,8 +985,9 @@ public final class Array[T] (
             throw new IllegalArgumentException("Specified range is beyond bounds of destination array");
         }
         IndexedMemoryChunk.asyncCopy(src.raw, srcIndex, dst.rawData, dstIndex, numElems);
+        */
+        assert false : "asyncCopy called";
     }
-    */
 
 
     /**
@@ -1008,12 +1011,13 @@ public final class Array[T] (
      * @throws IllegalArgumentException if mismatch in size of backing storage
      *         of the two arrays.
      */
-    /*
     public static def asyncCopy[T](src:RemoteArray[T], dst:Array[T]) {
+        /*
         if (src.rawData.length() != dst.raw.length()) throw new IllegalArgumentException("source and destination do not have equal size");
         IndexedMemoryChunk.asyncCopy(src.rawData, 0, dst.raw, 0, dst.raw.length());
+        */
+        assert false : "asyncCopy called";
     }
-    */
 
 
     /**
@@ -1042,15 +1046,16 @@ public final class Array[T] (
      * @throws IllegalArgumentException if the specified copy regions would
      *         result in an ArrayIndexOutOfBoundsException.
      */
-    /*
     public static def asyncCopy[T](src:RemoteArray[T], srcPoint:Point,
             dst:Array[T], dstPoint:Point,
             numElems:int) {
+        /*
         val gra = src.array;
         val srcIndex = at (gra) gra().region.indexOf(srcPoint);
         asyncCopy(src, srcIndex, dst, dst.region.indexOf(dstPoint), numElems);
+            */
+        assert false : "asyncCopy called";
     }
-   */
 
 
     /**
@@ -1088,10 +1093,10 @@ public final class Array[T] (
      * @throws IllegalArgumentException if the specified copy regions would
      *         result in an ArrayIndexOutOfBoundsException.
      */
-    /*
     public static def asyncCopy[T](src:RemoteArray[T], srcIndex:int,
             dst:Array[T], dstIndex:int,
             numElems:int) {
+        /*
         if (srcIndex < 0 || ((srcIndex+numElems) > src.rawData.length())) {
             throw new IllegalArgumentException("Specified range is beyond bounds of source array");
         }
@@ -1099,8 +1104,9 @@ public final class Array[T] (
             throw new IllegalArgumentException("Specified range is beyond bounds of destination array");
         }
         IndexedMemoryChunk.asyncCopy(src.rawData, srcIndex, dst.raw, dstIndex, numElems);
+        */
+        assert false : "asyncCopy called";
     }
-    */
 
 
     /**
