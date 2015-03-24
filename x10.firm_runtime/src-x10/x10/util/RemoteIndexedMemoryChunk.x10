@@ -32,15 +32,19 @@ import x10.compiler.NativeRep;
  */
 @NativeRep("java", "x10.core.RemoteIndexedMemoryChunk<#T$box>", null, "x10.rtt.ParameterizedType.make(x10.core.RemoteIndexedMemoryChunk.$RTT, #T$rtt)")
 @NativeRep("c++", "x10::util::RemoteIndexedMemoryChunk<#T >", "x10::util::RemoteIndexedMemoryChunk<#T >", null)
-public struct RemoteIndexedMemoryChunk[T] {
+public struct RemoteIndexedMemoryChunk[T](home: Place, ptr: Pointer, length: Int) {
 
     @Native("java", "null")
     @Native("c++", "null")
-    private native def this(); // unused; prevent instantiaton outside of native code
+    private def this(h: Place, p: Pointer, l: Int) {
+        property(h, p, l);
+    }
 
     @Native("java", "x10.core.RemoteIndexedMemoryChunk.<#T$box>wrap(#imc)")
     @Native("c++", "x10::util::RemoteIndexedMemoryChunk<#T >((#imc)->raw(), (#imc)->length())")
-    public static native def wrap[T](imc:IndexedMemoryChunk[T]):RemoteIndexedMemoryChunk[T];
+    public static def wrap[T](imc:IndexedMemoryChunk[T]):RemoteIndexedMemoryChunk[T] {
+        return RemoteIndexedMemoryChunk[T](here, imc.pointer(), imc.length());
+    }
 
     /**
      * Can only be invoked at the place at which the RemoteIndexedMemoryChunk was
@@ -48,7 +52,9 @@ public struct RemoteIndexedMemoryChunk[T] {
      */
     @Native("java", "(#this).$apply$G()")
     @Native("c++", "x10::util::IndexedMemoryChunk<#T >((#this)->raw(), (#this)->raw(), (#this)->length())")
-    public native operator this(){here == this.home()}:IndexedMemoryChunk[T];
+    public operator this(){here == this.home()}:IndexedMemoryChunk[T] {
+        return IndexedMemoryChunk[T](ptr, length);
+    }
 
     /**
      * Return the size of the RemoteIndexedMemoryChunk (in elements)
@@ -57,7 +63,7 @@ public struct RemoteIndexedMemoryChunk[T] {
      */
     @Native("java", "((#this).length)")
     @Native("c++", "(#this)->length()")
-    public native def length():int; /* TODO: We need to convert this to returning a long */
+    public def length():int = length; /* TODO: We need to convert this to returning a long */
 
     /**
      * Return the home place of the RemoteIndexedMemoryChunk
@@ -65,7 +71,7 @@ public struct RemoteIndexedMemoryChunk[T] {
      */
     @Native("java", "((#this).home)")
     @Native("c++", "(#this)->home")
-    public native property home():Place;
+    public property home():Place = home;
 
 
    /*
@@ -75,16 +81,22 @@ public struct RemoteIndexedMemoryChunk[T] {
 
     @Native("java", "(#this).toString()")
     @Native("c++", "(#this)->toString()")
-    public native def toString():String;
+    public def toString():String = "RemoteIndexedMemoryChunk:" + ptr;
 
     @Native("java", "(#this).equals(#that)")
     @Native("c++", "(#this)->equals(#that)")
-    public native def equals(that:Any):Boolean;
+    public def equals(that:Any):Boolean {
+        if (!(that instanceof RemoteIndexedMemoryChunk[T]))
+            return false;
+        val other = that as RemoteIndexedMemoryChunk[T];
+        return other.home == home && other.ptr == ptr && other.length == length;
+    }
 
     @Native("java", "(#this).hashCode()")
     @Native("c++", "(#this)->hash_code()")
-    public native def hashCode():Int;
+    public def hashCode():Int = ptr.hashCode();
 
+    /*
     @Native("java", "(#this).remoteAdd__1$u(#idx,#v)")
     @Native("c++", "(#this)->remoteAdd(#idx,#v)")
     public native def remoteAdd(idx:Int, v:ULong) : void;
@@ -109,6 +121,7 @@ public struct RemoteIndexedMemoryChunk[T] {
     @Native("java", "(#this).remoteXor(#idx,#v)")
     @Native("c++", "(#this)->remoteXor(#idx,#v)")
     public native def remoteXor(idx:Int, v:Long) : void;
+    */
 }
 
 // vim:shiftwidth=4:tabstop=4:expandtab
