@@ -357,15 +357,6 @@ static void evaluate_at_expression(void *arg, void *source_finish_state)
 	dispatch_claim_infect(source_claim, &allocation_ilet, 1);
 }
 
-static void notify_local_and_cleanup(void *source_data)
-{
-	source_local_data_t *sld = (source_local_data_t *)source_data;
-	assert(sld->message_type == MSG_RUN_AT_ASYNC);
-
-	free_obstack(sld->obstack);
-	simple_signal_signal(sld->join_signal);
-}
-
 /* Transfers the closure needed to execute the at statement/expression. */
 static void transfer_parameters(void *source_data, void *destination_buffer)
 {
@@ -382,18 +373,20 @@ static void transfer_parameters(void *source_data, void *destination_buffer)
 	/* Perform DMA transfer. */
 	simple_ilet local;
 	simple_ilet remote;
+	simple_ilet_init(&local, free_obstack, obstack);
 	if (message_type == MSG_EVAL_AT) {
-		simple_ilet_init(&local, free_obstack, obstack);
 		dual_ilet_init(&remote, evaluate_at_expression, destination_buffer, finish_state);
 	} else if (message_type == MSG_RUN_AT) {
-		simple_ilet_init(&local, free_obstack, obstack);
 		dual_ilet_init(&remote, run_at_statement, destination_buffer, finish_state);
 	} else {
 		assert(message_type == MSG_RUN_AT_ASYNC);
-		simple_ilet_init(&local, notify_local_and_cleanup, source_local_data);
 		dual_ilet_init(&remote, run_at_async_statement, destination_buffer, finish_state);
 	}
 	dispatch_claim_push_dma(dispatch_claim, send_buffer, destination_buffer, buffer_size, &local, &remote);
+
+	if (message_type == MSG_RUN_AT_ASYNC) {
+		simple_signal_signal(source_local_data->join_signal);
+	}
 }
 
 /* Allocates the receive buffer in the destination memory. */
