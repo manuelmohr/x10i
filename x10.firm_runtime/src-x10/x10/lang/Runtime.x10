@@ -56,7 +56,12 @@ public final class Runtime {
 
     public static def runAsync(place:Place, body:()=>void):void {
         ensureNotInAtomic();
-        runAtAsyncOtherPlace(place.id(), body);
+        if (place == here) {
+            val bodyCopy = deepCopy(body);
+            executeParallel(bodyCopy);
+        } else {
+            runAtAsyncOtherPlace(place.id(), body);
+        }
     }
 
     public static def runAsync(place:Place, body:()=>void, prof:Profile):void {
