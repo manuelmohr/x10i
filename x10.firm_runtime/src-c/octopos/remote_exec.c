@@ -164,8 +164,7 @@ static void free_obstack(void *obstack)
 	mem_free_tlm(obst);
 }
 
-/* Runs an at statement. */
-static void run_at_statement(void *arg, void *source_finish_state)
+static void do_run_at_statement(void *arg, void *source_finish_state, bool notify_local)
 {
 	/* Create a new top level finish state on the new tile. */
 	finish_state_t fs;
@@ -186,10 +185,12 @@ static void run_at_statement(void *arg, void *source_finish_state)
 
 	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(closure);
 
-	/* Notify local termination to source tile. */
-	simple_ilet notify_local_termination_ilet;
-	simple_ilet_init(&notify_local_termination_ilet, notify_local_termination, source_local_data);
-	dispatch_claim_infect(source_claim, &notify_local_termination_ilet, 1);
+	if (notify_local) {
+		/* Notify local termination to source tile. */
+		simple_ilet notify_local_termination_ilet;
+		simple_ilet_init(&notify_local_termination_ilet, notify_local_termination, source_local_data);
+		dispatch_claim_infect(source_claim, &notify_local_termination_ilet, 1);
+	}
 
 	/* Wait for global termination. */
 	finish_state_wait(&fs);
@@ -199,6 +200,50 @@ static void run_at_statement(void *arg, void *source_finish_state)
 	simple_ilet notify_global_termination_ilet;
 	simple_ilet_init(&notify_global_termination_ilet, notify_global_termination, source_finish_state);
 	dispatch_claim_infect(source_claim, &notify_global_termination_ilet, 1);
+}
+
+/* Runs an at async statement. */
+static void run_at_async_statement(void *arg, void *source_finish_state)
+{
+	do_run_at_statement(arg, source_finish_state, false);
+}
+
+/* Runs an at statement. */
+static void run_at_statement(void *arg, void *source_finish_state)
+{
+	do_run_at_statement(arg, source_finish_state, true);
+}
+
+static inline void write_uid(char *buf, uint32_t val)
+{
+	buf[0] = (uint8_t)(val >>  0);
+	buf[1] = (uint8_t)(val >>  8);
+	buf[2] = (uint8_t)(val >> 16);
+	buf[3] = (uint8_t)(val >> 24);
+}
+
+/* Runs an at async statement with a small closure. */
+static void run_at_async_statement_small(void *arg, void *source_finish_state)
+{
+	/* Create a new top level finish state on the new tile. */
+	finish_state_t fs;
+	finish_state_init_root(&fs);
+	init_x10_activity(&fs);
+
+	/* Deserialize object. */
+	x10_object closure;
+	x10_deserialization_restore_stateless_object(&closure, (uint32_t)arg);
+
+	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(&closure);
+
+	/* Wait for global termination. */
+	finish_state_wait(&fs);
+	finish_state_destroy(&fs);
+
+	/* Notify global termination to source tile. */
+	simple_ilet notify_global_termination_ilet;
+	simple_ilet_init(&notify_global_termination_ilet, notify_global_termination, source_finish_state);
+	dispatch_claim_send_reply(&notify_global_termination_ilet);
 }
 
 /* Cleans up and waits until at expression terminates globally. */
@@ -331,11 +376,17 @@ static void transfer_parameters(void *source_data, void *destination_buffer)
 	simple_ilet_init(&local, free_obstack, obstack);
 	if (message_type == MSG_EVAL_AT) {
 		dual_ilet_init(&remote, evaluate_at_expression, destination_buffer, finish_state);
-	} else {
-		assert(message_type == MSG_RUN_AT);
+	} else if (message_type == MSG_RUN_AT) {
 		dual_ilet_init(&remote, run_at_statement, destination_buffer, finish_state);
+	} else {
+		assert(message_type == MSG_RUN_AT_ASYNC);
+		dual_ilet_init(&remote, run_at_async_statement, destination_buffer, finish_state);
 	}
 	dispatch_claim_push_dma(dispatch_claim, send_buffer, destination_buffer, buffer_size, &local, &remote);
+
+	if (message_type == MSG_RUN_AT_ASYNC) {
+		simple_signal_signal(source_local_data->join_signal);
+	}
 }
 
 /* Allocates the receive buffer in the destination memory. */
@@ -357,7 +408,23 @@ static void allocate_destination_memory(void *source_local_data, void *buffer_si
 
 static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_claim, x10_int msg_type, x10_object *closure)
 {
-	assert(msg_type == MSG_RUN_AT || msg_type == MSG_EVAL_AT);
+	assert(msg_type == MSG_RUN_AT || msg_type == MSG_EVAL_AT || msg_type == MSG_RUN_AT_ASYNC);
+
+	/* Switch to fast path for at async with small closures. */
+	const class_info_t *closure_info = closure->vptr->runtime_type_info;
+	const bool          is_small     = closure_info->size <= sizeof(void*);
+	if (is_small && msg_type == MSG_RUN_AT_ASYNC) {
+		const uint32_t  uid          = closure_info->uid;
+		finish_state_t *finish_state = finish_state_get_current();
+
+		/* Register at current finish state to recognize global termination of the at. */
+		register_at_finish_state(finish_state);
+
+		simple_ilet remote_ilet;
+		dual_ilet_init(&remote_ilet, run_at_async_statement_small, (void*)uid, finish_state);
+		dispatch_claim_infect(destination_claim, &remote_ilet, 1);
+		return NULL;
+	}
 
 	/* Serialize closure. */
 	struct obstack *obst = mem_allocate_tlm(sizeof(*obst));

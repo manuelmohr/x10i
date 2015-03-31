@@ -66,8 +66,6 @@ typedef struct async_closure {
 	x10_object     *body;
 	/* enclosing finish state */
 	finish_state_t *enclosing;
-	/* executing ilet */
-	simple_ilet    *ilet;
 	/* owning agent claim */
 	agentclaim_t   agent_claim;
 } async_closure;
@@ -129,33 +127,42 @@ static void init_x10_activity(finish_state_t *fs)
 	activity_set_atomic_depth(0);
 }
 
+#ifdef USE_AGENTSYSTEM
 /** Top-level i-let function, initializes activity and cleans up afterwards */
 static void execute(void *ptr)
 {
 	async_closure  *ac          = (async_closure *)ptr;
 	x10_object     *body        = ac->body;
 	finish_state_t *fs          = ac->enclosing;
-	simple_ilet    *ilet        = ac->ilet;
-#ifdef USE_AGENTSYSTEM
 	agentclaim_t    agent_claim = ac->agent_claim;
-#endif
 	mem_free_tlm(ac);
 
 	init_x10_activity(fs);
 
-#ifdef USE_AGENTSYSTEM
 	/* initialize agent claim */
 	agentclaim_set_current(agent_claim);
-#endif
 
 	/* run the closure */
 	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(body);
 
 	/* send signal to finish state */
 	unregister_from_finish_state(fs);
-
-	mem_free_tlm(ilet);
 }
+#else
+static void execute(void *data1, void *data2)
+{
+	x10_object     *body = (x10_object*)data1;
+	finish_state_t *fs   = data2;
+
+	init_x10_activity(fs);
+
+	/* run the closure */
+	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(body);
+
+	/* send signal to finish state */
+	unregister_from_finish_state(fs);
+}
+#endif
 
 /**
  * Native API of X10 runtime. Basically
@@ -187,19 +194,18 @@ void _ZN3x104lang7Runtime16finishBlockBeginEv(void)
 void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object *body)
 {
 	finish_state_t *enclosing = finish_state_get_current();
-	async_closure  *ac        = mem_allocate_tlm(sizeof(async_closure));
-	simple_ilet    *child     = mem_allocate_tlm(sizeof(simple_ilet));
-	ac->body      = body;
-	ac->enclosing = enclosing;
-	ac->ilet      = child;
+	simple_ilet child;
 #ifdef USE_AGENTSYSTEM
+	async_closure *ac = mem_allocate_tlm(sizeof(async_closure));
+	ac->body        = body;
+	ac->enclosing   = enclosing;
 	ac->agent_claim = agentclaim_get_current();
+	simple_ilet_init(&child, execute, ac);
 #else
-	ac->agent_claim = 0;
+	dual_ilet_init(&child, execute, body, enclosing);
 #endif
-	simple_ilet_init(child, execute, ac);
 	register_at_finish_state(enclosing);
-	if (infect(enclosing->claim, child, 1)) {
+	if (infect(enclosing->claim, &child, 1)) {
 		unregister_from_finish_state(enclosing);
 		panic("infect failed");
 	}

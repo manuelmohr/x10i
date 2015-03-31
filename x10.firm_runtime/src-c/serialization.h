@@ -228,4 +228,6 @@ void x10_serialize_to_obst(struct obstack *obst, const x10_object *obj);
 /** convenience function, deserialize from a given data pointer */
 x10_object *x10_deserialize_from(const char *data, size_t data_size);
 
+void x10_deserialization_restore_stateless_object(x10_object *obj, uint32_t class_id);
+
 #endif

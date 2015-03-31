@@ -46,6 +46,8 @@ public final class SerializationSupport {
 
 	private static final String GC_XMALLOC = "gc_xmalloc";
 	private static final String GC_XMALLOC_ATOMIC = "gc_xmalloc_atomic";
+	private static final String SERIALIZATION_WRITE_DATA = "x10_serialization_write_data";
+	private static final String DESERIALIZATION_RESTORE_DATA = "x10_deserialization_restore_data";
 
 	private static final String SERIALIZE_METHOD_NAME = "__serialize";
 	private static final String SERIALIZE_METHOD_SIGNATURE = "PvPv";
@@ -62,6 +64,8 @@ public final class SerializationSupport {
 	private Entity deserializationRestoreObject;
 	private Entity gcXMalloc;
 	private Entity gcXMallocAtomic;
+	private Entity serializationWriteData;
+	private Entity deserializationRestoreData;
 
 	/** Store the serialization function for each (class) type. */
 	private final Map<Type, Entity> serializeFunctions = new HashMap<Type, Entity>();
@@ -106,6 +110,17 @@ public final class SerializationSupport {
 		gcXMalloc.setLdIdent(NameMangler.mangleKnownName(GC_XMALLOC));
 		gcXMallocAtomic = firmTypeSystem.getGlobalMethodEntity(GC_XMALLOC_ATOMIC, mallocType);
 		gcXMallocAtomic.setLdIdent(NameMangler.mangleKnownName(GC_XMALLOC_ATOMIC));
+
+		final MethodType serWriteDataType = new MethodType(new Type[] {typeP, typeP, Mode.getIu().getType()},
+				emptyTypelist);
+		serializationWriteData = firmTypeSystem.getGlobalMethodEntity(SERIALIZATION_WRITE_DATA, serWriteDataType);
+		serializationWriteData.setLdIdent(NameMangler.mangleKnownName(SERIALIZATION_WRITE_DATA));
+
+		final MethodType deserRestoreDataType = new MethodType(new Type[] {typeP, typeP, Mode.getIu().getType()},
+				emptyTypelist);
+		deserializationRestoreData = firmTypeSystem.getGlobalMethodEntity(DESERIALIZATION_RESTORE_DATA,
+				deserRestoreDataType);
+		deserializationRestoreData.setLdIdent(NameMangler.mangleKnownName(DESERIALIZATION_RESTORE_DATA));
 	}
 
 	/**
@@ -343,9 +358,26 @@ public final class SerializationSupport {
 		genCallToSerialize(lengthType, con, bufPtr, lengthAddr);
 
 		assert astType.typeArguments().size() == 1;
-		final Type elementType = firmTypeSystem.asType(astType.typeArguments().get(0));
+		final polyglot.types.Type argumentType = astType.typeArguments().get(0);
+		final Type elementType = firmTypeSystem.asType(argumentType);
 
-		// Second, build a loop to serialize each element stores in the chunk
+		// Generate call to write_data for primitive types
+		final boolean isPrimitive = firmTypeSystem.getFirmMode(argumentType).isNum();
+		if (isPrimitive) {
+			final Node writeDataAddr = con.newAddress(serializationWriteData);
+			Node mem = con.getCurrentMem();
+
+			final Node elementSize = con.newSize(Mode.getIs(), elementType);
+			final Node dataSize = con.newMul(length, elementSize, Mode.getIs());
+			final Node dataSizeIu = con.newConv(dataSize, Mode.getIu());
+			final Node writeDataCall = con.newCall(mem, writeDataAddr,
+					new Node[] {bufPtr, ptr, dataSizeIu}, serializationWriteData.getType());
+			mem = con.newProj(writeDataCall, Mode.getM(), Call.pnM);
+			con.setCurrentMem(mem);
+			return;
+		}
+
+		// Otherwise, build a loop to serialize each element stores in the chunk
 		con.setVariable(0, con.newConst(0, Mode.getIs()));
 		con.setVariable(1, ptr);
 		final Node jmpToCond = con.newJmp();
@@ -525,10 +557,11 @@ public final class SerializationSupport {
 		con.setCurrentMem(con.newProj(load, Mode.getM(), Load.pnM));
 		final Node length = con.newProj(load, Mode.getIs(), Load.pnRes);
 
-		// Second, allocate memory for the new backing storage
 		assert astType.typeArguments().size() == 1;
 		final polyglot.types.Type x10ElementType = astType.typeArguments().get(0);
 		final Type elementType = firmTypeSystem.asType(x10ElementType);
+
+		// Second, allocate memory for the new backing storage
 		final Node elemSize = con.newSize(Mode.getIs(), elementType);
 		final Node mallocSize = con.newMul(length, elemSize, Mode.getIs());
 		final Node mallocSizeIu = con.newConv(mallocSize, Mode.getIu());
@@ -540,6 +573,25 @@ public final class SerializationSupport {
 		final Node newStorage = con.newProj(mallocResults, Mode.getP(), 0);
 		final Node storePtr = con.newStore(con.getCurrentMem(), ptrPtr, newStorage);
 		con.setCurrentMem(con.newProj(storePtr, Mode.getM(), Store.pnM));
+
+		// Third, generate call to restore_data for primitive types
+		final Mode elementMode = firmTypeSystem.getFirmMode(x10ElementType);
+		final boolean isPrimitive = elementMode.isNum();
+		if (isPrimitive) {
+			final Node restoreDataAddr = con.newAddress(deserializationRestoreData);
+			Node mem = con.getCurrentMem();
+			final Node loadPtr = con.newLoad(mem, ptrPtr, Mode.getP());
+			mem = con.newProj(loadPtr, Mode.getM(), Load.pnM);
+			final Node ptr = con.newProj(loadPtr, Mode.getP(), Load.pnRes);
+			final Node elementSize = con.newSize(Mode.getIs(), elementType);
+			final Node dataSize = con.newMul(length, elementSize, Mode.getIs());
+			final Node dataSizeIu = con.newConv(dataSize, Mode.getIu());
+			final Node restoreDataCall = con.newCall(mem, restoreDataAddr,
+					new Node[] {bufPtr, ptr, dataSizeIu}, deserializationRestoreData.getType());
+			mem = con.newProj(restoreDataCall, Mode.getM(), Call.pnM);
+			con.setCurrentMem(mem);
+			return;
+		}
 
 		// Third, build a loop to deserialize every element into our new backing storage
 		con.setVariable(0, con.newConst(0, Mode.getIs()));

@@ -1,5 +1,6 @@
 #include <time.h>
 #include "types.h"
+#include <gc.h>
 
 int exit_code;
 
@@ -19,5 +20,5 @@ void _ZN3x104lang6System11setExitCodeEi(x10_int code)
 // x10.lang.System.gc(): void
 void _ZN3x104lang6System2gcEv(void)
 {
-	/* no garbage collector yet, so nothing to collect */
+	GC_gcollect();
 }

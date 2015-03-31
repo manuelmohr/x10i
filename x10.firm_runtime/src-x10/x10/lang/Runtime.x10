@@ -20,6 +20,7 @@ public final class Runtime {
 
     private static native def deepCopyAny(o : Any) : Any;
     private static native def runAtOtherPlace(placeId : Int, o: Any) : void;
+    private static native def runAtAsyncOtherPlace(placeId : Int, o: Any) : void;
     private static native def evalAtOtherPlace(placeId : Int, o: Any) : Any;
     private static native def getHereId() : Int;
     
@@ -54,9 +55,7 @@ public final class Runtime {
     //public static def runAsync(place:Place, clocks:Rail[Clock], body:()=>void):void { }
 
     public static def runAsync(place:Place, body:()=>void):void {
-        executeParallel(() => {
-            runAt(place, body, null);
-        });
+        runAtAsyncOtherPlace(place.id(), body);
     }
 
     public static def runAsync(place:Place, body:()=>void, prof:Profile):void {
