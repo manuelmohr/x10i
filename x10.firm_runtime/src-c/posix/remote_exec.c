@@ -490,6 +490,7 @@ void init_ipc(void)
 	                            PTHREAD_CREATE_DETACHED);
 }
 
+/* Will be called for master and children. */
 void shutdown_ipc(void)
 {
 	if (queues == NULL)
