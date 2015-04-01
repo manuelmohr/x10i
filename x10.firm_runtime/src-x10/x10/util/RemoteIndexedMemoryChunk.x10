@@ -65,6 +65,8 @@ public struct RemoteIndexedMemoryChunk[T](home: Place, ptr: Pointer, length: Int
     @Native("c++", "(#this)->length()")
     public def length():int = length; /* TODO: We need to convert this to returning a long */
 
+    public def pointer():Pointer = ptr;
+
     /**
      * Return the home place of the RemoteIndexedMemoryChunk
      * @return the home place of the RemoteIndexedMemoryChunk
