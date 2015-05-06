@@ -640,8 +640,6 @@ public class FirmTypeSystem {
 
 		if (flags.isFinal())
 			OO.setClassIsFinal(result, true);
-		if (flags.isAbstract() || flags.isInterface())
-			OO.setClassIsAbstract(result, true);
 
 		/* create interfaces */
 		final Set<polyglot.types.Type> interfaces = new LinkedHashSet<polyglot.types.Type>(classType.interfaces());
