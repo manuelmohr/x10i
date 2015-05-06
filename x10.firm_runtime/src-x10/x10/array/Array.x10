@@ -244,7 +244,7 @@ public final class Array[T] (
      * Construct Array given a memory pointer and a length
      * (This is mostly intended for internal use to implement Tuples)
      */
-    public def this(ptr : Pointer, len : Int)
+    public @Inline def this(ptr : Pointer, len : Int)
     {
         this(IndexedMemoryChunk[T](ptr, len));
     }
