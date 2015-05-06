@@ -687,6 +687,22 @@ public class StaticInitializer extends ContextVisitor {
 		return md;
 	}
 
+	private MethodDef makeMethodDefInline(final X10ClassType receiver, final Name name, final Type returnType) {
+		final MethodDef md = makeMethodDef(receiver, name, returnType);
+		final List<Ref<? extends Type>> ats = new ArrayList<Ref<? extends Type>>(1);
+		ats.add(Types.ref(xts.load("x10.compiler.Inline")));
+		md.setDefAnnotations(ats);
+		return md;
+	}
+
+	private MethodDef makeMethodDefNoInline(final X10ClassType receiver, final Name name, final Type returnType) {
+		final MethodDef md = makeMethodDef(receiver, name, returnType);
+		final List<Ref<? extends Type>> ats = new ArrayList<Ref<? extends Type>>(1);
+		ats.add(Types.ref(xts.load("x10.compiler.NoInline")));
+		md.setDefAnnotations(ats);
+		return md;
+	}
+
 	private FieldDecl makeFieldVar4Guard(final Position pos, final Name fName, final X10ClassDef classDef) {
 		// make FieldDef of AtomicInteger
 		final ClassType type = xts.AtomicInteger();
@@ -792,7 +808,7 @@ public class StaticInitializer extends ContextVisitor {
 		final Type type = fieldInfo.fieldDef.type().get();
 		MethodDef md = fieldInfo.methodDef;
 		if (md == null) {
-			md = makeMethodDef(classDef.asType(), name, type);
+			md = makeMethodDefNoInline(classDef.asType(), name, type);
 		}
 
 		// create a method declaration node
@@ -1077,7 +1093,7 @@ public class StaticInitializer extends ContextVisitor {
 		// get MethodDef
 		final Name name = Name.make(INITIALIZERPREFIX + fName);
 		final FieldInstance fi = fieldInfo.fieldDef.asInstance();
-		final MethodDef md = makeMethodDef(classDef.asType(), name, fi.type());
+		final MethodDef md = makeMethodDefInline(classDef.asType(), name, fi.type());
 
 		// create a method declaration node
 		final List<TypeParamNode> typeParamNodes = Collections.<TypeParamNode>emptyList();
