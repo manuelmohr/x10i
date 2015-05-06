@@ -1307,10 +1307,6 @@ public class StaticInitializer extends ContextVisitor {
 		if (f.target().type().toClass().isJavaType())
 			return false;
 
-		if (f.target().type().isNumeric())
-			// @NativeRep class should be excluded
-			return false;
-
 		if (f.isConstant())
 			return false;
 
