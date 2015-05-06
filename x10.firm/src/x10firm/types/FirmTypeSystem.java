@@ -990,8 +990,14 @@ public class FirmTypeSystem {
 		}
 
 		final Entity entity = entities.get(linkName);
-		if (entity != null)
+		if (entity != null) {
+			/* We might encounter multiple method instances for the same method.  So if an instance has annotations,
+			 * we update the corresponding entity's properties (which can be a no-op). */
+			if (!instance.annotations().isEmpty()) {
+				translateAnnotations(instance, entity);
+			}
 			return entity;
+		}
 
 		return createMethodEntity(linkName, instance);
 	}
@@ -1008,6 +1014,52 @@ public class FirmTypeSystem {
 			return literal.value();
 		}
 		return null;
+	}
+
+	/** Mapping information for X10 annotations to FIRM method properties. */
+	private class AnnotationMapping {
+		private final X10ClassType annotation;
+		private final binding_typerep.mtp_additional_properties property;
+
+		public AnnotationMapping(final String a, final binding_typerep.mtp_additional_properties p) {
+			annotation = typeSystem.getTypeSystem().load(a);
+			property = p;
+		}
+
+		public X10ClassType getAnnotation() {
+			return annotation;
+		}
+
+		public binding_typerep.mtp_additional_properties getProperty() {
+			return property;
+		}
+	}
+
+	private AnnotationMapping[] anno2prop = null;
+
+	private AnnotationMapping[] getAnnotationMapping() {
+		if (anno2prop == null) {
+			anno2prop = new AnnotationMapping[] {
+				new AnnotationMapping("x10.compiler.NoInline",
+						binding_typerep.mtp_additional_properties.mtp_property_noinline),
+				new AnnotationMapping("x10.compiler.NoReturn",
+						binding_typerep.mtp_additional_properties.mtp_property_noreturn),
+				new AnnotationMapping("x10.compiler.Inline",
+						binding_typerep.mtp_additional_properties.mtp_property_always_inline),
+				new AnnotationMapping("x10.compiler.Pure",
+						binding_typerep.mtp_additional_properties.mtp_property_pure),
+			};
+		}
+
+		return anno2prop;
+	}
+
+	private void translateAnnotations(final MethodInstance instance, final Entity entity) {
+		for (AnnotationMapping am : getAnnotationMapping()) {
+			if (instance.annotationsMatching(am.getAnnotation()).size() > 0) {
+				binding_typerep.add_entity_additional_properties(entity.ptr, am.getProperty().val);
+			}
+		}
 	}
 
 	private Entity createMethodEntity(final String linkName, final MethodInstance instance) {
@@ -1084,6 +1136,8 @@ public class FirmTypeSystem {
 			entity.addEntityOverwrites(ent);
 			OO.setMethodIsInherited(entity, true);
 		}
+
+		translateAnnotations(instance, entity);
 
 		return entity;
 	}
