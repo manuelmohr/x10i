@@ -70,7 +70,6 @@ public class FirmGenerated extends AllBarrierGoal {
 			final boolean isCommandLineJob = scheduler.commandLineJobs().contains(job);
 			generator.setIsCommandLineJob(isCommandLineJob);
 
-			System.out.println("FirmGenerated: " + ast);
 			generator.visitAppropriate(ast);
 		}
 

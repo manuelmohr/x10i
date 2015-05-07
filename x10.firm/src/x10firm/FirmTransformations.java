@@ -59,7 +59,6 @@ public final class FirmTransformations {
 		 */
 		public void enable() {
 			flags |= ENABLED;
-			System.out.println("FirmOptimizations: enabling " + name);
 		}
 
 		/**
@@ -67,7 +66,6 @@ public final class FirmTransformations {
 		 */
 		public void disable() {
 			flags &= ~ENABLED;
-			System.out.println("FirmOptimizations: disabling " + name);
 		}
 
 		/**
