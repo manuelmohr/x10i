@@ -54,17 +54,15 @@ import firm.PointerType;
 import firm.PrimitiveType;
 import firm.Program;
 import firm.Type;
-import firm.bindings.binding_typerep;
 import firm.bindings.binding_oo.ddispatch_binding;
+import firm.bindings.binding_typerep;
 import firm.bindings.binding_typerep.ir_linkage;
 import firm.bindings.binding_typerep.ir_type_state;
-import firm.nodes.Node;
 
 /**
  * Includes everything to map X10 types to Firm types.
  */
 public class FirmTypeSystem {
-	private static final String ABSTRACT_METHOD = "oo_rt_abstract_method_error";
 
 	/** Maps polyglot types to firm types. */
 	private final Map<polyglot.types.Type, ClassType> firmCoreTypes
@@ -80,8 +78,6 @@ public class FirmTypeSystem {
 	 * we have to get the C function entity by the mangled name.
 	 */
 	private final Map<String, Entity> cStdlibEntities = new HashMap<String, Entity>();
-
-	private Entity abstractMethod;
 
 	/** Maps X10 ConstructorInstances, MethodInstance, FieldInstances to firm entities.
 	 * We use the mangled names here as keys. (They should be unique).
@@ -198,11 +194,6 @@ public class FirmTypeSystem {
 		readFirmNativeTypesConfig(nativeTypesConfig);
 		initFirmTypes();
 		NameMangler.setup(typeSystem, compilerOptions);
-		final CompoundType glob = Program.getGlobalType();
-		final Type type = new MethodType(new Type[] {}, new Type[] {});
-		abstractMethod = new Entity(glob, ABSTRACT_METHOD, type);
-		final String ldName = NameMangler.mangleKnownName(ABSTRACT_METHOD);
-		abstractMethod.setLdIdent(ldName);
 	}
 
 	private void readFirmNativeTypesConfig(final String firmNativeTypesFilename) {
@@ -1125,8 +1116,6 @@ public class FirmTypeSystem {
 
 		if (flags.isAbstract()) {
 			OO.setMethodAbstract(entity, true);
-			final Node abstractEnt = Program.getConstCodeGraph().newAddress(abstractMethod);
-			entity.setAtomicValue(abstractEnt);
 		}
 
 		final MethodInstance m = getOverriddenMethod(instance);
