@@ -120,7 +120,7 @@ public final class Array[T] (
      *
      * @param reg The region over which to construct the array.
      */
-    public @Inline def this(reg:Region) {T haszero}
+    public /*@Inline*/ def this(reg:Region) {T haszero}
     {
         property(reg as Region{self != null}, reg.rank, reg.rect, reg.zeroBased, reg.rail, reg.size());
         val crh = new LayoutHelper(reg);
@@ -148,7 +148,7 @@ public final class Array[T] (
      * @param reg The region over which to construct the array.
      * @param init The function to use to initialize the array.
      */
-    public @Inline def this(reg:Region, init:(Point(reg.rank))=>T)
+    public /*@Inline*/ def this(reg:Region, init:(Point(reg.rank))=>T)
     {
         property(reg as Region{self != null}, reg.rank, reg.rect, reg.zeroBased, reg.rail, reg.size());
         val crh = new LayoutHelper(reg);
@@ -171,7 +171,7 @@ public final class Array[T] (
      * @param reg The region over which to construct the array.
      * @param init The function to use to initialize the array.
      */
-    public @Inline def this(reg:Region, init:T)
+    public /*@Inline*/ def this(reg:Region, init:T)
     {
         property(reg as Region{self!=null}, reg.rank, reg.rect, reg.zeroBased, reg.rail, reg.size());
 
@@ -207,7 +207,7 @@ public final class Array[T] (
      * @param reg The region over which to define the array.
      * @param backingStore The backing storage for the array data.
      */
-    public @Inline def this(reg:Region, backingStore:IndexedMemoryChunk[T])
+    public /*@Inline*/ def this(reg:Region, backingStore:IndexedMemoryChunk[T])
     {
         property(reg as Region{self!=null}, reg.rank, reg.rect, reg.zeroBased, reg.rail, reg.size());
 
@@ -244,7 +244,7 @@ public final class Array[T] (
      * Construct Array given a memory pointer and a length
      * (This is mostly intended for internal use to implement Tuples)
      */
-    public def this(ptr : Pointer, len : Int)
+    public @Inline def this(ptr : Pointer, len : Int)
     {
         this(IndexedMemoryChunk[T](ptr, len));
     }
@@ -280,7 +280,7 @@ public final class Array[T] (
      * @param reg The region over which to construct the array.
      * @param init The function to use to initialize the array.
      */
-    public @Inline def this(size:int, init:(int)=>T)
+    public /*@Inline*/ def this(size:int, init:(int)=>T)
     {
         val myReg = new RectRegion1D(0, size-1) as Region{self.zeroBased, self.rail,self.rank==1,self.rect, self!=null};
         property(myReg, 1, true, true, true, size);
@@ -302,7 +302,7 @@ public final class Array[T] (
      * @param reg The region over which to construct the array.
      * @param init The function to use to initialize the array.
      */
-    public @Inline def this(size:int, init:T)
+    public /*@Inline*/ def this(size:int, init:T)
     {
         val myReg = new RectRegion1D(0, size-1)
            as Region{self.rank==1,self.zeroBased,self.rect,self.rail,self!=null};
@@ -667,7 +667,7 @@ public final class Array[T] (
      * @see #reduce((U,T)=>U,U)
      * @see #scan((U,T)=>U,U)
      */
-    public @Inline def map[U](op:(T)=>U):Array[U](region) {
+    public /*@Inline*/ def map[U](op:(T)=>U):Array[U](region) {
         return new Array[U](region, (p:Point(this.rank))=>op(this(p)));
     }
 
@@ -685,7 +685,7 @@ public final class Array[T] (
      * @see #reduce((U,T)=>U,U)
      * @see #scan((U,T)=>U,U)
      */
-    public @Inline def map[U](dst:Array[U](this.rank), op:(T)=>U):Array[U](this.rank){self==dst} {
+    public /*@Inline*/ def map[U](dst:Array[U](this.rank), op:(T)=>U):Array[U](this.rank){self==dst} {
         // TODO: parallelize these loops.
         if (rect) {
             // In a rect region, every element in the backing raw IndexedMemoryChunk[T]
@@ -717,7 +717,7 @@ public final class Array[T] (
      * @see #reduce((U,T)=>U,U)
      * @see #scan((U,T)=>U,U)
      */
-    public @Inline def map[U](dst:Array[U](this.rank), filter:Region(this.rank), op:(T)=>U):Array[U](this.rank){self==dst} {
+    public /*@Inline*/ def map[U](dst:Array[U](this.rank), filter:Region(this.rank), op:(T)=>U):Array[U](this.rank){self==dst} {
         val fregion = region && filter;
         for (p in fregion) {
             dst(p) = op(this(p));
@@ -738,7 +738,7 @@ public final class Array[T] (
      * @see #reduce((U,T)=>U,U)
      * @see #scan((U,T)=>U,U)
      */
-    public @Inline def map[S,U](src:Array[U](this.rank), op:(T,U)=>S):Array[S](this.region) {
+    public /*@Inline*/ def map[S,U](src:Array[U](this.rank), op:(T,U)=>S):Array[S](this.region) {
         return new Array[S](region, (p:Point(this.rank))=>op(this(p), src(p)));
     }
 
@@ -756,7 +756,7 @@ public final class Array[T] (
      * @see #reduce((U,T)=>U,U)
      * @see #scan((U,T)=>U,U)
      */
-    public @Inline def map[S,U](dst:Array[S](this.rank), src:Array[U](this.rank), op:(T,U)=>S):Array[S](this.rank){self==dst} {
+    public /*@Inline*/ def map[S,U](dst:Array[S](this.rank), src:Array[U](this.rank), op:(T,U)=>S):Array[S](this.rank){self==dst} {
         // TODO: parallelize these loops.
         if (rect) {
             // In a rect array, every element in the backing raw IndexedMemoryChunk
@@ -789,7 +789,7 @@ public final class Array[T] (
      * @see #reduce((U,T)=>U,U)
      * @see #scan((U,T)=>U,U)
      */
-    public @Inline def map[S,U](dst:Array[S](this.rank), src:Array[U](this.rank), filter:Region(rank), op:(T,U)=>S):Array[S](rank){self==dst} {
+    public /*@Inline*/ def map[S,U](dst:Array[S](this.rank), src:Array[U](this.rank), filter:Region(rank), op:(T,U)=>S):Array[S](rank){self==dst} {
         val fregion = region && filter;
         for (p in fregion) {
             dst(p) = op(this(p), src(p));
@@ -810,7 +810,7 @@ public final class Array[T] (
      * @see #map((T)=>S)
      * @see #scan((U,T)=>U,U)
      */
-    public @Inline def reduce[U](op:(U,T)=>U, unit:U):U {
+    public /*@Inline*/ def reduce[U](op:(U,T)=>U, unit:U):U {
         // TODO: once collecting finish is available,
         //       use it to efficiently parallelize these loops.
         var accum:U = unit;
@@ -843,7 +843,7 @@ public final class Array[T] (
      * @see #map((T)=>U)
      * @see #reduce((U,T)=>U,U)
      */
-    public @Inline def scan[U](op:(U,T)=>U, unit:U) {U haszero}
+    public /*@Inline*/ def scan[U](op:(U,T)=>U, unit:U) {U haszero}
     = scan(new Array[U](region), op, unit); // TODO: private constructor to avoid useless zeroing
 
 
@@ -861,7 +861,7 @@ public final class Array[T] (
      * @see #map((T)=>U)
      * @see #reduce((U,T)=>U,U)
      */
-    public @Inline def scan[U](dst:Array[U](region), op:(U,T)=>U, unit:U): Array[U](region) {
+    public /*@Inline*/ def scan[U](dst:Array[U](region), op:(U,T)=>U, unit:U): Array[U](region) {
         var accum:U = unit;
         for (p in region) {
             accum = op(accum, this(p));
@@ -892,12 +892,10 @@ public final class Array[T] (
      * @throws IllegalArgumentException if mismatch in size of backing storage
      *         of the two arrays.
      */
-    /*
     public static def asyncCopy[T](src:Array[T], dst:RemoteArray[T]) {
         if (src.raw.length() != dst.rawData.length()) throw new IllegalArgumentException("source and destination do not have equal size");
         IndexedMemoryChunk.asyncCopy(src.raw, 0, dst.rawData, 0, src.raw.length());
     }
-    */
 
 
     /**
@@ -926,7 +924,6 @@ public final class Array[T] (
      * @throws IllegalArgumentException if the specified copy regions would
      *         result in an ArrayIndexOutOfBoundsException.
      */
-    /*
     public static def asyncCopy[T](src:Array[T], srcPoint:Point,
             dst:RemoteArray[T], dstPoint:Point,
             numElems:int) {
@@ -934,7 +931,6 @@ public final class Array[T] (
         val dstIndex = at (gra) gra().region.indexOf(dstPoint);
         asyncCopy(src, src.region.indexOf(srcPoint), dst, dstIndex, numElems);
     }
-    */
 
 
     /**
@@ -972,7 +968,6 @@ public final class Array[T] (
      * @throws IllegalArgumentException if the specified copy regions would
      *         result in an ArrayIndexOutOfBoundsException.
      */
-    /*
     public static def asyncCopy[T](src:Array[T], srcIndex:int,
             dst:RemoteArray[T], dstIndex:int,
             numElems:int) {
@@ -984,7 +979,6 @@ public final class Array[T] (
         }
         IndexedMemoryChunk.asyncCopy(src.raw, srcIndex, dst.rawData, dstIndex, numElems);
     }
-    */
 
 
     /**
@@ -1008,12 +1002,10 @@ public final class Array[T] (
      * @throws IllegalArgumentException if mismatch in size of backing storage
      *         of the two arrays.
      */
-    /*
     public static def asyncCopy[T](src:RemoteArray[T], dst:Array[T]) {
         if (src.rawData.length() != dst.raw.length()) throw new IllegalArgumentException("source and destination do not have equal size");
         IndexedMemoryChunk.asyncCopy(src.rawData, 0, dst.raw, 0, dst.raw.length());
     }
-    */
 
 
     /**
@@ -1042,7 +1034,6 @@ public final class Array[T] (
      * @throws IllegalArgumentException if the specified copy regions would
      *         result in an ArrayIndexOutOfBoundsException.
      */
-    /*
     public static def asyncCopy[T](src:RemoteArray[T], srcPoint:Point,
             dst:Array[T], dstPoint:Point,
             numElems:int) {
@@ -1050,7 +1041,6 @@ public final class Array[T] (
         val srcIndex = at (gra) gra().region.indexOf(srcPoint);
         asyncCopy(src, srcIndex, dst, dst.region.indexOf(dstPoint), numElems);
     }
-   */
 
 
     /**
@@ -1088,7 +1078,6 @@ public final class Array[T] (
      * @throws IllegalArgumentException if the specified copy regions would
      *         result in an ArrayIndexOutOfBoundsException.
      */
-    /*
     public static def asyncCopy[T](src:RemoteArray[T], srcIndex:int,
             dst:Array[T], dstIndex:int,
             numElems:int) {
@@ -1100,7 +1089,6 @@ public final class Array[T] (
         }
         IndexedMemoryChunk.asyncCopy(src.rawData, srcIndex, dst.raw, dstIndex, numElems);
     }
-    */
 
 
     /**

@@ -241,6 +241,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/util/Ordered.x10");
 			allowedFiles.add("x10/util/Pair.x10");
 			allowedFiles.add("x10/util/Random.x10");
+			allowedFiles.add("x10/util/RemoteIndexedMemoryChunk.x10");
 			allowedFiles.add("x10/util/Set.x10");
 			allowedFiles.add("x10/util/Stack.x10");
 			allowedFiles.add("x10/util/StringBuilder.x10");

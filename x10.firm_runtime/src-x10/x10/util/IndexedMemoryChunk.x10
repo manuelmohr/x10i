@@ -168,9 +168,27 @@ public struct IndexedMemoryChunk[T] {
      * @param dstIndex the index of the first element to store in the destination.
      * @param numElems the number of elements to copy.
      */
-    public static native def asyncCopy[T](src:IndexedMemoryChunk[T], srcIndex: Int,
-                                          dst:RemoteIndexedMemoryChunk[T], dstIndex: Int,
-                                          numElems: Int):void;
+    public static def asyncCopy[T](src:IndexedMemoryChunk[T], srcIndex: Int,
+                                   dst:RemoteIndexedMemoryChunk[T], dstIndex: Int,
+                                   numElems: Int): void {
+        /* TODO: This is *inefficient*!
+         * An efficient implementation could at least avoid the serialization.
+         * Additionally, if the InvasIC hardware supported DMA transfers
+         * from SHM to SHM, this would map to a DMA transfer really well.
+         * However, in the current state, asyncCopy would still be a costly
+         * operation, because we must move data to and from TLM memory for
+         * use with DMA transfers.
+         */
+        val start = src.calculateIndex(srcIndex);
+        val source = IndexedMemoryChunk[T](start, numElems);
+        val to = dst.pointer();
+        val len = dst.length();
+        at (dst.home()) async {
+            val sourceCopy = source;
+            val destination = IndexedMemoryChunk[T](to, len);
+            copy(sourceCopy, 0, destination, dstIndex, numElems);
+        }
+    }
 
     public static native def uncountedCopy[T](src:IndexedMemoryChunk[T], srcIndex: Int,
                                               dst:RemoteIndexedMemoryChunk[T], dstIndex: Int,
@@ -197,9 +215,25 @@ public struct IndexedMemoryChunk[T] {
      * @param dstIndex the index of the first element to store in the destination.
      * @param numElems the number of elements to copy.
      */
-    public static native def asyncCopy[T](src: RemoteIndexedMemoryChunk[T], srcIndex: Int,
-                                          dst: IndexedMemoryChunk[T], dstIndex: Int,
-                                          numElems: Int): void;
+    public static def asyncCopy[T](src: RemoteIndexedMemoryChunk[T], srcIndex: Int,
+                                   dst: IndexedMemoryChunk[T], dstIndex: Int,
+                                   numElems: Int): void {
+        /* TODO: This is *inefficient*!
+         * An efficient implementation could at least avoid the serialization.
+         * Additionally, if the InvasIC hardware supported DMA transfers
+         * from SHM to SHM, this would map to a DMA transfer really well.
+         * However, in the current state, asyncCopy would still be a costly
+         * operation, because we must move data to and from TLM memory for
+         * use with DMA transfers.
+         */
+         async {
+            val from = src.pointer();
+            val len = src.length();
+            val sourceCopy = at (src.home())
+                IndexedMemoryChunk[T](IndexedMemoryChunk[T](from, len).calculateIndex(srcIndex), numElems);
+            copy(sourceCopy, 0, dst, dstIndex, numElems);
+        }
+    }
 
     public static native def uncountedCopy[T](src: RemoteIndexedMemoryChunk[T], srcIndex: Int,
                                               dst: IndexedMemoryChunk[T], dstIndex: Int,

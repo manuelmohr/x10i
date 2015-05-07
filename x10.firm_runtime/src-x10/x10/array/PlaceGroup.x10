@@ -106,7 +106,7 @@ public abstract class PlaceGroup implements Sequence[Place] {
     return true;
   }
 
-  private static class WorldPlaceGroup extends PlaceGroup {
+  public static class WorldPlaceGroup extends PlaceGroup {
     public operator this(i:int):Place = Place.place(i);
     public def iterator() = Place.places().iterator();
     public def numPlaces() = Place.numPlaces();
