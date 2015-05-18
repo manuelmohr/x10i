@@ -1366,10 +1366,12 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		}
 
 		bTrue.mature();
+
+		final int bFalsePredCount = bFalse.getPredCount();
 		bFalse.mature();
 
 		/* more fixup for X10 endless loop detection */
-		if (bFalse.getPredCount() == 0) {
+		if (bFalsePredCount == 0) {
 			con.setUnreachable();
 		} else {
 			con.setCurrentBlock(bFalse);
@@ -1421,6 +1423,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		assert con.continueTarget == continueTarget;
 		con.continueTarget = oldContinue;
 
+		final int bFalsePredCount = bFalse.getPredCount();
 		bFalse.mature();
 
 		if (!con.isUnreachable())
@@ -1428,7 +1431,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		bCond.mature();
 
 		/* more fixup for X10 endless loop detection */
-		if (bFalse.getPredCount() == 0) {
+		if (bFalsePredCount == 0) {
 			con.setUnreachable();
 		} else {
 			con.setCurrentBlock(bFalse);
@@ -1487,6 +1490,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		assert con.continueTarget == continueTarget;
 		con.continueTarget = oldContinue;
 
+		final int bFalsePredCount = bFalse.getPredCount();
 		bFalse.mature();
 
 		bUpdate.addPred(con.newJmp());
@@ -1505,7 +1509,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		bCond.mature();
 
 		/* more fixup for X10 endless loop detection */
-		if (bFalse.getPredCount() == 0) {
+		if (bFalsePredCount == 0) {
 			con.setUnreachable();
 		} else {
 			con.setCurrentBlock(bFalse);
