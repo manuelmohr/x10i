@@ -41,7 +41,7 @@ public abstract class X10LangNativeSupport {
 			con.getGraph().getEndBlock().addPred(ret);
 			con.setUnreachable();
 
-			codeGenerator.finishConstruction(entity, savedConstruction);
+			codeGenerator.finishConstruction(savedConstruction);
 		}
 
 	}
@@ -74,7 +74,7 @@ public abstract class X10LangNativeSupport {
 			con.getGraph().getEndBlock().addPred(ret);
 			con.setUnreachable();
 
-			codeGenerator.finishConstruction(entity, savedConstruction);
+			codeGenerator.finishConstruction(savedConstruction);
 		}
 	}
 
@@ -107,7 +107,7 @@ public abstract class X10LangNativeSupport {
 			con.getGraph().getEndBlock().addPred(ret);
 			con.setUnreachable();
 
-			codeGenerator.finishConstruction(entity, savedConstruction);
+			codeGenerator.finishConstruction(savedConstruction);
 		}
 	}
 }

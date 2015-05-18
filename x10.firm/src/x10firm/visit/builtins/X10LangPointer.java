@@ -63,7 +63,7 @@ abstract class X10LangPointer {
 			con.getGraph().getEndBlock().addPred(retNode);
 			con.setUnreachable();
 
-			codeGenerator.finishConstruction(entity, savedConstruction);
+			codeGenerator.finishConstruction(savedConstruction);
 		}
 	}
 
@@ -120,7 +120,7 @@ abstract class X10LangPointer {
 			con.getGraph().getEndBlock().addPred(retNode);
 			con.setUnreachable();
 
-			codeGenerator.finishConstruction(entity, savedConstruction);
+			codeGenerator.finishConstruction(savedConstruction);
 		}
 	}
 
@@ -154,7 +154,7 @@ abstract class X10LangPointer {
 			con.getGraph().getEndBlock().addPred(retNode);
 			con.setUnreachable();
 
-			codeGenerator.finishConstruction(entity, savedConstruction);
+			codeGenerator.finishConstruction(savedConstruction);
 		}
 	}
 }

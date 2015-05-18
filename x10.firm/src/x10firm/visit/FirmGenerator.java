@@ -332,7 +332,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			genFieldInstanceAssign(null, instance, value);
 		}
 
-		finishConstruction(methodEntity, savedConstruction);
+		finishConstruction(savedConstruction);
 	}
 
 	/** This queue holds a list of nodes (either MethodDecls or ClassDecls)
@@ -585,7 +585,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		// Now generate the firm graph
 		visitAppropriate(block);
 
-		finishConstruction(entity, savedConstruction);
+		finishConstruction(savedConstruction);
 	}
 
 	private boolean fixStructTypename(final X10ClassDecl n, final ClassMember member) {
@@ -742,10 +742,9 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	/**
 	 * Finishes a firm graph construction.
-	 * @param entity The method entity for which the construction should be finished
 	 * @param savedConstruction A reference to the previous construction
 	 */
-	public void finishConstruction(final Entity entity, final MethodConstruction savedConstruction) {
+	public void finishConstruction(final MethodConstruction savedConstruction) {
 		/* create Return node if there was no explicit return statement yet */
 		if (!con.isUnreachable()) {
 			genReturn(null, null);
@@ -813,7 +812,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		// Walk body and construct graph
 		visitAppropriate(dec.body());
 
-		finishConstruction(entity, savedConstruction);
+		finishConstruction(savedConstruction);
 	}
 
 	@Override
@@ -885,7 +884,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 		visitAppropriate(dec.body());
 
-		finishConstruction(entity, savedConstruction);
+		finishConstruction(savedConstruction);
 	}
 
 	/**
@@ -2407,7 +2406,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			// Now generate the firm graph
 			visitAppropriate(block);
 
-			finishConstruction(entity, savedConstruction);
+			finishConstruction(savedConstruction);
 		}
 	}
 

@@ -36,7 +36,7 @@ public abstract class X10CompilerCompilerFlags {
 		con.getGraph().getEndBlock().addPred(ret);
 		con.setUnreachable();
 
-		codeGenerator.finishConstruction(entity, savedConstruction);
+		codeGenerator.finishConstruction(savedConstruction);
 	}
 
 	/** Creates instance of {@code static x10.compiler.CompilerFlags.TRUE(): Boolean} method. */
