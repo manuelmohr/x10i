@@ -15,8 +15,7 @@ void _ZN3x104util10concurrent4Lock4lockEv(x10_lock *self)
 /* Lock.tryLock(): Boolean */
 x10_boolean _ZN3x104util10concurrent4Lock7tryLockEv(x10_lock *self)
 {
-	(void)self;
-	return false;
+	recursive_spinlock_trylock(&self->lock);
 }
 
 /* Lock.unlock() */
