@@ -1492,7 +1492,9 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final int bFalsePredCount = bFalse.getPredCount();
 		bFalse.mature();
 
-		bUpdate.addPred(con.newJmp());
+		if (!con.isUnreachable())
+			bUpdate.addPred(con.newJmp());
+
 		con.setCurrentBlock(bUpdate);
 
 		if (n.iters() != null) {
