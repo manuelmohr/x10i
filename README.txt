@@ -84,3 +84,7 @@ sure it is in your $PATH.
 Within x10.dist compile via
 
 	ant dist-firm -DTARGET=i686-invasic-irtss
+
+Now you can use
+
+  x10firm -mtarget=i686-invasic-irtss Foo.x10
