@@ -105,6 +105,13 @@ public abstract class PlaceGroup implements Sequence[Place] {
     }
     return true;
   }
+  
+  public def broadcastFlat(cl:() => void) {
+	  // this is just a broadcust, not flat
+	  finish for (p in this) {
+		  at (p) async cl();
+	  }
+  }
 
   public static class WorldPlaceGroup extends PlaceGroup {
     public operator this(i:int):Place = Place.place(i);
