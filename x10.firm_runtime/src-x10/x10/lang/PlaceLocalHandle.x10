@@ -14,6 +14,7 @@ package x10.lang;
 import x10.compiler.Pragma;
 import x10.compiler.NativeClass;
 import x10.compiler.StaticAllocate;
+import x10.compiler.TLMAllocate;
 import x10.util.concurrent.AtomicInteger;
 import x10.util.GrowableIndexedMemoryChunk;
 
@@ -35,6 +36,7 @@ import x10.util.GrowableIndexedMemoryChunk;
  */
 @NativeClass("c++", "x10.lang", "PlaceLocalHandle_Impl")
 @NativeClass("java", "x10.runtime.impl.java", "PlaceLocalHandle")
+@TLMAllocate
 public final struct PlaceLocalHandle[T]{T isref, T <: Any} {
 
     /* @only at first place... */
@@ -244,6 +246,34 @@ public final struct PlaceLocalHandle[T]{T isref, T <: Any} {
     }*/
     public static def makeFlat[T,U](pg:PlaceGroup, init_here:(Place)=>U, init_there:(U)=>T){T isref}:PlaceLocalHandle[T] {
         return make[T,U](pg, init_here, init_there);
+    }
+    
+    /**
+     * Grow the given handle to include the places in the given place group.
+     * 
+     * @param plh place local handle to grow
+     * @param pg place group
+     * @param init initializer function
+     */
+    public static def grow[T](pg:PlaceGroup, plh:PlaceLocalHandle[T], init:()=>T){T isref} {
+    	pg.broadcastFlat(() => {
+    		plh.set(init());
+    	});
+    }
+    
+    /**
+     * Grow the given handle to include the places in the given place group.
+     * 
+     * @param plh place local handle to grow
+     * @param pg place group
+     * @param init_here initializer function that will be evaluated here
+     * @param init_there initializer function that will be evaluated on the target place
+     */
+    public static def grow[T,U](pg:PlaceGroup, plh:PlaceLocalHandle[T], init_here:(Place)=>U, init_there:(U)=>T){T isref} {
+    	finish for (p in pg) {
+    		val v:U = init_here(p);
+    		at (p) async plh.set(init_there(v));
+    	}
     }
 
     public static def destroy[T](pg: PlaceGroup, plh:PlaceLocalHandle[T]){T isref, T haszero}: void {
