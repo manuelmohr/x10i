@@ -2,6 +2,8 @@ package x10.lang;
 
 import x10.util.Ordered;
 
+import x10.compiler.LinkSymbol;
+
 /**
  * Represent native pointers. This shoould only be used by internal library code!
  */
@@ -38,5 +40,10 @@ public struct Pointer implements Comparable[Pointer] {
 
     /** Cast pointer to type T, i.e. (T) ptr in C. */
     public native def castTo[T](): T;
+
+    @LinkSymbol("x10_asPointer")
     public static native operator (x:Any) as Pointer;
+
+    @LinkSymbol("x10_asPointer")
+    public static native explicitAs(x:Any):Pointer;
 }

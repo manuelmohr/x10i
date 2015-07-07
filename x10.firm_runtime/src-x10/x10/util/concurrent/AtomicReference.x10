@@ -11,49 +11,59 @@
 
 package x10.util.concurrent;
 
-import x10.compiler.Native;
-import x10.compiler.NativeRep;
+import x10.lang.Pointer;
 
-@NativeRep("java", "x10.core.concurrent.AtomicReference<#T$box>", null, "new x10.rtt.ParameterizedType(x10.core.concurrent.AtomicReference.$RTT, #T$rtt)")
-@NativeRep("c++", "x10aux::ref<x10::util::concurrent::AtomicReference<#T > >", "x10::util::concurrent::AtomicReference<#T >", null)
+import x10.compiler.TLMAllocate;
+import x10.compiler.LinkSymbol;
+
+@TLMAllocate
 public final class AtomicReference[T]{T isref} {
+	private var ptr:Pointer;
 
-	// Unusable due to compiler bug.  See http://jira.codehaus.org/browse/XTENLANG-127 (Yoav todo: this bug was fixed!)
-	// public native def this():AtomicReference[T];
-	// public native def this(v:T):AtomicReference[T];
+	public def this():AtomicReference[T] {
+		this.ptr = Pointer.NULL;
+	}
+
+	public def this(v:T):AtomicReference[T] {
+		this.ptr = v as Pointer;
+	}
 
 	// Hack around XTENLANG-127.  Delete as soon as it is fixed.
-	@Native("java", "new x10.core.concurrent.AtomicReference<#T$box>(#T$rtt)")
-	@Native("c++", "x10::util::concurrent::AtomicReference<#T >::_make()")
-	public static native def newAtomicReference[T]() {T isref} :AtomicReference[T];
+	public static def newAtomicReference[T]() {T isref} :AtomicReference[T] {
+		return new AtomicReference[T]();
+	}
 
 	// Hack around XTENLANG-127.  Delete as soon as it is fixed.
-	@Native("java", "new x10.core.concurrent.AtomicReference<#T$box>(#T$rtt,#v)")
-	@Native("c++", "x10::util::concurrent::AtomicReference<#T >::_make(#v)")
-	public static  native def newAtomicReference[T](v:T) {T isref} :AtomicReference[T];
+	public static def newAtomicReference[T](v:T) {T isref} :AtomicReference[T] {
+		return new AtomicReference[T](v);
+	}
 
-	@Native("java", "#this.get()")
-	@Native("c++", "(#this)->get()")
-	public native def get():T;
+	public def get():T = this.ptr.castTo[T]();
 
-	@Native("java", "#this.set(#v)")
-	@Native("c++", "(#this)->set(#v)")
-	public native def set(v:T):void;
+	public def set(v:T) {T isref} :void {
+		this.ptr = v as Pointer; // TODO memory fence?
+	}
 
-	@Native("java", "#this.compareAndSet(#expect,#update)")
-	@Native("c++", "(#this)->compareAndSet(#expect,#update)")
-	public native def compareAndSet(expect:T, update:T):Boolean;
+	public def compareAndSet(expect:T, update:T) {T isref} :Boolean {
+		/* "expect as Pointer" would fail,
+		    because it becomes a cast instead of a conversion. */
+		val e = Pointer.explicitAs(expect);
+		val u = Pointer.explicitAs(update);
+		return internal_compareAndSet(this as Pointer,e,u);
+	}
 
-	@Native("java", "#this.weakCompareAndSet(#expect,#update)")
-	@Native("c++", "(#this)->weakCompareAndSet(#expect,#update)")
-	public native def weakCompareAndSet(expect:T, update:T):Boolean;
+	public def weakCompareAndSet(expect:T, update:T) {T isref} :Boolean = compareAndSet(expect, update);
 
-	@Native("java", "#this.getAndSet(#v)")
-	@Native("c++", "(#this)->getAndSet(#v)")
-	public native def getAndSet(v:T):T;
+	public def getAndSet(v:T) {T isref} :T {
+		while (true) {
+			val prev = get();
+			if (compareAndSet(prev, v))
+				return prev;
+		}
+	}
 
-	@Native("java", "#this.toString()")
-	@Native("c++", "(#this)->toString()")
-	public native def toString():String;
+	public def toString():String = "atomic "+this.ptr.toString();
+
+	@LinkSymbol("x10_compare_and_set")
+	private static native def internal_compareAndSet(adr:Pointer, old:Pointer, neu:Pointer):Boolean;
 }
-

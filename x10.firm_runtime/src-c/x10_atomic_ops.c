@@ -9,6 +9,7 @@
  *  (C) Copyright IBM Corporation 2006-2010.
  */
 #include "x10_atomic_ops.h"
+#include "x10_object.h"
 
 /**
  * Ensure that all loads before the barrier have loaded their
@@ -39,4 +40,24 @@ void _ZN3x104util10concurrent6Fences16storeLoadBarrierEv() {
  * the barrier is flushed.
  */
 void _ZN3x104util10concurrent6Fences17storeStoreBarrierEv() {
+}
+
+/* We need to access the field of an AtomicReference object
+ * for a CAS operation, hence replicate the object layout. */
+typedef struct {
+	x10_object header;
+	x10_pointer reference;
+} x10_atomic_reference;
+
+/**
+ * Perform a CAS operation for an AtomicReference object
+ * @param aref  this pointer of AtomicReference
+ * @param old   old reference to compare with
+ * @param new   new reference to set if comparison is true
+ * @returns     comparison result
+ */
+x10_boolean x10_compare_and_set(x10_atomic_reference *aref, x10_pointer old, x10_pointer new) {
+	x10_pointer *ptr = &(aref->reference);
+	x10_pointer prev = x10_atomic_ops_compareAndSet_32(ptr, old, new);
+	return prev == old;
 }
