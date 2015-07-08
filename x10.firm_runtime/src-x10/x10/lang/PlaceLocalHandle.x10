@@ -18,6 +18,8 @@ import x10.compiler.TLMAllocate;
 import x10.util.concurrent.AtomicInteger;
 import x10.util.GrowableIndexedMemoryChunk;
 
+import octopos.Memory;
+
 /**
  * The primary operation on a PlaceLocalHandle is to use it to access an object
  * on the current place.  If the current place is not part of the distribution
@@ -280,5 +282,6 @@ public final struct PlaceLocalHandle[T]{T isref, T <: Any} {
         finish for (p in pg) {
             at (p) async plh.set(Zero.get[T]());
         }
+        Memory.freeTLM(plh as Pointer);
     }
 }

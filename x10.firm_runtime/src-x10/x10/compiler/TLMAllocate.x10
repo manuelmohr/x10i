@@ -9,5 +9,8 @@ import x10.lang.annotations.ClassAnnotation;
  *   val v = @TLMAllocate new T(...);
  * Or on classes, so all objects will be TLM-allocated by default:
  *   @TLMAllocate class Foobar { ... }
+ *
+ * TLM-allocated objects are not managed by the garbage collector.
+ * Thus, explicit frees are necessary, via octopos.Memory.freeTLM.
  */
 public interface TLMAllocate extends ExpressionAnnotation, ClassAnnotation { }
