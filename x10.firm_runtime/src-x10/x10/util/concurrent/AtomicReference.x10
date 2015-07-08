@@ -25,7 +25,7 @@ public final class AtomicReference[T]{T isref} {
 	}
 
 	public def this(v:T):AtomicReference[T] {
-		this.ptr = v as Pointer;
+		this.ptr = Pointer.explicitAs(v);
 	}
 
 	// Hack around XTENLANG-127.  Delete as soon as it is fixed.
@@ -41,7 +41,7 @@ public final class AtomicReference[T]{T isref} {
 	public def get():T = this.ptr.castTo[T]();
 
 	public def set(v:T) {T isref} :void {
-		this.ptr = v as Pointer; // TODO memory fence?
+		this.ptr = Pointer.explicitAs(v); // TODO memory fence?
 	}
 
 	public def compareAndSet(expect:T, update:T) {T isref} :Boolean {
