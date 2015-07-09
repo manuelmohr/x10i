@@ -13,11 +13,12 @@ DEFAULT_LEON="4t5c-chipit-w-iotile"
 RELEASES=""
 RELEASES="$RELEASES release.leon.${DEFAULT_LEON}.${RELEASE_DATE}.tar.bz2"
 RELEASES="$RELEASES release.x86guest.${DEFAULT_X86GUEST}.${RELEASE_DATE}.tar.bz2"
-MD5SUMS="""9f3e638c294fa5e6ca28bda4152d6ef7  release.leon.4t5c-chipit-w-iotile.2015-07-08.tar.bz2
-e7e952d4a3d41afac11d769bc03d95c0  release.x86guest.4t-w-iotile.2015-07-08.tar.bz2"""
+MD5SUMS="""9f3e638c294fa5e6ca28bda4152d6ef7  release.leon.${DEFAULT_LEON}.${RELEASE_DATE}.tar.bz2
+e7e952d4a3d41afac11d769bc03d95c0  release.x86guest.${DEFAULT_X86GUEST}.${RELEASE_DATE}.tar.bz2"""
 
 DIST_DIR="octopos-dist"
 OCTOPOS_APP_DIR="octopos-app"
+SSH_HOSTNAME="ssh.info.uni-karlsruhe.de"
 
 # First check if the currently expanded octopos is already the version we want?
 if test -r "$OCTOPOS_APP_DIR/md5sums"; then
@@ -39,12 +40,17 @@ for release in $RELEASES; do
 	if ! test -e "$DIST_DIR/$release"; then
 		echo "Trying to fetch $DIST_DIR/$release ..."
 		IPDDIR="/ben/local/octopos-releases"
-		if test -r "$IPDDIR/$release"; then
+		if ! test -d "$IPDDIR"; then
+			echo "You cannot access our AFS filesystem. Maybe ssh? Try:"
+			echo scp -p "$SSH_HOSTNAME:$IPDDIR/$release" "$DIST_DIR"
+			exit 1
+		else if test -r "$IPDDIR/$release"; then
 			echo "Copying $release from $IPDDIR"
 			cp -p "$IPDDIR/$release" "$DIST_DIR"
 		else
 			echo "Cannot find $IPDDIR/$release, please download it from https://www4.cs.fau.de/invasic/octopos/"
 			exit 1
+		fi
 		fi
 	fi
 done
