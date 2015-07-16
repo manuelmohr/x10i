@@ -747,7 +747,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 	public void finishConstruction(final MethodConstruction savedConstruction) {
 		/* create Return node if there was no explicit return statement yet */
 		if (!con.isUnreachable()) {
-			genReturn(null, null);
+			genReturn(con.returnType, null);
 		}
 		createUnwind();
 
@@ -1233,8 +1233,12 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			final Expr casted = x10Cast(expr, returnType);
 			final Node value = visitExpression(casted);
 			retValues = new Node[] {value};
-		} else {
+		} else if (returnType == null || returnType == typeSystem.getTypeSystem().Void()) {
 			retValues = new Node[0];
+		} else {
+			final Mode mode  = firmTypeSystem.getFirmMode(returnType);
+			final Node value = con.newUnknown(mode);
+			retValues = new Node[] {value};
 		}
 
 		produceFinallyCode(0);
