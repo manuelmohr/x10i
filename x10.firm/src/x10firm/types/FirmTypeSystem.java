@@ -19,7 +19,6 @@ import polyglot.types.FieldDef;
 import polyglot.types.FieldInstance;
 import polyglot.types.Flags;
 import polyglot.types.LocalDef;
-import polyglot.types.LocalInstance;
 import polyglot.types.MethodDef;
 import polyglot.types.Name;
 import polyglot.types.QName;
@@ -906,8 +905,8 @@ public class FirmTypeSystem {
 	}
 
 	private boolean canOverride(final MethodInstance a, final MethodInstance b) {
-		List<polyglot.types.Type> fta = a.formalTypes();
-		List<polyglot.types.Type> ftb = b.formalTypes();
+		final List<polyglot.types.Type> fta = a.formalTypes();
+		final List<polyglot.types.Type> ftb = b.formalTypes();
 		if (fta.size() != ftb.size()) return false;
 		for (int i = 0; i < fta.size(); i++) {
 			polyglot.types.Type ai = fta.get(i);
