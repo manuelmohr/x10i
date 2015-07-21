@@ -906,12 +906,12 @@ public class FirmTypeSystem {
 	}
 
 	private boolean canOverride(final MethodInstance a, final MethodInstance b) {
-		final List<LocalInstance> fna = a.formalNames();
-		final List<LocalInstance> fnb = b.formalNames();
-		if (fna.size() != fnb.size()) return false;
-		for (int i = 0; i < fna.size(); i++) {
-			polyglot.types.Type ai = fna.get(i).def().type().get();
-			polyglot.types.Type bi = fnb.get(i).def().type().get();
+		List<polyglot.types.Type> fta = a.formalTypes();
+		List<polyglot.types.Type> ftb = b.formalTypes();
+		if (fta.size() != ftb.size()) return false;
+		for (int i = 0; i < fta.size(); i++) {
+			polyglot.types.Type ai = fta.get(i);
+			polyglot.types.Type bi = ftb.get(i);
 			if (ai instanceof ConstrainedType)
 				ai = ((ConstrainedType)ai).baseType().get();
 			if (bi instanceof ConstrainedType)
