@@ -135,14 +135,10 @@ public final struct Place(id: Int)  {
      * Returns the same place as would be obtained by using next() 'i' times.
      */
     public def next(i: Int): Place {
-        // -1 % n == -1, not n-1, so need to add n
         val max = getMaxPlaces();
-        if (isHost(id)) {
-            val k = (id + i % max + max) % max;
-            return place(k);
-        }
-        // FIXME: iterate through peers
-        return this;
+        /* -1 % n == -1, not n-1, so need to add n */
+        val k = (id + i + max) % max;
+        return place(k);
     }
 
     /**
