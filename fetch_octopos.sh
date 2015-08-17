@@ -7,14 +7,14 @@
 #    https://www4.cs.fau.de/invasic/octopos/
 set -euv
 
-RELEASE_DATE="2015-07-08"
+RELEASE_DATE="2015-08-16"
 DEFAULT_X86GUEST="4t-w-iotile"
 DEFAULT_LEON="4t5c-chipit-w-iotile"
 RELEASES=""
 RELEASES="$RELEASES release.leon.${DEFAULT_LEON}.${RELEASE_DATE}.tar.bz2"
 RELEASES="$RELEASES release.x86guest.${DEFAULT_X86GUEST}.${RELEASE_DATE}.tar.bz2"
-MD5SUMS="""9f3e638c294fa5e6ca28bda4152d6ef7  release.leon.${DEFAULT_LEON}.${RELEASE_DATE}.tar.bz2
-e7e952d4a3d41afac11d769bc03d95c0  release.x86guest.${DEFAULT_X86GUEST}.${RELEASE_DATE}.tar.bz2"""
+MD5SUMS="""42008a4b51aa07ac3074afa5d9558c5b  release.leon.${DEFAULT_LEON}.${RELEASE_DATE}.tar.bz2
+72523b07721553e56da19820017d9166  release.x86guest.${DEFAULT_X86GUEST}.${RELEASE_DATE}.tar.bz2"""
 
 DIST_DIR="octopos-dist"
 OCTOPOS_APP_DIR="octopos-app"
