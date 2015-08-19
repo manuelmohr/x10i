@@ -1,6 +1,6 @@
 package invasic.constraints;
 
-import x10.compiler.Pointer;
+import x10.lang.Pointer;
 import x10.compiler.LinkSymbol;
 
 /** Specifies the scalability of the algorithm, which should be processed by the claims resources. */
