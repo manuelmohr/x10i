@@ -88,6 +88,7 @@ FIRM_NATIVE_TYPES_CONF=$(BUILDDIR)/firmNativeTypes.conf
 C_FILES=$(filter-out $(GEN_FIRM_NATIVE_SIZES), $(ALL_C_FILES)) $(GEN_PRIMITIVE_TYPES)
 O_FILES=$(addprefix $(BUILDDIR), $(basename $(C_FILES:%.c=%.o)))
 H_FILES=$(wildcard $(SRCDIR)/*.h) $(wildcard $(SRCDIR)/adt/*.h) $(wildcard $(PLATFORMDIR)/*.h)
+IRTSS_HEADER=$(wildcard ../octopos-app/releases/current/x86guest/default/include/*.h)
 CPPFLAGS += -I $(SRCDIR) -I $(SRCDIR)/$(PLATFORM) -I $(LIBOO_BASE)/include
 CFLAGS += -Wall -W -std=c99
 APP_CFLAGS += -std=c99
@@ -100,7 +101,7 @@ all: $(A_FILE) $(FIRM_NATIVE_TYPES_CONF) $(IR_FILE) $(DOUBLEREG_LIB)
 $(A_FILE): $(O_FILE)
 	ar rucs $@ $?
 
-$(FIRM_NATIVE_TYPES_CONF): $(GEN_FIRM_NATIVE_SIZES) $(wildcard $(PLATFORMDIR)/*.h) $(wildcard $(SRCDIR)/*.h) $(CPARSER)
+$(FIRM_NATIVE_TYPES_CONF): $(GEN_FIRM_NATIVE_SIZES) $(wildcard $(PLATFORMDIR)/*.h) $(wildcard $(SRCDIR)/*.h) $(CPARSER) $(IRTSS_HEADER)
 	$(CPARSER) --print-compound-sizes $(CPARSER_TARGET) $(CPPFLAGS) $(APP_CFLAGS) -I $(SRCDIR)/$(PLATFORM)/include-workaround -o $@ $(SRCDIR)/gen_firm_native_sizes.c
 
 $(GEN_PRIMITIVE_TYPES): $(GENERATORSDIR)/create_types.py
