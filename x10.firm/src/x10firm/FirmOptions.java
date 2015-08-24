@@ -3,6 +3,8 @@ package x10firm;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import firm.OO;
+import firm.OO.InterfaceCallType;
 import x10firm.FirmTransformations.Transformation;
 
 /**
@@ -25,6 +27,8 @@ public final class FirmOptions {
 	private static int inlineThreshold = 0;
 	/** The threshold value for procedure cloning. */
 	private static int cloneThreshold = 0;
+	/** Choose method for implementing interface method lookup. */
+	private static OO.InterfaceCallType interfaceCallType = InterfaceCallType.INDEXED_ITABLE;
 
 	/**
 	 * @return whether constant folding is activated.
@@ -94,6 +98,20 @@ public final class FirmOptions {
 	 */
 	public static void setCloneThreshold(final int cloneThreshold) {
 		FirmOptions.cloneThreshold = cloneThreshold;
+	}
+
+	/**
+	 * @return the interface call type
+	 */
+	public static OO.InterfaceCallType getInterfaceCallType() {
+		return interfaceCallType;
+	}
+
+	/**
+	 * @param callType the interface call type to set.
+	 */
+	public static void setInterfaceCallType(final OO.InterfaceCallType callType) {
+		FirmOptions.interfaceCallType = callType;
 	}
 
 	/**
@@ -247,6 +265,23 @@ public final class FirmOptions {
 			@Override
 			boolean activate(final String arg) {
 				cloneThreshold = Integer.parseInt(arg);
+				return true;
+			}
+		});
+		KNOWN_OPTIONS.put("interface-call-type", new FirmOption(
+				"interface-call-type=runtime-lookup|searched-itable|indexed-itable",
+				"set interface invocation lookup method") {
+			@Override
+			boolean activate(final String arg) {
+				if (arg.equals("searched-itable")) {
+					interfaceCallType = InterfaceCallType.SEARCHED_ITABLE;
+				} else if (arg.equals("runtime-lookup")) {
+					interfaceCallType = InterfaceCallType.RUNTIME_LOOKUP;
+				} else if (arg.equals("indexed-itable")) {
+					interfaceCallType = InterfaceCallType.INDEXED_ITABLE;
+				} else {
+					return false;
+				}
 				return true;
 			}
 		});

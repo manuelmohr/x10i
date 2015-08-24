@@ -105,6 +105,7 @@ public final class FirmState {
 			Backend.option("debug=frameinfo");
 		}
 
+		OO.setInterfaceLookup(FirmOptions.getInterfaceCallType());
 		OO.init();
 	}
 
