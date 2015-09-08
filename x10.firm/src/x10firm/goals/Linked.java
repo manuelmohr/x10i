@@ -62,8 +62,6 @@ public class Linked extends AbstractGoal_c {
 			return true;
 
 		final String cpu = target.getCpu();
-		if (cpu.equals("x86_64"))
-			return true;
 		if (!cpu.equals("sparc")) {
 			return (os.equals("octopos") || os.equals("irtss"));
 		}
@@ -138,7 +136,6 @@ public class Linked extends AbstractGoal_c {
 		final List<String> cmd = new ArrayList<String>();
 		cmd.add(gcc);
 		if (generate32BitCode()) {
-			// Produce a 32-bit binary when running on a 64-bit x86 host
 			cmd.add("-m32");
 		}
 
@@ -210,8 +207,10 @@ public class Linked extends AbstractGoal_c {
 		} else {
 			cmd.add("-lm");
 			cmd.add("-lrt");
-			cmd.add("-L" + distPath() + "/../octopos-app/releases/current/extras/libethcomm/i686/");
-			cmd.add("-lethcomm");
+			if (!cpu.equals("x86_64")) {
+				cmd.add("-L" + distPath() + "/../octopos-app/releases/current/extras/libethcomm/i686/");
+				cmd.add("-lethcomm");
+			}
 			cmd.add("-pthread");
 		}
 

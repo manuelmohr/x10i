@@ -26,5 +26,13 @@ x10_pointer x10_asPointer(x10_any *any)
 
 x10_int _ZN3x104lang7Pointer8hashCodeEv(x10_pointer ptr)
 {
+#ifdef __x86_64__
+	uintptr_t val  = (uintptr_t)ptr;
+	x10_int   hash = 17;
+	hash = hash * 31 + (x10_int)(val >> 32);
+	hash = hash * 31 + (x10_int)(val & 0xFFFFFFFFU);
+	return hash;
+#else
 	return (x10_int)ptr;
+#endif
 }

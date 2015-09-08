@@ -25,6 +25,14 @@ static inline x10_int x10_atomic_ops_compareAndSet_32(volatile x10_int* address,
 #endif
 }
 
+#ifdef __x86_64__
+static inline x10_long x10_atomic_ops_compareAndSet_64(volatile x10_ulong* address,
+	x10_ulong oldValue, x10_ulong newValue)
+{
+	return __sync_val_compare_and_swap(address, oldValue, newValue);
+}
+#endif
+
 /**
  * Ensure that all loads before the barrier have loaded their
  * data before any load after the data accesses its data.

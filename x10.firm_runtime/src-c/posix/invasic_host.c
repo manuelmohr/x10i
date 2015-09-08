@@ -2,7 +2,45 @@
 #include "ethernet.h"
 #include "init.h"
 #include "serialization.h"
-#include <ethchannel.h>
+#ifdef __x86_64__
+	typedef void EthChannel;
+	enum {
+		ETH_MODE_WRITE, ETH_MODE_READ,
+	};
+	static EthChannel *ethChannelCreate(const char *name, int fd, int mode)
+	{
+		(void)name;
+		(void)fd;
+		(void)mode;
+		panic("ethChannelCreate not available on x86_64");
+	}
+	static int ethChannelReceive(EthChannel *chan, void *buf, size_t size)
+	{
+		(void)chan;
+		(void)buf;
+		(void)size;
+		panic("ethChannelReceive not available on x86_64");
+	}
+	static int32_t ethChannelPrepareSend(EthChannel *chan)
+	{
+		(void)chan;
+		panic("ethChannelPrepareSend not available on x86_64");
+	}
+	static void ethChannelDestroy(EthChannel *chan)
+	{
+		(void)chan;
+		panic("ethChannelDestroy not available on x86_64");
+	}
+	static int ethChannelSend(EthChannel *chan, void *buf, size_t size)
+	{
+		(void)chan;
+		(void)buf;
+		(void)size;
+		panic("ethChannelSend not available on x86_64");
+	}
+#else
+	#include <ethchannel.h>
+#endif
 #include <stdlib.h>
 
 static EthChannel *write_chan = NULL;

@@ -104,24 +104,24 @@ void unregister_from_finish_state(finish_state_t *fs)
 
 unsigned activity_get_atomic_depth(void)
 {
-	return (unsigned) pthread_getspecific(activity_atomic_depth);
+	return (unsigned)(uintptr_t)pthread_getspecific(activity_atomic_depth);
 }
 
 void activity_set_atomic_depth(unsigned depth)
 {
-	pthread_setspecific(activity_atomic_depth, (void*)depth);
+	pthread_setspecific(activity_atomic_depth, (void*)(uintptr_t)depth);
 }
 
 void activity_inc_atomic_depth(void)
 {
 	const unsigned new_depth = activity_get_atomic_depth() + 1;
-	pthread_setspecific(activity_atomic_depth, (void*) new_depth);
+	pthread_setspecific(activity_atomic_depth, (void*)(uintptr_t)new_depth);
 }
 
 void activity_dec_atomic_depth(void)
 {
 	const unsigned new_depth = activity_get_atomic_depth() - 1;
-	pthread_setspecific(activity_atomic_depth, (void*) new_depth);
+	pthread_setspecific(activity_atomic_depth, (void*)(uintptr_t)new_depth);
 }
 
 /** Top-level thread function, initializes activity and cleans up afterwards */

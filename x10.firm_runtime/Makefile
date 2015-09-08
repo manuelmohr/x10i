@@ -21,12 +21,6 @@ GENERATORSDIR   = generators
 LIBOO_BASE     ?= ../liboo
 
 # The ugly part... Collection of hacks for certain architectures
-ifeq ($(findstring x86_64, $(TARGET)), x86_64)
-	CFLAGS += -m32 -march=i686
-	APP_CFLAGS += -m32 -march=i686
-	LFLAGS += -m32
-	CPARSER_TARGET=
-endif
 ifeq ($(findstring sparc, $(TARGET)), sparc)
 	APP_CFLAGS += -static
 	CFLAGS += -DDOUBLE_IS_32BIT
@@ -69,8 +63,10 @@ ifeq ($(findstring sparc-invasic, $(TARGET)), sparc-invasic)
 #	CPPFLAGS += -DHAVE_ICORE -I../libicore/include
 endif
 ifeq ($(findstring linux, $(TARGET)), linux)
-	OCTOPOS_EXTRAS=../octopos-app/releases/current/extras/libethcomm
 	CFLAGS += -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -pthread
+endif
+ifeq ($(findstring i686-linux, $(TARGET)), i686-linux)
+	OCTOPOS_EXTRAS=../octopos-app/releases/current/extras/libethcomm
 	CPPFLAGS += -I $(OCTOPOS_EXTRAS)
 	# Choose if you want big-endian serialization or not
 	# (Needed for host place mode on CHIPit)

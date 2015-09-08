@@ -58,6 +58,10 @@ typedef struct {
  */
 x10_boolean x10_compare_and_set(x10_atomic_reference *aref, x10_pointer old, x10_pointer new) {
 	x10_pointer *ptr = &(aref->reference);
+#ifdef __x86_64__
+	x10_pointer prev = (x10_pointer)x10_atomic_ops_compareAndSet_64((volatile x10_ulong*)ptr, (x10_ulong)old, (x10_ulong)new);
+#else
 	x10_pointer prev = x10_atomic_ops_compareAndSet_32(ptr, old, new);
+#endif
 	return prev == old;
 }

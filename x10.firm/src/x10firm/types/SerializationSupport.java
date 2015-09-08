@@ -22,6 +22,7 @@ import firm.PointerType;
 import firm.Program;
 import firm.Relation;
 import firm.Type;
+import firm.Mode.Arithmetic;
 import firm.bindings.binding_oo.ddispatch_binding;
 import firm.nodes.Alloc;
 import firm.nodes.Block;
@@ -66,6 +67,7 @@ public final class SerializationSupport {
 	private Entity gcXMallocAtomic;
 	private Entity serializationWriteData;
 	private Entity deserializationRestoreData;
+	private firm.Type sizeTType;
 
 	/** Store the serialization function for each (class) type. */
 	private final Map<Type, Entity> serializeFunctions = new HashMap<Type, Entity>();
@@ -105,18 +107,21 @@ public final class SerializationSupport {
 		deserializationRestoreObject = firmTypeSystem.getGlobalMethodEntity(droName, droType);
 		deserializationRestoreObject.setLdIdent(droName);
 
-		final MethodType mallocType = new MethodType(new Type[] {Mode.getIu().getType()}, new Type[] {typeP});
+		sizeTType = Mode.createIntMode("size_t", Arithmetic.TwosComplement, Mode.getP().getSizeBits(),
+				false, Mode.getP().getModuloShift()).getType();
+
+		final MethodType mallocType = new MethodType(new Type[] {sizeTType}, new Type[] {typeP});
 		gcXMalloc = firmTypeSystem.getGlobalMethodEntity(GC_XMALLOC, mallocType);
 		gcXMalloc.setLdIdent(NameMangler.mangleKnownName(GC_XMALLOC));
 		gcXMallocAtomic = firmTypeSystem.getGlobalMethodEntity(GC_XMALLOC_ATOMIC, mallocType);
 		gcXMallocAtomic.setLdIdent(NameMangler.mangleKnownName(GC_XMALLOC_ATOMIC));
 
-		final MethodType serWriteDataType = new MethodType(new Type[] {typeP, typeP, Mode.getIu().getType()},
+		final MethodType serWriteDataType = new MethodType(new Type[] {typeP, typeP, sizeTType},
 				emptyTypelist);
 		serializationWriteData = firmTypeSystem.getGlobalMethodEntity(SERIALIZATION_WRITE_DATA, serWriteDataType);
 		serializationWriteData.setLdIdent(NameMangler.mangleKnownName(SERIALIZATION_WRITE_DATA));
 
-		final MethodType deserRestoreDataType = new MethodType(new Type[] {typeP, typeP, Mode.getIu().getType()},
+		final MethodType deserRestoreDataType = new MethodType(new Type[] {typeP, typeP, sizeTType},
 				emptyTypelist);
 		deserializationRestoreData = firmTypeSystem.getGlobalMethodEntity(DESERIALIZATION_RESTORE_DATA,
 				deserRestoreDataType);
@@ -369,7 +374,7 @@ public final class SerializationSupport {
 
 			final Node elementSize = con.newSize(Mode.getIs(), elementType);
 			final Node dataSize = con.newMul(length, elementSize, Mode.getIs());
-			final Node dataSizeIu = con.newConv(dataSize, Mode.getIu());
+			final Node dataSizeIu = con.newConv(dataSize, sizeTType.getMode());
 			final Node writeDataCall = con.newCall(mem, writeDataAddr,
 					new Node[] {bufPtr, ptr, dataSizeIu}, serializationWriteData.getType());
 			mem = con.newProj(writeDataCall, Mode.getM(), Call.pnM);
@@ -564,7 +569,7 @@ public final class SerializationSupport {
 		// Second, allocate memory for the new backing storage
 		final Node elemSize = con.newSize(Mode.getIs(), elementType);
 		final Node mallocSize = con.newMul(length, elemSize, Mode.getIs());
-		final Node mallocSizeIu = con.newConv(mallocSize, Mode.getIu());
+		final Node mallocSizeIu = con.newConv(mallocSize, sizeTType.getMode());
 		final Node mallocSymConst = con.newAddress(chooseMallocEntity(firmTypeSystem, x10ElementType));
 		final Node[] mallocArgs = new Node[] {mallocSizeIu};
 		final Node mallocCall = con.newCall(con.getCurrentMem(), mallocSymConst, mallocArgs, gcXMalloc.getType());
@@ -585,7 +590,7 @@ public final class SerializationSupport {
 			final Node ptr = con.newProj(loadPtr, Mode.getP(), Load.pnRes);
 			final Node elementSize = con.newSize(Mode.getIs(), elementType);
 			final Node dataSize = con.newMul(length, elementSize, Mode.getIs());
-			final Node dataSizeIu = con.newConv(dataSize, Mode.getIu());
+			final Node dataSizeIu = con.newConv(dataSize, sizeTType.getMode());
 			final Node restoreDataCall = con.newCall(mem, restoreDataAddr,
 					new Node[] {bufPtr, ptr, dataSizeIu}, deserializationRestoreData.getType());
 			mem = con.newProj(restoreDataCall, Mode.getM(), Call.pnM);

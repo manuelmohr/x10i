@@ -1734,7 +1734,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	private Node genAlloc(final firm.Type type) {
 		final Node mem = con.getCurrentMem();
-		final Node size = con.newSize(Mode.getIu(), type);
+		final Node size = con.newSize(sizeTType.getMode(), type);
 		assert type.getTypeState() == ir_type_state.layout_fixed;
 		final Node alloc = con.newAlloc(mem, size, type.getAlignmentBytes());
 		final Node newMem = con.newProj(alloc, Mode.getM(), Alloc.pnM);
@@ -1772,7 +1772,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	private Node genObjectAlloc(final Type x10Type, final Entity allocEntity) {
 		final ClassType firmType = firmTypeSystem.asClass(x10Type, true);
-		final Node size = con.newSize(Mode.getIu(), firmType);
+		final Node size = con.newSize(sizeTType.getMode(), firmType);
 		final Node objPtr = genMallocCall(allocEntity, size);
 		final Node usableObjPtr = initVPtr(objPtr, firmType);
 		return usableObjPtr;

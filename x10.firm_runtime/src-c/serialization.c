@@ -152,7 +152,11 @@ void x10_serialization_write_double(serialization_buffer_t *buf,
 void x10_serialization_write_pointer(serialization_buffer_t *buf,
                                      const x10_pointer *value_ptr)
 {
+#ifdef __x86_64__
+	WRITE_TO_BUF(64, buf, value_ptr);
+#else
 	WRITE_TO_BUF(32, buf, value_ptr);
+#endif
 	/* Currently our garbage collector is per-place only. As soon as pointers
 	 * get sent to other places (e.g. GlobalRef contains a pointer), we may have
 	 * references on other places to our data. For now, we simply remember the
@@ -321,7 +325,11 @@ void x10_deserialization_restore_double(deserialization_buffer_t *buf,
 void x10_deserialization_restore_pointer(deserialization_buffer_t *buf,
                                          x10_pointer *addr)
 {
+#ifdef __x86_64__
+	READ_FROM_BUF(64, buf, addr);
+#else
 	READ_FROM_BUF(32, buf, addr);
+#endif
 	buf->cursor += sizeof(*addr);
 }
 
