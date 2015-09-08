@@ -947,7 +947,7 @@ public class FirmTypeSystem {
 	}
 
 	private static boolean methodsCompatible(final MethodType type1, final MethodType type2) {
-		if (type1.getVariadicity() != type2.getVariadicity())
+		if (type1.isVariadic() != type2.isVariadic())
 			return false;
 		if (type1.getNRess() != type2.getNRess())
 			return false;
