@@ -111,8 +111,8 @@ again:;
 	}
 
 	if (res != 0) {
-		  perror("x10 runtime: failure while sending remote exec message");
-		  abort();
+		perror("x10 runtime: failure while sending remote exec message");
+		abort();
 	}
 }
 
