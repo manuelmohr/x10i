@@ -25,6 +25,7 @@ public class CompilerOptions extends X10CompilerOptions {
 	private boolean dumpTypeGraph = false;
 	private static final String FIRM_NATIVE_TYPES_FILENAME = "firmNativeTypes.conf";
 	private String nativeTypesConfigPath = null;
+	private MachineTriple host = null;
 	private MachineTriple target = null;
 	private boolean useSoftFloat = false;
 	private boolean assembleAndLink = true;
@@ -41,6 +42,7 @@ public class CompilerOptions extends X10CompilerOptions {
 		super(extension);
 		try {
 			setHostMachineTriple();
+			target = host;
 		} catch (Exception err) {
 			throw new RuntimeException(err.getCause());
 		}
@@ -52,7 +54,7 @@ public class CompilerOptions extends X10CompilerOptions {
 		final String output = stdOut.readLine();
 		if (output == null)
 			throw new RuntimeException("Failed to determine host architecture");
-		target = new MachineTriple(output);
+		host = new MachineTriple(output);
 		stdOut.close();
 	}
 
@@ -83,6 +85,13 @@ public class CompilerOptions extends X10CompilerOptions {
 	 */
 	public String getWhiteListFile() {
 		return whiteList;
+	}
+
+	/**
+	 * Returns the host machine triple.
+	 */
+	public MachineTriple getHostTriple() {
+		return host;
 	}
 
 	/**

@@ -35,6 +35,13 @@ ifeq ($(findstring darwin11, $(TARGET)), darwin11)
 	LFLAGS += -m32
 	APP_CFLAGS += -m32
 endif
+ifeq ($(findstring x86_64, $(guessed_target)), x86_64)
+ifeq ($(findstring i686, $(TARGET)), i686)
+	CFLAGS += -m32
+	LFLAGS += -m32
+	APP_CFLAGS += -m32
+endif
+endif
 ifeq ($(findstring invasic, $(TARGET)), invasic)
 	PLATFORM = octopos
 	GCC_INCLUDE:=$(shell $(CC) --print-file-name=include)
