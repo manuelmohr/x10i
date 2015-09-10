@@ -61,8 +61,8 @@ public class Linked extends AbstractGoal_c {
 		if (os.equals("darwin11"))
 			return true;
 
-		return options.getHostTriple().getCpu().equals("x86_64")
-				&& options.getTargetTriple().getCpu().equals("i686");
+		final MachineTriple host = options.getHostTriple();
+		return host.getCpu().equals("x86_64") && target.getCpu().equals("i686");
 	}
 
 	private String queryGccPath(final String path) {
