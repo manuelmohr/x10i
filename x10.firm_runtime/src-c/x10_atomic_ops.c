@@ -61,7 +61,7 @@ x10_boolean x10_compare_and_set(x10_atomic_reference *aref, x10_pointer old, x10
 #ifdef __x86_64__
 	x10_pointer prev = (x10_pointer)x10_atomic_ops_compareAndSet_64((volatile x10_ulong*)ptr, (x10_ulong)old, (x10_ulong)new);
 #else
-	x10_pointer prev = x10_atomic_ops_compareAndSet_32(ptr, old, new);
+	x10_pointer prev = (x10_pointer)x10_atomic_ops_compareAndSet_32((volatile x10_int*)ptr, (x10_int)old, (x10_int)new);
 #endif
 	return prev == old;
 }
