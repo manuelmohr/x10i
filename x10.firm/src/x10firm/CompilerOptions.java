@@ -153,6 +153,12 @@ public class CompilerOptions extends X10CompilerOptions {
 		Backend.option(option);
 	}
 
+	private void setupBackend() {
+		backendOption("isa=" + target.getIsa());
+		if (target.getIsa().equals("ia32"))
+			backendOption("ia32-arch=" + target.getCpu());
+	}
+
 	@Override
 	protected int parseCommand(final String[] args, final int index,
 			final Set<String> source) throws UsageError {
@@ -193,9 +199,15 @@ public class CompilerOptions extends X10CompilerOptions {
 			return index + 1;
 		} else if (arg.startsWith("-target=") || arg.startsWith("-mtarget=")) {
 			target = new MachineTriple(arg.substring(arg.indexOf('=') + 1));
-			backendOption("isa=" + target.getIsa());
-			if (target.getIsa().equals("ia32"))
-				backendOption("ia32-arch=" + target.getCpu());
+			setupBackend();
+			return index + 1;
+		} else if (arg.equals("-m32")) {
+			final String cpu64 = "x86_64";
+			if (target.getCpu().equals(cpu64)) {
+				final String tgt = "i686" + target.toString().substring(cpu64.length());
+				target = new MachineTriple(tgt);
+				setupBackend();
+			}
 			return index + 1;
 		} else if (arg.equals("-soft-float") || arg.equals("-msoft-float")) {
 			useSoftFloat = true;
