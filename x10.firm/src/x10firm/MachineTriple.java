@@ -63,6 +63,8 @@ public final class MachineTriple {
 	public String getIsa() {
 		if (cpu.equals("i386") || cpu.equals("i486") || cpu.equals("i586") || cpu.equals("i686"))
 			return "ia32";
+		if (cpu.equals("x86_64"))
+			return "amd64";
 		return cpu;
 	}
 

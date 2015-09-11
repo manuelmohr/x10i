@@ -89,7 +89,7 @@ public final class FirmState {
 			}
 		}
 
-		if (triple.getIsa().equals("x86_64")) {
+		if (triple.getIsa().equals("amd64")) {
 			setPointerSize(PointerSize.Size64);
 			Backend.option("isa=amd64");
 		} else {
