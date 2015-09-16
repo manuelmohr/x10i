@@ -70,7 +70,7 @@ static void ilet_dma_remote_finish(void *pid)
 	claim_t cl = get_claim();
 	assert (cl != 0 && "stack overflow maybe?");
 	place_local_data *pld = claim_get_local_data(cl);
-	pld->place_id = (unsigned)pid;
+	pld->place_id = (unsigned)(uintptr_t)pid;
 }
 
 static void ilet_init_tile(void *init_signal)
@@ -96,13 +96,13 @@ static void ilet_transfer_places(void *remote_places, void *context)
 	simple_ilet ilet_local;
 	simple_ilet_init(&ilet_local, ilet_dma_local_finish, context);
 	simple_ilet ilet_remote;
-	simple_ilet_init(&ilet_remote, ilet_dma_remote_finish, (void*)dpc->place_id);
+	simple_ilet_init(&ilet_remote, ilet_dma_remote_finish, (void*)(uintptr_t)dpc->place_id);
 	dispatch_claim_push_dma(remote_claim, dpc->places, remote_places, size, &ilet_local, &ilet_remote);
 }
 
 static void ilet_allocate_places(void *arg_n_places, void *context)
 {
-	unsigned n_places = (unsigned)arg_n_places;
+	unsigned n_places = (unsigned)(uintptr_t)arg_n_places;
 	claim_t cl = get_claim();
 	assert (cl != 0 && "stack overflow maybe?");
 	place_local_data *pld = claim_get_local_data(cl);
@@ -138,7 +138,7 @@ void distribute_places(dispatch_claim_t *new_places, unsigned new_n_places)
 		dpc->place_id = pid;
 		simple_ilet ilet;
 		dispatch_claim_t dc = new_places[pid];
-		dual_ilet_init(&ilet, ilet_allocate_places, (void*)new_n_places, (void*)dpc);
+		dual_ilet_init(&ilet, ilet_allocate_places, (void*)(uintptr_t)new_n_places, (void*)dpc);
 		dispatch_claim_infect(dc, &ilet, 1);
 	}
 

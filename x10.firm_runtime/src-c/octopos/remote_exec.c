@@ -232,7 +232,7 @@ static void run_at_async_statement_small(void *arg, void *source_finish_state)
 
 	/* Deserialize object. */
 	x10_object closure;
-	x10_deserialization_restore_stateless_object(&closure, (uint32_t)arg);
+	x10_deserialization_restore_stateless_object(&closure, (uint32_t)(uintptr_t)arg);
 
 	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(&closure);
 
@@ -310,10 +310,10 @@ static void transfer_result(void *destination_data, void *source_buffer)
 /* Allocates the receive buffer in the source memory. */
 static void allocate_source_memory(void *destination_local_data, void *buffer_size)
 {
-	source_dma_data_t *source_dma_data = mem_allocate_tlm(sizeof(*source_dma_data) + (buf_size_t)buffer_size);
+	source_dma_data_t *source_dma_data = mem_allocate_tlm(sizeof(*source_dma_data) + (buf_size_t)(uintptr_t)buffer_size);
 	void              *source_buffer   = &source_dma_data->receive_buffer;
 	simple_ilet        dma_ilet;
-	source_dma_data->buffer_size = (buf_size_t)buffer_size;
+	source_dma_data->buffer_size = (buf_size_t)(uintptr_t)buffer_size;
 
 	dual_ilet_init(&dma_ilet, transfer_result, destination_local_data, get_global_address(source_buffer));
 	dispatch_claim_send_reply(&dma_ilet);
@@ -353,7 +353,7 @@ static void evaluate_at_expression(void *arg, void *source_finish_state)
 	/* Create source i-let for memory allocation. */
 	simple_ilet      allocation_ilet;
 	dispatch_claim_t source_claim    = destination_local_data->source_dispatch_claim;
-	dual_ilet_init(&allocation_ilet, allocate_source_memory, (void*)destination_local_data, (void*)destination_local_data->buffer_size);
+	dual_ilet_init(&allocation_ilet, allocate_source_memory, (void*)destination_local_data, (void*)(uintptr_t)destination_local_data->buffer_size);
 	dispatch_claim_infect(source_claim, &allocation_ilet, 1);
 }
 
@@ -393,10 +393,10 @@ static void transfer_parameters(void *source_data, void *destination_buffer)
 static void allocate_destination_memory(void *source_local_data, void *buffer_size)
 {
 	destination_local_data_t *destination_local_data = mem_allocate_tlm(sizeof(*destination_local_data));
-	destination_dma_data_t   *destination_dma_data   = mem_allocate_tlm(sizeof(*destination_dma_data) + (buf_size_t)buffer_size);
+	destination_dma_data_t   *destination_dma_data   = mem_allocate_tlm(sizeof(*destination_dma_data) + (buf_size_t)(uintptr_t)buffer_size);
 	simple_ilet               dma_ilet;
 
-	destination_local_data->buffer_size           = (buf_size_t)buffer_size;
+	destination_local_data->buffer_size           = (buf_size_t)(uintptr_t)buffer_size;
 	destination_local_data->source_dispatch_claim = get_parent_dispatch_claim();
 	destination_local_data->source_local_data     = source_local_data;
 	destination_dma_data->destination_local_data  = destination_local_data;
@@ -421,7 +421,7 @@ static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_cl
 		register_at_finish_state(finish_state);
 
 		simple_ilet remote_ilet;
-		dual_ilet_init(&remote_ilet, run_at_async_statement_small, (void*)uid, finish_state);
+		dual_ilet_init(&remote_ilet, run_at_async_statement_small, (void*)(uintptr_t)uid, finish_state);
 		dispatch_claim_infect(destination_claim, &remote_ilet, 1);
 		return NULL;
 	}
@@ -452,7 +452,7 @@ static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_cl
 
 	/* Create destination i-let for memory allocation. */
 	simple_ilet allocation_ilet;
-	dual_ilet_init(&allocation_ilet, allocate_destination_memory, (void*)&source_local_data, (void*)source_local_data.buffer_size);
+	dual_ilet_init(&allocation_ilet, allocate_destination_memory, (void*)&source_local_data, (void*)(uintptr_t)source_local_data.buffer_size);
 	dispatch_claim_infect(destination_claim, &allocation_ilet, 1);
 
 	/* Wait for local termination. */
