@@ -102,6 +102,8 @@ public class Linked extends AbstractGoal_c {
 			octoposArch = "leon";
 		} else if (target.getCpu().equals("i686")) {
 			octoposArch = "x86guest";
+		} else if (target.getCpu().equals("x86_64")) {
+			octoposArch = "x64native";
 		} else {
 			throw new RuntimeException("only sparc/i686 supported for octopos");
 		}
