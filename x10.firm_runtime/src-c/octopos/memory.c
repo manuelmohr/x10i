@@ -32,7 +32,11 @@ void *mem_allocate_tlm(size_t size)
 void *mem_allocate_global(size_t size)
 {
 #ifdef NO_GARBAGE_COLLECTION
-	return mem_allocate(MEM_SHM, size);
+#	ifdef __x86_64__
+		return mem_allocate(MEM_TLM_LOCAL, size);
+#	else
+		return mem_allocate(MEM_SHM, size);
+#	endif
 #else
 	(void)size;
 	panic("All heap allocations should go through the garbage collector");
