@@ -24,6 +24,7 @@ void agentclaim_set_current(agentclaim_t ac)
 #endif
 }
 
+#ifdef USE_AGENTSYSTEM
 static void redistribute_places(agentclaim_t ac)
 {
 	assert (ac != NULL && "invalid claim"); // TODO throw exception?
@@ -88,3 +89,4 @@ int x10_agent_claim_reinvade_constraints(agentclaim_t claim, constraints_t const
 		redistribute_places(claim);
 	return r;
 }
+#endif

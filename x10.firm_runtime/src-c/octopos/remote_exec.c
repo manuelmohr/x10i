@@ -476,6 +476,7 @@ x10_object *x10_execute_at(x10_int place_id, x10_int msg_type, x10_object *closu
 	return x10_execute_at_dispatch_claim(dc, msg_type, closure);
 }
 
+#ifdef USE_AGENTSYSTEM
 static dispatch_claim_t get_dispatch_claim(x10_int pid, agentclaim_t ac)
 {
 	int tid = agent_claim_get_tileid_iterative(ac, pid);
@@ -501,3 +502,4 @@ void x10_exec_atasync_agent(x10_int pid, void *agentclaim, x10_object *closure)
 	dispatch_claim_t dc = get_dispatch_claim(pid, (agentclaim_t)agentclaim);
 	x10_execute_at_dispatch_claim(dc, MSG_RUN_AT_ASYNC, closure);
 }
+#endif
