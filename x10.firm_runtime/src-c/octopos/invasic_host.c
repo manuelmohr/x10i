@@ -1,6 +1,7 @@
 #include "invasic_host_octopos.h"
 #include "ethernet.h"
 #include "serialization.h"
+#include "eth_dummy.h"
 #include <octopos.h>
 #include <limits.h>
 
