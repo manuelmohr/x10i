@@ -495,3 +495,9 @@ void x10_exec_at_agent(x10_int pid, void *agentclaim, x10_object *closure)
 	dispatch_claim_t dc = get_dispatch_claim(pid, (agentclaim_t)agentclaim);
 	x10_execute_at_dispatch_claim(dc, MSG_RUN_AT, closure);
 }
+
+void x10_exec_atasync_agent(x10_int pid, void *agentclaim, x10_object *closure)
+{
+	dispatch_claim_t dc = get_dispatch_claim(pid, (agentclaim_t)agentclaim);
+	x10_execute_at_dispatch_claim(dc, MSG_RUN_AT_ASYNC, closure);
+}

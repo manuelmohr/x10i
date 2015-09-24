@@ -264,14 +264,21 @@ final class AgentClaim extends Claim {
         val pes = this.processingElements();
         assert (pes.size() == this.size());
         var iid:Int = 0;
+        val cur = Claim.getCurrent();
         finish for (pe in pes) {
             val p = pe.getPlace();
             val current_iid = iid;
-            async {
-                runAtAgent(p, ()=>{
-                    val id = new IncarnationID(current_iid, pe);
-                    ilet(id);
-                });
+            if (this.equals(cur)) {
+              /* this shortcut avoids one async and thus some scheduling chaos */
+              at(p) async {
+                val id = new IncarnationID(current_iid, pe);
+                ilet(id);
+              }
+            } else {
+              runAtAsyncAgent(p, ()=>{
+                  val id = new IncarnationID(current_iid, pe);
+                  ilet(id);
+              });
             }
             iid += 1;
         }
@@ -291,6 +298,20 @@ final class AgentClaim extends Claim {
     public def runAtAgent(p:Place, f:()=>void) {
         this.check_invariant();
         execAtOtherAgent(p.id, this.clm, f);
+    }
+
+    @LinkSymbol("x10_exec_atasync_agent")
+    private static native def execAtAsyncOtherAgent(placeId:Int, agentclaim:Pointer, o:Any):void;
+
+    public def runAtAsyncAgent(p:Place, f:()=>void) {
+        this.check_invariant();
+        execAtAsyncOtherAgent(p.id, this.clm, f);
+    }
+
+    public def equals(a:Any):boolean {
+      if (!(a instanceof AgentClaim)) return false;
+      val c = a as AgentClaim;
+      return this.clm == c.clm && this.tileid == c.tileid;
     }
 }
 
@@ -356,4 +377,10 @@ final class UnionClaim extends Claim {
     }
 
     def my_clm():Pointer = null as Pointer;
+
+    public def equals(a:Any):boolean {
+      if (!(a instanceof UnionClaim)) return false;
+      val c = a as UnionClaim;
+      return this.a == c.a && this.b == c.b;
+    }
 }
