@@ -60,6 +60,11 @@ ifeq ($(findstring i686-invasic, $(TARGET)), i686-invasic)
 	CPPFLAGS += -I $(GCC_INCLUDE)
 	LFLAGS += -m32 -nostdlib -Wl,-T,$(OCTOPOS_BASE)/lib/sections.x $(OCTOPOS_BASE)/lib/liboctopos.a $(OCTOPOS_BASE)/lib/libcsubset.a
 endif
+ifeq ($(findstring x86_64-invasic, $(TARGET)), x86_64-invasic)
+	OCTOPOS_BASE=../octopos-app/releases/current/x64native/default
+	CPPFLAGS += -I $(GCC_INCLUDE)
+	LFLAGS += -nostdlib -Wl,-T,$(OCTOPOS_BASE)/lib/sections.x $(OCTOPOS_BASE)/lib/liboctopos.a $(OCTOPOS_BASE)/lib/libcsubset.a $(OCTOPOS_BASE)/lib/lotail.a
+endif
 ifeq ($(findstring invasic-irtss, $(TARGET)), invasic-irtss)
 	CPPFLAGS += -DUSE_AGENTSYSTEM
 endif
