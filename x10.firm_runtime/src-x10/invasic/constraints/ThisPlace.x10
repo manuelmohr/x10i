@@ -3,6 +3,8 @@ package invasic.constraints;
 import x10.lang.Pointer;
 import x10.compiler.LinkSymbol;
 
+import invasic.Tile;
+
 /** Requires processing elements to be on the current place
 
     <p>This guarantees that no <code>at</code> is necessary.</p>
