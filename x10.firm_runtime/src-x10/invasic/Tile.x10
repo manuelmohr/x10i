@@ -22,4 +22,8 @@ public class Tile {
 	/** Returns total number of cores in the current tile. */
 	@LinkSymbol("get_tile_core_count")
 	native public static def getTileCoreCount():uint;
+
+	/** Returns the id of the current tile. */
+	@LinkSymbol("get_tile_id")
+	native public static def getCurrentTileId():uint;
 }

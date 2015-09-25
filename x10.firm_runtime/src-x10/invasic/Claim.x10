@@ -138,7 +138,7 @@ abstract public class Claim {
 
 final class AgentClaim extends Claim {
     private val clm:Pointer;
-    private val tileid:int;
+    private val tileid:uint;
     def my_clm():Pointer = this.clm;
 
     public def check_invariant():void {
@@ -146,13 +146,13 @@ final class AgentClaim extends Claim {
         where it was invaded. However, we must copy AgentClaim through 'at'
         for infect. This might go to a different Place (Claim) on the same tile,
         so we check the tile id. */
-        assert this.tileid == AgentClaim.current_tile_id() : "AgentClaim only valid on its tile";
+        assert this.tileid == Tile.getCurrentTileId() : "AgentClaim only valid on its tile";
     }
 
     /** Constructor is protected, because the invade method is the only way to get a claim. */
     def this(clm:Pointer) {
         this.clm = clm;
-        this.tileid = current_tile_id();
+        this.tileid = Tile.getCurrentTileId();
     }
 
     /** Reinvades with the same constraints and returns whether claim contents changed */
@@ -160,10 +160,6 @@ final class AgentClaim extends Claim {
         this.check_invariant();
         return reinvade(this.clm) != 0;
     }
-
-    /** Returns the tileid we are currently executed on */
-    @LinkSymbol("get_tile_id")
-    static native def current_tile_id():Int;
 
     @LinkSymbol("x10_agent_claim_reinvade")
     static native def reinvade(clm:Pointer):Int;

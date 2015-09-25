@@ -9,11 +9,8 @@ import x10.compiler.LinkSymbol;
  */
 public class ThisPlace extends PredicateConstraint {
     public def toAgentConstr(constr:Pointer) {
-        set_tile(constr, get_my_tile());
+        set_tile(constr, Tile.getCurrentTileId());
     }
-
-    @LinkSymbol("get_tile_id")
-    private static native def get_my_tile():Int;
 
     @LinkSymbol("agent_constr_set_tile")
     static native def set_tile(constr:Pointer, id:Int):void;
