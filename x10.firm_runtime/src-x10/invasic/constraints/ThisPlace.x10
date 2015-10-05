@@ -15,5 +15,5 @@ public class ThisPlace extends PredicateConstraint {
     }
 
     @LinkSymbol("agent_constr_set_tile")
-    static native def set_tile(constr:Pointer, id:Int):void;
+    static native def set_tile(constr:Pointer, id:uint):void;
 }
