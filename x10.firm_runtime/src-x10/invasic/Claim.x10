@@ -100,23 +100,37 @@ abstract public class Claim {
     }
 
     public def infect[T](ilet:(IncarnationID)=>T) {T haszero}:Array[T] {
-        val pes = this.processingElements();
-        val results = new Array[T](pes.size(), Zero.get[T]());
-        assert (pes.size() == this.size());
+        val places = this.places();
+        val all_pes = this.processingElements();
+        val results = new Array[T](all_pes.size(), Zero.get[T]());
+        assert (all_pes.size() == this.size());
         var iid:Int = 0;
-        finish for (pe in pes) {
-            val p = pe.getPlace();
-            val current_iid = iid;
+        finish for (p in places) {
+            /* compute incarnationids for current place */
+            val ids = new ArrayList[IncarnationID]();
+            val start_iid = iid;
+            for (pe in all_pes) {
+              val pi = pe.getPlace();
+              if (!pi.equals(p)) continue;
+              ids.add(new IncarnationID(iid,pe));
+              iid += 1;
+            }
+
             val ac = this as AgentClaim;
             ac.check_invariant();
             async {
                 val iilet = ()=>{
-                    return ilet(new IncarnationID(current_iid, pe)) as Any;
-                    /* must explicitly wrap structs in Any! */
+                  val ret = new Array[T](ids.size(), Zero.get[T]());
+                  finish for (id in ids) async {
+                    ret(id.ordinal - start_iid) = ilet(id);
+                  }
+                  return ret;
                 };
-                results(current_iid) = (ac.evalAtAgent(p,iilet) as T);
+                val part_res = ac.evalAtAgent(p,iilet) as Array[T];
+                for (id in ids) {
+                  results(id.ordinal) = part_res(id.ordinal - start_iid);
+                }
             }
-            iid += 1;
         }
         return results;
     }
