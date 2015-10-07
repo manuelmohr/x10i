@@ -257,26 +257,34 @@ final class AgentClaim extends Claim {
     static native def print_claim(claim:Pointer):void;
 
     public def infect(ilet:(IncarnationID)=>void) {
-        val pes = this.processingElements();
-        assert (pes.size() == this.size());
+        val places = this.places();
         var iid:Int = 0;
         val cur = Claim.getCurrent();
-        finish for (pe in pes) {
-            val p = pe.getPlace();
-            val current_iid = iid;
+        val all_pes = this.processingElements();
+        finish for (p in places) {
+            /* compute incarnationids for current place */
+            val ids = new ArrayList[IncarnationID]();
+            for (pe in all_pes) {
+              val pi = pe.getPlace();
+              if (!pi.equals(p)) continue;
+              ids.add(new IncarnationID(iid,pe));
+              iid += 1;
+            }
+
             if (this.equals(cur)) {
               /* this shortcut avoids one async and thus some scheduling chaos */
               at(p) async {
-                val id = new IncarnationID(current_iid, pe);
-                ilet(id);
+                for (id in ids) async {
+                  ilet(id);
+                }
               }
             } else {
               runAtAsyncAgent(p, ()=>{
-                  val id = new IncarnationID(current_iid, pe);
-                  ilet(id);
+                  for (id in ids) async {
+                    ilet(id);
+                  }
               });
             }
-            iid += 1;
         }
     }
 
