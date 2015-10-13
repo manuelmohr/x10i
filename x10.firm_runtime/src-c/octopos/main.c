@@ -10,6 +10,10 @@
 #include <gc.h>
 #endif
 
+#ifndef USE_AGENTSYSTEM
+uintptr_t os_agent_agentsystem_no_init = 1;
+#endif
+
 /* The SHM heap address space on the CHIPit begins at address 0x0, which
  * means a lot of regular integer values look like valid pointers.  This
  * is extremely bad for conservative garbage collection.  To improve the
