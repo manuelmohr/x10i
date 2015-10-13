@@ -63,6 +63,7 @@ endif
 ifeq ($(findstring x86_64-invasic, $(TARGET)), x86_64-invasic)
 	OCTOPOS_BASE=../octopos-app/releases/current/x64native/default
 	CPPFLAGS += -I $(GCC_INCLUDE) -DNO_GARBAGE_COLLECTION
+	CFLAGS += -mno-red-zone
 	LFLAGS += -nostdlib -Wl,-T,$(OCTOPOS_BASE)/lib/sections.x $(OCTOPOS_BASE)/lib/liboctopos.a $(OCTOPOS_BASE)/lib/libcsubset.a $(OCTOPOS_BASE)/lib/lotail.a
 endif
 ifeq ($(findstring invasic-irtss, $(TARGET)), invasic-irtss)
