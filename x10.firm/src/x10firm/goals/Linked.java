@@ -191,9 +191,7 @@ public class Linked extends AbstractGoal_c {
 		if (cpu.equals("sparc"))
 			cmd.add(stdlibPath + "/libdoublereg.a");
 
-		if (!cpu.equals("x86_64") || !os.equals("octopos")) {
-			cmd.add(x10DistPath + "/../bdwgc/build/" + target + "/gc.a");
-		}
+		cmd.add(x10DistPath + "/../bdwgc/build/" + target + "/gc.a");
 
 		if (os.equals("octopos") || os.equals("irtss")) {
 			cmd.add("-loctopos");
