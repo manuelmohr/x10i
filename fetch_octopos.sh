@@ -13,8 +13,10 @@ DEFAULT_LEON="4t5c-chipit-w-iotile"
 RELEASES=""
 RELEASES="$RELEASES release.leon.${DEFAULT_LEON}.${RELEASE_DATE}.tar.bz2"
 RELEASES="$RELEASES release.x86guest.${DEFAULT_X86GUEST}.${RELEASE_DATE}.tar.bz2"
+RELEASES="$RELEASES release.x64native.generic.${RELEASE_DATE}.tar.bz2"
 MD5SUMS="""c195e707df4612c532a9fb1a99bf0e8e  release.leon.${DEFAULT_LEON}.${RELEASE_DATE}.tar.bz2
-85cd24974b57b9b813304ee7b6027078  release.x86guest.${DEFAULT_X86GUEST}.${RELEASE_DATE}.tar.bz2"""
+85cd24974b57b9b813304ee7b6027078  release.x86guest.${DEFAULT_X86GUEST}.${RELEASE_DATE}.tar.bz2
+7e767363af526bdb9280b8e500239772  release.x64native.generic.${RELEASE_DATE}.tar.bz2"""
 
 DIST_DIR="octopos-dist"
 OCTOPOS_APP_DIR="octopos-app"
@@ -74,6 +76,9 @@ ln -sf "$DEFAULT_X86GUEST" "default"
 popd > /dev/null
 pushd "$OCTOPOS_APP_DIR/releases/current/leon" > /dev/null
 ln -sf "$DEFAULT_LEON" "default"
+popd > /dev/null
+pushd "$OCTOPOS_APP_DIR/releases/current/x64native" > /dev/null
+ln -sf "generic" "default"
 popd > /dev/null
 
 # Remember what we extracted so the script doesn't need to do it again
