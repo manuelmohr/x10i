@@ -5,7 +5,7 @@ TARGET         ?= $(guessed_target)
 CC              = $(TARGET)-gcc
 variant        ?= debug
 
-CPARSER_TARGET ?= -mtarget=$(TARGET)
+CPARSER_TARGET ?= -target $(TARGET)
 CFLAGS         ?= -g3 -O2
 CPPFLAGS       ?=
 CPPFLAGS       += -I../bdwgc/include
