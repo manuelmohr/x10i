@@ -402,7 +402,8 @@ public final class SerializationSupport {
 		final Node currentAddr = con.getVariable(1, Mode.getP());
 		genCallToSerialize(elementType, con, bufPtr, currentAddr);
 		final Node nextIndex = con.newAdd(currentIndex, con.newConst(1, Mode.getIs()), Mode.getIs());
-		final Node elementSize = con.newSize(Mode.getIu(), elementType);
+		final Mode offsetMode = currentAddr.getMode().getReferenceOffsetMode();
+		final Node elementSize = con.newSize(offsetMode, elementType);
 		final Node nextAddr = con.newAdd(currentAddr, elementSize, Mode.getP());
 		con.setVariable(0, nextIndex);
 		con.setVariable(1, nextAddr);
@@ -618,7 +619,8 @@ public final class SerializationSupport {
 		final Node currentAddr = con.getVariable(1, Mode.getP());
 		genCallToDeserialize(elementType, con, bufPtr, currentAddr);
 		final Node nextIndex = con.newAdd(currentIndex, con.newConst(1, Mode.getIs()), Mode.getIs());
-		final Node elementSize = con.newSize(Mode.getIu(), elementType);
+		final Mode offsetMode = currentAddr.getMode().getReferenceOffsetMode();
+		final Node elementSize = con.newSize(offsetMode, elementType);
 		final Node nextAddr = con.newAdd(currentAddr, elementSize, Mode.getP());
 		con.setVariable(0, nextIndex);
 		con.setVariable(1, nextAddr);

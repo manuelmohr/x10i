@@ -2937,7 +2937,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 				Node addr = baseAddr;
 				if (i > 0) {
 					final int offset = elementSize * i;
-					final Node offsetC = con.newConst(offset, Mode.getIu());
+					final Mode offsetMode = baseAddr.getMode().getReferenceOffsetMode();
+					final Node offsetC = con.newConst(offset, offsetMode);
 					addr = con.newAdd(baseAddr, offsetC, Mode.getP());
 				}
 				final Node node = uncheckedCast(expr, elementType, n.position());
