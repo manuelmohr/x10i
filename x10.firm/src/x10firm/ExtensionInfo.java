@@ -263,10 +263,18 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("invasic/constraints/TileSharing.x10");
 			allowedFiles.add("invasic/ICore.x10");
 			allowedFiles.add("invasic/RetreatFromSelf.x10");
-			allowedFiles.add("invasic/util/Queue.x10");
-			allowedFiles.add("invasic/util/NonblockingQueue.x10");
 			allowedFiles.add("invasic/util/BlockingHashMap.x10");
 			allowedFiles.add("invasic/util/BlockingQueue.x10");
+			allowedFiles.add("invasic/util/CircularArray.x10");
+			allowedFiles.add("invasic/util/InfectType.x10");
+			allowedFiles.add("invasic/util/NonblockingQueue.x10");
+			allowedFiles.add("invasic/util/PlaceSequence.x10");
+			allowedFiles.add("invasic/util/queue/Deque.x10");
+			allowedFiles.add("invasic/util/queue/DistributedQueueFramework.x10");
+			allowedFiles.add("invasic/util/queue/DynamicCircularWorkStealingDeque.x10");
+			allowedFiles.add("invasic/util/queue/JobQueueFrameworkBuilder.x10");
+			allowedFiles.add("invasic/util/queue/SplitDeque.x10");
+			allowedFiles.add("invasic/util/Queue.x10");
 			allowedFiles.add("invasic/IncarnationID.x10");
 		}
 		whiteListInitialized = true;
