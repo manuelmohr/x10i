@@ -19,8 +19,7 @@ import x10.util.GrowableIndexedMemoryChunk;
 
 /**
  * The primary operation on a PlaceLocalHandle is to use it to access an object
- * on the current place.  If the current place is not part of the distribution
- * over which the PlaceLocalHandle is defined, a BadPlaceException will be thrown.</p>
+ * on the current place.</p>
  *
  * A key concept for correct usage of PlaceLocalHandles is that in different places,
  * the Handle may be mapped to distinct objects.  For example (assuming >1 Place):
@@ -53,6 +52,7 @@ public final struct PlaceLocalHandle[T]{T isref, T <: Any} {
      */
     public operator this():T {
         atomic {
+            // TODO throw BadPlaceException if not initialized
             if (id >= datas.length()) return null as T;
             return datas(id).castTo[T]();
         }
