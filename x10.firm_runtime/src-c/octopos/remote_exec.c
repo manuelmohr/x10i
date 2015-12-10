@@ -175,9 +175,14 @@ static void do_run_at_statement(void *arg, void *source_finish_state, bool notif
 	char                     *buf                    = get_local_address(arg);
 	destination_dma_data_t   *destination_dma_data   = (destination_dma_data_t *)(buf - offsetof(destination_dma_data_t, receive_buffer));
 	destination_local_data_t *destination_local_data = destination_dma_data->destination_local_data;
-	x10_object               *closure                = x10_deserialize_from(destination_dma_data->receive_buffer, destination_local_data->buffer_size);
+	x10_object               *closure                = x10_deserialize_from(destination_dma_data->receive_buffer+sizeof(agentclaim_t), destination_local_data->buffer_size-sizeof(agentclaim_t));
 	dispatch_claim_t          source_claim           = destination_local_data->source_dispatch_claim;
 	void                     *source_local_data      = destination_local_data->source_local_data;
+
+	/* read smuggled agentclaim_t and set locally */
+	agentclaim_t ac;
+	memcpy(&ac, destination_dma_data->receive_buffer, sizeof(agentclaim_t));
+	agentclaim_set_current(ac);
 
 	/* Free destination's data. */
 	mem_free_tlm(destination_dma_data);
@@ -331,7 +336,12 @@ static void evaluate_at_expression(void *arg, void *source_finish_state)
 	char                     *buf                    = get_local_address(arg);
 	destination_dma_data_t   *destination_dma_data   = (destination_dma_data_t *)(buf - offsetof(destination_dma_data_t, receive_buffer));
 	destination_local_data_t *destination_local_data = destination_dma_data->destination_local_data;
-	x10_object               *closure                = x10_deserialize_from(destination_dma_data->receive_buffer, destination_local_data->buffer_size);
+	x10_object               *closure                = x10_deserialize_from(destination_dma_data->receive_buffer+sizeof(agentclaim_t), destination_local_data->buffer_size-sizeof(agentclaim_t));
+
+	/* read smuggled agentclaim_t and set locally */
+	agentclaim_t ac;
+	memcpy(&ac, destination_dma_data->receive_buffer, sizeof(agentclaim_t));
+	agentclaim_set_current(ac);
 
 	/* Free destination's DMA data. */
 	mem_free_tlm(destination_dma_data);
@@ -406,7 +416,7 @@ static void allocate_destination_memory(void *source_local_data, void *buffer_si
 	dispatch_claim_send_reply(&dma_ilet);
 }
 
-static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_claim, x10_int msg_type, x10_object *closure)
+static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_claim, x10_int msg_type, x10_object *closure, agentclaim_t ac)
 {
 	assert(msg_type == MSG_RUN_AT || msg_type == MSG_EVAL_AT || msg_type == MSG_RUN_AT_ASYNC);
 
@@ -429,7 +439,9 @@ static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_cl
 	/* Serialize closure. */
 	struct obstack *obst = mem_allocate_tlm(sizeof(*obst));
 	_obstack_begin(obst, 0, ARCH_DMA_BLOCK_SIZE, (void *(*) (PTR_INT_TYPE))obstack_chunk_alloc, (void (*) (void *))obstack_chunk_free);
+	obstack_grow(obst, &ac, sizeof(agentclaim_t)); /* smuggle additional data through buffer */
 	x10_serialize_to_obst(obst, closure);
+
 
 	/* Initialize source-local data. */
 	simple_signal        join_signal;
@@ -473,7 +485,7 @@ x10_object *x10_execute_at(x10_int place_id, x10_int msg_type, x10_object *closu
 	assert((unsigned)place_id < pld->n_places);
 	dispatch_claim_t dc = pld->places[place_id];
 
-	return x10_execute_at_dispatch_claim(dc, msg_type, closure);
+	return x10_execute_at_dispatch_claim(dc, msg_type, closure, NULL);
 }
 
 #ifdef USE_AGENTSYSTEM
@@ -487,19 +499,22 @@ static dispatch_claim_t get_dispatch_claim(x10_int pid, agentclaim_t ac)
 
 x10_object *x10_eval_at_agent(x10_int pid, void *agentclaim, x10_object *closure)
 {
-	dispatch_claim_t dc = get_dispatch_claim(pid, (agentclaim_t)agentclaim);
-	return x10_execute_at_dispatch_claim(dc, MSG_EVAL_AT, closure);
+	agentclaim_t ac = (agentclaim_t)agentclaim;
+	dispatch_claim_t dc = get_dispatch_claim(pid, ac);
+	return x10_execute_at_dispatch_claim(dc, MSG_EVAL_AT, closure, ac);
 }
 
 void x10_exec_at_agent(x10_int pid, void *agentclaim, x10_object *closure)
 {
-	dispatch_claim_t dc = get_dispatch_claim(pid, (agentclaim_t)agentclaim);
-	x10_execute_at_dispatch_claim(dc, MSG_RUN_AT, closure);
+	agentclaim_t ac = (agentclaim_t)agentclaim;
+	dispatch_claim_t dc = get_dispatch_claim(pid, ac);
+	x10_execute_at_dispatch_claim(dc, MSG_RUN_AT, closure, ac);
 }
 
 void x10_exec_atasync_agent(x10_int pid, void *agentclaim, x10_object *closure)
 {
-	dispatch_claim_t dc = get_dispatch_claim(pid, (agentclaim_t)agentclaim);
-	x10_execute_at_dispatch_claim(dc, MSG_RUN_AT_ASYNC, closure);
+	agentclaim_t ac = (agentclaim_t)agentclaim;
+	dispatch_claim_t dc = get_dispatch_claim(pid, ac);
+	x10_execute_at_dispatch_claim(dc, MSG_RUN_AT_ASYNC, closure, ac);
 }
 #endif

@@ -11,6 +11,7 @@ agentclaim_t agentclaim_get_current(void)
 #ifdef USE_AGENTSYSTEM
 	return get_ilet_local_data()->agent_claim;
 #else
+	assert (false);
 	return NULL;
 #endif
 }
