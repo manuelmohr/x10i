@@ -810,11 +810,11 @@ public class DistributedQueueFramework[T, X]{T isref, T haszero, X haszero} impl
 			val shrink = Math.min(estimatedWaitingTime/averageTimePerJob/2, 0.5f);
 			// shrink the amount of PEs by 20%-50%, but at least by one
 			val min = size == 1 ? size : (size / (shrink + 1f)) as Int;
-			constraints = constraints && new PEQuantity(Math.max(min, 1), size);
+			constraints = constraints && new PEQuantity(1, min);
 		} else if(availableJobs > (Math.min(estimatedWaitingTime/averageTimePerJob, 1f) * size) && estimatedWaitingTime < averageTimePerJob * 0.1) {			
 			// grow the amount of PEs by 25%, but at least by one
 			val max = size < 5 ? size + 1 : (size * 1.25f) as Int;
-			constraints = constraints && new PEQuantity(size, max);
+			constraints = constraints && new PEQuantity(1, max);
 		}
 		return constraints;
 	}
