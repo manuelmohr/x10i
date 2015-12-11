@@ -172,7 +172,9 @@ final class AgentClaim extends Claim {
     /** Reinvades with the same constraints and returns whether claim contents changed */
     public def reinvade():Boolean {
         this.check_invariant();
-        return reinvade(this.clm) != 0;
+        val ret = reinvade(this.clm);
+        if (ret < 0) throw new ReinvadeFail("claim is invalid now");
+        return ret != 0;
     }
 
     @LinkSymbol("x10_agent_claim_reinvade")
@@ -185,6 +187,7 @@ final class AgentClaim extends Claim {
         c.toAgentConstr(ac);
         val ret = reinvade(this.clm, ac);
         delete_constr(ac);
+        if (ret < 0) throw new ReinvadeFail("claim is invalid now");
         return ret != 0;
     }
 

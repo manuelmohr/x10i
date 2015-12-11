@@ -249,6 +249,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/util/Timer.x10");
 			allowedFiles.add("invasic/ProcessingElement.x10");
 			allowedFiles.add("invasic/Claim.x10");
+			allowedFiles.add("invasic/ReinvadeFail.x10");
 			allowedFiles.add("invasic/constraints/AND.x10");
 			allowedFiles.add("invasic/constraints/Constraint.x10");
 			allowedFiles.add("invasic/constraints/DowneyScalabilityHint.x10");
