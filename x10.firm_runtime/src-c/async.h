@@ -7,6 +7,7 @@ finish_state_t *finish_state_get_current();
 void finish_state_set_current(finish_state_t *finish_state);
 void register_at_finish_state(finish_state_t *finish_state);
 void unregister_from_finish_state(finish_state_t *finish_state);
+void unregister_from_finish_state_and_exit(finish_state_t *finish_state) __attribute__((noreturn));
 
 void finish_state_init_root(finish_state_t *fs);
 void finish_state_init(finish_state_t *finish_state, finish_state_t *parent);

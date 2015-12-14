@@ -102,6 +102,11 @@ void unregister_from_finish_state(finish_state_t *fs)
 		panic("Could not unlock mutex");
 }
 
+void unregister_from_finish_state_and_exit(finish_state_t *fs)
+{
+	unregister_from_finish_state(fs);
+}
+
 unsigned activity_get_atomic_depth(void)
 {
 	return (unsigned)(uintptr_t)pthread_getspecific(activity_atomic_depth);

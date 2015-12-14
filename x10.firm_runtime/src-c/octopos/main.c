@@ -38,7 +38,7 @@ static simple_signal initialization_signal;
 
 static void ilet_notify(void *arg)
 {
-	simple_signal_signal((simple_signal*)arg);
+	simple_signal_signal_and_exit((simple_signal*)arg);
 }
 
 void *_ZN3x108compiler14InitDispatcher17get_staticMonitorEv(void);
@@ -69,9 +69,10 @@ static void init_tile()
 
 static void ilet_dma_local_finish(void *context)
 {
-	distribute_places_context *dpc  = context;
-	simple_signal_signal(dpc->signal);
+	distribute_places_context *dpc = context;
+	simple_signal             *sig = dpc->signal;
 	mem_free_tlm(dpc);
+	simple_signal_signal_and_exit(sig);
 }
 
 static void ilet_dma_remote_finish(void *pid)

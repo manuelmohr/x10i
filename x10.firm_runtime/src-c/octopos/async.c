@@ -87,6 +87,11 @@ void register_at_finish_state(finish_state_t *fs)
 	simple_signal_add_signalers(&fs->signal, 1);
 }
 
+void unregister_from_finish_state_and_exit(finish_state_t *fs)
+{
+	simple_signal_signal_and_exit(&fs->signal);
+}
+
 void unregister_from_finish_state(finish_state_t *fs)
 {
 	simple_signal_signal(&fs->signal);
@@ -146,7 +151,7 @@ static void execute(void *ptr)
 	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(body);
 
 	/* send signal to finish state */
-	unregister_from_finish_state(fs);
+	unregister_from_finish_state_and_exit(fs);
 }
 #else
 static void execute(void *data1, void *data2)
@@ -160,7 +165,7 @@ static void execute(void *data1, void *data2)
 	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(body);
 
 	/* send signal to finish state */
-	unregister_from_finish_state(fs);
+	unregister_from_finish_state_and_exit(fs);
 }
 #endif
 

@@ -14,7 +14,7 @@
 static void send_signal(void *data)
 {
 	finish_state_t *current = (finish_state_t*)data;
-	unregister_from_finish_state(current);
+	unregister_from_finish_state_and_exit(current);
 }
 
 x10_opaque_handle _ZN7octopos15EthWriteChannel4openEt(x10_ushort channel)

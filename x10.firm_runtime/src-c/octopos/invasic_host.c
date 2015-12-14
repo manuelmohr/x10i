@@ -11,7 +11,7 @@ static eth_channel_t write_chan = NULL;
 static void signal_ilet(void *data)
 {
 	simple_signal *sig = (simple_signal*)data;
-	simple_signal_signal(sig);
+	simple_signal_signal_and_exit(sig);
 }
 
 bool octo_receive(void *buffer, size_t size)

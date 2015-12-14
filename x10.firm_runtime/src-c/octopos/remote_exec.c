@@ -144,7 +144,7 @@ static void notify_local_termination(void *arg)
 {
 	source_local_data_t *source_local_data = (source_local_data_t *)arg;
 
-	simple_signal_signal(source_local_data->join_signal);
+	simple_signal_signal_and_exit(source_local_data->join_signal);
 }
 
 /* Notifies global termination of the at statement/expression. */
@@ -152,7 +152,7 @@ static void notify_global_termination(void *arg)
 {
 	finish_state_t *fs = (finish_state_t *)arg;
 
-	unregister_from_finish_state(fs);
+	unregister_from_finish_state_and_exit(fs);
 }
 
 /* Frees obstack that acts as send buffer. */
