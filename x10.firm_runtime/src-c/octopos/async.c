@@ -22,8 +22,6 @@
  * current finish state.
  */
 struct finish_state_t {
-	/* the common claim of all activities */
-	claim_t         claim;
 	/* a signal for parallel activity creation */
 	simple_signal   signal;
 	/* enclosing finish (maybe NULL for root) */
@@ -33,14 +31,12 @@ struct finish_state_t {
 void finish_state_init_root(finish_state_t *fs)
 {
 	simple_signal_init(&fs->signal, 0);
-	fs->claim  = get_claim();
 	fs->parent = NULL;
 }
 
 void finish_state_init(finish_state_t *fs, finish_state_t *parent)
 {
 	simple_signal_init(&fs->signal, 0);
-	fs->claim  = parent->claim;
 	fs->parent = parent;
 }
 
@@ -210,10 +206,7 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object
 	dual_ilet_init(&child, execute, body, enclosing);
 #endif
 	register_at_finish_state(enclosing);
-	if (infect(enclosing->claim, &child, 1)) {
-		unregister_from_finish_state(enclosing);
-		panic("infect failed");
-	}
+	infect_self_single(&child);
 }
 
 /* x10.lang.Runtime.finishBlockEnd() */
