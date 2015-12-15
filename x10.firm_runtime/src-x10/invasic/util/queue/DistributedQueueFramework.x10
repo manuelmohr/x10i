@@ -890,8 +890,13 @@ public class DistributedQueueFramework[T, X]{T isref, T haszero, X haszero} impl
 		if(addedPlaces.size() > 0) {
 			val aPlaces = new SparsePlaceGroup(new PlaceSequence(addedPlaces));
 			measuredAtTime = measureAtTime(aPlaces(0));
-			PlaceLocalHandle.grow[PlaceLocalQueueFramework[T, X], Int](aPlaces, plh, (p:Place) => pesPerPlace(places.indexOf(p)),
-					(pe:Int) => new PlaceLocalQueueFramework[T, X](pe, plh().localStealPolicy, plh().remoteStealPolicy));
+			val lsp = plh().localStealPolicy;
+			val rsp = plh().remoteStealPolicy;
+			PlaceLocalHandle.grow[PlaceLocalQueueFramework[T, X], Int](
+				aPlaces,
+				plh,
+				(p:Place) => pesPerPlace(places.indexOf(p)),
+				(pe:Int) => new PlaceLocalQueueFramework[T, X](pe, lsp, rsp));
 		}
 	}
 	
