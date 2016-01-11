@@ -231,18 +231,16 @@ public final class SerializationSupport {
 		// Emit the table used to lookup the __deserialize method and vtable address
 		// of a class. It is indexed by the class' type uid.
 		final String dmtName = NameMangler.mangleKnownName(DESERIALIZE_METHOD_TABLE_NAME);
-		final int nEntries = maxClassUid * 2;
-		final ArrayType dmtType = new ArrayType(typeP);
-		dmtType.setSize(nEntries);
-		dmtType.finishLayout();
-		final Entity deserializeMethodTable = firmTypeSystem.getGlobalEntity(dmtName, dmtType);
-		final Initializer dmtInitializer = new Initializer(nEntries);
+		final Entity deserializeMethodTable = firmTypeSystem.getDeserializeMethods(dmtName, maxClassUid);
+		final Initializer dmtInitializer = new Initializer(maxClassUid);
 
 		final String smtName = NameMangler.mangleKnownName(SERIALIZE_METHOD_TABLE_NAME);
-		final ArrayType smtType = new ArrayType(typeP);
+		ArrayType smtType = new ArrayType(typeP);
+		final Entity serializeMethodTable = firmTypeSystem.getGlobalEntity(smtName, smtType);
+		/* getGlobalEntity might return another type from the C runtime, which also has no size set */
+		smtType = (ArrayType) serializeMethodTable.getType();
 		smtType.setSize(maxClassUid);
 		smtType.finishLayout();
-		final Entity serializeMethodTable = firmTypeSystem.getGlobalEntity(smtName, smtType);
 		final Initializer smtInitializer = new Initializer(maxClassUid);
 
 		final Graph constCode = Program.getConstCodeGraph();
@@ -262,10 +260,15 @@ public final class SerializationSupport {
 
 			final Node symcDeser = constCode.newAddress(deserEntity);
 			final Initializer initDeser = new Initializer(symcDeser);
-			dmtInitializer.setCompoundValue(classUid * 2, initDeser);
+
 			final Node symcVtable = constCode.newAddress(vtableEntity);
 			final Initializer initVtable = new Initializer(symcVtable);
-			dmtInitializer.setCompoundValue(classUid * 2 + 1, initVtable);
+
+			final Initializer both = new Initializer(2);
+			both.setCompoundValue(0, initDeser);
+			both.setCompoundValue(1, initVtable);
+
+			dmtInitializer.setCompoundValue(classUid, both);
 
 			final Node symcSer = constCode.newAddress(serEntity);
 			final Initializer initSer = new Initializer(symcSer);

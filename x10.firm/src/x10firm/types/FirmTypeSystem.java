@@ -41,6 +41,7 @@ import x10firm.CompilerOptions;
 import x10firm.MachineTriple;
 import x10firm.visit.CodeGenError;
 import x10firm.visit.GenericCodeInstantiationQueue;
+import firm.ArrayType;
 import firm.ClassType;
 import firm.CompoundType;
 import firm.Entity;
@@ -53,9 +54,11 @@ import firm.PointerType;
 import firm.PrimitiveType;
 import firm.Program;
 import firm.SegmentType;
+import firm.StructType;
 import firm.Type;
 import firm.bindings.binding_oo.ddispatch_binding;
 import firm.bindings.binding_typerep;
+import firm.bindings.binding_typerep.ir_align;
 import firm.bindings.binding_typerep.ir_linkage;
 import firm.bindings.binding_typerep.ir_type_state;
 
@@ -1160,5 +1163,45 @@ public class FirmTypeSystem {
 			cEntity.setOwner(ownerFirm);
 
 		return cEntity;
+	}
+
+	/**
+	 * This entity is special, because the C runtime expects the X10 frontend to generate it.
+	 *
+	 * @return a struct type for deserialization methods
+	 */
+	public Entity getDeserializeMethods(String name, int length) {
+		final ArrayType dmtType;
+
+		/* might exist already */
+		Entity struct_ent = cStdlibExternalEntities.get(name);
+		if (struct_ent != null) {
+			dmtType = (ArrayType) struct_ent.getType();
+		} else {
+			/* create struct from scratch, must match C runtime! */
+			final String elem_name = "deserialize_methods_entry_t";
+			CompoundType struct_t = new StructType(elem_name);
+			final int pointer_bytes = pointerType.getSizeBytes();
+			struct_t.setAlignmentBytes(pointer_bytes);
+
+			final Entity m1 = new Entity(struct_t, "deserializer", pointerType);
+			m1.setAlign(ir_align.align_non_aligned);
+			m1.setOffset(0);
+			final Entity m2 = new Entity(struct_t, "vtable", pointerType);
+			m2.setAlign(ir_align.align_non_aligned);
+			m2.setOffset(pointer_bytes);
+
+			struct_t.setSizeBytes(pointer_bytes * 2);
+			struct_t.finishLayout();
+
+			dmtType = new ArrayType(struct_t);
+			struct_ent = getGlobalEntity(name, dmtType);
+		}
+
+		struct_ent.setVisibility(binding_typerep.ir_visibility.ir_visibility_private);
+		dmtType.setSize(length);
+		dmtType.finishLayout();
+
+		return struct_ent;
 	}
 }
