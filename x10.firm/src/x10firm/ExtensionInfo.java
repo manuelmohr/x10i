@@ -264,6 +264,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("invasic/constraints/TileSharing.x10");
 			allowedFiles.add("invasic/ICore.x10");
 			allowedFiles.add("invasic/RetreatFromSelf.x10");
+			allowedFiles.add("invasic/util/Benchmark.x10");
 			allowedFiles.add("invasic/util/BlockingHashMap.x10");
 			allowedFiles.add("invasic/util/BlockingQueue.x10");
 			allowedFiles.add("invasic/util/CircularArray.x10");
