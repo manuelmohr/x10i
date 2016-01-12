@@ -250,6 +250,9 @@ public final class SerializationSupport {
 			if (classUid == 0) /* this will filter out structs and interfaces */
 				continue;
 
+			if (OO.getClassIsAbstract(classType))
+				continue;
+
 			final Entity deserEntity = deserializeFunctions.get(classType);
 			final Entity serEntity = serializeFunctions.get(classType);
 			final Entity vtableEntity = OO.getClassVTableEntity(classType);

@@ -150,6 +150,7 @@ public class FirmTypeSystem {
 		for (final Entity ent : glob.getMembers()) {
 			if (!ent.hasDefinition()) {
 				assert (ent.getVisibility() == binding_typerep.ir_visibility.ir_visibility_external);
+				ent.setVisibility(binding_typerep.ir_visibility.ir_visibility_local);
 				cStdlibExternalEntities.put(ent.getLdName(), ent);
 				continue;
 			}
@@ -1198,7 +1199,6 @@ public class FirmTypeSystem {
 			struct_ent = getGlobalEntity(name, dmtType);
 		}
 
-		struct_ent.setVisibility(binding_typerep.ir_visibility.ir_visibility_private);
 		dmtType.setSize(length);
 		dmtType.finishLayout();
 
