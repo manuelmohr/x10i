@@ -105,6 +105,7 @@ void unregister_from_finish_state(finish_state_t *fs)
 void unregister_from_finish_state_and_exit(finish_state_t *fs)
 {
 	unregister_from_finish_state(fs);
+	pthread_exit(NULL);
 }
 
 unsigned activity_get_atomic_depth(void)
@@ -144,8 +145,7 @@ static void *execute(void *ptr)
 	/* run the closure */
 	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(body);
 
-	unregister_from_finish_state(fs);
-	pthread_exit(NULL);
+	unregister_from_finish_state_and_exit(fs);
 }
 
 /**
