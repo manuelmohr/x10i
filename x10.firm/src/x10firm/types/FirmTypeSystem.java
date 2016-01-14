@@ -1100,7 +1100,7 @@ public class FirmTypeSystem {
 			if (cExtEntity != null) {
 				entity = prepareMethodEntity(instance, shortName, ownerFirm, cExtEntity, type);
 			} else {
-				String name = flags.isStatic() ? linkName : shortName;
+				final String name = flags.isStatic() ? linkName : shortName;
 				entity = new Entity(ownerFirm, name, type);
 				entity.setLdIdent(linkName);
 			}
@@ -1171,37 +1171,37 @@ public class FirmTypeSystem {
 	 *
 	 * @return a struct type for deserialization methods
 	 */
-	public Entity getDeserializeMethods(String name, int length) {
+	public Entity getDeserializeMethods(final String name, final int length) {
 		final ArrayType dmtType;
 
 		/* might exist already */
-		Entity struct_ent = cStdlibExternalEntities.get(name);
-		if (struct_ent != null) {
-			dmtType = (ArrayType) struct_ent.getType();
+		Entity structEntity = cStdlibExternalEntities.get(name);
+		if (structEntity != null) {
+			dmtType = (ArrayType) structEntity.getType();
 		} else {
 			/* create struct from scratch, must match C runtime! */
-			final String elem_name = "deserialize_methods_entry_t";
-			CompoundType struct_t = new StructType(elem_name);
-			final int pointer_bytes = pointerType.getSizeBytes();
-			struct_t.setAlignmentBytes(pointer_bytes);
+			final String elemName = "deserialize_methods_entry_t";
+			final CompoundType structType = new StructType(elemName);
+			final int pointerBytes = pointerType.getSizeBytes();
+			structType.setAlignmentBytes(pointerBytes);
 
-			final Entity m1 = new Entity(struct_t, "deserializer", pointerType);
+			final Entity m1 = new Entity(structType, "deserializer", pointerType);
 			m1.setAlign(ir_align.align_non_aligned);
 			m1.setOffset(0);
-			final Entity m2 = new Entity(struct_t, "vtable", pointerType);
+			final Entity m2 = new Entity(structType, "vtable", pointerType);
 			m2.setAlign(ir_align.align_non_aligned);
-			m2.setOffset(pointer_bytes);
+			m2.setOffset(pointerBytes);
 
-			struct_t.setSizeBytes(pointer_bytes * 2);
-			struct_t.finishLayout();
+			structType.setSizeBytes(pointerBytes * 2);
+			structType.finishLayout();
 
-			dmtType = new ArrayType(struct_t);
-			struct_ent = getGlobalEntity(name, dmtType);
+			dmtType = new ArrayType(structType);
+			structEntity = getGlobalEntity(name, dmtType);
 		}
 
 		dmtType.setSize(length);
 		dmtType.finishLayout();
 
-		return struct_ent;
+		return structEntity;
 	}
 }
