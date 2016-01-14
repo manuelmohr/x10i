@@ -41,6 +41,7 @@ import x10firm.CompilerOptions;
 import x10firm.MachineTriple;
 import x10firm.visit.CodeGenError;
 import x10firm.visit.GenericCodeInstantiationQueue;
+import firm.ArrayType;
 import firm.ClassType;
 import firm.CompoundType;
 import firm.Entity;
@@ -52,9 +53,12 @@ import firm.OO;
 import firm.PointerType;
 import firm.PrimitiveType;
 import firm.Program;
+import firm.SegmentType;
+import firm.StructType;
 import firm.Type;
 import firm.bindings.binding_oo.ddispatch_binding;
 import firm.bindings.binding_typerep;
+import firm.bindings.binding_typerep.ir_align;
 import firm.bindings.binding_typerep.ir_linkage;
 import firm.bindings.binding_typerep.ir_type_state;
 
@@ -78,7 +82,13 @@ public class FirmTypeSystem {
 	 */
 	private final Map<String, Entity> cStdlibEntities = new HashMap<String, Entity>();
 
-	/** Maps X10 ConstructorInstances, MethodInstance, FieldInstances to firm entities.
+	/**
+	 * The C runtime needs to access some entities, we generate from X10 (e.g. String vtable).
+	 */
+	private final Map<String, Entity> cStdlibExternalEntities = new HashMap<String, Entity>();
+
+	/**
+	 * Maps X10 ConstructorInstances, MethodInstance, FieldInstances to firm entities.
 	 * We use the mangled names here as keys. (They should be unique).
 	 */
 	private final Map<String, Entity> entities = new HashMap<String, Entity>();
@@ -136,14 +146,19 @@ public class FirmTypeSystem {
 	}
 
 	private void findExistingEntities() {
-		final ClassType glob = Program.getGlobalType();
+		final SegmentType glob = Program.getGlobalType();
 		for (final Entity ent : glob.getMembers()) {
-			if (!ent.hasDefinition())
+			if (!ent.hasDefinition()) {
+				assert (ent.getVisibility() == binding_typerep.ir_visibility.ir_visibility_external);
+				ent.setVisibility(binding_typerep.ir_visibility.ir_visibility_local);
+				cStdlibExternalEntities.put(ent.getLdName(), ent);
 				continue;
-			if (ent.getVisibility() != binding_typerep.ir_visibility.ir_visibility_private)
+			}
+			if (ent.getVisibility() != binding_typerep.ir_visibility.ir_visibility_private) {
 				cStdlibEntities.put(ent.getLdName(), ent);
 			/* putting the entities in their classes will be done when the
 			 * X10 MethodInstance is processed */
+			}
 		}
 	}
 
@@ -151,8 +166,11 @@ public class FirmTypeSystem {
 	 * Get global method entity.  Returns existing entity if entity was already present in imported FIRM
 	 * graph from C library or creates new entity.
 	 */
-	public Entity getGlobalMethodEntity(final String linkName, final MethodType type) {
-		final Entity cEntity = cStdlibEntities.get(linkName);
+	public Entity getGlobalEntity(final String linkName, final Type type) {
+		Entity cEntity = cStdlibEntities.get(linkName);
+		if (cEntity != null)
+			return cEntity;
+		cEntity = cStdlibExternalEntities.get(linkName);
 		if (cEntity != null)
 			return cEntity;
 		return new Entity(Program.getGlobalType(), linkName, type);
@@ -396,11 +414,12 @@ public class FirmTypeSystem {
 	 * creations are planned. Fixes the final type memory layout.
 	 */
 	public void finishTypeSystem() {
-		serializationSupport.finishSerialization(firmCoreTypes.values());
+		serializationSupport.finishSerialization(firmCoreTypes.values(), this);
 	}
 
 	/**
 	 * Checks if we need the core type for a given type (for example: Parameter passing).
+	 *
 	 * @param type The type which should be checked
 	 * @return True if we need the core type for the given type
 	 */
@@ -517,28 +536,33 @@ public class FirmTypeSystem {
 	}
 
 	private void createVTableEntity(final X10ClassType classType, final ClassType firmType) {
-		final ClassType global = Program.getGlobalType();
+		final SegmentType global = Program.getGlobalType();
 
 		final String vtableName = NameMangler.mangleVTable(classType);
 		final Entity cEntity = cStdlibEntities.get(vtableName);
 		final Entity vtable;
 		if (cEntity != null) {
-			if (!cEntity.hasLinkage(ir_linkage.IR_LINKAGE_WEAK)) {
-				throw new RuntimeException(
-						"Existing entity for vtable in c-library (" + vtableName + ") is not weak");
-			}
+			assert (cEntity.hasLinkage(ir_linkage.IR_LINKAGE_WEAK)) : "Existing entity for vtable in c-library ("
+					+ vtableName + ") is not weak";
 			cEntity.removeLinkage(ir_linkage.IR_LINKAGE_WEAK);
 			cEntity.setInitializer(null);
 			vtable = cEntity;
 		} else {
-			vtable = new Entity(global, vtableName, pointerType);
+			final Entity cExtEntity = cStdlibExternalEntities.get(vtableName);
+			if (cExtEntity != null) {
+				cExtEntity.removeLinkage(ir_linkage.IR_LINKAGE_WEAK);
+				cExtEntity.setInitializer(null);
+				vtable = cExtEntity;
+			} else {
+				vtable = new Entity(global, vtableName, pointerType);
+			}
 		}
 		vtable.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
 		OO.setClassVTableEntity(firmType, vtable);
 	}
 
 	private static void createTypeinfoEntity(final X10ClassType classType, final ClassType firmType) {
-		final ClassType global = Program.getGlobalType();
+		final SegmentType global = Program.getGlobalType();
 		final Type pointerType = Mode.getP().getType();
 
 		final String rttiName = NameMangler.mangleTypeinfo(classType);
@@ -742,7 +766,7 @@ public class FirmTypeSystem {
 		final firm.Type pointerToFirm = new PointerType(firmType);
 		final firm.Type[] serializeArgTypes = new firm.Type[] {typeP, pointerToFirm};
 		final MethodType serializeType = new MethodType(serializeArgTypes, new Type[] {});
-		final Entity serialize = getGlobalMethodEntity(serializationFuncName, serializeType);
+		final Entity serialize = getGlobalEntity(serializationFuncName, serializeType);
 		serialize.setLdIdent(NameMangler.mangleKnownName(serializationFuncName));
 		OO.setEntityBinding(serialize, ddispatch_binding.bind_static);
 		OO.setMethodExcludeFromVTable(serialize, true);
@@ -751,7 +775,7 @@ public class FirmTypeSystem {
 		final String deserializationFuncName = "x10_deserialization_restore_" + name;
 		final firm.Type[] deserializeArgTypes = new firm.Type[] {typeP, pointerToFirm};
 		final MethodType deserializeType = new MethodType(deserializeArgTypes, new Type[] {});
-		final Entity deserialize = getGlobalMethodEntity(deserializationFuncName, deserializeType);
+		final Entity deserialize = getGlobalEntity(deserializationFuncName, deserializeType);
 		deserialize.setLdIdent(NameMangler.mangleKnownName(deserializationFuncName));
 		OO.setEntityBinding(deserialize, ddispatch_binding.bind_static);
 		OO.setMethodExcludeFromVTable(deserialize, true);
@@ -873,7 +897,7 @@ public class FirmTypeSystem {
 			final Flags flags = instance.flags();
 			final firm.MethodType type = getConstructorType(instance);
 
-			entity = getGlobalMethodEntity(name, type);
+			entity = getGlobalEntity(name, type);
 			entity.setLdIdent(name);
 
 			if (flags.isAbstract()) {
@@ -1058,7 +1082,7 @@ public class FirmTypeSystem {
 		final X10ClassType owner = (X10ClassType) instance.container();
 		final String shortName = NameMangler.mangleMethodShort(instance);
 		final Flags flags = instance.flags();
-		final ClassType ownerFirm;
+		final CompoundType ownerFirm;
 		if (!flags.isStatic()) {
 			final ClassType owningClass = asClass(owner, true);
 			ownerFirm = owningClass;
@@ -1070,31 +1094,16 @@ public class FirmTypeSystem {
 		final Entity cEntity = cStdlibEntities.get(linkName);
 		final MethodType type = asFirmMethodType(instance);
 		if (cEntity != null) {
-			/* make weak entities non-weak and remove existing implementation */
-			if (cEntity.hasLinkage(ir_linkage.IR_LINKAGE_WEAK)) {
-				cEntity.removeLinkage(ir_linkage.IR_LINKAGE_WEAK);
-				cEntity.getGraph().free();
-			} else {
-				assert flags.isNative();
-			}
-
-			final firm.Type entityType = cEntity.getType();
-			if (!(entityType instanceof MethodType))
-				throw new CodeGenError("native Entity without methodtype", instance.position());
-			final MethodType entityMType = (MethodType) entityType;
-			if (!methodsCompatible(entityMType, type))
-				throw new CodeGenError(
-						String.format("native Entity '%s' does not match declared type", instance),
-						instance.position());
-
-			/* fix up stuff, which was impossible to do during the import */
-			cEntity.setIdent(shortName);
-			cEntity.setOwner(ownerFirm);
-
-			entity = cEntity;
+			entity = prepareMethodEntity(instance, shortName, ownerFirm, cEntity, type);
 		} else {
-			entity = new Entity(ownerFirm, shortName, type);
-			entity.setLdIdent(linkName);
+			final Entity cExtEntity = cStdlibExternalEntities.get(linkName);
+			if (cExtEntity != null) {
+				entity = prepareMethodEntity(instance, shortName, ownerFirm, cExtEntity, type);
+			} else {
+				String name = flags.isStatic() ? linkName : shortName;
+				entity = new Entity(ownerFirm, name, type);
+				entity.setLdIdent(linkName);
+			}
 		}
 		entities.put(linkName, entity);
 
@@ -1130,5 +1139,69 @@ public class FirmTypeSystem {
 		translateAnnotations(instance, entity);
 
 		return entity;
+	}
+
+	private static Entity prepareMethodEntity(final MethodInstance instance, final String shortName,
+			final CompoundType ownerFirm, final Entity cEntity, final MethodType type) {
+		/* make weak entities non-weak and remove existing implementation */
+		if (cEntity.hasLinkage(ir_linkage.IR_LINKAGE_WEAK)) {
+			cEntity.removeLinkage(ir_linkage.IR_LINKAGE_WEAK);
+			cEntity.getGraph().free();
+		}
+
+		final firm.Type entityType = cEntity.getType();
+		if (!(entityType instanceof MethodType))
+			throw new CodeGenError("native Entity without methodtype", instance.position());
+		final MethodType entityMType = (MethodType) entityType;
+		if (!methodsCompatible(entityMType, type))
+			throw new CodeGenError(
+					String.format("native Entity '%s' does not match declared type", instance),
+					instance.position());
+
+		/* fix up stuff, which was impossible to do during the import */
+		cEntity.setIdent(shortName);
+		if (!cEntity.getOwner().equals(ownerFirm))
+			cEntity.setOwner(ownerFirm);
+
+		return cEntity;
+	}
+
+	/**
+	 * This entity is special, because the C runtime expects the X10 frontend to generate it.
+	 *
+	 * @return a struct type for deserialization methods
+	 */
+	public Entity getDeserializeMethods(String name, int length) {
+		final ArrayType dmtType;
+
+		/* might exist already */
+		Entity struct_ent = cStdlibExternalEntities.get(name);
+		if (struct_ent != null) {
+			dmtType = (ArrayType) struct_ent.getType();
+		} else {
+			/* create struct from scratch, must match C runtime! */
+			final String elem_name = "deserialize_methods_entry_t";
+			CompoundType struct_t = new StructType(elem_name);
+			final int pointer_bytes = pointerType.getSizeBytes();
+			struct_t.setAlignmentBytes(pointer_bytes);
+
+			final Entity m1 = new Entity(struct_t, "deserializer", pointerType);
+			m1.setAlign(ir_align.align_non_aligned);
+			m1.setOffset(0);
+			final Entity m2 = new Entity(struct_t, "vtable", pointerType);
+			m2.setAlign(ir_align.align_non_aligned);
+			m2.setOffset(pointer_bytes);
+
+			struct_t.setSizeBytes(pointer_bytes * 2);
+			struct_t.finishLayout();
+
+			dmtType = new ArrayType(struct_t);
+			struct_ent = getGlobalEntity(name, dmtType);
+		}
+
+		dmtType.setSize(length);
+		dmtType.finishLayout();
+
+		return struct_ent;
 	}
 }

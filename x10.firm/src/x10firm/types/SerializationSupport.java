@@ -17,12 +17,13 @@ import firm.Graph;
 import firm.Initializer;
 import firm.MethodType;
 import firm.Mode;
+import firm.Mode.Arithmetic;
 import firm.OO;
 import firm.PointerType;
 import firm.Program;
 import firm.Relation;
+import firm.SegmentType;
 import firm.Type;
-import firm.Mode.Arithmetic;
 import firm.bindings.binding_oo.ddispatch_binding;
 import firm.nodes.Alloc;
 import firm.nodes.Block;
@@ -98,32 +99,32 @@ public final class SerializationSupport {
 		final firm.Type[] swoParameterTypes = new firm.Type[] {typeP, typeP};
 		final MethodType swoType = new MethodType(swoParameterTypes, emptyTypelist);
 		final String swoName = NameMangler.mangleKnownName("x10_serialization_write_object");
-		serializationWriteObject = firmTypeSystem.getGlobalMethodEntity(swoName, swoType);
+		serializationWriteObject = firmTypeSystem.getGlobalEntity(swoName, swoType);
 		serializationWriteObject.setLdIdent(swoName);
 
 		final firm.Type[] droParamTypes = new firm.Type[] {typeP, typeP};
 		final MethodType droType = new MethodType(droParamTypes, emptyTypelist);
 		final String droName = NameMangler.mangleKnownName("x10_deserialization_restore_object");
-		deserializationRestoreObject = firmTypeSystem.getGlobalMethodEntity(droName, droType);
+		deserializationRestoreObject = firmTypeSystem.getGlobalEntity(droName, droType);
 		deserializationRestoreObject.setLdIdent(droName);
 
 		sizeTType = Mode.createIntMode("size_t", Arithmetic.TwosComplement, Mode.getP().getSizeBits(),
 				false, Mode.getP().getModuloShift()).getType();
 
 		final MethodType mallocType = new MethodType(new Type[] {sizeTType}, new Type[] {typeP});
-		gcXMalloc = firmTypeSystem.getGlobalMethodEntity(GC_XMALLOC, mallocType);
+		gcXMalloc = firmTypeSystem.getGlobalEntity(GC_XMALLOC, mallocType);
 		gcXMalloc.setLdIdent(NameMangler.mangleKnownName(GC_XMALLOC));
-		gcXMallocAtomic = firmTypeSystem.getGlobalMethodEntity(GC_XMALLOC_ATOMIC, mallocType);
+		gcXMallocAtomic = firmTypeSystem.getGlobalEntity(GC_XMALLOC_ATOMIC, mallocType);
 		gcXMallocAtomic.setLdIdent(NameMangler.mangleKnownName(GC_XMALLOC_ATOMIC));
 
 		final MethodType serWriteDataType = new MethodType(new Type[] {typeP, typeP, sizeTType},
 				emptyTypelist);
-		serializationWriteData = firmTypeSystem.getGlobalMethodEntity(SERIALIZATION_WRITE_DATA, serWriteDataType);
+		serializationWriteData = firmTypeSystem.getGlobalEntity(SERIALIZATION_WRITE_DATA, serWriteDataType);
 		serializationWriteData.setLdIdent(NameMangler.mangleKnownName(SERIALIZATION_WRITE_DATA));
 
 		final MethodType deserRestoreDataType = new MethodType(new Type[] {typeP, typeP, sizeTType},
 				emptyTypelist);
-		deserializationRestoreData = firmTypeSystem.getGlobalMethodEntity(DESERIALIZATION_RESTORE_DATA,
+		deserializationRestoreData = firmTypeSystem.getGlobalEntity(DESERIALIZATION_RESTORE_DATA,
 				deserRestoreDataType);
 		deserializationRestoreData.setLdIdent(NameMangler.mangleKnownName(DESERIALIZATION_RESTORE_DATA));
 	}
@@ -141,7 +142,7 @@ public final class SerializationSupport {
 			OO.setClassUID(firmType, maxClassUid++);
 		}
 
-		final ClassType global = Program.getGlobalType();
+		final SegmentType global = Program.getGlobalType();
 
 		final String serializeMethodName =
 				NameMangler.mangleGeneratedMethodName(astType, SERIALIZE_METHOD_NAME, SERIALIZE_METHOD_SIGNATURE);
@@ -224,25 +225,22 @@ public final class SerializationSupport {
 	 *
 	 * @param firmTypes a collection of all firm types. Only class types will be handled.
 	 */
-	public void finishSerialization(final Collection<ClassType> firmTypes) {
-		final ClassType global = Program.getGlobalType();
+	public void finishSerialization(final Collection<ClassType> firmTypes, final FirmTypeSystem firmTypeSystem) {
 		final firm.Type typeP = Mode.getP().getType();
 
 		// Emit the table used to lookup the __deserialize method and vtable address
 		// of a class. It is indexed by the class' type uid.
 		final String dmtName = NameMangler.mangleKnownName(DESERIALIZE_METHOD_TABLE_NAME);
-		final int nEntries = maxClassUid * 2;
-		final ArrayType dmtType = new ArrayType(typeP);
-		dmtType.setSize(nEntries);
-		dmtType.finishLayout();
-		final Entity deserializeMethodTable = new Entity(global, dmtName, dmtType);
-		final Initializer dmtInitializer = new Initializer(nEntries);
+		final Entity deserializeMethodTable = firmTypeSystem.getDeserializeMethods(dmtName, maxClassUid);
+		final Initializer dmtInitializer = new Initializer(maxClassUid);
 
 		final String smtName = NameMangler.mangleKnownName(SERIALIZE_METHOD_TABLE_NAME);
-		final ArrayType smtType = new ArrayType(typeP);
+		ArrayType smtType = new ArrayType(typeP);
+		final Entity serializeMethodTable = firmTypeSystem.getGlobalEntity(smtName, smtType);
+		/* getGlobalEntity might return another type from the C runtime, which also has no size set */
+		smtType = (ArrayType) serializeMethodTable.getType();
 		smtType.setSize(maxClassUid);
 		smtType.finishLayout();
-		final Entity serializeMethodTable = new Entity(global, smtName, smtType);
 		final Initializer smtInitializer = new Initializer(maxClassUid);
 
 		final Graph constCode = Program.getConstCodeGraph();
@@ -250,6 +248,9 @@ public final class SerializationSupport {
 		for (final ClassType classType : firmTypes) {
 			final int classUid = OO.getClassUID(classType);
 			if (classUid == 0) /* this will filter out structs and interfaces */
+				continue;
+
+			if (OO.getClassIsAbstract(classType))
 				continue;
 
 			final Entity deserEntity = deserializeFunctions.get(classType);
@@ -262,10 +263,15 @@ public final class SerializationSupport {
 
 			final Node symcDeser = constCode.newAddress(deserEntity);
 			final Initializer initDeser = new Initializer(symcDeser);
-			dmtInitializer.setCompoundValue(classUid * 2, initDeser);
+
 			final Node symcVtable = constCode.newAddress(vtableEntity);
 			final Initializer initVtable = new Initializer(symcVtable);
-			dmtInitializer.setCompoundValue(classUid * 2 + 1, initVtable);
+
+			final Initializer both = new Initializer(2);
+			both.setCompoundValue(0, initDeser);
+			both.setCompoundValue(1, initVtable);
+
+			dmtInitializer.setCompoundValue(classUid, both);
 
 			final Node symcSer = constCode.newAddress(serEntity);
 			final Initializer initSer = new Initializer(symcSer);
@@ -458,7 +464,7 @@ public final class SerializationSupport {
 		if (astType.isString()) {
 			final String stringSerializeName = NameMangler.mangleKnownName("x10_string_serialize");
 			final Entity stringSerializeEntity =
-					firmTypeSystem.getGlobalMethodEntity(stringSerializeName, serializeMethodType);
+					firmTypeSystem.getGlobalEntity(stringSerializeName, serializeMethodType);
 			final Node stringSerializeSymc = con.newAddress(stringSerializeEntity);
 
 			Node mem = con.getCurrentMem();
@@ -658,7 +664,7 @@ public final class SerializationSupport {
 		if (astType.isString()) {
 			final String stringDeserializeName = NameMangler.mangleKnownName("x10_string_deserialize");
 			final Entity stringDeserializeEntity =
-					firmTypeSystem.getGlobalMethodEntity(stringDeserializeName, deserializeMethodType);
+					firmTypeSystem.getGlobalEntity(stringDeserializeName, deserializeMethodType);
 			final Node stringDeserializeSymc = con.newAddress(stringDeserializeEntity);
 
 			Node mem = con.getCurrentMem();
