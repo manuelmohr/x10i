@@ -214,7 +214,7 @@ public class FirmTypeSystem {
 		initFirmTypes();
 		NameMangler.setup(typeSystem, compilerOptions);
 
-		dummyMethodType = new MethodType(0,1);
+		dummyMethodType = new MethodType(0, 1);
 		dummyMethodType.setResType(0, pointerType);
 	}
 
