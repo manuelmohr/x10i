@@ -8,6 +8,8 @@ import firm.Firm;
 import firm.Mode;
 import firm.Mode.Arithmetic;
 import firm.OO;
+import firm.bindings.binding_be;
+import firm.bindings.binding_be.dwarf_source_language;
 import firm.bindings.binding_irio;
 
 /**
@@ -95,6 +97,14 @@ public final class FirmState {
 		} else {
 			setPointerSize(PointerSize.Size32);
 		}
+
+		Backend.option("omitfp"); // makes the assembler a bit more readable
+		if (options.x10_config.DEBUG) {
+			binding_be.be_dwarf_set_source_language(dwarf_source_language.DW_LANG_C_plus_plus.val);
+			binding_be.be_dwarf_set_compilation_directory(new File(".").getAbsolutePath());
+			Backend.option("debug=frameinfo");
+		}
+
 		OO.init();
 	}
 
