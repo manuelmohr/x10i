@@ -201,6 +201,8 @@ public class FirmTypeSystem {
 
 	private boolean inited = false;
 
+	private MethodType dummyMethodType;
+
 	/** Initializes the firm type system. */
 	private void init() {
 		if (inited)
@@ -211,6 +213,9 @@ public class FirmTypeSystem {
 		readFirmNativeTypesConfig(nativeTypesConfig);
 		initFirmTypes();
 		NameMangler.setup(typeSystem, compilerOptions);
+
+		dummyMethodType = new MethodType(0,1);
+		dummyMethodType.setResType(0, pointerType);
 	}
 
 	private void readFirmNativeTypesConfig(final String firmNativeTypesFilename) {
@@ -894,11 +899,16 @@ public class FirmTypeSystem {
 		Entity entity = entities.get(name);
 
 		if (entity == null) {
+			entity = getGlobalEntity(name, dummyMethodType);
+			entity.setLdIdent(name);
+
+			/* Register entity already because getConstructorType might recurse otherwise */
+			entities.put(name, entity);
+
 			final Flags flags = instance.flags();
 			final firm.MethodType type = getConstructorType(instance);
 
-			entity = getGlobalEntity(name, type);
-			entity.setLdIdent(name);
+			entity.setType(type); /* overwrite dummy type */
 
 			if (flags.isAbstract()) {
 				OO.setMethodAbstract(entity, true);
@@ -909,8 +919,6 @@ public class FirmTypeSystem {
 			 * vtable to determine which method to call.
 			 * (Note that we still have a "this" pointer anyway) */
 			OO.setEntityBinding(entity, ddispatch_binding.bind_static);
-
-			entities.put(name, entity);
 		}
 		return entity;
 	}
