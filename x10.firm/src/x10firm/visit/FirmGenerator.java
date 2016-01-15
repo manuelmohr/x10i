@@ -1933,6 +1933,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final TypeParamSubst subst = createSubst(addSubst, typeParameters, typeArguments);
 
 		// Find the method declaration.
+		assert !def.flags().isAbstract() : "Cannot instantiate a generic abstract method";
 		final X10MethodDecl decl = DeclFetcher.getDecl(def);
 		if (decl == null)
 			return;
