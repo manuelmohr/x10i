@@ -147,6 +147,7 @@ import x10.types.constants.ConstantValue;
 import x10.types.constants.DoubleValue;
 import x10.types.constants.FloatValue;
 import x10.types.constants.IntegralValue;
+import x10.types.constraints.TypeConstraint;
 import x10.visit.X10DelegatingVisitor;
 import x10firm.CompilerOptions;
 import x10firm.types.FirmTypeSystem;
@@ -791,6 +792,11 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		// us a method instance where generic types are used.  But we know
 		// better at this point, because we can substitute the real types.
 		final MethodInstance methodInstance = subst.reinstantiate(defInstance);
+
+		// Do not generate code for methods with unfulfilled guards.
+		final TypeConstraint typeGuard = methodInstance.typeGuard();
+		if (typeGuard != null && !typeGuard.consistent(typeSystem.emptyContext()))
+			return;
 
 		final List<LocalInstance> formals = defInstance.formalNames();
 		final Entity entity = firmTypeSystem.getMethodEntity(methodInstance);
