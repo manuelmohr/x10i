@@ -124,7 +124,7 @@ abstract public class Claim {
                   finish for (id in ids) async {
                     ret(id.ordinal - start_iid) = ilet(id);
                   }
-                  return ret;
+                  return ret as Any;
                 };
                 val part_res = ac.evalAtAgent(p,iilet) as Array[T];
                 for (id in ids) {
