@@ -2586,9 +2586,14 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		} else if (typeSystem.isRefType(from) && typeSystem.isStructType(to)) {
 			final Node valueNode = visitExpression(value);
 			return genUnboxing(valueNode, typeSystem.toClass(to));
-		} else {
-			throw new CodeGenError("Unsupported unchecked cast", pos);
 		}
+
+		final Mode fromMode = firmTypeSystem.getFirmMode(from);
+		final Mode toMode = firmTypeSystem.getFirmMode(to);
+		if (fromMode.isNum() && toMode.isNum())
+			return con.newConv(visitExpression(value), toMode);
+
+		throw new CodeGenError("Unsupported unchecked cast from " + from + " to " + to, pos);
 	}
 
 	@Override
