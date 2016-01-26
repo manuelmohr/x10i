@@ -2567,7 +2567,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			genSubtypeCheck(pos, valueNode, boxingType, false);
 			return genUnboxing(valueNode, typeSystem.toClass(to));
 		} else {
-			throw new CodeGenError("Unsupported cast", pos);
+			throw new CodeGenError("Unsupported cast from " + from + " to " + to, pos);
 		}
 	}
 
