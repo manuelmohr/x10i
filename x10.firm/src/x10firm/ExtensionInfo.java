@@ -188,6 +188,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/lang/Math.x10");
 			allowedFiles.add("x10/lang/NativeSupport.x10");
 			allowedFiles.add("x10/lang/NoSuchElementException.x10");
+			allowedFiles.add("x10/lang/NullPointerException.x10");
 			allowedFiles.add("x10/lang/Object.x10");
 			allowedFiles.add("x10/lang/Place.x10");
 			allowedFiles.add("x10/lang/PlaceLocalHandle.x10");
