@@ -2509,6 +2509,13 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		return type.fullName().toString();
 	}
 
+	private void throwClassCastException(final Position pos, final Type toType) {
+		final X10ClassType exceptionType = getClassCastException();
+		final String toName = getTypeFullName(toType);
+		final Node exceptionObject = createExceptionObject(exceptionType, toName);
+		throwObject(pos, exceptionObject);
+	}
+
 	private void genSubtypeCheck(final Position pos, final Node value, final Type toType, final boolean nullAllowed) {
 		final Type to = typeSystem.getConcreteType(toType);
 		final Node nullConst = con.newConst(Mode.getP().getNull());
@@ -2536,10 +2543,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		}
 		failBlock.mature();
 		con.setCurrentBlock(failBlock);
-		final X10ClassType exceptionType = getClassCastException();
-		final String toName = getTypeFullName(toType);
-		final Node exceptionObject = createExceptionObject(exceptionType, toName);
-		throwObject(pos, exceptionObject);
+		throwClassCastException(pos, toType);
 
 		final Block mergeBlock = con.newBlock();
 		if (nullAllowed) {
