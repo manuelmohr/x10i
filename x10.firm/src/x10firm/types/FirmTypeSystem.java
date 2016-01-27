@@ -167,13 +167,15 @@ public class FirmTypeSystem {
 	 * graph from C library or creates new entity.
 	 */
 	public Entity getGlobalEntity(final String linkName, final Type type) {
-		Entity cEntity = cStdlibEntities.get(linkName);
+		Entity cEntity = cStdlibExternalEntities.get(linkName);
 		if (cEntity != null)
 			return cEntity;
-		cEntity = cStdlibExternalEntities.get(linkName);
-		if (cEntity != null)
-			return cEntity;
-		return new Entity(Program.getGlobalType(), linkName, type);
+		cEntity = cStdlibEntities.get(linkName);
+		if (cEntity == null) {
+			cEntity = new Entity(Program.getGlobalType(), linkName, type);
+			cStdlibEntities.put(linkName, cEntity);
+		}
+		return cEntity;
 	}
 
 	private static void flattenType(final StringBuffer buf, final polyglot.types.Type type) {
