@@ -2570,9 +2570,26 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			final Type boxingType = firmTypeSystem.getBoxingType((X10ClassType)to);
 			genSubtypeCheck(pos, valueNode, boxingType, false);
 			return genUnboxing(valueNode, typeSystem.toClass(to));
-		} else {
-			throw new CodeGenError("Unsupported cast from " + from + " to " + to, pos);
+		} else if (typeSystem.isStructType(from) && typeSystem.isRefType(to)) {
+			final Node box = genBoxing(value);
+			genSubtypeCheck(pos, box, to, false);
+			return box;
+		} else if (typeSystem.isStructType(from) && typeSystem.isStructType(to)) {
+			final Mode fromMode = firmTypeSystem.getFirmMode(from);
+			final Mode toMode = firmTypeSystem.getFirmMode(to);
+			// Primitive struct types
+			if (fromMode != null && fromMode.isNum() && toMode != null && toMode.isNum())
+				return con.newConv(valueNode, toMode);
+			// Non-primitive struct types
+			if (typeSystem.typeDeepBaseEquals(from, to))
+				return valueNode;
+
+			// Will always fail, node is only dummy
+			throwClassCastException(pos, to);
+			return valueNode;
 		}
+
+		throw new CodeGenError("Unsupported cast from " + from + " to " + to, pos);
 	}
 
 	private Node uncheckedCast(final Expr value, final Type to, final Position pos) {
