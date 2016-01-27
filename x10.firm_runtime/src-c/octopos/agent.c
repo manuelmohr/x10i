@@ -49,7 +49,8 @@ static void redistribute_places(agentclaim_t ac)
 agentclaim_t x10_agent_claim_invade(agent_t parentagent, constraints_t constr)
 {
 	agentclaim_t ac = agent_claim_invade(parentagent, constr);
-	redistribute_places(ac);
+	if (NULL != ac)
+		redistribute_places(ac);
 	return ac;
 }
 
@@ -58,7 +59,8 @@ agentclaim_t x10_agent_claim_invade(agent_t parentagent, constraints_t constr)
 agentclaim_t x10_agent_claim_invade_or_constraints(agent_t parentagent, uint8_t constr_count, constraints_t constr[])
 {
 	agentclaim_t ac = agent_claim_invade_or_constraints(parentagent, constr_count, constr);
-	redistribute_places(ac);
+	if (NULL != ac)
+		redistribute_places(ac);
 	return ac;
 }
 
@@ -67,7 +69,8 @@ agentclaim_t x10_agent_claim_invade_or_constraints(agent_t parentagent, uint8_t 
 agentclaim_t x10_agent_claim_invade_parentclaim(agentclaim_t parentclaim, constraints_t constr)
 {
 	agentclaim_t ac = agent_claim_invade_parentclaim(parentclaim, constr);
-	redistribute_places(ac);
+	if (NULL != ac)
+		redistribute_places(ac);
 	return ac;
 }
 

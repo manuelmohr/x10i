@@ -196,6 +196,7 @@ final class AgentClaim extends Claim {
 
     /** Retreat completely and free all resources. */
     public def retreat():void = {
+        if (this.clm == Pointer.NULL) return; /* nothing to do */
         this.check_invariant();
         retreat(this.clm);
     }
@@ -214,7 +215,10 @@ final class AgentClaim extends Claim {
     }
 
     /** Returns how many PEs are in this claim. */
-    public def size():Int = size(this.clm);
+    public def size():Int {
+      if (this.clm == Pointer.NULL) return 0;
+      return size(this.clm);
+    }
 
     @LinkSymbol("agent_claim_get_pecount")
     static native def size(clm:Pointer):Int;
