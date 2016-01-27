@@ -7,16 +7,16 @@
 #    https://www4.cs.fau.de/invasic/octopos/
 set -euv
 
-RELEASE_DATE="2015-12-11"
+RELEASE_DATE="2016-01-28"
 DEFAULT_X86GUEST="4t-w-iotile"
 DEFAULT_LEON="4t5c-chipit-w-iotile"
 RELEASES=""
 RELEASES="$RELEASES release.leon.${DEFAULT_LEON}.${RELEASE_DATE}.tar.bz2"
 RELEASES="$RELEASES release.x86guest.${DEFAULT_X86GUEST}.${RELEASE_DATE}.tar.bz2"
 RELEASES="$RELEASES release.x64native.generic.${RELEASE_DATE}.tar.bz2"
-MD5SUMS="""dace858996495a8d2b3b7685a3ecc83e  release.leon.${DEFAULT_LEON}.${RELEASE_DATE}.tar.bz2
-741ef979d0d92c4ef292dc6e17864fa2  release.x86guest.${DEFAULT_X86GUEST}.${RELEASE_DATE}.tar.bz2
-9f71cd9480c134c2c2033eadaed70051  release.x64native.generic.${RELEASE_DATE}.tar.bz2"""
+MD5SUMS="""a1faf755db93db76ad47da6e2158464d  release.leon.${DEFAULT_LEON}.${RELEASE_DATE}.tar.bz2
+2d8e869e51e105d89e23abb86b8b23da  release.x64native.generic.${RELEASE_DATE}.tar.bz2
+63d439a61e0259278814507fd0a220b6  release.x86guest.${DEFAULT_X86GUEST}.${RELEASE_DATE}.tar.bz2"""
 
 DIST_DIR="octopos-dist"
 OCTOPOS_APP_DIR="octopos-app"
@@ -51,6 +51,7 @@ for release in $RELEASES; do
 			cp -p "$IPDDIR/$release" "$DIST_DIR"
 		else
 			echo "Cannot find $IPDDIR/$release, please download it from https://www4.cs.fau.de/invasic/octopos/"
+			echo "Tip: There is a 'get.sh' script in /ben/local/octopos-releases"
 			exit 1
 		fi
 		fi

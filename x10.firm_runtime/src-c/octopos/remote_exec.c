@@ -480,7 +480,7 @@ x10_object *x10_execute_at(x10_int place_id, x10_int msg_type, x10_object *closu
 		return exec_on_invasic_host(msg_type, closure);
 	}
 
-	place_local_data *pld = claim_get_local_data(get_claim());
+	place_local_data *pld = claim_get_local_data();
 	assert(place_id >= 0);
 	assert((unsigned)place_id < pld->n_places);
 	dispatch_claim_t dc = pld->places[place_id];

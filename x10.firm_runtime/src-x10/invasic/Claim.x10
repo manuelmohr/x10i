@@ -160,7 +160,7 @@ final class AgentClaim extends Claim {
         where it was invaded. However, we must copy AgentClaim through 'at'
         for infect. This might go to a different Place (Claim) on the same tile,
         so we check the tile id. */
-        assert this.tileid == Tile.getCurrentTileId() : "AgentClaim only valid on its tile";
+        assert this.tileid == Tile.getCurrentTileId() : "AgentClaim only valid on its tile "+this.tileid+" not here on tile "+Tile.getCurrentTileId();
     }
 
     /** Constructor is protected, because the invade method is the only way to get a claim. */
