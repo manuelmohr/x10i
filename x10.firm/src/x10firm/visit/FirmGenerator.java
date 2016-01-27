@@ -2811,7 +2811,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 				nextCatchBlock.addPred(projFalse);
 				con.setCurrentBlock(nextCatchBlock);
 			}
-			/* case of an uncatched exception: execute finally code, then rethrow */
+			/* case of an uncaught exception: execute finally code, then rethrow */
 			assert !con.isUnreachable();
 			if (finallyBlock != null) {
 				final polyglot.ast.Block stackBlock = con.tryFinallyStack.pop();
