@@ -108,7 +108,7 @@ IR_FILE=$(BUILDDIR)/$(LIBNAME).ir
 all: $(A_FILE) $(FIRM_NATIVE_TYPES_CONF) $(IR_FILE) $(DOUBLEREG_LIB)
 
 $(A_FILE): $(O_FILE)
-	ar rucs $@ $?
+	ar rcs $@ $?
 
 $(FIRM_NATIVE_TYPES_CONF): $(GEN_FIRM_NATIVE_SIZES) $(wildcard $(PLATFORMDIR)/*.h) $(wildcard $(SRCDIR)/*.h) $(CPARSER) $(IRTSS_HEADER)
 	$(CPARSER) --print-compound-sizes $(CPARSER_TARGET) $(CPPFLAGS) $(APP_CFLAGS) -I $(SRCDIR)/$(PLATFORM)/include-workaround -o $@ $(SRCDIR)/gen_firm_native_sizes.c
