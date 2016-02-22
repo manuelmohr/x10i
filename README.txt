@@ -19,6 +19,9 @@ the eclipse rebuilding should be enough after the initial build here.
 
 == Eclipse Import ==
 
+Note: Eclipse is NOT NECESSARY to build and run x10i. It is useful,
+if you want to change the Java code of x10i, though.
+
 1. It's probably best to create a new empty workspace for this.
 2. click "File" -> "Import ..."
 3. select "General" -> "Existing projects into workspace"
