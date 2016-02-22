@@ -26,7 +26,7 @@ if you want to change the Java code of x10i, though.
 2. click "File" -> "Import ..."
 3. select "General" -> "Existing projects into workspace"
 4. select current workspace as root directory (click "browse" and "ok" should be enough)
-5. all projects should be selected (x10.common, x10.compiler, x10.constraints, x10.dist, x10.runtime, jFirm)
+5. select the projects: x10.common, x10.compiler, x10.constraints, x10.dist, jFirm, liboo (But not x10.wala, x10.runtime, x10.firm_runtime, they only give you errors)
 6. click "Finish"
 
 Now all projects should be imported into your Eclipse workspace.
