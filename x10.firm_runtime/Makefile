@@ -135,7 +135,7 @@ cparser_subdir:
 .PHONY: cparser_subdir
 
 $(IR_FILE): $(MASTER) $(CPARSER)
-	$(CPARSER) $(CPPFLAGS) $(CFLAGS) -I $(SRCDIR)/$(PLATFORM)/include-workaround $(CPARSER_TARGET) -w $< --export-ir -o $@
+	$(CPARSER) $(CPPFLAGS) -D__CPARSER__ $(CFLAGS) -I $(SRCDIR)/$(PLATFORM)/include-workaround $(CPARSER_TARGET) -w $< --export-ir -o $@
 
 .PHONY: clean
 clean:
