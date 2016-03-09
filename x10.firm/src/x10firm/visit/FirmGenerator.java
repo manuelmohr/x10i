@@ -1663,11 +1663,14 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node address = con.newAddress(entity);
 		final List<Expr> arguments = wrapArguments(instance.formalTypes(), n.arguments());
 
-		final int argumentCount = arguments.size() + 1;
+		final boolean hasHiddenThisParam = !typeSystem.isStructType(instance.container());
+		final int argumentCount = arguments.size() + (hasHiddenThisParam ? 1 : 0);
 		assert argumentCount == type.getNParams();
 		final Node[] argumentNodes = new Node[argumentCount];
 		int p = 0;
-		argumentNodes[p++] = getThis();
+		if (hasHiddenThisParam) {
+			argumentNodes[p++] = getThis();
+		}
 
 		for (Expr expr : arguments) {
 			argumentNodes[p++] = visitExpression(expr);
