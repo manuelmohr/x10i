@@ -260,8 +260,7 @@ final class AgentClaim extends Claim {
         for (tid in tiles) {
             val pecount = pecount_tile_type(this.clm, tid, 0/*RISC*/);
             for (peid in 0..(pecount-1)) {
-                val pe_type = 0/*RISC*/;
-                val pe = new ProcessingElement(this.clm, new Place(pid), pe_type, peid);
+                val pe = new ProcessingElement(new Place(pid), peid);
                 res.add(pe);
             }
             pid += 1;

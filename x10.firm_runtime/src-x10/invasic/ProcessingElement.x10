@@ -5,7 +5,6 @@ import x10.compiler.LinkSymbol;
 
 /** A processing element executes i-lets and represents a hardware core */
 public class ProcessingElement {
-    private val clm:Pointer;
     private val plc:Place;
     private val peid:Int;
 
@@ -14,8 +13,7 @@ public class ProcessingElement {
     public static val ICORE  = 2 as Int;
     public static val TCPA   = 3 as Int;
 
-    public def this(clm:Pointer, plc:Place, peid:Int) {
-        this.clm = clm;
+    public def this(plc:Place, peid:Int) {
         this.plc = plc;
         this.peid = peid;
     }
