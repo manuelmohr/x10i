@@ -7,7 +7,6 @@ import x10.compiler.LinkSymbol;
 public class ProcessingElement {
     private val clm:Pointer;
     private val plc:Place;
-    private val petype:Int;
     private val peid:Int;
 
     public static val DEFECT = 0 as Int;
@@ -15,15 +14,14 @@ public class ProcessingElement {
     public static val ICORE  = 2 as Int;
     public static val TCPA   = 3 as Int;
 
-    public def this(clm:Pointer, plc:Place, petype:Int, peid:Int) {
+    public def this(clm:Pointer, plc:Place, peid:Int) {
         this.clm = clm;
         this.plc = plc;
-        this.petype = petype;
         this.peid = peid;
     }
 
     public def toString(): String {
-        return "<PE: " + plc + " pe=" + peid + " type="+petype+">";
+        return "<PE: " + plc + " pe=" + peid + ">";
     }
 
     /** Returns place of the PE */
