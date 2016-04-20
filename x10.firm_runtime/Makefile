@@ -129,9 +129,11 @@ $(DOUBLEREG_LIB): $(SRCDIR)/doublereg/convert.c $(SRCDIR)/doublereg/to_string.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(SRCDIR)/doublereg/to_string.c -c -o $(BUILDDIR)/to_string.o
 	ar rucs $@ $(BUILDDIR)/convert.o $(BUILDDIR)/to_string.o
 
+ifneq ("$(MAKECMDGOALS)", "clean")
 Makefile: cparser_subdir
 cparser_subdir:
 	$(MAKE) -C $(CPARSER_BASE) FIRM_HOME=../libfirm
+endif
 .PHONY: cparser_subdir
 
 $(IR_FILE): $(MASTER) $(CPARSER)
