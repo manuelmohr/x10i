@@ -141,4 +141,5 @@ $(IR_FILE): $(MASTER) $(CPARSER)
 
 .PHONY: clean
 clean:
+	$(MAKE) -C $(CPARSER_BASE) clean
 	rm -rf $(BUILDDIR)
