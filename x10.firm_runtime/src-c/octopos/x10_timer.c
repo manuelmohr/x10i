@@ -8,7 +8,7 @@
 
 x10_long _ZN3x104util5Timer8nanoTimeEv()
 {
-	return (x10_long) (clock() * 1000);
+	return ((x10_long)clock()) * 1000;
 }
 
 x10_long _ZN3x104util5Timer9milliTimeEv()
