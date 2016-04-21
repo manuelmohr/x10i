@@ -146,7 +146,11 @@ void x10_serialization_write_float(serialization_buffer_t *buf,
 void x10_serialization_write_double(serialization_buffer_t *buf,
                                     const x10_double *value_ptr)
 {
+#ifdef DOUBLE_IS_32BIT
+	WRITE_TO_BUF(32, buf, value_ptr);
+#else
 	WRITE_TO_BUF(64, buf, value_ptr);
+#endif
 }
 
 void x10_serialization_write_pointer(serialization_buffer_t *buf,
@@ -318,7 +322,11 @@ void x10_deserialization_restore_float(deserialization_buffer_t *buf,
 void x10_deserialization_restore_double(deserialization_buffer_t *buf,
                                         x10_double *addr)
 {
+#ifdef DOUBLE_IS_32BIT
+	READ_FROM_BUF(32, buf, addr);
+#else
 	READ_FROM_BUF(64, buf, addr);
+#endif
 	buf->cursor += sizeof(*addr);
 }
 
