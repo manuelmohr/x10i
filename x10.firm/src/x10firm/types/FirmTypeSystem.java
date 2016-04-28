@@ -792,16 +792,10 @@ public class FirmTypeSystem {
 	private void initIA32DataTypeAlignment(final Type type) {
 		final MachineTriple target = compilerOptions.getTargetTriple();
 
-		if ((target.getCpu().equals("i686") || target.getCpu().equals("x86_64"))
-			&& (target.isUnixishOS() || target.isDarwin())) {
-
+		if (target.getCpu().equals("i686") && (target.isUnixishOS() || target.isDarwin())) {
 			/* The System V ABI for IA32 specifies a 4-byte alignment for doubles/long longs.
 			 * While this is actually only true for doubles/long longs within structs, and not for global
-			 * variables, we don't make that distinction in X10 and always use a 4-byte alignment.
-			 *
-			 * We also use 4 bytes on x86_64 because we never actually generate 64-bit x86 code, but still use our
-			 * IA32 backend.  Technically, this is a cross compilation and the target cpu should be "i686".
-			 * However, to simplify running x10firm on 64-bit hosts, this is handled as a special case. */
+			 * variables, we don't make that distinction in X10 and always use a 4-byte alignment. */
 			type.setAlignment(4);
 		}
 	}
