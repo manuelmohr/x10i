@@ -239,7 +239,7 @@ public final class SerializationSupport {
 		final Entity serializeMethodTable = firmTypeSystem.getGlobalEntity(smtName, smtType);
 		/* getGlobalEntity might return another type from the C runtime, which also has no size set */
 		smtType = (ArrayType) serializeMethodTable.getType();
-		smtType.setSize(maxClassUid);
+		smtType.setNumElements(maxClassUid);
 		smtType.finishLayout();
 		final Initializer smtInitializer = new Initializer(maxClassUid);
 

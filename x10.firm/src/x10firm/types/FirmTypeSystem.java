@@ -1203,7 +1203,7 @@ public class FirmTypeSystem {
 			structEntity = getGlobalEntity(name, dmtType);
 		}
 
-		dmtType.setSize(length);
+		dmtType.setNumElements(length);
 		dmtType.finishLayout();
 
 		return structEntity;

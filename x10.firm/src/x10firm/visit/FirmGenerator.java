@@ -2055,7 +2055,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		ent.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
 
 		final byte[] bytes = value.getBytes(UTF8);
-		type.setSize(bytes.length);
+		type.setNumElements(bytes.length);
 		type.finishLayout();
 
 		final Initializer init = new Initializer(bytes.length);
@@ -2952,7 +2952,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		if (isConstantTuple(n)) {
 			/* create initializer in read-only-data and use CopyB */
 			final ArrayType initType = new ArrayType(firmType);
-			initType.setSize(size);
+			initType.setNumElements(size);
 			initType.finishLayout();
 
 			final SegmentType global = Program.getGlobalType();
