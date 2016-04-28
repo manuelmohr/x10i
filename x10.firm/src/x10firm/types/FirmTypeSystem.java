@@ -628,7 +628,7 @@ public class FirmTypeSystem {
 		final QName qname = classType.fullName();
 		final NativeClassInfo classInfo = x10NativeTypes.get(qname.toString());
 		if (classInfo != null) {
-			result.setSizeBytes(classInfo.getSize());
+			result.setSize(classInfo.getSize());
 			result.setTypeState(ir_type_state.layout_fixed);
 		}
 
@@ -802,7 +802,7 @@ public class FirmTypeSystem {
 			 * We also use 4 bytes on x86_64 because we never actually generate 64-bit x86 code, but still use our
 			 * IA32 backend.  Technically, this is a cross compilation and the target cpu should be "i686".
 			 * However, to simplify running x10firm on 64-bit hosts, this is handled as a special case. */
-			type.setAlignmentBytes(4);
+			type.setAlignment(4);
 		}
 	}
 
@@ -1192,8 +1192,8 @@ public class FirmTypeSystem {
 			/* create struct from scratch, must match C runtime! */
 			final String elemName = "deserialize_methods_entry_t";
 			final CompoundType structType = new StructType(elemName);
-			final int pointerBytes = pointerType.getSizeBytes();
-			structType.setAlignmentBytes(pointerBytes);
+			final int pointerBytes = pointerType.getSize();
+			structType.setAlignment(pointerBytes);
 
 			final Entity m1 = new Entity(structType, "deserializer", pointerType);
 			m1.setAlign(ir_align.align_non_aligned);
@@ -1202,7 +1202,7 @@ public class FirmTypeSystem {
 			m2.setAlign(ir_align.align_non_aligned);
 			m2.setOffset(pointerBytes);
 
-			structType.setSizeBytes(pointerBytes * 2);
+			structType.setSize(pointerBytes * 2);
 			structType.finishLayout();
 
 			dmtType = new ArrayType(structType);

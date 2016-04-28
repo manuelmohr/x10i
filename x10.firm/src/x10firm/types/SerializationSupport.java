@@ -686,7 +686,7 @@ public final class SerializationSupport {
 			final Node customSymc = con.newAddress(customDeserializeConstructor);
 
 			final Node size = con.newSize(Mode.getIu(), Mode.getP().getType());
-			final Node serialDataAlloc = con.newAlloc(mem, size, Mode.getP().getType().getAlignmentBytes());
+			final Node serialDataAlloc = con.newAlloc(mem, size, Mode.getP().getType().getAlignment());
 			mem = con.newProj(serialDataAlloc, Mode.getM(), Alloc.pnM);
 			final Node serialDataPtr = con.newProj(serialDataAlloc, Mode.getP(), Alloc.pnRes);
 

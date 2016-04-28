@@ -1745,7 +1745,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Node mem = con.getCurrentMem();
 		final Node size = con.newSize(sizeTType.getMode(), type);
 		assert type.getTypeState() == ir_type_state.layout_fixed;
-		final Node alloc = con.newAlloc(mem, size, type.getAlignmentBytes());
+		final Node alloc = con.newAlloc(mem, size, type.getAlignment());
 		final Node newMem = con.newProj(alloc, Mode.getM(), Alloc.pnM);
 		final Node res = con.newProj(alloc, Mode.getP(), Alloc.pnRes);
 		con.setCurrentMem(newMem);
@@ -2967,7 +2967,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			con.setCurrentMem(copyB);
 		} else {
 			/* do a sequence of stores */
-			final int elementSize = firmType.getSizeBytes();
+			final int elementSize = firmType.getSize();
 			for (int i = 0; i < size; ++i) {
 				final Expr expr = arguments.get(i);
 				Node addr = baseAddr;
