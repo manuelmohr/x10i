@@ -74,6 +74,10 @@ ifeq ($(findstring sparc-invasic, $(TARGET)), sparc-invasic)
 	CPPFLAGS += -D__leon__ -isystem $(GCC_INCLUDE)
 	# Enable for i-Core support (needs libicore)
 #	CPPFLAGS += -DHAVE_ICORE -I../libicore/include
+	GAISLER_TOOLCHAIN := $(shell $(CC) --version | egrep '\(BCC \S+ release \S+\)')
+	ifeq ($(GAISLER_TOOLCHAIN),)
+		CFLAGS += -mcpu=leon3
+	endif
 endif
 ifeq ($(findstring linux, $(TARGET)), linux)
 	CFLAGS += -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -pthread
