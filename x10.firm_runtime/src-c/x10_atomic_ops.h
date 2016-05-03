@@ -15,7 +15,7 @@ static inline x10_int x10_atomic_ops_compareAndSet_32(volatile x10_int* address,
 #if defined(__leon__) && !defined(__CPARSER__)
 	// in case of sparc-elf-gcc gcc does not produce a cas instruction for a
 	// __sync_val_compare_and_swap so we use inline assembly
-	__asm__ __volatile__("stbar\n\tcas [%[addr]], %[old], %[new]"
+	__asm__ __volatile__("stbar\n\tcasa [%[addr]]0xa, %[old], %[new]"
 	                    : [new] "+r" (newValue)
 	                    : [addr] "r" (address), [old] "r" (oldValue)
 	                    : "memory");
