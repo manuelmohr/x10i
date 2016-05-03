@@ -360,7 +360,7 @@
         <ant antfile="${x10.runtime.location}/build.xml" target="dist-cpp" inheritAll="false" dir="${x10.runtime.location}"/>
     </target>
 
-    <target name="fetch-octopos" depends="init">
+    <target name="fetch-octopos" depends="init" unless="CUSTOM_IRTSS">
         <exec executable="${bash.exe}" failonerror="true" dir="${x10.home}">
             <arg value="-c"/>
             <arg value="./fetch_octopos.sh"/>
