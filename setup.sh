@@ -55,7 +55,7 @@ rm -f libfirm/config.mak
 rm -f liboo/config.mak
 echo "FIRM_HOME        = ../libfirm" >> liboo/config.mak
 echo "LIBFIRM_CPPFLAGS = -I\$(FIRM_HOME)/include -I\$(FIRM_HOME)/build/gen/include/libfirm" >> liboo/config.mak
-echo "LIBFIRM_LFLAGS   = -L\$(FIRM_HOME)/build/debug -lfirm" >> liboo/config.mak
+echo "LIBFIRM_LFLAGS   = -L\$(FIRM_HOME)/build/\$(variant) -lfirm" >> liboo/config.mak
 # Use ccache if you have it installed...
 if which ccache > /dev/null; then
 	echo "CC = ccache gcc" >> libfirm/config.mak
