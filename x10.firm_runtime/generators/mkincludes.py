@@ -4,4 +4,4 @@ prefix = sys.argv[1]
 files = sys.argv[2:]
 files.sort()
 for f in files:
-	print "#include \"%s%s\"" % (prefix, f)
+	print("#include \"" + prefix + f + "\"")
