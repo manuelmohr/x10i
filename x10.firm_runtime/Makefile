@@ -119,11 +119,11 @@ $(FIRM_NATIVE_TYPES_CONF): $(GEN_FIRM_NATIVE_SIZES) $(wildcard $(PLATFORMDIR)/*.
 
 $(GEN_PRIMITIVE_TYPES): $(GENERATORSDIR)/create_types.py
 	mkdir -p $(BUILDDIR)
-	$< $(GENERATOR_FLAGS) > $@
+	$< $(GENERATOR_FLAGS) > $@ || (rm $@; exit 1)
 
 $(MASTER): $(GENERATORSDIR)/mkincludes.py $(C_FILES) $(H_FILES) Makefile
 	mkdir -p $(BUILDDIR)
-	$< ../../ $(C_FILES) > $(MASTER)
+	$< ../../ $(C_FILES) > $(MASTER) || (rm $(MASTER); exit 1)
 
 $(O_FILE): $(MASTER)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< -c -o $@
