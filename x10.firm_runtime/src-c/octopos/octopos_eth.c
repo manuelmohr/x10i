@@ -1,8 +1,4 @@
-#ifdef __x86_64__
-	#include "eth_dummy.h"
-#else
-	#include <octo_eth.h>
-#endif
+#include "eth_dummy.h"
 #include <octo_ilet.h>
 #include <octo_signal.h>
 
