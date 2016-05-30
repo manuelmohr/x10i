@@ -25,4 +25,4 @@ cd ..
 
 # Pack everything together.
 tar czf "$cdir/$mydir/x10i.tar.gz" --files-from="$cdir/$mydir/distfiles.txt" \
-    --transform='flags=S;s,^,x10i/,'
+    --transform='s,^,x10i/,S'
