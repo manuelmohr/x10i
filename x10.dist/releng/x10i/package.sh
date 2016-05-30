@@ -8,8 +8,12 @@ cdir="`pwd`"
 [ "$cdir" = "/" ] && cdir="$cdir."
 cd "$top"
 
+# Make sure that the working copy is clean.
+cd x10.dist
+ant distclean
+cd ..
+
 # Build x10i for all available targets.
-# NOTE: We assume that the working copy is clean.
 ./setup.sh $@ -DVARIANT=optimize -DTARGET=i686-invasic-octopos
 ./setup.sh $@ -DVARIANT=optimize -DTARGET=i686-invasic-irtss
 ./setup.sh $@ -DVARIANT=optimize -DTARGET=i686-linux-gnu
