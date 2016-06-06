@@ -8,6 +8,9 @@ cdir="`pwd`"
 [ "$cdir" = "/" ] && cdir="$cdir."
 cd "$top"
 
+# Initialize the submodules.
+git submodule update --init
+
 # Make sure that the working copy is clean.
 cd x10.dist
 ant distclean
