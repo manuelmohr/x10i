@@ -29,6 +29,8 @@ public final class FirmOptions {
 	private static int cloneThreshold = 0;
 	/** Choose method for implementing interface method lookup. */
 	private static OO.InterfaceCallType interfaceCallType = InterfaceCallType.INDEXED_ITABLE;
+	/** Omit frame pointer. */
+	private static boolean omitFramePointer = false;
 
 	/**
 	 * @return whether constant folding is activated.
@@ -112,6 +114,20 @@ public final class FirmOptions {
 	 */
 	public static void setInterfaceCallType(final OO.InterfaceCallType callType) {
 		FirmOptions.interfaceCallType = callType;
+	}
+
+	/**
+	 * @return whether frame pointer should be omitted.
+	 */
+	public static boolean omitFramePointer() {
+		return omitFramePointer;
+	}
+
+	/**
+	 * @param omitfp whether frame pointer should be omitted.
+	 */
+	public static void setOmitFramePointer(final boolean omitfp) {
+		omitFramePointer = omitfp;
 	}
 
 	/**
@@ -282,6 +298,14 @@ public final class FirmOptions {
 				} else {
 					return false;
 				}
+				return true;
+			}
+		});
+		KNOWN_OPTIONS.put("omit-frame-pointer", new FirmOption("omit-frame-pointer",
+				"do not keep frame pointer in register for functions that do not need it") {
+			@Override
+			boolean activate(final String arg) {
+				omitFramePointer = true;
 				return true;
 			}
 		});

@@ -98,7 +98,11 @@ public final class FirmState {
 			setPointerSize(PointerSize.Size32);
 		}
 
-		Backend.option("omitfp"); // makes the assembler a bit more readable
+		if (FirmOptions.omitFramePointer()) {
+			Backend.option("omitfp");
+		} else {
+			Backend.option("omitfp=no");
+		}
 		if (options.x10_config.DEBUG) {
 			binding_be.be_dwarf_set_source_language(dwarf_source_language.DW_LANG_C_plus_plus.val);
 			binding_be.be_dwarf_set_compilation_directory(new File(".").getAbsolutePath());
