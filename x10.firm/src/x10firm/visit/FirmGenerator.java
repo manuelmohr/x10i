@@ -1797,7 +1797,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 	private Node genObjectStaticAlloc(final Type x10Type) {
 		final ClassType firmType = firmTypeSystem.asClass(x10Type, true);
-		final Ident id = Ident.createUnique("x10_static_alloc.%u");
+		final Ident id = Ident.createUnique("x10_static_alloc.");
 		final SegmentType globalType = Program.getGlobalType();
 		final Entity ent = new Entity(globalType, id, firmType);
 		ent.setLdIdent(id);
@@ -2045,17 +2045,16 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final SegmentType globalType = Program.getGlobalType();
 		final Type charType = typeSystem.getTypeSystem().Char();
 		final firm.Type elemType = firmTypeSystem.asType(charType);
-		final ArrayType type = new ArrayType(elemType);
+		final byte[] bytes = value.getBytes(UTF8);
+		final ArrayType type = new ArrayType(elemType, bytes.length);
 
-		final Ident id = Ident.createUnique("x10str.%u");
+		final Ident id = Ident.createUnique("x10str.");
 		final Entity ent = new Entity(globalType, id, type);
 		ent.setLdIdent(id);
 
 		ent.setVisibility(ir_visibility.ir_visibility_private);
 		ent.addLinkage(ir_linkage.IR_LINKAGE_CONSTANT);
 
-		final byte[] bytes = value.getBytes(UTF8);
-		type.setNumElements(bytes.length);
 		type.finishLayout();
 
 		final Initializer init = new Initializer(bytes.length);
@@ -2944,19 +2943,18 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final Mode sizeMode = sizeTType.getMode();
 		final Node count = con.newConst(size, sizeMode);
 		final Node elSize = con.newSize(sizeMode, firmType);
-		final Node byteSize = con.newMul(count, elSize, sizeMode);
+		final Node byteSize = con.newMul(count, elSize);
 		final Entity malloc = firmType instanceof PointerType ? gcMallocEntity : gcMallocAtomicEntity;
 		final Node baseAddr = genMallocCall(malloc, byteSize);
 
 		/* construct elements */
 		if (isConstantTuple(n)) {
 			/* create initializer in read-only-data and use CopyB */
-			final ArrayType initType = new ArrayType(firmType);
-			initType.setNumElements(size);
+			final ArrayType initType = new ArrayType(firmType, size);
 			initType.finishLayout();
 
 			final SegmentType global = Program.getGlobalType();
-			final Entity initEntity = new Entity(global, Ident.createUnique("x10init.%u"), initType);
+			final Entity initEntity = new Entity(global, Ident.createUnique("x10init."), initType);
 			final Initializer initializer = createConstantTupleInitializer(n);
 			initEntity.setInitializer(initializer);
 
@@ -2975,7 +2973,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 					final int offset = elementSize * i;
 					final Mode offsetMode = baseAddr.getMode().getReferenceOffsetMode();
 					final Node offsetC = con.newConst(offset, offsetMode);
-					addr = con.newAdd(baseAddr, offsetC, Mode.getP());
+					addr = con.newAdd(baseAddr, offsetC);
 				}
 				final Node node = uncheckedCast(expr, elementType, n.position());
 				assignToAddress(addr, elementType, node);

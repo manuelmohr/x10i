@@ -235,11 +235,10 @@ public final class SerializationSupport {
 		final Initializer dmtInitializer = new Initializer(maxClassUid);
 
 		final String smtName = NameMangler.mangleKnownName(SERIALIZE_METHOD_TABLE_NAME);
-		ArrayType smtType = new ArrayType(typeP);
+		ArrayType smtType = new ArrayType(typeP, maxClassUid);
 		final Entity serializeMethodTable = firmTypeSystem.getGlobalEntity(smtName, smtType);
-		/* getGlobalEntity might return another type from the C runtime, which also has no size set */
-		smtType = (ArrayType) serializeMethodTable.getType();
-		smtType.setNumElements(maxClassUid);
+		/* getGlobalEntity might return an entity from the C runtime, whose type has no size set */
+		serializeMethodTable.setType(smtType);
 		smtType.finishLayout();
 		final Initializer smtInitializer = new Initializer(maxClassUid);
 
@@ -379,7 +378,7 @@ public final class SerializationSupport {
 			Node mem = con.getCurrentMem();
 
 			final Node elementSize = con.newSize(Mode.getIs(), elementType);
-			final Node dataSize = con.newMul(length, elementSize, Mode.getIs());
+			final Node dataSize = con.newMul(length, elementSize);
 			final Node dataSizeIu = con.newConv(dataSize, sizeTType.getMode());
 			final Node writeDataCall = con.newCall(mem, writeDataAddr,
 					new Node[] {bufPtr, ptr, dataSizeIu}, serializationWriteData.getType());
@@ -407,10 +406,10 @@ public final class SerializationSupport {
 		final Node currentIndex = con.getVariable(0, Mode.getIs());
 		final Node currentAddr = con.getVariable(1, Mode.getP());
 		genCallToSerialize(elementType, con, bufPtr, currentAddr);
-		final Node nextIndex = con.newAdd(currentIndex, con.newConst(1, Mode.getIs()), Mode.getIs());
+		final Node nextIndex = con.newAdd(currentIndex, con.newConst(1, Mode.getIs()));
 		final Mode offsetMode = currentAddr.getMode().getReferenceOffsetMode();
 		final Node elementSize = con.newSize(offsetMode, elementType);
-		final Node nextAddr = con.newAdd(currentAddr, elementSize, Mode.getP());
+		final Node nextAddr = con.newAdd(currentAddr, elementSize);
 		con.setVariable(0, nextIndex);
 		con.setVariable(1, nextAddr);
 		final Node backJmp = con.newJmp();
@@ -575,7 +574,7 @@ public final class SerializationSupport {
 
 		// Second, allocate memory for the new backing storage
 		final Node elemSize = con.newSize(Mode.getIs(), elementType);
-		final Node mallocSize = con.newMul(length, elemSize, Mode.getIs());
+		final Node mallocSize = con.newMul(length, elemSize);
 		final Node mallocSizeIu = con.newConv(mallocSize, sizeTType.getMode());
 		final Node mallocSymConst = con.newAddress(chooseMallocEntity(firmTypeSystem, x10ElementType));
 		final Node[] mallocArgs = new Node[] {mallocSizeIu};
@@ -596,7 +595,7 @@ public final class SerializationSupport {
 			mem = con.newProj(loadPtr, Mode.getM(), Load.pnM);
 			final Node ptr = con.newProj(loadPtr, Mode.getP(), Load.pnRes);
 			final Node elementSize = con.newSize(Mode.getIs(), elementType);
-			final Node dataSize = con.newMul(length, elementSize, Mode.getIs());
+			final Node dataSize = con.newMul(length, elementSize);
 			final Node dataSizeIu = con.newConv(dataSize, sizeTType.getMode());
 			final Node restoreDataCall = con.newCall(mem, restoreDataAddr,
 					new Node[] {bufPtr, ptr, dataSizeIu}, deserializationRestoreData.getType());
@@ -624,10 +623,10 @@ public final class SerializationSupport {
 		final Node currentIndex = con.getVariable(0, Mode.getIs());
 		final Node currentAddr = con.getVariable(1, Mode.getP());
 		genCallToDeserialize(elementType, con, bufPtr, currentAddr);
-		final Node nextIndex = con.newAdd(currentIndex, con.newConst(1, Mode.getIs()), Mode.getIs());
+		final Node nextIndex = con.newAdd(currentIndex, con.newConst(1, Mode.getIs()));
 		final Mode offsetMode = currentAddr.getMode().getReferenceOffsetMode();
 		final Node elementSize = con.newSize(offsetMode, elementType);
-		final Node nextAddr = con.newAdd(currentAddr, elementSize, Mode.getP());
+		final Node nextAddr = con.newAdd(currentAddr, elementSize);
 		con.setVariable(0, nextIndex);
 		con.setVariable(1, nextAddr);
 		final Node backJmp = con.newJmp();

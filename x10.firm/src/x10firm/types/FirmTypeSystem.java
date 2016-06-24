@@ -1173,15 +1173,17 @@ public class FirmTypeSystem {
 	/**
 	 * This entity is special, because the C runtime expects the X10 frontend to generate it.
 	 *
-	 * @return a struct type for deserialization methods
+	 * @return the entity for the table of deserialization methods
 	 */
 	public Entity getDeserializeMethods(final String name, final int length) {
 		final ArrayType dmtType;
 
 		/* might exist already */
-		Entity structEntity = cStdlibExternalEntities.get(name);
-		if (structEntity != null) {
-			dmtType = (ArrayType) structEntity.getType();
+		Entity dmtEntity = cStdlibExternalEntities.get(name);
+		if (dmtEntity != null) {
+			final firm.Type elementType = ((ArrayType)dmtEntity.getType()).getElementType();
+			dmtType = new ArrayType(elementType, length);
+			dmtEntity.setType(dmtType);
 		} else {
 			/* create struct from scratch, must match C runtime! */
 			final String elemName = "deserialize_methods_entry_t";
@@ -1199,13 +1201,12 @@ public class FirmTypeSystem {
 			structType.setSize(pointerBytes * 2);
 			structType.finishLayout();
 
-			dmtType = new ArrayType(structType);
-			structEntity = getGlobalEntity(name, dmtType);
+			dmtType = new ArrayType(structType, length);
+			dmtEntity = getGlobalEntity(name, dmtType);
 		}
 
-		dmtType.setNumElements(length);
 		dmtType.finishLayout();
 
-		return structEntity;
+		return dmtEntity;
 	}
 }
