@@ -235,7 +235,7 @@ public final class SerializationSupport {
 		final Initializer dmtInitializer = new Initializer(maxClassUid);
 
 		final String smtName = NameMangler.mangleKnownName(SERIALIZE_METHOD_TABLE_NAME);
-		ArrayType smtType = new ArrayType(typeP, maxClassUid);
+		final ArrayType smtType = new ArrayType(typeP, maxClassUid);
 		final Entity serializeMethodTable = firmTypeSystem.getGlobalEntity(smtName, smtType);
 		/* getGlobalEntity might return an entity from the C runtime, whose type has no size set */
 		serializeMethodTable.setType(smtType);
