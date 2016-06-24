@@ -17,8 +17,9 @@ build4platform.pl platform/release.x86guest.${VARIANT}.pm
 # install here
 DATE=$(date "+%Y-%m-%d")
 install() {
+	mkdir -p "$1/${DATE}"
 	echo "install release.x86guest.${VARIANT} to $1"
-	cp -r release.x86guest.multitile_config/release/${DATE} "$1"
+	cp -r releases/git/x86guest "$1/${DATE}"
 	pushd "$1"
 	echo "in $(pwd): current -> ${DATE}"
 	rm -f current
