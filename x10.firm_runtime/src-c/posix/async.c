@@ -137,15 +137,21 @@ static void *execute(void *ptr)
 	finish_state_t *fs   = ac->enclosing;
 	x10_object     *body = ac->body;
 	gc_free(ac);
-	/* store enclosing finish state in thread-local data */
-	finish_state_set_current(fs);
+	if (fs != NULL) {
+		/* store enclosing finish state in thread-local data for counted asyncs */
+		finish_state_set_current(fs);
+	}
 	/* Initialize atomic depth. */
 	if (pthread_setspecific(activity_atomic_depth, NULL))
 		panic("Could not set thread-local key");
 	/* run the closure */
 	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(body);
 
-	unregister_from_finish_state_and_exit(fs);
+	if (fs != NULL) {
+		unregister_from_finish_state_and_exit(fs);
+	} else {
+		pthread_exit(NULL);
+	}
 }
 
 /**
@@ -195,10 +201,10 @@ void init_finish_state(void)
 	_ZN3x104lang7Runtime16finishBlockBeginEv();
 }
 
-/* x10.lang.Runtime.executeParallel(body:()=>void) */
-void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object *body)
+/* x10.lang.Runtime.executeParallel(body:()=>void, uncounted:Boolean) */
+void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0Eb(x10_object *body, x10_boolean uncounted)
 {
-	finish_state_t *enclosing = finish_state_get_current();
+	finish_state_t *enclosing = uncounted ? NULL : finish_state_get_current();
 	async_closure  *ac        = GC_XMALLOC(async_closure);
 	ac->body = body;
 	ac->enclosing = enclosing;
@@ -207,7 +213,9 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-	register_at_finish_state(enclosing);
+	if (!uncounted) {
+		register_at_finish_state(enclosing);
+	}
 	pthread_t dummy;
 	if (GC_pthread_create(&dummy, &async_pthread_attr, execute, ac))
 		panic("Could not create thread");

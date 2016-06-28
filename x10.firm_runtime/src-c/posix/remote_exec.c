@@ -219,7 +219,11 @@ static void handle_completion_finish(const message_t *message)
 {
 	const completion_finish_message_t *const completion
 		= &message->completion_finish;
-	unregister_from_finish_state(completion->finish_state);
+	finish_state_t *fs = completion->finish_state;
+	/* fs is NULL for uncounted asyncs. */
+	if (fs != NULL) {
+		unregister_from_finish_state(fs);
+	}
 }
 
 static void handle_completion(const message_t *message)
@@ -518,7 +522,7 @@ void x10_idle(void)
 }
 
 x10_object *x10_execute_at(x10_int remote_place, x10_int msg_type,
-                           x10_object *closure)
+                           x10_object *closure, x10_boolean uncounted)
 {
 	unsigned remote_id = (unsigned)remote_place;
 	assert(remote_id != place_id);
@@ -530,8 +534,10 @@ x10_object *x10_execute_at(x10_int remote_place, x10_int msg_type,
 	bool            return_flag  = false;
 	x10_object     *return_value = NULL;
 
-	finish_state_t *finish_state = finish_state_get_current();
-	register_at_finish_state(finish_state);
+	finish_state_t *finish_state = uncounted ? NULL : finish_state_get_current();
+	if (!uncounted) {
+		register_at_finish_state(finish_state);
+	}
 
 	/* construct message payload */
 	struct obstack obst;

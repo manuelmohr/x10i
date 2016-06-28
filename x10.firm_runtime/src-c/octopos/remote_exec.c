@@ -152,7 +152,10 @@ static void notify_global_termination(void *arg)
 {
 	finish_state_t *fs = (finish_state_t *)arg;
 
-	unregister_from_finish_state_and_exit(fs);
+	/* fs is NULL for uncounted asyncs. */
+	if (fs != NULL) {
+		unregister_from_finish_state_and_exit(fs);
+	}
 }
 
 /* Frees obstack that acts as send buffer. */
@@ -416,7 +419,7 @@ static void allocate_destination_memory(void *source_local_data, void *buffer_si
 	dispatch_claim_send_reply(&dma_ilet);
 }
 
-static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_claim, x10_int msg_type, x10_object *closure, agentclaim_t ac)
+static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_claim, x10_int msg_type, x10_object *closure, x10_boolean uncounted, agentclaim_t ac)
 {
 	assert(msg_type == MSG_RUN_AT || msg_type == MSG_EVAL_AT || msg_type == MSG_RUN_AT_ASYNC);
 
@@ -425,10 +428,12 @@ static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_cl
 	const bool          is_small     = closure_info->size <= sizeof(void*);
 	if (is_small && msg_type == MSG_RUN_AT_ASYNC) {
 		const uint32_t  uid          = closure_info->uid;
-		finish_state_t *finish_state = finish_state_get_current();
+		finish_state_t *finish_state = uncounted ? NULL : finish_state_get_current();
 
-		/* Register at current finish state to recognize global termination of the at. */
-		register_at_finish_state(finish_state);
+		if (!uncounted) {
+			/* Register at current finish state to recognize global termination of the at. */
+			register_at_finish_state(finish_state);
+		}
 
 		simple_ilet remote_ilet;
 		dual_ilet_init(&remote_ilet, run_at_async_statement_small, (void*)(uintptr_t)uid, finish_state);
@@ -445,7 +450,7 @@ static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_cl
 
 	/* Initialize source-local data. */
 	source_local_data_t  source_local_data;
-	finish_state_t      *finish_state      = finish_state_get_current();
+	finish_state_t      *finish_state      = uncounted ? NULL : finish_state_get_current();
 	source_local_data.finish_state = finish_state;
 	source_local_data.message_type = msg_type;
 	source_local_data.buffer_size  = obstack_object_size(obst);
@@ -457,8 +462,10 @@ static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_cl
 
 	source_local_data.dispatch_claim = destination_claim;
 
-	/* Register at current finish state to recognize global termination of the at. */
-	register_at_finish_state(finish_state);
+	if (!uncounted) {
+		/* Register at current finish state to recognize global termination of the at. */
+		register_at_finish_state(finish_state);
+	}
 
 	/* Create destination i-let for memory allocation. */
 	simple_ilet allocation_ilet;
@@ -471,7 +478,7 @@ static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_cl
 	return source_local_data.return_value;
 }
 
-x10_object *x10_execute_at(x10_int place_id, x10_int msg_type, x10_object *closure)
+x10_object *x10_execute_at(x10_int place_id, x10_int msg_type, x10_object *closure, x10_boolean uncounted)
 {
 	if (place_id == INVASIC_HOST_PLACE_ID) {
 		/* Special host place. */
@@ -483,7 +490,7 @@ x10_object *x10_execute_at(x10_int place_id, x10_int msg_type, x10_object *closu
 	assert((unsigned)place_id < pld->n_places);
 	dispatch_claim_t dc = pld->places[place_id];
 
-	return x10_execute_at_dispatch_claim(dc, msg_type, closure, NULL);
+	return x10_execute_at_dispatch_claim(dc, msg_type, closure, uncounted, NULL);
 }
 
 #ifdef USE_AGENTSYSTEM
@@ -499,20 +506,20 @@ x10_object *x10_eval_at_agent(x10_int pid, void *agentclaim, x10_object *closure
 {
 	agentclaim_t ac = (agentclaim_t)agentclaim;
 	dispatch_claim_t dc = get_dispatch_claim(pid, ac);
-	return x10_execute_at_dispatch_claim(dc, MSG_EVAL_AT, closure, ac);
+	return x10_execute_at_dispatch_claim(dc, MSG_EVAL_AT, closure, false, ac);
 }
 
 void x10_exec_at_agent(x10_int pid, void *agentclaim, x10_object *closure)
 {
 	agentclaim_t ac = (agentclaim_t)agentclaim;
 	dispatch_claim_t dc = get_dispatch_claim(pid, ac);
-	x10_execute_at_dispatch_claim(dc, MSG_RUN_AT, closure, ac);
+	x10_execute_at_dispatch_claim(dc, MSG_RUN_AT, closure, false, ac);
 }
 
 void x10_exec_atasync_agent(x10_int pid, void *agentclaim, x10_object *closure)
 {
 	agentclaim_t ac = (agentclaim_t)agentclaim;
 	dispatch_claim_t dc = get_dispatch_claim(pid, ac);
-	x10_execute_at_dispatch_claim(dc, MSG_RUN_AT_ASYNC, closure, ac);
+	x10_execute_at_dispatch_claim(dc, MSG_RUN_AT_ASYNC, closure, false, ac);
 }
 #endif

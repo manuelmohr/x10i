@@ -130,6 +130,7 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/compiler/CompilerFlags.x10");
 			allowedFiles.add("x10/compiler/InitDispatcher.x10");
 			allowedFiles.add("x10/compiler/StackAllocate.x10");
+			allowedFiles.add("x10/compiler/Uncounted.x10");
 			allowedFiles.add("x10/io/Console.x10");
 			allowedFiles.add("x10/io/CustomSerialization.x10");
 			allowedFiles.add("x10/io/EOFException.x10");

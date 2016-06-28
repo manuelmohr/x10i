@@ -20,7 +20,7 @@ public final class Runtime {
 
     private static native def deepCopyAny(o : Any) : Any;
     private static native def runAtOtherPlace(placeId : Int, o: Any) : void;
-    private static native def runAtAsyncOtherPlace(placeId : Int, o: Any) : void;
+    private static native def runAtAsyncOtherPlace(placeId : Int, o: Any, uncounted: Boolean) : void;
     private static native def evalAtOtherPlace(placeId : Int, o: Any) : Any;
     private static native def getHereId() : Int;
     
@@ -53,15 +53,18 @@ public final class Runtime {
      * Run asyncat
      */
     //public static def runAsync(place:Place, clocks:Rail[Clock], body:()=>void):void { }
-
-    public static def runAsync(place:Place, body:()=>void):void {
+    public static def runAsync(place:Place, body:()=>void, uncounted:Boolean) {
         ensureNotInAtomic();
         if (place == here) {
             val bodyCopy = deepCopy(body);
-            executeParallel(bodyCopy);
+            executeParallel(bodyCopy, uncounted);
         } else {
-            runAtAsyncOtherPlace(place.id(), body);
+            runAtAsyncOtherPlace(place.id(), body, uncounted);
         }
+    }
+
+    public static def runAsync(place:Place, body:()=>void):void {
+        runAsync(place, body, false);
     }
 
     public static def runAsync(place:Place, body:()=>void, prof:Profile):void {
@@ -75,14 +78,29 @@ public final class Runtime {
 
     public static def runAsync(body:()=>void):void {
         ensureNotInAtomic();
-        executeParallel(body);
+        executeParallel(body, false);
     }
 
     /** Spawn of a thread/iLet to execute body() */
-    private static native def executeParallel(body:()=>void):void;
+    private static native def executeParallel(body:()=>void, uncounted: Boolean):void;
 
     public static def runFinish(body:()=>void):void {
         finish body();
+    }
+
+    /**
+     * Run @Uncounted asyncat
+     */
+    public static def runUncountedAsync(place:Place, body:()=>void, prof:Profile):void {
+        runAsync(place, body, true);
+    }
+
+    /**
+     * Run @Uncounted async
+     */
+    public static def runUncountedAsync(body:()=>void):void {
+        ensureNotInAtomic();
+        executeParallel(body, true);
     }
 
     /**

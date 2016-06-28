@@ -147,8 +147,10 @@ static void execute(void *ptr)
 	/* run the closure */
 	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(body);
 
-	/* send signal to finish state */
-	unregister_from_finish_state_and_exit(fs);
+	if (fs != NULL) {
+		/* send signal to finish state if counted async */
+		unregister_from_finish_state_and_exit(fs);
+	}
 }
 #else
 static void execute(void *data1, void *data2)
@@ -162,8 +164,10 @@ static void execute(void *data1, void *data2)
 	/* run the closure */
 	_ZN3x104lang7Runtime15callVoidClosureEPN3x104lang12$VoidFun_0_0E(body);
 
-	/* send signal to finish state */
-	unregister_from_finish_state_and_exit(fs);
+	if (fs != NULL) {
+		/* send signal to finish state if counted async */
+		unregister_from_finish_state_and_exit(fs);
+	}
 }
 #endif
 
@@ -193,10 +197,10 @@ void _ZN3x104lang7Runtime16finishBlockBeginEv(void)
 	finish_state_set_current(nested);
 }
 
-/* x10.lang.Runtime.executeParallel(body:()=>void) */
-void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object *body)
+/* x10.lang.Runtime.executeParallel(body:()=>void, uncounted:Boolean) */
+void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0Eb(x10_object *body, x10_boolean uncounted)
 {
-	finish_state_t *enclosing = finish_state_get_current();
+	finish_state_t *enclosing = uncounted ? NULL : finish_state_get_current();
 	simple_ilet child;
 
 	octo_gc_pin(body);
@@ -210,7 +214,9 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object
 #else
 	dual_ilet_init(&child, execute, body, enclosing);
 #endif
-	register_at_finish_state(enclosing);
+	if (!uncounted) {
+		register_at_finish_state(enclosing);
+	}
 	infect_self_single(&child);
 }
 
