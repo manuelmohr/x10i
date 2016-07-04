@@ -179,7 +179,7 @@ public class FirmTypeSystem {
 	}
 
 	private static void flattenType(final StringBuffer buf, final polyglot.types.Type type) {
-		buf.append(type.name().toString());
+		buf.append(type.fullName().toString().replace('.', '_'));
 
 		if (!(type instanceof X10ClassType))
 			return;
