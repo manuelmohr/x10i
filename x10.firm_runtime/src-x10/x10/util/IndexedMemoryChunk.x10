@@ -136,10 +136,7 @@ public struct IndexedMemoryChunk[T] {
     }
 
     /**
-     * Operator that allows UNSAFE access of IndexedMemoryChunk elements by index.
-     *
-     * @param i The index to retreive.
-     * @return The value at that index.
+     * @return  length of the chunk
      */
     public def length(): Int = length;
 
