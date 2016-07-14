@@ -279,8 +279,8 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 			checkedThrowableType,
 		};
 		final firm.Type[] unwindResultTypes = new firm.Type[0];
-		final MethodType unwindType = new firm.MethodType(unwindParameterTypes, unwindResultTypes);
-		unwindType.addAdditionalProperties(mtp_additional_properties.mtp_property_noreturn);
+		final MethodType unwindType = new firm.MethodType(unwindParameterTypes, unwindResultTypes, false, 0,
+				mtp_additional_properties.mtp_property_noreturn.val);
 		final String unwindName = NameMangler.mangleKnownName(X10_EXCEPTION_UNWIND);
 		exceptionUnwindEntity = firmTypeSystem.getGlobalEntity(unwindName, unwindType);
 
