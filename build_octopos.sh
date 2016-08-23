@@ -5,7 +5,7 @@ TARGET_DIR=$(pwd)/octopos-app/releases/
 
 export IRTSSBASE=$(readlink -e $1)
 echo "IRTSSBASE = ${IRTSSBASE}"
-export PATH=${IRTSSBASE}/tools/bin:$PATH
+export PATH=${IRTSSBASE}/tools/bin:/opt/aspectc++:$PATH
 
 ./fetch_octopos.sh # ensure fetch won't override us later
 
