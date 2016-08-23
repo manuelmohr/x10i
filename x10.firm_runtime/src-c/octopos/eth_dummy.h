@@ -2,7 +2,7 @@
 #define OCTOPOS_ETH_DUMMY_H
 
 #include "cfAttribs.h"
-#if cf_hw_dev_ioTileID < cf_hw_dev_tileCount
+#if cf_hw_sys_iotile_support != 0
 	#include <octo_eth.h>
 #else
 	/* This is a non-IO-tile variant => insert our dummy */
