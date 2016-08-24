@@ -3,14 +3,16 @@ package x10firm.goals;
 import java.io.File;
 import java.io.IOException;
 
-import polyglot.frontend.AbstractGoal_c;
-import x10firm.CompilerOptions;
+import com.sun.jna.LastErrorException;
+
 import firm.Backend;
 import firm.Dump;
 import firm.Graph;
 import firm.Program;
 import firm.bindings.binding_irgopt;
 import firm.bindings.binding_iroptimize;
+import polyglot.frontend.AbstractGoal_c;
+import x10firm.CompilerOptions;
 
 /**
  * Assembler emission goal.
@@ -45,6 +47,11 @@ public class AsmEmitted extends AbstractGoal_c {
 		/* emit asm */
 		try {
 			Backend.createAssembler(output.getAbsolutePath(), COMPILATION_UNIT_NAME);
+		} catch (LastErrorException e) {
+			System.out.println("Closing asm file failed");
+			// TODO if we use the LastErrorException magic elsewhere, this error message is misleading
+			e.printStackTrace();
+			return false;
 		} catch (IOException e) {
 			System.out.println("Could not create asm file");
 			e.printStackTrace();
