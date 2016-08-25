@@ -14,13 +14,6 @@
 uintptr_t os_agent_agentsystem_no_init = 1;
 #endif
 
-/* The SHM heap address space on the CHIPit begins at address 0x0, which
- * means a lot of regular integer values look like valid pointers.  This
- * is extremely bad for conservative garbage collection.  To improve the
- * situation at least a little, we reserve and throw away the smallest
- * addresses. */
-#define MEMORY_WASTE_BYTES (1024 * 1024)
-
 typedef struct distribute_places_context {
 	dispatch_claim_t *places;
 	int n_places;
@@ -242,10 +235,6 @@ static void shutdown_everything(void)
 
 void main_ilet(claim_t root_claim)
 {
-	/* Waste some memory so that we never get the null pointer
-	 * as a valid address. */
-	(void)mem_map(MEM_SHM, MEMORY_WASTE_BYTES);
-
 	/* initialize main i-let's finish state. */
 	finish_state_t fs;
 	finish_state_init_root(&fs);
