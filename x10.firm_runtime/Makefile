@@ -9,6 +9,7 @@ CPARSER_TARGET ?= -target $(TARGET)
 CFLAGS         ?= -g3 -O2
 CPPFLAGS       ?=
 CPPFLAGS       += -I../bdwgc/include
+CPARSER_FLAGS  ?=
 
 APP_CFLAGS     ?=
 PLATFORM       ?= posix
@@ -81,6 +82,7 @@ ifeq ($(findstring sparc-invasic, $(TARGET)), sparc-invasic)
 endif
 ifeq ($(findstring linux, $(TARGET)), linux)
 	CFLAGS += -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -pthread
+	CPARSER_FLAGS += -integrated-cpp
 endif
 ifeq ($(findstring i686-linux, $(TARGET)), i686-linux)
 	OCTOPOS_EXTRAS=../octopos-app/releases/current/extras/libethcomm
@@ -141,7 +143,7 @@ endif
 .PHONY: cparser_subdir
 
 $(IR_FILE): $(MASTER) $(CPARSER)
-	$(CPARSER) $(CPPFLAGS) -D__CPARSER__ $(CFLAGS) -I $(SRCDIR)/$(PLATFORM)/include-workaround $(CPARSER_TARGET) -w $< --export-ir -o $@
+	$(CPARSER) $(CPARSER_FLAGS) $(CPPFLAGS) -D__CPARSER__ $(CFLAGS) -I $(SRCDIR)/$(PLATFORM)/include-workaround $(CPARSER_TARGET) -w $< --export-ir -o $@
 
 .PHONY: clean
 clean:
