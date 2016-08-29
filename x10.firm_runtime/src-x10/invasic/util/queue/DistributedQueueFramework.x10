@@ -768,8 +768,9 @@ public class DistributedQueueFramework[T, X]{T isref, T haszero, X haszero} impl
 		finish for(place in PlaceGroup.getWorld()) async {
 			availableJobs.addAndGet(getAvailableJobsAndUpdateClocks(place));
 		}
+		val ret = availableJobs.get();
 		Memory.freeTLM(availableJobs as Pointer);
-		return availableJobs.get();
+		return ret;
 	}
 	
 	private static def updateAverageEstimatedWaitingTimePerPlace[T, X](handle:PlaceLocalQueueFramework[T, X], waits:Array[Wait](1)){T isref, T haszero, X haszero} {
