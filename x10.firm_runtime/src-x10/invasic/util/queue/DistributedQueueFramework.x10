@@ -1116,9 +1116,17 @@ public class DistributedQueueFramework[T, X]{T isref, T haszero, X haszero} impl
 		/* counter */
 		private val stolen:AtomicInteger = @TLMAllocate new AtomicInteger(0);
 		private val sent:AtomicInteger = @TLMAllocate new AtomicInteger(0);
+
+		/** Number of local worker activities */
 		private @Volatile var localActivities:Int;
+
+		/** Number of local worker activities which found the queue empty */
 		private var localFinishedCount:Int = 0;
+
+		/** Number of local worker activities waiting for some reinvade operation to finish */
 		private var waitingActivities:Int = 0;
+
+		/** Number of local worker activities which shall be removed due to reinvade */
 		private var activitiesToRemove:Int = 0;
 		
 		/* flags */
@@ -1180,6 +1188,7 @@ public class DistributedQueueFramework[T, X]{T isref, T haszero, X haszero} impl
 			val index = ProcessingElement.currentCPU();
 			queues(index).pushBottom(value);
 			if(localFinishedCount > 0) {
+				/* reset, because new work arrived */
 				monitor.lock();
 				localFinishedCount = 0;
 				localFinished = false;
@@ -1191,41 +1200,48 @@ public class DistributedQueueFramework[T, X]{T isref, T haszero, X haszero} impl
 			while(!globalFinished) {
 				val queue = queues(ProcessingElement.currentCPU());
 				val value = queue.popBottom();
-				if(value == Zero.get[T]()) {
-					val start = System.nanoTime();
-					val job = tryLocalSteal(queue);
-					if(job != Zero.get[T]()) {
-						updateEstimatedWaitingTime(start, queue);
-						return job;
-					}
-					monitor.lock();
-					if(localActivities == ++localFinishedCount) {
-						var finished:Boolean = true;
-						for(var i:Int = 0; i < queues.length(); i++) {
-							// check if a queue still has work left
-							val q = queues(i);
-							if(!q.isEmpty()) {
-								q.reset();
-								finished = false;
-							}
-						}
-						if(finished) {
-							localFinished = true;
-							monitor.unlock();
-							return Zero.get[T]();
-						} else {
-							localFinishedCount = 0;
-							monitor.release();
-						}
-					} else {
-						monitor.await();			
-						monitor.unlock();		
-					}
-					updateEstimatedWaitingTime(start, queues(ProcessingElement.currentCPU()));
-				} else {
-					return value;
+				if (value != Zero.get[T]())
+					return value; /* success */
+				/* queue of this activity is empty */
+				val start = System.nanoTime();
+				val job = tryLocalSteal(queue);
+				if(job != Zero.get[T]()) {
+					/* ok, we got a job from a local buddy */
+					updateEstimatedWaitingTime(start, queue);
+					return job;
 				}
+				monitor.lock();
+				localFinishedCount += 1;
+				if(localActivities == localFinishedCount) {
+					/* all workers found their queue empty */
+					var finished:Boolean = true;
+					for(var i:Int = 0; i < queues.length(); i++) {
+						// check if a queue still has work left
+						val q = queues(i);
+						if(!q.isEmpty()) {
+							q.reset();
+							finished = false;
+						}
+					}
+					if(finished) {
+						/* really nobody has work */
+						localFinished = true;
+						monitor.unlock();
+						return Zero.get[T]();
+					} else {
+						/* found at least one other local activity, which still has work */
+						localFinishedCount = 0;
+						monitor.release();
+						/* now try again */
+					}
+				} else { /* someone local is still working on a job */
+					monitor.await();
+					monitor.unlock();
+					/* now try again */
+				}
+				updateEstimatedWaitingTime(start, queues(ProcessingElement.currentCPU()));
 			}
+			/* globalFinished. Return zero to progress. */
 			return Zero.get[T]();
 		}
 		
