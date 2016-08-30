@@ -457,15 +457,12 @@ public class DistributedQueueFramework[T, X]{T isref, T haszero, X haszero} impl
 				handle.reinvadeMonitor.unlock();
 				val constraint = generateNewConstraint();
 				reinvade(constraint);
-			} else {
-				// do not stop this activity yet
-				handle.reinvadeMonitor.unlock();
+				return;
 			}
-		} else {
-			handle.waitingActivities++;
-			handle.reinvadeMonitor.await();
-			handle.reinvadeMonitor.unlock();
 		}
+		handle.waitingActivities++;
+		handle.reinvadeMonitor.await();
+		handle.reinvadeMonitor.unlock();
 	}
 	
 	private def checkReinvade(time:Long):Boolean {
