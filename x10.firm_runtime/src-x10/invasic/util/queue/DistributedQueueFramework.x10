@@ -488,20 +488,22 @@ public class DistributedQueueFramework[T, X]{T isref, T haszero, X haszero} impl
 	}
 	
 	private def waitForAllActivities(homePlace:Place) {
-		val handle = plh();
-		if(handle != null) {
-			handle.monitor.lock();
-			val waiting = handle.localFinishedCount == handle.localActivities ? handle.localFinishedCount - 1: handle.localFinishedCount;
-			handle.monitor.unlock();
-			handle.reinvadeMonitor.lock();
-			if(handle.waitingActivities + waiting < handle.localActivities) {
-				handle.reinvadeMonitor.unlock();
-				async waitForAllActivities(homePlace);
-			} else {
-				handle.reinvadeMonitor.unlock();
-			}
-		} else {
+		val localqueue = plh();
+		if (localqueue == null) {
 			async waitForAllActivities(homePlace);
+			return;
+		}
+		localqueue.monitor.lock();
+		val waiting = localqueue.localFinishedCount == localqueue.localActivities ?
+				localqueue.localFinishedCount - 1 :
+				localqueue.localFinishedCount;
+		localqueue.monitor.unlock();
+		localqueue.reinvadeMonitor.lock();
+		if(localqueue.waitingActivities + waiting < localqueue.localActivities) {
+			localqueue.reinvadeMonitor.unlock();
+			async waitForAllActivities(homePlace);
+		} else {
+			localqueue.reinvadeMonitor.unlock();
 		}
 	}
 	
@@ -1120,10 +1122,13 @@ public class DistributedQueueFramework[T, X]{T isref, T haszero, X haszero} impl
 		/** Number of local worker activities */
 		private @Volatile var localActivities:Int;
 
-		/** Number of local worker activities which found the queue empty */
+		/** Number of local worker activities which found the queue empty
+		 *  Protect by this.monitor. */
 		private var localFinishedCount:Int = 0;
 
-		/** Number of local worker activities waiting for some reinvade operation to finish */
+		/** Number of local worker activities waiting for some reinvade operation to finish
+		 *  +1 because the activity doing the reinvade is included.
+		 *  Protect by this.reinvadeMonitor. */
 		private var waitingActivities:Int = 0;
 
 		/** Number of local worker activities which shall be removed due to reinvade */
