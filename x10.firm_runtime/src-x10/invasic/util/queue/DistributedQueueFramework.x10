@@ -828,7 +828,7 @@ public class DistributedQueueFramework[T, X]{T isref, T haszero, X haszero} impl
 			val handle = plh();
 			handle.reinvadeMonitor.lock();
 			handle.waitingActivities = 0;
-			handle.reinvadeMonitor.unlock();
+			handle.reinvadeMonitor.release();
 			return;
 		}
 		startResizingClaim();
