@@ -76,6 +76,13 @@ example "Desugarer"). Passnames can be in all the goals in the ExtensionInfo.
 Requires octopos-app within this base directory.
 Depending on what you do, you might have to create more symlinks
 within octopos to choose the right release/variant/version.
+Ultimately, building x10i requires the subdir:
+
+  octopos-app/releases/current/x86guest/default/
+
+Usually `current` and `default` are symlinks.
+If they are missing or wrong, you will probably get an error
+like a missing `stdio.h` with iRTSS.
 
 Also required is an executable called i686-invasic-irtss-gcc
 (or similar depending on compilation target). You can probably
