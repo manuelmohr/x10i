@@ -109,6 +109,10 @@ static void ilet_allocate_places(void *arg_n_places, void *context)
 		pld = mem_allocate_tlm(sizeof(place_local_data));
 		claim_set_local_data(pld);
 	}
+	if (pld->places != NULL) {
+		/* avoid memory leak via redistribute_places */
+		mem_free_tlm(pld->places);
+	}
 	pld->n_places = n_places;
 	pld->places   = mem_allocate_tlm(n_places * sizeof(*pld->places));
 	/* is freed implicitly upon retreat or shutdown */
