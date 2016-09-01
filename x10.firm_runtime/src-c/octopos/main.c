@@ -21,12 +21,6 @@ typedef struct distribute_places_context {
 	unsigned place_id;
 } distribute_places_context;
 
-typedef struct place_local_data {
-	dispatch_claim_t *places;
-	unsigned n_places;
-	unsigned place_id;
-} place_local_data;
-
 static simple_signal initialization_signal;
 
 static void ilet_notify(void *arg)

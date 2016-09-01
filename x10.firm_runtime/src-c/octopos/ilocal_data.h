@@ -30,4 +30,10 @@ static inline void init_ilet_local_data(void)
 #endif
 }
 
+typedef struct place_local_data {
+	dispatch_claim_t *places;
+	unsigned n_places;
+	unsigned place_id;
+} place_local_data;
+
 #endif

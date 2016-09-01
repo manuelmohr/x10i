@@ -34,6 +34,7 @@ static void redistribute_places(agentclaim_t ac)
 		return; /* nothing to distribute */
 	dispatch_claim_t *new_places = mem_allocate_tlm(new_n_places * sizeof(*new_places));
 	assert(NULL != new_places);
+	/* collect proxyclaims and convert to dispatch claims */
 	for (int it = 0; it < new_n_places; ++it) {
 		int tid = agent_claim_get_tileid_iterative(ac, it);
 		proxy_claim_t pClaim = agent_claim_get_proxyclaim_tile_type(ac, tid, 0);
@@ -41,6 +42,29 @@ static void redistribute_places(agentclaim_t ac)
 		dispatch_claim_t dc = proxy_get_dispatch_info(pClaim);
 		new_places[it] = dc;
 	}
+	/* reorder, so new places are always added to the back */
+	place_local_data *pld = claim_get_local_data();
+	dispatch_claim_t* old_places = pld->places;
+	const int old_n_places = pld->n_places;
+	assert (old_n_places <= new_n_places && "only ever add places (sticky!)");
+	for (int i = 0; i < old_n_places; i++) {
+		const tile_id_t oi = dispatch_claim_get_tid(old_places[i]);
+		const tile_id_t ni = dispatch_claim_get_tid(new_places[i]);
+		if (oi == ni)
+			continue;
+		int j = i+1;
+		for (; j < new_n_places; j++) {
+			const tile_id_t nj = dispatch_claim_get_tid(new_places[j]);
+			if (oi != nj)
+				continue;
+			dispatch_claim_t tmp = new_places[i];
+			new_places[i] = new_places[j];
+			new_places[j] = tmp;
+			break;
+		}
+		assert (j < new_n_places && "found something to swap" );
+	}
+	/* distribute array to all tiles */
 	distribute_places(new_places, new_n_places);
 }
 
