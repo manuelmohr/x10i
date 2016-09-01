@@ -107,6 +107,7 @@ static void ilet_allocate_places(void *arg_n_places, void *context)
 	place_local_data *pld = claim_get_local_data();
 	if (NULL == pld) {
 		pld = mem_allocate_tlm(sizeof(place_local_data));
+		pld->places = NULL;
 		claim_set_local_data(pld);
 	}
 	if (pld->places != NULL) {
