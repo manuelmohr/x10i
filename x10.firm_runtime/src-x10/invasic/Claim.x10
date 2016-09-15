@@ -67,6 +67,7 @@ abstract public class Claim {
     abstract public def processingElements():List[ProcessingElement];
     abstract public def size():int;
     abstract public def print():void;
+    abstract public def setName(name:String):void;
     abstract def my_clm():Pointer;
 
     /** Returns a string representing this claim */
@@ -193,6 +194,13 @@ final class AgentClaim extends Claim {
 
     @LinkSymbol("x10_agent_claim_reinvade_constraints")
     static native def reinvade(clm:Pointer, constr:Pointer):Int;
+
+    @LinkSymbol("set_agent_name")
+    private static native def setName(clm:Pointer, name:Pointer):void;
+
+    public def setName(name:String):void {
+      setName(this.clm, name.getCString());
+    }
 
     /** Retreat completely and free all resources. */
     public def retreat():void = {
@@ -407,4 +415,6 @@ final class UnionClaim extends Claim {
       val c = a as UnionClaim;
       return this.a == c.a && this.b == c.b;
     }
+
+    public def setName(name:String):void {}
 }

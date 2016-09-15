@@ -546,6 +546,13 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      */
     @LinkSymbol("x10_string_get_pointer")
     public native def getPointer(): Pointer;
+
+    /**
+     * Returns a pointer to the string C-style zero-terminated.
+     * Allocated memory is garbage collected.
+     */
+    @LinkSymbol("cstring_from_x10_string")
+    public native def getCString(): Pointer;
 }
 
 public type String(s:String) = String{self==s};
