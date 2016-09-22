@@ -24,6 +24,8 @@ void _ZN3x102io18OutputStreamWriter5writeEi(const x10_outputstreamwriter *self,
 void _ZN3x102io18OutputStreamWriter5writeEPvi(const x10_outputstreamwriter *self,
                                               x10_pointer p, x10_int len)
 {
+	if (len == 0)
+		return;
 	size_t written = fwrite(p, len, 1, self->out);
 	if (written != 1) {
 		abort();
