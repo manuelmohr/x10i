@@ -10,31 +10,31 @@ static eth_channel_t write_chan = NULL;
 
 static void signal_ilet(void *data)
 {
-	simple_signal *sig = (simple_signal*)data;
-	simple_signal_signal_and_exit(sig);
+	binary_signal *sig = (binary_signal*)data;
+	binary_signal_signal_and_exit(sig);
 }
 
 bool octo_receive(void *buffer, size_t size)
 {
-	simple_signal sig;
-	simple_signal_init(&sig, 1);
+	binary_signal sig;
+	binary_signal_init(&sig);
 	simple_ilet ilet;
 	simple_ilet_init(&ilet, &signal_ilet, &sig);
 	if (eth_receive(read_chan, buffer, size, &ilet) != 0)
 		return false;
-	simple_signal_wait(&sig);
+	binary_signal_wait(&sig);
 	return true;
 }
 
 bool octo_send(void *buffer, size_t size)
 {
-	simple_signal sig;
-	simple_signal_init(&sig, 1);
+	binary_signal sig;
+	binary_signal_init(&sig);
 	simple_ilet ilet;
 	simple_ilet_init(&ilet, &signal_ilet, &sig);
 	if (eth_send(write_chan, buffer, size, &ilet) != 0)
 		return false;
-	simple_signal_wait(&sig);
+	binary_signal_wait(&sig);
 	return true;
 }
 

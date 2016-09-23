@@ -7,7 +7,7 @@
 
 struct X10_TYPE("x10.util.concurrent.Signal") x10_signal {
 	x10_object    base;
-	simple_signal signal;
+	binary_signal signal;
 };
 
 #endif

@@ -101,7 +101,7 @@
  */
 
 struct source_local_data {
-	simple_signal   *join_signal;
+	binary_signal   *join_signal;
 	finish_state_t  *finish_state;
 	x10_int          message_type;
 	void            *obstack;
@@ -144,7 +144,7 @@ static void notify_local_termination(void *arg)
 {
 	source_local_data_t *source_local_data = (source_local_data_t *)arg;
 
-	simple_signal_signal_and_exit(source_local_data->join_signal);
+	binary_signal_signal_and_exit(source_local_data->join_signal);
 }
 
 /* Notifies global termination of the at statement/expression. */
@@ -395,7 +395,7 @@ static void transfer_parameters(void *source_data, void *destination_buffer)
 	dispatch_claim_push_dma(dispatch_claim, send_buffer, destination_buffer, buffer_size, &local, &remote);
 
 	if (message_type == MSG_RUN_AT_ASYNC) {
-		simple_signal_signal(source_local_data->join_signal);
+		binary_signal_signal(source_local_data->join_signal);
 	}
 }
 
@@ -444,7 +444,7 @@ static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_cl
 
 
 	/* Initialize source-local data. */
-	simple_signal        join_signal;
+	binary_signal        join_signal;
 	source_local_data_t  source_local_data;
 	finish_state_t      *finish_state      = finish_state_get_current();
 	source_local_data.join_signal  = &join_signal;
@@ -455,7 +455,7 @@ static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_cl
 	source_local_data.return_value = NULL;
 	source_local_data.send_buffer  = obstack_finish(obst);
 
-	simple_signal_init(&join_signal, 1);
+	binary_signal_init(&join_signal);
 
 	source_local_data.dispatch_claim = destination_claim;
 
@@ -468,7 +468,7 @@ static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_cl
 	dispatch_claim_infect(destination_claim, &allocation_ilet, 1);
 
 	/* Wait for local termination. */
-	simple_signal_wait(&join_signal);
+	binary_signal_wait(&join_signal);
 
 	return source_local_data.return_value;
 }
