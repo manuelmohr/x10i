@@ -15,7 +15,9 @@
 /x10.compiler/classes
 /x10.constraints/classes
 /x10.constraints/common/
+/x10.dist/bin/apgas
 /x10.dist/bin/java_x10rt
+/x10.dist/bin/precommit
 /x10.dist/bin/runjava
 /x10.dist/bin/runx10
 /x10.dist/bin/setupX10
@@ -24,8 +26,10 @@
 /x10.dist/bin/x10cj
 /x10.dist/bin/x10doc
 /x10.dist/etc
+/x10.dist/firm-stdlib/x10_firm.jar
 /x10.dist/include
 /x10.dist/lib
+/x10.dist/releng/x10i/x10i.tar.gz
 /x10.dist/stdlib
 /x10.dist/x10firm-testsuite
 /x10.doc/classes
