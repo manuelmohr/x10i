@@ -92,6 +92,12 @@ ifeq ($(findstring i686-linux, $(TARGET)), i686-linux)
 #	CPPFLAGS += -DBIG_ENDIAN_SERIALIZATION
 endif
 
+# If we're using the optimized build of the compiler, build a non-debug variant
+# of the runtime library.
+ifeq ($(variant), optimize)
+	CPPFLAGS += -DNDEBUG
+endif
+
 
 PLATFORMDIR=$(SRCDIR)/$(PLATFORM)
 LIBNAME=x10
