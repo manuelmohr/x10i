@@ -405,7 +405,7 @@
         -->
     </target>
 
-    <target name="compiler-jar" depends="init,common-jar,constraints-jar">
+    <target name="compiler-jar" depends="init,common-jar,constraints-jar,lpg-jar">
         <ant antfile="${x10.compiler.location}/build.xml" target="jar" inheritAll="false" dir="${x10.compiler.location}"/>
         <mkdir dir="${lib}"/>
         <copy todir="${lib}">
