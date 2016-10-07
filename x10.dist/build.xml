@@ -432,7 +432,7 @@
         <ant antfile="${x10.firm.location}/build.xml" target="jar" inheritAll="false" dir="${x10.firm.location}"/>
     </target>
 
-    <target name="checkstyle" depends="x10firm-jar">
+    <target name="checkstyle">
         <ant antfile="${x10.firm.location}/build.xml" target="checkstyle" inheritAll="false" dir="${x10.firm.location}"/>
     </target>
 
