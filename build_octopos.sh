@@ -9,6 +9,7 @@ export PATH=${IRTSSBASE}/tools/bin:/opt/aspectc++:$PATH
 
 # confuse fetch_octopos.sh
 source octopos_config.sh
+mkdir -p "$DIST_DIR"
 for release in $RELEASES; do
 	touch "$DIST_DIR/$release"
 done
