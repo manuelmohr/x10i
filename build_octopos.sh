@@ -7,15 +7,6 @@ export IRTSSBASE=$(readlink -e $1)
 echo "IRTSSBASE = ${IRTSSBASE}"
 export PATH=${IRTSSBASE}/tools/bin:/opt/aspectc++:$PATH
 
-# confuse fetch_octopos.sh
-source octopos_config.sh
-mkdir -p "$DIST_DIR"
-for release in $RELEASES; do
-	touch "$DIST_DIR/$release"
-done
-# ensure fetch won't override us later
-./fetch_octopos.sh # TODO should not be necessary
-
 # build iRTSS
 cd ${IRTSSBASE}
 platform/generateVariants.sh

@@ -53,7 +53,6 @@ echo "$MD5SUMS" | md5sum --quiet -c
 popd > /dev/null
 
 # Extract the releases to their correct place
-#
 mkdir -p "$OCTOPOS_APP_DIR/releases"
 for release in $RELEASES; do
 	echo "Extracting $release"
