@@ -17,14 +17,17 @@ ant distclean
 cd ..
 
 # Build x10i for all available targets.
-./setup.sh $@ -DVARIANT=optimize -DTARGET=i686-invasic-octopos
-./setup.sh $@ -DVARIANT=optimize -DTARGET=i686-invasic-irtss
-./setup.sh $@ -DVARIANT=optimize -DTARGET=i686-linux-gnu
-./setup.sh $@ -DVARIANT=optimize -DTARGET=sparc-invasic-octopos
-./setup.sh $@ -DVARIANT=optimize -DTARGET=sparc-invasic-irtss
-./setup.sh $@ -DVARIANT=optimize -DTARGET=x86_64-invasic-octopos
-./setup.sh $@ -DVARIANT=optimize -DTARGET=x86_64-invasic-irtss
-./setup.sh $@ -DVARIANT=optimize -DTARGET=x86_64-linux-gnu
+./setup.sh
+cd x10.dist
+ant dist-firm $@ -DVARIANT=optimize -DTARGET=i686-invasic-octopos
+ant dist-firm $@ -DVARIANT=optimize -DTARGET=i686-invasic-irtss
+ant dist-firm $@ -DVARIANT=optimize -DTARGET=i686-linux-gnu
+ant dist-firm $@ -DVARIANT=optimize -DTARGET=sparc-invasic-octopos
+ant dist-firm $@ -DVARIANT=optimize -DTARGET=sparc-invasic-irtss
+ant dist-firm $@ -DVARIANT=optimize -DTARGET=x86_64-invasic-octopos
+ant dist-firm $@ -DVARIANT=optimize -DTARGET=x86_64-invasic-irtss
+ant dist-firm $@ -DVARIANT=optimize -DTARGET=x86_64-linux-gnu
+cd ..
 
 # Pack everything together.
 tar czf "$cdir/$mydir/x10i.tar.gz" --files-from="$cdir/$mydir/distfiles.txt" \
