@@ -16,6 +16,16 @@ import invasic.constraints.NotEnoughResources;
   A claim represents a set of reserved resources.
  */
 abstract public class Claim {
+    /* The agent system does NOT copy the constraint data structure, so
+     * we must preserve it until it becomes obsolete. */
+    var agentconstr:Pointer;
+
+    def setAgentConstr(ac:Pointer):void {
+       if (this.agentconstr != Pointer.NULL)
+           delete_constr(this.agentconstr);
+       this.agentconstr = ac;
+    }
+
     @LinkSymbol("agent_constr_create")
     static native def create_constr():Pointer;
 
@@ -34,9 +44,9 @@ abstract public class Claim {
     public static def invade(c:Constraint):Claim {
         val ac = create_constr();
         c.toAgentConstr(ac);
-        val clm = invade(null as Pointer, ac);
+        val clm = invade(Pointer.NULL, ac);
         val ret = new AgentClaim(clm);
-        delete_constr(ac);
+        ret.setAgentConstr(ac);
         return ret;
     }
 
@@ -168,6 +178,7 @@ final class AgentClaim extends Claim {
     def this(clm:Pointer) {
         this.clm = clm;
         this.tileid = Tile.getCurrentTileId();
+        this.agentconstr = Pointer.NULL;
     }
 
     /** Reinvades with the same constraints and returns whether claim contents changed */
@@ -187,7 +198,7 @@ final class AgentClaim extends Claim {
         val ac = create_constr();
         c.toAgentConstr(ac);
         val ret = reinvade(this.clm, ac);
-        delete_constr(ac);
+        setAgentConstr(ac);
         if (ret < 0) throw new ReinvadeFail("claim is invalid now");
         return ret != 0;
     }
@@ -207,6 +218,7 @@ final class AgentClaim extends Claim {
         if (this.clm == Pointer.NULL) return; /* nothing to do */
         this.check_invariant();
         retreat(this.clm);
+        setAgentConstr(Pointer.NULL);
     }
 
     @LinkSymbol("agent_claim_retreat")
