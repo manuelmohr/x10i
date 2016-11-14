@@ -101,7 +101,7 @@
  */
 
 struct source_local_data {
-	binary_signal   *join_signal;
+	binary_signal    join_signal;
 	finish_state_t  *finish_state;
 	x10_int          message_type;
 	void            *obstack;
@@ -144,7 +144,7 @@ static void notify_local_termination(void *arg)
 {
 	source_local_data_t *source_local_data = (source_local_data_t *)arg;
 
-	binary_signal_signal_and_exit(source_local_data->join_signal);
+	binary_signal_signal_and_exit(&source_local_data->join_signal);
 }
 
 /* Notifies global termination of the at statement/expression. */
@@ -162,6 +162,13 @@ static void free_obstack(void *obstack)
 
 	obstack_free(obst, NULL);
 	mem_free_tlm(obst);
+}
+
+/* Frees obstack that acts as send buffer and signals the local-termination signal. */
+static void free_obstack_and_signal(void *obstack, void *signal)
+{
+	free_obstack(obstack);
+	binary_signal_signal_and_exit((binary_signal *)signal);
 }
 
 static void do_run_at_statement(void *arg, void *source_finish_state, bool notify_local)
@@ -383,20 +390,18 @@ static void transfer_parameters(void *source_data, void *destination_buffer)
 	/* Perform DMA transfer. */
 	simple_ilet local;
 	simple_ilet remote;
-	simple_ilet_init(&local, free_obstack, obstack);
 	if (message_type == MSG_EVAL_AT) {
+		simple_ilet_init(&local, free_obstack, obstack);
 		dual_ilet_init(&remote, evaluate_at_expression, destination_buffer, finish_state);
 	} else if (message_type == MSG_RUN_AT) {
+		simple_ilet_init(&local, free_obstack, obstack);
 		dual_ilet_init(&remote, run_at_statement, destination_buffer, finish_state);
 	} else {
 		assert(message_type == MSG_RUN_AT_ASYNC);
+		dual_ilet_init(&local, free_obstack_and_signal, obstack, &source_local_data->join_signal);
 		dual_ilet_init(&remote, run_at_async_statement, destination_buffer, finish_state);
 	}
 	dispatch_claim_push_dma(dispatch_claim, send_buffer, destination_buffer, buffer_size, &local, &remote);
-
-	if (message_type == MSG_RUN_AT_ASYNC) {
-		binary_signal_signal(source_local_data->join_signal);
-	}
 }
 
 /* Allocates the receive buffer in the destination memory. */
@@ -444,10 +449,8 @@ static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_cl
 
 
 	/* Initialize source-local data. */
-	binary_signal        join_signal;
 	source_local_data_t  source_local_data;
 	finish_state_t      *finish_state      = finish_state_get_current();
-	source_local_data.join_signal  = &join_signal;
 	source_local_data.finish_state = finish_state;
 	source_local_data.message_type = msg_type;
 	source_local_data.buffer_size  = obstack_object_size(obst);
@@ -455,7 +458,7 @@ static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_cl
 	source_local_data.return_value = NULL;
 	source_local_data.send_buffer  = obstack_finish(obst);
 
-	binary_signal_init(&join_signal);
+	binary_signal_init(&source_local_data.join_signal);
 
 	source_local_data.dispatch_claim = destination_claim;
 
@@ -468,7 +471,7 @@ static x10_object *x10_execute_at_dispatch_claim(dispatch_claim_t destination_cl
 	dispatch_claim_infect(destination_claim, &allocation_ilet, 1);
 
 	/* Wait for local termination. */
-	binary_signal_wait(&join_signal);
+	binary_signal_wait(&source_local_data.join_signal);
 
 	return source_local_data.return_value;
 }
