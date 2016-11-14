@@ -164,13 +164,6 @@ static void free_obstack(void *obstack)
 	mem_free_tlm(obst);
 }
 
-/* Frees obstack that acts as send buffer and signals the local-termination signal. */
-static void free_obstack_and_signal(void *obstack, void *signal)
-{
-	free_obstack(obstack);
-	binary_signal_signal_and_exit((binary_signal *)signal);
-}
-
 static void do_run_at_statement(void *arg, void *source_finish_state, bool notify_local)
 {
 	/* Create a new top level finish state on the new tile. */
@@ -390,18 +383,20 @@ static void transfer_parameters(void *source_data, void *destination_buffer)
 	/* Perform DMA transfer. */
 	simple_ilet local;
 	simple_ilet remote;
+	simple_ilet_init(&local, free_obstack, obstack);
 	if (message_type == MSG_EVAL_AT) {
-		simple_ilet_init(&local, free_obstack, obstack);
 		dual_ilet_init(&remote, evaluate_at_expression, destination_buffer, finish_state);
 	} else if (message_type == MSG_RUN_AT) {
-		simple_ilet_init(&local, free_obstack, obstack);
 		dual_ilet_init(&remote, run_at_statement, destination_buffer, finish_state);
 	} else {
 		assert(message_type == MSG_RUN_AT_ASYNC);
-		dual_ilet_init(&local, free_obstack_and_signal, obstack, &source_local_data->join_signal);
 		dual_ilet_init(&remote, run_at_async_statement, destination_buffer, finish_state);
 	}
 	dispatch_claim_push_dma(dispatch_claim, send_buffer, destination_buffer, buffer_size, &local, &remote);
+
+	if (message_type == MSG_RUN_AT_ASYNC) {
+		binary_signal_signal(&source_local_data->join_signal);
+	}
 }
 
 /* Allocates the receive buffer in the destination memory. */
