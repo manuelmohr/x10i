@@ -1,9 +1,10 @@
-package op.qualities;
+package invasic.actor.qualities;
 
 import x10.lang.Pointer;
 import x10.compiler.LinkSymbol;
 
 abstract public class QualityNumber {
+/*
     abstract public def toAgentFormat(qualityNumber: Pointer): void;
 
     @LinkSymbol("quality_number_create")
@@ -14,4 +15,5 @@ abstract public class QualityNumber {
     static public native def set_type(tileType: Pointer, typeId: int): void;
     @LinkSymbol("quality_number_set_value")
     static public native def set_value(tileType: Pointer, typeId: int): void;
+*/
 }
