@@ -11,6 +11,7 @@ import x10.util.HashSet;
 import invasic.constraints.Constraint;
 import invasic.constraints.AND;
 import invasic.constraints.NotEnoughResources;
+import invasic.actor.OperatingPoint;
 
 /**
   A claim represents a set of reserved resources.
@@ -48,6 +49,10 @@ abstract public class Claim {
         val ret = new AgentClaim(clm);
         ret.setAgentConstr(ac);
         return ret;
+    }
+
+    public static def invade(c:List[OperatingPoint]):Claim {
+      return null;
     }
 
     @LinkSymbol("x10_agent_claim_invade")
@@ -158,6 +163,10 @@ abstract public class Claim {
             result = reduce(result,values(p));
         }
         return result;
+    }
+
+    public def getOperatingPointIndex():int {
+      return 0; // FIXME
     }
 }
 

@@ -248,9 +248,19 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("x10/util/Stack.x10");
 			allowedFiles.add("x10/util/StringBuilder.x10");
 			allowedFiles.add("x10/util/Timer.x10");
-			allowedFiles.add("invasic/ProcessingElement.x10");
+			allowedFiles.add("invasic/actor/Binding.x10");
+			allowedFiles.add("invasic/actor/Channel.x10");
+			allowedFiles.add("invasic/actor/Cluster.x10");
+			allowedFiles.add("invasic/actor/ConstraintGraph.x10");
+			allowedFiles.add("invasic/actor/OperatingPoint.x10");
+			allowedFiles.add("invasic/actor/qualities/Latency.x10");
+			allowedFiles.add("invasic/actor/qualities/Power.x10");
+			allowedFiles.add("invasic/actor/qualities/QualityNumber.x10");
+			allowedFiles.add("invasic/actor/tiletypes/iCore.x10");
+			allowedFiles.add("invasic/actor/tiletypes/RISC.x10");
+			allowedFiles.add("invasic/actor/tiletypes/TCPA.x10");
+			allowedFiles.add("invasic/actor/tiletypes/TileType.x10");
 			allowedFiles.add("invasic/Claim.x10");
-			allowedFiles.add("invasic/ReinvadeFail.x10");
 			allowedFiles.add("invasic/constraints/AND.x10");
 			allowedFiles.add("invasic/constraints/Constraint.x10");
 			allowedFiles.add("invasic/constraints/DowneyScalabilityHint.x10");
@@ -264,6 +274,9 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("invasic/constraints/ThisPlace.x10");
 			allowedFiles.add("invasic/constraints/TileSharing.x10");
 			allowedFiles.add("invasic/ICore.x10");
+			allowedFiles.add("invasic/IncarnationID.x10");
+			allowedFiles.add("invasic/ProcessingElement.x10");
+			allowedFiles.add("invasic/ReinvadeFail.x10");
 			allowedFiles.add("invasic/RetreatFromSelf.x10");
 			allowedFiles.add("invasic/util/Benchmark.x10");
 			allowedFiles.add("invasic/util/BlockingHashMap.x10");
@@ -278,7 +291,6 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("invasic/util/queue/JobQueueFrameworkBuilder.x10");
 			allowedFiles.add("invasic/util/queue/SplitDeque.x10");
 			allowedFiles.add("invasic/util/Queue.x10");
-			allowedFiles.add("invasic/IncarnationID.x10");
 		}
 		whiteListInitialized = true;
 	}
