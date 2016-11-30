@@ -184,7 +184,6 @@ static void init_places(claim_t root_claim)
 #ifndef USE_AGENTSYSTEM
 	while (num > 0 && invade_simple(root_claim, num) == -1)
 		--num;
-	assert(num > 0 && "Could not get additional PEs on root tile");
 #else
 	(void) root_claim; /* remove warning */
 #endif
