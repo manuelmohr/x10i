@@ -8,15 +8,15 @@ import x10.util.Set;
 public class OperatingPoint {
     val constraintGraph: ConstraintGraph;
     val qualityNumbers: Set[QualityNumber];
-    val actorgraph: Any;
+    val actorgraph: IActorGraph;
 
-    public def this(constraintGraph: ConstraintGraph, qualityNumbers: Set[QualityNumber], actorgraph:Any) {
+    public def this(constraintGraph: ConstraintGraph, qualityNumbers: Set[QualityNumber], actorgraph:IActorGraph) {
         this.constraintGraph = constraintGraph;
         this.qualityNumbers = qualityNumbers;
         this.actorgraph = actorgraph;
     }
 
-    public def getActorGraph():Any {
+    public def getActorGraph():IActorGraph {
         return this.actorgraph;
     }
 

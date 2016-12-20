@@ -252,6 +252,8 @@ public class ExtensionInfo extends x10.ExtensionInfo {
 			allowedFiles.add("invasic/actor/Channel.x10");
 			allowedFiles.add("invasic/actor/Cluster.x10");
 			allowedFiles.add("invasic/actor/ConstraintGraph.x10");
+			allowedFiles.add("invasic/actor/IActorGraph.x10");
+			allowedFiles.add("invasic/actor/IActor.x10");
 			allowedFiles.add("invasic/actor/OperatingPoint.x10");
 			allowedFiles.add("invasic/actor/qualities/Latency.x10");
 			allowedFiles.add("invasic/actor/qualities/Power.x10");

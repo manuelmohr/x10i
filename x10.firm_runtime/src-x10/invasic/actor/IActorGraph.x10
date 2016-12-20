@@ -2,22 +2,21 @@ package invasic.actor;
 
 import x10.util.*;
 
-public abstract class IActorGraph[T] {T <: IActor, T isref} {
-    
+public abstract class IActorGraph {
     /**
      * Get a list containing all actors.
      */
-    public abstract def getActors() : List[GlobalRef[T]];
+    public abstract def getActors() : List[GlobalRef[IActor]];
 
     /**
      * Move an actor to a place.
      n*/
-    public abstract def moveActor(actor:GlobalRef[T], place:Place) : Any;
+    public abstract def moveActor(actor:GlobalRef[IActor], place:Place) : Any;
 
     /**
      * Move the referenced actor to a place.
      */
-    public abstract def moveActor(actor:T, place:Place) : Any;
+    public abstract def moveActor(actor:IActor, place:Place) : Any;
 
     /**
      * Start the actor graph's execution
