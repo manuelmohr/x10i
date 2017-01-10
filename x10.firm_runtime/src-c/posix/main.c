@@ -11,7 +11,7 @@
 #include "serialization.h"
 #include "xmalloc.h"
 
-void *_ZN3x108compiler14InitDispatcher17get_staticMonitorEv();
+void *_ZN3x108compiler14InitDispatcher17get_staticMonitorEv(void);
 
 int main(int argc, char **argv)
 {
