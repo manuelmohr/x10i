@@ -5,10 +5,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import polyglot.util.InternalCompilerError;
-import x10.types.MethodInstance;
-import x10.types.X10ClassType;
-import x10.types.X10ConstructorInstance;
 import firm.ArrayType;
 import firm.ClassType;
 import firm.Construction;
@@ -17,7 +13,6 @@ import firm.Graph;
 import firm.Initializer;
 import firm.MethodType;
 import firm.Mode;
-import firm.Mode.Arithmetic;
 import firm.OO;
 import firm.PointerType;
 import firm.Program;
@@ -32,6 +27,10 @@ import firm.nodes.Cond;
 import firm.nodes.Load;
 import firm.nodes.Node;
 import firm.nodes.Store;
+import polyglot.util.InternalCompilerError;
+import x10.types.MethodInstance;
+import x10.types.X10ClassType;
+import x10.types.X10ConstructorInstance;
 
 /**
  * Helper class to generate the methods required for the serialization
@@ -108,7 +107,7 @@ public final class SerializationSupport {
 		deserializationRestoreObject = firmTypeSystem.getGlobalEntity(droName, droType);
 		deserializationRestoreObject.setLdIdent(droName);
 
-		sizeTType = Mode.createIntMode("size_t", Arithmetic.TwosComplement, Mode.getP().getSizeBits(),
+		sizeTType = Mode.createIntMode("size_t", Mode.getP().getSizeBits(),
 				false, Mode.getP().getModuloShift()).getType();
 
 		final MethodType mallocType = new MethodType(new Type[] {sizeTType}, new Type[] {typeP});

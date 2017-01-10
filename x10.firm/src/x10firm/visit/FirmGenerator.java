@@ -11,6 +11,40 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
+import com.sun.jna.Pointer;
+
+import firm.ArrayType;
+import firm.ClassType;
+import firm.CompoundType;
+import firm.DebugInfo;
+import firm.Entity;
+import firm.Graph;
+import firm.Ident;
+import firm.Initializer;
+import firm.MethodType;
+import firm.Mode;
+import firm.OO;
+import firm.PointerType;
+import firm.Program;
+import firm.Relation;
+import firm.SegmentType;
+import firm.SwitchTable;
+import firm.TargetValue;
+import firm.bindings.binding_typerep.ir_linkage;
+import firm.bindings.binding_typerep.ir_type_state;
+import firm.bindings.binding_typerep.ir_visibility;
+import firm.bindings.binding_typerep.mtp_additional_properties;
+import firm.nodes.Alloc;
+import firm.nodes.Block;
+import firm.nodes.Call;
+import firm.nodes.Cond;
+import firm.nodes.Load;
+import firm.nodes.Node;
+import firm.nodes.Store;
+import firm.nodes.Switch;
+import firm.oo.nodes.InstanceOf;
+import firm.oo.nodes.MethodSel;
+import firm.oo.nodes.VptrIsSet;
 import polyglot.ast.Allocation_c;
 import polyglot.ast.ArrayAccess_c;
 import polyglot.ast.ArrayInit_c;
@@ -156,42 +190,6 @@ import x10firm.types.NameMangler;
 import x10firm.visit.MethodConstruction.BranchTarget;
 import x10firm.visit.builtins.Builtins;
 
-import com.sun.jna.Pointer;
-
-import firm.ArrayType;
-import firm.ClassType;
-import firm.CompoundType;
-import firm.DebugInfo;
-import firm.Entity;
-import firm.Graph;
-import firm.Ident;
-import firm.Initializer;
-import firm.MethodType;
-import firm.Mode;
-import firm.Mode.Arithmetic;
-import firm.OO;
-import firm.PointerType;
-import firm.Program;
-import firm.Relation;
-import firm.SegmentType;
-import firm.SwitchTable;
-import firm.TargetValue;
-import firm.bindings.binding_typerep.ir_linkage;
-import firm.bindings.binding_typerep.ir_type_state;
-import firm.bindings.binding_typerep.ir_visibility;
-import firm.bindings.binding_typerep.mtp_additional_properties;
-import firm.nodes.Alloc;
-import firm.nodes.Block;
-import firm.nodes.Call;
-import firm.nodes.Cond;
-import firm.nodes.Load;
-import firm.nodes.Node;
-import firm.nodes.Store;
-import firm.nodes.Switch;
-import firm.oo.nodes.InstanceOf;
-import firm.oo.nodes.MethodSel;
-import firm.oo.nodes.VptrIsSet;
-
 /**
  * creates a firm-program (a collection of firm-graphs) from an X10-AST.
  */
@@ -284,7 +282,7 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 		final String unwindName = NameMangler.mangleKnownName(X10_EXCEPTION_UNWIND);
 		exceptionUnwindEntity = firmTypeSystem.getGlobalEntity(unwindName, unwindType);
 
-		sizeTType = Mode.createIntMode("size_t", Arithmetic.TwosComplement, Mode.getP().getSizeBits(),
+		sizeTType = Mode.createIntMode("size_t", Mode.getP().getSizeBits(),
 				false, Mode.getP().getModuloShift()).getType();
 		final firm.Type[] mallocParamTypes = new firm.Type[] {
 			sizeTType,

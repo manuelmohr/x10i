@@ -13,6 +13,26 @@ import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
 
+import firm.ArrayType;
+import firm.ClassType;
+import firm.CompoundType;
+import firm.Entity;
+import firm.Initializer;
+import firm.MethodType;
+import firm.Mode;
+import firm.Mode.Arithmetic;
+import firm.OO;
+import firm.PointerType;
+import firm.PrimitiveType;
+import firm.Program;
+import firm.SegmentType;
+import firm.StructType;
+import firm.Type;
+import firm.bindings.binding_oo.ddispatch_binding;
+import firm.bindings.binding_typerep;
+import firm.bindings.binding_typerep.ir_align;
+import firm.bindings.binding_typerep.ir_linkage;
+import firm.bindings.binding_typerep.ir_type_state;
 import polyglot.types.ClassDef;
 import polyglot.types.ConstructorInstance;
 import polyglot.types.FieldDef;
@@ -41,26 +61,6 @@ import x10firm.CompilerOptions;
 import x10firm.MachineTriple;
 import x10firm.visit.CodeGenError;
 import x10firm.visit.GenericCodeInstantiationQueue;
-import firm.ArrayType;
-import firm.ClassType;
-import firm.CompoundType;
-import firm.Entity;
-import firm.Initializer;
-import firm.MethodType;
-import firm.Mode;
-import firm.Mode.Arithmetic;
-import firm.OO;
-import firm.PointerType;
-import firm.PrimitiveType;
-import firm.Program;
-import firm.SegmentType;
-import firm.StructType;
-import firm.Type;
-import firm.bindings.binding_oo.ddispatch_binding;
-import firm.bindings.binding_typerep;
-import firm.bindings.binding_typerep.ir_align;
-import firm.bindings.binding_typerep.ir_linkage;
-import firm.bindings.binding_typerep.ir_type_state;
 
 /**
  * Includes everything to map X10 types to Firm types.
@@ -814,37 +814,37 @@ public class FirmTypeSystem {
 		pointerType = new PrimitiveType(modePointer);
 		recordPrimitiveType("pointer", typeSystem.pointer(), pointerType, "Pv");
 
-		final Mode modeLong = Mode.createIntMode("Long", Arithmetic.TwosComplement, 64, true, 64);
+		final Mode modeLong = Mode.createIntMode("Long", 64, true, 64);
 		final Type typeLong = new PrimitiveType(modeLong);
 		initIA32DataTypeAlignment(typeLong);
 		recordPrimitiveType("long", x10TypeSystem.Long(), typeLong, "x");
 
-		final Mode modeULong = Mode.createIntMode("ULong", Arithmetic.TwosComplement, 64, false, 64);
+		final Mode modeULong = Mode.createIntMode("ULong", 64, false, 64);
 		final Type typeULong = new PrimitiveType(modeULong);
 		initIA32DataTypeAlignment(typeULong);
 		recordPrimitiveType("ulong", x10TypeSystem.ULong(), typeULong, "y");
 
-		final Mode modeInt = Mode.createIntMode("Int", Arithmetic.TwosComplement, 32, true, 32);
+		final Mode modeInt = Mode.createIntMode("Int", 32, true, 32);
 		final Type typeInt = new PrimitiveType(modeInt);
 		recordPrimitiveType("int", x10TypeSystem.Int(), typeInt, "i");
 
-		final Mode modeUInt = Mode.createIntMode("UInt", Arithmetic.TwosComplement, 32, false, 32);
+		final Mode modeUInt = Mode.createIntMode("UInt", 32, false, 32);
 		final Type typeUInt = new PrimitiveType(modeUInt);
 		recordPrimitiveType("uint", x10TypeSystem.UInt(), typeUInt, "j");
 
-		final Mode modeShort = Mode.createIntMode("Short", Arithmetic.TwosComplement, 16, true, 32);
+		final Mode modeShort = Mode.createIntMode("Short", 16, true, 32);
 		final Type typeShort = new PrimitiveType(modeShort);
 		recordPrimitiveType("short", x10TypeSystem.Short(), typeShort, "s");
 
-		final Mode modeUShort = Mode.createIntMode("UShort", Arithmetic.TwosComplement, 16, false, 32);
+		final Mode modeUShort = Mode.createIntMode("UShort", 16, false, 32);
 		final Type typeUShort = new PrimitiveType(modeUShort);
 		recordPrimitiveType("ushort", x10TypeSystem.UShort(), typeUShort, "t");
 
-		final Mode modeByte = Mode.createIntMode("Byte", Arithmetic.TwosComplement, 8, true, 32);
+		final Mode modeByte = Mode.createIntMode("Byte", 8, true, 32);
 		final Type typeByte = new PrimitiveType(modeByte);
 		recordPrimitiveType("byte", x10TypeSystem.Byte(), typeByte, "a");
 
-		final Mode modeUByte = Mode.createIntMode("UByte", Arithmetic.TwosComplement, 8, false, 32);
+		final Mode modeUByte = Mode.createIntMode("UByte", 8, false, 32);
 		final Type typeUByte = new PrimitiveType(modeUByte);
 		recordPrimitiveType("ubyte", x10TypeSystem.UByte(), typeUByte, "h");
 

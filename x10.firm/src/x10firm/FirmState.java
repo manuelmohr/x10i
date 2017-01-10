@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import firm.Backend;
 import firm.Firm;
 import firm.Mode;
-import firm.Mode.Arithmetic;
 import firm.OO;
 import firm.bindings.binding_be;
 import firm.bindings.binding_be.dwarf_source_language;
@@ -132,10 +131,9 @@ public final class FirmState {
 	}
 
 	private static void setPointerSize(final PointerSize size) {
-		final Arithmetic arithmetic = Arithmetic.TwosComplement;
 		final int bits = size.getSize();
 		final String name = "p" + bits;
-		final Mode mode = Mode.createReferenceMode(name, arithmetic, bits, bits);
+		final Mode mode = Mode.createReferenceMode(name, bits, bits);
 		Mode.setDefaultModeP(mode);
 	}
 }
