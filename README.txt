@@ -98,3 +98,40 @@ Within x10.dist compile via
 Now you can use
 
   x10firm -mtarget=i686-invasic-irtss Foo.x10
+
+== InvasIC Host Place Mode ==
+
+When using InvasIC hardware, the FPGA is usually connected to a host
+system.  When running a program on the FPGA, it is often useful to be able to
+exchange data between host and FPGA (e.g., for visualization).
+
+To this end, x10firm allows presenting the host as a special X10 place to the
+programmer.  Hence, the programmer can use "at (Place.INVASIC_HOST) doStuff();"
+to execute doStuff() on the host system.  This "at" has no special constraints,
+i.e. it allows sending data to and receiving data from the host in the form of
+regular X10 objects.  Sending data to the host works by capturing and using
+the respective objects in the 'at' block; receiving data from host works by
+using the 'at' in expression form and returning the respective objects.
+
+Under the hood, this 'at' is handled specially and relays all data via the
+ethernet interface.  Technically, this allows an X10 program to communicate
+between a POSIX version and an OctoPOS version of the same program.  For
+testing purposes, both versions can be x86 code (using the OctoPOS guest layer).
+In production, the OctoPOS version will likely run on the FPGA.  Here, the X10
+runtime transparently performs endianness conversion (see below).
+
+How to use:
+- If used with the FPGA, i.e. a SPARC binary, enable the define
+  BIG_ENDIAN_SERIALIZATION in firm_runtime's Makefile first and recompile
+  for the POSIX target.
+- Compile X10 program twice:
+    - Once for POSIX, e.g., target i686-linux-gnu
+    - Once for OctoPOS, e.g., target sparc-invasic-octopos
+      (or i686-invasic-octopos for testing)
+- Start POSIX binary with "--invasicSystem $FPGA_IP".  For testing with the
+  guest layer, most likely use "localhost"; for the FPGA the IP used to be
+  192.168.0.100.
+- Run OctoPOS binary, e.g., on FPGA.
+
+Caveats:
+- Compatibility with special form "at (E) async S" is not yet supported.
