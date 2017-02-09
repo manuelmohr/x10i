@@ -130,7 +130,6 @@ public class FirmTransform extends AllBarrierGoal {
 			optimize(graph, "thread-jumps");
 			optimize(graph, "local");
 			optimize(graph, "control-flow");
-			optimize(graph, "parallelize-mem");
 		}
 
 		optimize("remove-unused");
