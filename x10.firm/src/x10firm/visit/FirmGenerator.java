@@ -2266,8 +2266,9 @@ public class FirmGenerator extends X10DelegatingVisitor implements GenericCodeIn
 
 		final Flags flags = method.flags();
 		final boolean isFinal = flags.isFinal();
+		final boolean isPrivate = flags.isPrivate();
 		final boolean isStruct = typeSystem.isStructType(method.container());
-		final boolean isStaticBinding = (isStatic || isFinal || isStruct);
+		final boolean isStaticBinding = (isStatic || isFinal || isPrivate || isStruct);
 		final Node address;
 		if (isStaticBinding) {
 			address = con.newAddress(entity);
