@@ -13,7 +13,6 @@ import polyglot.main.UsageError;
 import x10.X10CompilerOptions;
 import x10firm.FirmTransformations.Transformation;
 import x10firm.FirmOptions.FirmOption;
-import firm.Backend;
 import firm.bindings.binding_irdump;
 
 /**

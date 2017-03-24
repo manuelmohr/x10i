@@ -3,9 +3,7 @@ package x10firm;
 import java.io.File;
 import java.util.ArrayList;
 
-import firm.Backend;
 import firm.Firm;
-import firm.Mode;
 import firm.OO;
 import firm.bindings.binding_be;
 import firm.bindings.binding_be.dwarf_source_language;
@@ -60,7 +58,11 @@ public final class FirmState {
 
 	private static ArrayList<String> backendOptions = new ArrayList<String>();
 
-	public static void backendOption(String option) {
+	/**
+	 * When initializing firm (see initializeCodeGen), pass option
+	 * as a backend option.
+	 */
+	public static void backendOption(final String option) {
 		backendOptions.add(option);
 	}
 
