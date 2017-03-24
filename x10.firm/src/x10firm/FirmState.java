@@ -50,22 +50,18 @@ public final class FirmState {
 		return FIRM_LIBRARIES.contains(name);
 	}
 
-	private static boolean firmInitialized = false;
-	/** Ensures that libFirm is initialized. */
-	public static void initializeFirm() {
-		if (firmInitialized)
-			return;
-		firmInitialized = true;
-
-		Firm.init();
-	}
-
 	private static void initializeImplicitOptimizations() {
 		Firm.enableOptimisations();
 		firm.bindings.binding_irflag.set_opt_constant_folding(FirmOptions.isConstFolding() ? 1 : 0);
 		firm.bindings.binding_irflag.set_opt_algebraic_simplification(FirmOptions.isConstFolding() ? 1 : 0);
 		firm.bindings.binding_irflag.set_opt_cse(FirmOptions.isCse() ? 1 : 0);
 		firm.bindings.binding_irflag.set_opt_global_cse(0);
+	}
+
+	private static ArrayList<String> backendOptions = new ArrayList<String>();
+
+	public static void backendOption(String option) {
+		backendOptions.add(option);
 	}
 
 	private static boolean codegenInitialized = false;
@@ -76,64 +72,32 @@ public final class FirmState {
 			return;
 		codegenInitialized = true;
 
-		initializeFirm();
-		initializeImplicitOptimizations();
-
 		/* workaround for gaisler sparc-elf-gcc */
 		final MachineTriple triple = options.getTargetTriple();
 		if (triple.getCpu().equals("sparc")) {
 			if (triple.getOS().equals("octopos")) {
-				Backend.option("dwarf-has_cfi_sections=false");
+				backendOption("dwarf-has_cfi_sections=false");
 			}
 			if (triple.getManufacturer().equals("leon") || triple.getManufacturer().equals("invasic")) {
-				Backend.option("sparc-cpu=leon");
+				backendOption("sparc-cpu=leon");
 			}
-		}
-
-		if (triple.getIsa().equals("amd64")) {
-			setPointerSize(PointerSize.Size64);
-			Backend.option("isa=amd64");
-		} else {
-			setPointerSize(PointerSize.Size32);
 		}
 
 		if (FirmOptions.omitFramePointer()) {
-			Backend.option("omitfp");
+			backendOption("omitfp");
 		} else {
-			Backend.option("omitfp=no");
+			backendOption("omitfp=no");
 		}
 		if (options.x10_config.DEBUG) {
 			binding_be.be_dwarf_set_source_language(dwarf_source_language.DW_LANG_C_plus_plus.val);
 			binding_be.be_dwarf_set_compilation_directory(new File(".").getAbsolutePath());
-			Backend.option("debug=frameinfo");
+			backendOption("debug=frameinfo");
 		}
+
+		Firm.init(triple.toString(), backendOptions.toArray(new String[] {}));
+		initializeImplicitOptimizations();
 
 		OO.setInterfaceLookup(FirmOptions.getInterfaceCallType());
 		OO.init();
-	}
-
-	/** Target Word/Pointer size. */
-	public static enum PointerSize {
-		/** 32bits. */
-		Size32(32),
-		/** 64bits. */
-		Size64(64);
-
-		private final int size;
-		private PointerSize(final int size) {
-			this.size = size;
-		}
-
-		/** Returns size in bits. */
-		public int getSize() {
-			return size;
-		}
-	}
-
-	private static void setPointerSize(final PointerSize size) {
-		final int bits = size.getSize();
-		final String name = "p" + bits;
-		final Mode mode = Mode.createReferenceMode(name, bits, bits);
-		Mode.setDefaultModeP(mode);
 	}
 }

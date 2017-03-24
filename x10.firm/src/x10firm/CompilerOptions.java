@@ -148,15 +148,9 @@ public class CompilerOptions extends X10CompilerOptions {
 		return linkerObjects;
 	}
 
-	private static void backendOption(final String option) {
-		FirmState.initializeFirm();
-		Backend.option(option);
-	}
-
 	private void setupBackend() {
-		backendOption("isa=" + target.getIsa());
 		if (target.getIsa().equals("ia32"))
-			backendOption("ia32-arch=" + target.getCpu());
+			FirmState.backendOption("ia32-arch=" + target.getCpu());
 	}
 
 	@Override
@@ -175,7 +169,7 @@ public class CompilerOptions extends X10CompilerOptions {
 		final String arg = args[index];
 		if (arg.startsWith("-b")) {
 			try {
-				backendOption(arg.substring(2));
+				FirmState.backendOption(arg.substring(2));
 			} catch (IllegalArgumentException e) {
 				throw new UsageError(String.format(
 						"Invalid backend argument '%s'", arg));
@@ -211,7 +205,7 @@ public class CompilerOptions extends X10CompilerOptions {
 			return index + 1;
 		} else if (arg.equals("-soft-float") || arg.equals("-msoft-float")) {
 			useSoftFloat = true;
-			backendOption(target.getIsa() + "-fpunit=softfloat");
+			FirmState.backendOption(target.getIsa() + "-fpunit=softfloat");
 			return index + 1;
 		} else if (arg.startsWith("-whitelist=")) {
 			whiteList = arg.substring(arg.indexOf('=') + 1);
