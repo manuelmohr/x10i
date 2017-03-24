@@ -14,7 +14,6 @@ import com.sun.jna.Pointer;
 
 import firm.CompoundType;
 import firm.Entity;
-import firm.Ident;
 import firm.MethodType;
 import firm.Mode;
 import firm.bindings.binding_iroptimize;
