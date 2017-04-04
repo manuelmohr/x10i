@@ -62,12 +62,6 @@ static void ilet_dma_local_finish(void *context)
 	simple_signal_signal_and_exit(sig);
 }
 
-static void ilet_dma_remote_finish(void *pid)
-{
-	place_local_data *pld = claim_get_local_data();
-	pld->place_id = (unsigned)(uintptr_t)pid;
-}
-
 static void ilet_init_tile(void *init_signal)
 {
 	init_tile();
@@ -90,14 +84,14 @@ static void ilet_transfer_places(void *remote_places, void *context)
 
 	simple_ilet ilet_local;
 	simple_ilet_init(&ilet_local, ilet_dma_local_finish, context);
-	simple_ilet ilet_remote;
-	simple_ilet_init(&ilet_remote, ilet_dma_remote_finish, (void*)(uintptr_t)dpc->place_id);
-	dispatch_claim_push_dma(remote_claim, dpc->places, remote_places, size, &ilet_local, &ilet_remote);
+	dispatch_claim_push_dma(remote_claim, dpc->places, remote_places, size, &ilet_local, NULL);
 }
 
-static void ilet_allocate_places(void *arg_n_places, void *context)
+static void ilet_allocate_places(void *arg_mix, void *context)
 {
-	unsigned n_places = (unsigned)(uintptr_t)arg_n_places;
+	unsigned mix = (unsigned)(uintptr_t)arg_mix;
+	unsigned n_places = mix & 0xffff;
+	unsigned pid = mix >> 16;
 	place_local_data *pld = claim_get_local_data();
 	if (NULL == pld) {
 		pld = mem_allocate_tlm(sizeof(place_local_data));
@@ -109,6 +103,7 @@ static void ilet_allocate_places(void *arg_n_places, void *context)
 		mem_free_tlm(pld->places);
 	}
 	pld->n_places = n_places;
+	pld->place_id = pid;
 	pld->places   = mem_allocate_tlm(n_places * sizeof(*pld->places));
 	/* is freed implicitly upon retreat or shutdown */
 	simple_ilet ilet;
@@ -125,6 +120,7 @@ void distribute_places(dispatch_claim_t *new_places, unsigned new_n_places)
 {
 	assert(new_places != NULL && "NULL places array");
 	assert(new_n_places >= 1 && "empty places array");
+	assert(new_n_places <= 0xffff && "too many places");
 	simple_signal finish_signal;
 	simple_signal_init(&finish_signal, new_n_places);
 
@@ -136,7 +132,8 @@ void distribute_places(dispatch_claim_t *new_places, unsigned new_n_places)
 		dpc->place_id = pid;
 		simple_ilet ilet;
 		dispatch_claim_t dc = new_places[pid];
-		dual_ilet_init(&ilet, ilet_allocate_places, (void*)(uintptr_t)new_n_places, (void*)dpc);
+		unsigned mix = new_n_places | (pid << 16);
+		dual_ilet_init(&ilet, ilet_allocate_places, (void*)(uintptr_t)mix, (void*)dpc);
 		dispatch_claim_infect(dc, &ilet, 1);
 	}
 
