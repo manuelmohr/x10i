@@ -19,4 +19,15 @@ import x10.compiler.Native;
  * Modeled after java.io.FileWriter.
  */
 public class FileWriter extends OutputStreamWriter {
+  public def this(file: File)  //throws IOException
+  {
+    // FIXME: do something useful
+  }
+
+  public def write(buf:x10.array.Array[x10.lang.Byte]{self.rank==1}): void {
+    // TODO: more efficient?
+    for(i in buf) {
+      write(buf(i));
+    }
+  }
 }
