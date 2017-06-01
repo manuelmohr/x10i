@@ -354,7 +354,18 @@ public final class String implements (Int) => Char, Ordered[String], Comparable[
      * @param split the String to use as a delimiter.
      * @return the Array of Strings computed by splitting this String around matches of the delimiter.
      */
-    //public native def split(regex: String):Rail[String];
+    public def split(wedge: String):Array[String] {
+      val ret = new ArrayList[String]();
+      var i:Int = 0;
+      while(true) {
+        val j = this.indexOf(wedge, i);
+        if (j == -1) { // last part found
+          ret.add(this.substring(i, j));
+          return ret.toArray();
+        }
+        i = j + wedge.length();
+      }
+    }
 
 
     /**
