@@ -22,6 +22,8 @@ abstract public class Claim {
     var agentconstr:Pointer;
 
     def setAgentConstr(ac:Pointer):void {
+       if (this.agentconstr == ac)
+            return;
        if (this.agentconstr != Pointer.NULL)
            delete_constr(this.agentconstr);
        this.agentconstr = ac;
