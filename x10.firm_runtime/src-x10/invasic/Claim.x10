@@ -30,10 +30,10 @@ abstract public class Claim {
     }
 
     @LinkSymbol("agent_constr_create")
-    static native def create_constr():Pointer;
+    protected static native def create_constr():Pointer;
 
     @LinkSymbol("agent_constr_delete")
-    static native def delete_constr(c:Pointer):Pointer;
+    private static native def delete_constr(c:Pointer):Pointer;
 
     /** Converts X10 constraints into iRTSS constraints
       * Remember to delete them afterwards! */
@@ -217,7 +217,7 @@ final class AgentClaim extends Claim {
     }
 
     @LinkSymbol("x10_agent_claim_reinvade_constraints")
-    static native def reinvade(clm:Pointer, constr:Pointer):Int;
+    private static native def reinvade(clm:Pointer, constr:Pointer):Int;
 
     @LinkSymbol("set_agent_name")
     private static native def setName(clm:Pointer, name:Pointer):void;
@@ -235,7 +235,7 @@ final class AgentClaim extends Claim {
     }
 
     @LinkSymbol("agent_claim_retreat")
-    static native def retreat(clm:Pointer):void;
+    private static native def retreat(clm:Pointer):void;
 
     /** Only retreat from those resources fulfilling the constraint. */
     public def partialRetreat(c:Constraint):void {
@@ -254,25 +254,25 @@ final class AgentClaim extends Claim {
     }
 
     @LinkSymbol("agent_claim_get_pecount")
-    static native def size(clm:Pointer):Int;
+    private static native def size(clm:Pointer):Int;
 
     @LinkSymbol("agent_claim_get_tilecount")
-    static native def tilecount(clm:Pointer):Int;
+    private static native def tilecount(clm:Pointer):Int;
 
     @LinkSymbol("agent_claim_get_pecount_tile")
-    static native def pecount_tile(clm:Pointer, tileid:Int):Int;
+    private static native def pecount_tile(clm:Pointer, tileid:Int):Int;
 
     @LinkSymbol("agent_claim_get_pecount_tile_type")
-    static native def pecount_tile_type(clm:Pointer, tileid:Int, petype:Int):Int;
+    private static native def pecount_tile_type(clm:Pointer, tileid:Int, petype:Int):Int;
 
     @LinkSymbol("agent_claim_get_tileid_iterative")
-    static native def get_tileid(clm:Pointer, iter:Int):Int;
+    private static native def get_tileid(clm:Pointer, iter:Int):Int;
 
     @LinkSymbol("agentclaim_get_current")
-    static native def get_current():Pointer;
+    protected static native def get_current():Pointer;
 
     @LinkSymbol("agentclaim_set_current")
-    static native def set_current(ptr:Pointer):void;
+    private static native def set_current(ptr:Pointer):void;
 
     static def tiles(clm:Pointer):List[Int] {
         val ts = tilecount(clm);
