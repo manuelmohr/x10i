@@ -45,6 +45,7 @@ static inline void gc_init(void)
 	 */
 	GC_set_max_retries(2);
 	GC_INIT();
+	GC_set_warn_proc(GC_ignore_warn_proc);
 }
 #endif
 
