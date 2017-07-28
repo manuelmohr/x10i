@@ -27,11 +27,17 @@ static inline void gc_init(void)
 {
 }
 #else
-#define GC_THREADS
-#include <gc.h>
+#	ifndef __OCTOPOS__
+#		define GC_THREADS
+#		include <gc.h>
+#	endif
 static inline void gc_free(void *ptr)
 {
+#	ifndef __OCTOPOS__
 	GC_FREE(ptr);
+#	else
+	(void)ptr;
+#	endif
 }
 
 static inline void gc_init(void)
@@ -43,9 +49,11 @@ static inline void gc_init(void)
 	 * giving up in this scenario.
 	 * As we only have limited memory for InvasIC, we set it to 2.
 	 */
+#	ifndef __OCTOPOS__
 	GC_set_max_retries(2);
 	GC_INIT();
 	GC_set_warn_proc(GC_ignore_warn_proc);
+#	endif
 }
 #endif
 

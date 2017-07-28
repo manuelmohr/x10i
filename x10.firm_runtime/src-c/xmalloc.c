@@ -33,6 +33,10 @@
 #include "xmalloc.h"
 #include "memory.h"
 
+#ifdef __OCTOPOS__
+#	include "octo_memory.h"
+#endif
+
 static void __attribute__((noreturn)) xnomem(void)
 {
 	/* Do not use panic() here, because it might try to allocate memory! */
@@ -76,35 +80,57 @@ void *gc_xrealloc_zeroed(void *ptr, size_t prev_size, size_t size)
 	return result;
 }
 #else
-void *gc_xmalloc(size_t size)
-{
-	void *res = GC_MALLOC(size);
-	if (res == NULL && size != 0)
-		xnomem();
-	return res;
-}
+#	ifdef __OCTOPOS__
+	void *gc_xmalloc(size_t size)
+	{
+		return octo_gc_xmalloc(size);
+	}
 
-void *gc_xmalloc_atomic(size_t size)
-{
-	void *res = GC_MALLOC_ATOMIC(size);
-	if (res == NULL && size != 0)
-		xnomem();
-	return res;
-}
+	void *gc_xmalloc_atomic(size_t size)
+	{
+		return octo_gc_xmalloc_atomic(size);
+	}
 
-void *gc_xrealloc(void *ptr, size_t size)
-{
-	void *result = GC_REALLOC(ptr, size);
-	if (result == NULL && size != 0)
-		xnomem();
-	return result;
-}
+	void *gc_xrealloc(void *ptr, size_t size)
+	{
+		return octo_gc_xrealloc(ptr, size);
+	}
 
-void *gc_xrealloc_zeroed(void *ptr, size_t prev_size, size_t size)
-{
-	(void)prev_size;
-	return gc_xrealloc(ptr, size);
-}
+	void *gc_xrealloc_zeroed(void *ptr, size_t prev_size, size_t size)
+	{
+		return octo_gc_xrealloc_zeroed(ptr, prev_size, size);
+	}
+#	else
+	void *gc_xmalloc(size_t size)
+	{
+		void *res = GC_MALLOC(size);
+		if (res == NULL && size != 0)
+			xnomem();
+		return res;
+	}
+
+	void *gc_xmalloc_atomic(size_t size)
+	{
+		void *res = GC_MALLOC_ATOMIC(size);
+		if (res == NULL && size != 0)
+			xnomem();
+		return res;
+	}
+
+	void *gc_xrealloc(void *ptr, size_t size)
+	{
+		void *result = GC_REALLOC(ptr, size);
+		if (result == NULL && size != 0)
+			xnomem();
+		return result;
+	}
+
+	void *gc_xrealloc_zeroed(void *ptr, size_t prev_size, size_t size)
+	{
+		(void)prev_size;
+		return gc_xrealloc(ptr, size);
+	}
+#	endif
 #endif
 
 char *xstrdup(const char *str)

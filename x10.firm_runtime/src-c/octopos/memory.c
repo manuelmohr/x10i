@@ -16,17 +16,23 @@
  * PURPOSE.
  */
 
-#include <octopos.h>
-#include "memory.h"
+#include "octo_memory.h"
+#include "xmalloc.h"
 
 void *mem_allocate_tlm(size_t size)
 {
+#ifdef __x86_64__
+	// use the normal GC allocator on amd64, because TLM == SHM
+	// gc_xmalloc already does error checking
+	return gc_xmalloc(size);
+#else
 	void *result = mem_allocate(MEM_TLM_LOCAL, size);
 	if (result == NULL && size != 0) {
 		fputs("out of tile local memory\n", stderr);
 		abort();
 	}
 	return result;
+#endif
 }
 
 void *mem_allocate_global(size_t size)
@@ -45,7 +51,12 @@ void *mem_allocate_global(size_t size)
 
 void mem_free_tlm(void *tlm_ptr)
 {
+#ifdef __x86_64__
+	// on amd64 the normal GC allocator is used for TLM allocations
+	(void)tlm_ptr;
+#else
 	mem_free(tlm_ptr);
+#endif
 }
 
 x10_pointer _ZN7octopos6Memory11allocateTLMEi(x10_int size)
