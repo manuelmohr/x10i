@@ -60,6 +60,9 @@ for release in $RELEASES; do
 done
 
 # Create default symlinks
+pushd "$OCTOPOS_APP_DIR/releases/" > /dev/null
+ln -sf "$RELEASE_DATE" "current"
+popd > /dev/null
 pushd "$OCTOPOS_APP_DIR/releases/current/x86guest" > /dev/null
 ln -sf "$DEFAULT_X86GUEST" "default"
 popd > /dev/null
