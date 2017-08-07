@@ -129,28 +129,6 @@ static void init_x10_activity(finish_state_t *fs)
 	activity_set_atomic_depth(0);
 }
 
-/**
- * Wraps an X10 object in an uncolletable GC object so that it may be
- * passed into the CiC without being forgotten.
- */
-static x10_object **gc_pin(x10_object *obj)
-{
-	x10_object **wrapper = GC_MALLOC_UNCOLLECTABLE(sizeof(x10_object*));
-	*wrapper = obj;
-	return wrapper;
-}
-
-/**
- * Unwraps an X10 object. After unwrapping, the object is subject to
- * usual garbage collection.
- */
-static x10_object *gc_unpin(x10_object **wrapper)
-{
-	x10_object *obj = *wrapper;
-	GC_FREE(wrapper);
-	return obj;
-}
-
 #ifdef USE_AGENTSYSTEM
 /** Top-level i-let function, initializes activity and cleans up afterwards */
 static void execute(void *ptr)
@@ -175,10 +153,10 @@ static void execute(void *ptr)
 #else
 static void execute(void *data1, void *data2)
 {
-	x10_object     **wrapper = (x10_object**)data1;
-	x10_object      *body    = gc_unpin(wrapper);
+	x10_object      *body    = data1;
 	finish_state_t  *fs      = data2;
 
+	octo_gc_unpin(body);
 	init_x10_activity(fs);
 
 	/* run the closure */
@@ -221,7 +199,7 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object
 	finish_state_t *enclosing = finish_state_get_current();
 	simple_ilet child;
 
-	x10_object **wrapper = gc_pin(body);
+	octo_gc_pin(body);
 
 #ifdef USE_AGENTSYSTEM
 	async_closure *ac = mem_allocate_tlm(sizeof(async_closure));
