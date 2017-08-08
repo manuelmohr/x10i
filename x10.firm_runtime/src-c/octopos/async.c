@@ -208,7 +208,7 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0E(x10_object
 	ac->agent_claim = agentclaim_get_current();
 	simple_ilet_init(&child, execute, ac);
 #else
-	dual_ilet_init(&child, execute, wrapper, enclosing);
+	dual_ilet_init(&child, execute, body, enclosing);
 #endif
 	register_at_finish_state(enclosing);
 	infect_self_single(&child);
