@@ -9,7 +9,7 @@
 agentclaim_t agentclaim_get_current(void)
 {
 #ifdef USE_AGENTSYSTEM
-	return get_ilet_local_data()->agent_claim;
+	return fls_get(agent_claim_idx);
 #else
 	assert (false);
 	return NULL;
@@ -19,7 +19,7 @@ agentclaim_t agentclaim_get_current(void)
 void agentclaim_set_current(agentclaim_t ac)
 {
 #ifdef USE_AGENTSYSTEM
-	get_ilet_local_data()->agent_claim = ac;
+	fls_set(agent_claim_idx, ac);
 #else
 	(void)ac;
 #endif

@@ -10,6 +10,12 @@
 #include "xmalloc.h"
 #include "memory.h"
 
+uintptr_t finish_state_idx;
+uintptr_t atomic_depth_idx;
+#ifdef USE_AGENTSYSTEM
+uintptr_t agent_claim_idx;
+#endif
+
 /**
  * A finish_state_t holds all information for a finish statement.
  * All its child activities are tracked. Also, their children must register
@@ -69,14 +75,12 @@ typedef struct async_closure {
 
 finish_state_t* finish_state_get_current(void)
 {
-	ilocal_data_t *ilocal = get_ilet_local_data();
-	return ilocal->fs;
+	return fls_get(finish_state_idx);
 }
 
 void finish_state_set_current(finish_state_t *fs)
 {
-	ilocal_data_t *ilocal = get_ilet_local_data();
-	ilocal->fs = fs;
+	fls_set(finish_state_idx, fs);
 }
 
 void register_at_finish_state(finish_state_t *fs)
@@ -96,26 +100,60 @@ void unregister_from_finish_state(finish_state_t *fs)
 
 void activity_inc_atomic_depth(void)
 {
-	ilocal_data_t *ilocal = get_ilet_local_data();
-	++ilocal->atomic_depth;
+	uintptr_t depth = (uintptr_t)fls_get(atomic_depth_idx);
+	fls_set(atomic_depth_idx, (void *)(depth + 1));
 }
 
 void activity_dec_atomic_depth(void)
 {
-	ilocal_data_t *ilocal = get_ilet_local_data();
-	--ilocal->atomic_depth;
+	uintptr_t depth = (uintptr_t)fls_get(atomic_depth_idx);
+	fls_set(atomic_depth_idx, (void *)(depth - 1));
 }
 
 unsigned activity_get_atomic_depth(void)
 {
-	ilocal_data_t *ilocal = get_ilet_local_data();
-	return ilocal->atomic_depth;
+	return (uintptr_t)fls_get(atomic_depth_idx);
 }
 
 void activity_set_atomic_depth(unsigned depth)
 {
-	ilocal_data_t *ilocal = get_ilet_local_data();
-	ilocal->atomic_depth = depth;
+	fls_set(atomic_depth_idx, (void*)(uintptr_t)depth);
+}
+
+static uintptr_t allocate_fls_slot(void)
+{
+	intptr_t idx = fls_allocate(NULL);
+	if (idx == -1) {
+		panic("Could not allocate slot in fiber-local storage");
+	}
+	return idx;
+}
+
+static void init_ilet_local_data(void)
+{
+	static int fls_initialized = 0;
+	static simple_spinlock lock;
+
+	/* allocate slots in fiber-local storage */
+	if (!fls_initialized) {
+		simple_spinlock_lock(&lock);
+		if (!fls_initialized) {
+			finish_state_idx = allocate_fls_slot();
+			atomic_depth_idx = allocate_fls_slot();
+#ifdef USE_AGENTSYSTEM
+			agent_claim_idx = allocate_fls_slot();
+#endif
+			fls_initialized = 1;
+		}
+		simple_spinlock_unlock(&lock);
+	}
+
+	/* the data should already be zero-initialized */
+	assert(fls_get(finish_state_idx) == NULL);
+	assert(fls_get(atomic_depth_idx) == NULL);
+#ifdef USE_AGENTSYSTEM
+	assert(fls_get(agent_claim_idx) == NULL);
+#endif
 }
 
 /**
