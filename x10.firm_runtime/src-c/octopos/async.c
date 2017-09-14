@@ -241,8 +241,6 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0Eb(x10_objec
 	finish_state_t *enclosing = uncounted ? NULL : finish_state_get_current();
 	simple_ilet child;
 
-	octo_gc_pin(body);
-
 #ifdef USE_AGENTSYSTEM
 	async_closure *ac = mem_allocate_tlm(sizeof(async_closure));
 	ac->body        = body;
@@ -250,6 +248,7 @@ void _ZN3x104lang7Runtime15executeParallelEPN3x104lang12$VoidFun_0_0Eb(x10_objec
 	ac->agent_claim = agentclaim_get_current();
 	simple_ilet_init(&child, execute, ac);
 #else
+	octo_gc_pin(body);
 	dual_ilet_init(&child, execute, body, enclosing);
 #endif
 	if (!uncounted) {
