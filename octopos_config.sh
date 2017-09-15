@@ -1,15 +1,15 @@
 #!/bin/bash
-RELEASE_DATE="2017-03-22"
-DEFAULT_X86GUEST="4t-w-iotile"
-DEFAULT_LEON="4t5c-chipit-w-iotile"
+RELEASE_DATE="2017-09-14"
+DEFAULT_X86GUEST="generic"
+DEFAULT_LEON="generic-w-iotile"
 RELEASES=""
 RELEASES="$RELEASES release.leon.${DEFAULT_LEON}.${RELEASE_DATE}.tar.bz2"
 RELEASES="$RELEASES release.x86guest.${DEFAULT_X86GUEST}.${RELEASE_DATE}.tar.bz2"
 RELEASES="$RELEASES release.x64native.generic.${RELEASE_DATE}.tar.bz2"
 MD5SUMS="""
-53f24235eef36202b097d6dde280c3c0  release.leon.4t5c-chipit-w-iotile.2017-03-22.tar.bz2
-371f4d3c594ddee0d99e3c12d0b08f4e  release.x64native.generic.2017-03-22.tar.bz2
-c33c422e6dd4a009b44ebe7d0cc90a14  release.x86guest.4t-w-iotile.2017-03-22.tar.bz2
+0dbf080cbc6556dec7643f41deb912b0  release.leon.generic-w-iotile.2017-09-14.tar.bz2
+221e70d0693ff005f3cf875d9e2ca345  release.x64native.generic.2017-09-14.tar.bz2
+8be02eafce51fa6a3347fbdc93b83d2e  release.x86guest.generic.2017-09-14.tar.bz2
 """
 
 DIST_DIR="octopos-dist"
