@@ -348,7 +348,7 @@ public final class NameMangler {
 		if (name.startsWith("operator")) {
 			final String subst = unOpSubst.get(name);
 			if (subst != null) {
-				/* really an unary operator */
+				/* really a unary operator */
 				final boolean isStatic = method.flags().isStatic();
 				final List<Type> formals = method.formalTypes();
 				if ((isStatic && formals.size() == 1)
