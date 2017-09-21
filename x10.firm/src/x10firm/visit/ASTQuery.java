@@ -150,7 +150,7 @@ public final class ASTQuery {
 	 */
 	public static boolean isPerProcess(final TypeSystem typeSystem, final X10Def def) {
 		/* Matze: we ignore @PerProcess for now, since we can't do anything
-		 * usefull with it yet without multi-tile support */
+		 * useful with it yet without multi-tile support */
 		return false;
 		/*
 		try {
