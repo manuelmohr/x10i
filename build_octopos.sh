@@ -1,6 +1,6 @@
 #!/bin/bash
 set -ev
-VARIANT=4t-w-iotile
+VARIANT=generic
 TARGET_DIR=$(pwd)/octopos-app/releases/
 
 export IRTSSBASE=$(readlink -e $1)
