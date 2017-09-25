@@ -12,10 +12,11 @@ There are somethings like initialising git submodules, and creating the x10
 c++ class libraries which have to be performed at least once initially.
 We put all this stuff into the setup.sh so running this should be enough to get you going:
 
-	./setup.sh
+  ./setup.sh
+  cd x10.dist
+  ant dist-firm
 
-Note: You should only need to do this once. At least if you just run x10firm
-the eclipse rebuilding should be enough after the initial build here.
+If you want to use OctoPOS/iRTSS see below for building that.
 
 == Eclipse Import ==
 
@@ -93,11 +94,17 @@ sure it is in your $PATH.
 
 Within x10.dist compile via
 
-	ant dist-firm -DTARGET=i686-invasic-irtss
+  ant dist-firm -DTARGET=i686-invasic-irtss
 
 Now you can use
 
   x10firm -mtarget=i686-invasic-irtss Foo.x10
+
+If you build iRTSS yourself and want to use a custom version,
+you need to tell the build system about that.
+You are then on your own to install iRTSS in the `octopos-app` directory.
+
+  ant dist-firm -DTARGET=i686-invasic-irtss -DCUSTOM_IRTSS=true
 
 == InvasIC Host Place Mode ==
 
